@@ -1,0 +1,32 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'animals' has no exported symbol 'Mammal' (in zoo.spy)
+  --> /tmp/tmp88gmgtt9/zoo.spy:2:35
+    |
+  2 | from animals import Animal, ISpeakable
+    |                                   ^^^^
+    |
+
+Type errors:
+error[SPY0220]: Cannot pass argument of type 'Dog' to parameter of type 'Animal'
+  --> /tmp/tmp88gmgtt9/main.spy:22:21
+    |
+ 22 |     describe_animal(dog)
+    |                     ^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'Cat' to parameter of type 'Animal'
+  --> /tmp/tmp88gmgtt9/main.spy:28:21
+    |
+ 28 |     describe_animal(cat)
+    |                     ^^^
+    |
+
+error[SPY0220]: Cannot assign type 'list[object]' to variable of type 'list[Animal]'
+  --> /tmp/tmp88gmgtt9/main.spy:36:5
+    |
+ 36 |     animals: list[Animal] = [dog, cat, fish]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

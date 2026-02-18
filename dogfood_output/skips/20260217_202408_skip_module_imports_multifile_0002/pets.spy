@@ -1,0 +1,31 @@
+# Pets module: concrete pet implementations
+from animals import Animal
+from types import Category, PetStats
+
+class Dog(Animal):
+    breed: str
+
+    def __init__(self, stats: PetStats, breed: str):
+        super().__init__(Category.MAMMAL, stats)
+        self.breed = breed
+
+    @property
+    def get_name(self) -> str:
+        return self.breed + " Dog"
+
+    def bark(self) -> str:
+        return "Woof!"
+
+class Cat(Animal):
+    color: str
+
+    def __init__(self, stats: PetStats, color: str):
+        super().__init__(Category.MAMMAL, stats)
+        self.color = color
+
+    @property
+    def get_name(self) -> str:
+        return self.color + " Cat"
+
+    def meow(self) -> str:
+        return "Meow!"

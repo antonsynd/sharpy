@@ -1,0 +1,8 @@
+Circle(radius=5.00)
+Rectangle(4.0x6.0)
+Total area: 122.73
+Circle type value: 0
+Point distance to origin: 0.7071
+Point in unit circle: True
+[Console] Drawing Red circle with radius 5.0
+[SVG scale=0.5] Drawing Blue rectangle 2.0x3.0

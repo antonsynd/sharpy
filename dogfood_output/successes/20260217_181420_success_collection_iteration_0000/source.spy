@@ -1,0 +1,28 @@
+# Simple test: Basic collection iteration patterns
+def main():
+    items: list[int] = [10, 20, 30]
+    total: int = 0
+    
+    # Sum all items
+    for x in items:
+        total += x
+    print(total)
+    
+    # Manual enumeration with index
+    i: int = 0
+    for val in items:
+        print(i + val)
+        i += 1
+    
+    # Dict iteration
+    mapping: dict[str, int] = {"a": 1, "b": 2}
+    for key in mapping:
+        print(mapping[key])
+
+# EXPECTED OUTPUT:
+# 60
+# 10
+# 21
+# 32
+# 1
+# 2

@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0456]: Class 'Point' defines '__hash__' but not '__eq__(self, other: object)'. The .NET equality contract requires both. Define '__eq__(self, other: object) -> bool'.
+  --> /tmp/tmp7iww925u/dogfood_test.spy:35:5
+    |
+ 35 |     def __hash__(self) -> int:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

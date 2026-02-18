@@ -1,0 +1,27 @@
+# Animals module: base animal classes using types module
+from types import Category, PetStats, IIdentifiable
+
+class Animal(IIdentifiable):
+    kind: Category
+    stats: PetStats
+
+    def __init__(self, kind: Category, stats: PetStats):
+        self.kind = kind
+        self.stats = stats
+
+    @property
+    def get_name(self) -> str:
+        return "Animal"
+
+    def describe(self) -> str:
+        result: str = "Category: "
+        if self.kind == Category.MAMMAL:
+            result += "Mammal"
+        elif self.kind == Category.REPTILE:
+            result += "Reptile"
+        else:
+            result += "Bird"
+        return result
+
+    def get_stats_summary(self) -> str:
+        return "Age: " + str(self.stats.age) + ", Weight: " + str(self.stats.weight)

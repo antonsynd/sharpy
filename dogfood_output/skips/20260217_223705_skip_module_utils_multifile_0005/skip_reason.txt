@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0018]: Unterminated literal name (backtick-delimited identifier)
+  --> /tmp/tmpxcrfz8ck/main.spy:95:4
+    |
+ 95 | ```
+    |    ^
+    |
+

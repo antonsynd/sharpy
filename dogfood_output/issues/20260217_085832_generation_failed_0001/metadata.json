@@ -1,0 +1,18 @@
+{
+  "issue_type": "generation_failed",
+  "timestamp": "2026-02-17T08:58:28.541782",
+  "generated_code": "",
+  "expected_output": null,
+  "actual_output": null,
+  "error_message": "Execution failed: Not logged in \u00b7 Please run /login\n",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 3.4689321517944336,
+  "compilation_duration": null,
+  "execution_duration": null,
+  "source_files": null
+}

@@ -1,0 +1,28 @@
+Testing comparison operators
+(3, 4)
+(3, 5)
+(5, 2)
+p1 < p2
+True
+p1 <= p2
+True
+p3 > p1
+True
+p3 >= p1
+True
+p1 == p4
+True
+p1 != p2
+True
+p1 != p4
+False
+p1 <= p4
+True
+p1 >= p4
+True
+Direct comparisons
+True
+True
+Chain comparisons
+True
+True

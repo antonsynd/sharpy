@@ -1,0 +1,6 @@
+def main():
+    # Simple string concatenation using the + operator
+    result = "Hello" + ", " + "World"
+    print(result)
+    # EXPECTED OUTPUT:
+    # Hello, World

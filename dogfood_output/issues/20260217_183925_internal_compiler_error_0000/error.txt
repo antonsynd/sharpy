@@ -1,0 +1,23 @@
+Internal compiler error: Compilation errors:
+
+error[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.
+  --> /tmp/tmpb4g05pci/main.spy:12:5
+    |
+ 12 |     builder.append("Hello")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.
+  --> /tmp/tmpb4g05pci/main.spy:13:5
+    |
+ 13 |     builder.append(" ")
+    |     ^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.
+  --> /tmp/tmpb4g05pci/main.spy:14:5
+    |
+ 14 |     builder.append("World")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

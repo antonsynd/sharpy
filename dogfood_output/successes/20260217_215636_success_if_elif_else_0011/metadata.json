@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-17T21:56:15.445048",
+  "generated_code": "# Test: if/elif/else with grade classification logic\ndef classify_score(score: int) -> str:\n    if score >= 90:\n        return \"A\"\n    elif score >= 80:\n        return \"B\"\n    elif score >= 70:\n        return \"C\"\n    elif score >= 60:\n        return \"D\"\n    else:\n        return \"F\"\n\ndef main():\n    print(classify_score(95))\n    print(classify_score(82))\n    print(classify_score(75))\n    print(classify_score(60))\n    print(classify_score(45))\n\n# EXPECTED OUTPUT:\n# A\n# B\n# C\n# D\n# F",
+  "expected_output": "A\nB\nC\nD\nF\n",
+  "actual_output": "A\nB\nC\nD\nF",
+  "feature_focus": "if_elif_else",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 11.896055936813354,
+  "execution_duration": 4.248559236526489,
+  "source_files": null
+}

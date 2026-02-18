@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-17T22:15:41.834019",
+  "generated_code": "# Test: Function with internal print statement during computation\ndef compute_and_print(a: int, b: int) -> int:\n    doubled = a * 2\n    print(doubled)\n    return doubled + b\n\ndef main():\n    final = compute_and_print(7, 5)\n    print(final)\n\n# EXPECTED OUTPUT:\n# 14\n# 19",
+  "expected_output": "14\n19\n",
+  "actual_output": "14\n19",
+  "feature_focus": "function_with_print",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 29.38853645324707,
+  "execution_duration": 4.3274877071380615,
+  "source_files": null
+}

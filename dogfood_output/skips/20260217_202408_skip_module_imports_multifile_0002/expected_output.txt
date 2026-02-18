@@ -1,0 +1,9 @@
+=== Module Import Test ===
+Tag ID: 101
+Golden Retriever Dog
+Woof!
+Category: Mammal
+Orange Cat
+Meow!
+Age: 2, Weight: 4.2
+=== Complete ===

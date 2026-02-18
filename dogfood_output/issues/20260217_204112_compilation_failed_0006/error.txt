@@ -1,0 +1,33 @@
+Assembly compilation failed:
+
+error[CS0535]: 'Shapes.ShapeBase' does not implement interface member 'Types.IShape.Area()'
+  --> shapes.cs:12:39
+    |
+ 12 |     
+    |     ^
+    |
+
+error[CS0115]: 'Shapes.Rectangle.Area()': no suitable method found to override
+  --> /tmp/tmp0wulu7es/shapes.spy:20:32
+    |
+ 20 |     
+    |     ^
+    |
+
+error[CS0115]: 'Shapes.Rectangle.Perimeter()': no suitable method found to override
+  --> /tmp/tmp0wulu7es/shapes.spy:36:32
+    |
+ 36 |     # Test inheritance chain
+    |                             ^
+    |
+
+error[CS0115]: 'Shapes.Circle.Area()': no suitable method found to override
+  --> /tmp/tmp0wulu7es/shapes.spy:37:32
+    |
+ 37 |     base: ShapeBase = rect
+    |                           ^
+    |
+
+error[CS0115]: 'Shapes.Circle.Perimeter()': no suitable method found to override
+  --> /tmp/tmp0wulu7es/shapes.spy:57:32
+

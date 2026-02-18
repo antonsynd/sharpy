@@ -1,0 +1,30 @@
+# Types module: interfaces, struct, and enum definitions
+
+interface IIdentifiable:
+    @property
+    def get_name(self) -> str:
+        ...
+
+struct PetStats:
+    age: int
+    weight: float
+
+    def __init__(self, age: int, weight: float):
+        self.age = age
+        self.weight = weight
+
+    def avg_weight_per_year(self) -> float:
+        return self.weight / self.age
+
+enum Category:
+    MAMMAL = 1
+    REPTILE = 2
+    BIRD = 3
+
+class Tag:
+    id: int
+    label: str
+
+    def __init__(self, id: int, label: str):
+        self.id = id
+        self.label = label

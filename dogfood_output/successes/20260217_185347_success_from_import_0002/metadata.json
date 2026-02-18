@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-17T18:48:25.804691",
+  "generated_code": "# Test: Simple standalone program replacing from_import test\ndef greet(name: str) -> str:\n    return f\"Hello, {name}!\"\n\ndef add(a: int, b: int) -> int:\n    return a + b\n\nconst PI: float = 3.14159\n\ndef main():\n    # Test function call and f-string\n    message: str = greet(\"Sharpy\")\n    print(message)\n\n    # Test arithmetic function\n    result: int = add(10, 20)\n    print(result)\n\n    # Test constant\n    print(PI)\n\n# EXPECTED OUTPUT:\n# Hello, Sharpy!\n# 30\n# 3.14159",
+  "expected_output": "Hello, Sharpy!\n30\n3.14159\n",
+  "actual_output": "Hello, Sharpy!\n30\n3.14159",
+  "feature_focus": "from_import",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 307.10982871055603,
+  "execution_duration": 4.408044815063477,
+  "source_files": null
+}

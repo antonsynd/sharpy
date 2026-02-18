@@ -1,0 +1,44 @@
+# Math utility module - mathematical operations
+from string_utils import StringFormatter
+
+
+class Calculator:
+    """Calculator class with history tracking."""
+    history: list[str]
+
+    def __init__(self):
+        self.history = []
+
+    def add(self, a: int, b: int) -> int:
+        """Add two numbers and log to history."""
+        result: int = a + b
+        entry: str = str(a) + " + " + str(b) + " = " + str(result)
+        self.history.append(entry)
+        return result
+
+    def multiply(self, a: int, b: int) -> int:
+        """Multiply two numbers and log to history."""
+        result: int = a * b
+        entry: str = str(a) + " * " + str(b) + " = " + str(result)
+        self.history.append(entry)
+        return result
+
+    def get_history(self) -> list[str]:
+        """Return calculation history."""
+        return self.history
+
+
+def sum_all(numbers: list[int]) -> int:
+    """Sum all numbers in a list."""
+    total: int = 0
+    for n in numbers:
+        total = total + n
+    return total
+
+
+def average(numbers: list[int]) -> float:
+    """Calculate average of numbers."""
+    if len(numbers) == 0:
+        return 0.0
+    total: int = sum_all(numbers)
+    return float(total) / float(len(numbers))

@@ -1,0 +1,8 @@
+Processed item 5, resource released
+Skipped zero value
+Processed item 0, resource released
+Processed item 10, resource released
+Skipped zero value
+Processed item 0, resource released
+Processed item 2, resource released
+Successfully processed 3 items

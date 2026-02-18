@@ -1,0 +1,13 @@
+=== Dog ===
+An animal named Buddy has fur, breed: Golden Retriever
+Type: unknown
+Buddy says: Woof!
+Buddy is fetching the ball!
+=== Cat ===
+An animal named Whiskers has fur
+Type: unknown
+Whiskers says: Meow!
+=== Fish ===
+An animal named Goldie
+Type: fish (freshwater)
+Total animals: 3

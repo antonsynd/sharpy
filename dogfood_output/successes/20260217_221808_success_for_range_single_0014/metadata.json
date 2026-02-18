@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-17T22:17:20.363584",
+  "generated_code": "# Simple for loop with range(single_value)\n# Tests iteration counting and accumulation\ndef main():\n    total: int = 0\n    for count in range(5):\n        total += count\n    print(total)\n    \n    product: int = 1\n    for n in range(1, 4):\n        product *= n\n    print(product)\n    \n    # Single iteration edge case\n    for once in range(1):\n        print(once)\n    \n    # Zero iteration edge case  \n    for never in range(0):\n        print(never)\n    print(\"done\")\n# EXPECTED OUTPUT:\n# 10\n# 6\n# 0\n# done",
+  "expected_output": "10\n6\n0\ndone\n",
+  "actual_output": "10\n6\n0\ndone",
+  "feature_focus": "for_range_single",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 38.29387593269348,
+  "execution_duration": 4.392888069152832,
+  "source_files": null
+}

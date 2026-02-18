@@ -1,0 +1,59 @@
+# Main entry point - demonstrates importing and using utility modules
+from string_utils import StringFormatter, truncate, pad_left, to_upper_case
+from math_utils import Calculator, sum_all, average
+
+
+def main():
+    # Test string utilities
+    print("=== String Utilities ===")
+
+    # Test StringFormatter class
+    formatter: StringFormatter = StringFormatter("[", "]")
+    formatted: str = formatter.format("hello")
+    print(formatted)
+
+    # Test truncate function
+    long_text: str = "This is a very long text that needs truncation"
+    truncated: str = truncate(long_text, 20)
+    print(truncated)
+
+    # Test pad_left function
+    padded: str = pad_left("42", 5, "0")
+    print(padded)
+
+    # Test to_upper_case function
+    upper: str = to_upper_case("sharpy")
+    print(upper)
+
+    # Test math utilities
+    print("=== Math Utilities ===")
+
+    # Test Calculator class
+    calc: Calculator = Calculator()
+    sum_result: int = calc.add(10, 20)
+    print(sum_result)
+    mult_result: int = calc.multiply(5, 6)
+    print(mult_result)
+
+    # Test sum_all function
+    numbers: list[int] = [1, 2, 3, 4, 5]
+    total: int = sum_all(numbers)
+    print(total)
+
+    # Test average function
+    avg: float = average(numbers)
+    print(avg)
+
+
+# EXPECTED OUTPUT:
+# === String Utilities ===
+# [hello]
+# This is a very long...
+# 00042
+# SHARPY
+# === Math Utilities ===
+# 30
+# 30
+# 15
+# 3.0
+```

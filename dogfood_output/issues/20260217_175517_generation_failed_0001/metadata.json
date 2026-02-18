@@ -1,0 +1,18 @@
+{
+  "issue_type": "generation_failed",
+  "timestamp": "2026-02-17T17:55:12.731154",
+  "generated_code": "",
+  "expected_output": null,
+  "actual_output": null,
+  "error_message": "Execution failed: Credit balance is too low\n",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "complex",
+  "backend_used": "claude",
+  "generation_duration": 4.868171215057373,
+  "compilation_duration": null,
+  "execution_duration": null,
+  "source_files": null
+}

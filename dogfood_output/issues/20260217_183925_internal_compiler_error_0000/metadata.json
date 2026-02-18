@@ -1,0 +1,22 @@
+{
+  "issue_type": "internal_compiler_error",
+  "timestamp": "2026-02-17T18:36:40.799248",
+  "generated_code": "# Main entry point - imports and uses string_utils and math_utils modules\n\nfrom string_utils import reverse_string, is_palindrome, StringBuilder\nfrom math_utils import factorial, is_prime, sum_of_digits\n\ndef main():\n    # Test string utilities\n    word: str = \"radar\"\n    print(is_palindrome(word))\n    \n    builder = StringBuilder()\n    builder.append(\"Hello\")\n    builder.append(\" \")\n    builder.append(\"World\")\n    print(builder.to_string())\n    \n    # Test math utilities\n    n: int = 5\n    print(factorial(n))\n    \n    # Test prime check with digit sum\n    candidate: int = 29\n    is_prime_result: bool = is_prime(candidate)\n    digit_sum: int = sum_of_digits(candidate)\n    \n    print(is_prime_result)\n    print(digit_sum)\n\n# EXPECTED OUTPUT:\n# True\n# Hello World\n# 120\n# True\n# 11",
+  "expected_output": "True\nHello World\n120\nTrue\n11\n",
+  "actual_output": null,
+  "error_message": "Internal compiler error: Compilation errors:\n\nerror[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.\n  --> /tmp/tmpb4g05pci/main.spy:12:5\n    |\n 12 |     builder.append(\"Hello\")\n    |     ^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\nerror[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.\n  --> /tmp/tmpb4g05pci/main.spy:13:5\n    |\n 13 |     builder.append(\" \")\n    |     ^^^^^^^^^^^^^^^^^^^\n    |\n\nerror[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.\n  --> /tmp/tmpb4g05pci/main.spy:14:5\n    |\n 14 |     builder.append(\"World\")\n    |     ^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\n",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 154.62040972709656,
+  "compilation_duration": null,
+  "execution_duration": null,
+  "source_files": {
+    "string_utils.spy": "# String utility module - provides string manipulation functions and classes\n\ndef reverse_string(s: str) -> str:\n    result: str = \"\"\n    i: int = len(s) - 1\n    while i >= 0:\n        result = result + str(s[i])\n        i = i - 1\n    return result\n\ndef is_palindrome(s: str) -> bool:\n    reversed_s: str = reverse_string(s)\n    return s == reversed_s\n\nclass StringBuilder:\n    parts: list[str]\n    \n    def __init__(self):\n        self.parts = []\n    \n    def append(self, s: str):\n        self.parts.append(s)\n    \n    def to_string(self) -> str:\n        result: str = \"\"\n        for part in self.parts:\n            result = result + part\n        return result\n    \n    def clear(self):\n        self.parts.clear()",
+    "math_utils.spy": "# Math utility module - provides mathematical functions\n\ndef factorial(n: int) -> int:\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n\ndef is_prime(n: int) -> bool:\n    if n < 2:\n        return False\n    if n == 2:\n        return True\n    if n % 2 == 0:\n        return False\n    i: int = 3\n    while i * i <= n:\n        if n % i == 0:\n            return False\n        i = i + 2\n    return True\n\ndef sum_of_digits(n: int) -> int:\n    total: int = 0\n    remaining: int = n\n    while remaining > 0:\n        total = total + (remaining % 10)\n        remaining = remaining // 10\n    return total",
+    "main.spy": "# Main entry point - imports and uses string_utils and math_utils modules\n\nfrom string_utils import reverse_string, is_palindrome, StringBuilder\nfrom math_utils import factorial, is_prime, sum_of_digits\n\ndef main():\n    # Test string utilities\n    word: str = \"radar\"\n    print(is_palindrome(word))\n    \n    builder = StringBuilder()\n    builder.append(\"Hello\")\n    builder.append(\" \")\n    builder.append(\"World\")\n    print(builder.to_string())\n    \n    # Test math utilities\n    n: int = 5\n    print(factorial(n))\n    \n    # Test prime check with digit sum\n    candidate: int = 29\n    is_prime_result: bool = is_prime(candidate)\n    digit_sum: int = sum_of_digits(candidate)\n    \n    print(is_prime_result)\n    print(digit_sum)\n\n# EXPECTED OUTPUT:\n# True\n# Hello World\n# 120\n# True\n# 11"
+  }
+}

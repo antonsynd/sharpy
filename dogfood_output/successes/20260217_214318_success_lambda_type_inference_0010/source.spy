@@ -1,0 +1,24 @@
+# Test: Lambda type inference with list operations and higher-order functions
+# Verifies that lambda parameter types are inferred from context in function chains
+
+def apply_transform(items: list[int], threshold: int) -> list[int]:
+    # Lambda type inferred from (int) -> int context
+    doubler: (int) -> int = lambda x: x * 2
+    
+    # Lambda type inferred from (int) -> bool context
+    is_above_threshold: (int) -> bool = lambda n: n > threshold
+    
+    # Apply transformations using list comprehensions
+    doubled: list[int] = [doubler(x) for x in items]
+    result: list[int] = [x for x in doubled if is_above_threshold(x)]
+    return result
+
+def main():
+    numbers: list[int] = [1, 2, 3, 4, 5]
+    filtered: list[int] = apply_transform(numbers, 6)
+    for val in filtered:
+        print(val)
+
+# EXPECTED OUTPUT:
+# 8
+# 10

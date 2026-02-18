@@ -1,0 +1,7 @@
+City Library has 3 books
+3
+True
+2
+False
+True
+3

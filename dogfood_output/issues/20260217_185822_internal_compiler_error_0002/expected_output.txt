@@ -1,0 +1,4 @@
+Created 3 shapes
+Square area: 25.0
+Analyzed 3 shapes, total area: 253.1815
+Circle with radius 3.0 has area 28.27431

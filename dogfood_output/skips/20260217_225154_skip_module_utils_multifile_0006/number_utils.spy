@@ -1,0 +1,29 @@
+# Number utility module - extends string_utils functionality
+from string_utils import StringValidator, truncate
+
+class NumberParser(StringValidator):
+    def __init__(self):
+        super().__init__(1)
+    
+    @override
+    def validate(self, s: str) -> bool:
+        valid_len: bool = super().validate(s)
+        return valid_len and s.isdigit()
+    
+    def parse(self, s: str) -> int:
+        truncated: str = truncate(s, 8)
+        if self.validate(truncated):
+            return int(truncated)
+        return 0
+
+def sum_numbers(nums: list[int]) -> int:
+    total: int = 0
+    for n in nums:
+        total = total + n
+    return total
+
+def apply_to_all(values: list[int], fn: (int) -> int) -> list[int]:
+    result: list[int] = []
+    for v in values:
+        result.append(fn(v))
+    return result

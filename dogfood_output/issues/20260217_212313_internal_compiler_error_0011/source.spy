@@ -1,0 +1,52 @@
+# Main entry point - demonstrates cross-module class usage
+
+from shapes import Shape, Circle, Rectangle, Color, Point2D, ShapeType, IDrawable
+from renderers import ConsoleRenderer, SvgRenderer, IRenderer
+from utils import calculate_total_area, create_colorful_circle, is_point_in_unit_circle, create_default_renderer
+
+def main():
+    # Create shapes from shapes module
+    circle1: Circle = Circle(5.0, Color.RED)
+    circle2: Circle = create_colorful_circle(3.0, 1)  # Green circle
+    rect: Rectangle = Rectangle(4.0, 6.0, Color.BLUE)
+
+    # Test Point2D struct from shapes module
+    point1: Point2D = Point2D(0.5, 0.5)
+    point2: Point2D = Point2D(2.0, 2.0)
+
+    # Print shape descriptions and areas
+    print(circle1.describe())
+    print(rect.describe())
+
+    # Calculate total area using utils function
+    shapes: list[Shape] = [circle1, circle2, rect]
+    total: float = calculate_total_area(shapes)
+    print(f"Total area: {{total:.2f}}")
+
+    # Test shape type enum
+    print(f"Circle type value: {{circle1.shape_type.value}}")
+
+    # Test point distance calculations
+    print(f"Point distance to origin: {{point1.distance_to_origin():.4f}}")
+
+    # Test point-in-circle using utils function
+    in_circle: bool = is_point_in_unit_circle(point1)
+    print(f"Point in unit circle: {{in_circle}}")
+
+    # Test renderers from renderers module
+    console_renderer: ConsoleRenderer = create_default_renderer()
+    svg_renderer: SvgRenderer = SvgRenderer(0.5)
+
+    # Render shapes
+    print(console_renderer.render(circle1))
+    print(svg_renderer.render(rect))
+
+    # EXPECTED OUTPUT:
+    # Circle(radius=5.00)
+    # Rectangle(4.0x6.0)
+    # Total area: 122.73
+    # Circle type value: 0
+    # Point distance to origin: 0.7071
+    # Point in unit circle: True
+    # [Console] Drawing Red circle with radius 5.0
+    # [SVG scale=0.5] Drawing Blue rectangle 2.0x3.0

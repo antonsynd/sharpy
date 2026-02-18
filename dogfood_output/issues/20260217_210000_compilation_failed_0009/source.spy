@@ -1,0 +1,75 @@
+# Main entry point demonstrating complex cross-module imports
+
+from shapes import Shape, IMeasurable, IRender
+from geometry_types import Color, Dimension, ShapeCategory, get_default_color
+from shapes_impl import Rectangle, Circle, ShapeFactory
+
+def analyze_shape(measurable: IMeasurable) -> None:
+    area: float = measurable.area()
+    perimeter: float = measurable.perimeter()
+    # Note: print only takes single argument
+    print(f"Area: {{area:.2f}}")
+    print(f"Perimeter: {{perimeter:.2f}}")
+
+def main():
+    print("=== Cross-Module Shape System Demo ===")
+    
+    # Test ShapeFactory from shapes_impl
+    factory = ShapeFactory()
+    
+    # Test colors from geometry_types
+    default_color: Color = get_default_color()
+    print(f"Default color: {{default_color}}")
+    
+    # Create shapes using factory
+    rect: Rectangle = factory.create_rectangle("Rect001", 10.0, 5.0)
+    circle: Circle = factory.create_circle("Circle001", 7.0)
+    
+    # Test rectangle - inherits from Shape, implements IMeasurable/IRender
+    print("--- Rectangle ---")
+    print(rect.info())
+    print(rect.describe())
+    analyze_shape(rect)
+    print(rect.render())
+    
+    # Test circle - inherits from Shape, implements IMeasurable
+    print("--- Circle ---")
+    print(circle.info())
+    print(circle.describe())
+    analyze_shape(circle)
+    print(circle.render())
+    
+    # Test Dimension struct from geometry_types
+    print("--- Dimensions ---")
+    dim: Dimension = Dimension(20.0, 15.0)
+    print(f"Original: {{dim}}")
+    scaled: Dimension = dim.scale(2.0)
+    print(f"Scaled: {{scaled}}")
+    
+    # Test ShapeCategory enum
+    print("--- Categories ---")
+    print(f"Circle category: {{circle.category}}")
+    
+    print("=== Demo Complete ===")
+
+# EXPECTED OUTPUT:
+# === Cross-Module Shape System Demo ===
+# Default color: 2
+# --- Rectangle ---
+# Shape Rect001 (ID: 1)
+# Rectangle Rect001 with dimensions 10.0x5.0
+# Area: 50.00
+# Perimeter: 30.00
+# [RECT Rect001 2]
+# --- Circle ---
+# Shape Circle001 (ID: 2)
+# Circle Circle001 with radius 7.0
+# Area: 153.94
+# Perimeter: 43.98
+# [CIRC Circle001 r=7.0]
+# --- Dimensions ---
+# Original: 20.0x15.0
+# Scaled: 40.0x30.0
+# --- Categories ---
+# Circle category: Circle
+# === Demo Complete ===

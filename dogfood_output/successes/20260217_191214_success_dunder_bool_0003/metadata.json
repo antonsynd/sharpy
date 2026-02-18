@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-17T19:11:12.584776",
+  "generated_code": "# Test: __bool__ dunder method for custom truthiness\n# A container that reports if it has elements\nclass Container:\n    items: list[int]\n    \n    def __init__(self):\n        self.items = []\n    \n    def add(self, value: int) -> None:\n        self.items.append(value)\n    \n    def __bool__(self) -> bool:\n        return len(self.items) > 0\n\ndef main():\n    c = Container()\n    \n    # Empty container should be falsy\n    if c:\n        print(1)\n    else:\n        print(0)\n    \n    c.add(42)\n    \n    # Non-empty container should be truthy\n    if c:\n        print(2)\n    else:\n        print(3)\n\n# EXPECTED OUTPUT:\n# 0\n# 2",
+  "expected_output": "0\n2\n",
+  "actual_output": "0\n2",
+  "feature_focus": "dunder_bool",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 52.246821880340576,
+  "execution_duration": 4.479339361190796,
+  "source_files": null
+}

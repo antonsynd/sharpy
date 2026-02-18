@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-17T18:58:22.017838",
+  "generated_code": "# Test: Enum values in arithmetic expressions\n# Tests: enum definition, enum arithmetic operations\n\nenum Priority:\n    LOW = 5\n    MEDIUM = 10\n    HIGH = 15\n\ndef main():\n    # Enum values in arithmetic\n    total: int = Priority.LOW + Priority.HIGH\n    average: int = (Priority.LOW + Priority.MEDIUM + Priority.HIGH) // 3\n    \n    print(total)\n    print(average)\n    print(Priority.MEDIUM * 2)\n    \n# EXPECTED OUTPUT:\n# 20\n# 10\n# 20",
+  "expected_output": "20\n10\n20\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0019]: Operator '+' cannot be applied to operands of type 'DogfoodTest.Priority' and 'DogfoodTest.Priority'\n  --> /tmp/tmp39e0zvof/dogfood_test.spy:11:21\n    |\n 11 |     total: int = Priority.LOW + Priority.HIGH\n    |                     ^\n    |\n\nerror[CS0019]: Operator '+' cannot be applied to operands of type 'DogfoodTest.Priority' and 'DogfoodTest.Priority'\n  --> /tmp/tmp39e0zvof/dogfood_test.spy:12:65\n    |\n 12 |     average: int = (Priority.LOW + Priority.MEDIUM + Priority.HIGH) // 3\n    |                                                                 ^\n    |\n\nerror[CS0019]: Operator '*' cannot be applied to operands of type 'DogfoodTest.Priority' and 'int'\n  --> /tmp/tmp39e0zvof/dogfood_test.spy:16:39\n    |\n 16 |     print(Priority.MEDIUM * 2)\n    |                               ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmp39e0zvof/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "enum_definition",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 353.5710082054138,
+  "compilation_duration": null,
+  "execution_duration": 4.0923261642456055,
+  "source_files": null
+}

@@ -1,0 +1,5 @@
+Stripe
+Processing $100 via generic using card ...4242
+2.9000000000000004
+Processing $100 via generic
+5.0

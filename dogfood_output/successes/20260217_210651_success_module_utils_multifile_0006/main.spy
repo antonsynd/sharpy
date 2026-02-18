@@ -1,0 +1,29 @@
+# Main entry point - demonstrates module imports and usage
+from string_utils import count_vowels, reverse, TextFormatter
+from math_utils import is_even, factorial, Calculator
+
+def main():
+    # Test string_utils functions
+    text: str = "Hello World"
+    print(count_vowels(text))
+    print(reverse(text))
+    
+    # Test string_utils class
+    formatter: TextFormatter = TextFormatter("[", "]")
+    print(formatter.format("test"))
+    
+    # Test math_utils functions
+    print(is_even(10))
+    
+    # Test math_utils class
+    calc: Calculator = Calculator()
+    calc.add(5)
+    calc.add(3)
+    print(calc.get_total())
+
+# EXPECTED OUTPUT:
+# 3
+# dlroW olleH
+# [test]
+# True
+# 8

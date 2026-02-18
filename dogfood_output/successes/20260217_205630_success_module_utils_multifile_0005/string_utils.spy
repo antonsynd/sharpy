@@ -1,0 +1,38 @@
+# String utility module - provides text manipulation helpers
+
+class TextFormatter:
+    """Class for formatting text with various transformations"""
+    prefix: str
+    
+    def __init__(self, prefix: str):
+        self.prefix = prefix
+    
+    def format_line(self, text: str) -> str:
+        return self.prefix + ": " + text
+    
+    def repeat(self, text: str, count: int) -> str:
+        result: str = ""
+        i: int = 0
+        while i < count:
+            result = result + text
+            i = i + 1
+        return result
+
+def count_vowels(text: str) -> int:
+    """Count vowels in a string"""
+    count: int = 0
+    vowels: str = "aeiouAEIOU"
+    for c in text:
+        if str(c) in vowels:
+            count = count + 1
+    return count
+
+def reverse_words(text: str) -> str:
+    """Reverse the order of words in a string"""
+    words: list[str] = text.split(" ")
+    result: list[str] = []
+    i: int = len(words) - 1
+    while i >= 0:
+        result.append(words[i])
+        i = i - 1
+    return " ".join(result)

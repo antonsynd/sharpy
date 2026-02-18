@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-17T21:11:53.900567",
+  "generated_code": "# Test: Result unwrap in computation pipeline with error propagation\n# Tests chaining Results, unwrap in conditional contexts, and unwrap_or patterns\n\nclass Calculator:\n    last_result: float\n    \n    def __init__(self):\n        self.last_result = 0.0\n    \n    def divide(self, a: float, b: float) -> float !str:\n        if b == 0.0:\n            return Err(\"Division by zero\")\n        return Ok(a / b)\n    \n    def compute_average(self, total: float, count: int) -> float !str:\n        if count <= 0:\n            return Err(\"Invalid count\")\n        if total < 0.0:\n            return Err(\"Negative total\")\n        return Ok(total / float(count))\n\ndef process_data(total: float, count: int) -> float !str:\n    calc: Calculator = Calculator()\n    return calc.compute_average(total, count)\n\ndef main():\n    # Successful computation - unwrap works\n    result1: float !str = process_data(100.0, 4)\n    print(result1.unwrap())\n    \n    # Error case - use unwrap_or to provide default\n    result2: float !str = process_data(100.0, 0)\n    print(result2.unwrap_or(-1.0))\n    \n    # Calculator operations chaining\n    calc: Calculator = Calculator()\n    step1: float !str = calc.divide(20.0, 4.0)\n    intermediate: float = step1.unwrap_or(0.0)\n    calc.last_result = intermediate\n    print(calc.last_result)\n    \n    # Another error case\n    step2: float !str = calc.divide(10.0, 0.0)\n    final_result: float = step2.unwrap_or(999.9)\n    print(final_result)\n\n# EXPECTED OUTPUT:\n# 25.0\n# -1.0\n# 5.0\n# 999.9",
+  "expected_output": "25.0\n-1.0\n5.0\n999.9\n",
+  "actual_output": "25.0\n-1.0\n5.0\n999.9",
+  "feature_focus": "result_unwrap",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 176.58995985984802,
+  "execution_duration": 4.428618669509888,
+  "source_files": null
+}

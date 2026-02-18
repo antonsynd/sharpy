@@ -1,0 +1,13 @@
+# Test: Function with internal print statement during computation
+def compute_and_print(a: int, b: int) -> int:
+    doubled = a * 2
+    print(doubled)
+    return doubled + b
+
+def main():
+    final = compute_and_print(7, 5)
+    print(final)
+
+# EXPECTED OUTPUT:
+# 14
+# 19

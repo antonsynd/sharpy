@@ -1,0 +1,23 @@
+# String utility module - base utilities with validation
+def truncate(s: str, max_len: int) -> str:
+    if len(s) > max_len:
+        return s[0:max_len] + "..."
+    return s
+
+def repeat(s: str, count: int) -> str:
+    result: str = ""
+    i: int = 0
+    while i < count:
+        result = result + s
+        i = i + 1
+    return result
+
+class StringValidator:
+    _min_len: int
+    
+    def __init__(self, min_len: int):
+        self._min_len = min_len
+    
+    @virtual
+    def validate(self, s: str) -> bool:
+        return len(s) >= self._min_len

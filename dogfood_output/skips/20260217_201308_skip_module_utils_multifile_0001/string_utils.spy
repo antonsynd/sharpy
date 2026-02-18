@@ -1,0 +1,44 @@
+# String utility module - provides string formatting operations
+
+class StringFormatter:
+    """Utility class for formatting strings with various options."""
+    prefix: str
+    suffix: str
+
+    def __init__(self, prefix: str, suffix: str):
+        self.prefix = prefix
+        self.suffix = suffix
+
+    def format(self, text: str) -> str:
+        """Wrap text with prefix and suffix."""
+        return self.prefix + text + self.suffix
+
+    @virtual
+    def transform(self, text: str) -> str:
+        """Transform text - can be overridden by subclasses."""
+        return text
+
+
+def truncate(text: str, max_length: int) -> str:
+    """Truncate string to max_length, adding '...' if truncated."""
+    if len(text) <= max_length:
+        return text
+    return text[0:max_length - 3] + "..."
+
+
+def pad_left(text: str, width: int, fill_char: str) -> str:
+    """Pad string to width with fill_char on the left."""
+    if len(text) >= width:
+        return text
+    pad_count: int = width - len(text)
+    result: str = ""
+    i: int = 0
+    while i < pad_count:
+        result = result + fill_char
+        i = i + 1
+    return result + text
+
+
+def to_upper_case(text: str) -> str:
+    """Convert string to uppercase."""
+    return text.upper()

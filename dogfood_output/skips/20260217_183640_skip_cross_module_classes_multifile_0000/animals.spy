@@ -1,0 +1,34 @@
+# Base classes and interfaces for the animal hierarchy
+interface ISpeakable:
+    def speak(self) -> str: ...
+
+class Animal:
+    """Base class for all animals."""
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def describe(self) -> str:
+        return f"An animal named {self.name}"
+    
+    @virtual
+    def get_type(self) -> str:
+        return "unknown"
+
+class Mammal(Animal):
+    """Mammal base class extending Animal."""
+    has_fur: bool
+    
+    def __init__(self, name: str, has_fur: bool):
+        super().__init__(name)
+        self.has_fur = has_fur
+    
+    @override
+    def describe(self) -> str:
+        fur_info: str = " has fur" if self.has_fur else " has no fur"
+        return super().describe() + fur_info
+    
+    @abstract
+    def make_sound(self) -> str: ...

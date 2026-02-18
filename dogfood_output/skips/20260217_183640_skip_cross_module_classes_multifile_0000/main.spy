@@ -1,0 +1,52 @@
+# Main entry point - demonstrates cross-module class hierarchy
+from animals import Animal, ISpeakable
+from zoo import Dog, Cat, Fish
+
+def describe_animal(animal: Animal) -> None:
+    """Works with any Animal subclass from any module."""
+    print(animal.describe())
+    print(f"Type: {animal.get_type()}")
+
+def make_it_speak(speaker: ISpeakable) -> None:
+    """Works with any ISpeakable implementation from any module."""
+    print(speaker.speak())
+
+def main():
+    # Create instances of cross-module classes
+    dog = Dog("Buddy", "Golden Retriever")
+    cat = Cat("Whiskers")
+    fish = Fish("Goldie", "freshwater")
+    
+    # Demonstrate inheritance chain: Dog -> Mammal -> Animal
+    print("=== Dog ===")
+    describe_animal(dog)
+    make_it_speak(dog)
+    print(dog.fetch())
+    
+    # Demonstrate inheritance chain: Cat -> Mammal -> Animal
+    print("=== Cat ===")
+    describe_animal(cat)
+    make_it_speak(cat)
+    
+    # Demonstrate cross-module inheritance without interface
+    print("=== Fish ===")
+    describe_animal(fish)
+    
+    # Demonstrate polymorphism with mixed collection
+    animals: list[Animal] = [dog, cat, fish]
+    print(f"Total animals: {len(animals)}")
+
+# EXPECTED OUTPUT:
+# === Dog ===
+# An animal named Buddy has fur, breed: Golden Retriever
+# Type: unknown
+# Buddy says: Woof!
+# Buddy is fetching the ball!
+# === Cat ===
+# An animal named Whiskers has fur
+# Type: unknown
+# Whiskers says: Meow!
+# === Fish ===
+# An animal named Goldie
+# Type: fish (freshwater)
+# Total animals: 3

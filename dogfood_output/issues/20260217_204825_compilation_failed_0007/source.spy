@@ -1,0 +1,61 @@
+# Main entry point - demonstrates cross-module class usage
+
+from shapes import Color, Point
+from shapes_extended import Rectangle, Circle, Triangle, create_red_rectangle, calculate_total_area
+
+def print_shape_details(shape: Rectangle):
+    print(shape.area())
+    print(shape.perimeter())
+    print(shape.describe())
+
+def main():
+    # Create colors
+    blue: Color = Color(0, 0, 255)
+    green: Color = Color(0, 255, 0)
+
+    # Create shapes
+    rect: Rectangle = Rectangle(10.0, 5.0, blue)
+    circle: Circle = Circle(3.0, green)
+    red_rect: Rectangle = create_red_rectangle(8.0, 4.0)
+
+    # Create triangle with points
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(4.0, 0.0)
+    p3: Point = Point(2.0, 3.0)
+    triangle: Triangle = Triangle(p1, p2, p3, Color(128, 128, 128))
+
+    # Print rectangle details
+    print_shape_details(rect)
+
+    # Print circle details
+    print(circle.area())
+    print(circle.perimeter())
+    print(circle.describe())
+
+    # Print red rectangle details
+    print_shape_details(red_rect)
+
+    # Print triangle details
+    print(triangle.area())
+    print(triangle.perimeter())
+    print(triangle.describe())
+
+    # Calculate total area of all shapes
+    shapes: list[Rectangle] = [rect, red_rect]
+    total_rect_area: float = calculate_total_area(shapes)
+    print(total_rect_area)
+
+# EXPECTED OUTPUT:
+# 50.0
+# 30.0
+# A Color(0, 0, 255) rectangle 10.0x5.0
+# 28.27431
+# 18.84954
+# A Color(0, 255, 0) circle with radius 3.0
+# 32.0
+# 24.0
+# A Color(255, 0, 0) rectangle 8.0x4.0
+# 6.0
+# 12.0
+# A Color(128, 128, 128) triangle with vertices [Point(0.0, 0.0), Point(4.0, 0.0), Point(2.0, 3.0)]
+# 82.0

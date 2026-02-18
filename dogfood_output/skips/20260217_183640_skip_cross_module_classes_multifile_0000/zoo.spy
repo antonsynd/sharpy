@@ -1,0 +1,56 @@
+# Concrete animal implementations using cross-module inheritance
+from animals import ISpeakable, Mammal, Animal
+
+class Dog(Mammal, ISpeakable):
+    """Dog extends Mammal (which extends Animal) and implements ISpeakable."""
+    breed: str
+    
+    def __init__(self, name: str, breed: str):
+        super().__init__(name, True)
+        self.breed = breed
+    
+    @override
+    def speak(self) -> str:
+        return f"{self.name} says: Woof!"
+    
+    @override
+    def make_sound(self) -> str:
+        return self.speak()
+    
+    @override
+    def describe(self) -> str:
+        base_desc: str = super().describe()
+        return f"{base_desc}, breed: {self.breed}"
+    
+    def fetch(self) -> str:
+        return f"{self.name} is fetching the ball!"
+
+class Cat(Mammal, ISpeakable):
+    """Cat extends Mammal and implements ISpeakable."""
+    
+    def __init__(self, name: str):
+        super().__init__(name, True)
+    
+    @override
+    def speak(self) -> str:
+        return f"{self.name} says: Meow!"
+    
+    @override
+    def make_sound(self) -> str:
+        return self.speak()
+    
+    @override
+    def describe(self) -> str:
+        return f"A cat named {self.name}"
+
+class Fish(Animal):
+    """Fish extends Animal but doesn't implement ISpeakable."""
+    water_type: str
+    
+    def __init__(self, name: str, water_type: str):
+        super().__init__(name)
+        self.water_type = water_type
+    
+    @override
+    def get_type(self) -> str:
+        return f"fish ({self.water_type})"

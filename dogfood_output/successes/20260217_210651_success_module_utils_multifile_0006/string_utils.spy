@@ -1,0 +1,39 @@
+# String utility module - provides text processing functions
+
+# Count vowels in a string
+def count_vowels(text: str) -> int:
+    count: int = 0
+    vowels: list[str] = ["a", "e", "i", "o", "u", "A", "E", "I", "O", "U"]
+    i: int = 0
+    while i < len(text):
+        c: str = str(text[i])
+        j: int = 0
+        found: bool = False
+        while j < len(vowels):
+            if c == vowels[j]:
+                found = True
+            j = j + 1
+        if found:
+            count = count + 1
+        i = i + 1
+    return count
+
+# Reverse a string
+def reverse(text: str) -> str:
+    result: str = ""
+    i: int = len(text) - 1
+    while i >= 0:
+        result = result + str(text[i])
+        i = i - 1
+    return result
+
+class TextFormatter:
+    prefix: str
+    suffix: str
+    
+    def __init__(self, prefix: str, suffix: str):
+        self.prefix = prefix
+        self.suffix = suffix
+    
+    def format(self, content: str) -> str:
+        return self.prefix + content + self.suffix
