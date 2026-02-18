@@ -514,7 +514,8 @@ IMPORTANT:
 - Use ONLY simple print() calls with ONE argument: print(value)
 - For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
 - Every print() output should appear in EXPECTED OUTPUT
-- Keep the code simple and focused on testing the specified feature"""
+- Keep the code simple and focused on testing the specified feature
+- Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
 
 
 def get_multifile_generation_prompt(
@@ -666,7 +667,8 @@ CRITICAL RULES:
 4. Use ONLY `from module import items` syntax (NOT `import module`)
 5. Module names match filenames exactly (without .spy)
 6. All print() calls must be in main.spy
-7. NO circular imports between modules"""
+7. NO circular imports between modules
+8. Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
 
 
 def get_regeneration_prompt(
@@ -758,7 +760,8 @@ Return ONLY valid Sharpy code with expected output in comments:
 IMPORTANT:
 - Use ONLY simple print() calls with ONE argument
 - For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
-- Every print() output should appear in EXPECTED OUTPUT"""
+- Every print() output should appear in EXPECTED OUTPUT
+- Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
 
 
 def get_multifile_regeneration_prompt(
@@ -797,8 +800,11 @@ def get_multifile_regeneration_prompt(
 
     # Format previous files with delimiters
     files_section = ""
-    for filename, code in previous_files.items():
-        files_section += f"\n=== FILE: {filename} ===\n{code}\n"
+    if not previous_files:
+        files_section = "(no files from previous attempt)\n"
+    else:
+        for filename, code in previous_files.items():
+            files_section += f"\n=== FILE: {filename} ===\n{code}\n"
 
     return f"""You are regenerating a MULTI-FILE Sharpy project for compiler testing (dogfooding).
 
@@ -871,7 +877,8 @@ CRITICAL RULES:
 6. All print() calls must be in main.spy
 7. NO circular imports between modules
 8. Use ONLY simple print() calls with ONE argument
-9. For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")"""
+9. For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
+10. Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
 
 
 def get_output_verification_prompt(
@@ -1118,6 +1125,9 @@ def extract_multifile_code(response: str) -> Optional[dict[str, str]]:
 
         # Remove any trailing file markers that might have been included
         code = re.sub(r"\n===\s*FILE:.*$", "", code, flags=re.IGNORECASE)
+
+        # Remove stray markdown fences (``` lines) that the AI sometimes appends
+        code = re.sub(r"^```\w*\s*$", "", code, flags=re.MULTILINE).strip()
 
         if code:
             files[filename] = code

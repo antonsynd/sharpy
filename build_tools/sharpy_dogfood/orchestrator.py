@@ -1258,7 +1258,8 @@ class DogfoodOrchestrator:
                 print("  Failed to parse multi-file response", file=sys.stderr)
                 last_error = "Failed to parse multi-file response. Ensure each file starts with '=== FILE: filename.spy ===' and includes a main.spy file."
                 # Keep last_files from previous attempt if available
-                if attempt < max_attempts:
+                # Only retry if we have previous files to include in feedback
+                if attempt < max_attempts and last_files is not None:
                     print(
                         f"  Will retry with feedback ({attempt}/{max_attempts})...",
                         file=sys.stderr,
