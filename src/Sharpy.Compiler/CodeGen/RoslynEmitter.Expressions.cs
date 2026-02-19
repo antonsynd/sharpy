@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
@@ -137,15 +138,46 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateIntegerLiteral(IntegerLiteral literal)
     {
-        return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(int.Parse(literal.Value)));
+        var text = literal.Value.Replace("_", "");
+
+        long value;
+        if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            value = long.Parse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        else if (text.StartsWith("0o", StringComparison.OrdinalIgnoreCase))
+            value = Convert.ToInt64(text[2..], 8);
+        else if (text.StartsWith("0b", StringComparison.OrdinalIgnoreCase))
+            value = Convert.ToInt64(text[2..], 2);
+        else
+            value = long.Parse(text, CultureInfo.InvariantCulture);
+
+        if (value >= int.MinValue && value <= int.MaxValue)
+            return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)value));
+        else
+            return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(value));
     }
 
     private ExpressionSyntax GenerateFloatLiteral(FloatLiteral literal)
     {
-        // Preserve original text to maintain decimal point (e.g., "5.0" not "5")
-        // Roslyn's Literal(double) normalizes whole numbers, losing Python-compatible formatting
-        var value = double.Parse(literal.Value, System.Globalization.CultureInfo.InvariantCulture);
-        return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(literal.Value, value));
+        var value = double.Parse(literal.Value, CultureInfo.InvariantCulture);
+
+        if (literal.Suffix != null)
+        {
+            var text = literal.Value + literal.Suffix;
+            if (literal.Suffix.Equals("f", StringComparison.OrdinalIgnoreCase))
+                return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                    Literal(text, (float)value));
+            return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                Literal(text, value));
+        }
+
+        // Append 'd' suffix to force Roslyn to preserve double literal semantics.
+        // Without it, Roslyn may normalize whole-number doubles (e.g., 5.0 -> 5).
+        var literalText = literal.Value.Contains('.') || literal.Value.Contains('e')
+            || literal.Value.Contains('E')
+            ? literal.Value + "d"
+            : literal.Value + ".0d";
+        return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+            Literal(literalText, value));
     }
 
     private ExpressionSyntax GenerateStringLiteral(StringLiteral literal)

@@ -1,0 +1,9 @@
+enum Color:
+    RED = 0xFF0000
+    GREEN = 0x00FF00
+    BLUE = 0x0000FF
+
+def main():
+    print(Color.RED to int)
+    print(Color.GREEN to int)
+    print(Color.BLUE to int)

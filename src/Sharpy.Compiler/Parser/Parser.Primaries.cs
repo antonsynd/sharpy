@@ -26,10 +26,15 @@ public partial class Parser
                     Advance();
 
                     // Extract suffix if present (L, U, UL, etc.)
+                    // Skip suffix extraction for hex/octal/binary literals where
+                    // trailing letters are digits, not type suffixes
                     string value = tokenValue;
                     string? suffix = null;
+                    bool isPrefixedLiteral = tokenValue.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                        || tokenValue.StartsWith("0o", StringComparison.OrdinalIgnoreCase)
+                        || tokenValue.StartsWith("0b", StringComparison.OrdinalIgnoreCase);
 
-                    if (tokenValue.Length > 0 && char.IsLetter(tokenValue[tokenValue.Length - 1]))
+                    if (!isPrefixedLiteral && tokenValue.Length > 0 && char.IsLetter(tokenValue[tokenValue.Length - 1]))
                     {
                         // Check for two-letter suffix
                         if (tokenValue.Length > 1 && char.IsLetter(tokenValue[tokenValue.Length - 2]))
