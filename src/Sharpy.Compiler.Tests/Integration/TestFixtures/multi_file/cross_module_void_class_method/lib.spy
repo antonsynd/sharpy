@@ -1,0 +1,11 @@
+class StringBuilder:
+    _parts: list[str]
+
+    def __init__(self):
+        self._parts = []
+
+    def append(self, s: str):
+        self._parts.append(s)
+
+    def build(self) -> str:
+        return ", ".join(self._parts)
