@@ -1,0 +1,20 @@
+interface IShape:
+    def area(self) -> float: ...
+
+@abstract
+class ShapeBase(IShape):
+    pass
+
+class Circle(ShapeBase):
+    radius: float
+
+    def __init__(self, radius: float):
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+def main():
+    c = Circle(5.0)
+    print(c.area())

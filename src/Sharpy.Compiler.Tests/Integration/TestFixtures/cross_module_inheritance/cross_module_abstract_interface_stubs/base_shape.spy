@@ -1,0 +1,12 @@
+from shapes import IShape
+
+@abstract
+class ShapeBase(IShape):
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @virtual
+    def describe(self) -> str:
+        return self.name

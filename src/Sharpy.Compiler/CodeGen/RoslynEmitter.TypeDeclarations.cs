@@ -289,19 +289,19 @@ internal partial class RoslynEmitter
         // For abstract classes implementing interfaces, generate abstract stubs for missing methods
         if (_isInAbstractClass && classDef.BaseClasses.Length > 0)
         {
-            var interfaceMethods = CollectInterfaceMethodDefs(classDef.BaseClasses);
+            var interfaceMethodSymbols = CollectInterfaceMethodSymbols(classDef.BaseClasses);
             var definedMethods = GetDefinedMethodNames(classDef.Body);
 
             var stubMembers = new List<MemberDeclarationSyntax>();
 
-            foreach (var interfaceMethod in interfaceMethods)
+            foreach (var methodSymbol in interfaceMethodSymbols)
             {
                 // Skip if method is already defined in the class
-                if (definedMethods.Contains(interfaceMethod.Name))
+                if (definedMethods.Contains(methodSymbol.Name))
                     continue;
 
-                // Generate abstract stub
-                var stub = GenerateAbstractMethodStub(interfaceMethod);
+                // Generate abstract stub from semantic model
+                var stub = GenerateAbstractMethodStub(methodSymbol);
                 stubMembers.Add(stub);
             }
 
@@ -333,46 +333,55 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Collects all method FunctionDefs from interfaces that a class implements.
-    /// Recursively collects from base interfaces as well.
+    /// Collects interface method definitions from interfaces that a class implements.
+    /// Supports both same-module interfaces (via AST for base interface traversal) and
+    /// cross-module interfaces (via SymbolTable). Returns FunctionSymbol instances for
+    /// uniform handling by GenerateAbstractMethodStub.
     /// </summary>
-    private List<FunctionDef> CollectInterfaceMethodDefs(IReadOnlyList<TypeAnnotation> baseTypes)
+    private List<FunctionSymbol> CollectInterfaceMethodSymbols(IReadOnlyList<TypeAnnotation> baseTypes)
     {
-        var result = new List<FunctionDef>();
+        var result = new List<FunctionSymbol>();
         var visited = new HashSet<string>();
         var seenMethods = new HashSet<string>();
 
         void CollectFromInterface(string interfaceName)
         {
-            if (visited.Contains(interfaceName))
-                return;
-            visited.Add(interfaceName);
-
-            // Look up the interface definition
-            if (!_interfaceDefinitions.TryGetValue(interfaceName, out var interfaceDef))
+            if (!visited.Add(interfaceName))
                 return;
 
-            // Collect methods from this interface
-            foreach (var stmt in interfaceDef.Body)
+            // Look up the TypeSymbol to get method symbols with resolved types
+            var typeSymbol = _context.SymbolTable.LookupType(interfaceName);
+            if (typeSymbol == null || typeSymbol.TypeKind != Semantic.TypeKind.Interface)
+                return;
+
+            // For same-module interfaces, use AST to traverse base interfaces
+            // (TypeSymbol.Interfaces may not be populated if MaterializeInheritance hasn't run)
+            if (_interfaceDefinitions.TryGetValue(interfaceName, out var interfaceDef))
             {
-                if (stmt is FunctionDef funcDef)
+                // Recurse to base interfaces FIRST so their up-to-date method symbols
+                // are collected before any stale propagated copies in the derived interface
+                foreach (var baseInterface in interfaceDef.BaseInterfaces)
                 {
-                    // Skip if we've already seen a method with this name
-                    if (seenMethods.Contains(funcDef.Name))
-                        continue;
-                    seenMethods.Add(funcDef.Name);
-                    result.Add(funcDef);
+                    if (!string.IsNullOrEmpty(baseInterface.Name))
+                        CollectFromInterface(baseInterface.Name);
+                }
+            }
+            else
+            {
+                // Cross-module: use TypeSymbol.Interfaces for base traversal
+                foreach (var baseInterface in typeSymbol.Interfaces)
+                {
+                    if (baseInterface.Definition?.TypeKind == Semantic.TypeKind.Interface)
+                        CollectFromInterface(baseInterface.Definition.Name);
                 }
             }
 
-            // Recursively collect from base interfaces
-            foreach (var baseInterface in interfaceDef.BaseInterfaces)
+            // Collect methods from this interface's TypeSymbol
+            // Only add methods not yet seen (base-first order prevents stale copies)
+            foreach (var method in typeSymbol.Methods)
             {
-                var baseName = baseInterface.Name;
-                if (!string.IsNullOrEmpty(baseName))
-                {
-                    CollectFromInterface(baseName);
-                }
+                if (seenMethods.Add(method.Name))
+                    result.Add(method);
             }
         }
 
@@ -382,8 +391,10 @@ internal partial class RoslynEmitter
             if (string.IsNullOrEmpty(typeName))
                 continue;
 
-            // Check if this is an interface (exists in our interface definitions)
-            if (_interfaceDefinitions.ContainsKey(typeName))
+            // Check SymbolTable to determine if this base type is an interface
+            // Works for both same-module and cross-module interfaces
+            var typeSymbol = _context.SymbolTable.LookupType(typeName);
+            if (typeSymbol?.TypeKind == Semantic.TypeKind.Interface)
             {
                 CollectFromInterface(typeName);
             }
@@ -501,21 +512,42 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates an abstract method stub for an interface method that is not implemented.
+    /// Uses the semantic model (FunctionSymbol) for type information, which works for both
+    /// same-module and cross-module interfaces.
     /// </summary>
-    private MethodDeclarationSyntax GenerateAbstractMethodStub(FunctionDef interfaceMethod)
+    private MethodDeclarationSyntax GenerateAbstractMethodStub(FunctionSymbol method)
     {
-        var mangledName = DunderMapping.ResolveCSharpName(interfaceMethod.Name)
-            ?? NameMangler.Transform(interfaceMethod.Name, NameContext.Method);
+        var mangledName = DunderMapping.ResolveCSharpName(method.Name)
+            ?? NameMangler.Transform(method.Name, NameContext.Method);
 
-        // Determine return type from annotation or infer void
-        TypeSyntax returnType = interfaceMethod.ReturnType != null
-            ? _typeMapper.MapType(interfaceMethod.ReturnType)
-            : PredefinedType(Token(SyntaxKind.VoidKeyword));
+        // Map return type from SemanticType
+        TypeSyntax returnType = method.ReturnType is VoidType or UnknownType or null
+            ? PredefinedType(Token(SyntaxKind.VoidKeyword))
+            : _typeMapper.MapSemanticType(method.ReturnType);
 
-        // Generate parameters (skip 'self')
-        var parameters = interfaceMethod.Parameters
+        // Generate parameters from ParameterSymbol (skip 'self')
+        var parameters = method.Parameters
             .Where(p => p.Name != PythonNames.Self)
-            .Select(GenerateParameter)
+            .Select(p =>
+            {
+                var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                TypeSyntax paramType = p.Type is UnknownType or null
+                    ? PredefinedType(Token(SyntaxKind.ObjectKeyword))
+                    : _typeMapper.MapSemanticType(p.Type);
+
+                if (p.IsVariadic)
+                {
+                    paramType = ArrayType(paramType)
+                        .WithRankSpecifiers(SingletonList(ArrayRankSpecifier()));
+                }
+
+                var param = Parameter(Identifier(paramName)).WithType(paramType);
+                if (p.IsVariadic)
+                {
+                    param = param.WithModifiers(TokenList(Token(SyntaxKind.ParamsKeyword)));
+                }
+                return param;
+            })
             .ToArray();
 
         // Create abstract method declaration
