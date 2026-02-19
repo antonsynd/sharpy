@@ -91,6 +91,7 @@ class GenerationResult:
     backend_used: Optional[str] = None
     generation_duration: Optional[float] = None
     rate_limited: bool = False
+    timed_out: bool = False
     attempts: int = 1
     validation_output: Optional[str] = None  # AI validation output (for debugging)
     is_internal_compiler_error: bool = False
@@ -107,6 +108,7 @@ class MultifileGenerationResult:
     backend_used: Optional[str] = None
     generation_duration: Optional[float] = None
     rate_limited: bool = False
+    timed_out: bool = False
     attempts: int = 1
     is_internal_compiler_error: bool = False
 
@@ -666,6 +668,29 @@ class DogfoodOrchestrator:
                     skip_reason=gen_result.skip_reason,
                 )
 
+            # Check for generation timeout (not a bug)
+            if gen_result.timed_out:
+                print(
+                    "  Generation timed out (not a bug)",
+                    file=sys.stderr,
+                )
+                skip = Skip(
+                    timestamp=timestamp,
+                    skip_reason=gen_result.skip_reason or "Generation timed out",
+                    generated_code="",
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    backend_used=gen_result.backend_used,
+                    generation_duration=gen_result.generation_duration,
+                )
+                skip_dir = self.skip_reporter.report(skip)
+                print(f"  Timeout skip saved: {skip_dir.name}", file=sys.stderr)
+                return IterationResult(
+                    IterationStatus.SKIPPED,
+                    skip_dir=skip_dir,
+                    skip_reason=gen_result.skip_reason,
+                )
+
             # Check for internal compiler errors (SPY09xx) — report immediately
             if gen_result.is_internal_compiler_error:
                 print(
@@ -1006,6 +1031,16 @@ class DogfoodOrchestrator:
                         rate_limited=True,
                         attempts=attempt,
                     )
+                # Check for generation timeout
+                if gen_result.timed_out:
+                    return GenerationResult(
+                        success=False,
+                        skip_reason=f"Generation timed out after {self.config.generation_timeout}s",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        timed_out=True,
+                        attempts=attempt,
+                    )
                 # Non-rate-limit generation failure - report as issue
                 return GenerationResult(
                     success=False,
@@ -1243,6 +1278,16 @@ class DogfoodOrchestrator:
                         rate_limited=True,
                         attempts=attempt,
                     )
+                # Check for generation timeout
+                if gen_result.timed_out:
+                    return MultifileGenerationResult(
+                        success=False,
+                        skip_reason=f"Generation timed out after {self.config.generation_timeout}s",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        timed_out=True,
+                        attempts=attempt,
+                    )
                 # Non-rate-limit generation failure
                 return MultifileGenerationResult(
                     success=False,
@@ -1419,6 +1464,29 @@ class DogfoodOrchestrator:
                 )
                 return IterationResult(
                     IterationStatus.SKIPPED,
+                    skip_reason=gen_result.skip_reason,
+                )
+
+            # Check for generation timeout (not a bug)
+            if gen_result.timed_out:
+                print(
+                    "  Generation timed out (not a bug)",
+                    file=sys.stderr,
+                )
+                skip = Skip(
+                    timestamp=timestamp,
+                    skip_reason=gen_result.skip_reason or "Generation timed out",
+                    generated_code="",
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    backend_used=gen_result.backend_used,
+                    generation_duration=gen_result.generation_duration,
+                )
+                skip_dir = self.skip_reporter.report(skip)
+                print(f"  Timeout skip saved: {skip_dir.name}", file=sys.stderr)
+                return IterationResult(
+                    IterationStatus.SKIPPED,
+                    skip_dir=skip_dir,
                     skip_reason=gen_result.skip_reason,
                 )
 
