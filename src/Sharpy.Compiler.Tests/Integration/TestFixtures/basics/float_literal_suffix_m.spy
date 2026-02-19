@@ -1,0 +1,3 @@
+def main():
+    x: float = 5.0m
+    print(x)

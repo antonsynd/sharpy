@@ -1,0 +1,3 @@
+def main():
+    x: float = 3.14d
+    print(x)
