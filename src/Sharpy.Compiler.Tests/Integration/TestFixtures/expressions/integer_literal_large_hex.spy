@@ -1,0 +1,5 @@
+def main():
+    x: long = 0x80000000
+    print(x)
+    y: long = 0xFFFFFFFF
+    print(y)
