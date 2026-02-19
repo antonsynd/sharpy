@@ -1,0 +1,4 @@
+def main():
+    d: dict[str, int] = dict()
+    d["key"] = 42
+    print(d["key"])

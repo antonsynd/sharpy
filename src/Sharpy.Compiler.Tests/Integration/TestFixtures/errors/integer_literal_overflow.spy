@@ -1,0 +1,3 @@
+def main():
+    x: int = 0x10000000000000000
+    print(x)
