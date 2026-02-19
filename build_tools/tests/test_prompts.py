@@ -36,7 +36,7 @@ def test_remediation_hint_format_exception_hex():
     hint = _get_remediation_hint(
         "System.FormatException: Input string '0xFF' was not in a correct format"
     )
-    assert "decimal" in hint.lower()
+    assert "hex" in hint.lower()
 
 
 def test_remediation_hint_no_match():
