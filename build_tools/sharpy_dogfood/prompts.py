@@ -23,8 +23,8 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
      "(case-sensitive) and that the symbol is defined at the module's top level."),
     (r"SPY0907", "An internal compiler error occurred. Try simplifying your code — "
      "avoid deeply nested generics or complex cross-module patterns."),
-    (r"FormatException.*0x", "Hex literals in enum values may not be supported yet. "
-     "Use decimal integer values instead."),
+    (r"FormatException.*0x", "Hex literals are supported in Sharpy. If you see a FormatException, "
+     "ensure hex values don't exceed the 64-bit signed integer range (max 0x7FFFFFFFFFFFFFFF)."),
 ]
 
 
