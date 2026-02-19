@@ -1,0 +1,9 @@
+class Animal:
+    _name: str
+
+    def __init__(self, name: str):
+        self._name = name
+
+    @virtual
+    def speak(self) -> str:
+        return self._name

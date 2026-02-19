@@ -1,0 +1,5 @@
+from lib import Dog
+
+def main():
+    d = Dog("Rex")
+    print(d.speak())

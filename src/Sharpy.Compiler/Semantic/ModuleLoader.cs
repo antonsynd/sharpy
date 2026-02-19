@@ -219,7 +219,9 @@ internal class ModuleLoader
                     Name = functionDef.Name,
                     Kind = SymbolKind.Function,
                     Parameters = parameters,
-                    ReturnType = ConvertTypeAnnotationToSemanticType(functionDef.ReturnType),
+                    ReturnType = functionDef.ReturnType != null
+                        ? ConvertTypeAnnotationToSemanticType(functionDef.ReturnType)
+                        : SemanticType.Void,
                     AccessLevel = accessLevel,
                     DeclarationLine = functionDef.LineStart,
                     DeclarationColumn = functionDef.ColumnStart

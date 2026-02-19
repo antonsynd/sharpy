@@ -1,0 +1,9 @@
+from base import Animal
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    @override
+    def speak(self) -> str:
+        return self._name + " says woof"

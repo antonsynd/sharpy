@@ -1,0 +1,17 @@
+class Animal:
+    _name: str
+
+    def __init__(self, name: str):
+        self._name = name
+
+    @virtual
+    def speak(self) -> str:
+        return self._name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    @override
+    def speak(self) -> str:
+        return self._name + " says woof"
