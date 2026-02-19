@@ -32,8 +32,7 @@ internal partial class RoslynEmitter
                 // Generate: new GenericType<TypeArgs>(args)
                 var csharpGenericTypeName = GetBuiltinCollectionTypeName(genericName.Name)
                     ?? NameMangler.ToPascalCase(genericName.Name);
-                var genericTypeSyntax = GenericName(csharpGenericTypeName)
-                    .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+                var genericTypeSyntax = TypeMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
 
                 // Generate arguments
                 var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
@@ -134,8 +133,8 @@ internal partial class RoslynEmitter
                         .Select(t => _typeMapper.MapSemanticType(t));
                     var csharpCollectionName = GetBuiltinCollectionTypeName(funcName.Name)
                         ?? NameMangler.ToPascalCase(funcName.Name);
-                    var genericTypeSyntax = GenericName(csharpCollectionName)
-                        .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+                    var genericTypeSyntax = TypeMapper.QualifiedGenericName(csharpCollectionName,
+                            typeArgsSyntax.ToArray());
                     return ObjectCreationExpression(genericTypeSyntax)
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                 }

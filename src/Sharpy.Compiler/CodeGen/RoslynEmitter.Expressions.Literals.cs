@@ -53,8 +53,7 @@ internal partial class RoslynEmitter
 
         var elements = list.Elements.Select(GenerateExpression);
 
-        var listType = GenericName(CSharpTypeNames.SharpyList)
-            .AddTypeArgumentListArguments(elementType);
+        var listType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyList, elementType);
 
         return ObjectCreationExpression(listType)
             .WithArgumentList(ArgumentList())
@@ -100,8 +99,7 @@ internal partial class RoslynEmitter
                     GenerateExpression(entry.Value)
                 })));
 
-        var dictType = GenericName(CSharpTypeNames.SharpyDict)
-            .AddTypeArgumentListArguments(keyType, valueType);
+        var dictType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, keyType, valueType);
 
         return ObjectCreationExpression(dictType)
             .WithArgumentList(ArgumentList())
@@ -136,8 +134,7 @@ internal partial class RoslynEmitter
 
         var elements = set.Elements.Select(GenerateExpression);
 
-        var setType = GenericName(CSharpTypeNames.SharpySet)
-            .AddTypeArgumentListArguments(elementType);
+        var setType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpySet, elementType);
 
         return ObjectCreationExpression(setType)
             .WithArgumentList(ArgumentList())
@@ -203,8 +200,7 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapSemanticType(elementSemanticType)
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
-        var listType = GenericName(CSharpTypeNames.SharpyList)
-            .AddTypeArgumentListArguments(elementTypeSyntax);
+        var listType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyList, elementTypeSyntax);
 
         return ObjectCreationExpression(listType)
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(chain))));
@@ -241,8 +237,7 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapSemanticType(elementSemanticType)
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
-        var setType = GenericName(CSharpTypeNames.SharpySet)
-            .AddTypeArgumentListArguments(elementTypeSyntax);
+        var setType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpySet, elementTypeSyntax);
 
         return ObjectCreationExpression(setType)
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(chain))));
@@ -287,8 +282,7 @@ internal partial class RoslynEmitter
 
         if (keySemanticType != null && valueSemanticType != null)
         {
-            var dictType = GenericName(CSharpTypeNames.SharpyDict)
-                .AddTypeArgumentListArguments(
+            var dictType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict,
                     _typeMapper.MapSemanticType(keySemanticType),
                     _typeMapper.MapSemanticType(valueSemanticType));
             return CastExpression(dictType, ParenthesizedExpression(toDictInvocation));
@@ -328,8 +322,9 @@ internal partial class RoslynEmitter
             var vTypeSyntax = vType != null
                 ? _typeMapper.MapSemanticType(vType)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            collectionType = GenericName(collectionKind == "dict" ? CSharpTypeNames.SharpyDict : CSharpTypeNames.SharpySet)
-                .AddTypeArgumentListArguments(kTypeSyntax, vTypeSyntax);
+            collectionType = TypeMapper.QualifiedGenericName(
+                    collectionKind == "dict" ? CSharpTypeNames.SharpyDict : CSharpTypeNames.SharpySet,
+                    kTypeSyntax, vTypeSyntax);
         }
         else
         {
@@ -338,8 +333,7 @@ internal partial class RoslynEmitter
                 ? _typeMapper.MapSemanticType(elemType)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
             var typeName = collectionKind == "list" ? CSharpTypeNames.SharpyList : CSharpTypeNames.SharpySet;
-            collectionType = GenericName(typeName)
-                .AddTypeArgumentListArguments(elemTypeSyntax);
+            collectionType = TypeMapper.QualifiedGenericName(typeName, elemTypeSyntax);
         }
 
         // var __comp_N = new CollectionType();

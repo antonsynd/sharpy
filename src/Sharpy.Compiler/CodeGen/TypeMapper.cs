@@ -112,9 +112,7 @@ internal class TypeMapper
             // Handle task types (v0.2.x placeholder)
             TaskType tt => tt.ResultType == null
                 ? ParseTypeName("System.Threading.Tasks.Task")
-                : GenericName(Identifier("System.Threading.Tasks.Task"))
-                    .WithTypeArgumentList(
-                        TypeArgumentList(SingletonSeparatedList(MapSemanticType(tt.ResultType)))),
+                : QualifiedGenericName("System.Threading.Tasks.Task", MapSemanticType(tt.ResultType)),
 
             // Exhaustive check - if a new SemanticType is added, this will fail at runtime
             _ => throw new InvalidOperationException(
@@ -129,9 +127,7 @@ internal class TypeMapper
             .Select(MapSemanticType)
             .ToArray();
 
-        return GenericName(Identifier(baseTypeName))
-            .WithTypeArgumentList(
-                TypeArgumentList(SeparatedList(typeArgs)));
+        return QualifiedGenericName(baseTypeName, typeArgs);
     }
 
     private TypeSyntax MapSemanticFunctionType(Semantic.FunctionType funcType)
@@ -150,9 +146,7 @@ internal class TypeMapper
                 return ParseTypeName("System.Action");
             }
 
-            return GenericName("System.Action")
-                .WithTypeArgumentList(
-                    TypeArgumentList(SeparatedList(paramTypes)));
+            return QualifiedGenericName("System.Action", paramTypes);
         }
 
         // Otherwise use Func<T1, T2, ..., TResult>
@@ -160,14 +154,10 @@ internal class TypeMapper
 
         if (allTypes.Length == 1)
         {
-            return GenericName("System.Func")
-                .WithTypeArgumentList(
-                    TypeArgumentList(SingletonSeparatedList(returnType)));
+            return QualifiedGenericName("System.Func", returnType);
         }
 
-        return GenericName("System.Func")
-            .WithTypeArgumentList(
-                TypeArgumentList(SeparatedList(allTypes)));
+        return QualifiedGenericName("System.Func", allTypes);
     }
 
     private TypeSyntax MapSemanticTupleType(Semantic.TupleType tupleType)
@@ -205,9 +195,7 @@ internal class TypeMapper
         }
 
         // Use ValueTuple<T1, T2, ...>
-        return GenericName("System.ValueTuple")
-            .WithTypeArgumentList(
-                TypeArgumentList(SeparatedList(elementTypes)));
+        return QualifiedGenericName("System.ValueTuple", elementTypes);
     }
 
     /// <summary>
@@ -296,9 +284,7 @@ internal class TypeMapper
                 }
                 else
                 {
-                    result = GenericName("System.Action")
-                        .WithTypeArgumentList(
-                            TypeArgumentList(SeparatedList(paramTypeSyntaxes)));
+                    result = QualifiedGenericName("System.Action", paramTypeSyntaxes);
                 }
             }
             else
@@ -308,15 +294,11 @@ internal class TypeMapper
 
                 if (funcTypeArgs.Length == 1)
                 {
-                    result = GenericName("System.Func")
-                        .WithTypeArgumentList(
-                            TypeArgumentList(SingletonSeparatedList(returnTypeSyntax)));
+                    result = QualifiedGenericName("System.Func", returnTypeSyntax);
                 }
                 else
                 {
-                    result = GenericName("System.Func")
-                        .WithTypeArgumentList(
-                            TypeArgumentList(SeparatedList(funcTypeArgs)));
+                    result = QualifiedGenericName("System.Func", funcTypeArgs);
                 }
             }
 
@@ -330,9 +312,7 @@ internal class TypeMapper
                 .Select(MapType)
                 .ToArray();
 
-            var result = GenericName(Identifier(baseTypeName))
-                .WithTypeArgumentList(
-                    TypeArgumentList(SeparatedList(typeArgs)));
+            var result = QualifiedGenericName(baseTypeName, typeArgs);
 
             // Handle nullable/optional generic types
             return WrapOptionalOrNullable(result, type);
@@ -581,9 +561,7 @@ internal class TypeMapper
                 return ParseTypeName("System.Action");
             }
 
-            return GenericName("System.Action")
-                .WithTypeArgumentList(
-                    TypeArgumentList(SeparatedList(paramTypes)));
+            return QualifiedGenericName("System.Action", paramTypes);
         }
 
         // Otherwise use Func<T1, T2, ..., TResult>
@@ -591,14 +569,10 @@ internal class TypeMapper
 
         if (allTypes.Length == 1)
         {
-            return GenericName("System.Func")
-                .WithTypeArgumentList(
-                    TypeArgumentList(SingletonSeparatedList(returnType)));
+            return QualifiedGenericName("System.Func", returnType);
         }
 
-        return GenericName("System.Func")
-            .WithTypeArgumentList(
-                TypeArgumentList(SeparatedList(allTypes)));
+        return QualifiedGenericName("System.Func", allTypes);
     }
 
     /// <summary>
@@ -640,9 +614,7 @@ internal class TypeMapper
         }
 
         // Use ValueTuple<T1, T2, ...>
-        return GenericName("System.ValueTuple")
-            .WithTypeArgumentList(
-                TypeArgumentList(SeparatedList(elementTypes)));
+        return QualifiedGenericName("System.ValueTuple", elementTypes);
     }
 
     /// <summary>
@@ -652,9 +624,7 @@ internal class TypeMapper
     {
         var baseType = GetMappedTypeName(collectionName);
 
-        return GenericName(Identifier(baseType))
-            .WithTypeArgumentList(
-                TypeArgumentList(SingletonSeparatedList(elementType)));
+        return QualifiedGenericName(baseType, elementType);
     }
 
     /// <summary>
@@ -662,9 +632,7 @@ internal class TypeMapper
     /// </summary>
     public TypeSyntax CreateDictType(TypeSyntax keyType, TypeSyntax valueType)
     {
-        return GenericName(CSharpTypeNames.SharpyDict)
-            .WithTypeArgumentList(
-                TypeArgumentList(SeparatedList(new[] { keyType, valueType })));
+        return QualifiedGenericName(CSharpTypeNames.SharpyDict, keyType, valueType);
     }
 
     /// <summary>
@@ -825,5 +793,34 @@ internal class TypeMapper
 
         // Handle single type argument
         return new[] { MapTypeFromExpression(expr) };
+    }
+
+    /// <summary>
+    /// Creates a properly qualified generic name for potentially dotted type names.
+    /// For simple names (e.g. "List"), returns GenericName("List").WithTypeArgumentList(...).
+    /// For dotted names (e.g. "Sharpy.List"), returns QualifiedName(IdentifierName("Sharpy"), GenericName("List").WithTypeArgumentList(...)).
+    /// This avoids passing dotted names to GenericName(), which expects a simple identifier.
+    /// </summary>
+    internal static NameSyntax QualifiedGenericName(string dottedTypeName, params TypeSyntax[] typeArguments)
+    {
+        var typeArgList = TypeArgumentList(
+            typeArguments.Length == 1
+                ? SingletonSeparatedList(typeArguments[0])
+                : SeparatedList(typeArguments));
+
+        var parts = dottedTypeName.Split('.');
+
+        if (parts.Length == 1)
+        {
+            return GenericName(parts[0]).WithTypeArgumentList(typeArgList);
+        }
+
+        NameSyntax result = IdentifierName(parts[0]);
+        for (var i = 1; i < parts.Length - 1; i++)
+        {
+            result = QualifiedName(result, IdentifierName(parts[i]));
+        }
+
+        return QualifiedName(result, GenericName(parts[^1]).WithTypeArgumentList(typeArgList));
     }
 }
