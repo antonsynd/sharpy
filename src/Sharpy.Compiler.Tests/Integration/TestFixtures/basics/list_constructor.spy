@@ -1,0 +1,12 @@
+def main():
+    a: list[int] = list()
+    a.append(1)
+    print(a[0])
+
+    b: list[int] = list[int]()
+    b.append(2)
+    print(b[0])
+
+    c: list[int] = list(a)
+    print(c[0])
+    print(len(c))

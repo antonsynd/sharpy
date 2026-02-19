@@ -30,7 +30,9 @@ internal partial class RoslynEmitter
             if (symbol is TypeSymbol genericTypeSymbol && genericTypeSymbol.IsGeneric)
             {
                 // Generate: new GenericType<TypeArgs>(args)
-                var genericTypeSyntax = GenericName(NameMangler.ToPascalCase(genericName.Name))
+                var csharpGenericTypeName = GetBuiltinCollectionTypeName(genericName.Name)
+                    ?? NameMangler.ToPascalCase(genericName.Name);
+                var genericTypeSyntax = GenericName(csharpGenericTypeName)
                     .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
                 // Generate arguments
@@ -130,9 +132,19 @@ internal partial class RoslynEmitter
                 {
                     var typeArgsSyntax = resolvedGeneric.TypeArguments
                         .Select(t => _typeMapper.MapSemanticType(t));
-                    var genericTypeSyntax = GenericName(NameMangler.ToPascalCase(funcName.Name))
+                    var csharpCollectionName = GetBuiltinCollectionTypeName(funcName.Name)
+                        ?? NameMangler.ToPascalCase(funcName.Name);
+                    var genericTypeSyntax = GenericName(csharpCollectionName)
                         .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
                     return ObjectCreationExpression(genericTypeSyntax)
+                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+                }
+
+                // For builtin collection types, use the fully-qualified Sharpy.X name
+                var collectionName = GetBuiltinCollectionTypeName(funcName.Name);
+                if (collectionName != null)
+                {
+                    return ObjectCreationExpression(ParseName(collectionName))
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                 }
 
@@ -1040,4 +1052,16 @@ internal partial class RoslynEmitter
     {
         return interfaceSymbol.Methods.Any(m => m.Name == methodName && !m.IsAbstract);
     }
+
+    /// <summary>
+    /// Returns the fully-qualified C# type name for builtin collection types
+    /// (list, dict, set), or null for non-builtin types.
+    /// </summary>
+    private static string? GetBuiltinCollectionTypeName(string sharpyName) => sharpyName switch
+    {
+        "list" => CSharpTypeNames.SharpyList,
+        "dict" => CSharpTypeNames.SharpyDict,
+        "set" => CSharpTypeNames.SharpySet,
+        _ => null
+    };
 }
