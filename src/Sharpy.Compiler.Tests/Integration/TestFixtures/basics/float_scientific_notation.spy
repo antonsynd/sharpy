@@ -1,0 +1,14 @@
+# Test scientific notation float formatting
+# Python uses lowercase 'e' (e.g., 1e+20), .NET uses uppercase 'E' (e.g., 1E+20).
+# This is a known Axiom 1 (.NET) > Axiom 2 (Python) trade-off.
+
+def main():
+    # Large values that trigger scientific notation
+    print(1e20)
+    print(1.5e-10)
+
+    # Boundary: 1e-5 triggers scientific notation in both Python and .NET
+    print(1e-5)
+
+    # Large value that stays in fixed notation
+    print(1.23456789e15)
