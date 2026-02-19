@@ -403,13 +403,25 @@ internal partial class RoslynEmitter
                 }
             }
 
-            // Recursively collect from base interfaces
+            // Recursively collect from base interfaces, dispatching between
+            // same-module (AST) and cross-module (SymbolTable) paths
             foreach (var baseInterface in interfaceDef.BaseInterfaces)
             {
                 var baseName = baseInterface.Name;
                 if (!string.IsNullOrEmpty(baseName))
                 {
-                    CollectFromInterfaceAst(baseName);
+                    if (_interfaceDefinitions.ContainsKey(baseName))
+                    {
+                        CollectFromInterfaceAst(baseName);
+                    }
+                    else
+                    {
+                        var baseSymbol = _context.SymbolTable.LookupType(baseName);
+                        if (baseSymbol?.TypeKind == Semantic.TypeKind.Interface)
+                        {
+                            CollectFromInterfaceSymbol(baseSymbol);
+                        }
+                    }
                 }
             }
         }

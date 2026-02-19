@@ -1,0 +1,4 @@
+from base_interface import IDrawable
+
+interface IColoredDrawable(IDrawable):
+    def set_color(self, color: str) -> str: ...

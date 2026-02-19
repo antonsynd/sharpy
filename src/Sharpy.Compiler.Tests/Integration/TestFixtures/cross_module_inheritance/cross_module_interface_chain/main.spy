@@ -1,0 +1,24 @@
+from derived_interface import IColoredDrawable
+
+class Canvas(IColoredDrawable):
+    _color: str
+
+    def __init__(self):
+        self._color = "red"
+
+    @override
+    def draw(self) -> str:
+        return "drawing in " + self._color
+
+    @override
+    def set_color(self, color: str) -> str:
+        old = self._color
+        self._color = color
+        return old
+
+def main():
+    c = Canvas()
+    print(c.draw())
+    old = c.set_color("blue")
+    print(old)
+    print(c.draw())
