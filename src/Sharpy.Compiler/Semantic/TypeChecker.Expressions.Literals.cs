@@ -12,7 +12,7 @@ internal partial class TypeChecker
     {
         if (list.Elements.Length == 0)
         {
-            if (_expectedType is GenericType expected && expected.Name == "list" && expected.TypeArguments.Count == 1)
+            if (_expectedType is GenericType expected && expected.Name == BuiltinNames.List && expected.TypeArguments.Count == 1)
             {
                 return new GenericType
                 {
@@ -45,7 +45,7 @@ internal partial class TypeChecker
     {
         if (dict.Entries.Length == 0)
         {
-            if (_expectedType is GenericType expected && expected.Name == "dict" && expected.TypeArguments.Count == 2)
+            if (_expectedType is GenericType expected && expected.Name == BuiltinNames.Dict && expected.TypeArguments.Count == 2)
             {
                 return new GenericType
                 {
@@ -79,7 +79,7 @@ internal partial class TypeChecker
     {
         if (set.Elements.Length == 0)
         {
-            if (_expectedType is GenericType expected && expected.Name == "set" && expected.TypeArguments.Count == 1)
+            if (_expectedType is GenericType expected && expected.Name == BuiltinNames.Set && expected.TypeArguments.Count == 1)
             {
                 return new GenericType
                 {

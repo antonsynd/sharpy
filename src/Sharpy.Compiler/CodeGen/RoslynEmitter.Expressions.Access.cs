@@ -669,7 +669,7 @@ internal partial class RoslynEmitter
         // String indexing: C# string[int] returns char, but Sharpy types it as str.
         // Wrap with .ToString() to bridge the type gap.
         var objectType = GetExpressionSemanticType(indexAccess.Object);
-        if (objectType is Semantic.BuiltinType { Name: "str" })
+        if (objectType == Semantic.SemanticType.Str)
         {
             return InvocationExpression(
                 MemberAccessExpression(

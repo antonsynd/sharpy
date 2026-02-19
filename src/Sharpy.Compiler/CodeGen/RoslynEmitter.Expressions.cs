@@ -141,14 +141,25 @@ internal partial class RoslynEmitter
         var text = literal.Value.Replace("_", "");
 
         long value;
-        if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-            value = long.Parse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        else if (text.StartsWith("0o", StringComparison.OrdinalIgnoreCase))
-            value = Convert.ToInt64(text[2..], 8);
-        else if (text.StartsWith("0b", StringComparison.OrdinalIgnoreCase))
-            value = Convert.ToInt64(text[2..], 2);
-        else
-            value = long.Parse(text, CultureInfo.InvariantCulture);
+        try
+        {
+            if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                value = long.Parse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+            else if (text.StartsWith("0o", StringComparison.OrdinalIgnoreCase))
+                value = Convert.ToInt64(text[2..], 8);
+            else if (text.StartsWith("0b", StringComparison.OrdinalIgnoreCase))
+                value = Convert.ToInt64(text[2..], 2);
+            else
+                value = long.Parse(text, CultureInfo.InvariantCulture);
+        }
+        catch (OverflowException)
+        {
+            _context.Diagnostics.AddError(
+                $"Integer literal '{literal.Value}' is too large for a 64-bit integer",
+                literal.LineStart, literal.ColumnStart,
+                code: DiagnosticCodes.CodeGen.EmitError);
+            return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
+        }
 
         if (value >= int.MinValue && value <= int.MaxValue)
             return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)value));
