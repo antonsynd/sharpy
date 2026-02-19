@@ -1,0 +1,9 @@
+# Test negative zero float formatting
+# Python: print(-0.0) outputs "-0.0"
+# .NET may or may not preserve the negative sign for -0.0;
+# Axiom 1 (.NET) takes precedence over Axiom 2 (Python).
+
+def main():
+    x: float = -0.0
+    print(x)
+    print(-0.0)
