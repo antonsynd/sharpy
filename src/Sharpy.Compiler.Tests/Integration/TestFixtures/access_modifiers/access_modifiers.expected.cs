@@ -21,7 +21,7 @@ public static partial class AccessModifiers
         protected bool ValidateAmount(double amount)
         {
 #line 19 "access_modifiers.spy"
-            if (amount > 0.0)
+            if (amount > 0.0d)
             {
 #line 20 "access_modifiers.spy"
                 return true;
@@ -139,17 +139,17 @@ public static partial class AccessModifiers
     public static void Main()
     {
 #line 78 "access_modifiers.spy"
-        SavingsAccount savings = new SavingsAccount(101, 5000.0, 1000.0);
+        SavingsAccount savings = new SavingsAccount(101, 5000.0d, 1000.0d);
 #line 79 "access_modifiers.spy"
         global::Sharpy.Builtins.Print(savings.AccountId);
 #line 80 "access_modifiers.spy"
         global::Sharpy.Builtins.Print(savings.GetInternalId());
 #line 82 "access_modifiers.spy"
-        savings.Deposit(500.0);
+        savings.Deposit(500.0d);
 #line 83 "access_modifiers.spy"
         global::Sharpy.Builtins.Print(savings.Balance);
 #line 85 "access_modifiers.spy"
-        bool success = savings.Withdraw(800.0);
+        bool success = savings.Withdraw(800.0d);
 #line 86 "access_modifiers.spy"
         if (success)
         {
@@ -160,13 +160,13 @@ public static partial class AccessModifiers
 #line 89 "access_modifiers.spy"
         global::Sharpy.Builtins.Print(savings.WithdrawalCount);
 #line 91 "access_modifiers.spy"
-        CheckingAccount checking = new CheckingAccount(102, 1000.0, 500.0);
+        CheckingAccount checking = new CheckingAccount(102, 1000.0d, 500.0d);
 #line 92 "access_modifiers.spy"
-        checking.Deposit(250.0);
+        checking.Deposit(250.0d);
 #line 93 "access_modifiers.spy"
         global::Sharpy.Builtins.Print(checking.Balance);
 #line 95 "access_modifiers.spy"
-        bool withdrawSuccess = checking.Withdraw(1100.0);
+        bool withdrawSuccess = checking.Withdraw(1100.0d);
 #line 96 "access_modifiers.spy"
         if (withdrawSuccess)
         {

@@ -39,9 +39,9 @@ public static partial class GenericFunction
 #line 19 "generic_function.spy"
         global::Sharpy.Builtins.Print(result);
 #line 22 "generic_function.spy"
-        double a = 3.14;
+        double a = 3.14d;
 #line 23 "generic_function.spy"
-        double b = 2.71;
+        double b = 2.71d;
 #line 24 "generic_function.spy"
         double resultF = Swap<double>(a, b);
 #line 25 "generic_function.spy"

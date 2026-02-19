@@ -50,7 +50,7 @@ public static partial class AbstractClass0000
         public override double Area()
         {
 #line 39 "abstract_class_0000.spy"
-            return 3.14159 * this.Radius * this.Radius;
+            return 3.14159d * this.Radius * this.Radius;
         }
 
         public override string Describe()
@@ -69,9 +69,9 @@ public static partial class AbstractClass0000
     public static void Main()
     {
 #line 46 "abstract_class_0000.spy"
-        var rect = new Rectangle(4.0, 5.0);
+        var rect = new Rectangle(4.0d, 5.0d);
 #line 47 "abstract_class_0000.spy"
-        var circ = new Circle(3.0);
+        var circ = new Circle(3.0d);
 #line 49 "abstract_class_0000.spy"
         global::Sharpy.Builtins.Print(rect.Describe());
 #line 50 "abstract_class_0000.spy"

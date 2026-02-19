@@ -27,7 +27,7 @@ public static partial class FStringExpressions0003
 #line 12 "f_string_expressions_0003.spy"
             this.BaseScore = score;
 #line 13 "f_string_expressions_0003.spy"
-            this.Multiplier = 1.0;
+            this.Multiplier = 1.0d;
         }
     }
 
@@ -68,7 +68,7 @@ public static partial class FStringExpressions0003
 #line 30 "f_string_expressions_0003.spy"
             this.Level = level;
 #line 31 "f_string_expressions_0003.spy"
-            this.Multiplier = 1.5;
+            this.Multiplier = 1.5d;
         }
     }
 
@@ -93,7 +93,7 @@ public static partial class FStringExpressions0003
 #line 50 "f_string_expressions_0003.spy"
             this.GamesPlayed = games;
 #line 51 "f_string_expressions_0003.spy"
-            this.Multiplier = 1.2;
+            this.Multiplier = 1.2d;
         }
     }
 

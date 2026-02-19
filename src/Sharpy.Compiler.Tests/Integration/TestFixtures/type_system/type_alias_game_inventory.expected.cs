@@ -98,11 +98,11 @@ public static partial class TypeAliasGameInventory
 #line 61 "type_alias_game_inventory.spy"
         Inventory inventory = new Inventory();
 #line 63 "type_alias_game_inventory.spy"
-        Weapon sword = new Weapon(1, "Iron Sword", 50, 100.0);
+        Weapon sword = new Weapon(1, "Iron Sword", 50, 100.0d);
 #line 64 "type_alias_game_inventory.spy"
-        Weapon axe = new Weapon(2, "Battle Axe", 70, 85.5);
+        Weapon axe = new Weapon(2, "Battle Axe", 70, 85.5d);
 #line 65 "type_alias_game_inventory.spy"
-        Weapon dagger = new Weapon(3, "Steel Dagger", 30, 95.0);
+        Weapon dagger = new Weapon(3, "Steel Dagger", 30, 95.0d);
 #line 67 "type_alias_game_inventory.spy"
         inventory.AddWeapon(sword);
 #line 68 "type_alias_game_inventory.spy"

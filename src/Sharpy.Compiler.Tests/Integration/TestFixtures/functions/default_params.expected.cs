@@ -8,7 +8,7 @@ using global::Sharpy;
 
 public static partial class DefaultParams
 {
-    public static int CalculatePrice(int @base, double taxRate = 0.1, int discount = 0)
+    public static int CalculatePrice(int @base, double taxRate = 0.1d, int discount = 0)
     {
 #line 6 "default_params.spy"
         int baseCents = @base * 100;
@@ -50,12 +50,12 @@ public static partial class DefaultParams
     }
 
     public static int Price1 = CalculatePrice(100);
-    public static int Price2 = CalculatePrice(100, 0.2);
-    public static int Price3 = CalculatePrice(100, 0.15, 10);
+    public static int Price2 = CalculatePrice(100, 0.2d);
+    public static int Price3 = CalculatePrice(100, 0.15d, 10);
     public static int Squared = Power(5);
     public static int Cubed = Power(3, 3);
-    public static int Price4 = CalculatePrice(50, 0.1, 5);
-    public static int Price5 = CalculatePrice(200, 0.1, 20);
+    public static int Price4 = CalculatePrice(50, 0.1d, 5);
+    public static int Price5 = CalculatePrice(200, 0.1d, 20);
     public static void Main()
     {
 #line 35 "default_params.spy"

@@ -13,7 +13,7 @@ public static partial class TypeInference
 #line 2 "type_inference.spy"
         var x = 42;
 #line 3 "type_inference.spy"
-        var y = 3.14;
+        var y = 3.14d;
 #line 4 "type_inference.spy"
         var z = "hello";
 #line 5 "type_inference.spy"
