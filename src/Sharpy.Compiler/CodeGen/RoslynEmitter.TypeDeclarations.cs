@@ -289,19 +289,19 @@ internal partial class RoslynEmitter
         // For abstract classes implementing interfaces, generate abstract stubs for missing methods
         if (_isInAbstractClass && classDef.BaseClasses.Length > 0)
         {
-            var interfaceMethodSymbols = CollectInterfaceMethodSymbols(classDef.BaseClasses);
+            var interfaceMethods = CollectInterfaceMethodSymbols(classDef.BaseClasses);
             var definedMethods = GetDefinedMethodNames(classDef.Body);
 
             var stubMembers = new List<MemberDeclarationSyntax>();
 
-            foreach (var methodSymbol in interfaceMethodSymbols)
+            foreach (var interfaceMethod in interfaceMethods)
             {
                 // Skip if method is already defined in the class
-                if (definedMethods.Contains(methodSymbol.Name))
+                if (definedMethods.Contains(interfaceMethod.Name))
                     continue;
 
                 // Generate abstract stub from semantic model
-                var stub = GenerateAbstractMethodStub(methodSymbol);
+                var stub = GenerateAbstractMethodStub(interfaceMethod);
                 stubMembers.Add(stub);
             }
 
@@ -334,9 +334,8 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Collects interface method definitions from interfaces that a class implements.
-    /// Supports both same-module interfaces (via AST for base interface traversal) and
-    /// cross-module interfaces (via SymbolTable). Returns FunctionSymbol instances for
-    /// uniform handling by GenerateAbstractMethodStub.
+    /// Supports both same-module interfaces (via AST) and cross-module interfaces (via SymbolTable).
+    /// Returns FunctionSymbol instances for uniform handling.
     /// </summary>
     private List<FunctionSymbol> CollectInterfaceMethodSymbols(IReadOnlyList<TypeAnnotation> baseTypes)
     {
@@ -344,44 +343,67 @@ internal partial class RoslynEmitter
         var visited = new HashSet<string>();
         var seenMethods = new HashSet<string>();
 
-        void CollectFromInterface(string interfaceName)
+        void CollectFromInterfaceSymbol(TypeSymbol interfaceSymbol)
         {
-            if (!visited.Add(interfaceName))
+            if (visited.Contains(interfaceSymbol.Name))
                 return;
+            visited.Add(interfaceSymbol.Name);
 
-            // Look up the TypeSymbol to get method symbols with resolved types
-            var typeSymbol = _context.SymbolTable.LookupType(interfaceName);
-            if (typeSymbol == null || typeSymbol.TypeKind != Semantic.TypeKind.Interface)
-                return;
-
-            // For same-module interfaces, use AST to traverse base interfaces
-            // (TypeSymbol.Interfaces may not be populated if MaterializeInheritance hasn't run)
-            if (_interfaceDefinitions.TryGetValue(interfaceName, out var interfaceDef))
+            // Collect methods from this interface's symbol
+            foreach (var method in interfaceSymbol.Methods)
             {
-                // Recurse to base interfaces FIRST so their up-to-date method symbols
-                // are collected before any stale propagated copies in the derived interface
-                foreach (var baseInterface in interfaceDef.BaseInterfaces)
-                {
-                    if (!string.IsNullOrEmpty(baseInterface.Name))
-                        CollectFromInterface(baseInterface.Name);
-                }
-            }
-            else
-            {
-                // Cross-module: use TypeSymbol.Interfaces for base traversal
-                foreach (var baseInterface in typeSymbol.Interfaces)
-                {
-                    if (baseInterface.Definition?.TypeKind == Semantic.TypeKind.Interface)
-                        CollectFromInterface(baseInterface.Definition.Name);
-                }
+                if (seenMethods.Contains(method.Name))
+                    continue;
+                seenMethods.Add(method.Name);
+                result.Add(method);
             }
 
-            // Collect methods from this interface's TypeSymbol
-            // Only add methods not yet seen (base-first order prevents stale copies)
-            foreach (var method in typeSymbol.Methods)
+            // Recursively collect from base interfaces
+            foreach (var baseInterface in interfaceSymbol.Interfaces)
             {
-                if (seenMethods.Add(method.Name))
-                    result.Add(method);
+                if (baseInterface.Definition?.TypeKind == Semantic.TypeKind.Interface)
+                {
+                    CollectFromInterfaceSymbol(baseInterface.Definition);
+                }
+            }
+        }
+
+        void CollectFromInterfaceAst(string interfaceName)
+        {
+            if (visited.Contains(interfaceName))
+                return;
+            visited.Add(interfaceName);
+
+            if (!_interfaceDefinitions.TryGetValue(interfaceName, out var interfaceDef))
+                return;
+
+            // Collect methods from this interface's AST
+            foreach (var stmt in interfaceDef.Body)
+            {
+                if (stmt is FunctionDef funcDef)
+                {
+                    if (seenMethods.Contains(funcDef.Name))
+                        continue;
+                    seenMethods.Add(funcDef.Name);
+
+                    // Look up the FunctionSymbol from the SymbolTable for this method
+                    var typeSymbol = _context.SymbolTable.LookupType(interfaceName);
+                    var methodSymbol = typeSymbol?.Methods.FirstOrDefault(m => m.Name == funcDef.Name);
+                    if (methodSymbol != null)
+                    {
+                        result.Add(methodSymbol);
+                    }
+                }
+            }
+
+            // Recursively collect from base interfaces
+            foreach (var baseInterface in interfaceDef.BaseInterfaces)
+            {
+                var baseName = baseInterface.Name;
+                if (!string.IsNullOrEmpty(baseName))
+                {
+                    CollectFromInterfaceAst(baseName);
+                }
             }
         }
 
@@ -391,12 +413,19 @@ internal partial class RoslynEmitter
             if (string.IsNullOrEmpty(typeName))
                 continue;
 
-            // Check SymbolTable to determine if this base type is an interface
-            // Works for both same-module and cross-module interfaces
-            var typeSymbol = _context.SymbolTable.LookupType(typeName);
-            if (typeSymbol?.TypeKind == Semantic.TypeKind.Interface)
+            // Try same-module AST first
+            if (_interfaceDefinitions.ContainsKey(typeName))
             {
-                CollectFromInterface(typeName);
+                CollectFromInterfaceAst(typeName);
+            }
+            else
+            {
+                // Fall back to SymbolTable for cross-module interfaces
+                var typeSymbol = _context.SymbolTable.LookupType(typeName);
+                if (typeSymbol?.TypeKind == Semantic.TypeKind.Interface)
+                {
+                    CollectFromInterfaceSymbol(typeSymbol);
+                }
             }
         }
 
@@ -535,6 +564,7 @@ internal partial class RoslynEmitter
                     ? PredefinedType(Token(SyntaxKind.ObjectKeyword))
                     : _typeMapper.MapSemanticType(p.Type);
 
+                // For variadic parameters, wrap in array
                 if (p.IsVariadic)
                 {
                     paramType = ArrayType(paramType)
