@@ -547,7 +547,8 @@ internal partial class TypeChecker
 
                     // For generic types called without type arguments (e.g., set()),
                     // infer type arguments from the expected type annotation if available,
-                    // otherwise fall back to UnknownType args for wildcard matching.
+                    // otherwise emit a diagnostic for empty constructors or fall back to
+                    // UnknownType args for wildcard matching.
                     if (typeSymbol.IsGeneric)
                     {
                         List<SemanticType> typeArgs;
@@ -556,6 +557,14 @@ internal partial class TypeChecker
                             && expectedGeneric.TypeArguments.Count == typeSymbol.TypeParameters.Count)
                         {
                             typeArgs = expectedGeneric.TypeArguments;
+                        }
+                        else if (call.Arguments.Length == 0 && call.KeywordArguments.Length == 0)
+                        {
+                            // Empty generic constructor with no type annotation — cannot infer type args
+                            AddError($"Cannot infer type of empty {typeSymbol.Name} constructor; add a type annotation (e.g., x: {typeSymbol.Name}[...] = {typeSymbol.Name}())",
+                                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+                                span: call.Span);
+                            return SemanticType.Unknown;
                         }
                         else
                         {

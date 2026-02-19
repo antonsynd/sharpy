@@ -1,0 +1,3 @@
+def main():
+    items = []
+    items.append(1)

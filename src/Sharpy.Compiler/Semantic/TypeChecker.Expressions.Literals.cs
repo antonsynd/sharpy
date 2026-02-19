@@ -12,11 +12,20 @@ internal partial class TypeChecker
     {
         if (list.Elements.Length == 0)
         {
-            return new GenericType
+            if (_expectedType is GenericType expected && expected.Name == "list" && expected.TypeArguments.Count == 1)
             {
-                Name = "list",
-                TypeArguments = new List<SemanticType> { SemanticType.Unknown }
-            };
+                return new GenericType
+                {
+                    Name = "list",
+                    TypeArguments = new List<SemanticType> { expected.TypeArguments[0] }
+                };
+            }
+
+            // Cannot infer element type for empty list literal without annotation
+            AddError("Cannot infer type of empty list literal; add a type annotation (e.g., x: list[int] = [])",
+                list.LineStart, list.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+                span: list.Span);
+            return SemanticType.Unknown;
         }
 
         var elementTypes = list.Elements.Select(CheckExpression).ToList();
@@ -36,11 +45,20 @@ internal partial class TypeChecker
     {
         if (dict.Entries.Length == 0)
         {
-            return new GenericType
+            if (_expectedType is GenericType expected && expected.Name == "dict" && expected.TypeArguments.Count == 2)
             {
-                Name = "dict",
-                TypeArguments = new List<SemanticType> { SemanticType.Unknown, SemanticType.Unknown }
-            };
+                return new GenericType
+                {
+                    Name = "dict",
+                    TypeArguments = new List<SemanticType> { expected.TypeArguments[0], expected.TypeArguments[1] }
+                };
+            }
+
+            // Cannot infer key/value types for empty dict literal without annotation
+            AddError("Cannot infer type of empty dict literal; add a type annotation (e.g., d: dict[str, int] = {})",
+                dict.LineStart, dict.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+                span: dict.Span);
+            return SemanticType.Unknown;
         }
 
         var keyTypes = dict.Entries.Select(e => CheckExpression(e.Key)).ToList();
@@ -61,11 +79,20 @@ internal partial class TypeChecker
     {
         if (set.Elements.Length == 0)
         {
-            return new GenericType
+            if (_expectedType is GenericType expected && expected.Name == "set" && expected.TypeArguments.Count == 1)
             {
-                Name = "set",
-                TypeArguments = new List<SemanticType> { SemanticType.Unknown }
-            };
+                return new GenericType
+                {
+                    Name = "set",
+                    TypeArguments = new List<SemanticType> { expected.TypeArguments[0] }
+                };
+            }
+
+            // Cannot infer element type for empty set literal without annotation
+            AddError("Cannot infer type of empty set literal; add a type annotation (e.g., s: set[int] = set())",
+                set.LineStart, set.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+                span: set.Span);
+            return SemanticType.Unknown;
         }
 
         var elementTypes = set.Elements.Select(CheckExpression).ToList();
