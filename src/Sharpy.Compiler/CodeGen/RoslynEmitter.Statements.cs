@@ -1225,12 +1225,13 @@ internal partial class RoslynEmitter
     private StatementSyntax GenerateFor(ForStatement forStmt)
     {
         // For-in loop: for item in items: → foreach (var item in items)
+        var iteratorType = GetExpressionSemanticType(forStmt.Iterator);
         var iterator = GenerateExpression(forStmt.Iterator);
 
         // If there's no else clause, generate simple foreach loop
         if (forStmt.ElseBody.IsEmpty)
         {
-            return GenerateForEachCore(forStmt.Target, iterator, forStmt.Body);
+            return GenerateForEachCore(forStmt.Target, iterator, forStmt.Body, iteratorType);
         }
 
         // Loop with else clause: use boolean flag pattern
@@ -1248,7 +1249,7 @@ internal partial class RoslynEmitter
         var transformedBody = TransformLoopBodyForElse(forStmt.Body, flagName);
 
         // foreach (...) { transformedBody }
-        statements.Add(GenerateForEachCore(forStmt.Target, iterator, transformedBody));
+        statements.Add(GenerateForEachCore(forStmt.Target, iterator, transformedBody, iteratorType));
 
         // if (_loopCompleted) { elseBody }
         var elseBodyBlock = Block(forStmt.ElseBody.SelectMany(GenerateBodyStatements));
@@ -1267,7 +1268,7 @@ internal partial class RoslynEmitter
     ///   foreach (var __loopVar in items) { var i = __loopVar; ... }
     /// This allows the user to modify 'i' inside the loop body.
     /// </summary>
-    private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements)
+    private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements, SemanticType? iteratorType = null)
     {
         // Save scope so that loop variables and body-declared variables are
         // removed from scope after the loop (Sharpy: loop vars are block-scoped).
@@ -1275,7 +1276,7 @@ internal partial class RoslynEmitter
 
         try
         {
-            return GenerateForEachCoreInner(target, iterator, bodyStatements);
+            return GenerateForEachCoreInner(target, iterator, bodyStatements, iteratorType);
         }
         finally
         {
@@ -1283,7 +1284,7 @@ internal partial class RoslynEmitter
         }
     }
 
-    private StatementSyntax GenerateForEachCoreInner(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements)
+    private StatementSyntax GenerateForEachCoreInner(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements, SemanticType? iteratorType = null)
     {
         if (target is Identifier varName)
         {
@@ -1304,6 +1305,18 @@ internal partial class RoslynEmitter
             // Generate the body - assignments to loopVar will be updates, not declarations
             var body = Block(bodyStatements.SelectMany(GenerateBodyStatements));
 
+            // String iteration: C# foreach yields char, but Sharpy types loop var as str.
+            // Wrap with .ToString() to bridge the type gap.
+            ExpressionSyntax loopVarValue = IdentifierName(tempLoopVar);
+            if (iteratorType is Semantic.BuiltinType { Name: "str" })
+            {
+                loopVarValue = InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        loopVarValue,
+                        IdentifierName("ToString")));
+            }
+
             // Create the assignment or declaration at the start of the body
             StatementSyntax loopVarInit;
             if (varExistsInOuterScope)
@@ -1313,7 +1326,7 @@ internal partial class RoslynEmitter
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         IdentifierName(loopVar),
-                        IdentifierName(tempLoopVar)));
+                        loopVarValue));
             }
             else
             {
@@ -1323,7 +1336,7 @@ internal partial class RoslynEmitter
                     VariableDeclaration(IdentifierName("var"))
                         .WithVariables(SingletonSeparatedList(
                             VariableDeclarator(Identifier(loopVar))
-                                .WithInitializer(EqualsValueClause(IdentifierName(tempLoopVar))))));
+                                .WithInitializer(EqualsValueClause(loopVarValue)))));
             }
 
             var newBodyStatements = new List<StatementSyntax> { loopVarInit };

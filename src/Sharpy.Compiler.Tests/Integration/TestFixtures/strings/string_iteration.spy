@@ -1,0 +1,4 @@
+def main():
+    s: str = "abc"
+    for c in s:
+        print(c.upper())
