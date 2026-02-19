@@ -1,0 +1,8 @@
+def say_hello():
+    print("hello")
+
+def say_goodbye():
+    print("goodbye")
+
+def get_greeting() -> str:
+    return "hi there"

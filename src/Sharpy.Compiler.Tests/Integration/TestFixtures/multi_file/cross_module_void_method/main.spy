@@ -1,0 +1,6 @@
+from lib import say_hello, say_goodbye, get_greeting
+
+def main():
+    say_hello()
+    say_goodbye()
+    print(get_greeting())

@@ -471,7 +471,9 @@ internal class ModuleLoader
             Name = method.Name,
             Kind = SymbolKind.Function,
             Parameters = parameters,
-            ReturnType = ConvertTypeAnnotationToSemanticType(method.ReturnType),
+            ReturnType = method.ReturnType != null
+                ? ConvertTypeAnnotationToSemanticType(method.ReturnType)
+                : SemanticType.Void,
             IsStatic = isStatic,
             IsAbstract = method.Decorators.Any(d => d.Name == DecoratorNames.Abstract),
             IsVirtual = method.Decorators.Any(d => d.Name == DecoratorNames.Virtual),
