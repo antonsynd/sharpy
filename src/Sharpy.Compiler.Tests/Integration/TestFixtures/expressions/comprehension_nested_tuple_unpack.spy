@@ -1,0 +1,5 @@
+def main():
+    items: list[tuple[tuple[int, int], str]] = [((1, 2), "a"), ((3, 4), "b")]
+    result: list[str] = [name + ":" + str(x + y) for (x, y), name in items]
+    for r in result:
+        print(r)

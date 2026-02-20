@@ -262,34 +262,8 @@ internal partial class TypeChecker
             }
             else
             {
-                for (int i = 0; i < targetTuple.Elements.Length; i++)
-                {
-                    var targetElem = targetTuple.Elements[i];
-                    var targetElemType = tupleType.ElementTypes[i];
-
-                    if (targetElem is Identifier elemId)
-                    {
-                        var loopVarSymbol = new VariableSymbol
-                        {
-                            Name = elemId.Name,
-                            Kind = SymbolKind.Variable,
-                            Type = targetElemType,
-                            AccessLevel = AccessLevel.Public,
-                            DeclarationLine = elemId.LineStart,
-                            DeclarationColumn = elemId.ColumnStart
-                        };
-                        _symbolTable.Define(loopVarSymbol);
-                        SemanticBinding.SetVariableType(loopVarSymbol, targetElemType);
-                        _semanticInfo.SetIdentifierSymbol(elemId, loopVarSymbol);
-                        _semanticInfo.SetExpressionType(targetElem, targetElemType);
-                        if (targetElemType is UnknownType)
-                            MarkExpressionAsErrorRecovery(targetElem);
-                    }
-                    else
-                    {
-                        CheckExpression(targetElem);
-                    }
-                }
+                // Define loop variables (supports nested tuple targets)
+                DefineForLoopTupleTargets(targetTuple.Elements, tupleType.ElementTypes);
             }
 
             _semanticInfo.SetExpressionType(forClause.Target, elemType);
