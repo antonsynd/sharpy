@@ -900,6 +900,7 @@ internal partial class TypeChecker
         }
     }
 
+    // TODO(#206): Add language spec for complex tuple unpacking (docs/language_specification/tuple_unpacking.md)
     /// <summary>
     /// Recursively defines loop variables for nested tuple targets in for-loops.
     /// E.g., for (x, y), name in items: registers x, y, and name.

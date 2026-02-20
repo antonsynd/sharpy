@@ -1,3 +1,4 @@
+<!-- TODO(#209): Update this file to mark Phase 6+7 features as complete -->
 <!-- Verified by /project:verify-plan on 2026-02-17 -->
 <!-- Verification result: PASS WITH CORRECTIONS -->
 

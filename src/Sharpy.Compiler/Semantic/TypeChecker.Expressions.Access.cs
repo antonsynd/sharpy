@@ -871,6 +871,8 @@ internal partial class TypeChecker
         return SemanticType.Unknown;
     }
 
+    // TODO(#205): Add language spec for method overloading (docs/language_specification/method_overloading.md)
+    // TODO(#207): Add test fixtures for ambiguous overloads and overloads with default parameters
     /// <summary>
     /// Resolves a user-defined method overload from a member access call (e.g., obj.method(args)).
     /// Returns the resolved return type when the method has multiple overloads, null if not applicable.
