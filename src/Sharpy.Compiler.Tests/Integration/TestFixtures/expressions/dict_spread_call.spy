@@ -1,0 +1,6 @@
+def greet(name: str, greeting: str) -> None:
+    print(f"{greeting}, {name}!")
+
+def main():
+    args: dict[str, str] = {"name": "Alice", "greeting": "Hello"}
+    greet(**args)
