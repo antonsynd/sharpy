@@ -1,0 +1,11 @@
+def main():
+    a: set[int] = {1, 2, 3}
+    b: set[int] = {3, 4, 5}
+    result: set[int] = {*a, *b}
+    print(len(result))
+    # Check that all expected elements are present
+    print(1 in result)
+    print(2 in result)
+    print(3 in result)
+    print(4 in result)
+    print(5 in result)

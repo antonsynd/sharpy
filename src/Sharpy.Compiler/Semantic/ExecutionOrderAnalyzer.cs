@@ -264,7 +264,8 @@ internal class ExecutionOrderAnalyzer
             case DictLiteral dict:
                 foreach (var entry in dict.Entries)
                 {
-                    CollectReferencedIdentifiers(entry.Key, identifiers);
+                    if (entry.Key != null)
+                        CollectReferencedIdentifiers(entry.Key, identifiers);
                     CollectReferencedIdentifiers(entry.Value, identifiers);
                 }
                 break;

@@ -47,7 +47,7 @@ public class AstExhaustivenessTests
             // Advanced
             "ConditionalExpression", "LambdaExpression", "TypeCast",
             "TypeCoercion", "TypeCheck", "Parenthesized", "WalrusExpression",
-            "TryExpression", "MaybeExpression", "StarExpression",
+            "TryExpression", "MaybeExpression", "StarExpression", "SpreadElement",
             // Future (in Expression.Future.cs) — not yet handled, expected to be in default case
             "AwaitExpression", "MatchExpression",
         };

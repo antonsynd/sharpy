@@ -51,9 +51,15 @@ internal partial class RoslynEmitter
             elementType = _typeMapper.InferElementType(list.Elements);
         }
 
-        var elements = list.Elements.Select(GenerateExpression);
-
         var listType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyList, elementType);
+
+        // If any element is a spread, use imperative builder pattern
+        if (list.Elements.Any(e => e is SpreadElement))
+        {
+            return GenerateSpreadCollectionBuilder(list.Elements, listType, "Extend", "Add");
+        }
+
+        var elements = list.Elements.Select(GenerateExpression);
 
         return ObjectCreationExpression(listType)
             .WithArgumentList(ArgumentList())
@@ -87,19 +93,25 @@ internal partial class RoslynEmitter
         }
         else
         {
-            keyType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Key));
+            keyType = _typeMapper.InferElementType(dict.Entries.Where(e => e.Key != null).Select(e => e.Key!));
             valueType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Value));
+        }
+
+        var dictType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, keyType, valueType);
+
+        // If any entry is a spread (**expr), use imperative builder pattern
+        if (dict.Entries.Any(entry => entry.Key == null))
+        {
+            return GenerateSpreadDictBuilder(dict.Entries, dictType);
         }
 
         var initializers = dict.Entries.Select(entry =>
             InitializerExpression(SyntaxKind.ComplexElementInitializerExpression,
                 SeparatedList(new[]
                 {
-                    GenerateExpression(entry.Key),
+                    GenerateExpression(entry.Key!),
                     GenerateExpression(entry.Value)
                 })));
-
-        var dictType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, keyType, valueType);
 
         return ObjectCreationExpression(dictType)
             .WithArgumentList(ArgumentList())
@@ -132,9 +144,15 @@ internal partial class RoslynEmitter
             elementType = _typeMapper.InferElementType(set.Elements);
         }
 
-        var elements = set.Elements.Select(GenerateExpression);
-
         var setType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpySet, elementType);
+
+        // If any element is a spread, use imperative builder pattern
+        if (set.Elements.Any(e => e is SpreadElement))
+        {
+            return GenerateSpreadCollectionBuilder(set.Elements, setType, "UnionWith", "Add");
+        }
+
+        var elements = set.Elements.Select(GenerateExpression);
 
         return ObjectCreationExpression(setType)
             .WithArgumentList(ArgumentList())
@@ -864,5 +882,109 @@ internal partial class RoslynEmitter
                 RegisterComprehensionTupleVars(nested.Elements);
             }
         }
+    }
+
+    /// <summary>
+    /// Generates an imperative builder pattern for list/set literals containing spread elements.
+    /// Hoists: var __t = new CollectionType(); then for each element either __t.Add(x) or
+    /// __t.ExtendMethod(spread). Returns the temp variable identifier.
+    /// </summary>
+    /// <param name="elements">The collection elements (mix of regular and SpreadElement)</param>
+    /// <param name="collectionType">The fully qualified C# collection type (e.g., Sharpy.List&lt;int&gt;)</param>
+    /// <param name="spreadMethod">Method to call for spread elements ("Extend" or "UnionWith")</param>
+    /// <param name="addMethod">Method to call for individual elements ("Add")</param>
+    private ExpressionSyntax GenerateSpreadCollectionBuilder(
+        ImmutableArray<Expression> elements,
+        TypeSyntax collectionType,
+        string spreadMethod,
+        string addMethod)
+    {
+        var tempName = GenerateTempVarName("spread");
+
+        // var __spread_N = new CollectionType();
+        _hoistedStatements.Add(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(tempName))
+                        .WithInitializer(EqualsValueClause(
+                            ObjectCreationExpression(collectionType)
+                                .WithArgumentList(ArgumentList())))))));
+
+        foreach (var element in elements)
+        {
+            if (element is SpreadElement spread)
+            {
+                // __spread_N.Extend(spreadValue) or __spread_N.UnionWith(spreadValue)
+                _hoistedStatements.Add(ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(tempName),
+                            IdentifierName(spreadMethod)))
+                        .AddArgumentListArguments(Argument(GenerateExpression(spread.Value)))));
+            }
+            else
+            {
+                // __spread_N.Add(element)
+                _hoistedStatements.Add(ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(tempName),
+                            IdentifierName(addMethod)))
+                        .AddArgumentListArguments(Argument(GenerateExpression(element)))));
+            }
+        }
+
+        return IdentifierName(tempName);
+    }
+
+    /// <summary>
+    /// Generates an imperative builder pattern for dict literals containing spread entries (**expr).
+    /// Hoists: var __t = new DictType(); then for each entry either __t[key] = value or
+    /// __t.Update(spread). Returns the temp variable identifier.
+    /// </summary>
+    private ExpressionSyntax GenerateSpreadDictBuilder(
+        ImmutableArray<DictEntry> entries,
+        TypeSyntax dictType)
+    {
+        var tempName = GenerateTempVarName("spread");
+
+        // var __spread_N = new DictType();
+        _hoistedStatements.Add(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(tempName))
+                        .WithInitializer(EqualsValueClause(
+                            ObjectCreationExpression(dictType)
+                                .WithArgumentList(ArgumentList())))))));
+
+        foreach (var entry in entries)
+        {
+            if (entry.Key == null)
+            {
+                // __spread_N.Update(spreadDict)
+                _hoistedStatements.Add(ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(tempName),
+                            IdentifierName("Update")))
+                        .AddArgumentListArguments(Argument(GenerateExpression(entry.Value)))));
+            }
+            else
+            {
+                // __spread_N[key] = value
+                _hoistedStatements.Add(ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        ElementAccessExpression(IdentifierName(tempName))
+                            .WithArgumentList(BracketedArgumentList(
+                                SingletonSeparatedList(Argument(GenerateExpression(entry.Key))))),
+                        GenerateExpression(entry.Value))));
+            }
+        }
+
+        return IdentifierName(tempName);
     }
 }

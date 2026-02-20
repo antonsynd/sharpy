@@ -28,7 +28,23 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        var elementTypes = list.Elements.Select(CheckExpression).ToList();
+        var elementTypes = new List<SemanticType>();
+        foreach (var elem in list.Elements)
+        {
+            if (elem is SpreadElement spread)
+            {
+                var spreadType = CheckExpression(spread.Value);
+                // Extract element type from the spread iterable
+                if (spreadType is GenericType { Name: "list" or "set" } gt && gt.TypeArguments.Count > 0)
+                    elementTypes.Add(gt.TypeArguments[0]);
+                else
+                    elementTypes.Add(CheckExpression(elem));
+            }
+            else
+            {
+                elementTypes.Add(CheckExpression(elem));
+            }
+        }
 
         // Find least common ancestor of all element types
         // This handles cases like [Bug(), Feature()] -> list[WorkItem]
@@ -61,8 +77,26 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        var keyTypes = dict.Entries.Select(e => CheckExpression(e.Key)).ToList();
-        var valueTypes = dict.Entries.Select(e => CheckExpression(e.Value)).ToList();
+        var keyTypes = new List<SemanticType>();
+        var valueTypes = new List<SemanticType>();
+        foreach (var entry in dict.Entries)
+        {
+            if (entry.Key == null)
+            {
+                // Dict spread: **other_dict — extract K, V from dict[K, V]
+                var spreadType = CheckExpression(entry.Value);
+                if (spreadType is GenericType { Name: "dict" } gt && gt.TypeArguments.Count == 2)
+                {
+                    keyTypes.Add(gt.TypeArguments[0]);
+                    valueTypes.Add(gt.TypeArguments[1]);
+                }
+            }
+            else
+            {
+                keyTypes.Add(CheckExpression(entry.Key));
+                valueTypes.Add(CheckExpression(entry.Value));
+            }
+        }
 
         // Find least common ancestor for both keys and values
         var commonKeyType = FindLeastCommonAncestor(keyTypes);
@@ -95,7 +129,22 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        var elementTypes = set.Elements.Select(CheckExpression).ToList();
+        var elementTypes = new List<SemanticType>();
+        foreach (var elem in set.Elements)
+        {
+            if (elem is SpreadElement spread)
+            {
+                var spreadType = CheckExpression(spread.Value);
+                if (spreadType is GenericType { Name: "list" or "set" } gt && gt.TypeArguments.Count > 0)
+                    elementTypes.Add(gt.TypeArguments[0]);
+                else
+                    elementTypes.Add(CheckExpression(elem));
+            }
+            else
+            {
+                elementTypes.Add(CheckExpression(elem));
+            }
+        }
 
         // Find least common ancestor of all element types
         var commonType = FindLeastCommonAncestor(elementTypes);

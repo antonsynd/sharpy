@@ -138,6 +138,9 @@ public abstract class AstVisitor
             case StarExpression n:
                 VisitStarExpression(n);
                 break;
+            case SpreadElement n:
+                VisitSpreadElement(n);
+                break;
 
             // Expressions - Future
             case AwaitExpression n:
@@ -380,6 +383,7 @@ public abstract class AstVisitor
     public virtual void VisitTryExpression(TryExpression node) => VisitExpression(node);
     public virtual void VisitMaybeExpression(MaybeExpression node) => VisitExpression(node);
     public virtual void VisitStarExpression(StarExpression node) => VisitExpression(node);
+    public virtual void VisitSpreadElement(SpreadElement node) => VisitExpression(node);
 
     #endregion
 
@@ -524,6 +528,7 @@ public abstract class AstVisitor<T>
             TryExpression n => VisitTryExpression(n),
             MaybeExpression n => VisitMaybeExpression(n),
             StarExpression n => VisitStarExpression(n),
+            SpreadElement n => VisitSpreadElement(n),
 
             // Expressions - Future
             AwaitExpression n => VisitAwaitExpression(n),
@@ -689,6 +694,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitTryExpression(TryExpression node) => VisitExpression(node);
     public virtual T VisitMaybeExpression(MaybeExpression node) => VisitExpression(node);
     public virtual T VisitStarExpression(StarExpression node) => VisitExpression(node);
+    public virtual T VisitSpreadElement(SpreadElement node) => VisitExpression(node);
 
     #endregion
 

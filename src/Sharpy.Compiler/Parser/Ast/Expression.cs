@@ -128,7 +128,8 @@ public record DictLiteral : Expression
     {
         foreach (var entry in Entries)
         {
-            yield return entry.Key;
+            if (entry.Key != null)
+                yield return entry.Key;
             yield return entry.Value;
         }
     }
@@ -136,7 +137,10 @@ public record DictLiteral : Expression
 
 public record DictEntry
 {
-    public Expression Key { get; init; } = null!;
+    /// <summary>
+    /// null when this entry is a dict spread (**expr), in which case Value is the spread target
+    /// </summary>
+    public Expression? Key { get; init; }
     public Expression Value { get; init; } = null!;
 }
 
@@ -851,6 +855,30 @@ public record StarExpression : Expression
     public override IEnumerable<Node> GetChildNodes()
     {
         yield return Operand;
+    }
+}
+
+#endregion
+
+#region Spread
+
+/// <summary>
+/// Spread element (*expr) used in collection literals: [*a, 1, *b], {*a, *b}
+/// </summary>
+public record SpreadElement : Expression
+{
+    public Expression Value { get; init; } = null!;
+
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Value != null, "SpreadElement.Value cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Value;
     }
 }
 
