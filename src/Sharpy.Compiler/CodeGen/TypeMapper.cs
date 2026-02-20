@@ -226,6 +226,14 @@ internal class TypeMapper
         var aliasSymbol = _context.SymbolTable.LookupTypeAlias(type.Name);
         if (aliasSymbol != null)
         {
+            // Generic type alias: use the resolved SemanticType which has substitutions applied
+            if (aliasSymbol.TypeParameters.Count > 0 && type.TypeArguments.Length > 0)
+            {
+                var resolvedType = _context.SemanticInfo?.GetTypeAnnotation(type);
+                if (resolvedType != null)
+                    return WrapOptionalOrNullable(MapSemanticType(resolvedType), type);
+            }
+
             // Expand the alias
             if (aliasSymbol.TypeAnnotation != null)
             {

@@ -784,6 +784,14 @@ public partial class Parser
 
         Expect(TokenType.Type);
         var name = ExpectIdentifier();
+
+        // Optional type parameters: type Cb[T] = (T) -> None
+        var typeParams = new List<TypeParameterDef>();
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            typeParams = ParseTypeParameterList();
+        }
+
         Expect(TokenType.Assign);
 
         // Check if this is a function type: (params) -> returnType
@@ -836,6 +844,7 @@ public partial class Parser
         return new TypeAlias
         {
             Name = name,
+            TypeParameters = typeParams.ToImmutableArray(),
             Type = type,
             FunctionType = functionType,
             LineStart = startLine,

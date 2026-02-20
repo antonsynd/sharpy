@@ -1,0 +1,8 @@
+type Pair[T] = tuple[T, T]
+
+def sum_pair(p: Pair[int]) -> int:
+    return p[0] + p[1]
+
+def main():
+    p: Pair[int] = (3, 7)
+    print(sum_pair(p))

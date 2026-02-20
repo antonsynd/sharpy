@@ -242,6 +242,7 @@ public record TypeAliasSymbol : Symbol
 {
     public TypeAnnotation? TypeAnnotation { get; init; }
     public Parser.Ast.FunctionType? FunctionType { get; init; }
+    public IReadOnlyList<TypeParameterDef> TypeParameters { get; init; } = Array.Empty<TypeParameterDef>();
 
     public virtual bool Equals(TypeAliasSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);

@@ -783,6 +783,9 @@ internal class NameResolver
             AccessLevel = AccessLevel.Public,
             TypeAnnotation = typeAlias.Type,
             FunctionType = typeAlias.FunctionType,
+            TypeParameters = typeAlias.TypeParameters.IsEmpty
+                ? Array.Empty<TypeParameterDef>()
+                : typeAlias.TypeParameters.ToArray(),
             DeclarationLine = typeAlias.LineStart,
             DeclarationColumn = typeAlias.ColumnStart
         };
