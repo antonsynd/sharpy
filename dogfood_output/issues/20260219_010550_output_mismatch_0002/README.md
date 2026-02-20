@@ -1,0 +1,132 @@
+# Issue Report: output_mismatch
+
+**Timestamp:** 2026-02-19T01:02:23.342505
+**Type:** output_mismatch
+**Feature Focus:** dotnet_import
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: .NET interop with Math type for temperature conversion
+# Tests: from system import, static method calls, calculations with Math
+from system import Math
+
+# Temperature scales enum
+enum TemperatureScale:
+    CELSIUS = 1
+    FAHRENHEIT = 2
+    KELVIN = 3
+
+# Struct for storing temperature values
+struct Temperature:
+    value: float
+    scale: TemperatureScale
+    
+    def __init__(self, v: float, s: TemperatureScale):
+        self.value = v
+        self.scale = s
+    
+    def to_celsius(self) -> float:
+        if self.scale == TemperatureScale.CELSIUS:
+            return self.value
+        elif self.scale == TemperatureScale.FAHRENHEIT:
+            # C = (F - 32) * 5/9
+            return (self.value - 32.0) * 5.0 / 9.0
+        else:
+            # K - 273.15
+            return self.value - 273.15
+    
+    def rounded(self, decimals: int) -> float:
+        # Using Math.Round from .NET
+        multiplier: float = Math.pow(10.0, decimals)
+        return Math.round(self.value * multiplier) / multiplier
+
+def clamp(value: float, min_val: float, max_val: float) -> float:
+    # Using Math.Max and Math.Min from .NET
+    return Math.min(max_val, Math.max(min_val, value))
+
+def calculate_heat_index(temp_f: float, humidity: float) -> float:
+    # Using formula coefficients with Math.pow
+    c1: float = -42.379
+    c2: float = 2.04901523
+    c3: float = 10.14333127
+    c4: float = -0.22475541
+    c5: float = -6.83783 * Math.pow(10.0, -3.0)
+    c6: float = -5.481717 * Math.pow(10.0, -2.0)
+    c7: float = 1.22874 * Math.pow(10.0, -3.0)
+    c8: float = 8.5282 * Math.pow(10.0, -4.0)
+    c9: float = -1.99 * Math.pow(10.0, -6.0)
+    
+    t2: float = Math.pow(temp_f, 2.0)
+    h2: float = Math.pow(humidity, 2.0)
+    
+    return c1 + c2 * temp_f + c3 * humidity + c4 * t2 + c5 * h2 + c6 * temp_f * humidity + c7 * t2 * humidity + c8 * temp_f * h2 + c9 * t2 * h2
+
+def main():
+    t1: Temperature = Temperature(100.0, TemperatureScale.FAHRENHEIT)
+    t2: Temperature = Temperature(37.5, TemperatureScale.CELSIUS)
+    t3: Temperature = Temperature(310.0, TemperatureScale.KELVIN)
+    
+    c1: float = t1.to_celsius()
+    c2: float = t2.to_celsius()
+    c3: float = t3.to_celsius()
+    
+    print(t1.rounded(1))
+    print(c1)
+    
+    avg_c: float = (c1 + c2 + c3) / 3.0
+    print(Math.round(avg_c))
+    
+    safe_temp: float = clamp(150.0, -40.0, 60.0)
+    print(safe_temp)
+    
+    heat_idx: float = calculate_heat_index(90.0, 80.0)
+    print(Math.round(heat_idx))
+    
+    # Check absolute comparison
+    diff: float = Math.abs(c1 - c2)
+    print(Math.round(diff))
+# EXPECTED OUTPUT:
+# 100.0
+# 37.77777777777778
+# 33
+# 60.0
+# 113
+# 0
+```
+
+## Error
+
+```
+AI explicitly reported mismatch
+```
+
+## Output Comparison
+
+### Expected
+```
+100.0
+37.77777777777778
+33
+60.0
+113
+0
+
+```
+
+### Actual
+```
+100.0
+37.77777777777778
+37.0
+60.0
+-121.0
+0.0
+```
+
+## Timing
+
+- Generation: 168.00s
+- Execution: 4.74s

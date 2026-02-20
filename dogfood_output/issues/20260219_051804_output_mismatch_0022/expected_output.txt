@@ -1,0 +1,26 @@
+=== Polymorphic Description ===
+[PLANT] Fiddleleaf is a 2 year old plant, 45cm tall
+[ANIMAL] Buddy is a 4 year old Golden Retriever (Canis lupus familiaris)
+[ANIMAL] Mittens is a 2 year old (Felis catus)
+[ANIMAL] Tweety is a 1 year old (Aves)
+=== Cross-Module Virtual Calls ===
+Fiddleleaf is 2 years old says: ...
+Buddy says: Woof!
+Mittens says: Meow!
+Tweety says: Tweet!
+=== Type Classification ===
+Fiddleleaf is classified as: plant
+Buddy is classified as: animal
+Mittens is classified as: animal
+Tweety is classified as: animal
+=== Zoo from Factory ===
+Rex is a 5 year old German Shepherd (Canis lupus familiaris)
+Whiskers is a 2 year old (Felis catus)
+Polly is a 1 year old (Aves)
+=== Cat Life Tracking ===
+Mittens starts with 9 lives
+After losing one: 8 lives
+=== Inheritance Verification ===
+True
+True
+False

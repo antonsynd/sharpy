@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-19T06:32:53.928939",
+  "generated_code": "# Test: Virtual/override with simple score display system\n# Verifies @virtual/@override pattern works with string formatting and super() calls\n\nclass ScoreDisplay:\n    score: int\n    \n    def __init__(self, score: int):\n        self.score = score\n    \n    @virtual\n    def display(self) -> str:\n        return str(self.score)\n\nclass LabeledScoreDisplay(ScoreDisplay):\n    label: str\n    \n    def __init__(self, score: int, label: str):\n        super().__init__(score)\n        self.label = label\n    \n    @override\n    def display(self) -> str:\n        return f\"{self.label}: {self.score}\"\n\ndef main():\n    base = ScoreDisplay(42)\n    print(base.display())\n    \n    labeled = LabeledScoreDisplay(100, \"Points\")\n    print(labeled.display())\n\n# EXPECTED OUTPUT:\n# 42\n# Points: 100",
+  "expected_output": "42\nPoints: 100\n",
+  "actual_output": "42\nPoints: 100",
+  "feature_focus": "virtual_override",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 76.70768618583679,
+  "execution_duration": 4.32348108291626,
+  "source_files": null
+}

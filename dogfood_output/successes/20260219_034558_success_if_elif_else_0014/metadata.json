@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-19T03:42:42.565301",
+  "generated_code": "enum Department:\n    SALES = 0\n    ENGINEERING = 1\n    HR = 2\n\nclass Employee:\n    years: int\n    dept: Department\n    \n    def __init__(self, years: int, dept: Department):\n        self.years = years\n        self.dept = dept\n    \n    @virtual\n    def bonus(self) -> float:\n        b: float = 500.0\n        if self.years < 2:\n            b = 500.0\n        elif self.years < 5:\n            b = 1500.0\n        else:\n            b = 3000.0\n        \n        if self.dept == Department.SALES:\n            b = b * 1.5\n        elif self.dept == Department.ENGINEERING:\n            b = b * 1.3\n        else:\n            b = b * 1.1\n        return b\n\nclass Manager(Employee):\n    team: int\n    \n    def __init__(self, years: int, dept: Department, team: int):\n        super().__init__(years, dept)\n        self.team = team\n    \n    @override\n    def bonus(self) -> float:\n        b: float = super().bonus()\n        tb: float = 0.0\n        if self.team < 3:\n            tb = 1000.0\n        elif self.team < 8:\n            tb = 2500.0\n        else:\n            tb = 4000.0\n        \n        if self.years >= 5 and self.team >= 5:\n            return b + tb + 2000.0\n        elif self.years >= 3 or self.team >= 10:\n            return b + tb + 1000.0\n        else:\n            return b + tb\n\ndef main():\n    e1: Employee = Employee(1, Department.HR)\n    e2: Employee = Employee(6, Department.SALES)\n    m1: Manager = Manager(7, Department.ENGINEERING, 6)\n    m2: Manager = Manager(12, Department.SALES, 20)\n    m3: Manager = Manager(2, Department.ENGINEERING, 4)\n    \n    print(e1.bonus())\n    print(e2.bonus())\n    print(m1.bonus())\n    print(m2.bonus())\n    print(m3.bonus())\n\n# EXPECTED OUTPUT:\n# 550.0\n# 4500.0\n# 8400.0\n# 10500.0\n# 4450.0",
+  "expected_output": "550.0\n4500.0\n8400.0\n10500.0\n4450.0\n",
+  "actual_output": "550.0\n4500.0\n8400.0\n10500.0\n4450.0",
+  "feature_focus": "if_elif_else",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 186.06765270233154,
+  "execution_duration": 4.394590854644775,
+  "source_files": null
+}

@@ -1,0 +1,61 @@
+# Main entry point - tests cross-module imports with complex type relationships
+# Tests: from module import multiple items, structs, enums, interfaces across modules
+
+from base_types import Point, LogLevel
+from contracts import ILogger, IFormatter, IStatsCollector
+from utils_impl import ConsoleLogger, FloatFormatter, StatsCollector, GeometryUtils
+
+def main():
+    # Test struct creation and method calls
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+    
+    # Test distance calculation between points
+    distance: float = p1.distance_to(p2)
+    print(f"Distance: {distance}")
+    
+    # Test logger with interface type
+    logger: ILogger = ConsoleLogger(LogLevel.INFO)
+    logger.log(LogLevel.INFO, "Starting application")
+    logger.log(LogLevel.DEBUG, "This should not appear")
+    
+    # Test formatter with interface type
+    formatter: IFormatter = FloatFormatter(2)
+    formatted: str = formatter.format_value(3.14159)
+    print(f"Formatted: {formatted}")
+    
+    # Test stats collector with interface type
+    stats: IStatsCollector = StatsCollector()
+    stats.record(10.0)
+    stats.record(20.0)
+    stats.record(30.0)
+    
+    # Test interface methods
+    count: int = stats.get_count()
+    avg: float = stats.get_average()
+    print(f"Count: {count}")
+    print(f"Average: {avg}")
+    
+    # Test geometry utils with list of structs
+    points: list[Point] = [p1, p2, Point(6.0, 8.0)]
+    centroid: Point = GeometryUtils.calculate_centroid(points)
+    print(f"Centroid: {centroid}")
+    
+    # Test struct value semantics (copy)
+    p3: Point = p2
+    p3.x = 100.0
+    print(f"P2 unchanged: {p2.x}")
+    
+    # Test enum values
+    error_level: int = LogLevel.ERROR
+    print(f"LogLevel.ERROR: {error_level}")
+
+# EXPECTED OUTPUT:
+# Distance: 5.0
+# [INFO] Starting application
+# Formatted: 3.14
+# Count: 3
+# Average: 20.0
+# Centroid: (3.0, 4.0)
+# P2 unchanged: 3.0
+# LogLevel.ERROR: 3

@@ -1,0 +1,55 @@
+# Concrete vehicle types
+from vehicle_base import Vehicle, VehicleStatus
+
+class MaintenanceRecord:
+    vehicle_model: str
+    cost: float
+
+    def __init__(self, model: str, cost: float):
+        self.vehicle_model = model
+        self.cost = cost
+
+    def __str__(self) -> str:
+        return f"Maintenance for {self.vehicle_model}: ${self.cost:.2f}"
+
+class Car(Vehicle):
+    doors: int
+
+    def __init__(self, model: str, year: int, doors: int):
+        super().__init__(model, year)
+        self.doors = doors
+
+    @override
+    def get_type(self) -> str:
+        return "Car"
+
+    @override
+    def describe(self) -> str:
+        base: str = f"{self.model} ({self.year})"
+        return f"{base} - {self.doors} doors"
+
+    @override
+    def perform_maintenance(self) -> str:
+        self.status = VehicleStatus.MAINTENANCE
+        return f"Car maintenance completed for {self.model}"
+
+class Motorcycle(Vehicle):
+    engine_cc: int
+
+    def __init__(self, model: str, year: int, cc: int):
+        super().__init__(model, year)
+        self.engine_cc = cc
+
+    @override
+    def get_type(self) -> str:
+        return "Motorcycle"
+
+    @override
+    def describe(self) -> str:
+        base: str = f"{self.model} ({self.year})"
+        return f"{base} - {self.engine_cc}cc"
+
+    @override
+    def perform_maintenance(self) -> str:
+        self.status = VehicleStatus.MAINTENANCE
+        return f"Motorcycle service done for {self.model}"

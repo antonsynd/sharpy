@@ -1,0 +1,28 @@
+# Test: Simple __len__ dunder method
+# A custom stack class that implements __len__
+
+class Stack:
+    items: list[int]
+    
+    def __init__(self):
+        self.items = []
+    
+    def push(self, item: int) -> None:
+        self.items.append(item)
+    
+    def __len__(self) -> int:
+        return len(self.items)
+
+def main():
+    s = Stack()
+    print(len(s))
+    s.push(10)
+    s.push(20)
+    print(len(s))
+    s.push(30)
+    print(len(s))
+
+# EXPECTED OUTPUT:
+# 0
+# 2
+# 3

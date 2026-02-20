@@ -1,0 +1,27 @@
+# Simple class testing basic arithmetic with a game score tracker
+class ScoreKeeper:
+    score: int
+    level: int
+    
+    def __init__(self):
+        self.score = 0
+        self.level = 1
+    
+    def add_points(self, points: int) -> None:
+        self.score += points * self.level
+    
+    def next_level(self) -> None:
+        self.level += 1
+    
+    def total(self) -> int:
+        return self.score
+
+def main():
+    keeper = ScoreKeeper()
+    keeper.add_points(10)
+    keeper.next_level()
+    keeper.add_points(5)
+    print(keeper.total())
+
+# EXPECTED OUTPUT:
+# 20

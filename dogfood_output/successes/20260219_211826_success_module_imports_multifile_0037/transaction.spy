@@ -1,0 +1,44 @@
+# Module defining transaction types and interface
+enum TxType:
+    DEPOSIT = 1
+    WITHDRAWAL = 2
+    TRANSFER = 3
+
+interface ITransaction:
+    def get_type(self) -> TxType: ...
+    def get_amount(self) -> float: ...
+    def describe(self) -> str: ...
+
+struct TxMetadata:
+    timestamp: str
+    description: str
+
+    def __init__(self, timestamp: str, description: str):
+        self.timestamp = timestamp
+        self.description = description
+
+class Transaction(ITransaction):
+    _type: TxType
+    _amount: float
+    _metadata: TxMetadata
+
+    def __init__(self, tx_type: TxType, amount: float, metadata: TxMetadata):
+        self._type = tx_type
+        self._amount = amount
+        self._metadata = metadata
+
+    def get_type(self) -> TxType:
+        return self._type
+
+    def get_amount(self) -> float:
+        return self._amount
+
+    def describe(self) -> str:
+        type_str: str = ""
+        if self._type == TxType.DEPOSIT:
+            type_str = "Deposit"
+        elif self._type == TxType.WITHDRAWAL:
+            type_str = "Withdrawal"
+        else:
+            type_str = "Transfer"
+        return type_str + ": " + str(self._amount)

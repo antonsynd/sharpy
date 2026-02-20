@@ -1,0 +1,22 @@
+# Utility module providing string manipulation and validation
+
+def validate_length(text: str, min_len: int) -> bool:
+    return len(text) >= min_len
+
+def format_greeting(name: str, title: str = "") -> str:
+    if title != "":
+        return f"{title} {name}"
+    return name
+
+class TextProcessor:
+    content: str
+    
+    def __init__(self, content: str):
+        self.content = content
+    
+    def word_count(self) -> int:
+        words: list[str] = self.content.split(" ")
+        return len(words)
+    
+    def to_upper(self) -> str:
+        return self.content.upper()

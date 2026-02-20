@@ -1,0 +1,39 @@
+=== Cross-Module Class Hierarchy Test ===
+Point test:
+Point origin at (0.0, 0.0)
+Point(0.0, 0.0)
+0.0
+0.0
+
+Rectangle test:
+Shape: box [Type: Rectangle, Aspect: 2.00]
+Rectangle(10.0x5.0)
+100.0
+30.0
+
+Circle test:
+Shape: wheel [Type: Circle]
+Circle(r=7.0)
+307.87591
+43.98226
+
+Square test:
+Shape: perfect [Type: Square, Aspect: 1.00]
+Square(4.0x4.0)
+64.0
+16.0
+
+Polymorphism test:
+origin
+box
+wheel
+perfect
+
+Enum/Struct test:
+12.0
+Polygon
+
+Interface test:
+2.0
+
+=== All Tests Complete ===

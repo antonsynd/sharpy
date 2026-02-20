@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-19T05:10:11.513403",
+  "generated_code": "# Interface definition with multiple implementations in a collection\n# Tests polymorphic behavior through interface types\n\ninterface IMeasurable:\n    def total_length(self) -> int: ...\n\nclass Rectangle(IMeasurable):\n    width: int\n    height: int\n    \n    def __init__(self, w: int, h: int):\n        self.width = w\n        self.height = h\n    \n    @override\n    def total_length(self) -> int:\n        return 2 * (self.width + self.height)\n\nclass Triangle(IMeasurable):\n    side: int\n    \n    def __init__(self, s: int):\n        self.side = s\n    \n    @override\n    def total_length(self) -> int:\n        return 3 * self.side\n\ndef sum_perimeters(items: list[IMeasurable]) -> int:\n    total: int = 0\n    for shape in items:\n        total += shape.total_length()\n    return total\n\ndef main():\n    shapes: list[IMeasurable] = []\n    shapes.append(Rectangle(3, 4))\n    shapes.append(Triangle(5))\n    shapes.append(Rectangle(2, 6))\n    \n    result: int = sum_perimeters(shapes)\n    print(result)\n    print(len(shapes))\n    \n    r: Rectangle = Rectangle(10, 20)\n    print(r.total_length())\n    \n    t: Triangle = Triangle(7)\n    print(t.total_length())\n\n# EXPECTED OUTPUT:\n# 44\n# 3\n# 60\n# 21",
+  "expected_output": "44\n3\n60\n21\n",
+  "actual_output": "45\n3\n60\n21",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "interface_definition",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 111.03927183151245,
+  "compilation_duration": null,
+  "execution_duration": 4.4740636348724365,
+  "source_files": null
+}

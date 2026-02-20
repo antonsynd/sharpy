@@ -1,0 +1,35 @@
+# Derived classes implementing game objects
+
+from base import Entity, Item
+from interfaces import Status, Point
+
+class Character(Entity):
+    _name: str
+    level: int
+
+    def __init__(self, entity_id: int, name: str, start_level: int):
+        super().__init__(entity_id)
+        self._name = name
+        self.level = start_level
+
+    @override
+    def get_name(self) -> str:
+        return self._name
+
+    @override
+    def describe(self) -> str:
+        return f"Character {self._name} at level {self.level}"
+
+    def gain_level(self):
+        self.level = self.level + 1
+
+class Weapon(Item):
+    damage: int
+
+    def __init__(self, item_name: str, pos: Point, dmg: int):
+        super().__init__(item_name, pos)
+        self.damage = dmg
+
+    @override
+    def get_display_name(self) -> str:
+        return f"{self.name} [{self.damage} dmg]"

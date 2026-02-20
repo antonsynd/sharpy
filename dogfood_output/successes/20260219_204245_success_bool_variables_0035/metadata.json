@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-19T20:38:14.850609",
+  "generated_code": "# Test: Boolean variables with short-circuit evaluation and logical operators\nclass PermissionChecker:\n    has_read: bool\n    has_write: bool\n    has_execute: bool\n\n    def __init__(self, read: bool, write: bool, execute: bool):\n        self.has_read = read\n        self.has_write = write\n        self.has_execute = execute\n\n    def can_modify(self) -> bool:\n        return self.has_read and self.has_write\n\n    def has_any_permission(self) -> bool:\n        return self.has_read or self.has_write or self.has_execute\n\n    def is_read_only(self) -> bool:\n        return self.has_read and not self.has_write and not self.has_execute\n\ndef main():\n    admin = PermissionChecker(True, True, True)\n    viewer = PermissionChecker(True, False, False)\n    editor = PermissionChecker(True, True, False)\n\n    print(admin.can_modify())\n    print(admin.has_any_permission())\n    print(admin.is_read_only())\n\n    print(viewer.can_modify())\n    print(viewer.has_any_permission())\n    print(viewer.is_read_only())\n\n    print(editor.can_modify())\n    print(editor.is_read_only())\n\n# EXPECTED OUTPUT:\n# True\n# True\n# False\n# False\n# True\n# True\n# True\n# False",
+  "expected_output": "True\nTrue\nFalse\nFalse\nTrue\nTrue\nTrue\nFalse\n",
+  "actual_output": "True\nTrue\nFalse\nFalse\nTrue\nTrue\nTrue\nFalse",
+  "feature_focus": "bool_variables",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 256.3320677280426,
+  "execution_duration": 4.17284083366394,
+  "source_files": null
+}

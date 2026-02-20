@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS1722]: Base class 'DogfoodTest.AbstractContainer' must come before any interfaces
+  --> /tmp/tmp_oq6pkco/dogfood_test.spy:38:34
+    |
+ 38 |     def __init__(self):
+    |                        ^
+    |
+
+error[CS1722]: Base class 'DogfoodTest.AbstractContainer' must come before any interfaces
+  --> /tmp/tmp_oq6pkco/dogfood_test.spy:47:39
+    |
+ 47 |     @override
+    |              ^
+    |
+

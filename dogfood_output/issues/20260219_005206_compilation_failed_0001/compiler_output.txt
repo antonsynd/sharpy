@@ -1,0 +1,49 @@
+warning[SPY0451]: Local variable 'p1' is assigned but never used
+  --> /tmp/tmp7d28xsld/main.spy:26:5
+    |
+ 26 |     p1: Point = Point(3.0, 4.0)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'color' is assigned but never used
+  --> /tmp/tmp7d28xsld/main.spy:27:5
+    |
+ 27 |     color: Color = Color.BLUE
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'result' is assigned but never used
+  --> /tmp/tmp7d28xsld/main.spy:29:5
+    |
+ 29 |     result: str = "distance"
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'colored_rect' is assigned but never used
+  --> /tmp/tmp7d28xsld/main.spy:33:5
+    |
+ 33 |     colored_rect: Rectangle = create_colored_rectangle(Color.GREEN, 10.0, 5.0)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'shapes' is assigned but never used
+  --> /tmp/tmp7d28xsld/main.spy:37:5
+    |
+ 37 |     shapes: list[Shape] = [rect, circle]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Entity' is never used
+  --> /tmp/tmp7d28xsld/main.spy:4:24
+    |
+  4 | from core_types import Entity, IIdentifiable
+    |                        ^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IIdentifiable' is never used
+  --> /tmp/tmp7d28xsld/main.spy:4:32
+    |
+  4 | from core_types import Entity, IIdentifiable
+    |                                ^^^^^^^^^^^^^
+    |
+

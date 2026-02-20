@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0506]: 'DerivedModule.Player.Display()': cannot override inherited member 'BaseModule.Entity.Display()' because it is not marked virtual, abstract, or override
+  --> derived_module.cs:17:32
+    |
+ 17 | def main():
+    |            ^
+    |
+

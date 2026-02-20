@@ -1,0 +1,5 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0599]: Internal error: generated C# contains 2 syntax error(s): Identifier expected; Identifier expected. This is a compiler bug -- please report it.
+  --> /tmp/tmp0gdcxxb5/dogfood_test.spy
+

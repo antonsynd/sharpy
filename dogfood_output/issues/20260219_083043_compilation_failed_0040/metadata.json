@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-19T08:25:43.635991",
+  "generated_code": "# Complex dunder_str test with inheritance polymorphism and collections\nclass GameObject:\n    name: str\n\n    def __init__(self, name: str):\n        self.name = name\n\n    @virtual\n    def __str__(self) -> str:\n        return f\"Object: {self.name}\"\n\nclass Character(GameObject):\n    health: int\n    level: int\n\n    def __init__(self, name: str, health: int, level: int):\n        super().__init__(name)\n        self.health = health\n        self.level = level\n\n    @override\n    def __str__(self) -> str:\n        status: str = \"ALIVE\" if self.health > 0 else \"DEFEATED\"\n        return f\"[{status}] {self.name} (Lv.{self.level}, HP:{self.health})\"\n\nclass Item(GameObject):\n    value: int\n    rarity: str\n\n    def __init__(self, name: str, value: int, rarity: str):\n        super().__init__(name)\n        self.value = value\n        self.rarity = rarity\n\n    @override\n    def __str__(self) -> str:\n        stars: str = \"\"\n        i: int = 0\n        while i < self.value // 10:\n            stars += \"*\"\n            i += 1\n        return f\"({self.rarity}) {self.name} worth {self.value}g {stars}\"\n\ndef describe(obj: GameObject) -> str:\n    return f\"Description: {obj}\"\n\ndef main():\n    hero: Character = Character(\"Hero\", 100, 5)\n    goblin: Character = Character(\"Goblin\", 0, 2)\n    sword: Item = Item(\"Iron Sword\", 25, \"Common\")\n    potion: Item = Item(\"Elixir\", 150, \"Rare\")\n\n    print(hero)\n    print(goblin)\n    print(sword)\n    print(potion)\n    print(describe(hero))\n\n    # Test polymorphic dispatch through base reference\n    base_ref: GameObject = hero\n    print(base_ref)\n\n# EXPECTED OUTPUT:\n# [ALIVE] Hero (Lv.5, HP:100)\n# [DEFEATED] Goblin (Lv.2, HP:0)\n# (Common) Iron Sword worth 25g **\n# (Rare) Elixir worth 150g ***************\n# Description: [ALIVE] Hero (Lv.5, HP:100)\n# [ALIVE] Hero (Lv.5, HP:100)",
+  "expected_output": "[ALIVE] Hero (Lv.5, HP:100)\n[DEFEATED] Goblin (Lv.2, HP:0)\n(Common) Iron Sword worth 25g **\n(Rare) Elixir worth 150g ***************\nDescription: [ALIVE] Hero (Lv.5, HP:100)\n[ALIVE] Hero (Lv.5, HP:100)\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0113]: A member 'DogfoodTest.GameObject.ToString()' marked as override cannot be marked as new or virtual\n  --> dogfood_test.cs:13:40\n    |\n 13 |     health: int\n    |                ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmpvkm6ddud/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "dunder_str",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 282.0743842124939,
+  "compilation_duration": null,
+  "execution_duration": 4.141047239303589,
+  "source_files": null
+}

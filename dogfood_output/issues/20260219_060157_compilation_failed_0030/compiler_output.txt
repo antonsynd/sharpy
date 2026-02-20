@@ -1,0 +1,14 @@
+warning[SPY0451]: Local variable 'result1' is assigned but never used
+  --> /tmp/tmpwnt4dmew/main.spy:37:5
+    |
+ 37 |     result1: bool = treasure.add_item("coin")      # Rejected (too short)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Entity' is never used
+  --> /tmp/tmpwnt4dmew/main.spy:3:25
+    |
+  3 | from base_module import Entity, Container
+    |                         ^^^^^^
+    |
+

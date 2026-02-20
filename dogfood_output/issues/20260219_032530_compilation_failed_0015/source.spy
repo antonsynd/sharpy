@@ -1,0 +1,117 @@
+# Static Methods Test Program
+class ShapeFactory:
+    """Factory class with static methods for creating shapes"""
+    _shapes_created: int = 0
+
+    def create_rectangle(width: int, height: int) -> Rectangle:
+        ShapeFactory._shapes_created += 1
+        return Rectangle(width, height)
+
+    def create_square(side: int) -> Rectangle:
+        ShapeFactory._shapes_created += 1
+        return Rectangle(side, side)
+
+    def get_shapes_created() -> int:
+        return ShapeFactory._shapes_created
+
+    def reset_counter() -> None:
+        ShapeFactory._shapes_created = 0
+
+
+class Rectangle:
+    """Rectangle class with static utility methods"""
+    width: int
+    height: int
+
+    def __init__(self, w: int, h: int):
+        self.width = w
+        self.height = h
+
+    def area(self) -> int:
+        return self.width * self.height
+
+    def compare_areas(r1: Rectangle, r2: Rectangle) -> str:
+        a1: int = r1.area()
+        a2: int = r2.area()
+        if a1 > a2:
+            return "first"
+        elif a2 > a1:
+            return "second"
+        else:
+            return "equal"
+
+    def largest_dimensions(rects: list[Rectangle]) -> tuple[int, int]:
+        max_w: int = 0
+        max_h: int = 0
+        for r in rects:
+            if r.width > max_w:
+                max_w = r.width
+            if r.height > max_h:
+                max_h = r.height
+        return (max_w, max_h)
+
+
+class GeometryUtils:
+    """Utility class with pure static methods"""
+
+    def is_perfect_square(n: int) -> bool:
+        if n < 0:
+            return False
+        root: int = 0
+        while root * root <= n:
+            if root * root == n:
+                return True
+            root += 1
+        return False
+
+    def gcd(a: int, b: int) -> int:
+        while b != 0:
+            temp: int = b
+            b = a % b
+            a = temp
+        return a
+
+
+def main():
+    # Test static factory methods
+    rect1: Rectangle = ShapeFactory.create_rectangle(3, 4)
+    rect2: Rectangle = ShapeFactory.create_rectangle(6, 8)
+    square: Rectangle = ShapeFactory.create_square(5)
+    print(rect1.area())
+    print(rect2.area())
+    print(square.area())
+
+    # Test static comparison
+    result: str = Rectangle.compare_areas(rect1, rect2)
+    print(result)
+
+    # Test static largest_dimensions with list
+    shapes: list[Rectangle] = [rect1, rect2, square]
+    dims: tuple[int, int] = Rectangle.largest_dimensions(shapes)
+    print(dims[0])
+    print(dims[1])
+
+    # Test static utility methods
+    print(GeometryUtils.is_perfect_square(16))
+    print(GeometryUtils.is_perfect_square(17))
+    print(GeometryUtils.gcd(48, 18))
+
+    # Test static counter
+    print(ShapeFactory.get_shapes_created())
+    ShapeFactory.reset_counter()
+    _ = ShapeFactory.create_square(2)
+    print(ShapeFactory.get_shapes_created())
+
+
+# EXPECTED OUTPUT:
+# 12
+# 48
+# 25
+# second
+# 6
+# 8
+# True
+# False
+# 6
+# 3
+# 1

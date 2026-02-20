@@ -1,0 +1,63 @@
+# Geometric shapes with area calculations and inheritance
+from shapes import Shape, Point, ShapeType, IArea, IDrawable
+
+class Circle(Shape, IArea, IDrawable):
+    radius: float
+
+    def __init__(self, center: Point, radius: float):
+        super().__init__(center, ShapeType.CIRCLE)
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def draw(self) -> str:
+        return f"Drawing circle with radius {self.radius}"
+
+    @override
+    def describe(self) -> str:
+        return f"Circle at {self.center} with radius {self.radius}"
+
+class Rectangle(Shape, IArea, IDrawable):
+    width: float
+    height: float
+
+    def __init__(self, center: Point, width: float, height: float):
+        super().__init__(center, ShapeType.RECTANGLE)
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def draw(self) -> str:
+        return f"Drawing rectangle {self.width}x{self.height}"
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+    def to_rgb(self) -> str:
+        if self == Color.RED:
+            return "#FF0000"
+        elif self == Color.GREEN:
+            return "#00FF00"
+        else:
+            return "#0000FF"
+
+class ColoredRectangle(Rectangle):
+    color: Color
+
+    def __init__(self, center: Point, width: float, height: float, color: Color):
+        super().__init__(center, width, height)
+        self.color = color
+
+    @override
+    def draw(self) -> str:
+        base: str = super().draw()
+        return f"{base} in color {self.color.to_rgb()}"

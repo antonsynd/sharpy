@@ -1,0 +1,11 @@
+from System import Math
+
+def main():
+    x = Math.Abs(-42)
+    print(x)
+    y = Math.Pow(2.0, 3.0)
+    print(y)
+
+# EXPECTED OUTPUT:
+# 42
+# 8.0

@@ -1,0 +1,8 @@
+50.6349375
+Rectangle 5x3
+Shape: Circle
+Rectangle 4x4
+Shape: Default
+Drawing circle with radius 2.5
+15.0
+19.6349375

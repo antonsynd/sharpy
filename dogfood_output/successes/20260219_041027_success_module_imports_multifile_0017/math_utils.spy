@@ -1,0 +1,32 @@
+# Math utilities module - provides mathematical functions and constants
+
+PI: float = 3.14159
+
+def square(x: float) -> float:
+    return x * x
+
+def cube(x: float) -> float:
+    return x * x * x
+
+def absolute_value(x: float) -> float:
+    if x < 0:
+        return -x
+    return x
+
+class Calculator:
+    total: float
+    
+    def __init__(self):
+        self.total = 0.0
+    
+    def add(self, x: float) -> float:
+        self.total = self.total + x
+        return self.total
+    
+    def multiply(self, x: float) -> float:
+        self.total = self.total * x
+        return self.total
+    
+    def reset(self) -> float:
+        self.total = 0.0
+        return self.total

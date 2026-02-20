@@ -1,0 +1,12 @@
+Drawing circle with radius 5.0
+Drawing rectangle 4.0x6.0
+Circle area: 78.54
+Rectangle area: 24.0
+Total area: 102.54
+Point distance: 5.0
+Selected color: Green
+Status: Ok
+Aspect ratio: 1.78
+Box count: 2
+Sum: 54.7
+Average: 13.67

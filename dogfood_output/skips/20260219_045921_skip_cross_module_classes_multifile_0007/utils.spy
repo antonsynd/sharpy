@@ -1,0 +1,32 @@
+# Utility module with generics and higher-order functions
+
+class Container[T]:
+    items: list[T]
+
+    def __init__(self):
+        self.items = []
+
+    def add(self, item: T) -> None:
+        self.items.append(item)
+
+    def get_all(self) -> list[T]:
+        return self.items
+
+    def find(self, predicate: (T) -> bool) -> T?:
+        for item in self.items:
+            if predicate(item):
+                return Some(item)
+        return None()
+
+def transform[T, U](items: list[T], mapper: (T) -> U) -> list[U]:
+    result: list[U] = []
+    for item in items:
+        result.append(mapper(item))
+    return result
+
+def filter_positive(numbers: list[int]) -> list[int]:
+    result: list[int] = []
+    for n in numbers:
+        if n > 0:
+            result.append(n)
+    return result

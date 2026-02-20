@@ -1,0 +1,4 @@
+Circle at (10, 20) with radius 5 [Area: 78.53975]
+Total area: 116.53975
+Rectangle at (0, 0), size 4x6
+Point created: (1.5, 2.5)

@@ -1,0 +1,22 @@
+# Core interfaces, enums, and structs for the game system
+
+interface IIdentifiable:
+    def get_id(self) -> int: ...
+
+    def get_name(self) -> str: ...
+
+enum Status:
+    ACTIVE = 1
+    INACTIVE = 0
+    PENDING = 2
+
+struct Point:
+    x: int
+    y: int
+
+    def __init__(self, x_coord: int, y_coord: int):
+        self.x = x_coord
+        self.y = y_coord
+
+    def distance_squared(self) -> int:
+        return self.x * self.x + self.y * self.y

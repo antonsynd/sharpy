@@ -1,0 +1,22 @@
+# Test logical operators: and, or, not
+
+def main():
+    a = 1
+    b = 0
+    c = 0.0  # falsy
+    d = -5   # truthy
+
+    # Basic logical operators
+    print(a and b)    # EXPECTED: 0
+    print(b or d)     # EXPECTED: -5
+    print(not c)      # EXPECTED: True
+
+    # Combined logical operators with short-circuit
+    result = a and b or d
+    print(result)     # EXPECTED: -5
+
+    # Truthiness check
+    if not d:
+        print("negative is falsy")
+    else:
+        print("negative is truthy")  # EXPECTED: negative is truthy

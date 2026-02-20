@@ -1,0 +1,8 @@
+Processing Car: Tesla Model 3 (2023) - 4 doors
+Processing Motorcycle: Harley Davidson (2022) - 1200cc
+Operational
+Operational
+Car maintenance completed for Tesla Model 3
+Motorcycle service done for Harley Davidson
+Maintenance
+Maintenance for Tesla Model 3: $450.75

@@ -1,0 +1,35 @@
+# Utilities module using interfaces and generics
+from interfaces import IDrawable
+from data_structures import Shape, Point
+
+class Renderer:
+    def render(self, item: IDrawable) -> str:
+        desc: str = item.describe()
+        area_val: float = item.area()
+        return f"Rendered: {desc} (area: {area_val})"
+
+    def compare_items(self, a: IDrawable, b: IDrawable) -> IDrawable:
+        if a.area() > b.area():
+            return a
+        return b
+
+class Container[T]:
+    value: T
+    history: list[T]
+
+    def __init__(self, initial: T):
+        self.value = initial
+        self.history = [initial]
+
+    def update(self, new_val: T):
+        self.value = new_val
+        self.history.append(new_val)
+
+    def get_size(self) -> int:
+        return len(self.history)
+
+def format_id(prefix: str, id: int) -> str:
+    return f"{prefix}-{id:05d}"
+
+def create_point(x: int, y: int) -> Point:
+    return Point(x, y)

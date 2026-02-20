@@ -1,0 +1,18 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'utils' has no exported symbol 'UserId' (in main.spy)
+  --> /tmp/tmp9prhkt4d/main.spy:2:86
+    |
+  2 | from utils import DataTransformer, filter_positive, calculate_average, format_value, UserId
+    |                                                                                      ^^^^^^
+    |
+
+Type errors:
+error[SPY0202]: Type 'UserId' not found
+  --> /tmp/tmp9prhkt4d/main.spy:26:14
+    |
+ 26 |     user_id: UserId = 42
+    |              ^^^^^^
+    |
+

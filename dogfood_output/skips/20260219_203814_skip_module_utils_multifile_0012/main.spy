@@ -1,0 +1,47 @@
+# Main entry point demonstrating complex cross-module usage
+from data_structures import Rectangle, Circle, Point, ShapeType
+from module_utils import Renderer, Container, format_id, create_point
+from interfaces import IDrawable
+
+def main():
+    # Test struct and Point creation
+    p1: Point = create_point(10, 20)
+    p2: Point = Point(5, 15)
+    print(f"Point 1: ({p1.x}, {p1.y})")
+    print(f"Points equal: {p1 == p2}")
+
+    # Test inheritance and interface implementation
+    rect: Rectangle = Rectangle(5.0, 10.0)
+    circle: Circle = Circle(3.0)
+    print(f"Rectangle area: {rect.area()}")
+    print(f"Circle area: {circle.area()}")
+
+    # Test cross-module interface usage
+    renderer: Renderer = Renderer()
+    print(renderer.render(rect))
+    print(renderer.render(circle))
+
+    # Test larger shape
+    larger: IDrawable = renderer.compare_items(rect, circle)
+    print(f"Larger area: {larger.area()}")
+
+    # Test generic container
+    container: Container[float] = Container[float](0.0)
+    container.update(rect.area())
+    container.update(circle.area())
+    print(f"Container history size: {container.get_size()}")
+
+    # Test utility function
+    formatted: str = format_id("SHAPE", 42)
+    print(f"Formatted ID: {formatted}")
+
+# EXPECTED OUTPUT:
+# Point 1: (10, 20)
+# Points equal: False
+# Rectangle area: 50.0
+# Circle area: 28.27431
+# Rendered: Shape rect at (0, 0) (area: 50.0)
+# Rendered: Shape circle at (0, 0) (area: 28.27431)
+# Larger area: 50.0
+# Container history size: 3
+# Formatted ID: SHAPE-00042

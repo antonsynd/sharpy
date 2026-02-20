@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-19T08:37:03.463678",
+  "generated_code": "# Test: Comprehensive augmented assignment operators with accumulator pattern\n\nclass Accumulator:\n    \"\"\"Class that uses augmented assignment in various methods\"\"\"\n    value: float\n    \n    def __init__(self, start: float):\n        self.value = start\n    \n    def add(self, x: float) -> None:\n        self.value += x\n    \n    def subtract(self, x: float) -> None:\n        self.value -= x\n    \n    def multiply(self, x: float) -> None:\n        self.value *= x\n    \n    def divide(self, x: float) -> None:\n        self.value //= x\n    \n    def power(self, x: float) -> None:\n        self.value **= x\n    \n    def modulo(self, x: float) -> None:\n        self.value %= x\n    \n    def get(self) -> float:\n        return self.value\n\ndef apply_operations(acc: Accumulator) -> None:\n    \"\"\"Apply a sequence of augmented operations\"\"\"\n    # Test += and -= sequence\n    acc.add(10.0)\n    print(acc.get())\n    acc.subtract(3.0)\n    print(acc.get())\n    \n    # Test *=, **= sequence\n    acc.multiply(2.0)\n    print(acc.get())\n    acc.power(2.0)\n    print(acc.get())\n    \n    # Test //= and %=\n    acc.divide(5.0)\n    print(acc.get())\n    acc.modulo(3.0)\n    print(acc.get())\n\ndef main():\n    acc = Accumulator(5.0)\n    apply_operations(acc)\n    \n    # Test augmented assignment on local variable\n    counter: int = 1\n    counter += 2\n    counter *= 3\n    counter -= 1\n    print(counter)\n\n# EXPECTED OUTPUT:\n# 15.0\n# 12.0\n# 24.0\n# 576.0\n# 115.0\n# 1.0\n# 8\n",
+  "expected_output": "15.0\n12.0\n24.0\n576.0\n115.0\n1.0\n8",
+  "actual_output": "15.0\n12.0\n24.0\n576.0\n115.0\n1.0\n8",
+  "feature_focus": "augmented_assignment",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 82.00773906707764,
+  "execution_duration": 4.299317121505737,
+  "source_files": null
+}

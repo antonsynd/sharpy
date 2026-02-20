@@ -1,0 +1,9 @@
+Point 1: (10, 20)
+Points equal: False
+Rectangle area: 50.0
+Circle area: 28.27431
+Rendered: Shape rect at (0, 0) (area: 50.0)
+Rendered: Shape circle at (0, 0) (area: 28.27431)
+Larger area: 50.0
+Container history size: 3
+Formatted ID: SHAPE-00042

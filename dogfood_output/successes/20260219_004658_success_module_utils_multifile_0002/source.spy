@@ -1,0 +1,25 @@
+from formatter import DecoratedFormatter
+from data_utils import DataSet
+
+def main():
+    # Create formatter with decorative brackets
+    formatter: DecoratedFormatter = DecoratedFormatter("=== ", " ===")
+    
+    # Create dataset with test values
+    data: DataSet = DataSet("Sales", [100, 200, 300, 400, 500])
+    
+    # Print formatted report header using interface
+    print(data.format_report(formatter))
+    
+    # Print computed statistics
+    print("Sum: " + str(data.sum()))
+    print("Count: " + str(len(data.values)))
+    print("Average: " + str(data.average()))
+    print("Done!")
+    
+# EXPECTED OUTPUT:
+# === Report: Sales ===
+# Sum: 1500
+# Count: 5
+# Average: 300
+# Done!

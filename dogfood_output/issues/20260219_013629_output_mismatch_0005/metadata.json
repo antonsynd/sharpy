@@ -1,0 +1,22 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-19T01:33:01.451128",
+  "generated_code": "# Main entry point - demonstrates cross-module class inheritance\nfrom base_shapes import Shape\nfrom shapes_impl import Rectangle, Circle, Square, total_area\n\ndef print_shape_details(s: Shape):\n    print(s.describe())\n    print(s.area())\n    print(s.perimeter())\n\ndef main():\n    rect: Rectangle = Rectangle(3.0, 4.0)\n    circle: Circle = Circle(5.0)\n    square: Square = Square(2.5)\n    \n    print(rect.describe())\n    print(circle.area())\n    print(square.area())\n    print(total_area([rect, circle, square]))\n    print(circle.describe())\n\n# EXPECTED OUTPUT:\n# Rectangle: 3.0x4.0\n# 78.53975\n# 6.25\n# 103.28975\n# Circle: r=5.0",
+  "expected_output": "Rectangle: 3.0x4.0\n78.53975\n6.25\n103.28975\nCircle: r=5.0\n",
+  "actual_output": "Rectangle: 3.0x4.0\n78.53975\n6.25\n96.78975\nCircle: r=5.0",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 141.9484736919403,
+  "compilation_duration": null,
+  "execution_duration": 4.503554821014404,
+  "source_files": {
+    "base_shapes.spy": "# Base shapes module - provides abstract base class for geometric shapes\n\n@abstract\nclass Shape:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    @abstract\n    def area(self) -> float: ...\n    \n    @abstract\n    def perimeter(self) -> float: ...\n    \n    @virtual\n    def describe(self) -> str:\n        return self.name",
+    "shapes_impl.spy": "# Shapes implementation - concrete shapes inheriting from base\nfrom base_shapes import Shape\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, w: float, h: float):\n        super().__init__(\"Rectangle\")\n        self.width = w\n        self.height = h\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    @override\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)\n    \n    @override\n    def describe(self) -> str:\n        base: str = super().describe()\n        return base + \": \" + str(self.width) + \"x\" + str(self.height)\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, r: float):\n        super().__init__(\"Circle\")\n        self.radius = r\n    \n    @override\n    def area(self) -> float:\n        pi: float = 3.14159\n        return pi * self.radius * self.radius\n    \n    @override\n    def perimeter(self) -> float:\n        pi: float = 3.14159\n        return 2.0 * pi * self.radius\n    \n    @override\n    def describe(self) -> str:\n        base: str = super().describe()\n        return base + \": r=\" + str(self.radius)\n\nclass Square(Rectangle):\n    def __init__(self, side: float):\n        super().__init__(side, side)\n        self.name = \"Square\"\n\ndef total_area(shapes: list[Shape]) -> float:\n    total: float = 0.0\n    for s in shapes:\n        total = total + s.area()\n    return total",
+    "main.spy": "# Main entry point - demonstrates cross-module class inheritance\nfrom base_shapes import Shape\nfrom shapes_impl import Rectangle, Circle, Square, total_area\n\ndef print_shape_details(s: Shape):\n    print(s.describe())\n    print(s.area())\n    print(s.perimeter())\n\ndef main():\n    rect: Rectangle = Rectangle(3.0, 4.0)\n    circle: Circle = Circle(5.0)\n    square: Square = Square(2.5)\n    \n    print(rect.describe())\n    print(circle.area())\n    print(square.area())\n    print(total_area([rect, circle, square]))\n    print(circle.describe())\n\n# EXPECTED OUTPUT:\n# Rectangle: 3.0x4.0\n# 78.53975\n# 6.25\n# 103.28975\n# Circle: r=5.0"
+  }
+}

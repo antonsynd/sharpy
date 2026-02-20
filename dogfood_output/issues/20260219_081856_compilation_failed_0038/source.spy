@@ -1,0 +1,32 @@
+# Main entry point demonstrating cross-module imports and inheritance
+
+from shapes import IDrawable, Point, Shape, Circle, Rectangle
+from utils import calculate_total_area, describe_shape, create_circle_at_origin
+
+def main():
+    # Create various shapes
+    circle: Circle = Circle(10.0, 20.0, 5.0)
+    rect: Rectangle = Rectangle(0.0, 0.0, 4.0, 6.0)
+    origin_circle: Circle = create_circle_at_origin(3.0)
+    
+    # Test single shape description
+    print(describe_shape(circle))
+    
+    # Test shape list and total area calculation
+    shapes: list[Shape] = [circle, rect, origin_circle]
+    total: float = calculate_total_area(shapes)
+    print(f"Total area: {total}")
+    
+    # Test polymorphism through interface
+    drawable: IDrawable = rect
+    print(drawable.draw())
+    
+    # Test Point class
+    point: Point = Point(1.5, 2.5)
+    print(f"Point created: {point}")
+
+# EXPECTED OUTPUT:
+# Circle at (10, 20) with radius 5 [Area: 78.53975]
+# Total area: 116.53975
+# Rectangle at (0, 0), size 4x6
+# Point created: (1.5, 2.5)

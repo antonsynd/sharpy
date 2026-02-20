@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS1950]: The best overloaded Add method 'Set<string>.Add(string)' for the collection initializer has some invalid arguments
+  --> string_utils.cs:13:9
+    |
+ 13 |     
+    |     ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'Sharpy.Set<string>' to 'string'
+  --> string_utils.cs:13:9
+    |
+ 13 |     
+    |     ^
+    |
+

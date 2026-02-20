@@ -1,0 +1,32 @@
+# Main entry point - imports from both modules and demonstrates usage
+
+from math_utils import square, cube, Calculator
+from shapes import Rectangle, Circle, Shape
+
+def main():
+    # Test basic function imports from math_utils
+    print(square(4.0))
+    print(cube(2.0))
+    
+    # Test class import from math_utils
+    calc = Calculator()
+    calc.add(10.0)
+    calc.multiply(2.0)
+    print(calc.total)
+    
+    # Test class imports from shapes with inheritance
+    rect = Rectangle(5.0, 3.0)
+    print(rect.area())
+    print(rect.perimeter())
+    
+    # Test polymorphism through Shape interface
+    circle = Circle(2.0)
+    print(circle.area())
+
+# EXPECTED OUTPUT:
+# 16.0
+# 8.0
+# 20.0
+# 15.0
+# 16.0
+# 12.56636

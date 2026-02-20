@@ -1,0 +1,45 @@
+# Test: Boolean variables with short-circuit evaluation and logical operators
+class PermissionChecker:
+    has_read: bool
+    has_write: bool
+    has_execute: bool
+
+    def __init__(self, read: bool, write: bool, execute: bool):
+        self.has_read = read
+        self.has_write = write
+        self.has_execute = execute
+
+    def can_modify(self) -> bool:
+        return self.has_read and self.has_write
+
+    def has_any_permission(self) -> bool:
+        return self.has_read or self.has_write or self.has_execute
+
+    def is_read_only(self) -> bool:
+        return self.has_read and not self.has_write and not self.has_execute
+
+def main():
+    admin = PermissionChecker(True, True, True)
+    viewer = PermissionChecker(True, False, False)
+    editor = PermissionChecker(True, True, False)
+
+    print(admin.can_modify())
+    print(admin.has_any_permission())
+    print(admin.is_read_only())
+
+    print(viewer.can_modify())
+    print(viewer.has_any_permission())
+    print(viewer.is_read_only())
+
+    print(editor.can_modify())
+    print(editor.is_read_only())
+
+# EXPECTED OUTPUT:
+# True
+# True
+# False
+# False
+# True
+# True
+# True
+# False

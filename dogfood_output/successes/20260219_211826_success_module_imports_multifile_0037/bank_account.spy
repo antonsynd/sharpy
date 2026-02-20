@@ -1,0 +1,51 @@
+# Module with account classes and inheritance
+from transaction import TxType, TxMetadata
+
+@abstract
+class Account:
+    _balance: float
+    _account_number: int
+
+    def __init__(self, account_number: int, initial_balance: float):
+        self._account_number = account_number
+        self._balance = initial_balance
+
+    @virtual
+    def get_balance(self) -> float:
+        return self._balance
+
+    @abstract
+    def get_account_type(self) -> str:
+        ...
+
+    def deposit(self, amount: float) -> None:
+        self._balance = self._balance + amount
+
+class SavingsAccount(Account):
+    _interest_rate: float
+
+    def __init__(self, account_number: int, initial_balance: float, interest_rate: float):
+        super().__init__(account_number, initial_balance)
+        self._interest_rate = interest_rate
+
+    @override
+    def get_account_type(self) -> str:
+        return "Savings"
+
+    def get_interest_rate(self) -> float:
+        return self._interest_rate
+
+class CheckingAccount(Account):
+    _overdraft_limit: float
+
+    def __init__(self, account_number: int, initial_balance: float, overdraft_limit: float):
+        super().__init__(account_number, initial_balance)
+        self._overdraft_limit = overdraft_limit
+
+    @override
+    def get_account_type(self) -> str:
+        return "Checking"
+
+    @override
+    def get_balance(self) -> float:
+        return self._balance + self._overdraft_limit

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-19T01:38:32.248214",
+  "generated_code": "# Boolean flag state management with struct\n# Tests: bool fields, boolean logic operations, conditional evaluation\n\nstruct FeatureFlags:\n    debug_mode: bool\n    verbose: bool\n    caching: bool\n    \n    def __init__(self, debug: bool, verbose: bool, cache: bool):\n        self.debug_mode = debug\n        self.verbose = verbose\n        self.caching = cache\n    \n    def should_log(self) -> bool:\n        return self.debug_mode and self.verbose\n    \n    def is_optimized(self) -> bool:\n        return self.caching and not self.debug_mode\n    \n    def any_enabled(self) -> bool:\n        return self.debug_mode or self.verbose or self.caching\n\ndef main():\n    flags = FeatureFlags(True, False, True)\n    \n    can_log: bool = flags.should_log()\n    optimized: bool = flags.is_optimized()\n    any_on: bool = flags.any_enabled()\n    \n    print(can_log)\n    print(optimized)\n    print(any_on)\n    print(flags.debug_mode)\n    print(flags.caching)\n    \n    # EXPECTED OUTPUT:\n    # False\n    # False\n    # True\n    # True\n    # True",
+  "expected_output": "False\nFalse\nTrue\nTrue\nTrue\n",
+  "actual_output": "False\nFalse\nTrue\nTrue\nTrue",
+  "feature_focus": "bool_variables",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 88.58126521110535,
+  "execution_duration": 4.254241228103638,
+  "source_files": null
+}

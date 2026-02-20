@@ -1,0 +1,41 @@
+# Core interfaces module - defines interfaces for cross-module use
+# Tests: interfaces, cross-module imports
+
+interface IProcessor:
+    def process(self, value: float) -> float: ...
+
+interface ITransformable:
+    def transform(self, factor: float) -> float: ...
+
+interface IMeasurable:
+    def measure(self) -> float: ...
+
+class SimpleEntity:
+    id: int
+    name: str
+
+    def __init__(self, id: int, name: str):
+        self.id = id
+        self.name = name
+
+    def describe(self) -> str:
+        return f"Entity {self.id}: {self.name}"
+
+    def compute(self) -> float:
+        return float(self.id)
+
+class AdvancedEntity(SimpleEntity, IMeasurable):
+    priority: int
+
+    def __init__(self, id: int, name: str, priority: int):
+        super().__init__(id, name)
+        self.priority = priority
+
+    def describe(self) -> str:
+        return f"Advanced[{self.id}] {self.name} (priority: {self.priority})"
+
+    def compute(self) -> float:
+        return float(self.priority * 10)
+
+    def measure(self) -> float:
+        return self.compute()

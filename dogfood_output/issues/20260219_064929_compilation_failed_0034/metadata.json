@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-19T06:36:18.679881",
+  "generated_code": "# Test: Simple class inheritance with field declaration and inherited method\nclass Animal:\n    name: str  # Field declaration required in Sharpy\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    def describe(self) -> str:\n        return \"Animal: \" + self.name\n\nclass Dog(Animal):\n    # Dog inherits __init__ and describe from Animal\n    pass\n\ndef main():\n    pet: Animal = Dog(\"Buddy\")\n    print(pet.describe())\n# EXPECTED OUTPUT:\n# Animal: Buddy",
+  "expected_output": "Animal: Buddy\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS7036]: There is no argument given that corresponds to the required parameter 'name' of 'DogfoodTest.Animal.Animal(string)'\n  --> /tmp/tmpf5etyruv/dogfood_test.spy:10:18\n    |\n 10 | \n    | ^\n    |\n\nerror[CS1729]: 'DogfoodTest.Dog' does not contain a constructor that takes 1 arguments\n  --> /tmp/tmpf5etyruv/dogfood_test.spy:16:26\n    |\n 16 |     pet: Animal = Dog(\"Buddy\")\n    |                          ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmpf5etyruv/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "class_inheritance",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 773.4505386352539,
+  "compilation_duration": null,
+  "execution_duration": 4.056397199630737,
+  "source_files": null
+}

@@ -1,0 +1,8 @@
+Point distance: 25.0
+Status value: 1
+Container: 1/3
+Player Hero at (10, 20)
+Player status: active
+Rare item added: True
+Display: Player Hero at (10, 20)
+Player score: 100

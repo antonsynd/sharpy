@@ -1,0 +1,9 @@
+Distance squared: 25.0
+Distance: 5.0
+Circle at Point(0.0, 0.0) with radius 5.0
+Rectangle at Point(3.0, 4.0)
+Rectangle at Point(0.0, 0.0)
+Total area: 303.53975
+Drawing circle with radius 5.0
+Drawing rectangle 10.0x20.0
+Drawing rectangle 5.0x5.0 in color #0000FF

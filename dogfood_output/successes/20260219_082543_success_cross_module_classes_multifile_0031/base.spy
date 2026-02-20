@@ -1,0 +1,40 @@
+# Base classes for game entities
+
+from interfaces import IIdentifiable, Status, Point
+
+@abstract
+class Entity(IIdentifiable):
+    _id: int
+    _status: Status
+
+    def __init__(self, entity_id: int):
+        self._id = entity_id
+        self._status = Status.ACTIVE
+
+    def get_id(self) -> int:
+        return self._id
+
+    def get_status(self) -> Status:
+        return self._status
+
+    def set_status(self, new_status: Status):
+        self._status = new_status
+
+    @virtual
+    def describe(self) -> str:
+        return "Base entity"
+
+    @abstract
+    def get_name(self) -> str: ...
+
+class Item:
+    name: str
+    position: Point
+
+    def __init__(self, item_name: str, pos: Point):
+        self.name = item_name
+        self.position = pos
+
+    @virtual
+    def get_display_name(self) -> str:
+        return self.name

@@ -1,0 +1,34 @@
+# Test: Import from system namespace with class-based computation
+# Tests: from system import, class instantiation, method calls, arithmetic
+
+from system import Console
+
+class FactorialEngine:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    def compute(self, n: int) -> int:
+        if n <= 1:
+            return 1
+        result: int = 1
+        i: int = 2
+        while i <= n:
+            result = result * i
+            i += 1
+        return result
+
+def main():
+    engine = FactorialEngine("Calculator")
+    
+    print(engine.name)
+    print(engine.compute(5))
+    print(engine.compute(7))
+    print(engine.compute(10))
+
+# EXPECTED OUTPUT:
+# Calculator
+# 120
+# 5040
+# 3628800

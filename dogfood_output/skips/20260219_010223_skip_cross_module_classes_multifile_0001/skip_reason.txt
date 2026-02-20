@@ -1,0 +1,53 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'types' has no exported symbol 'Status' (in main.spy)
+  --> /tmp/tmpgq9z0ubl/main.spy:2:37
+    |
+  2 | from types import Point, Dimension, Status
+    |                                     ^^^^^^
+    |
+
+error[SPY0301]: Module 'types' has no exported symbol 'Status' (in geometry.spy)
+  --> /tmp/tmpgq9z0ubl/geometry.spy:2:9
+    |
+  2 | from types import Point, Dimension, Status
+    |         ^^^^^^
+    |
+
+Type errors:
+error[SPY0200]: Undefined identifier 'Status'
+  --> /tmp/tmpgq9z0ubl/main.spy:20:9
+    |
+ 20 |     s = Status.ACTIVE
+    |         ^^^^^^
+    |
+
+error[SPY0200]: Undefined identifier 'Status'
+  --> /tmp/tmpgq9z0ubl/main.spy:43:19
+    |
+ 43 |     test_status = Status.COMPLETED
+    |                   ^^^^^^
+    |
+
+error[SPY0200]: Undefined identifier 'Status'
+  --> /tmp/tmpgq9z0ubl/main.spy:44:23
+    |
+ 44 |     if test_status == Status.PENDING:
+    |                       ^^^^^^
+    |
+
+error[SPY0200]: Undefined identifier 'Status'
+  --> /tmp/tmpgq9z0ubl/main.spy:46:25
+    |
+ 46 |     elif test_status == Status.ACTIVE:
+    |                         ^^^^^^
+    |
+
+error[SPY0200]: Undefined identifier 'Status'
+  --> /tmp/tmpgq9z0ubl/main.spy:48:25
+    |
+ 48 |     elif test_status == Status.COMPLETED:
+    |                         ^^^^^^
+    |
+

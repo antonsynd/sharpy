@@ -1,0 +1,114 @@
+# Shape hierarchy with cross-module inheritance
+# Uses geometry for primitives, materials for composition
+
+from geometry import Point, Dimensions, ShapeCategory, IMeasurable, IScalable, IPositioned
+from materials import Material, MaterialProperties, MaterialType
+
+@abstract
+class Shape(IMeasurable, IScalable, IPositioned):
+    category: ShapeCategory
+
+    def __init__(self, category: ShapeCategory):
+        self.category = category
+
+    @virtual
+    def get_name(self) -> str:
+        return "Generic Shape"
+
+    def scale(self, factor: float) -> None:
+        pass
+
+    @abstract
+    def get_area(self) -> float:
+        ...
+
+    @abstract
+    def get_perimeter(self) -> float:
+        ...
+
+@abstract
+class Polygon(Shape):
+    num_sides: int
+
+    def __init__(self, category: ShapeCategory, sides: int):
+        super().__init__(category)
+        self.num_sides = sides
+
+    @override
+    def get_name(self) -> str:
+        return "Polygon"
+
+class Rectangle(Polygon):
+    dimensions: Dimensions
+    position: Point
+
+    def __init__(self, x: float, y: float, width: float, height: float):
+        super().__init__(ShapeCategory.BASIC, 4)
+        self.position = Point(x, y)
+        self.dimensions = Dimensions(width, height)
+
+    @override
+    def get_name(self) -> str:
+        return "Rectangle"
+
+    def measure(self) -> float:
+        return self.get_area()
+
+    def scale(self, factor: float) -> None:
+        self.dimensions = Dimensions(self.dimensions.width * factor, self.dimensions.height * factor)
+
+    @override
+    def get_area(self) -> float:
+        return self.dimensions.width * self.dimensions.height
+
+    @override
+    def get_perimeter(self) -> float:
+        return 2.0 * (self.dimensions.width + self.dimensions.height)
+
+    def get_center(self) -> Point:
+        cx: float = self.position.x + self.dimensions.width / 2.0
+        cy: float = self.position.y + self.dimensions.height / 2.0
+        return Point(cx, cy)
+
+class ColoredRectangle(Rectangle):
+    color: str
+    material: Material
+
+    def __init__(self, x: float, y: float, width: float, height: float, color: str, material: Material):
+        super().__init__(x, y, width, height)
+        self.color = color
+        self.material = material
+
+    @override
+    def get_name(self) -> str:
+        return self.color + " Colored " + super().get_name()
+
+class Circle(Shape):
+    center: Point
+    radius: float
+
+    def __init__(self, x: float, y: float, radius: float):
+        super().__init__(ShapeCategory.BASIC)
+        self.center = Point(x, y)
+        self.radius = radius
+
+    @override
+    def get_name(self) -> str:
+        return "Circle"
+
+    def measure(self) -> float:
+        return self.get_area()
+
+    def scale(self, factor: float) -> None:
+        self.radius = self.radius * factor
+
+    @override
+    def get_area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def get_perimeter(self) -> float:
+        return 2.0 * 3.14159 * self.radius
+
+    def get_center(self) -> Point:
+        return self.center

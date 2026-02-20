@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-02-19T00:39:34.335134",
+  "generated_code": "from formatter import DecoratedFormatter\nfrom data_utils import DataSet\n\ndef main():\n    # Create formatter with decorative brackets\n    formatter: DecoratedFormatter = DecoratedFormatter(\"=== \", \" ===\")\n    \n    # Create dataset with test values\n    data: DataSet = DataSet(\"Sales\", [100, 200, 300, 400, 500])\n    \n    # Print formatted report header using interface\n    print(data.format_report(formatter))\n    \n    # Print computed statistics\n    print(\"Sum: \" + str(data.sum()))\n    print(\"Count: \" + str(len(data.values)))\n    print(\"Average: \" + str(data.average()))\n    print(\"Done!\")\n    \n# EXPECTED OUTPUT:\n# === Report: Sales ===\n# Sum: 1500\n# Count: 5\n# Average: 300\n# Done!",
+  "expected_output": "=== Report: Sales ===\nSum: 1500\nCount: 5\nAverage: 300\nDone!\n",
+  "actual_output": "=== Report: Sales ===\nSum: 1500\nCount: 5\nAverage: 300\nDone!",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 429.1523644924164,
+  "execution_duration": 4.452707052230835,
+  "source_files": {
+    "formatter.spy": "# Text formatting interface and implementations\n\ninterface IFormatter:\n    def format_header(self, text: str) -> str: ...\n\nclass DecoratedFormatter(IFormatter):\n    prefix: str\n    suffix: str\n    \n    def __init__(self, prefix: str, suffix: str):\n        self.prefix = prefix\n        self.suffix = suffix\n    \n    def format_header(self, text: str) -> str:\n        return self.prefix + text + self.suffix",
+    "data_utils.spy": "from formatter import IFormatter\n\nclass DataSet:\n    values: list[int]\n    name: str\n    \n    def __init__(self, name: str, values: list[int]):\n        self.name = name\n        self.values = values\n    \n    def sum(self) -> int:\n        total: int = 0\n        for v in self.values:\n            total = total + v\n        return total\n    \n    def average(self) -> int:\n        if len(self.values) == 0:\n            return 0\n        return self.sum() // len(self.values)\n    \n    def format_report(self, formatter: IFormatter) -> str:\n        return formatter.format_header(\"Report: \" + self.name)",
+    "main.spy": "from formatter import DecoratedFormatter\nfrom data_utils import DataSet\n\ndef main():\n    # Create formatter with decorative brackets\n    formatter: DecoratedFormatter = DecoratedFormatter(\"=== \", \" ===\")\n    \n    # Create dataset with test values\n    data: DataSet = DataSet(\"Sales\", [100, 200, 300, 400, 500])\n    \n    # Print formatted report header using interface\n    print(data.format_report(formatter))\n    \n    # Print computed statistics\n    print(\"Sum: \" + str(data.sum()))\n    print(\"Count: \" + str(len(data.values)))\n    print(\"Average: \" + str(data.average()))\n    print(\"Done!\")\n    \n# EXPECTED OUTPUT:\n# === Report: Sales ===\n# Sum: 1500\n# Count: 5\n# Average: 300\n# Done!"
+  }
+}

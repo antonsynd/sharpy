@@ -1,0 +1,8 @@
+Circle[r=5]: area=78.53975, perimeter=31.4159
+Rectangle: area=200, perimeter=60
+Drawable shapes: 2
+Drawing circle at (0, 0)
+Drawing rectangle at (10, 5)
+Total area: 278.53975
+Default circle area: 28.274309999999996
+Distance between points: 11.180339887498949

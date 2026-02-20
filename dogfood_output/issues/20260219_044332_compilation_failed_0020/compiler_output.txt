@@ -1,0 +1,28 @@
+warning[SPY0452]: Imported name 'IScalable' is never used
+  --> /tmp/tmppgozriua/extensions.spy:3:24
+    |
+  3 | # struct/enums usage, type annotations
+    |                        ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IDrawable' is never used
+  --> /tmp/tmppgozriua/extensions.spy:3:35
+    |
+  3 | # struct/enums usage, type annotations
+    |                                   ^^^^
+    |
+
+warning[SPY0452]: Imported name 'IDrawable' is never used
+  --> /tmp/tmppgozriua/main.spy:5:45
+    |
+  5 | from shapes import Shape, Point, IScalable, IDrawable
+    |                                             ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Calculator' is never used
+  --> /tmp/tmppgozriua/main.spy:6:35
+    |
+  6 | from utilities import Dimensions, Calculator, ShapeType
+    |                                   ^^^^^^^^^^
+    |
+

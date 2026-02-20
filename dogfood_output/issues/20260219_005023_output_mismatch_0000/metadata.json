@@ -1,0 +1,22 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-19T00:46:58.304252",
+  "generated_code": "# Main entry point testing module imports\nfrom types_module import Container, process_score\nfrom constants import MAX_LIMIT, DEFAULT_NAME, PI_VALUE, is_within_limit, format_id\n\ndef main():\n    # Test basic imports\n    user_id: int = 42\n    print(format_id(user_id))\n    \n    # Test constant imports\n    print(DEFAULT_NAME)\n    print(MAX_LIMIT)\n    \n    # Test container class from other module\n    scores: Container = Container()\n    scores.add(85.5)\n    scores.add(92.0)\n    scores.add(78.5)\n    print(scores.count())\n    \n    # Test helper function from types_module\n    first_score: float = scores.get_all()[0]\n    print(process_score(first_score))\n    \n    # Test condition with imported constant\n    test_value: int = 75\n    if is_within_limit(test_value):\n        print(\"Within limit\")\n    else:\n        print(\"Over limit\")\n    \n    # Test float constant import\n    print(PI_VALUE)\n\n# EXPECTED OUTPUT:\n# ID-0042\n# Unknown\n# 100\n# 3\n# Score: 85.5\n# Within limit\n# 3.14159",
+  "expected_output": "ID-0042\nUnknown\n100\n3\nScore: 85.5\nWithin limit\n3.14159\n",
+  "actual_output": "ID-424d\nUnknown\n100\n3\nScore: 85.5\nWithin limit\n3.14159",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 129.36604285240173,
+  "compilation_duration": null,
+  "execution_duration": 4.464755058288574,
+  "source_files": {
+    "types_module.spy": "# Module providing generic container and utilities\nclass Container:\n    _items: list[float]\n    \n    def __init__(self):\n        self._items = []\n    \n    def add(self, item: float):\n        self._items.append(item)\n    \n    def get_all(self) -> list[float]:\n        return self._items.copy()\n    \n    def count(self) -> int:\n        return len(self._items)\n\ndef process_score(score: float) -> str:\n    return f\"Score: {score:.1f}\"",
+    "constants.spy": "# Module providing constants and helper functions\nMAX_LIMIT: int = 100\nDEFAULT_NAME: str = \"Unknown\"\nPI_VALUE: float = 3.14159\n\ndef is_within_limit(value: int) -> bool:\n    return value <= MAX_LIMIT\n\ndef format_id(id: int) -> str:\n    return f\"ID-{id:04d}\"",
+    "main.spy": "# Main entry point testing module imports\nfrom types_module import Container, process_score\nfrom constants import MAX_LIMIT, DEFAULT_NAME, PI_VALUE, is_within_limit, format_id\n\ndef main():\n    # Test basic imports\n    user_id: int = 42\n    print(format_id(user_id))\n    \n    # Test constant imports\n    print(DEFAULT_NAME)\n    print(MAX_LIMIT)\n    \n    # Test container class from other module\n    scores: Container = Container()\n    scores.add(85.5)\n    scores.add(92.0)\n    scores.add(78.5)\n    print(scores.count())\n    \n    # Test helper function from types_module\n    first_score: float = scores.get_all()[0]\n    print(process_score(first_score))\n    \n    # Test condition with imported constant\n    test_value: int = 75\n    if is_within_limit(test_value):\n        print(\"Within limit\")\n    else:\n        print(\"Over limit\")\n    \n    # Test float constant import\n    print(PI_VALUE)\n\n# EXPECTED OUTPUT:\n# ID-0042\n# Unknown\n# 100\n# 3\n# Score: 85.5\n# Within limit\n# 3.14159"
+  }
+}

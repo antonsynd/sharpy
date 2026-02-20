@@ -1,0 +1,94 @@
+# Issue Report: output_mismatch
+
+**Timestamp:** 2026-02-19T03:26:15.974372
+**Type:** output_mismatch
+**Feature Focus:** module_utils
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Complex multi-file project demonstrating:
+# - Cross-module inheritance (operations.ShapeBase)
+# - Interface implementation (IShape)
+# - Struct usage (Point, Metrics)
+# - Enum usage (ShapeType)
+# - Generic-like collections (ShapeCollection)
+from data_models import Point, Metrics, ShapeType
+from operations import Circle, Rectangle, ShapeCollection
+from utils import make_circle_at_origin, make_rectangle_at, shape_type_name, sum_areas
+
+def main():
+    origin: Point = Point(0.0, 0.0)
+    pos2: Point = Point(10.0, 20.0)
+
+    circle1: Circle = Circle("BigCircle", origin, 5.0)
+    circle2: Circle = make_circle_at_origin("SmallCircle", 2.5)
+    rect1: Rectangle = Rectangle("MyRect", origin, 4.0, 6.0)
+    rect2: Rectangle = make_rectangle_at(5.0, 5.0, "SquareRect", 3.0, 3.0)
+
+    print(circle1.describe())
+    print(rect1.describe())
+
+    metrics: Metrics = circle1.calculate_metrics()
+    print(metrics.area)
+
+    collection: ShapeCollection = ShapeCollection()
+    collection.add(circle1)
+    collection.add(circle2)
+    collection.add(rect1)
+    collection.add(rect2)
+
+    print(collection.total_area_calculated())
+    print(collection.count_by_type(ShapeType.RECTANGLE))
+    print(shape_type_name(rect1.get_shape_type()))
+
+    circles: list[Circle] = [circle1, circle2]
+    print(sum_areas(circles))
+
+# EXPECTED OUTPUT:
+# Circle 'BigCircle' at (0.0, 0.0)
+# Rectangle 'MyRect' size 4.0x6.0
+# 78.53975
+# 153.93805
+# 2
+# Rectangle
+# 87.96455
+```
+
+## Error
+
+```
+AI explicitly reported mismatch
+```
+
+## Output Comparison
+
+### Expected
+```
+Circle 'BigCircle' at (0.0, 0.0)
+Rectangle 'MyRect' size 4.0x6.0
+78.53975
+153.93805
+2
+Rectangle
+87.96455
+
+```
+
+### Actual
+```
+Circle 'BigCircle' at (0.0, 0.0)
+Rectangle 'MyRect' size 4.0x6.0
+78.53975
+131.1746875
+2
+Rectangle
+98.1746875
+```
+
+## Timing
+
+- Generation: 411.51s
+- Execution: 4.67s

@@ -1,0 +1,16 @@
+@abstract
+class Animal:
+    @abstract
+    def sound(self) -> str
+
+class Cat(Animal):
+    @override
+    def sound(self) -> str:
+        return "meow"
+
+def main():
+    cat: Cat = Cat()
+    print(cat.sound())
+
+# EXPECTED OUTPUT:
+# meow

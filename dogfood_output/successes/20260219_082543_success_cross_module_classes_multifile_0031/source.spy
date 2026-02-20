@@ -1,0 +1,42 @@
+# Main entry point demonstrating cross-module class usage
+
+from interfaces import IIdentifiable, Status, Point
+from base import Entity, Item
+from derived import Character, Weapon
+
+def main():
+    # Create instances using cross-module classes
+    hero: Character = Character(1, "Valeria", 5)
+    sword: Weapon = Weapon("Iron Blade", Point(3, 4), 25)
+
+    # Print character info
+    print(hero.get_name())
+    print(hero.describe())
+
+    # Print weapon info using polymorphic method
+    print(sword.get_display_name())
+
+    # Access struct fields from cross-module usage
+    print(sword.position.distance_squared())
+
+    # Test status changes
+    hero.set_status(Status.PENDING)
+    status_val: Status = hero.get_status()
+    print(status_val)
+
+    # Test interface polymorphism
+    id_obj: IIdentifiable = hero
+    print(id_obj.get_id())
+
+    # Level up and show progression
+    hero.gain_level()
+    print(hero.describe())
+
+# EXPECTED OUTPUT:
+# Valeria
+# Character Valeria at level 5
+# Iron Blade [25 dmg]
+# 25
+# Pending
+# 1
+# Character Valeria at level 6

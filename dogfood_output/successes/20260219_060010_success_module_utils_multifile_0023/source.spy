@@ -1,0 +1,39 @@
+# Main entry point - imports from multiple modules
+
+from module_utils import square, Calculator, GRAVITY, Point2D
+from module_helpers import create_unit_circle_point, normalize_value
+
+def main():
+    # Test basic function import
+    result: float = square(5.0)
+    print(result)
+    
+    # Test class import and usage
+    calc: Calculator = Calculator()
+    calc.add(10.0)
+    calc.add(20.0)
+    print(calc.total)
+    
+    # Test constant import
+    print(GRAVITY)
+    
+    # Test cross-module dependency (module_helpers uses module_utils)
+    point: Point2D = create_unit_circle_point(45.0)
+    print(point.x)
+    
+    # Test another import from module_helpers
+    normalized: float = normalize_value(75.0, 100.0)
+    print(normalized)
+    
+    # Reset and verify Calculator works correctly
+    calc.reset()
+    calc.add(5.0)
+    print(calc.total)
+
+# EXPECTED OUTPUT:
+# 25.0
+# 30.0
+# 9.8
+# 0.7853975
+# 0.75
+# 5.0

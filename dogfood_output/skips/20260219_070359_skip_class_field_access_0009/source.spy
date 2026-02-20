@@ -1,0 +1,48 @@
+ class Weapon:
+    name: str
+    damage: int
+
+    def __init__(self, name: str, damage: int) -> None:
+        self.name = name
+        self.damage = damage
+
+class Character:
+    name: str
+    weapon: Weapon
+
+    def __init__(self, name: str, weapon: Weapon) -> None:
+        self.name = name
+        self.weapon = weapon
+
+    def attack_power(self) -> int:
+        return self.weapon.damage
+
+def main():
+    sword: Weapon = Weapon("Iron Sword", 15)
+    hero: Character = Character("Hero", sword)
+
+    print(hero.name)
+    print(hero.weapon.name)
+    print(hero.weapon.damage)
+    print(hero.attack_power())
+
+    bow: Weapon = Weapon("Longbow", 12)
+    archer: Character = Character("Archer", bow)
+
+    print(archer.name)
+    print(archer.weapon.name)
+    print(archer.weapon.damage)
+
+    hero.weapon.damage = 20
+    print(hero.weapon.damage)
+
+# EXPECTED OUTPUT:
+# Hero
+# Iron Sword
+# 15
+# 15
+# Archer
+# Longbow
+# 12
+# 20
+```

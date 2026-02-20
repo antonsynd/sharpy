@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0107]: Invalid type annotation target
+  --> /tmp/tmpwitue_7l/dogfood_test.spy:20:26
+    |
+ 20 |         self.stored_value: T = val
+    |                          ^
+    |
+

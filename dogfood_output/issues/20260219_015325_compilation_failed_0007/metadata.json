@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-19T01:51:45.189176",
+  "generated_code": "# Test: Nullable types with null coalescing and conditional operators\ndef main():\n    score: int? = None()\n    display: str = str(score ?? 0)\n    print(display)\n\n    name: str? = \"Sharpy\"\n    length: int? = name?.len()\n    result: str = str(length ?? -1)\n    print(result)\n\n    name2: str? = None()\n    length2: int? = name2?.len()\n    print(str(length2 ?? -1))\n\n# EXPECTED OUTPUT:\n# 0\n# 6\n# -1",
+  "expected_output": "0\n6\n-1\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS1061]: 'string' does not contain a definition for 'Len' and no accessible extension method 'Len' accepting a first argument of type 'string' could be found (are you missing a using directive or an assembly reference?)\n  --> /tmp/tmpjbaemhjw/dogfood_test.spy:8:62\n    |\n  8 |     length: int? = name?.len()\n    |                               ^\n    |\n\nerror[CS1061]: 'string' does not contain a definition for 'Len' and no accessible extension method 'Len' accepting a first argument of type 'string' could be found (are you missing a using directive or an assembly reference?)\n  --> /tmp/tmpjbaemhjw/dogfood_test.spy:13:65\n    |\n 13 |     length2: int? = name2?.len()\n    |                                 ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmpjbaemhjw/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "nullable_types",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 83.11861562728882,
+  "compilation_duration": null,
+  "execution_duration": 4.059723615646362,
+  "source_files": null
+}

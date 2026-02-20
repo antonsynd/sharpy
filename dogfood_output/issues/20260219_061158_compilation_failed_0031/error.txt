@@ -1,0 +1,30 @@
+Assembly compilation failed:
+
+error[CS0506]: 'Widgets.Button.Draw()': cannot override inherited member 'Widgets.Widget.Draw()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmpubrpg_ab/widgets.spy:23:32
+    |
+ 23 |     
+    |     ^
+    |
+
+error[CS1061]: 'Core.Person' does not contain a definition for '_Id' and no accessible extension method '_Id' accepting a first argument of type 'Core.Person' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpubrpg_ab/core.spy:42:25
+    |
+ 42 |     print(button.get_type())
+    |                         ^
+    |
+
+error[CS0120]: An object reference is required for the non-static field, method, or property 'Core.Person.IdCounter'
+  --> /tmp/tmpubrpg_ab/core.spy:29:13
+    |
+ 29 |     p: Point = Point(3.0, 4.0)
+    |             ^
+    |
+
+error[CS0120]: An object reference is required for the non-static field, method, or property 'Core.Person.IdCounter'
+  --> /tmp/tmpubrpg_ab/core.spy:29:32
+    |
+ 29 |     p: Point = Point(3.0, 4.0)
+    |                               ^
+    |
+

@@ -1,0 +1,16 @@
+# Test integer variable operations with mixed arithmetic
+def main():
+    a: int = 17
+    b: int = 5
+    
+    quotient: int = a // b
+    remainder: int = a % b
+    
+    print(quotient)
+    print(remainder)
+    print(quotient * b + remainder)
+
+# EXPECTED OUTPUT:
+# 3
+# 2
+# 17

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-19T03:18:45.594340",
+  "generated_code": "# Simple dict literal test with string keys and integer values\ndef main():\n    scores: dict[str, int] = {\"alice\": 95, \"bob\": 87, \"carol\": 92}\n    total: int = scores[\"alice\"] + scores[\"bob\"]\n    print(total)\n\n# EXPECTED OUTPUT:\n# 182",
+  "expected_output": "182\n",
+  "actual_output": "182",
+  "feature_focus": "dict_literal",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 16.456143140792847,
+  "execution_duration": 4.336493015289307,
+  "source_files": null
+}

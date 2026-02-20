@@ -1,0 +1,40 @@
+# Main entry point
+from vehicle_base import Vehicle, VehicleStatus
+from vehicle_types import Car, Motorcycle, MaintenanceRecord
+
+def process_vehicle(v: Vehicle) -> str:
+    type_name: str = v.get_type()
+    description: str = v.describe()
+    return f"Processing {type_name}: {description}"
+
+def service_fleet(vehicles: list[Vehicle]):
+    for v in vehicles:
+        result: str = v.perform_maintenance()
+        print(result)
+
+def main():
+    car: Car = Car("Tesla Model 3", 2023, 4)
+    bike: Motorcycle = Motorcycle("Harley Davidson", 2022, 1200)
+    
+    print(process_vehicle(car))
+    print(process_vehicle(bike))
+    print(car.get_status_name())
+    print(bike.get_status_name())
+    
+    fleet: list[Vehicle] = [car, bike]
+    service_fleet(fleet)
+    
+    print(car.get_status_name())
+    
+    record: MaintenanceRecord = MaintenanceRecord("Tesla Model 3", 450.75)
+    print(record)
+
+# EXPECTED OUTPUT:
+# Processing Car: Tesla Model 3 (2023) - 4 doors
+# Processing Motorcycle: Harley Davidson (2022) - 1200cc
+# Operational
+# Operational
+# Car maintenance completed for Tesla Model 3
+# Motorcycle service done for Harley Davidson
+# Maintenance
+# Maintenance for Tesla Model 3: $450.75

@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0266]: Cannot implicitly convert type 'BaseTypes.LogLevel' to 'int'. An explicit conversion exists (are you missing a cast?)
+  --> /tmp/tmplamm4wvl/main.spy:50:26
+    |
+ 50 |     error_level: int = LogLevel.ERROR
+    |                          ^
+    |
+

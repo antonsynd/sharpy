@@ -1,0 +1,104 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-02-19T03:55:36.560819
+**Feature Focus:** function_with_print
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Temperature Monitor with Visual Reporting
+# Tests: function parameters, formatted output, multiple prints, control flow
+
+def format_temp_line(label: str, temp: float, threshold: float) -> str:
+    status: str = "OK"
+    symbol: str = "  "
+    if temp > threshold + 10.0:
+        status = "CRITICAL"
+        symbol = "!!"
+    elif temp > threshold:
+        status = "HIGH"
+        symbol = " !"
+    return f"{symbol} {label}: {temp:.1f}C [{status}]"
+
+def print_monitor_header(title: str) -> None:
+    print("=" * 30)
+    print(f"  {title}")
+    print("=" * 30)
+
+def print_monitor_footer() -> None:
+    print("-" * 30)
+    print("Monitor Active")
+    print("=" * 30)
+
+def check_temperatures(temps: list[float], labels: list[str], limit: float) -> int:
+    alert_count: int = 0
+    print_monitor_header("TEMP CHECK v1.0")
+    i: int = 0
+    while i < len(temps):
+        line: str = format_temp_line(labels[i], temps[i], limit)
+        print(line)
+        if temps[i] > limit:
+            alert_count += 1
+        i += 1
+    print_monitor_footer()
+    return alert_count
+
+def main():
+    readings: list[float] = [22.5, 45.0, 88.3, 95.5, 150.0]
+    sensors: list[str] = ["CPU", "GPU", "Ambient", "Core1", "Heater"]
+    limit: float = 85.0
+    
+    alerts: int = check_temperatures(readings, sensors, limit)
+    
+    print(f"Total sensors: {len(readings)}")
+    print(f"Alerts triggered: {alerts}")
+
+# EXPECTED OUTPUT:
+# ==============================
+#   TEMP CHECK v1.0
+# ==============================
+#    CPU: 22.5C [OK]
+#    GPU: 45.0C [OK]
+#  ! Ambient: 88.3C [HIGH]
+# !! Core1: 95.5C [CRITICAL]
+# !! Heater: 150.0C [CRITICAL]
+# ------------------------------
+# Monitor Active
+# ==============================
+# Total sensors: 5
+# Alerts triggered: 3
+
+```
+
+## Output
+
+```
+==============================
+  TEMP CHECK v1.0
+==============================
+   CPU: 22.5C [OK]
+   GPU: 45.0C [OK]
+ ! Ambient: 88.3C [HIGH]
+!! Core1: 95.5C [CRITICAL]
+!! Heater: 150.0C [CRITICAL]
+------------------------------
+Monitor Active
+==============================
+Total sensors: 5
+Alerts triggered: 3
+```
+
+## Timing
+
+- Generation: 72.67s
+- Execution: 4.65s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

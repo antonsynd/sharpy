@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'ST' does not exist in the current context
+  --> /tmp/tmp2uxrkl5s/main.spy:43:55
+    |
+ 43 |     print(r1.shape_type == ST.RECTANGLE)
+    |                                         ^
+    |
+
+error[CS0103]: The name 'ST' does not exist in the current context
+  --> /tmp/tmp2uxrkl5s/main.spy:60:54
+    |
+ 60 |     print(shape_type_to_int(ST.CIRCLE))
+    |                                        ^
+    |
+

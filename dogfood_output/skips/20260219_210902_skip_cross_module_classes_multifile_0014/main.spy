@@ -1,0 +1,81 @@
+# Entry point demonstrating cross-module inheritance
+# Imports from geometry, shapes, materials
+
+from geometry import Point, Dimensions, ShapeCategory, IMeasurable
+from shapes import Rectangle, Circle, ColoredRectangle, Polygon
+from materials import Material, MaterialProperties, MaterialType, CompositeMaterial
+
+def print_shape_info(s: Shape):
+    print(s.get_name())
+    print(s.measure())
+
+def main():
+    plastic_props: MaterialProperties = MaterialProperties(1.5, 0.1, 5)
+    metal_props: MaterialProperties = MaterialProperties(7.8, 200.0, 9)
+
+    plastic: Material = Material("Basic Plastic", MaterialType.PLASTIC, plastic_props)
+    steel: Material = Material("Steel", MaterialType.METAL, metal_props)
+    composite: CompositeMaterial = CompositeMaterial("Polymer", plastic_props, 3)
+
+    print("=== Material Cost Factors ===")
+    print(plastic.get_cost_factor())
+    print(steel.get_cost_factor())
+    print(composite.get_cost_factor())
+
+    rect: Rectangle = Rectangle(0.0, 0.0, 10.0, 5.0)
+    circle: Circle = Circle(5.0, 5.0, 3.0)
+    colored: ColoredRectangle = ColoredRectangle(2.0, 2.0, 4.0, 6.0, "Red", steel)
+
+    print("=== Shape Names ===")
+    print(rect.get_name())
+    print(circle.get_name())
+    print(colored.get_name())
+
+    print("=== Perimeters ===")
+    print(rect.get_perimeter())
+    print(circle.get_perimeter())
+
+    print("=== Centers ===")
+    rect_center: Point = rect.get_center()
+    print(rect_center.x)
+    print(rect_center.y)
+
+    print("=== Scaled Values ===")
+    rect.scale(2.0)
+    print(rect.get_area())
+    circle.scale(0.5)
+    print(circle.get_area())
+
+    print("=== Category Checks ===")
+    if rect.category == ShapeCategory.BASIC:
+        print(True)
+    if circle.category == ShapeCategory.BASIC:
+        print(True)
+
+# EXPECTED OUTPUT:
+# === Material Cost Factors ===
+# 0.75
+# 15.6
+# 0.975
+# === Shape Names ===
+# Rectangle
+# Circle
+# Red Colored Rectangle
+# === Perimeters ===
+# 30.0
+# 18.84954
+# === Centers ===
+# 5.0
+# 2.5
+# === Scaled Values ===
+# 200.0
+# 7.068645
+# === Category Checks ===
+# True
+# True
+
+**Summary of fixes made:**
+
+1. **Added missing `__init__` to `Dimensions` struct** (`geometry.spy:30-36`): The struct was being called as `Dimensions(width, height)` in `Rectangle.__init__`, but structs require an explicit constructor.
+
+2. **Fixed incorrect use of `@override` on interface implementations** (`shapes.spy:63` and `shapes.spy:103`): The `measure()` method comes from the `IMeasurable` interface, not a base class. Per the rules: "@override is ONLY for overriding @virtual or @abstract methods from base classes" - interface implementations should NOT use `@override`.

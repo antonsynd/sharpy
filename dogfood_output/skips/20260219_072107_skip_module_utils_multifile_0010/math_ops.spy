@@ -1,0 +1,74 @@
+# Math operations module - enums, structs, higher-order functions
+# Tests: enums, structs, higher-order functions
+# Note: type aliases not exported between modules
+
+from utils_core import IProcessor
+
+enum ComputeMode:
+    ADD = 0
+    MULTIPLY = 1
+    POWER = 2
+
+struct Point2D:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def magnitude(self) -> float:
+        return pow(self.x * self.x + self.y * self.y, 0.5)
+
+    def __str__(self) -> str:
+        return f"Point2D({self.x}, {self.y})"
+
+class MathProcessor(IProcessor):
+    mode: ComputeMode
+    factor: float
+
+    def __init__(self, mode: ComputeMode, factor: float):
+        self.mode = mode
+        self.factor = factor
+
+    def process(self, value: float) -> float:
+        if self.mode == ComputeMode.ADD:
+            return value + self.factor
+        elif self.mode == ComputeMode.MULTIPLY:
+            return value * self.factor
+        else:
+            return pow(value, self.factor)
+
+    def __str__(self) -> str:
+        if self.mode == ComputeMode.ADD:
+            return f"AddProcessor({self.factor})"
+        elif self.mode == ComputeMode.MULTIPLY:
+            return f"MultiplyProcessor({self.factor})"
+        else:
+            return f"PowerProcessor({self.factor})"
+
+def apply_transform(x: float, mode: ComputeMode, factor: float) -> float:
+    if mode == ComputeMode.ADD:
+        return x + factor
+    elif mode == ComputeMode.MULTIPLY:
+        return x * factor
+    else:
+        return pow(x, factor)
+
+def create_multiplier(factor: float) -> (float) -> float:
+    return lambda x: x * factor
+
+def create_adder(amount: float) -> (float) -> float:
+    return lambda x: x + amount
+
+def sum_list(values: list[float]) -> float:
+    total: float = 0.0
+    for v in values:
+        total += v
+    return total
+
+def average(values: list[float]) -> float:
+    count: int = len(values)
+    if count == 0:
+        return 0.0
+    return sum_list(values) / float(count)

@@ -1,0 +1,51 @@
+# Material system with struct-based properties
+# Cross-references geometry types
+
+from geometry import Point, ShapeCategory
+
+enum MaterialType:
+    PLASTIC = 1
+    METAL = 2
+    WOOD = 3
+
+struct MaterialProperties:
+    density: float
+    conductivity: float
+    durability: int
+
+    def __init__(self, density: float, conductivity: float, durability: int):
+        self.density = density
+        self.conductivity = conductivity
+        self.durability = durability
+
+class Material:
+    name: str
+    material_type: MaterialType
+    properties: MaterialProperties
+
+    def __init__(self, name: str, mtype: MaterialType, props: MaterialProperties):
+        self.name = name
+        self.material_type = mtype
+        self.properties = props
+
+    @virtual
+    def get_cost_factor(self) -> float:
+        base: float = 1.0
+        if self.material_type == MaterialType.PLASTIC:
+            base = 0.5
+        elif self.material_type == MaterialType.METAL:
+            base = 2.0
+        elif self.material_type == MaterialType.WOOD:
+            base = 1.2
+        return base * self.properties.density
+
+class CompositeMaterial(Material):
+    components: int
+
+    def __init__(self, name: str, props: MaterialProperties, components: int):
+        super().__init__(name, MaterialType.PLASTIC, props)
+        self.components = components
+
+    @override
+    def get_cost_factor(self) -> float:
+        return super().get_cost_factor() * (1.0 + float(self.components) * 0.1)

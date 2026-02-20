@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0506]: 'AdvancedUtils.RollingAccumulator.Add(int)': cannot override inherited member 'BaseUtils.Accumulator.Add(int)' because it is not marked virtual, abstract, or override
+  --> /tmp/tmpcsr703oj/advanced_utils.spy:17:29
+    |
+ 17 |     print(counter.get_count())
+    |                             ^
+    |
+

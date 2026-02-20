@@ -1,0 +1,7 @@
+15.0
+Ran [Build]: Standard task: Build
+5.0
+High priority
+build.cfg
+2.0
+Run tests

@@ -1,0 +1,15 @@
+# Text formatting interface and implementations
+
+interface IFormatter:
+    def format_header(self, text: str) -> str: ...
+
+class DecoratedFormatter(IFormatter):
+    prefix: str
+    suffix: str
+    
+    def __init__(self, prefix: str, suffix: str):
+        self.prefix = prefix
+        self.suffix = suffix
+    
+    def format_header(self, text: str) -> str:
+        return self.prefix + text + self.suffix

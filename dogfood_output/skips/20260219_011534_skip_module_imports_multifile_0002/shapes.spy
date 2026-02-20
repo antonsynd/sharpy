@@ -1,0 +1,36 @@
+# Shape definitions with enums, structs, and interfaces
+enum ShapeType:
+    CIRCLE = 1
+    RECTANGLE = 2
+    TRIANGLE = 3
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return f"Point({self.x}, {self.y})"
+
+interface IArea:
+    def area(self) -> float:
+        ...
+
+interface IDrawable:
+    def draw(self) -> str:
+        ...
+
+class Shape:
+    center: Point
+    shape_type: ShapeType
+
+    def __init__(self, center: Point, shape_type: ShapeType):
+        self.center = center
+        self.shape_type = shape_type
+
+    @virtual
+    def describe(self) -> str:
+        return f"Shape at {self.center}"

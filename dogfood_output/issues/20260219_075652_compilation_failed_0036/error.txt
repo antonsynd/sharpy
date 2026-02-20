@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'defaultSeparator' does not exist in the current context
+  --> /tmp/tmpjb8xor38/string_utils.spy:25:82
+    |
+ 25 |     calc.add(5)
+    |                ^
+    |
+

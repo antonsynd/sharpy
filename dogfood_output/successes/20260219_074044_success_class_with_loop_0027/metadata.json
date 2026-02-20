@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-19T07:34:24.389392",
+  "generated_code": "# Test class with loop: Factorial calculator using iteration\nclass FactorialCalculator:\n    n: int\n    \n    def __init__(self, n: int):\n        self.n = n\n    \n    def calculate(self) -> int:\n        if self.n < 0:\n            return 0\n        result: int = 1\n        i: int = 2\n        while i <= self.n:\n            result *= i\n            i += 1\n        return result\n\ndef main():\n    calc = FactorialCalculator(5)\n    print(calc.calculate())\n    calc2 = FactorialCalculator(0)\n    print(calc2.calculate())\n    calc3 = FactorialCalculator(7)\n    print(calc3.calculate())\n    # EXPECTED OUTPUT:\n    # 120\n    # 1\n    # 5040",
+  "expected_output": "120\n1\n5040\n",
+  "actual_output": "120\n1\n5040",
+  "feature_focus": "class_with_loop",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 360.06368589401245,
+  "execution_duration": 4.276001691818237,
+  "source_files": null
+}

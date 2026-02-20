@@ -1,0 +1,53 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'interfaces' has no exported symbol 'IDrawable' (in data_structures.spy)
+  --> /tmp/tmp3ewqf2nn/data_structures.spy:2:13
+    |
+  2 | from data_structures import Rectangle, Circle, Point, ShapeType
+    |             ^^^^^^^^^
+    |
+
+error[SPY0301]: Module 'interfaces' has no exported symbol 'IDrawable' (in main.spy)
+  --> /tmp/tmp3ewqf2nn/main.spy:4:24
+    |
+  4 | from interfaces import IDrawable
+    |                        ^^^^^^^^^
+    |
+
+Type errors:
+error[SPY0220]: Cannot pass argument of type 'Rectangle' to parameter of type 'IDrawable'
+  --> /tmp/tmp3ewqf2nn/main.spy:21:27
+    |
+ 21 |     print(renderer.render(rect))
+    |                           ^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'Circle' to parameter of type 'IDrawable'
+  --> /tmp/tmp3ewqf2nn/main.spy:22:27
+    |
+ 22 |     print(renderer.render(circle))
+    |                           ^^^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'Rectangle' to parameter of type 'IDrawable'
+  --> /tmp/tmp3ewqf2nn/main.spy:25:48
+    |
+ 25 |     larger: IDrawable = renderer.compare_items(rect, circle)
+    |                                                ^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'Circle' to parameter of type 'IDrawable'
+  --> /tmp/tmp3ewqf2nn/main.spy:25:54
+    |
+ 25 |     larger: IDrawable = renderer.compare_items(rect, circle)
+    |                                                      ^^^^^^
+    |
+
+error[SPY0202]: Type 'IDrawable' not found
+  --> /tmp/tmp3ewqf2nn/main.spy:25:13
+    |
+ 25 |     larger: IDrawable = renderer.compare_items(rect, circle)
+    |             ^^^^^^^^^
+    |
+

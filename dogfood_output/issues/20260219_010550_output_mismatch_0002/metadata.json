@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-19T01:02:23.342505",
+  "generated_code": "# Test: .NET interop with Math type for temperature conversion\n# Tests: from system import, static method calls, calculations with Math\nfrom system import Math\n\n# Temperature scales enum\nenum TemperatureScale:\n    CELSIUS = 1\n    FAHRENHEIT = 2\n    KELVIN = 3\n\n# Struct for storing temperature values\nstruct Temperature:\n    value: float\n    scale: TemperatureScale\n    \n    def __init__(self, v: float, s: TemperatureScale):\n        self.value = v\n        self.scale = s\n    \n    def to_celsius(self) -> float:\n        if self.scale == TemperatureScale.CELSIUS:\n            return self.value\n        elif self.scale == TemperatureScale.FAHRENHEIT:\n            # C = (F - 32) * 5/9\n            return (self.value - 32.0) * 5.0 / 9.0\n        else:\n            # K - 273.15\n            return self.value - 273.15\n    \n    def rounded(self, decimals: int) -> float:\n        # Using Math.Round from .NET\n        multiplier: float = Math.pow(10.0, decimals)\n        return Math.round(self.value * multiplier) / multiplier\n\ndef clamp(value: float, min_val: float, max_val: float) -> float:\n    # Using Math.Max and Math.Min from .NET\n    return Math.min(max_val, Math.max(min_val, value))\n\ndef calculate_heat_index(temp_f: float, humidity: float) -> float:\n    # Using formula coefficients with Math.pow\n    c1: float = -42.379\n    c2: float = 2.04901523\n    c3: float = 10.14333127\n    c4: float = -0.22475541\n    c5: float = -6.83783 * Math.pow(10.0, -3.0)\n    c6: float = -5.481717 * Math.pow(10.0, -2.0)\n    c7: float = 1.22874 * Math.pow(10.0, -3.0)\n    c8: float = 8.5282 * Math.pow(10.0, -4.0)\n    c9: float = -1.99 * Math.pow(10.0, -6.0)\n    \n    t2: float = Math.pow(temp_f, 2.0)\n    h2: float = Math.pow(humidity, 2.0)\n    \n    return c1 + c2 * temp_f + c3 * humidity + c4 * t2 + c5 * h2 + c6 * temp_f * humidity + c7 * t2 * humidity + c8 * temp_f * h2 + c9 * t2 * h2\n\ndef main():\n    t1: Temperature = Temperature(100.0, TemperatureScale.FAHRENHEIT)\n    t2: Temperature = Temperature(37.5, TemperatureScale.CELSIUS)\n    t3: Temperature = Temperature(310.0, TemperatureScale.KELVIN)\n    \n    c1: float = t1.to_celsius()\n    c2: float = t2.to_celsius()\n    c3: float = t3.to_celsius()\n    \n    print(t1.rounded(1))\n    print(c1)\n    \n    avg_c: float = (c1 + c2 + c3) / 3.0\n    print(Math.round(avg_c))\n    \n    safe_temp: float = clamp(150.0, -40.0, 60.0)\n    print(safe_temp)\n    \n    heat_idx: float = calculate_heat_index(90.0, 80.0)\n    print(Math.round(heat_idx))\n    \n    # Check absolute comparison\n    diff: float = Math.abs(c1 - c2)\n    print(Math.round(diff))\n# EXPECTED OUTPUT:\n# 100.0\n# 37.77777777777778\n# 33\n# 60.0\n# 113\n# 0",
+  "expected_output": "100.0\n37.77777777777778\n33\n60.0\n113\n0\n",
+  "actual_output": "100.0\n37.77777777777778\n37.0\n60.0\n-121.0\n0.0",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "dotnet_import",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 167.99571418762207,
+  "compilation_duration": null,
+  "execution_duration": 4.738628625869751,
+  "source_files": null
+}

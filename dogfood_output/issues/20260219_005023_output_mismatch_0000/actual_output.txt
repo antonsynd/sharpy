@@ -1,0 +1,7 @@
+ID-424d
+Unknown
+100
+3
+Score: 85.5
+Within limit
+3.14159

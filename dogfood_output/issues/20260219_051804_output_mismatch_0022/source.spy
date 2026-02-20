@@ -1,0 +1,78 @@
+# Main entry point demonstrating cross-module class usage
+# Imports classes from organisms and creatures modules
+
+from organisms import Organism, Plant, get_organism_summary, classify_organism
+from creatures import Animal, Dog, Cat, Bird, create_zoo
+
+def main():
+    # Create organisms from the base module
+    fern: Plant = Plant("Fiddleleaf", 2, 45)
+    
+    # Create creatures that extend organisms
+    dog: Dog = Dog("Buddy", 4, "Golden Retriever")
+    cat: Cat = Cat("Mittens", 2)
+    bird: Bird = Bird("Tweety", 1, True)
+    
+    # Test polymorphism - treat all as Organism
+    print("=== Polymorphic Description ===")
+    all_organisms: list[Organism] = [fern, dog, cat, bird]
+    
+    for org in all_organisms:
+        print(get_organism_summary(org))
+    
+    # Test virtual method dispatch across modules
+    print("=== Cross-Module Virtual Calls ===")
+    for org in all_organisms:
+        print(org.speak())
+    
+    # Test type classification
+    print("=== Type Classification ===")
+    for org in all_organisms:
+        category: str = classify_organism(org)
+        print(f"{org.name} is classified as: {category}")
+    
+    # Test factory function from creatures module
+    print("=== Zoo from Factory ===")
+    zoo: list[Organism] = create_zoo()
+    for animal in zoo:
+        print(animal.description())
+    
+    # Test Cat-specific method
+    print("=== Cat Life Tracking ===")
+    print(f"{cat.name} starts with {cat.lives_remaining} lives")
+    remaining: int = cat.lose_life()
+    print(f"After losing one: {remaining} lives")
+    
+    # Verify cross-module inheritance chain
+    print("=== Inheritance Verification ===")
+    print(f"Dog is Organism: {isinstance(dog, Organism)}")
+    print(f"Cat is Animal: {isinstance(cat, Animal)}")
+    print(f"Dog is Plant: {isinstance(dog, Plant)}")
+
+# EXPECTED OUTPUT:
+# === Polymorphic Description ===
+# [PLANT] Fiddleleaf is a 2 year old plant, 45cm tall
+# [ANIMAL] Buddy is a 4 year old Golden Retriever (Canis lupus familiaris)
+# [ANIMAL] Mittens is a 2 year old (Felis catus)
+# [ANIMAL] Tweety is a 1 year old (Aves)
+# === Cross-Module Virtual Calls ===
+# Fiddleleaf is 2 years old says: ...
+# Buddy says: Woof!
+# Mittens says: Meow!
+# Tweety says: Tweet!
+# === Type Classification ===
+# Fiddleleaf is classified as: plant
+# Buddy is classified as: animal
+# Mittens is classified as: animal
+# Tweety is classified as: animal
+# === Zoo from Factory ===
+# Rex is a 5 year old German Shepherd (Canis lupus familiaris)
+# Whiskers is a 2 year old (Felis catus)
+# Polly is a 1 year old (Aves)
+# === Cat Life Tracking ===
+# Mittens starts with 9 lives
+# After losing one: 8 lives
+# === Inheritance Verification ===
+# True
+# True
+# False

@@ -1,0 +1,28 @@
+warning[SPY0452]: Imported name 'Circle' is never used
+  --> /tmp/tmpk8o_vzqt/drawing.spy:2:20
+    |
+  2 | from shapes import Shape, Circle, Rectangle, IDrawable
+    |                    ^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Rectangle' is never used
+  --> /tmp/tmpk8o_vzqt/drawing.spy:2:28
+    |
+  2 | from shapes import Shape, Circle, Rectangle, IDrawable
+    |                            ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IMeasurable' is never used
+  --> /tmp/tmpk8o_vzqt/drawing.spy:2:50
+    |
+  2 | from shapes import Shape, Circle, Rectangle, IDrawable
+    |                                                  ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Shape' is never used
+  --> /tmp/tmpk8o_vzqt/main.spy:2:20
+    |
+  2 | from shapes import Shape, Circle, Rectangle, IDrawable
+    |                    ^^^^^
+    |
+

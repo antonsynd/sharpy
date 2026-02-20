@@ -1,0 +1,65 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0244]: 'None()' can only construct Optional types, not 'Container'
+  --> /tmp/tmpn006c0t3/dogfood_test.spy:23:39
+    |
+ 23 |     container2: Container = Container(None())
+    |                                       ^^^^^^
+    |
+
+error[SPY0230]: 'Some' must be called as a function, e.g. 'Some(value)'
+  --> /tmp/tmpn006c0t3/dogfood_test.spy:27:37
+    |
+ 27 |     containers: list[Container?] = [Some(container1), None(), Some(container2), Some(container3)]
+    |                                     ^^^^
+    |
+
+error[SPY0244]: 'None()' can only construct Optional types, not 'list[Container?]'
+  --> /tmp/tmpn006c0t3/dogfood_test.spy:27:55
+    |
+ 27 |     containers: list[Container?] = [Some(container1), None(), Some(container2), Some(container3)]
+    |                                                       ^^^^^^
+    |
+
+error[SPY0230]: 'Some' must be called as a function, e.g. 'Some(value)'
+  --> /tmp/tmpn006c0t3/dogfood_test.spy:27:63
+    |
+ 27 |     containers: list[Container?] = [Some(container1), None(), Some(container2), Some(container3)]
+    |                                                               ^^^^
+    |
+
+error[SPY0230]: 'Some' must be called as a function, e.g. 'Some(value)'
+  --> /tmp/tmpn006c0t3/dogfood_test.spy:27:81
+    |
+ 27 |     containers: list[Container?] = [Some(container1), None(), Some(container2), Some(container3)]
+    |                                                                                 ^^^^
+    |
+
+error[SPY0203]: Type 'Container' has no member 'unwrap'
+  --> /tmp/tmpn006c0t3/dogfood_test.spy:36:38
+    |
+ 36 |             unwrapped_c: Container = c.unwrap()
+    |                                      ^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Item' has no member 'unwrap'
+  --> /tmp/tmpn006c0t3/dogfood_test.spy:38:40
+    |
+ 38 |                 unwrapped_item: Item = unwrapped_c.item.unwrap()
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Container' has no member 'unwrap'
+  --> /tmp/tmpn006c0t3/dogfood_test.spy:58:23
+    |
+ 58 |         name_result = first.unwrap().item.unwrap().name
+    |                       ^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Container' has no member 'unwrap'
+  --> /tmp/tmpn006c0t3/dogfood_test.spy:70:20
+    |
+ 70 |         fallback = empty.unwrap().item.unwrap().name
+    |                    ^^^^^^^^^^^^
+    |
+

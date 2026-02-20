@@ -1,0 +1,35 @@
+warning[SPY0451]: Local variable 'total_area' is assigned but never used
+  --> /tmp/tmpheitcg0h/main.spy:17:5
+    |
+ 17 |     total_area: float = rect.area() + circle.area()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'unit' is assigned but never used
+  --> /tmp/tmpheitcg0h/main.spy:21:5
+    |
+ 21 |     unit: Rectangle = create_unit_square()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'cube' is assigned but never used
+  --> /tmp/tmpheitcg0h/main.spy:27:5
+    |
+ 27 |     cube: Cube = Cube(center, 3.0)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'sphere' is assigned but never used
+  --> /tmp/tmpheitcg0h/main.spy:28:5
+    |
+ 28 |     sphere: Sphere = Sphere(center, 2.0)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Shape3D' is never used
+  --> /tmp/tmpheitcg0h/main.spy:3:36
+    |
+  3 | from shapes3d import Cube, Sphere, Shape3D, origin
+    |                                    ^^^^^^^
+    |
+

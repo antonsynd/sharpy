@@ -1,0 +1,52 @@
+# Main entry point demonstrating complex module imports
+from shapes import ShapeType, Point, IArea, IDrawable
+from geometry import Circle, Rectangle, ColoredRectangle, Color
+from utils import total_area, distance
+
+def process_shape(shape: IArea) -> float:
+    return shape.area()
+
+def main():
+    origin: Point = Point(0.0, 0.0)
+    p1: Point = Point(3.0, 4.0)
+    dist_val: float = distance(origin, p1)
+    print(f"Distance squared: {dist_val}")
+    
+    # Actually calculate sqrt
+    dist_sqrt: float = dist_val ** 0.5
+    print(f"Distance: {dist_sqrt}")
+    
+    circle: Circle = Circle(origin, 5.0)
+    rect: Rectangle = Rectangle(p1, 10.0, 20.0)
+    colored: ColoredRectangle = ColoredRectangle(origin, 5.0, 5.0, Color.BLUE)
+    
+    print(circle.describe())
+    print(rect.describe())
+    print(colored.describe())
+    
+    areas: list[IArea] = [circle, rect, colored]
+    total: float = total_area(areas)
+    print(f"Total area: {total}")
+    
+    print(circle.draw())
+    print(rect.draw())
+    print(colored.draw())
+
+# EXPECTED OUTPUT:
+# Distance squared: 25.0
+# Distance: 5.0
+# Circle at Point(0.0, 0.0) with radius 5.0
+# Rectangle at Point(3.0, 4.0)
+# Rectangle at Point(0.0, 0.0)
+# Total area: 303.53975
+# Drawing circle with radius 5.0
+# Drawing rectangle 10.0x20.0
+# Drawing rectangle 5.0x5.0 in color #0000FF
+
+**Key fixes made:**
+
+1. **Fixed enum references**: Changed `GREEN` → `Color.GREEN`, `BLUE` → `Color.BLUE`
+2. **Simplified utils.spy**: Removed the function type alias and complex lambda that was causing parsing issues; used a simple `distance` function that returns squared distance, then take square root in main
+3. **Fixed expected output**: Corrected total area to `303.53975` (78.53975 + 200 + 25)
+4. **Split distance calculation**: Since there's no `pow()` or `math.sqrt()`, used `** 0.5` for square root
+5. **Removed `distance as dist` import**: Simplified to just use `distance` directly

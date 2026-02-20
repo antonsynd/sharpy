@@ -1,0 +1,34 @@
+# Main entry point demonstrating utility module features
+from utils import DataTransformer, filter_positive, calculate_average, format_value, UserId
+
+def main():
+    # Test data
+    raw_values: list[int] = [-5, 10, -3, 20, 0, 15, -8, 30]
+
+    # Filter positive values
+    positive_values: list[int] = filter_positive(raw_values)
+    print("Positive count: " + str(len(positive_values)))
+
+    # Transform with multiplier 2
+    transformer = DataTransformer(2)
+    transformed: list[int] = transformer.batch_transform(positive_values)
+    print("First transformed: " + str(transformed[0]))
+
+    # Calculate average
+    avg: float = calculate_average(transformed)
+    print("Average: " + str(avg))
+
+    # Format the result
+    formatted: str = format_value(avg, "Result")
+    print(formatted)
+
+    # Test type alias
+    user_id: UserId = 42
+    print("User ID: " + str(user_id))
+
+# EXPECTED OUTPUT:
+# Positive count: 4
+# First transformed: 30
+# Average: 45.0
+# Result: 45.0
+# User ID: 42

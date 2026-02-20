@@ -1,0 +1,34 @@
+# Utility module for data transformation
+
+type UserId = int
+
+class DataTransformer:
+    multiplier: int
+
+    def __init__(self, multiplier: int = 1):
+        self.multiplier = multiplier
+
+    def transform(self, value: int) -> int:
+        return value * self.multiplier + 10
+
+    def batch_transform(self, values: list[int]) -> list[int]:
+        result: list[int] = []
+        for v in values:
+            result.append(self.transform(v))
+        return result
+
+def filter_positive(values: list[int]) -> list[int]:
+    result: list[int] = []
+    for v in values:
+        if v > 0:
+            result.append(v)
+    return result
+
+def calculate_average(values: list[int]) -> float:
+    if len(values) == 0:
+        return 0.0
+    total: int = sum(values)
+    return float(total) / float(len(values))
+
+def format_value(value: float, prefix: str) -> str:
+    return prefix + ": " + str(value)

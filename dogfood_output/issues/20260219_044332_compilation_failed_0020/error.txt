@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0161]: 'Extensions.Rectangle.GetArea()': not all code paths return a value
+  --> extensions.cs:20:32
+    |
+ 20 |     obj.scale(2.0)
+    |                   ^
+    |
+

@@ -1,0 +1,36 @@
+# Base module for vehicle system
+enum VehicleStatus:
+    OPERATIONAL = 1
+    MAINTENANCE = 2
+    RETIRED = 3
+
+@abstract
+class Vehicle:
+    model: str
+    year: int
+    status: VehicleStatus
+
+    def __init__(self, model: str, year: int):
+        self.model = model
+        self.year = year
+        self.status = VehicleStatus.OPERATIONAL
+
+    @abstract
+    def get_type(self) -> str:
+        pass
+
+    @abstract
+    def describe(self) -> str:
+        pass
+
+    @abstract
+    def perform_maintenance(self) -> str:
+        pass
+
+    def get_status_name(self) -> str:
+        if self.status == VehicleStatus.OPERATIONAL:
+            return "Operational"
+        elif self.status == VehicleStatus.MAINTENANCE:
+            return "Maintenance"
+        else:
+            return "Retired"

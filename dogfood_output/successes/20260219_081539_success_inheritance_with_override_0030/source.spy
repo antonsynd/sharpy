@@ -1,0 +1,17 @@
+# Test: Basic Inheritance with Override
+
+class Greeter:
+    @virtual
+    def greet(self) -> str:
+        return "Hello"
+
+class FormalGreeter(Greeter):
+    @override
+    def greet(self) -> str:
+        return "Good day"
+
+def main():
+    greeter: Greeter = FormalGreeter()
+    print(greeter.greet())
+    # EXPECTED OUTPUT:
+    # Good day

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-19T02:52:13.102497",
+  "generated_code": "# Test: Import from system namespace with class-based computation\n# Tests: from system import, class instantiation, method calls, arithmetic\n\nfrom system import Console\n\nclass FactorialEngine:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    def compute(self, n: int) -> int:\n        if n <= 1:\n            return 1\n        result: int = 1\n        i: int = 2\n        while i <= n:\n            result = result * i\n            i += 1\n        return result\n\ndef main():\n    engine = FactorialEngine(\"Calculator\")\n    \n    print(engine.name)\n    print(engine.compute(5))\n    print(engine.compute(7))\n    print(engine.compute(10))\n\n# EXPECTED OUTPUT:\n# Calculator\n# 120\n# 5040\n# 3628800",
+  "expected_output": "Calculator\n120\n5040\n3628800\n",
+  "actual_output": "Calculator\n120\n5040\n3628800",
+  "feature_focus": "import_statement",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 58.72842526435852,
+  "execution_duration": 4.590371131896973,
+  "source_files": null
+}

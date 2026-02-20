@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0013]: Indentation must be multiple of 4 spaces (found 1)
+  --> /tmp/tmpp4fak68k/dogfood_test.spy:1:1
+    |
+  1 |  class Weapon:
+    | ^
+    |
+
+error[SPY0018]: Unterminated literal name (backtick-delimited identifier)
+  --> /tmp/tmpp4fak68k/dogfood_test.spy:48:4
+    |
+ 48 | ```
+    |    ^
+    |
+

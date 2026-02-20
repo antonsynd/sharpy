@@ -1,0 +1,109 @@
+Assembly compilation failed:
+
+error[CS0506]: 'Shapes3d.Cube.Volume()': cannot override inherited member 'Shapes3d.Shape3D.Volume()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmpheitcg0h/shapes3d.spy:25:32
+    |
+ 25 |     print("=== 3D Shapes ===")
+    |                               ^
+    |
+
+error[CS0535]: 'Shapes3d.Cube' does not implement interface member 'Geometry.IShape.Perimeter()'
+  --> /tmp/tmpheitcg0h/shapes3d.spy:12:43
+    |
+ 12 |     circle: Circle = Circle(2.5)
+    |                                 ^
+    |
+
+error[CS0506]: 'Shapes3d.Sphere.Volume()': cannot override inherited member 'Shapes3d.Shape3D.Volume()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmpheitcg0h/shapes3d.spy:40:32
+    |
+ 40 | # Unit rect: 1.0
+    |                 ^
+    |
+
+error[CS0535]: 'Shapes3d.Sphere' does not implement interface member 'Geometry.IShape.Perimeter()'
+  --> /tmp/tmpheitcg0h/shapes3d.spy:22:45
+    |
+ 22 |     print(f"Unit rect: {{unit.area()}}")
+    |                                         ^
+    |
+
+error[CS1061]: 'Geometry.Circle' does not contain a definition for 'Pi' and no accessible extension method 'Pi' accepting a first argument of type 'Geometry.Circle' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpheitcg0h/geometry.spy:55:25
+
+error[CS1061]: 'Geometry.Circle' does not contain a definition for 'Pi' and no accessible extension method 'Pi' accepting a first argument of type 'Geometry.Circle' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpheitcg0h/geometry.spy:59:29
+
+error[CS0103]: The name 'self' does not exist in the current context
+  --> /tmp/tmpheitcg0h/geometry.spy:63:60
+
+error[CS0103]: The name 'total_area' does not exist in the current context
+  --> /tmp/tmpheitcg0h/main.spy:18:82
+    |
+ 18 |     print(f"Total area: {{total_area}}")
+    |                                         ^
+    |
+
+error[CS1061]: 'Geometry.Rectangle' does not contain a definition for 'area' and no accessible extension method 'area' accepting a first argument of type 'Geometry.Rectangle' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpheitcg0h/main.spy:22:86
+    |
+ 22 |     print(f"Unit rect: {{unit.area()}}")
+    |                                         ^
+    |
+
+error[CS1061]: 'Shapes3d.Cube' does not contain a definition for 'area' and no accessible extension method 'area' accepting a first argument of type 'Shapes3d.Cube' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpheitcg0h/main.spy:29:94
+    |
+ 29 |     print(f"Cube surface area: {{cube.area()}}")
+    |                                                 ^
+    |
+
+error[CS1061]: 'Shapes3d.Cube' does not contain a definition for 'volume' and no accessible extension method 'volume' accepting a first argument of type 'Shapes3d.Cube' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpheitcg0h/main.spy:30:88
+    |
+ 30 |     print(f"Cube volume: {{cube.volume()}}")
+    |                                             ^
+    |
+
+error[CS1061]: 'Shapes3d.Sphere' does not contain a definition for 'area' and no accessible extension method 'area' accepting a first argument of type 'Shapes3d.Sphere' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpheitcg0h/main.spy:31:98
+    |
+ 31 |     print(f"Sphere surface area: {{sphere.area()}}")
+    |                                                     ^
+    |
+
+error[CS1061]: 'Shapes3d.Sphere' does not contain a definition for 'volume' and no accessible extension method 'volume' accepting a first argument of type 'Shapes3d.Sphere' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpheitcg0h/main.spy:32:92
+    |
+ 32 |     print(f"Sphere volume: {{sphere.volume()}}")
+    |                                                 ^
+    |
+
+error[CS0103]: The name 'self' does not exist in the current context
+  --> /tmp/tmpheitcg0h/geometry.spy:24:57
+    |
+ 24 |     # Test cross-module inheritance (3D shapes)
+    |                                                ^
+    |
+
+error[CS0103]: The name 'self' does not exist in the current context
+  --> /tmp/tmpheitcg0h/geometry.spy:24:67
+    |
+ 24 |     # Test cross-module inheritance (3D shapes)
+    |                                                ^
+    |
+
+error[CS0103]: The name 'self' does not exist in the current context
+  --> /tmp/tmpheitcg0h/geometry.spy:44:61
+    |
+ 44 | # Sphere surface area: 50.2655
+    |                               ^
+    |
+
+error[CS0103]: The name 'self' does not exist in the current context
+  --> /tmp/tmpheitcg0h/geometry.spy:44:76
+    |
+ 44 | # Sphere surface area: 50.2655
+    |                               ^
+    |
+

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-19T02:07:26.252779",
+  "generated_code": "@abstract\nclass Animal:\n    @abstract\n    def sound(self) -> str\n\nclass Cat(Animal):\n    @override\n    def sound(self) -> str:\n        return \"meow\"\n\ndef main():\n    cat: Cat = Cat()\n    print(cat.sound())\n\n# EXPECTED OUTPUT:\n# meow",
+  "expected_output": "meow\n",
+  "actual_output": "meow",
+  "feature_focus": "abstract_class",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 55.87260961532593,
+  "execution_duration": 4.10472559928894,
+  "source_files": null
+}

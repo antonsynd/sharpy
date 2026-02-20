@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS0037]: Cannot convert null to 'Optional<int>' because it is a non-nullable value type
+  --> /tmp/tmp1t1rm5af/data_module.spy:29:29
+    |
+ 29 |     print(f"Double applied twice: {squared}")
+    |                             ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'Sharpy.Optional<DataModule.Task>' to 'Sharpy.Optional<TypesModule.IIdentifiable>'
+  --> /tmp/tmp1t1rm5af/main.spy:64:32
+    |
+ 64 |     safe_id: int = safe_get_id(maybe_task)
+    |                                ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'Sharpy.Optional<DataModule.Task>' to 'Sharpy.Optional<TypesModule.IIdentifiable>'
+  --> /tmp/tmp1t1rm5af/main.spy:67:32
+    |
+ 67 |     null_id: int = safe_get_id(null_task)
+    |                                ^
+    |
+

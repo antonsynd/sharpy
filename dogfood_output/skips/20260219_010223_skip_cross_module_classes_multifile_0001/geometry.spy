@@ -1,0 +1,48 @@
+# Geometry module with interfaces and base class
+from types import Status
+
+interface IShape:
+    def area(self) -> float:
+        ...
+
+@abstract
+class ShapeBase(IShape):
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def get_name(self) -> str:
+        return self.name
+
+    @virtual
+    def describe(self) -> str:
+        return f"Shape: {self.name}"
+
+class Rectangle(ShapeBase):
+    width: int
+    height: int
+
+    def __init__(self, w: int, h: int):
+        super().__init__("Rectangle")
+        self.width = w
+        self.height = h
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def describe(self) -> str:
+        return f"Rectangle {self.width}x{self.height}"
+
+class Circle(ShapeBase):
+    radius: int
+
+    def __init__(self, r: int):
+        super().__init__("Circle")
+        self.radius = r
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius

@@ -1,0 +1,77 @@
+warning[SPY0452]: Imported name 'IMeasurable' is never used
+  --> /tmp/tmp7x28cyz2/containers.spy:3:24
+    |
+  3 | from shapes import Circle, Rectangle, Color, Point
+    |                        ^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'rounded' is assigned but never used
+  --> /tmp/tmp7x28cyz2/utils.spy:6:3
+    |
+  6 | from utils import format_number, clamp, Status, Dimension, calculate_statistics
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'p' is assigned but never used
+  --> /tmp/tmp7x28cyz2/main.spy:27:5
+    |
+ 27 |     p = Point(3.0, 4.0)
+    |     ^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'c' is assigned but never used
+  --> /tmp/tmp7x28cyz2/main.spy:31:5
+    |
+ 31 |     c = Color.GREEN
+    |     ^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'status' is assigned but never used
+  --> /tmp/tmp7x28cyz2/main.spy:35:5
+    |
+ 35 |     status = Status.OK
+    |     ^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'dim' is assigned but never used
+  --> /tmp/tmp7x28cyz2/main.spy:39:5
+    |
+ 39 |     dim = Dimension(16.0, 9.0)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'stats' is assigned but never used
+  --> /tmp/tmp7x28cyz2/main.spy:50:5
+    |
+ 50 |     stats = calculate_statistics(values)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IDrawable' is never used
+  --> /tmp/tmp7x28cyz2/main.spy:4:20
+    |
+  4 | from shapes import IDrawable, IMeasurable
+    |                    ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IMeasurable' is never used
+  --> /tmp/tmp7x28cyz2/main.spy:4:31
+    |
+  4 | from shapes import IDrawable, IMeasurable
+    |                               ^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'format_number' is never used
+  --> /tmp/tmp7x28cyz2/main.spy:6:19
+    |
+  6 | from utils import format_number, clamp, Status, Dimension, calculate_statistics
+    |                   ^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'clamp' is never used
+  --> /tmp/tmp7x28cyz2/main.spy:6:34
+    |
+  6 | from utils import format_number, clamp, Status, Dimension, calculate_statistics
+    |                                  ^^^^^
+    |
+

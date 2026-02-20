@@ -1,0 +1,13 @@
+enum StatusCode:
+    OK = 200
+    NOT_FOUND = 404
+    ERROR = 500
+
+def main():
+    print(StatusCode.OK)
+    print(StatusCode.NOT_FOUND)
+    print(StatusCode.ERROR)
+# EXPECTED OUTPUT:
+# Ok
+# NotFound
+# Error

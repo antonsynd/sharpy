@@ -1,0 +1,13 @@
+# Helper module that uses module_utils
+
+from module_utils import clamp, Point2D, PI_APPROX
+
+def create_unit_circle_point(angle_degrees: float) -> Point2D:
+    # Simple approximation - convert to radians and use small angle approximation
+    radians: float = angle_degrees * PI_APPROX / 180.0
+    x: float = clamp(radians, -1.0, 1.0)
+    y: float = clamp(1.0 - square(radians) / 2.0, -1.0, 1.0)
+    return Point2D(x, y)
+
+def normalize_value(value: float, max_val: float) -> float:
+    return clamp(value, 0.0, max_val) / max_val

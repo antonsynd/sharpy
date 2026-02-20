@@ -1,0 +1,5 @@
+Positive count: 4
+First transformed: 30
+Average: 45.0
+Result: 45.0
+User ID: 42
