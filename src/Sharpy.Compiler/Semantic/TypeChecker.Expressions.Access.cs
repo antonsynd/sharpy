@@ -450,6 +450,27 @@ internal partial class TypeChecker
             _superInitCalled = true;
         }
 
+        // Validate self.__init__() is only called inside a constructor
+        if (call.Function is MemberAccess selfInitMa &&
+            selfInitMa.Object is Identifier { Name: "self" } &&
+            selfInitMa.Member == DunderNames.Init)
+        {
+            if (_currentMethodName != DunderNames.Init)
+            {
+                AddError("self.__init__() can only be called inside a constructor (__init__)",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.SelfInitOutsideConstructor,
+                    span: call.Span);
+            }
+            else if (_superInitCalled)
+            {
+                AddError("Cannot use both super().__init__() and self.__init__() in the same constructor",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.ConflictingConstructorInitializers,
+                    span: call.Span);
+            }
+        }
+
         // Try to resolve the function symbol early for constructor inference on arguments.
         // For simple identifier calls (foo(Some(42))), we can look up the function before
         // checking arguments, allowing _expectedType to be set per-parameter.

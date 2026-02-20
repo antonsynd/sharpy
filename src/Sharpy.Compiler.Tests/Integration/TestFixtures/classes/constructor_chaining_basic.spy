@@ -1,0 +1,25 @@
+class Point:
+    x: int
+    y: int
+    z: int
+
+    def __init__(self, x: int, y: int, z: int):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def __init__(self, x: int, y: int):
+        self.__init__(x, y, 0)
+
+    def __init__(self, x: int):
+        self.__init__(x, 0, 0)
+
+def main():
+    p1: Point = Point(1, 2, 3)
+    print(p1.x, p1.y, p1.z)
+
+    p2: Point = Point(4, 5)
+    print(p2.x, p2.y, p2.z)
+
+    p3: Point = Point(6)
+    print(p3.x, p3.y, p3.z)

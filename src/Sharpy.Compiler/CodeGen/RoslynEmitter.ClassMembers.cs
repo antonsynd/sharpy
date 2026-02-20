@@ -289,46 +289,52 @@ internal partial class RoslynEmitter
             _variableVersions[baseName] = 0;
         }
 
-        // Find super().__init__() anywhere in the body and convert to constructor initializer (: base(...))
-        ConstructorInitializerSyntax? baseInitializer = null;
-        int superInitIndex = -1;
+        // Find super().__init__() or self.__init__() anywhere in the body and convert to
+        // constructor initializer (: base(...) or : this(...))
+        ConstructorInitializerSyntax? constructorInitializer = null;
+        int initializerCallIndex = -1;
 
         for (int i = 0; i < func.Body.Length; i++)
         {
             if (func.Body[i] is ExpressionStatement es &&
-                es.Expression is FunctionCall superCall &&
-                superCall.Function is MemberAccess ma &&
-                ma.Object is SuperExpression &&
+                es.Expression is FunctionCall initCall &&
+                initCall.Function is MemberAccess ma &&
                 ma.Member == DunderNames.Init)
             {
-                superInitIndex = i;
-                break;
+                if (ma.Object is SuperExpression)
+                {
+                    initializerCallIndex = i;
+                    var baseArgs = initCall.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();
+                    constructorInitializer = ConstructorInitializer(
+                        SyntaxKind.BaseConstructorInitializer,
+                        ArgumentList(SeparatedList(baseArgs)));
+                    break;
+                }
+
+                if (ma.Object is Identifier { Name: PythonNames.Self })
+                {
+                    initializerCallIndex = i;
+                    var thisArgs = initCall.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();
+                    constructorInitializer = ConstructorInitializer(
+                        SyntaxKind.ThisConstructorInitializer,
+                        ArgumentList(SeparatedList(thisArgs)));
+                    break;
+                }
             }
         }
 
         var bodyStartIndex = 0;
 
-        if (superInitIndex >= 0)
+        if (initializerCallIndex >= 0)
         {
-            var superStmt = (ExpressionStatement)func.Body[superInitIndex];
-            var superCall = (FunctionCall)superStmt.Expression;
-
-            // Generate the base constructor arguments
-            var baseArgs = superCall.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();
-
-            // Create the base initializer: : base(...)
-            baseInitializer = ConstructorInitializer(
-                SyntaxKind.BaseConstructorInitializer,
-                ArgumentList(SeparatedList(baseArgs)));
-
-            if (superInitIndex == 0)
+            if (initializerCallIndex == 0)
             {
-                // Simple case: super().__init__() is the first statement, skip it
+                // Simple case: initializer call is the first statement, skip it
                 bodyStartIndex = 1;
             }
-            // else: super().__init__() is not the first statement.
-            // We still emit : base(...) and skip the super call during body generation.
-            // Statements before the super call are emitted as regular constructor body.
+            // else: initializer call is not the first statement.
+            // We still emit the initializer and skip the call during body generation.
+            // Statements before the call are emitted as regular constructor body.
         }
 
         // Generate constructor body
@@ -338,8 +344,8 @@ internal partial class RoslynEmitter
 
         for (int i = bodyStartIndex; i < func.Body.Length; i++)
         {
-            // Skip the super().__init__() call — it was already converted to : base(...)
-            if (i == superInitIndex)
+            // Skip the initializer call — it was already converted to : base(...) or : this(...)
+            if (i == initializerCallIndex)
                 continue;
 
             var stmt = func.Body[i];
@@ -416,10 +422,10 @@ internal partial class RoslynEmitter
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
 
-        // Add base initializer if present
-        if (baseInitializer != null)
+        // Add constructor initializer if present (: base(...) or : this(...))
+        if (constructorInitializer != null)
         {
-            constructor = constructor.WithInitializer(baseInitializer);
+            constructor = constructor.WithInitializer(constructorInitializer);
         }
 
         // Add XML documentation from docstring if present

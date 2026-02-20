@@ -1,0 +1,12 @@
+class Foo:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def reset(self):
+        self.__init__(0)
+
+def main():
+    f: Foo = Foo(1)
+    f.reset()
