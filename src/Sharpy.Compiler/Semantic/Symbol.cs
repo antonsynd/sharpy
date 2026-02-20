@@ -117,7 +117,7 @@ public record FunctionSymbol : Symbol
     /// Signature key for overload deduplication (set during name resolution).
     /// Format: "paramType1,paramType2,..." based on AST type annotation names.
     /// </summary>
-    public string? SignatureKey { get; set; }
+    public string? SignatureKey { get; init; }
 
     public virtual bool Equals(FunctionSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);

@@ -687,8 +687,8 @@ internal partial class TypeChecker
         {
             funcSymbol = ResolveFunctionSymbolFromMemberAccess(memberAccessCall);
 
-            // If module resolution didn't find a symbol, try user-defined method overloads
-            if (funcSymbol == null)
+            // Try user-defined method overloads: either when no symbol was found,
+            // or when the found symbol's method has multiple overloads on the owning type
             {
                 var overloadResult = ResolveUserMethodOverload(
                     memberAccessCall, argTypes, totalArgCount, call,

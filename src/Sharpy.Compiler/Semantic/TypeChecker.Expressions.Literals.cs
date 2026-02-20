@@ -38,7 +38,7 @@ internal partial class TypeChecker
                 if (spreadType is GenericType { Name: "list" or "set" } gt && gt.TypeArguments.Count > 0)
                     elementTypes.Add(gt.TypeArguments[0]);
                 else
-                    elementTypes.Add(CheckExpression(elem));
+                    elementTypes.Add(spreadType);
             }
             else
             {
@@ -138,7 +138,7 @@ internal partial class TypeChecker
                 if (spreadType is GenericType { Name: "list" or "set" } gt && gt.TypeArguments.Count > 0)
                     elementTypes.Add(gt.TypeArguments[0]);
                 else
-                    elementTypes.Add(CheckExpression(elem));
+                    elementTypes.Add(spreadType);
             }
             else
             {

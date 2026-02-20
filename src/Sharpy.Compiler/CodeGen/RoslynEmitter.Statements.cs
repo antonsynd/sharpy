@@ -1733,11 +1733,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Recursively generates variable declarations from nested tuple targets.
-    /// For each Identifier target, emits: var name = source.ItemN;
-    /// For each nested TupleLiteral, emits: var __tN = source.ItemN; then recurses.
-    /// </summary>
-    /// <summary>
     /// Generates star/rest unpacking: first, *rest, last = items
     /// Lowers to indexed access for non-star elements and slicing for the star element.
     /// </summary>

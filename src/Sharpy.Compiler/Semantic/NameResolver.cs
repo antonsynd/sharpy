@@ -665,8 +665,18 @@ internal class NameResolver
     {
         var paramTypes = method.Parameters
             .Where(p => p.Name != PythonNames.Self)
-            .Select(p => p.Type?.Name ?? "_");
+            .Select(p => FormatTypeAnnotation(p.Type));
         return string.Join(",", paramTypes);
+    }
+
+    private static string FormatTypeAnnotation(TypeAnnotation? type)
+    {
+        if (type == null)
+            return "_";
+        if (type.TypeArguments.Length == 0)
+            return type.Name;
+        var args = string.Join(",", type.TypeArguments.Select(FormatTypeAnnotation));
+        return $"{type.Name}[{args}]";
     }
 
     private void ResolveFieldDeclaration(VariableDeclaration field, TypeSymbol owningType)

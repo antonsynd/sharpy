@@ -785,7 +785,7 @@ public partial class Parser
                                     ColumnStart = starToken.Column,
                                     LineEnd = operand.LineEnd,
                                     ColumnEnd = operand.ColumnEnd,
-                                    Span = operand.Span
+                                    Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
                                 });
                             }
                             // Check for keyword argument
