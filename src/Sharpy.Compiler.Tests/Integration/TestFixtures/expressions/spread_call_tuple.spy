@@ -1,0 +1,7 @@
+def add(a: int, b: int, c: int) -> int:
+    return a + b + c
+
+def main():
+    args: tuple[int, int, int] = (10, 20, 30)
+    result: int = add(*args)
+    print(result)

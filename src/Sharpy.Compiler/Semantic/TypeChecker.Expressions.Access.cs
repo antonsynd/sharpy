@@ -500,6 +500,30 @@ internal partial class TypeChecker
         for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
         {
             var previousExpectedType = _expectedType;
+
+            // Handle spread arguments: *expr
+            if (call.Arguments[argIdx] is SpreadElement spreadArg)
+            {
+                var spreadValueType = CheckExpression(spreadArg.Value);
+
+                if (spreadValueType is TupleType tupleSpread)
+                {
+                    // Tuple spread: expand element types as individual arguments
+                    argTypes.AddRange(tupleSpread.ElementTypes);
+                }
+                else
+                {
+                    // Iterable spread: extract element type for variadic param matching
+                    var elemType = _typeInference.InferIterableElementType(spreadValueType);
+                    if (elemType != null)
+                        argTypes.Add(elemType);
+                    else
+                        argTypes.Add(SemanticType.Unknown);
+                }
+                _expectedType = previousExpectedType;
+                continue;
+            }
+
             if (earlyFuncSymbol != null && argIdx < earlyFuncSymbol.Parameters.Count)
             {
                 var paramType = earlyFuncSymbol.Parameters[argIdx].Type;

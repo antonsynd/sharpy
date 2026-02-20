@@ -279,6 +279,11 @@ public static class DiagnosticExplanations
             "raise RuntimeError(\"Failed\") from original_error",
             "Pass the cause as a constructor argument instead:\nraise RuntimeError(\"Failed\", original_error)");
 
+        Add(dict, DiagnosticCodes.Parser.DictSpreadCallNotSupported, "Dict spread in calls not supported", "Parser",
+            "Dict spread arguments (**expr) in function calls are not yet supported. This feature requires keyword argument expansion at compile time, which is planned for a future release.",
+            "f(**kwargs)",
+            "Pass keyword arguments explicitly:\nf(key1=value1, key2=value2)");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",
