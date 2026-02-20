@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -661,6 +662,16 @@ internal partial class TypeChecker
         else if (call.Function is MemberAccess memberAccessCall && memberAccessCall.Object is not SuperExpression)
         {
             funcSymbol = ResolveFunctionSymbolFromMemberAccess(memberAccessCall);
+
+            // If module resolution didn't find a symbol, try user-defined method overloads
+            if (funcSymbol == null)
+            {
+                var overloadResult = ResolveUserMethodOverload(
+                    memberAccessCall, argTypes, totalArgCount, call,
+                    isNullConditionalCall, isOptionalNullConditional);
+                if (overloadResult != null)
+                    return overloadResult;
+            }
         }
 
         // If we have a FunctionSymbol, use it for validation (supports default parameters)
@@ -834,6 +845,135 @@ internal partial class TypeChecker
             call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
             span: call.Span);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Resolves a user-defined method overload from a member access call (e.g., obj.method(args)).
+    /// Returns the resolved return type when the method has multiple overloads, null if not applicable.
+    /// Handles the complete call validation including argument type checking.
+    /// </summary>
+    private SemanticType? ResolveUserMethodOverload(
+        MemberAccess memberAccess, List<SemanticType> argTypes, int totalArgCount, FunctionCall call,
+        bool isNullConditionalCall, bool isOptionalNullConditional)
+    {
+        var objectType = _semanticInfo.GetExpressionType(memberAccess.Object);
+        if (objectType is not UserDefinedType { Symbol: { } typeSymbol })
+            return null;
+
+        // Walk the hierarchy looking for overloads
+        var overloads = FindMethodOverloadsInHierarchy(typeSymbol, memberAccess.Member);
+        if (overloads == null || overloads.Count <= 1)
+            return null;
+
+        // First pass: filter by argument count (skip 'self' parameter)
+        var candidates = overloads.Where(o =>
+        {
+            var selfOffset = o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+            var requiredParams = o.Parameters.Skip(selfOffset).Count(p => !p.HasDefault && !p.IsVariadic);
+            var hasVariadic = o.Parameters.Skip(selfOffset).Any(p => p.IsVariadic);
+            var totalParams = o.Parameters.Count - selfOffset;
+            if (hasVariadic)
+                return totalArgCount >= requiredParams;
+            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
+        }).ToList();
+
+        // Second pass: check type compatibility
+        FunctionSymbol? matchingOverload = null;
+        int matchCount = 0;
+        foreach (var overload in candidates)
+        {
+            var selfOffset = overload.Parameters.Count > 0 && overload.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+            bool typesMatch = true;
+            var variadicParam = overload.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
+
+            for (int i = 0; i < argTypes.Count; i++)
+            {
+                SemanticType expectedType;
+                var paramIdx = i + selfOffset;
+                if (paramIdx < overload.Parameters.Count && !overload.Parameters[paramIdx].IsVariadic)
+                {
+                    expectedType = overload.Parameters[paramIdx].Type;
+                }
+                else if (variadicParam != null)
+                {
+                    expectedType = variadicParam.Type;
+                }
+                else
+                {
+                    typesMatch = false;
+                    break;
+                }
+
+                if (expectedType is not UnknownType && argTypes[i] is not UnknownType
+                    && !IsAssignable(argTypes[i], expectedType))
+                {
+                    typesMatch = false;
+                    break;
+                }
+            }
+            if (typesMatch)
+            {
+                matchingOverload = overload;
+                matchCount++;
+            }
+        }
+
+        if (matchCount > 1)
+        {
+            AddError($"Ambiguous call to overloaded method '{memberAccess.Member}' — multiple overloads match the argument types",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+
+        if (matchingOverload == null)
+        {
+            if (candidates.Count == 0)
+            {
+                AddError($"No matching overload for '{memberAccess.Member}' with {totalArgCount} argument(s)",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                    span: call.Span);
+            }
+            else
+            {
+                // Candidates matched by arity but not by type
+                AddError($"No matching overload for '{memberAccess.Member}' with the given argument types",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                    span: call.Span);
+            }
+            return SemanticType.Unknown;
+        }
+
+        var returnType = matchingOverload.ReturnType;
+        if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
+        {
+            if (isOptionalNullConditional)
+                return new OptionalType { UnderlyingType = returnType };
+            return new NullableType { UnderlyingType = returnType };
+        }
+        return returnType;
+    }
+
+    /// <summary>
+    /// Finds all overloads for a method name walking the type hierarchy.
+    /// Returns null if no overloads are found.
+    /// </summary>
+    private List<FunctionSymbol>? FindMethodOverloadsInHierarchy(TypeSymbol type, string methodName)
+    {
+        // Check the type itself
+        if (type.MethodOverloads.TryGetValue(methodName, out var overloads) && overloads.Count > 0)
+            return overloads;
+
+        // Check base class chain
+        var current = GetBaseType(type);
+        while (current != null)
+        {
+            if (current.MethodOverloads.TryGetValue(methodName, out overloads) && overloads.Count > 0)
+                return overloads;
+            current = GetBaseType(current);
+        }
+
+        return null;
     }
 
     /// <summary>

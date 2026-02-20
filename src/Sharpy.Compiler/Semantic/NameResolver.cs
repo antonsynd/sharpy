@@ -565,7 +565,8 @@ internal class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = method.Span,
             DeclarationLine = method.LineStart,
-            DeclarationColumn = method.ColumnStart
+            DeclarationColumn = method.ColumnStart,
+            SignatureKey = GetMethodSignatureKey(method)
         };
 
         owningType.Methods.Add(funcSymbol);
@@ -597,8 +598,39 @@ internal class NameResolver
         }
         else
         {
-            // For regular methods, register in symbol table normally
-            _symbolTable.Define(funcSymbol);
+            // For regular methods, allow overloads (multiple methods with the same name)
+            // Only register the first overload in the symbol table
+            if (!_symbolTable.TryDefine(funcSymbol))
+            {
+                _logger.LogDebug($"Method overload registered (not in symbol table): {owningType.Name}.{method.Name}");
+            }
+        }
+
+        // Track regular method overloads in MethodOverloads dictionary
+        if (!DunderDetector.IsDunderMethod(method.Name))
+        {
+            if (!owningType.MethodOverloads.TryGetValue(method.Name, out var methodOverloads))
+            {
+                methodOverloads = new List<FunctionSymbol>();
+                owningType.MethodOverloads[method.Name] = methodOverloads;
+            }
+
+            // Check for duplicate signatures (same parameter count and type annotations)
+            // Build a signature key from parameter type annotation names
+            var newSignature = GetMethodSignatureKey(method);
+            bool isDuplicate = methodOverloads.Any(existing =>
+                existing.SignatureKey == newSignature);
+
+            if (isDuplicate)
+            {
+                AddError($"Method '{owningType.Name}.{method.Name}' is already defined with the same signature",
+                    method.LineStart, method.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DuplicateMethodSignature);
+            }
+            else
+            {
+                methodOverloads.Add(funcSymbol);
+            }
         }
 
         // Register operator dunder methods in cache (validation moved to SignatureValidator)
@@ -623,6 +655,18 @@ internal class NameResolver
             overloads.Add(funcSymbol);
             _logger.LogDebug($"Registered protocol method: {owningType.Name}.{method.Name}");
         }
+    }
+
+    /// <summary>
+    /// Builds a signature key from a method's AST parameter type annotations (excluding self).
+    /// Used for detecting duplicate method signatures during overload registration.
+    /// </summary>
+    private static string GetMethodSignatureKey(FunctionDef method)
+    {
+        var paramTypes = method.Parameters
+            .Where(p => p.Name != PythonNames.Self)
+            .Select(p => p.Type?.Name ?? "_");
+        return string.Join(",", paramTypes);
     }
 
     private void ResolveFieldDeclaration(VariableDeclaration field, TypeSymbol owningType)
