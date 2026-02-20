@@ -615,6 +615,12 @@ internal class TypeInferenceService
             return SemanticType.Str;
         }
 
+        // Enum types: iteration yields the enum values
+        if (iterableType is UserDefinedType { Symbol.TypeKind: TypeKind.Enum } enumUdt)
+        {
+            return iterableType;
+        }
+
         // CLR Iterator<T> types
         if (iterableType is BuiltinType builtin && builtin.ClrType != null)
         {

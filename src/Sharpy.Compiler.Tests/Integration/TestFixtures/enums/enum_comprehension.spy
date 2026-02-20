@@ -1,0 +1,8 @@
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+def main():
+    names: list[str] = [c.name for c in Color]
+    print(names)

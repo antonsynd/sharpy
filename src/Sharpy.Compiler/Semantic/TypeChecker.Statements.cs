@@ -497,6 +497,18 @@ internal partial class TypeChecker
     {
         var iterType = CheckExpression(forStmt.Iterator);
 
+        // Enum type used as iterable: `for c in Color:` — CheckIdentifier returns Unknown
+        // for TypeSymbol references, so resolve enum types explicitly here.
+        if (iterType is UnknownType && forStmt.Iterator is Identifier enumId)
+        {
+            var sym = _symbolTable.Lookup(enumId.Name);
+            if (sym is TypeSymbol { TypeKind: TypeKind.Enum } enumTypeSym)
+            {
+                iterType = new UserDefinedType { Name = enumTypeSym.Name, Symbol = enumTypeSym };
+                _semanticInfo.SetExpressionType(forStmt.Iterator, iterType);
+            }
+        }
+
         // Infer element type from the iterator (errors reported by validator in pipeline)
         var elementType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 

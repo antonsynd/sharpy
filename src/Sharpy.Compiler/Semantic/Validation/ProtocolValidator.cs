@@ -331,6 +331,10 @@ internal class ProtocolValidator : SemanticValidatorBase
             };
         }
 
+        // Enum types support __iter__ (via Enum.GetValues<T>())
+        if (type is UserDefinedType { Symbol.TypeKind: TypeKind.Enum } && dunderName == DunderNames.Iter)
+            return true;
+
         // Check Sharpy user-defined types
         if (type is UserDefinedType udt && udt.Symbol != null)
         {

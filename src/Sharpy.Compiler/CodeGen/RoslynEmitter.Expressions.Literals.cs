@@ -558,6 +558,20 @@ internal partial class RoslynEmitter
         // Start with the iterator expression
         ExpressionSyntax chain = GenerateExpression(firstFor.Iterator);
 
+        // Enum iteration: replace identifier with Enum.GetValues<EnumType>()
+        var iterType = GetExpressionSemanticType(firstFor.Iterator);
+        if (iterType is Semantic.UserDefinedType { Symbol.TypeKind: Semantic.TypeKind.Enum } compEnumUdt)
+        {
+            var enumTypeSyntax = _typeMapper.MapSemanticType(compEnumUdt);
+            chain = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("Enum"),
+                    GenericName(Identifier("GetValues"))
+                        .WithTypeArgumentList(TypeArgumentList(
+                            SingletonSeparatedList(enumTypeSyntax)))));
+        }
+
         // Apply each if clause as .Where(x => condition)
         foreach (var clause in clauses.Skip(1))
         {

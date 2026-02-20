@@ -213,6 +213,18 @@ internal partial class TypeChecker
     {
         // Check iterator type and infer element type (errors reported by validator in pipeline)
         var iterType = CheckExpression(forClause.Iterator);
+
+        // Enum type used as iterable in comprehension: `[c.name for c in Color]`
+        if (iterType is UnknownType && forClause.Iterator is Identifier enumId)
+        {
+            var sym = _symbolTable.Lookup(enumId.Name);
+            if (sym is TypeSymbol { TypeKind: TypeKind.Enum } enumTypeSym)
+            {
+                iterType = new UserDefinedType { Name = enumTypeSym.Name, Symbol = enumTypeSym };
+                _semanticInfo.SetExpressionType(forClause.Iterator, iterType);
+            }
+        }
+
         var elemType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
         if (forClause.Target is Identifier id)
