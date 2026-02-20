@@ -35,7 +35,7 @@ internal partial class RoslynEmitter
                 var genericTypeSyntax = TypeMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
 
                 // Generate arguments
-                var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
+                var positionalArgs = GeneratePositionalArguments(call.Arguments);
                 var keywordArgs = call.KeywordArguments.Select(kwarg =>
                     Argument(GenerateExpression(kwarg.Value))
                         .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
@@ -52,7 +52,7 @@ internal partial class RoslynEmitter
                     .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
                 // Generate arguments
-                var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
+                var positionalArgs = GeneratePositionalArguments(call.Arguments);
                 var keywordArgs = call.KeywordArguments.Select(kwarg =>
                     Argument(GenerateExpression(kwarg.Value))
                         .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
@@ -100,7 +100,7 @@ internal partial class RoslynEmitter
                                        typeSymbol.TypeKind == Semantic.TypeKind.Struct);
 
             // Generate positional arguments
-            var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
+            var positionalArgs = GeneratePositionalArguments(call.Arguments);
 
             // Generate keyword arguments with named syntax
             var keywordArgs = call.KeywordArguments.Select(kwarg =>
@@ -231,7 +231,7 @@ internal partial class RoslynEmitter
             }
 
             // Generate positional arguments
-            var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
+            var positionalArgs = GeneratePositionalArguments(call.Arguments);
 
             // Generate keyword arguments with named syntax
             var keywordArgs = call.KeywordArguments.Select(kwarg =>
@@ -367,17 +367,23 @@ internal partial class RoslynEmitter
 
         var obj = GenerateExpression(memberAccess.Object);
 
-        // Handle special .value property for enum instances
-        // enum_instance.value -> (int)enum_instance
-        if (string.Equals(memberAccess.Member, "value", StringComparison.OrdinalIgnoreCase))
+        // Handle special .value and .name properties for enum instances
+        if (memberAccess.Member is "value" or "name" && IsEnumInstance(memberAccess.Object))
         {
-            // Only cast to int if the object expression is of an enum type
-            if (IsEnumTypeExpression(memberAccess.Object))
+            if (memberAccess.Member == "value")
             {
+                // enum_instance.value -> (int)enum_instance
                 return CastExpression(
                     PredefinedType(Token(SyntaxKind.IntKeyword)),
                     obj);
             }
+
+            // enum_instance.name -> enum_instance.ToString()
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    obj,
+                    IdentifierName("ToString")));
         }
 
         // Named tuple element access: keep element names as-is (no PascalCase)
@@ -1063,4 +1069,61 @@ internal partial class RoslynEmitter
         "set" => CSharpTypeNames.SharpySet,
         _ => null
     };
+
+    /// <summary>
+    /// Generates positional arguments for a function call, handling SpreadElement arguments.
+    /// For spread of a tuple type → expands to .Item1, .Item2, ... individual arguments.
+    /// For spread of an iterable type → generates .ToArray() and passes as a single argument.
+    /// </summary>
+    private IEnumerable<ArgumentSyntax> GeneratePositionalArguments(
+        System.Collections.Immutable.ImmutableArray<Expression> arguments)
+    {
+        foreach (var arg in arguments)
+        {
+            if (arg is SpreadElement spread)
+            {
+                var spreadType = GetExpressionSemanticType(spread.Value);
+                var spreadExpr = GenerateExpression(spread.Value);
+
+                if (spreadType is Semantic.TupleType tupleType)
+                {
+                    // Tuple spread: expand to individual .ItemN arguments
+                    // f(*(a, b, c)) → f(tuple.Item1, tuple.Item2, tuple.Item3)
+                    // Use a temp var to avoid evaluating spread.Value multiple times
+                    var tempName = GenerateTempVarName("spread");
+                    _hoistedStatements.Add(LocalDeclarationStatement(
+                        VariableDeclaration(IdentifierName("var"))
+                            .WithVariables(SingletonSeparatedList(
+                                VariableDeclarator(Identifier(tempName))
+                                    .WithInitializer(EqualsValueClause(spreadExpr))))));
+
+                    for (int i = 0; i < tupleType.ElementTypes.Count; i++)
+                    {
+                        yield return Argument(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                IdentifierName(tempName),
+                                IdentifierName($"Item{i + 1}")));
+                    }
+                }
+                else
+                {
+                    // Iterable spread: call .ToArray() and pass as single argument
+                    // f(*items) → f(items.ToArray())
+                    // This works for params T[] parameters
+                    yield return Argument(
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                spreadExpr,
+                                IdentifierName("ToArray")))
+                            .WithArgumentList(ArgumentList()));
+                }
+            }
+            else
+            {
+                yield return Argument(GenerateExpression(arg));
+            }
+        }
+    }
 }

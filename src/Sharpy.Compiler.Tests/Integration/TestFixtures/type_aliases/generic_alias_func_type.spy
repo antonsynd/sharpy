@@ -1,0 +1,10 @@
+type Callback[T] = (T) -> None
+
+def apply(cb: Callback[int], value: int):
+    cb(value)
+
+def printer(x: int):
+    print(x)
+
+def main():
+    apply(printer, 42)

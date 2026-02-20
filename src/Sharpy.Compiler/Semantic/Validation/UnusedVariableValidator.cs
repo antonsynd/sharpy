@@ -463,7 +463,8 @@ internal class UnusedVariableValidator : SemanticValidatorBase
             case DictLiteral dictLit:
                 foreach (var entry in dictLit.Entries)
                 {
-                    CollectReadsFromExpression(entry.Key, read);
+                    if (entry.Key != null)
+                        CollectReadsFromExpression(entry.Key, read);
                     CollectReadsFromExpression(entry.Value, read);
                 }
                 break;

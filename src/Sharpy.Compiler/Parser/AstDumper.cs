@@ -520,8 +520,11 @@ internal class AstDumper
                     var entryIndent = new string(' ', (depth + 2) * IndentUnit.Length);
                     var entryPrefix = i == dictLit.Entries.Length - 1 ? "└─ " : "├─ ";
                     _output.AppendLine($"{entryIndent}{entryPrefix}Entry:");
-                    _output.AppendLine($"{entryIndent}   Key:");
-                    DumpNode(entry.Key, depth + 3, false);
+                    if (entry.Key != null)
+                    {
+                        _output.AppendLine($"{entryIndent}   Key:");
+                        DumpNode(entry.Key, depth + 3, false);
+                    }
                     _output.AppendLine($"{entryIndent}   Value:");
                     DumpNode(entry.Value, depth + 3, true);
                 }

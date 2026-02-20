@@ -1,0 +1,5 @@
+type Pair[T] = tuple[T, T]
+
+def main():
+    p: Pair[int, str] = (1, "a")
+    print(p)

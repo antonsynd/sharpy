@@ -17,6 +17,7 @@ internal class TypeResolver
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();
     private readonly CancellationToken _cancellationToken;
+    private bool _resolvingGenericAlias;
 
     public TypeResolver(SymbolTable symbolTable, SemanticInfo semanticInfo, ICompilerLogger? logger = null,
         CancellationToken cancellationToken = default)
@@ -35,10 +36,15 @@ internal class TypeResolver
         if (annotation == null)
             return SemanticType.Unknown;
 
-        // Check cache
-        var cached = _semanticInfo.GetTypeAnnotation(annotation);
-        if (cached != null)
-            return cached;
+        // Skip cache when resolving inside a generic type alias body — the same
+        // annotation objects (e.g., `T` in `tuple[T, T]`) are shared across all
+        // usages and would produce stale TypeParameterType results.
+        if (!_resolvingGenericAlias)
+        {
+            var cached = _semanticInfo.GetTypeAnnotation(annotation);
+            if (cached != null)
+                return cached;
+        }
 
         _cancellationToken.ThrowIfCancellationRequested();
 
@@ -60,7 +66,33 @@ internal class TypeResolver
         // Check for type alias and expand it
         else if (_symbolTable.LookupTypeAlias(annotation.Name) is TypeAliasSymbol aliasSymbol)
         {
-            result = ExpandTypeAlias(aliasSymbol, annotation.IsOptional);
+            if (aliasSymbol.TypeParameters.Count > 0)
+            {
+                // Generic type alias: resolve type arguments and substitute
+                if (annotation.TypeArguments.Length == 0)
+                {
+                    AddError($"Generic type alias '{aliasSymbol.Name}' requires {aliasSymbol.TypeParameters.Count} type argument(s)",
+                        annotation.LineStart, annotation.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeAliasArityMismatch, span: annotation.Span);
+                    result = SemanticType.Unknown;
+                }
+                else if (annotation.TypeArguments.Length != aliasSymbol.TypeParameters.Count)
+                {
+                    AddError($"Type alias '{aliasSymbol.Name}' expects {aliasSymbol.TypeParameters.Count} type argument(s) but got {annotation.TypeArguments.Length}",
+                        annotation.LineStart, annotation.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeAliasArityMismatch, span: annotation.Span);
+                    result = SemanticType.Unknown;
+                }
+                else
+                {
+                    var typeArgs = annotation.TypeArguments.Select(ResolveTypeAnnotation).ToList();
+                    result = ExpandGenericTypeAlias(aliasSymbol, typeArgs, annotation.IsOptional);
+                }
+            }
+            else
+            {
+                result = ExpandTypeAlias(aliasSymbol, annotation.IsOptional);
+            }
         }
         // Check for generic type
         else if (annotation.TypeArguments.Length > 0)
@@ -149,8 +181,11 @@ internal class TypeResolver
             result = new NullableType { UnderlyingType = result };
         }
 
-        // Cache the result
-        _semanticInfo.SetTypeAnnotation(annotation, result);
+        // Cache the result (skip when resolving inside generic alias body)
+        if (!_resolvingGenericAlias)
+        {
+            _semanticInfo.SetTypeAnnotation(annotation, result);
+        }
         return result;
     }
 
@@ -293,6 +328,121 @@ internal class TypeResolver
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Expands a generic type alias with concrete type arguments.
+    /// For `type Cb[T] = (T) -> None` used as `Cb[int]`, registers T as a TypeParameterSymbol
+    /// in a temporary scope, resolves the alias body (producing TypeParameterType references),
+    /// then substitutes those with the concrete type arguments.
+    /// </summary>
+    private SemanticType ExpandGenericTypeAlias(TypeAliasSymbol aliasSymbol, IReadOnlyList<SemanticType> typeArgs, bool isOptional)
+    {
+        // Enter temporary scope for type parameters
+        _symbolTable.EnterScope("type-alias-params");
+        try
+        {
+            // Register type parameter symbols so ResolveTypeAnnotation finds them
+            for (int i = 0; i < aliasSymbol.TypeParameters.Count; i++)
+            {
+                var paramDef = aliasSymbol.TypeParameters[i];
+                var typeParamSymbol = new TypeParameterSymbol
+                {
+                    Name = paramDef.Name,
+                    Kind = SymbolKind.TypeParameter,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = paramDef.LineStart,
+                    DeclarationColumn = paramDef.ColumnStart
+                };
+                _symbolTable.Define(typeParamSymbol);
+            }
+
+            // Resolve the alias body — type parameters resolve to TypeParameterType.
+            // Disable annotation caching because the alias body's annotation objects are
+            // shared across all usages and would produce stale TypeParameterType results.
+            _resolvingGenericAlias = true;
+            SemanticType expanded;
+            try
+            {
+                if (aliasSymbol.TypeAnnotation != null)
+                {
+                    expanded = ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+                }
+                else if (aliasSymbol.FunctionType != null)
+                {
+                    expanded = ResolveFunctionType(aliasSymbol.FunctionType);
+                }
+                else
+                {
+                    return SemanticType.Unknown;
+                }
+            }
+            finally
+            {
+                _resolvingGenericAlias = false;
+            }
+
+            // Build substitution map: TypeParameter name → concrete type
+            var substitution = new Dictionary<string, SemanticType>();
+            for (int i = 0; i < aliasSymbol.TypeParameters.Count; i++)
+            {
+                substitution[aliasSymbol.TypeParameters[i].Name] = typeArgs[i];
+            }
+
+            // Substitute TypeParameterType references with concrete types
+            var result = SubstituteTypeParameters(expanded, substitution);
+
+            if (isOptional && result != SemanticType.Unknown)
+            {
+                result = new OptionalType { UnderlyingType = result };
+            }
+
+            return result;
+        }
+        finally
+        {
+            _symbolTable.ExitScope();
+        }
+    }
+
+    /// <summary>
+    /// Recursively substitutes TypeParameterType references in a SemanticType with concrete types.
+    /// </summary>
+    private SemanticType SubstituteTypeParameters(SemanticType type, Dictionary<string, SemanticType> substitution)
+    {
+        return type switch
+        {
+            TypeParameterType tpt when substitution.TryGetValue(tpt.Name, out var concrete) => concrete,
+            GenericType gt => new GenericType
+            {
+                Name = gt.Name,
+                TypeArguments = gt.TypeArguments.Select(ta => SubstituteTypeParameters(ta, substitution)).ToList(),
+                GenericDefinition = gt.GenericDefinition
+            },
+            Semantic.FunctionType ft => new Semantic.FunctionType
+            {
+                ParameterTypes = ft.ParameterTypes.Select(pt => SubstituteTypeParameters(pt, substitution)).ToList(),
+                ReturnType = SubstituteTypeParameters(ft.ReturnType, substitution)
+            },
+            Semantic.TupleType tt => new Semantic.TupleType
+            {
+                ElementTypes = tt.ElementTypes.Select(et => SubstituteTypeParameters(et, substitution)).ToList()
+            },
+            OptionalType ot => new OptionalType
+            {
+                UnderlyingType = SubstituteTypeParameters(ot.UnderlyingType, substitution)
+            },
+            NullableType nt => new NullableType
+            {
+                UnderlyingType = SubstituteTypeParameters(nt.UnderlyingType, substitution)
+            },
+            ResultType rt => new ResultType
+            {
+                OkType = SubstituteTypeParameters(rt.OkType, substitution),
+                ErrorType = SubstituteTypeParameters(rt.ErrorType, substitution)
+            },
+            _ => type  // BuiltinType, UserDefinedType, VoidType, UnknownType — no substitution needed
+        };
     }
 
     private Semantic.FunctionType ResolveFunctionType(Parser.Ast.FunctionType functionType)

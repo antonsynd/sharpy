@@ -1,0 +1,7 @@
+def greet(*names: str):
+    for name in names:
+        print(f"Hello, {name}!")
+
+def main():
+    people: list[str] = ["Alice", "Bob", "Charlie"]
+    greet(*people)

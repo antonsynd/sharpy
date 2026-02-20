@@ -1,0 +1,6 @@
+def main():
+    a: list[int] = [1, 2]
+    b: list[int] = [4, 5]
+    result: list[int] = [*a, 3, *b]
+    print(result)
+    print(len(result))

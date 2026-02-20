@@ -113,6 +113,12 @@ public record FunctionSymbol : Symbol
     // For .NET interop
     public System.Reflection.MethodInfo? ClrMethod { get; init; }
 
+    /// <summary>
+    /// Signature key for overload deduplication (set during name resolution).
+    /// Format: "paramType1,paramType2,..." based on AST type annotation names.
+    /// </summary>
+    public string? SignatureKey { get; set; }
+
     public virtual bool Equals(FunctionSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
@@ -154,6 +160,10 @@ public record TypeSymbol : Symbol
     // Protocol methods (non-operator dunders like __len__, __str__, __iter__)
     // Maps protocol dunder names to lists of overloads (usually just one, but allows flexibility)
     public Dictionary<string, List<FunctionSymbol>> ProtocolMethods { get; init; } = new();
+
+    // Regular method overloads — maps method name to list of overloads
+    // Only populated when a class has multiple methods with the same name
+    public Dictionary<string, List<FunctionSymbol>> MethodOverloads { get; init; } = new();
 
     // Constructors - tracks all __init__ overloads
     // Unlike Python (which allows only one __init__ that gets replaced), Sharpy supports
@@ -242,6 +252,7 @@ public record TypeAliasSymbol : Symbol
 {
     public TypeAnnotation? TypeAnnotation { get; init; }
     public Parser.Ast.FunctionType? FunctionType { get; init; }
+    public IReadOnlyList<TypeParameterDef> TypeParameters { get; init; } = Array.Empty<TypeParameterDef>();
 
     public virtual bool Equals(TypeAliasSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);

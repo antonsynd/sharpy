@@ -307,10 +307,11 @@ public partial class Parser
                         };
                     }
 
-                    var firstExpr = ParseExpression();
+                    var firstExpr = ParseListElement();
 
                     // Check for list comprehension: [expr for x in iterable]
-                    if (Current.Type == TokenType.For)
+                    // (only if first element is not a spread)
+                    if (firstExpr is not SpreadElement && Current.Type == TokenType.For)
                     {
                         var clauses = ParseComprehensionClauses();
                         Expect(TokenType.RightBracket);
@@ -335,7 +336,7 @@ public partial class Parser
                         // Allow trailing comma: [1, 2, 3,]
                         if (Current.Type == TokenType.RightBracket)
                             break;
-                        elements.Add(ParseExpression());
+                        elements.Add(ParseListElement());
                     }
 
                     Expect(TokenType.RightBracket);
@@ -386,10 +387,36 @@ public partial class Parser
                         };
                     }
 
-                    var firstExpr = ParseExpression();
+                    // Dict spread: {**d1, ...} — first token is **
+                    if (Current.Type == TokenType.DoubleStar)
+                    {
+                        var entries = new List<DictEntry> { ParseDictEntry() };
+                        while (Current.Type == TokenType.Comma)
+                        {
+                            Advance();
+                            if (Current.Type == TokenType.RightBrace)
+                                break;
+                            entries.Add(ParseDictEntry());
+                        }
+
+                        Expect(TokenType.RightBrace);
+                        return new DictLiteral
+                        {
+                            Entries = entries.ToImmutableArray(),
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
+                        };
+                    }
+
+                    // Set spread: {*a, ...} — first token is *
+                    // Parse first element (may be spread)
+                    var firstExpr = ParseSetElement();
 
                     // Dict {key: value, ...} or dict comprehension {key: value for x in iterable}
-                    if (Current.Type == TokenType.Colon)
+                    if (firstExpr is not SpreadElement && Current.Type == TokenType.Colon)
                     {
                         Advance();
                         var firstValue = ParseExpression();
@@ -412,7 +439,7 @@ public partial class Parser
                             };
                         }
 
-                        // Regular dict literal
+                        // Regular dict literal (may contain ** spread entries)
                         var entries = new List<DictEntry> { new DictEntry { Key = firstExpr, Value = firstValue } };
 
                         while (Current.Type == TokenType.Comma)
@@ -420,11 +447,7 @@ public partial class Parser
                             Advance();
                             if (Current.Type == TokenType.RightBrace)
                                 break;
-
-                            var key = ParseExpression();
-                            Expect(TokenType.Colon);
-                            var value = ParseExpression();
-                            entries.Add(new DictEntry { Key = key, Value = value });
+                            entries.Add(ParseDictEntry());
                         }
 
                         Expect(TokenType.RightBrace);
@@ -442,7 +465,7 @@ public partial class Parser
                     else
                     {
                         // Check for set comprehension: {expr for x in iterable}
-                        if (Current.Type == TokenType.For)
+                        if (firstExpr is not SpreadElement && Current.Type == TokenType.For)
                         {
                             var clauses = ParseComprehensionClauses();
                             Expect(TokenType.RightBrace);
@@ -458,7 +481,7 @@ public partial class Parser
                             };
                         }
 
-                        // Regular set literal
+                        // Regular set literal (may contain * spread elements)
                         var elements = new List<Expression> { firstExpr };
 
                         while (Current.Type == TokenType.Comma)
@@ -466,7 +489,7 @@ public partial class Parser
                             Advance();
                             if (Current.Type == TokenType.RightBrace)
                                 break;
-                            elements.Add(ParseExpression());
+                            elements.Add(ParseSetElement());
                         }
 
                         Expect(TokenType.RightBrace);
@@ -593,5 +616,71 @@ public partial class Parser
             ColumnEnd = Previous.Column + Previous.Value.Length,
             Span = GetSpanFromTokens(startToken, Previous)
         };
+    }
+
+    /// <summary>
+    /// Parses a list element, handling *spread syntax.
+    /// </summary>
+    private Expression ParseListElement()
+    {
+        if (Current.Type == TokenType.Star)
+        {
+            var starToken = Current;
+            Advance();
+            var operand = ParseExpression();
+            return new SpreadElement
+            {
+                Value = operand,
+                LineStart = starToken.Line,
+                ColumnStart = starToken.Column,
+                LineEnd = operand.LineEnd,
+                ColumnEnd = operand.ColumnEnd,
+                Span = operand.Span
+            };
+        }
+
+        return ParseExpression();
+    }
+
+    /// <summary>
+    /// Parses a set element, handling *spread syntax.
+    /// </summary>
+    private Expression ParseSetElement()
+    {
+        if (Current.Type == TokenType.Star)
+        {
+            var starToken = Current;
+            Advance();
+            var operand = ParseExpression();
+            return new SpreadElement
+            {
+                Value = operand,
+                LineStart = starToken.Line,
+                ColumnStart = starToken.Column,
+                LineEnd = operand.LineEnd,
+                ColumnEnd = operand.ColumnEnd,
+                Span = operand.Span
+            };
+        }
+
+        return ParseExpression();
+    }
+
+    /// <summary>
+    /// Parses a dict entry: either key: value or **spread.
+    /// </summary>
+    private DictEntry ParseDictEntry()
+    {
+        if (Current.Type == TokenType.DoubleStar)
+        {
+            Advance();
+            var spreadValue = ParseExpression();
+            return new DictEntry { Key = null, Value = spreadValue };
+        }
+
+        var key = ParseExpression();
+        Expect(TokenType.Colon);
+        var value = ParseExpression();
+        return new DictEntry { Key = key, Value = value };
     }
 }

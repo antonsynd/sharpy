@@ -1,0 +1,6 @@
+type Mapping[K, V] = dict[K, V]
+
+def main():
+    m: Mapping[str, int] = {"a": 1, "b": 2}
+    print(m["a"])
+    print(m["b"])

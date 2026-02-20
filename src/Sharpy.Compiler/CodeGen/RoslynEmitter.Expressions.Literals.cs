@@ -51,9 +51,15 @@ internal partial class RoslynEmitter
             elementType = _typeMapper.InferElementType(list.Elements);
         }
 
-        var elements = list.Elements.Select(GenerateExpression);
-
         var listType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyList, elementType);
+
+        // If any element is a spread, use imperative builder pattern
+        if (list.Elements.Any(e => e is SpreadElement))
+        {
+            return GenerateSpreadCollectionBuilder(list.Elements, listType, "Extend", "Add");
+        }
+
+        var elements = list.Elements.Select(GenerateExpression);
 
         return ObjectCreationExpression(listType)
             .WithArgumentList(ArgumentList())
@@ -87,19 +93,25 @@ internal partial class RoslynEmitter
         }
         else
         {
-            keyType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Key));
+            keyType = _typeMapper.InferElementType(dict.Entries.Where(e => e.Key != null).Select(e => e.Key!));
             valueType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Value));
+        }
+
+        var dictType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, keyType, valueType);
+
+        // If any entry is a spread (**expr), use imperative builder pattern
+        if (dict.Entries.Any(entry => entry.Key == null))
+        {
+            return GenerateSpreadDictBuilder(dict.Entries, dictType);
         }
 
         var initializers = dict.Entries.Select(entry =>
             InitializerExpression(SyntaxKind.ComplexElementInitializerExpression,
                 SeparatedList(new[]
                 {
-                    GenerateExpression(entry.Key),
+                    GenerateExpression(entry.Key!),
                     GenerateExpression(entry.Value)
                 })));
-
-        var dictType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, keyType, valueType);
 
         return ObjectCreationExpression(dictType)
             .WithArgumentList(ArgumentList())
@@ -132,9 +144,15 @@ internal partial class RoslynEmitter
             elementType = _typeMapper.InferElementType(set.Elements);
         }
 
-        var elements = set.Elements.Select(GenerateExpression);
-
         var setType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpySet, elementType);
+
+        // If any element is a spread, use imperative builder pattern
+        if (set.Elements.Any(e => e is SpreadElement))
+        {
+            return GenerateSpreadCollectionBuilder(set.Elements, setType, "UnionWith", "Add");
+        }
+
+        var elements = set.Elements.Select(GenerateExpression);
 
         return ObjectCreationExpression(setType)
             .WithArgumentList(ArgumentList())
@@ -176,7 +194,7 @@ internal partial class RoslynEmitter
             return GenerateImperativeComprehension(listComp.Clauses, listComp.Element, null, null, "list");
 
         // Single-for: LINQ method chain
-        var (chain, param, tupleVarNames, errorExpr) = GenerateComprehensionChain(
+        var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
             listComp.Clauses, "List", listComp.LineStart, listComp.ColumnStart);
 
         if (errorExpr != null)
@@ -184,7 +202,7 @@ internal partial class RoslynEmitter
 
         // Apply .Select(x => element_expression)
         var elementExpr = GenerateExpression(listComp.Element);
-        var selectLambda = MakeComprehensionLambda(param, tupleVarNames, elementExpr);
+        var selectLambda = MakeComprehensionLambda(param, tupleTarget, elementExpr);
 
         chain = InvocationExpression(
             MemberAccessExpression(
@@ -213,7 +231,7 @@ internal partial class RoslynEmitter
             return GenerateImperativeComprehension(setComp.Clauses, setComp.Element, null, null, "set");
 
         // Single-for: LINQ method chain
-        var (chain, param, tupleVarNames, errorExpr) = GenerateComprehensionChain(
+        var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
             setComp.Clauses, "Set", setComp.LineStart, setComp.ColumnStart);
 
         if (errorExpr != null)
@@ -221,7 +239,7 @@ internal partial class RoslynEmitter
 
         // Apply .Select(x => element_expression)
         var elementExpr = GenerateExpression(setComp.Element);
-        var selectLambda = MakeComprehensionLambda(param, tupleVarNames, elementExpr);
+        var selectLambda = MakeComprehensionLambda(param, tupleTarget, elementExpr);
 
         chain = InvocationExpression(
             MemberAccessExpression(
@@ -250,7 +268,7 @@ internal partial class RoslynEmitter
             return GenerateImperativeComprehension(dictComp.Clauses, null, dictComp.Key, dictComp.Value, "dict");
 
         // Single-for: LINQ method chain
-        var (chain, param, tupleVarNames, errorExpr) = GenerateComprehensionChain(
+        var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
             dictComp.Clauses, "Dict", dictComp.LineStart, dictComp.ColumnStart);
 
         if (errorExpr != null)
@@ -260,8 +278,8 @@ internal partial class RoslynEmitter
         var keyExpr = GenerateExpression(dictComp.Key);
         var valueExpr = GenerateExpression(dictComp.Value);
 
-        var keyLambda = MakeComprehensionLambda(param, tupleVarNames, keyExpr);
-        var valueLambda = MakeComprehensionLambda(param, tupleVarNames, valueExpr);
+        var keyLambda = MakeComprehensionLambda(param, tupleTarget, keyExpr);
+        var valueLambda = MakeComprehensionLambda(param, tupleTarget, valueExpr);
 
         // Apply .ToDictionary(x => key, x => value) and cast to Dict<K,V>.
         // .ToDictionary() returns Dictionary<K,V> which must be explicitly cast
@@ -470,39 +488,61 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax MakeComprehensionLambda(
         ParameterSyntax param,
-        List<string>? tupleVarNames,
+        TupleLiteral? tupleTarget,
         ExpressionSyntax body)
     {
-        if (tupleVarNames == null)
+        if (tupleTarget == null)
         {
             return SimpleLambdaExpression(param)
                 .WithExpressionBody(body);
         }
 
-        // Tuple unpacking: (__t_0) => { var (a, b) = __t_0; return body; }
+        // Tuple unpacking (supports nested): (__t_0) => { var a = __t_0.Item1; ... return body; }
         var paramName = param.Identifier.Text;
-
-        var designations = tupleVarNames
-            .Select(name => (VariableDesignationSyntax)SingleVariableDesignation(Identifier(name)))
-            .ToList();
-
-        var tupleDesignation = ParenthesizedVariableDesignation(
-            SeparatedList(designations));
-
-        // var (a, b) = __t_0;
-        var deconstructStmt = ExpressionStatement(
-            AssignmentExpression(
-                SyntaxKind.SimpleAssignmentExpression,
-                DeclarationExpression(
-                    IdentifierName("var"),
-                    tupleDesignation),
-                IdentifierName(paramName)));
-
-        var returnStmt = ReturnStatement(body);
+        var statements = new List<StatementSyntax>();
+        GenerateComprehensionTupleUnpacking(tupleTarget.Elements, paramName, statements);
+        statements.Add(ReturnStatement(body));
 
         return ParenthesizedLambdaExpression()
             .WithParameterList(ParameterList(SingletonSeparatedList(param)))
-            .WithBlock(Block(deconstructStmt, returnStmt));
+            .WithBlock(Block(statements));
+    }
+
+    /// <summary>
+    /// Generates tuple unpacking statements for comprehension lambdas.
+    /// Uses NameMangler.ToCamelCase directly (not GetMangledVariableName) because
+    /// comprehension variables are pre-registered at fixed version 0.
+    /// </summary>
+    private void GenerateComprehensionTupleUnpacking(
+        ImmutableArray<Expression> targets, string sourceVarName, List<StatementSyntax> statements)
+    {
+        for (int i = 0; i < targets.Length; i++)
+        {
+            var itemAccess = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(sourceVarName),
+                IdentifierName($"Item{i + 1}"));
+
+            if (targets[i] is Identifier id)
+            {
+                var varName = NameMangler.ToCamelCase(id.Name);
+                statements.Add(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(varName))
+                                .WithInitializer(EqualsValueClause(itemAccess))))));
+            }
+            else if (targets[i] is TupleLiteral nestedTuple)
+            {
+                var tempVarName = $"__t{_tempVarCounter++}";
+                statements.Add(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(tempVarName))
+                                .WithInitializer(EqualsValueClause(itemAccess))))));
+                GenerateComprehensionTupleUnpacking(nestedTuple.Elements, tempVarName, statements);
+            }
+        }
     }
 
     /// <summary>
@@ -511,7 +551,7 @@ internal partial class RoslynEmitter
     /// the parameter syntax for lambdas, optional tuple variable names for deconstruction,
     /// and optionally an error expression if validation failed.
     /// </summary>
-    private (ExpressionSyntax Chain, ParameterSyntax Param, List<string>? TupleVarNames, ExpressionSyntax? Error) GenerateComprehensionChain(
+    private (ExpressionSyntax Chain, ParameterSyntax Param, TupleLiteral? TupleTarget, ExpressionSyntax? Error) GenerateComprehensionChain(
         ImmutableArray<ComprehensionClause> clauses,
         string comprehensionType,
         int lineStart,
@@ -523,40 +563,47 @@ internal partial class RoslynEmitter
         }
 
         ParameterSyntax param;
-        List<string>? tupleVarNames = null;
+        TupleLiteral? tupleTarget = null;
 
         if (firstFor.Target is Identifier loopVar)
         {
             var varName = NameMangler.ToCamelCase(loopVar.Name);
             param = Parameter(Identifier(varName));
         }
-        else if (firstFor.Target is TupleLiteral tuple &&
-                 tuple.Elements.All(e => e is Identifier))
+        else if (firstFor.Target is TupleLiteral tuple)
         {
-            // Tuple unpacking: use a temp parameter and deconstruct in the lambda body
+            // Tuple unpacking (simple or nested): use a temp parameter and deconstruct in lambda body
             var tempName = $"__t_{_tempVarCounter++}";
             param = Parameter(Identifier(tempName));
+            tupleTarget = tuple;
 
-            tupleVarNames = new List<string>();
-            foreach (var elem in tuple.Elements)
-            {
-                var elemId = (Identifier)elem;
-                var name = NameMangler.ToCamelCase(elemId.Name);
-                tupleVarNames.Add(name);
-                _declaredVariables.Add(name);
-                _variableVersions[name] = 0;
-            }
+            // Register all identifier variables recursively
+            RegisterComprehensionTupleVars(tuple.Elements);
         }
         else
         {
             var error = EmitNotImplementedExpression(
-                "Complex tuple unpacking in comprehensions is not yet supported. Use a for loop instead.",
-                DiagnosticCodes.CodeGen.TupleUnpackingComprehension, lineStart, columnStart);
+                $"Unsupported for-loop target type '{firstFor.Target.GetType().Name}' in comprehension.",
+                DiagnosticCodes.CodeGen.UnsupportedExpressionType, lineStart, columnStart);
             return (null!, null!, null, error);
         }
 
         // Start with the iterator expression
         ExpressionSyntax chain = GenerateExpression(firstFor.Iterator);
+
+        // Enum iteration: replace identifier with Enum.GetValues<EnumType>()
+        var iterType = GetExpressionSemanticType(firstFor.Iterator);
+        if (iterType is Semantic.UserDefinedType { Symbol.TypeKind: Semantic.TypeKind.Enum } compEnumUdt)
+        {
+            var enumTypeSyntax = _typeMapper.MapSemanticType(compEnumUdt);
+            chain = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("Enum"),
+                    GenericName(Identifier("GetValues"))
+                        .WithTypeArgumentList(TypeArgumentList(
+                            SingletonSeparatedList(enumTypeSyntax)))));
+        }
 
         // Apply each if clause as .Where(x => condition)
         foreach (var clause in clauses.Skip(1))
@@ -565,7 +612,7 @@ internal partial class RoslynEmitter
             {
                 case IfClause ifClause:
                     var condition = GenerateExpression(ifClause.Condition);
-                    var lambda = MakeComprehensionLambda(param, tupleVarNames, condition);
+                    var lambda = MakeComprehensionLambda(param, tupleTarget, condition);
 
                     chain = InvocationExpression(
                         MemberAccessExpression(
@@ -583,7 +630,7 @@ internal partial class RoslynEmitter
             }
         }
 
-        return (chain, param, tupleVarNames, null);
+        return (chain, param, tupleTarget, null);
     }
 
     private ExpressionSyntax GenerateFString(FStringLiteral fstring)
@@ -814,5 +861,130 @@ internal partial class RoslynEmitter
 
         // The walrus expression evaluates to the variable itself
         return IdentifierName(varName);
+    }
+
+    /// <summary>
+    /// Recursively registers all identifier variables in a tuple target for comprehensions.
+    /// Must be called before generating the comprehension body so that variable references resolve.
+    /// </summary>
+    private void RegisterComprehensionTupleVars(ImmutableArray<Expression> elements)
+    {
+        foreach (var element in elements)
+        {
+            if (element is Identifier id)
+            {
+                var name = NameMangler.ToCamelCase(id.Name);
+                _declaredVariables.Add(name);
+                _variableVersions[name] = 0;
+            }
+            else if (element is TupleLiteral nested)
+            {
+                RegisterComprehensionTupleVars(nested.Elements);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Generates an imperative builder pattern for list/set literals containing spread elements.
+    /// Hoists: var __t = new CollectionType(); then for each element either __t.Add(x) or
+    /// __t.ExtendMethod(spread). Returns the temp variable identifier.
+    /// </summary>
+    /// <param name="elements">The collection elements (mix of regular and SpreadElement)</param>
+    /// <param name="collectionType">The fully qualified C# collection type (e.g., Sharpy.List&lt;int&gt;)</param>
+    /// <param name="spreadMethod">Method to call for spread elements ("Extend" or "UnionWith")</param>
+    /// <param name="addMethod">Method to call for individual elements ("Add")</param>
+    private ExpressionSyntax GenerateSpreadCollectionBuilder(
+        ImmutableArray<Expression> elements,
+        TypeSyntax collectionType,
+        string spreadMethod,
+        string addMethod)
+    {
+        var tempName = GenerateTempVarName("spread");
+
+        // var __spread_N = new CollectionType();
+        _hoistedStatements.Add(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(tempName))
+                        .WithInitializer(EqualsValueClause(
+                            ObjectCreationExpression(collectionType)
+                                .WithArgumentList(ArgumentList())))))));
+
+        foreach (var element in elements)
+        {
+            if (element is SpreadElement spread)
+            {
+                // __spread_N.Extend(spreadValue) or __spread_N.UnionWith(spreadValue)
+                _hoistedStatements.Add(ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(tempName),
+                            IdentifierName(spreadMethod)))
+                        .AddArgumentListArguments(Argument(GenerateExpression(spread.Value)))));
+            }
+            else
+            {
+                // __spread_N.Add(element)
+                _hoistedStatements.Add(ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(tempName),
+                            IdentifierName(addMethod)))
+                        .AddArgumentListArguments(Argument(GenerateExpression(element)))));
+            }
+        }
+
+        return IdentifierName(tempName);
+    }
+
+    /// <summary>
+    /// Generates an imperative builder pattern for dict literals containing spread entries (**expr).
+    /// Hoists: var __t = new DictType(); then for each entry either __t[key] = value or
+    /// __t.Update(spread). Returns the temp variable identifier.
+    /// </summary>
+    private ExpressionSyntax GenerateSpreadDictBuilder(
+        ImmutableArray<DictEntry> entries,
+        TypeSyntax dictType)
+    {
+        var tempName = GenerateTempVarName("spread");
+
+        // var __spread_N = new DictType();
+        _hoistedStatements.Add(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(tempName))
+                        .WithInitializer(EqualsValueClause(
+                            ObjectCreationExpression(dictType)
+                                .WithArgumentList(ArgumentList())))))));
+
+        foreach (var entry in entries)
+        {
+            if (entry.Key == null)
+            {
+                // __spread_N.Update(spreadDict)
+                _hoistedStatements.Add(ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(tempName),
+                            IdentifierName("Update")))
+                        .AddArgumentListArguments(Argument(GenerateExpression(entry.Value)))));
+            }
+            else
+            {
+                // __spread_N[key] = value
+                _hoistedStatements.Add(ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        ElementAccessExpression(IdentifierName(tempName))
+                            .WithArgumentList(BracketedArgumentList(
+                                SingletonSeparatedList(Argument(GenerateExpression(entry.Key))))),
+                        GenerateExpression(entry.Value))));
+            }
+        }
+
+        return IdentifierName(tempName);
     }
 }

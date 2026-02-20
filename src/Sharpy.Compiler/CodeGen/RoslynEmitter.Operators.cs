@@ -921,16 +921,33 @@ internal partial class RoslynEmitter
     /// </summary>
     private bool IsEnumTypeExpression(Expression expr)
     {
+        return IsEnumInstance(expr);
+    }
+
+    /// <summary>
+    /// Checks if an expression's type is an enum instance type.
+    /// Uses both SemanticInfo (for type-checked expressions) and symbol table
+    /// (for variables after reassignment where SemanticInfo may not have the type).
+    /// </summary>
+    private bool IsEnumInstance(Expression expr)
+    {
+        // First try SemanticInfo (most reliable for type-checked expressions)
+        var semType = GetExpressionSemanticType(expr);
+        if (semType is Semantic.UserDefinedType udt && udt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
+            return true;
+
+        // Fallback: symbol table lookup for identifiers (handles post-reassignment cases)
         if (expr is Identifier id)
         {
             var symbol = _context.LookupSymbol(id.Name);
             if (symbol is VariableSymbol varSymbol &&
-                GetVariableType(varSymbol) is Semantic.UserDefinedType udt &&
-                udt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
+                GetVariableType(varSymbol) is Semantic.UserDefinedType varUdt &&
+                varUdt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
             {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -983,7 +1000,8 @@ internal partial class RoslynEmitter
             case DictLiteral dict:
                 foreach (var entry in dict.Entries)
                 {
-                    CollectReferencedIdentifiers(entry.Key, identifiers);
+                    if (entry.Key != null)
+                        CollectReferencedIdentifiers(entry.Key, identifiers);
                     CollectReferencedIdentifiers(entry.Value, identifiers);
                 }
                 break;

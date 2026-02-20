@@ -1,0 +1,9 @@
+def main():
+    d1: dict[str, int] = {"a": 1, "b": 2}
+    d2: dict[str, int] = {"b": 3, "c": 4}
+    result: dict[str, int] = {**d1, "x": 99, **d2}
+    print(result["a"])
+    print(result["b"])
+    print(result["c"])
+    print(result["x"])
+    print(len(result))

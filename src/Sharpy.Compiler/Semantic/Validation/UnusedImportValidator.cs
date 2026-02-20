@@ -302,7 +302,8 @@ internal class UnusedImportValidator : SemanticValidatorBase
             case DictLiteral dictLit:
                 foreach (var entry in dictLit.Entries)
                 {
-                    CollectReferencesFromExpression(entry.Key, refs);
+                    if (entry.Key != null)
+                        CollectReferencesFromExpression(entry.Key, refs);
                     CollectReferencesFromExpression(entry.Value, refs);
                 }
                 break;

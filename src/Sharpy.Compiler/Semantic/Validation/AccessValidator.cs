@@ -203,7 +203,8 @@ internal class AccessValidator : SemanticValidatorBase
             case DictLiteral dictLit:
                 foreach (var entry in dictLit.Entries)
                 {
-                    ValidateExpression(entry.Key);
+                    if (entry.Key != null)
+                        ValidateExpression(entry.Key);
                     ValidateExpression(entry.Value);
                 }
                 break;

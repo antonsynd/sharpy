@@ -1,0 +1,6 @@
+def main():
+    items: list[int] = [1, 2, 3, 4, 5]
+    first, *mid, last = items
+    print(first)
+    print(mid)
+    print(last)

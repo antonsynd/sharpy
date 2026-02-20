@@ -1,0 +1,14 @@
+class Greeter:
+    def __init__(self):
+        pass
+
+    def greet(self) -> str:
+        return "hello"
+
+    def greet(self, name: str) -> str:
+        return "hello, " + name
+
+def main():
+    g: Greeter = Greeter()
+    print(g.greet())
+    print(g.greet("world"))

@@ -59,6 +59,8 @@ internal partial class TypeChecker
             EllipsisLiteral => SemanticType.Void,
             SliceAccess sliceAccess => CheckSliceAccess(sliceAccess),
             WalrusExpression walrus => CheckWalrusExpression(walrus),
+            SpreadElement spread => CheckExpression(spread.Value),
+            StarExpression star => CheckExpression(star.Operand),
             _ => HandleUnrecognizedExpression(expr)
         };
 

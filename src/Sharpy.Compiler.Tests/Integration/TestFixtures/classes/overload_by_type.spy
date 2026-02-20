@@ -1,0 +1,14 @@
+class Formatter:
+    def __init__(self):
+        pass
+
+    def format(self, value: int) -> str:
+        return "int:" + str(value)
+
+    def format(self, value: str) -> str:
+        return "str:" + value
+
+def main():
+    f: Formatter = Formatter()
+    print(f.format(42))
+    print(f.format("hello"))

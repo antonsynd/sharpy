@@ -762,8 +762,34 @@ public partial class Parser
                             if (!CheckLoopProgress())
                                 break;
 
+                            // Check for dict spread argument: **expr
+                            if (Current.Type == TokenType.DoubleStar)
+                            {
+                                throw ReportError("Dict spread arguments (**expr) in function calls are not yet supported",
+                                    Current.Line, Current.Column, DiagnosticCodes.Parser.DictSpreadCallNotSupported, span: CurrentSpan);
+                            }
+                            // Check for spread argument: *expr
+                            else if (Current.Type == TokenType.Star)
+                            {
+                                if (seenKeywordArg)
+                                {
+                                    throw ReportError("Spread argument cannot follow keyword argument", Current.Line, Current.Column, DiagnosticCodes.Parser.PositionalAfterKeyword, span: CurrentSpan);
+                                }
+                                var starToken = Current;
+                                Advance();
+                                var operand = ParseExpression();
+                                args.Add(new SpreadElement
+                                {
+                                    Value = operand,
+                                    LineStart = starToken.Line,
+                                    ColumnStart = starToken.Column,
+                                    LineEnd = operand.LineEnd,
+                                    ColumnEnd = operand.ColumnEnd,
+                                    Span = operand.Span
+                                });
+                            }
                             // Check for keyword argument
-                            if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
+                            else if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
                             {
                                 seenKeywordArg = true;
                                 var kwargStartLine = Current.Line;

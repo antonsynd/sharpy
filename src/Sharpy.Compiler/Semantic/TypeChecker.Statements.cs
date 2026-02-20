@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
@@ -32,10 +33,19 @@ internal partial class TypeChecker
             return;
         }
 
-        // Handle tuple unpacking: x, y = expr
+        // Handle tuple unpacking: x, y = expr  or  first, *rest = items
         if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is TupleLiteral targetTuple)
         {
             var tupleValueType = CheckExpression(assignment.Value);
+
+            // Check for star expression (rest pattern)
+            bool hasStar = targetTuple.Elements.Any(e => e is StarExpression);
+
+            if (hasStar)
+            {
+                CheckStarUnpacking(targetTuple, tupleValueType, assignment);
+                return;
+            }
 
             // Value must be a tuple type
             if (tupleValueType is not TupleType tupleType)
@@ -55,56 +65,8 @@ internal partial class TypeChecker
                 return;
             }
 
-            // Type-check each unpacking element
-            for (int i = 0; i < targetTuple.Elements.Length; i++)
-            {
-                var targetElem = targetTuple.Elements[i];
-                var valueElemType = tupleType.ElementTypes[i];
-
-                if (targetElem is Identifier tupleTargetId)
-                {
-                    var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false);
-
-                    // Check if trying to reassign a constant
-                    if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
-                    {
-                        AddError($"Cannot reassign constant variable '{tupleTargetId.Name}' in tuple unpacking",
-                            tupleTargetId.LineStart, tupleTargetId.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
-                            span: tupleTargetId.Span);
-                        continue;
-                    }
-
-                    // In Sharpy, tuple unpacking creates new variable versions
-                    // Create/redefine with inferred type from tuple element
-                    var newSymbol = new VariableSymbol
-                    {
-                        Name = tupleTargetId.Name,
-                        Kind = SymbolKind.Variable,
-                        Type = valueElemType,
-                        IsConstant = false,
-                        DeclarationLine = tupleTargetId.LineStart,
-                        DeclarationColumn = tupleTargetId.ColumnStart,
-                        AccessLevel = AccessLevel.Public
-                    };
-                    _symbolTable.Define(newSymbol);
-                    SemanticBinding.SetVariableType(newSymbol, valueElemType);
-                    _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
-                    _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
-                    if (valueElemType is UnknownType)
-                        MarkExpressionAsErrorRecovery(tupleTargetId);
-                }
-                else
-                {
-                    // For more complex targets (like attributes), just check type compatibility
-                    var targetElemType = CheckExpression(targetElem);
-                    if (!IsAssignable(valueElemType, targetElemType))
-                    {
-                        AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
-                            targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: targetElem.Span);
-                    }
-                }
-            }
+            // Type-check each unpacking element (supports nested tuple targets)
+            CheckTupleUnpackingElements(targetTuple.Elements, tupleType.ElementTypes);
 
             return;
         }
@@ -497,6 +459,18 @@ internal partial class TypeChecker
     {
         var iterType = CheckExpression(forStmt.Iterator);
 
+        // Enum type used as iterable: `for c in Color:` — CheckIdentifier returns Unknown
+        // for TypeSymbol references, so resolve enum types explicitly here.
+        if (iterType is UnknownType && forStmt.Iterator is Identifier enumId)
+        {
+            var sym = _symbolTable.Lookup(enumId.Name);
+            if (sym is TypeSymbol { TypeKind: TypeKind.Enum } enumTypeSym)
+            {
+                iterType = new UserDefinedType { Name = enumTypeSym.Name, Symbol = enumTypeSym };
+                _semanticInfo.SetExpressionType(forStmt.Iterator, iterType);
+            }
+        }
+
         // Infer element type from the iterator (errors reported by validator in pipeline)
         var elementType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
@@ -526,41 +500,8 @@ internal partial class TypeChecker
                 else
                 {
                     // Define loop variables with inferred types INSIDE the for-body scope
-                    for (int i = 0; i < targetTuple.Elements.Length; i++)
-                    {
-                        var targetElem = targetTuple.Elements[i];
-                        var elemType = tupleType.ElementTypes[i];
-
-                        if (targetElem is Identifier id)
-                        {
-                            var loopVarSymbol = new VariableSymbol
-                            {
-                                Name = id.Name,
-                                Kind = SymbolKind.Variable,
-                                Type = elemType,
-                                AccessLevel = AccessLevel.Public,
-                                DeclarationLine = id.LineStart,
-                                DeclarationColumn = id.ColumnStart
-                            };
-
-                            // Check if already defined in this scope
-                            if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
-                            {
-                                _symbolTable.Define(loopVarSymbol);
-                                SemanticBinding.SetVariableType(loopVarSymbol, elemType);
-                                _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
-                            }
-
-                            _semanticInfo.SetExpressionType(targetElem, elemType);
-                            if (elemType is UnknownType)
-                                MarkExpressionAsErrorRecovery(targetElem);
-                        }
-                        else
-                        {
-                            // For more complex targets, just check the expression
-                            CheckExpression(targetElem);
-                        }
-                    }
+                    // (supports nested tuple targets like (x, y), name)
+                    DefineForLoopTupleTargets(targetTuple.Elements, tupleType.ElementTypes);
                 }
             }
 
@@ -878,6 +819,228 @@ internal partial class TypeChecker
 
         // All other types (builtins, functions, tuples, etc.) are not disposable
         return false;
+    }
+
+    /// <summary>
+    /// Recursively type-checks tuple unpacking target elements against their value types.
+    /// Handles nested tuple targets like (a, b), c and (a, (b, c)), d.
+    /// </summary>
+    private void CheckTupleUnpackingElements(ImmutableArray<Expression> targets, IReadOnlyList<SemanticType> valueTypes)
+    {
+        for (int i = 0; i < targets.Length; i++)
+        {
+            var targetElem = targets[i];
+            var valueElemType = valueTypes[i];
+
+            if (targetElem is Identifier tupleTargetId)
+            {
+                var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false);
+
+                // Check if trying to reassign a constant
+                if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
+                {
+                    AddError($"Cannot reassign constant variable '{tupleTargetId.Name}' in tuple unpacking",
+                        tupleTargetId.LineStart, tupleTargetId.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                        span: tupleTargetId.Span);
+                    continue;
+                }
+
+                // In Sharpy, tuple unpacking creates new variable versions
+                // Create/redefine with inferred type from tuple element
+                var newSymbol = new VariableSymbol
+                {
+                    Name = tupleTargetId.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = valueElemType,
+                    IsConstant = false,
+                    DeclarationLine = tupleTargetId.LineStart,
+                    DeclarationColumn = tupleTargetId.ColumnStart,
+                    AccessLevel = AccessLevel.Public
+                };
+                _symbolTable.Define(newSymbol);
+                SemanticBinding.SetVariableType(newSymbol, valueElemType);
+                _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
+                _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
+                if (valueElemType is UnknownType)
+                    MarkExpressionAsErrorRecovery(tupleTargetId);
+            }
+            else if (targetElem is TupleLiteral nestedTuple)
+            {
+                // Nested tuple unpacking: (a, b), c = expr
+                if (valueElemType is not TupleType nestedTupleType)
+                {
+                    AddError($"Cannot unpack non-tuple type '{valueElemType.GetDisplayName()}' into nested tuple",
+                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: targetElem.Span);
+                    continue;
+                }
+
+                if (nestedTuple.Elements.Length != nestedTupleType.ElementTypes.Count)
+                {
+                    AddError($"Cannot unpack {nestedTupleType.ElementTypes.Count} values into {nestedTuple.Elements.Length} variables",
+                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: targetElem.Span);
+                    continue;
+                }
+
+                // Recurse into nested tuple
+                CheckTupleUnpackingElements(nestedTuple.Elements, nestedTupleType.ElementTypes);
+            }
+            else
+            {
+                // For more complex targets (like attributes), just check type compatibility
+                var targetElemType = CheckExpression(targetElem);
+                if (!IsAssignable(valueElemType, targetElemType))
+                {
+                    AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
+                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: targetElem.Span);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Recursively defines loop variables for nested tuple targets in for-loops.
+    /// E.g., for (x, y), name in items: registers x, y, and name.
+    /// </summary>
+    private void DefineForLoopTupleTargets(ImmutableArray<Expression> targets, IReadOnlyList<SemanticType> elementTypes)
+    {
+        for (int i = 0; i < targets.Length; i++)
+        {
+            var targetElem = targets[i];
+            var elemType = elementTypes[i];
+
+            if (targetElem is Identifier id)
+            {
+                var loopVarSymbol = new VariableSymbol
+                {
+                    Name = id.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = elemType,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = id.LineStart,
+                    DeclarationColumn = id.ColumnStart
+                };
+
+                if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
+                {
+                    _symbolTable.Define(loopVarSymbol);
+                    SemanticBinding.SetVariableType(loopVarSymbol, elemType);
+                    _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+                }
+
+                _semanticInfo.SetExpressionType(targetElem, elemType);
+                if (elemType is UnknownType)
+                    MarkExpressionAsErrorRecovery(targetElem);
+            }
+            else if (targetElem is TupleLiteral nestedTuple)
+            {
+                if (elemType is not TupleType nestedTupleType)
+                {
+                    AddError($"Cannot unpack non-tuple type '{elemType.GetDisplayName()}' into nested tuple in for loop",
+                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: targetElem.Span);
+                    continue;
+                }
+
+                if (nestedTuple.Elements.Length != nestedTupleType.ElementTypes.Count)
+                {
+                    AddError($"Cannot unpack {nestedTupleType.ElementTypes.Count} values into {nestedTuple.Elements.Length} variables in for loop",
+                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: targetElem.Span);
+                    continue;
+                }
+
+                DefineForLoopTupleTargets(nestedTuple.Elements, nestedTupleType.ElementTypes);
+            }
+            else
+            {
+                CheckExpression(targetElem);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Type-checks star unpacking patterns: first, *rest = items
+    /// The RHS can be a list[T] or tuple[...].
+    /// </summary>
+    private void CheckStarUnpacking(TupleLiteral targetTuple, SemanticType valueType, Assignment assignment)
+    {
+        // Validate only one star expression
+        int starCount = targetTuple.Elements.Count(e => e is StarExpression);
+        if (starCount > 1)
+        {
+            AddError("Only one starred expression is allowed in an unpacking assignment",
+                assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.MultipleStarExpressions,
+                span: assignment.Span);
+            return;
+        }
+
+        // Determine element type from the source
+        SemanticType elementType;
+        if (valueType is GenericType { Name: "list" } listType && listType.TypeArguments.Count > 0)
+        {
+            elementType = listType.TypeArguments[0];
+        }
+        else if (valueType is TupleType tupleType)
+        {
+            // For tuples, use a common element type (first element's type for simplicity)
+            elementType = tupleType.ElementTypes.Count > 0 ? tupleType.ElementTypes[0] : SemanticType.Unknown;
+        }
+        else
+        {
+            AddError($"Cannot use starred unpacking with type '{valueType.GetDisplayName()}'",
+                assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                span: assignment.Span);
+            return;
+        }
+
+        // Define variables for each target
+        foreach (var targetElem in targetTuple.Elements)
+        {
+            if (targetElem is StarExpression starExpr && starExpr.Operand is Identifier starId)
+            {
+                // Starred variable gets list[T] type
+                var listTypeForStar = new GenericType
+                {
+                    Name = "list",
+                    TypeArguments = new List<SemanticType> { elementType }
+                };
+                var starSymbol = new VariableSymbol
+                {
+                    Name = starId.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = listTypeForStar,
+                    IsConstant = false,
+                    DeclarationLine = starId.LineStart,
+                    DeclarationColumn = starId.ColumnStart,
+                    AccessLevel = AccessLevel.Public
+                };
+                _symbolTable.Define(starSymbol);
+                SemanticBinding.SetVariableType(starSymbol, listTypeForStar);
+                _semanticInfo.SetIdentifierSymbol(starId, starSymbol);
+                _semanticInfo.SetExpressionType(starId, listTypeForStar);
+                _semanticInfo.SetExpressionType(starExpr, listTypeForStar);
+            }
+            else if (targetElem is Identifier id)
+            {
+                var symbol = new VariableSymbol
+                {
+                    Name = id.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = elementType,
+                    IsConstant = false,
+                    DeclarationLine = id.LineStart,
+                    DeclarationColumn = id.ColumnStart,
+                    AccessLevel = AccessLevel.Public
+                };
+                _symbolTable.Define(symbol);
+                SemanticBinding.SetVariableType(symbol, elementType);
+                _semanticInfo.SetIdentifierSymbol(id, symbol);
+                _semanticInfo.SetExpressionType(id, elementType);
+            }
+        }
     }
 
     /// <summary>

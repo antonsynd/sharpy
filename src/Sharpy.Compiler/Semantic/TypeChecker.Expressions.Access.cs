@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -32,10 +33,20 @@ internal partial class TypeChecker
             }
         }
 
-        // If object type is Unknown (e.g., from error recovery symbols), return Unknown
-        // to prevent cascading errors. The original error (e.g., import failure) was already reported.
+        // If object type is Unknown (e.g., from error recovery symbols), check if it's an
+        // enum type access (Color.RED) before giving up. TypeSymbol identifiers resolve to
+        // Unknown because they're not values, but enum member access IS a valid value expression.
         if (objectType is UnknownType)
         {
+            // Check for enum type member access: Color.RED -> UserDefinedType(Color)
+            if (memberAccess.Object is Identifier enumId)
+            {
+                var sym = _symbolTable.Lookup(enumId.Name);
+                if (sym is TypeSymbol { TypeKind: TypeKind.Enum } enumTypeSym)
+                {
+                    return new UserDefinedType { Name = enumTypeSym.Name, Symbol = enumTypeSym };
+                }
+            }
             return SemanticType.Unknown;
         }
 
@@ -99,6 +110,15 @@ internal partial class TypeChecker
 
         if (memberLookupType is UserDefinedType udt && udt.Symbol != null)
         {
+            // Handle enum .name and .value properties
+            if (udt.Symbol.TypeKind == TypeKind.Enum)
+            {
+                if (memberAccess.Member == "name")
+                    return SemanticType.Str;
+                if (memberAccess.Member == "value")
+                    return SemanticType.Int;
+            }
+
             // Look for field or property (including inherited fields)
             var (field, fieldOwner) = FindFieldInHierarchy(udt.Symbol, memberAccess.Member);
             if (field != null && fieldOwner != null)
@@ -431,6 +451,27 @@ internal partial class TypeChecker
             _superInitCalled = true;
         }
 
+        // Validate self.__init__() is only called inside a constructor
+        if (call.Function is MemberAccess selfInitMa &&
+            selfInitMa.Object is Identifier { Name: "self" } &&
+            selfInitMa.Member == DunderNames.Init)
+        {
+            if (_currentMethodName != DunderNames.Init)
+            {
+                AddError("self.__init__() can only be called inside a constructor (__init__)",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.SelfInitOutsideConstructor,
+                    span: call.Span);
+            }
+            else if (_superInitCalled)
+            {
+                AddError("Cannot use both super().__init__() and self.__init__() in the same constructor",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.ConflictingConstructorInitializers,
+                    span: call.Span);
+            }
+        }
+
         // Try to resolve the function symbol early for constructor inference on arguments.
         // For simple identifier calls (foo(Some(42))), we can look up the function before
         // checking arguments, allowing _expectedType to be set per-parameter.
@@ -459,6 +500,30 @@ internal partial class TypeChecker
         for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
         {
             var previousExpectedType = _expectedType;
+
+            // Handle spread arguments: *expr
+            if (call.Arguments[argIdx] is SpreadElement spreadArg)
+            {
+                var spreadValueType = CheckExpression(spreadArg.Value);
+
+                if (spreadValueType is TupleType tupleSpread)
+                {
+                    // Tuple spread: expand element types as individual arguments
+                    argTypes.AddRange(tupleSpread.ElementTypes);
+                }
+                else
+                {
+                    // Iterable spread: extract element type for variadic param matching
+                    var elemType = _typeInference.InferIterableElementType(spreadValueType);
+                    if (elemType != null)
+                        argTypes.Add(elemType);
+                    else
+                        argTypes.Add(SemanticType.Unknown);
+                }
+                _expectedType = previousExpectedType;
+                continue;
+            }
+
             if (earlyFuncSymbol != null && argIdx < earlyFuncSymbol.Parameters.Count)
             {
                 var paramType = earlyFuncSymbol.Parameters[argIdx].Type;
@@ -621,6 +686,16 @@ internal partial class TypeChecker
         else if (call.Function is MemberAccess memberAccessCall && memberAccessCall.Object is not SuperExpression)
         {
             funcSymbol = ResolveFunctionSymbolFromMemberAccess(memberAccessCall);
+
+            // If module resolution didn't find a symbol, try user-defined method overloads
+            if (funcSymbol == null)
+            {
+                var overloadResult = ResolveUserMethodOverload(
+                    memberAccessCall, argTypes, totalArgCount, call,
+                    isNullConditionalCall, isOptionalNullConditional);
+                if (overloadResult != null)
+                    return overloadResult;
+            }
         }
 
         // If we have a FunctionSymbol, use it for validation (supports default parameters)
@@ -794,6 +869,135 @@ internal partial class TypeChecker
             call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
             span: call.Span);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Resolves a user-defined method overload from a member access call (e.g., obj.method(args)).
+    /// Returns the resolved return type when the method has multiple overloads, null if not applicable.
+    /// Handles the complete call validation including argument type checking.
+    /// </summary>
+    private SemanticType? ResolveUserMethodOverload(
+        MemberAccess memberAccess, List<SemanticType> argTypes, int totalArgCount, FunctionCall call,
+        bool isNullConditionalCall, bool isOptionalNullConditional)
+    {
+        var objectType = _semanticInfo.GetExpressionType(memberAccess.Object);
+        if (objectType is not UserDefinedType { Symbol: { } typeSymbol })
+            return null;
+
+        // Walk the hierarchy looking for overloads
+        var overloads = FindMethodOverloadsInHierarchy(typeSymbol, memberAccess.Member);
+        if (overloads == null || overloads.Count <= 1)
+            return null;
+
+        // First pass: filter by argument count (skip 'self' parameter)
+        var candidates = overloads.Where(o =>
+        {
+            var selfOffset = o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+            var requiredParams = o.Parameters.Skip(selfOffset).Count(p => !p.HasDefault && !p.IsVariadic);
+            var hasVariadic = o.Parameters.Skip(selfOffset).Any(p => p.IsVariadic);
+            var totalParams = o.Parameters.Count - selfOffset;
+            if (hasVariadic)
+                return totalArgCount >= requiredParams;
+            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
+        }).ToList();
+
+        // Second pass: check type compatibility
+        FunctionSymbol? matchingOverload = null;
+        int matchCount = 0;
+        foreach (var overload in candidates)
+        {
+            var selfOffset = overload.Parameters.Count > 0 && overload.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+            bool typesMatch = true;
+            var variadicParam = overload.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
+
+            for (int i = 0; i < argTypes.Count; i++)
+            {
+                SemanticType expectedType;
+                var paramIdx = i + selfOffset;
+                if (paramIdx < overload.Parameters.Count && !overload.Parameters[paramIdx].IsVariadic)
+                {
+                    expectedType = overload.Parameters[paramIdx].Type;
+                }
+                else if (variadicParam != null)
+                {
+                    expectedType = variadicParam.Type;
+                }
+                else
+                {
+                    typesMatch = false;
+                    break;
+                }
+
+                if (expectedType is not UnknownType && argTypes[i] is not UnknownType
+                    && !IsAssignable(argTypes[i], expectedType))
+                {
+                    typesMatch = false;
+                    break;
+                }
+            }
+            if (typesMatch)
+            {
+                matchingOverload = overload;
+                matchCount++;
+            }
+        }
+
+        if (matchCount > 1)
+        {
+            AddError($"Ambiguous call to overloaded method '{memberAccess.Member}' — multiple overloads match the argument types",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+
+        if (matchingOverload == null)
+        {
+            if (candidates.Count == 0)
+            {
+                AddError($"No matching overload for '{memberAccess.Member}' with {totalArgCount} argument(s)",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                    span: call.Span);
+            }
+            else
+            {
+                // Candidates matched by arity but not by type
+                AddError($"No matching overload for '{memberAccess.Member}' with the given argument types",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                    span: call.Span);
+            }
+            return SemanticType.Unknown;
+        }
+
+        var returnType = matchingOverload.ReturnType;
+        if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
+        {
+            if (isOptionalNullConditional)
+                return new OptionalType { UnderlyingType = returnType };
+            return new NullableType { UnderlyingType = returnType };
+        }
+        return returnType;
+    }
+
+    /// <summary>
+    /// Finds all overloads for a method name walking the type hierarchy.
+    /// Returns null if no overloads are found.
+    /// </summary>
+    private List<FunctionSymbol>? FindMethodOverloadsInHierarchy(TypeSymbol type, string methodName)
+    {
+        // Check the type itself
+        if (type.MethodOverloads.TryGetValue(methodName, out var overloads) && overloads.Count > 0)
+            return overloads;
+
+        // Check base class chain
+        var current = GetBaseType(type);
+        while (current != null)
+        {
+            if (current.MethodOverloads.TryGetValue(methodName, out overloads) && overloads.Count > 0)
+                return overloads;
+            current = GetBaseType(current);
+        }
+
+        return null;
     }
 
     /// <summary>

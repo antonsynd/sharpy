@@ -19,7 +19,29 @@ public partial class Parser
         // 2. Variable declaration (x: int = value or x: int)
         // 3. Expression statement
 
-        var expr = ParseExpression();
+        // Check for star expression at the start: *rest, x = items
+        Expression expr;
+        if (Current.Type == TokenType.Star)
+        {
+            var starLine = Current.Line;
+            var starColumn = Current.Column;
+            var starToken = Current;
+            Advance();
+            var operand = ParsePrimary();
+            expr = new StarExpression
+            {
+                Operand = operand,
+                LineStart = starLine,
+                ColumnStart = starColumn,
+                LineEnd = operand.LineEnd,
+                ColumnEnd = operand.ColumnEnd,
+                Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
+            };
+        }
+        else
+        {
+            expr = ParseExpression();
+        }
 
         // Check for tuple unpacking: x, y = ...
         // If we see a comma after the expression, it might be a tuple target for assignment
@@ -29,11 +51,31 @@ public partial class Parser
             var startColumn = expr.ColumnStart;
             var elements = new List<Expression> { expr };
 
-            // Parse remaining tuple elements
+            // Parse remaining tuple elements (with star support)
             while (Current.Type == TokenType.Comma)
             {
                 Advance();
-                elements.Add(ParseExpression());
+                if (Current.Type == TokenType.Star)
+                {
+                    var starLine = Current.Line;
+                    var starColumn = Current.Column;
+                    var starToken = Current;
+                    Advance();
+                    var operand = ParsePrimary();
+                    elements.Add(new StarExpression
+                    {
+                        Operand = operand,
+                        LineStart = starLine,
+                        ColumnStart = starColumn,
+                        LineEnd = operand.LineEnd,
+                        ColumnEnd = operand.ColumnEnd,
+                        Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
+                    });
+                }
+                else
+                {
+                    elements.Add(ParseExpression());
+                }
             }
 
             // Now check if we have an assignment operator
@@ -784,6 +826,14 @@ public partial class Parser
 
         Expect(TokenType.Type);
         var name = ExpectIdentifier();
+
+        // Optional type parameters: type Cb[T] = (T) -> None
+        var typeParams = new List<TypeParameterDef>();
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            typeParams = ParseTypeParameterList();
+        }
+
         Expect(TokenType.Assign);
 
         // Check if this is a function type: (params) -> returnType
@@ -836,6 +886,7 @@ public partial class Parser
         return new TypeAlias
         {
             Name = name,
+            TypeParameters = typeParams.ToImmutableArray(),
             Type = type,
             FunctionType = functionType,
             LineStart = startLine,
