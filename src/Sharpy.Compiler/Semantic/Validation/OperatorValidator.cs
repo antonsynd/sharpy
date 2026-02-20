@@ -280,6 +280,10 @@ internal class OperatorValidator : SemanticValidatorBase
         // Check if operator is supported by the left type
         if (!SupportsOperator(leftType, dunderName))
         {
+            // Enum types support comparison operators natively (backed by integers in C#)
+            if (IsEnumType(leftType) && IsComparisonOperator(binOp.Operator))
+                return;
+
             // Check if it's a comparison operator - primitives and constrained type parameters support these
             if (!IsComparisonOperator(binOp.Operator) || !IsPrimitiveType(leftType))
             {
@@ -462,6 +466,11 @@ internal class OperatorValidator : SemanticValidatorBase
     private bool IsPrimitiveType(SemanticType type)
     {
         return type is BuiltinType || type == SemanticType.Str;
+    }
+
+    private static bool IsEnumType(SemanticType type)
+    {
+        return type is UserDefinedType { Symbol.TypeKind: TypeKind.Enum };
     }
 
     private bool IsComparisonOperator(BinaryOperator op)

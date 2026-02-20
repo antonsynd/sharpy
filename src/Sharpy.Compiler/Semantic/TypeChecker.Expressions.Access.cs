@@ -32,10 +32,20 @@ internal partial class TypeChecker
             }
         }
 
-        // If object type is Unknown (e.g., from error recovery symbols), return Unknown
-        // to prevent cascading errors. The original error (e.g., import failure) was already reported.
+        // If object type is Unknown (e.g., from error recovery symbols), check if it's an
+        // enum type access (Color.RED) before giving up. TypeSymbol identifiers resolve to
+        // Unknown because they're not values, but enum member access IS a valid value expression.
         if (objectType is UnknownType)
         {
+            // Check for enum type member access: Color.RED -> UserDefinedType(Color)
+            if (memberAccess.Object is Identifier enumId)
+            {
+                var sym = _symbolTable.Lookup(enumId.Name);
+                if (sym is TypeSymbol { TypeKind: TypeKind.Enum } enumTypeSym)
+                {
+                    return new UserDefinedType { Name = enumTypeSym.Name, Symbol = enumTypeSym };
+                }
+            }
             return SemanticType.Unknown;
         }
 
@@ -99,6 +109,15 @@ internal partial class TypeChecker
 
         if (memberLookupType is UserDefinedType udt && udt.Symbol != null)
         {
+            // Handle enum .name and .value properties
+            if (udt.Symbol.TypeKind == TypeKind.Enum)
+            {
+                if (memberAccess.Member == "name")
+                    return SemanticType.Str;
+                if (memberAccess.Member == "value")
+                    return SemanticType.Int;
+            }
+
             // Look for field or property (including inherited fields)
             var (field, fieldOwner) = FindFieldInHierarchy(udt.Symbol, memberAccess.Member);
             if (field != null && fieldOwner != null)

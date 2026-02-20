@@ -703,6 +703,48 @@ public static class DiagnosticExplanations
             "x = 42  # missing type annotation at module level",
             "Add a type annotation:\n  x: int = 42");
 
+        // ── Semantic errors: Additional (SPY0350-SPY0399) ───────────────
+
+        Add(dict, DiagnosticCodes.Semantic.SelfInitOutsideConstructor, "self.__init__() outside constructor", "Semantic",
+            "A call to self.__init__() was found outside of an __init__ method. Constructor chaining via self.__init__() is only valid inside a constructor.",
+            "def method(self):\n    self.__init__(42)  # not allowed here",
+            "Move self.__init__() calls into an __init__ method for constructor chaining.");
+
+        Add(dict, DiagnosticCodes.Semantic.ConflictingConstructorInitializers, "Conflicting constructor initializers", "Semantic",
+            "A constructor has both super().__init__() and self.__init__() calls. A constructor can chain to either a base constructor or another constructor of the same class, but not both.",
+            "def __init__(self, x: int):\n    super().__init__()\n    self.__init__(x, 0)",
+            "Remove one of the chaining calls — use either super().__init__() or self.__init__(), not both.");
+
+        Add(dict, DiagnosticCodes.Semantic.TypeAliasArityMismatch, "Type alias arity mismatch", "Semantic",
+            "A generic type alias was used with the wrong number of type arguments.",
+            "type Pair[T] = tuple[T, T]\nx: Pair[int, str] = (1, \"a\")  # Pair takes 1 type argument, got 2",
+            "Provide the correct number of type arguments matching the alias definition.");
+
+        Add(dict, DiagnosticCodes.Semantic.AmbiguousOverload, "Ambiguous method overload", "Semantic",
+            "A method call matches multiple overloads equally well and the compiler cannot determine which to use.",
+            "class Foo:\n    def bar(self, x: int): ...\n    def bar(self, x: float): ...\nfoo.bar(42)",
+            "Add an explicit type annotation or cast to disambiguate the call.");
+
+        Add(dict, DiagnosticCodes.Semantic.NoMatchingOverload, "No matching method overload", "Semantic",
+            "A method call does not match any of the available overloads for the method.",
+            "class Foo:\n    def bar(self, x: int): ...\nfoo.bar(\"hello\")",
+            "Check the argument types and ensure they match one of the declared overloads.");
+
+        Add(dict, DiagnosticCodes.Semantic.DuplicateMethodSignature, "Duplicate method signature", "Semantic",
+            "Two method overloads have identical parameter signatures. Overloads must differ in parameter count or types.",
+            "class Foo:\n    def bar(self, x: int): ...\n    def bar(self, y: int): ...",
+            "Change the parameter types or count to differentiate overloads.");
+
+        Add(dict, DiagnosticCodes.Semantic.MultipleStarExpressions, "Multiple star expressions in unpacking", "Semantic",
+            "More than one starred expression (*rest) was found in an unpacking target. Only one starred expression is allowed per unpacking.",
+            "first, *middle, *end = items",
+            "Use only one starred expression:\nfirst, *rest = items");
+
+        Add(dict, DiagnosticCodes.Semantic.SpreadIntoNonVariadic, "Spread into non-variadic parameter", "Semantic",
+            "A spread argument (*args) was used in a call to a function that does not have a variadic parameter.",
+            "def foo(a: int, b: int): ...\nitems: list[int] = [1, 2]\nfoo(*items)",
+            "Use a function with variadic parameters (*args) or pass arguments individually.");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",

@@ -82,6 +82,16 @@ internal class TypeInferenceService
         if (typeParamResult != null)
             return typeParamResult;
 
+        // Enum types support comparison operators natively (backed by integers in C#)
+        if (left is UserDefinedType { Symbol.TypeKind: TypeKind.Enum } &&
+            right is UserDefinedType { Symbol.TypeKind: TypeKind.Enum })
+        {
+            if (op is BinaryOperator.Equal or BinaryOperator.NotEqual
+                or BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
+                or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual)
+                return SemanticType.Bool;
+        }
+
         // Try user-defined types
         var userResult = TryInferUserDefinedBinaryOp(op, left, right);
         if (userResult != null)

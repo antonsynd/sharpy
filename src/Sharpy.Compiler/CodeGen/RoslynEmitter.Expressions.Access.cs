@@ -367,17 +367,23 @@ internal partial class RoslynEmitter
 
         var obj = GenerateExpression(memberAccess.Object);
 
-        // Handle special .value property for enum instances
-        // enum_instance.value -> (int)enum_instance
-        if (string.Equals(memberAccess.Member, "value", StringComparison.OrdinalIgnoreCase))
+        // Handle special .value and .name properties for enum instances
+        if (memberAccess.Member is "value" or "name" && IsEnumInstance(memberAccess.Object))
         {
-            // Only cast to int if the object expression is of an enum type
-            if (IsEnumTypeExpression(memberAccess.Object))
+            if (memberAccess.Member == "value")
             {
+                // enum_instance.value -> (int)enum_instance
                 return CastExpression(
                     PredefinedType(Token(SyntaxKind.IntKeyword)),
                     obj);
             }
+
+            // enum_instance.name -> enum_instance.ToString()
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    obj,
+                    IdentifierName("ToString")));
         }
 
         // Named tuple element access: keep element names as-is (no PascalCase)

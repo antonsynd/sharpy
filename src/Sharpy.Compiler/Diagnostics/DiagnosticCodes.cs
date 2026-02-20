@@ -169,6 +169,16 @@ public static class DiagnosticCodes
         // Module level (SPY0340-SPY0349)
         public const string ModuleLevelExecutableStatement = "SPY0340";
         public const string ModuleLevelNoTypeAnnotation = "SPY0341";
+
+        // Additional semantic errors (SPY0350-SPY0399)
+        public const string SelfInitOutsideConstructor = "SPY0350";
+        public const string ConflictingConstructorInitializers = "SPY0351";
+        public const string TypeAliasArityMismatch = "SPY0352";
+        public const string AmbiguousOverload = "SPY0353";
+        public const string NoMatchingOverload = "SPY0354";
+        public const string DuplicateMethodSignature = "SPY0355";
+        public const string MultipleStarExpressions = "SPY0356";
+        public const string SpreadIntoNonVariadic = "SPY0357";
     }
 
     /// <summary>
