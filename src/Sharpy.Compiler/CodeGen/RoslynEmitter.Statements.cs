@@ -343,6 +343,25 @@ internal partial class RoslynEmitter
         // Handle tuple unpacking: x, y = 1, 2
         if (assign.Target is TupleLiteral tuple)
         {
+            // Star unpacking: first, *rest = items
+            if (tuple.Elements.Any(e => e is StarExpression))
+            {
+                var starStmts = new List<StatementSyntax>();
+                var starTempVar = $"__t{_tempVarCounter++}";
+                starStmts.Add(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(starTempVar))
+                                .WithInitializer(EqualsValueClause(value))))));
+
+                var valueType = GetExpressionSemanticType(assign.Value);
+                GenerateStarUnpacking(tuple.Elements, starTempVar, valueType, starStmts);
+
+                for (int i = 0; i < starStmts.Count - 1; i++)
+                    _hoistedStatements.Add(starStmts[i]);
+                return starStmts[^1];
+            }
+
             // Generate C# tuple deconstruction
             // C#: var (x, y) = (1, 2)
 
@@ -1718,6 +1737,122 @@ internal partial class RoslynEmitter
     /// For each Identifier target, emits: var name = source.ItemN;
     /// For each nested TupleLiteral, emits: var __tN = source.ItemN; then recurses.
     /// </summary>
+    /// <summary>
+    /// Generates star/rest unpacking: first, *rest, last = items
+    /// Lowers to indexed access for non-star elements and slicing for the star element.
+    /// </summary>
+    private void GenerateStarUnpacking(
+        ImmutableArray<Expression> elements, string sourceVar, SemanticType? valueType,
+        List<StatementSyntax> statements)
+    {
+        // Find star position
+        int starIndex = -1;
+        for (int i = 0; i < elements.Length; i++)
+        {
+            if (elements[i] is StarExpression)
+            {
+                starIndex = i;
+                break;
+            }
+        }
+
+        int numBefore = starIndex;
+        int numAfter = elements.Length - starIndex - 1;
+
+        // Determine element type for the Sharpy.List<T> wrapper
+        TypeSyntax elementTypeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        if (valueType is GenericType { Name: "list" } listType && listType.TypeArguments.Count > 0)
+        {
+            elementTypeSyntax = _typeMapper.MapSemanticType(listType.TypeArguments[0]);
+        }
+
+        // Elements before star: var name = __t[i]
+        for (int i = 0; i < numBefore; i++)
+        {
+            if (elements[i] is Identifier id)
+            {
+                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                _declaredVariables.Add(varName);
+                statements.Add(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(varName))
+                                .WithInitializer(EqualsValueClause(
+                                    ElementAccessExpression(IdentifierName(sourceVar))
+                                        .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
+                                            Argument(LiteralExpression(
+                                                SyntaxKind.NumericLiteralExpression,
+                                                Literal(i))))))))))));
+            }
+        }
+
+        // Star element: var rest = __t.__GetItem__(new Sharpy.Slice(start, end))
+        if (elements[starIndex] is StarExpression starExpr && starExpr.Operand is Identifier starId)
+        {
+            var starVarName = GetMangledVariableName(starId.Name, isNewDeclaration: true);
+            _declaredVariables.Add(starVarName);
+
+            // Build Slice constructor args: new Sharpy.Slice((int?)start, (int?)end)
+            var startArg = numBefore > 0
+                ? (ExpressionSyntax)CastExpression(
+                    NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numBefore)))
+                : LiteralExpression(SyntaxKind.NullLiteralExpression);
+
+            var endArg = numAfter > 0
+                ? (ExpressionSyntax)CastExpression(
+                    NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                    PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression,
+                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numAfter))))
+                : LiteralExpression(SyntaxKind.NullLiteralExpression);
+
+            // __t.__GetItem__(new global::Sharpy.Slice(start, end))
+            var newSlice = ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "Slice"))
+                .WithArgumentList(ArgumentList(SeparatedList(new[]
+                {
+                    Argument(startArg),
+                    Argument(endArg)
+                })));
+
+            var sliceCall = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(sourceVar),
+                    IdentifierName("__GetItem__")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(newSlice))));
+
+            statements.Add(LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(starVarName))
+                            .WithInitializer(EqualsValueClause(sliceCall))))));
+        }
+
+        // Elements after star: var name = __t[-n]
+        for (int i = 0; i < numAfter; i++)
+        {
+            int elemIndex = starIndex + 1 + i;
+            int negIndex = numAfter - i; // distance from end: numAfter, ..., 1
+
+            if (elements[elemIndex] is Identifier id)
+            {
+                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                _declaredVariables.Add(varName);
+                statements.Add(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(varName))
+                                .WithInitializer(EqualsValueClause(
+                                    ElementAccessExpression(IdentifierName(sourceVar))
+                                        .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
+                                            Argument(PrefixUnaryExpression(
+                                                SyntaxKind.UnaryMinusExpression,
+                                                LiteralExpression(
+                                                    SyntaxKind.NumericLiteralExpression,
+                                                    Literal(negIndex)))))))))))));
+            }
+        }
+    }
+
     private void GenerateRecursiveTupleUnpacking(
         ImmutableArray<Expression> targets, string sourceVarName, List<StatementSyntax> statements)
     {

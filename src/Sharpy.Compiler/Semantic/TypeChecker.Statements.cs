@@ -33,10 +33,19 @@ internal partial class TypeChecker
             return;
         }
 
-        // Handle tuple unpacking: x, y = expr
+        // Handle tuple unpacking: x, y = expr  or  first, *rest = items
         if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is TupleLiteral targetTuple)
         {
             var tupleValueType = CheckExpression(assignment.Value);
+
+            // Check for star expression (rest pattern)
+            bool hasStar = targetTuple.Elements.Any(e => e is StarExpression);
+
+            if (hasStar)
+            {
+                CheckStarUnpacking(targetTuple, tupleValueType, assignment);
+                return;
+            }
 
             // Value must be a tuple type
             if (tupleValueType is not TupleType tupleType)
@@ -948,6 +957,88 @@ internal partial class TypeChecker
             else
             {
                 CheckExpression(targetElem);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Type-checks star unpacking patterns: first, *rest = items
+    /// The RHS can be a list[T] or tuple[...].
+    /// </summary>
+    private void CheckStarUnpacking(TupleLiteral targetTuple, SemanticType valueType, Assignment assignment)
+    {
+        // Validate only one star expression
+        int starCount = targetTuple.Elements.Count(e => e is StarExpression);
+        if (starCount > 1)
+        {
+            AddError("Only one starred expression is allowed in an unpacking assignment",
+                assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.MultipleStarExpressions,
+                span: assignment.Span);
+            return;
+        }
+
+        // Determine element type from the source
+        SemanticType elementType;
+        if (valueType is GenericType { Name: "list" } listType && listType.TypeArguments.Count > 0)
+        {
+            elementType = listType.TypeArguments[0];
+        }
+        else if (valueType is TupleType tupleType)
+        {
+            // For tuples, use a common element type (first element's type for simplicity)
+            elementType = tupleType.ElementTypes.Count > 0 ? tupleType.ElementTypes[0] : SemanticType.Unknown;
+        }
+        else
+        {
+            AddError($"Cannot use starred unpacking with type '{valueType.GetDisplayName()}'",
+                assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                span: assignment.Span);
+            return;
+        }
+
+        // Define variables for each target
+        foreach (var targetElem in targetTuple.Elements)
+        {
+            if (targetElem is StarExpression starExpr && starExpr.Operand is Identifier starId)
+            {
+                // Starred variable gets list[T] type
+                var listTypeForStar = new GenericType
+                {
+                    Name = "list",
+                    TypeArguments = new List<SemanticType> { elementType }
+                };
+                var starSymbol = new VariableSymbol
+                {
+                    Name = starId.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = listTypeForStar,
+                    IsConstant = false,
+                    DeclarationLine = starId.LineStart,
+                    DeclarationColumn = starId.ColumnStart,
+                    AccessLevel = AccessLevel.Public
+                };
+                _symbolTable.Define(starSymbol);
+                SemanticBinding.SetVariableType(starSymbol, listTypeForStar);
+                _semanticInfo.SetIdentifierSymbol(starId, starSymbol);
+                _semanticInfo.SetExpressionType(starId, listTypeForStar);
+                _semanticInfo.SetExpressionType(starExpr, listTypeForStar);
+            }
+            else if (targetElem is Identifier id)
+            {
+                var symbol = new VariableSymbol
+                {
+                    Name = id.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = elementType,
+                    IsConstant = false,
+                    DeclarationLine = id.LineStart,
+                    DeclarationColumn = id.ColumnStart,
+                    AccessLevel = AccessLevel.Public
+                };
+                _symbolTable.Define(symbol);
+                SemanticBinding.SetVariableType(symbol, elementType);
+                _semanticInfo.SetIdentifierSymbol(id, symbol);
+                _semanticInfo.SetExpressionType(id, elementType);
             }
         }
     }

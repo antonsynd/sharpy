@@ -135,6 +135,9 @@ public abstract class AstVisitor
             case MaybeExpression n:
                 VisitMaybeExpression(n);
                 break;
+            case StarExpression n:
+                VisitStarExpression(n);
+                break;
 
             // Expressions - Future
             case AwaitExpression n:
@@ -376,6 +379,7 @@ public abstract class AstVisitor
     public virtual void VisitWalrusExpression(WalrusExpression node) => VisitExpression(node);
     public virtual void VisitTryExpression(TryExpression node) => VisitExpression(node);
     public virtual void VisitMaybeExpression(MaybeExpression node) => VisitExpression(node);
+    public virtual void VisitStarExpression(StarExpression node) => VisitExpression(node);
 
     #endregion
 
@@ -519,6 +523,7 @@ public abstract class AstVisitor<T>
             WalrusExpression n => VisitWalrusExpression(n),
             TryExpression n => VisitTryExpression(n),
             MaybeExpression n => VisitMaybeExpression(n),
+            StarExpression n => VisitStarExpression(n),
 
             // Expressions - Future
             AwaitExpression n => VisitAwaitExpression(n),
@@ -683,6 +688,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitWalrusExpression(WalrusExpression node) => VisitExpression(node);
     public virtual T VisitTryExpression(TryExpression node) => VisitExpression(node);
     public virtual T VisitMaybeExpression(MaybeExpression node) => VisitExpression(node);
+    public virtual T VisitStarExpression(StarExpression node) => VisitExpression(node);
 
     #endregion
 

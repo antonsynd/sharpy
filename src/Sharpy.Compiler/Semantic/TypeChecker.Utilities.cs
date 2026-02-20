@@ -270,6 +270,7 @@ internal partial class TypeChecker
             MemberAccess => true,
             IndexAccess => true,
             TupleLiteral tuple => tuple.Elements.All(IsValidAssignmentTarget),
+            StarExpression star => IsValidAssignmentTarget(star.Operand),
             _ => false
         };
     }

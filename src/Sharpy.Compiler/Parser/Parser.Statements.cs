@@ -179,12 +179,13 @@ public partial class Parser
         // For target can be:
         // - Simple identifier: for x in ...
         // - Tuple: for x, y in ...
+        // - Star unpacking: for first, *rest in ...
         // We parse up to but not including the 'in' keyword
 
         var startLine = Current.Line;
         var startColumn = Current.Column;
 
-        var first = ParsePrimary();
+        var first = ParseForTargetElement();
 
         // Check if it's a tuple (comma-separated)
         if (Current.Type == TokenType.Comma)
@@ -196,7 +197,7 @@ public partial class Parser
                 Advance();
                 if (Current.Type == TokenType.In)
                     break;  // Trailing comma before 'in'
-                elements.Add(ParsePrimary());
+                elements.Add(ParseForTargetElement());
             }
 
             return new TupleLiteral
@@ -211,6 +212,29 @@ public partial class Parser
         }
 
         return first;
+    }
+
+    private Expression ParseForTargetElement()
+    {
+        if (Current.Type == TokenType.Star)
+        {
+            var starLine = Current.Line;
+            var starColumn = Current.Column;
+            var starToken = Current;
+            Advance();
+            var operand = ParsePrimary();
+            return new StarExpression
+            {
+                Operand = operand,
+                LineStart = starLine,
+                ColumnStart = starColumn,
+                LineEnd = operand.LineEnd,
+                ColumnEnd = operand.ColumnEnd,
+                Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
+            };
+        }
+
+        return ParsePrimary();
     }
 
     /// <summary>

@@ -831,3 +831,27 @@ public record MaybeExpression : Expression
 }
 
 #endregion
+
+#region Unpacking
+
+/// <summary>
+/// Star expression (*rest) used in unpacking targets: first, *rest = items
+/// </summary>
+public record StarExpression : Expression
+{
+    public Expression Operand { get; init; } = null!;
+
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Operand != null, "StarExpression.Operand cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Operand;
+    }
+}
+
+#endregion
