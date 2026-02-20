@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
@@ -55,56 +56,8 @@ internal partial class TypeChecker
                 return;
             }
 
-            // Type-check each unpacking element
-            for (int i = 0; i < targetTuple.Elements.Length; i++)
-            {
-                var targetElem = targetTuple.Elements[i];
-                var valueElemType = tupleType.ElementTypes[i];
-
-                if (targetElem is Identifier tupleTargetId)
-                {
-                    var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false);
-
-                    // Check if trying to reassign a constant
-                    if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
-                    {
-                        AddError($"Cannot reassign constant variable '{tupleTargetId.Name}' in tuple unpacking",
-                            tupleTargetId.LineStart, tupleTargetId.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
-                            span: tupleTargetId.Span);
-                        continue;
-                    }
-
-                    // In Sharpy, tuple unpacking creates new variable versions
-                    // Create/redefine with inferred type from tuple element
-                    var newSymbol = new VariableSymbol
-                    {
-                        Name = tupleTargetId.Name,
-                        Kind = SymbolKind.Variable,
-                        Type = valueElemType,
-                        IsConstant = false,
-                        DeclarationLine = tupleTargetId.LineStart,
-                        DeclarationColumn = tupleTargetId.ColumnStart,
-                        AccessLevel = AccessLevel.Public
-                    };
-                    _symbolTable.Define(newSymbol);
-                    SemanticBinding.SetVariableType(newSymbol, valueElemType);
-                    _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
-                    _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
-                    if (valueElemType is UnknownType)
-                        MarkExpressionAsErrorRecovery(tupleTargetId);
-                }
-                else
-                {
-                    // For more complex targets (like attributes), just check type compatibility
-                    var targetElemType = CheckExpression(targetElem);
-                    if (!IsAssignable(valueElemType, targetElemType))
-                    {
-                        AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
-                            targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: targetElem.Span);
-                    }
-                }
-            }
+            // Type-check each unpacking element (supports nested tuple targets)
+            CheckTupleUnpackingElements(targetTuple.Elements, tupleType.ElementTypes);
 
             return;
         }
@@ -538,41 +491,8 @@ internal partial class TypeChecker
                 else
                 {
                     // Define loop variables with inferred types INSIDE the for-body scope
-                    for (int i = 0; i < targetTuple.Elements.Length; i++)
-                    {
-                        var targetElem = targetTuple.Elements[i];
-                        var elemType = tupleType.ElementTypes[i];
-
-                        if (targetElem is Identifier id)
-                        {
-                            var loopVarSymbol = new VariableSymbol
-                            {
-                                Name = id.Name,
-                                Kind = SymbolKind.Variable,
-                                Type = elemType,
-                                AccessLevel = AccessLevel.Public,
-                                DeclarationLine = id.LineStart,
-                                DeclarationColumn = id.ColumnStart
-                            };
-
-                            // Check if already defined in this scope
-                            if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
-                            {
-                                _symbolTable.Define(loopVarSymbol);
-                                SemanticBinding.SetVariableType(loopVarSymbol, elemType);
-                                _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
-                            }
-
-                            _semanticInfo.SetExpressionType(targetElem, elemType);
-                            if (elemType is UnknownType)
-                                MarkExpressionAsErrorRecovery(targetElem);
-                        }
-                        else
-                        {
-                            // For more complex targets, just check the expression
-                            CheckExpression(targetElem);
-                        }
-                    }
+                    // (supports nested tuple targets like (x, y), name)
+                    DefineForLoopTupleTargets(targetTuple.Elements, tupleType.ElementTypes);
                 }
             }
 
@@ -890,6 +810,146 @@ internal partial class TypeChecker
 
         // All other types (builtins, functions, tuples, etc.) are not disposable
         return false;
+    }
+
+    /// <summary>
+    /// Recursively type-checks tuple unpacking target elements against their value types.
+    /// Handles nested tuple targets like (a, b), c and (a, (b, c)), d.
+    /// </summary>
+    private void CheckTupleUnpackingElements(ImmutableArray<Expression> targets, IReadOnlyList<SemanticType> valueTypes)
+    {
+        for (int i = 0; i < targets.Length; i++)
+        {
+            var targetElem = targets[i];
+            var valueElemType = valueTypes[i];
+
+            if (targetElem is Identifier tupleTargetId)
+            {
+                var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false);
+
+                // Check if trying to reassign a constant
+                if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
+                {
+                    AddError($"Cannot reassign constant variable '{tupleTargetId.Name}' in tuple unpacking",
+                        tupleTargetId.LineStart, tupleTargetId.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                        span: tupleTargetId.Span);
+                    continue;
+                }
+
+                // In Sharpy, tuple unpacking creates new variable versions
+                // Create/redefine with inferred type from tuple element
+                var newSymbol = new VariableSymbol
+                {
+                    Name = tupleTargetId.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = valueElemType,
+                    IsConstant = false,
+                    DeclarationLine = tupleTargetId.LineStart,
+                    DeclarationColumn = tupleTargetId.ColumnStart,
+                    AccessLevel = AccessLevel.Public
+                };
+                _symbolTable.Define(newSymbol);
+                SemanticBinding.SetVariableType(newSymbol, valueElemType);
+                _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
+                _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
+                if (valueElemType is UnknownType)
+                    MarkExpressionAsErrorRecovery(tupleTargetId);
+            }
+            else if (targetElem is TupleLiteral nestedTuple)
+            {
+                // Nested tuple unpacking: (a, b), c = expr
+                if (valueElemType is not TupleType nestedTupleType)
+                {
+                    AddError($"Cannot unpack non-tuple type '{valueElemType.GetDisplayName()}' into nested tuple",
+                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: targetElem.Span);
+                    continue;
+                }
+
+                if (nestedTuple.Elements.Length != nestedTupleType.ElementTypes.Count)
+                {
+                    AddError($"Cannot unpack {nestedTupleType.ElementTypes.Count} values into {nestedTuple.Elements.Length} variables",
+                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: targetElem.Span);
+                    continue;
+                }
+
+                // Recurse into nested tuple
+                CheckTupleUnpackingElements(nestedTuple.Elements, nestedTupleType.ElementTypes);
+            }
+            else
+            {
+                // For more complex targets (like attributes), just check type compatibility
+                var targetElemType = CheckExpression(targetElem);
+                if (!IsAssignable(valueElemType, targetElemType))
+                {
+                    AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
+                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: targetElem.Span);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Recursively defines loop variables for nested tuple targets in for-loops.
+    /// E.g., for (x, y), name in items: registers x, y, and name.
+    /// </summary>
+    private void DefineForLoopTupleTargets(ImmutableArray<Expression> targets, IReadOnlyList<SemanticType> elementTypes)
+    {
+        for (int i = 0; i < targets.Length; i++)
+        {
+            var targetElem = targets[i];
+            var elemType = elementTypes[i];
+
+            if (targetElem is Identifier id)
+            {
+                var loopVarSymbol = new VariableSymbol
+                {
+                    Name = id.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = elemType,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = id.LineStart,
+                    DeclarationColumn = id.ColumnStart
+                };
+
+                if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
+                {
+                    _symbolTable.Define(loopVarSymbol);
+                    SemanticBinding.SetVariableType(loopVarSymbol, elemType);
+                    _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+                }
+
+                _semanticInfo.SetExpressionType(targetElem, elemType);
+                if (elemType is UnknownType)
+                    MarkExpressionAsErrorRecovery(targetElem);
+            }
+            else if (targetElem is TupleLiteral nestedTuple)
+            {
+                if (elemType is not TupleType nestedTupleType)
+                {
+                    AddError($"Cannot unpack non-tuple type '{elemType.GetDisplayName()}' into nested tuple in for loop",
+                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: targetElem.Span);
+                    continue;
+                }
+
+                if (nestedTuple.Elements.Length != nestedTupleType.ElementTypes.Count)
+                {
+                    AddError($"Cannot unpack {nestedTupleType.ElementTypes.Count} values into {nestedTuple.Elements.Length} variables in for loop",
+                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: targetElem.Span);
+                    continue;
+                }
+
+                DefineForLoopTupleTargets(nestedTuple.Elements, nestedTupleType.ElementTypes);
+            }
+            else
+            {
+                CheckExpression(targetElem);
+            }
+        }
     }
 
     /// <summary>

@@ -379,9 +379,21 @@ internal partial class RoslynEmitter
                         value));
             }
 
-            return EmitNotImplementedStatement(
-                "Complex tuple unpacking (non-identifier targets) is not yet supported. Use intermediate variables to unpack in multiple steps.",
-                DiagnosticCodes.CodeGen.ComplexTupleUnpacking, assign.LineStart, assign.ColumnStart);
+            // Complex tuple unpacking: (a, b), c = expr
+            // Lower to temp variables + .ItemN access, hoisted as flat siblings
+            var unpackStmts = new List<StatementSyntax>();
+            var tempVarName = $"__t{_tempVarCounter++}";
+            unpackStmts.Add(LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(tempVarName))
+                            .WithInitializer(EqualsValueClause(value))))));
+            GenerateRecursiveTupleUnpacking(tuple.Elements, tempVarName, unpackStmts);
+
+            // Hoist all but the last statement; return the last as the result
+            for (int i = 0; i < unpackStmts.Count - 1; i++)
+                _hoistedStatements.Add(unpackStmts[i]);
+            return unpackStmts[^1];
         }
 
         return EmitNotImplementedStatement(
@@ -1406,9 +1418,25 @@ internal partial class RoslynEmitter
                     body);
             }
 
-            return EmitNotImplementedStatement(
-                "Complex tuple unpacking (non-identifier targets) is not yet supported. Use intermediate variables to unpack in multiple steps.",
-                DiagnosticCodes.CodeGen.ComplexTupleUnpacking, target.LineStart, target.ColumnStart);
+            // Complex tuple unpacking in for loop: for (a, b), c in items:
+            // Generate: foreach (var __loopVar in items) { var __t0 = __loopVar.Item1; ... body }
+            var tempLoopVar = GenerateTempVarName("loopVar");
+            var unpackStatements = new List<StatementSyntax>();
+            // Generate unpacking first — this declares variables (x, y, name)
+            GenerateRecursiveTupleUnpacking(tuple.Elements, tempLoopVar, unpackStatements);
+
+            // Now generate the body — variables are already declared so references resolve correctly
+            var loopBody = Block(bodyStatements.SelectMany(GenerateBodyStatements));
+
+            // Prepend unpacking to body
+            var combinedStatements = new List<StatementSyntax>(unpackStatements);
+            combinedStatements.AddRange(loopBody.Statements);
+
+            return ForEachStatement(
+                IdentifierName("var"),
+                Identifier(tempLoopVar),
+                iterator,
+                Block(combinedStatements));
         }
 
         return EmitNotImplementedStatement(
@@ -1684,5 +1712,44 @@ internal partial class RoslynEmitter
 
         return false;
     }
+
+    /// <summary>
+    /// Recursively generates variable declarations from nested tuple targets.
+    /// For each Identifier target, emits: var name = source.ItemN;
+    /// For each nested TupleLiteral, emits: var __tN = source.ItemN; then recurses.
+    /// </summary>
+    private void GenerateRecursiveTupleUnpacking(
+        ImmutableArray<Expression> targets, string sourceVarName, List<StatementSyntax> statements)
+    {
+        for (int i = 0; i < targets.Length; i++)
+        {
+            var itemAccess = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(sourceVarName),
+                IdentifierName($"Item{i + 1}"));
+
+            if (targets[i] is Identifier id)
+            {
+                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                _declaredVariables.Add(varName);
+                statements.Add(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(varName))
+                                .WithInitializer(EqualsValueClause(itemAccess))))));
+            }
+            else if (targets[i] is TupleLiteral nestedTuple)
+            {
+                var tempVarName = $"__t{_tempVarCounter++}";
+                statements.Add(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(tempVarName))
+                                .WithInitializer(EqualsValueClause(itemAccess))))));
+                GenerateRecursiveTupleUnpacking(nestedTuple.Elements, tempVarName, statements);
+            }
+        }
+    }
+
 
 }
