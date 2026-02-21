@@ -1,0 +1,4 @@
+def main():
+    tup: tuple[int, int] = (10, 20)
+    items: list[int] = [1, *tup, 3]
+    print(items)

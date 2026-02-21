@@ -914,14 +914,42 @@ internal partial class RoslynEmitter
         {
             if (element is SpreadElement spread)
             {
-                // __spread_N.Extend(spreadValue) or __spread_N.UnionWith(spreadValue)
-                _hoistedStatements.Add(ExpressionStatement(
-                    InvocationExpression(
-                        MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName(tempName),
-                            IdentifierName(spreadMethod)))
-                        .AddArgumentListArguments(Argument(GenerateExpression(spread.Value)))));
+                var spreadType = GetExpressionSemanticType(spread.Value);
+                if (spreadType is Semantic.TupleType tupleType)
+                {
+                    // Tuple spread: expand to individual .Add(tup.ItemN) calls
+                    var tupTemp = GenerateTempVarName("tspread");
+                    _hoistedStatements.Add(LocalDeclarationStatement(
+                        VariableDeclaration(IdentifierName("var"))
+                            .WithVariables(SingletonSeparatedList(
+                                VariableDeclarator(Identifier(tupTemp))
+                                    .WithInitializer(EqualsValueClause(GenerateExpression(spread.Value)))))));
+                    for (int i = 0; i < tupleType.ElementTypes.Count; i++)
+                    {
+                        _hoistedStatements.Add(ExpressionStatement(
+                            InvocationExpression(
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    IdentifierName(tempName),
+                                    IdentifierName(addMethod)))
+                                .AddArgumentListArguments(Argument(
+                                    MemberAccessExpression(
+                                        SyntaxKind.SimpleMemberAccessExpression,
+                                        IdentifierName(tupTemp),
+                                        IdentifierName($"Item{i + 1}"))))));
+                    }
+                }
+                else
+                {
+                    // __spread_N.Extend(spreadValue) or __spread_N.UnionWith(spreadValue)
+                    _hoistedStatements.Add(ExpressionStatement(
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                IdentifierName(tempName),
+                                IdentifierName(spreadMethod)))
+                            .AddArgumentListArguments(Argument(GenerateExpression(spread.Value)))));
+                }
             }
             else
             {

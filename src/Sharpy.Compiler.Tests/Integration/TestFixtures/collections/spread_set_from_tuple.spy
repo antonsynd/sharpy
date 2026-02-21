@@ -1,0 +1,4 @@
+def main():
+    tup: tuple[int, int] = (1, 2)
+    items: set[int] = {*tup, 3}
+    print(len(items))
