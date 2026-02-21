@@ -186,7 +186,9 @@ internal partial class RoslynEmitter
                 return LiteralExpression(SyntaxKind.NumericLiteralExpression,
                     Literal(text, value));
             // Unsupported suffix (e.g. 'm' for decimal) — Sharpy has no decimal type.
-            // Emit diagnostic and fall through to default double literal.
+            // Emit diagnostic (marks compilation as failed) and fall through to emit
+            // a default double literal as error recovery, allowing downstream codegen
+            // to continue and report additional errors.
             _context.Diagnostics.AddError(
                 $"Unsupported float literal suffix '{literal.Suffix}'",
                 literal.LineStart, literal.ColumnStart,
