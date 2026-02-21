@@ -612,7 +612,8 @@ internal partial class TypeChecker
                             Name = param.Name,
                             Type = paramType,
                             HasDefault = param.DefaultValue != null,
-                            DefaultValue = param.DefaultValue
+                            DefaultValue = param.DefaultValue,
+                            IsVariadic = param.IsVariadic
                         });
                     }
 

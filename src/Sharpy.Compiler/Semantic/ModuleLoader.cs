@@ -211,7 +211,8 @@ internal class ModuleLoader
                     Name = p.Name,
                     Type = ConvertTypeAnnotationToSemanticType(p.Type),
                     HasDefault = p.DefaultValue != null,
-                    DefaultValue = p.DefaultValue
+                    DefaultValue = p.DefaultValue,
+                    IsVariadic = p.IsVariadic
                 }).ToList();
 
                 var funcSymbol = new FunctionSymbol
