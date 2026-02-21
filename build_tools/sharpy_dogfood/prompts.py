@@ -53,7 +53,14 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Self prefix**: Always use `self.field_name` to access instance fields inside methods.
 - **Try-block scoping**: Variables declared inside `try`/`except`/`finally` blocks are block-scoped — they are NOT visible outside those blocks. Declare variables before the `try` if they need to be used in `except`/`else`/`finally` or after the `try`.
 - **Float output**: Floats always print with at least one decimal place (e.g., `print(5.0)` outputs `5.0`). This matches Python behavior.
-- **Set iteration order**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`."""
+- **Set iteration order**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
+- **Properties are not method calls**: Access properties WITHOUT parentheses: `obj.area` (NOT `obj.area()`). Properties look like field access.
+- **Property backing fields**: Function-style properties need a separate backing field (e.g., `_name: str`). Auto-properties generate this automatically.
+- **Spread type safety**: All elements in a spread must be compatible types: `[*int_list, *str_list]` is an error unless the target type is `list[object]`.
+- **Spread requires variadic**: `func(*args)` only works if the function accepts `*args` variadic parameter, or if spreading a tuple that matches the exact parameter count.
+- **With statement requires IDisposable**: The `with` statement only works with .NET types that implement `IDisposable` (e.g., `StringWriter`, `StreamReader`). Requires importing from `System.IO` or similar.
+- **Named tuple field names**: All fields must be named, or none. Cannot mix named and unnamed fields in a named tuple type definition.
+- **Match exhaustiveness**: Match statements on enums or bools must cover all possible values OR include a `case _:` wildcard."""
 
 ENTRY_POINT_SECTION = """\
 ## CRITICAL: Program Entry Point Requirement
@@ -113,6 +120,21 @@ ALLOWED_FEATURES_SECTION = """\
 - **Instance methods**: `def method(self) -> type:`
 - **Static methods**: methods without `self` parameter (auto-detected)
 - **Field access**: `obj.field`, `self.field`
+
+#### Properties
+- **Auto-properties (read-write)**: `property name: str` — generates getter and setter
+- **Auto-properties with default**: `property name: str = "default"` — with initial value
+- **Read-only auto-property**: `property get id: int = 0` — getter only, can be set in `__init__`
+- **Init-only auto-property**: `property init token: str` — readable, but settable only in `__init__`
+- **Function-style computed property**: `property get area(self) -> float:` with a body that computes a value
+- **Function-style getter + setter**: Separate `property get name(self) -> str:` and `property set name(self, value: str):` blocks
+- **Static properties**: `@static` + `property get name() -> str:` (no `self` parameter)
+- **Access modifiers on properties**: `@private`, `@protected` before `property`
+- **Virtual/abstract/override**: `@virtual property get ...`, `@abstract property get ...`, `@override property get ...`
+- **Interface properties**: Interfaces can declare `property name: T` requirements
+- **IMPORTANT**: Auto-properties and function-style properties CANNOT be mixed for the same property name in a class
+- **IMPORTANT**: Properties are accessed like fields: `obj.name` (NOT `obj.name()` — no parentheses)
+- **IMPORTANT**: Function-style properties require a user-provided backing field (e.g., `_name: str`)
 
 #### Dunder Methods (Classes)
 - **`__str__(self) -> str`**: String conversion, used by `print()` (maps to `.ToString()`)
@@ -178,10 +200,64 @@ ALLOWED_FEATURES_SECTION = """\
 - **Inspection**: `isinstance(obj, Type)`, `type(obj)`, `hash(obj)`, `repr(obj)`
 - **I/O**: `input()`, `input(prompt)`
 
-#### Tuple Types
+#### Tuple Types & Unpacking
 - **Tuple type annotations**: `tuple[T1, T2]`, `tuple[T1, T2, T3]`
+- **Tuple unpacking in assignments**: `x, y = point` where `point: tuple[int, int]`
+- **Nested tuple unpacking**: `(a, b), c = nested_tuple`
 - **Tuple unpacking in for loops**: `for i, val in enumerate(items):`
-- **NOTE**: Tuple unpacking in comprehensions is NOT supported
+- **Tuple unpacking in comprehensions**: `[a + b for a, b in pairs]`
+- **Rest patterns (star unpacking)**: `first, *rest = items`, `*rest, last = items`, `first, *mid, last = items`
+- **IMPORTANT**: Only ONE starred expression per unpacking. The starred variable is always `list[T]`.
+
+#### Named Tuples
+- **Named tuple type**: `type Point = tuple[x: float, y: float]`
+- **Named construction**: `p: Point = (x=1.0, y=2.0)` or positional `p: Point = (1.0, 2.0)`
+- **Field access**: `p.x`, `p.y` (by name) or `p[0]`, `p[1]` (by index)
+- **Named tuple return types**: `def get_bounds() -> tuple[min: int, max: int]:`
+- **Unpacking**: `x, y = point` works with named tuples
+- **IMPORTANT**: All fields must be named, or none. Cannot partially name fields.
+
+#### Spread Operators
+- **List spreading**: `combined: list[int] = [*first, 3, *second]` — merge lists
+- **Set spreading**: `combined: set[int] = {{*set1, *set2}}` — merge sets
+- **Dict spreading**: `merged: dict[str, int] = {{**defaults, **overrides}}` — merge dicts (later values override)
+- **Function call spreading**: `result = func(*args)` — unpack list/tuple into positional arguments
+- **Spread range into list**: `nums: list[int] = [*range(5)]`
+- **IMPORTANT**: Spread in function calls only works with variadic functions (`*args` parameter) or when the spread matches exact parameter count. Non-variadic functions with `*args` spread will fail (SPY0357).
+- **IMPORTANT**: Type safety is enforced — cannot mix incompatible types in spread
+
+#### Walrus Operator (Assignment Expressions)
+- **Walrus operator**: `:=` assigns a value within an expression
+- **In conditionals**: `if (n := len(items)) > 0:` — assigns `n` and tests it
+- **In while loops**: `while (line := read_line()) is not None:` — assign and test
+- **Type inference only**: Type is always inferred from the right-hand side, no annotations allowed
+- **IMPORTANT**: Walrus variables inside comprehensions are LOCAL to the comprehension — they do NOT leak to outer scope
+
+#### Pattern Matching
+- **Match statement**: `match value:` with `case` clauses
+- **Literal patterns**: `case 42:`, `case "hello":`, `case True:`
+- **Wildcard pattern**: `case _:` (default/catch-all)
+- **Type patterns with binding**: `case int() as n:` — type check and bind
+- **Guard clauses**: `case int() as n if n > 0:` — additional condition
+- **Tuple patterns**: `case (0, 0):`, `case (x, y):`
+- **Or patterns**: `case "a" | "b":` — match multiple values
+- **Match expression**: `result = match value: case 1: "one" case _: "other"` — produces a value
+- **Exhaustiveness**: Match on enums must cover all values or have `_` wildcard
+- **IMPORTANT**: When matching with `case _:`, this is the catch-all default case
+
+#### Context Managers (With Statement)
+- **With statement**: `with expr as name:` for automatic resource cleanup
+- **Without binding**: `with expr:` (no `as` clause)
+- **Multiple resources**: `with expr1 as a, expr2 as b:`
+- **Requires IDisposable**: The object must implement `System.IDisposable`
+- **Common usage**: `from System.IO import StringWriter` then `with StringWriter() as writer:`
+- **IMPORTANT**: Only works with .NET types implementing `IDisposable`. Not a general Python-style context manager.
+
+#### Comparison Chaining
+- **Chained comparisons**: `a < b < c` equivalent to `a < b and b < c`
+- **Range checks**: `1 <= value <= 100`
+- **Mixed operators**: `a < b <= c` — different comparison operators can be mixed
+- **Single evaluation**: `a < f() < c` evaluates `f()` only once
 
 #### F-Strings (0.1.11)
 - **F-string interpolation**: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
@@ -247,15 +323,10 @@ ALLOWED_FEATURES_SECTION = """\
 - **Usage**: Converts exception-throwing code into Result-based error handling"""
 
 FORBIDDEN_FEATURES_SECTION = """\
-### ❌ FORBIDDEN - Do NOT use these features (not yet implemented):
+### ❌ FORBIDDEN - Do NOT use these features (not yet implemented or restricted):
 - **NO main() call at module level**: Do NOT write `main()` after defining it - it's auto-invoked by runtime
 - **NO multi-argument print**: `print(a, b, c)` - use multiple `print()` calls
 - **NO async/await**: Async programming not implemented
-- **NO with statement**: Context managers not implemented
-- **NO walrus operator**: `:=` - assignment expressions not implemented
-- **NO pattern matching**: `match`/`case` not implemented
-- **NO tuple unpacking in assignments**: `a, b = 1, 2` - may have issues
-- **NO tuple unpacking in comprehensions**: `[v for k, v in items]` - not supported (SPY error)
 - **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
 - **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
 - **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
@@ -263,7 +334,10 @@ FORBIDDEN_FEATURES_SECTION = """\
 - **NO bare string indexing in comparisons/assignments**: `s[i] == "a"` or `c: str = s[i]` fails — always wrap with `str()`: `str(s[i]) == "a"`, `c: str = str(s[i])`
 - **NO 'in' operator on strings**: `char in "abc"` — not yet supported
 - **NO bare char iteration**: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
-- **NO `__repr__()` method**: removed — only `__str__()` exists (maps to `.ToString()`)"""
+- **NO `__repr__()` method**: removed — only `__str__()` exists (maps to `.ToString()`)
+- **NO `del` statement**: `del x` — not supported
+- **NO `**kwargs` spreading in function calls**: `func(**kwargs)` — not yet supported for keyword argument spreading
+- **NO spread in non-variadic function calls**: `func(*args)` only works when the function has `*args` parameter or when spreading a tuple that matches exact parameter count"""
 
 NAMING_RULES_SECTION = """\
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
@@ -512,9 +586,50 @@ def find_first(items: list[int]) -> int?:
         return Some(items[0])
     return None()
 
-# IMPORTANT: float output matches Python formatting
-# print(3.14159 * 2.0 ** 2) → "12.5663706"
-# print(5.0 * 3.0) → "15.0"  (floats always show at least one decimal place)
+# Properties (auto-property and function-style)
+class Rectangle:
+    property width: float
+    property height: float
+
+    def __init__(self, w: float, h: float):
+        self.width = w
+        self.height = h
+
+    property get area(self) -> float:
+        return self.width * self.height
+
+# Tuple unpacking and star patterns
+point: tuple[int, int] = (3, 7)
+x, y = point
+items: list[int] = [1, 2, 3, 4, 5]
+first, *rest = items
+
+# Spread in collection literals
+a: list[int] = [1, 2]
+b: list[int] = [4, 5]
+combined: list[int] = [*a, 3, *b]
+
+# Walrus operator in conditional
+if (n := len(items)) > 3:
+    print(f"Long list: {{n}} items")
+
+# Pattern matching
+match value:
+    case 0:
+        print("zero")
+    case int() as n if n > 0:
+        print(f"positive: {{n}}")
+    case _:
+        print("other")
+
+# Named tuple
+type Point = tuple[x: float, y: float]
+p: Point = (x=1.0, y=2.0)
+print(p.x)
+
+# Comparison chaining
+if 0 < x < 10:
+    print("in range")
 ```
 
 ## Output Format

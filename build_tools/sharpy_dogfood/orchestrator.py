@@ -233,6 +233,14 @@ async def _verify_expected_with_python(
         "str?",
         "float?",
         "bool?",
+        "property ",          # Sharpy properties (auto or function-style)
+        "property get ",
+        "property set ",
+        "property init ",
+        "with ",              # Sharpy with statement uses IDisposable, not Python __enter__/__exit__
+        "from System",        # .NET interop imports
+        "from system",
+        "type ",              # Named tuple type aliases (type Point = tuple[x: ...])
     ]
     if any(feature in code for feature in sharpy_only_features):
         return True, None, "Sharpy-specific features - skipping Python verification"
@@ -397,116 +405,172 @@ def _replace_expected_output_in_code(code: str, new_output: str) -> str:
     return result
 
 
-# Feature focuses for code generation - matched to phases 0.1.0-0.1.18
-# Each focus tests specific compiler functionality
-FEATURE_FOCUSES = [
-    # Phase 0.1.3: Variables & Expressions
-    "integer_variables",  # x: int = 42
-    "float_variables",  # y: float = 3.14
-    "bool_variables",  # flag: bool = True
-    "arithmetic_operators",  # +, -, *, /, //, %, **
-    "comparison_operators",  # ==, !=, <, <=, >, >=
-    "logical_operators",  # and, or, not
-    "augmented_assignment",  # +=, -=, *=, /=
-    # Phase 0.1.4: Control Flow
-    "if_else_simple",  # basic if/else
-    "if_elif_else",  # if/elif/else chains
-    "while_loop",  # while with counter
-    "for_range_single",  # for i in range(n)
-    "for_range_start_end",  # for i in range(start, end)
-    "for_range_with_step",  # for i in range(start, end, step)
-    "break_continue",  # break/continue in loops
-    # Phase 0.1.5: Functions
-    "simple_function",  # def with parameters, return
-    "function_with_print",  # function that prints values
-    "function_calling_function",  # one function calls another
-    "function_default_params",  # def foo(x: int, y: int = 5)
-    "function_keyword_args",  # foo(x=10, y=20)
-    # Phase 0.1.6: Classes
-    "simple_class",  # class with fields
-    "class_with_init",  # class with __init__
-    "class_instance_methods",  # instance methods with self
-    "class_static_methods",  # static methods (no self)
-    "class_field_access",  # obj.field, self.field
-    # Phase 0.1.7: Inheritance & Interfaces
-    "class_inheritance",  # class Child(Parent)
-    "super_init_call",  # super().__init__()
-    "abstract_class",  # @abstract class
-    "virtual_override",  # @virtual and @override methods
-    "interface_definition",  # interface with method signatures
-    "interface_implementation",  # class implements interface
-    "access_modifiers",  # @private, @protected
-    # Phase 0.1.8: Structs & Enums
-    "struct_definition",  # struct with fields
-    "enum_definition",  # enum with values
-    "enum_usage",  # using enum values
-    # Phase 0.1.9: Type System
-    "nullable_types",  # T? syntax
-    "null_coalescing",  # ?? operator
-    "null_conditional",  # ?. operator
-    "type_narrowing",  # if x is not None
-    "type_alias",  # type UserId = int
-    "generic_class",  # class Box[T]
-    "generic_function",  # def foo[T](x: T) -> T
-    # Phase 0.1.10: Module System
-    "import_statement",  # import module
-    "from_import",  # from module import item
-    # Phase 0.1.11: F-Strings & Collections
-    "f_string_basic",  # f"Hello {name}"
-    "f_string_expressions",  # f"Result: {x + y}"
-    "list_literal",  # [1, 2, 3]
-    "dict_literal",  # {"key": value}
-    "set_literal",  # {1, 2, 3}
-    "list_comprehension",  # [x * 2 for x in range(10)]
-    "dict_comprehension",  # {k: v for k, v in items}
-    "set_comprehension",  # {x for x in items}
-    "collection_iteration",  # for item in collection
-    "collection_methods",  # .add(), .remove(), len()
-    # Phase 0.1.12: .NET Interop
-    "dotnet_import",  # from system import Console
-    "dotnet_type_usage",  # using .NET types
-    # Phase 0.1.13: Exception Handling
-    "try_except_basic",  # try/except
-    "try_except_finally",  # try/except/finally
-    "try_except_else",  # try/except/else/finally
-    "raise_exception",  # raise ValueError()
-    # Phase 0.1.14: Lambda Expressions
-    "lambda_basic",  # lambda x: x * 2
-    "lambda_multiarg",  # lambda a, b: a + b
-    "higher_order_function",  # passing lambdas
-    # Phase 0.1.15-0.1.18: Optional & Result Types
-    "optional_type",  # T?, Some(x), None()
-    "optional_unwrap",  # .unwrap(), .unwrap_or(), .map()
-    "result_type",  # T !E, Ok(x), Err(e)
-    "result_unwrap",  # .unwrap(), .unwrap_or(), .map()
-    "maybe_expression",  # maybe expr — T | None → T?
-    "try_expression",  # try expr — wraps in Result[T, E]
-    "lambda_type_inference",  # lambda params inferred from context
-    # Dunder Methods
-    "dunder_str",  # __str__() method
-    "dunder_eq_hash",  # __eq__() + __hash__() pair
-    "dunder_bool",  # __bool__() for truthiness
-    "dunder_len",  # __len__() + len() builtin
-    "dunder_iter",  # __iter__() + __next__() iterator protocol
-    "dunder_operators",  # __add__(), __sub__(), __mul__(), __div__(), __mod__(), plus bitwise
-    "dunder_comparison",  # __lt__(), __le__(), __gt__(), __ge__(), __ne__()
-    "dunder_unary",  # __neg__(), __pos__(), __invert__()
-    # Additional Builtins
-    "builtin_conversions",  # int(), float(), bool(), str()
-    "builtin_aggregation",  # min(), max(), sum()
-    "builtin_higher_order",  # sorted(), filter(), map(), enumerate(), zip()
-    # Containment & Tuple Types
-    "containment_test",  # x in collection, x not in collection
-    "tuple_types",  # tuple[int, str], tuple unpacking in for loops
-    # Combinations
-    "nested_if_in_loop",  # if inside for/while
-    "loop_in_function",  # for/while inside function
-    "class_with_loop",  # class with method using loop
-    "inheritance_with_override",  # override methods with logic
+# Feature focuses organized into tiers by coverage maturity.
+# Tier 1 (basics) — well-covered by existing test fixtures, sampled less often.
+# Tier 2 (intermediate) — moderate coverage, standard sampling.
+# Tier 3 (advanced/newer) — least covered, sampled most often.
+
+_TIER1_BASICS: list[str] = [
+    # Phase 0.1.3: Variables & Expressions — extensively covered
+    "integer_variables",
+    "float_variables",
+    "bool_variables",
+    "arithmetic_operators",
+    "comparison_operators",
+    "logical_operators",
+    "augmented_assignment",
+    # Phase 0.1.4: Control Flow — extensively covered
+    "if_else_simple",
+    "if_elif_else",
+    "while_loop",
+    "for_range_single",
+    "for_range_start_end",
+    "for_range_with_step",
+    "break_continue",
+    # Phase 0.1.5: Functions — extensively covered
+    "simple_function",
+    "function_with_print",
+    "function_calling_function",
+    "function_default_params",
+    "function_keyword_args",
+    # Phase 0.1.6: Basic Classes — extensively covered
+    "simple_class",
+    "class_with_init",
+    "class_instance_methods",
+    "class_static_methods",
+    "class_field_access",
 ]
 
-# Bias toward simpler tests initially - complex tests often hit unimplemented features
-COMPLEXITY_LEVELS = ["simple", "simple", "simple", "medium", "medium", "complex"]
+_TIER2_INTERMEDIATE: list[str] = [
+    # Inheritance & Interfaces
+    "class_inheritance",
+    "super_init_call",
+    "abstract_class",
+    "virtual_override",
+    "interface_definition",
+    "interface_implementation",
+    "access_modifiers",
+    # Structs & Enums
+    "struct_definition",
+    "enum_definition",
+    "enum_usage",
+    # Type System
+    "nullable_types",
+    "null_coalescing",
+    "null_conditional",
+    "type_narrowing",
+    "type_alias",
+    "generic_class",
+    "generic_function",
+    # Module System
+    "import_statement",
+    "from_import",
+    # F-Strings & Collections
+    "f_string_basic",
+    "f_string_expressions",
+    "list_literal",
+    "dict_literal",
+    "set_literal",
+    "list_comprehension",
+    "dict_comprehension",
+    "set_comprehension",
+    "collection_iteration",
+    "collection_methods",
+    # .NET Interop
+    "dotnet_import",
+    "dotnet_type_usage",
+    # Exception Handling
+    "try_except_basic",
+    "try_except_finally",
+    "try_except_else",
+    "raise_exception",
+    # Lambda Expressions
+    "lambda_basic",
+    "lambda_multiarg",
+    "higher_order_function",
+    "lambda_type_inference",
+    # Dunder Methods
+    "dunder_str",
+    "dunder_eq_hash",
+    "dunder_bool",
+    "dunder_len",
+    "dunder_iter",
+    "dunder_operators",
+    "dunder_comparison",
+    "dunder_unary",
+    # Builtins
+    "builtin_conversions",
+    "builtin_aggregation",
+    "builtin_higher_order",
+    "containment_test",
+    "tuple_types",
+]
+
+_TIER3_ADVANCED: list[str] = [
+    # Optional & Result Types
+    "optional_type",
+    "optional_unwrap",
+    "result_type",
+    "result_unwrap",
+    "maybe_expression",
+    "try_expression",
+    # Properties
+    "auto_property",
+    "function_style_property",
+    "property_inheritance",
+    # Tuple Unpacking & Star Patterns
+    "tuple_unpacking_assignment",
+    "tuple_unpacking_nested",
+    "star_unpacking",
+    # Spread Operators
+    "spread_list",
+    "spread_dict",
+    "spread_set",
+    "spread_call",
+    # Walrus Operator
+    "walrus_operator",
+    # Pattern Matching
+    "match_literal",
+    "match_type_binding",
+    "match_wildcard",
+    "match_guard",
+    # Context Managers
+    "with_statement",
+    # Named Tuples
+    "named_tuple",
+    # Comparison Chaining
+    "comparison_chaining",
+    # Feature Combinations (advanced)
+    "nested_if_in_loop",
+    "loop_in_function",
+    "class_with_loop",
+    "inheritance_with_override",
+    "property_with_validation",
+    "match_with_enum",
+    "spread_with_comprehension",
+]
+
+# Flat list for backward compatibility (e.g. category mapping lookups).
+FEATURE_FOCUSES = _TIER1_BASICS + _TIER2_INTERMEDIATE + _TIER3_ADVANCED
+
+# Tier weights: how likely each tier is to be sampled.
+# Tier 3 (advanced/newer) gets ~50%, Tier 2 ~35%, Tier 1 ~15%.
+_TIER_WEIGHTS: list[float] = [0.15, 0.35, 0.50]
+_TIERS: list[list[str]] = [_TIER1_BASICS, _TIER2_INTERMEDIATE, _TIER3_ADVANCED]
+
+
+def pick_feature_focus() -> str:
+    """Select a feature focus with weighted tier sampling.
+
+    Newer/less-covered features (tier 3) are chosen ~50% of the time,
+    intermediate features ~35%, and well-covered basics ~15%.
+    """
+    tier = random.choices(_TIERS, weights=_TIER_WEIGHTS, k=1)[0]
+    return random.choice(tier)
+
+
+# Bias toward medium/complex — basics are well-covered by existing fixtures.
+COMPLEXITY_LEVELS = ["simple", "medium", "medium", "medium", "complex", "complex"]
 
 
 class DogfoodOrchestrator:
@@ -617,8 +681,6 @@ class DogfoodOrchestrator:
         forbidden_patterns = [
             "async def",  # Not implemented
             "await ",  # Not implemented
-            " with ",  # Context managers not implemented
-            ":=",  # Walrus operator not implemented
         ]
 
         for spy_file in snippets_dir.glob("*.spy"):
@@ -1744,23 +1806,6 @@ class DogfoodOrchestrator:
                         return f"Line {j + 1}: @abstract and @virtual combined (abstract methods are inherently virtual — use only @abstract)"
                     break  # Stop at first non-empty, non-decorator line
 
-        # Regex-only checks for things the lexer doesn't cover as keyword tokens
-        forbidden_regex_checks = [
-            # Walrus operator (not implemented) - operator token, not keyword
-            (r":=", "walrus operator (not implemented)"),
-            # Tuple unpacking (may have issues)
-            # Anchored to line start to avoid matching keyword arguments
-            (r"^\w+\s*,\s*\w+\s*=[^=]", "tuple unpacking (not fully supported)"),
-        ]
-
-        for i, line in enumerate(lines, 1):
-            stripped = line.split("#")[0].strip()
-            if not stripped:
-                continue
-            for pattern, description in forbidden_regex_checks:
-                if re.search(pattern, stripped):
-                    return f"Line {i}: {description} - '{stripped[:50]}...'"
-
         return None
 
     async def _check_forbidden_tokens_via_lexer(self, code: str) -> Optional[str]:
@@ -1773,10 +1818,8 @@ class DogfoodOrchestrator:
 
         # Forbidden token types that indicate unimplemented features
         forbidden_tokens = {
-            "With": "with statement (not implemented)",
             "Async": "async function (not implemented)",
             "Await": "await expression (not implemented)",
-            "Match": "pattern matching (not implemented)",
         }
 
         try:
@@ -1963,7 +2006,7 @@ class DogfoodOrchestrator:
                 )  # Multi-file is at least medium
             else:
                 # Regular single-file iteration
-                feature_focus = random.choice(FEATURE_FOCUSES)
+                feature_focus = pick_feature_focus()
                 complexity = random.choice(COMPLEXITY_LEVELS)
 
             start_time = datetime.now()

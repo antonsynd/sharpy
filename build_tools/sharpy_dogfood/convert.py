@@ -183,6 +183,35 @@ def get_category_from_feature(feature_focus: Optional[str]) -> str:
         # Containment & Tuple Types
         "containment_test": "collections",
         "tuple_types": "type_system",
+        # Properties
+        "auto_property": "properties",
+        "function_style_property": "properties",
+        "property_inheritance": "properties",
+        "property_with_validation": "properties",
+        # Tuple Unpacking & Star Patterns
+        "tuple_unpacking_assignment": "expressions",
+        "tuple_unpacking_nested": "expressions",
+        "star_unpacking": "expressions",
+        # Spread Operators
+        "spread_list": "collections",
+        "spread_dict": "collections",
+        "spread_set": "collections",
+        "spread_call": "expressions",
+        "spread_with_comprehension": "collections",
+        # Walrus Operator
+        "walrus_operator": "expressions",
+        # Pattern Matching
+        "match_literal": "pattern_matching",
+        "match_type_binding": "pattern_matching",
+        "match_wildcard": "pattern_matching",
+        "match_guard": "pattern_matching",
+        "match_with_enum": "pattern_matching",
+        # Context Managers
+        "with_statement": "with_statement",
+        # Named Tuples
+        "named_tuple": "named_tuples",
+        # Comparison Chaining
+        "comparison_chaining": "type_system",
     }
 
     return category_map.get(feature_focus, "misc")
