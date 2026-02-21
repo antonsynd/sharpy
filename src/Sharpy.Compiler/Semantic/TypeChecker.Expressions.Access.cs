@@ -1066,6 +1066,37 @@ internal partial class TypeChecker
             }
         }
 
+        // Check for iterable spread into non-variadic function (SPY0357)
+        var hasVariadicParam = funcSymbol.Parameters.Any(p => p.IsVariadic);
+        if (!hasVariadicParam)
+        {
+            for (int i = 0; i < call.Arguments.Length; i++)
+            {
+                if (call.Arguments[i] is SpreadElement spreadElem)
+                {
+                    var spreadType = _semanticInfo.GetExpressionType(spreadElem.Value);
+                    if (spreadType is not null and not UnknownType and not TupleType)
+                    {
+                        AddError(
+                            $"Cannot spread '{spreadType.GetDisplayName()}' into non-variadic function '{funcSymbol.Name}'; " +
+                            "use a function with *args parameter or pass arguments individually",
+                            spreadElem.LineStart, spreadElem.ColumnStart,
+                            code: DiagnosticCodes.Semantic.SpreadIntoNonVariadic,
+                            span: spreadElem.Span);
+                        // Return early — skip argument count/type validation to avoid cascading errors.
+                        var earlyReturn = funcSymbol.ReturnType;
+                        if (isNullConditionalCall && earlyReturn is not NullableType and not OptionalType)
+                        {
+                            if (isOptionalNullConditional)
+                                return new OptionalType { UnderlyingType = earlyReturn };
+                            return new NullableType { UnderlyingType = earlyReturn };
+                        }
+                        return earlyReturn;
+                    }
+                }
+            }
+        }
+
         // Count required parameters (those without defaults)
         var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
         var totalParamCount = funcSymbol.Parameters.Count;

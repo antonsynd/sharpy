@@ -179,7 +179,6 @@ public static class DiagnosticCodes
         public const string NoMatchingOverload = "SPY0354";
         public const string DuplicateMethodSignature = "SPY0355";
         public const string MultipleStarExpressions = "SPY0356";
-        // TODO(#208): SpreadIntoNonVariadic is defined but never emitted — add validation
         public const string SpreadIntoNonVariadic = "SPY0357";
     }
 

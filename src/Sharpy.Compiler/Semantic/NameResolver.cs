@@ -489,7 +489,8 @@ internal class NameResolver
             Name = p.Name,
             Type = SemanticType.Unknown,  // Will be resolved during type checking
             HasDefault = p.DefaultValue != null,
-            DefaultValue = p.DefaultValue
+            DefaultValue = p.DefaultValue,
+            IsVariadic = p.IsVariadic
         }).ToList();
 
         var funcSymbol = new FunctionSymbol
@@ -548,7 +549,8 @@ internal class NameResolver
             Name = p.Name,
             Type = SemanticType.Unknown,  // Will be resolved during type checking
             HasDefault = p.DefaultValue != null,
-            DefaultValue = p.DefaultValue
+            DefaultValue = p.DefaultValue,
+            IsVariadic = p.IsVariadic
         }).ToList();
 
         var funcSymbol = new FunctionSymbol
