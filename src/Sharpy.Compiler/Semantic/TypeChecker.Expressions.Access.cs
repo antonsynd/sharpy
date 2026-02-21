@@ -1031,6 +1031,39 @@ internal partial class TypeChecker
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
         int totalArgCount, bool isNullConditionalCall, bool isOptionalNullConditional)
     {
+        // Check for iterable spread into non-variadic function (SPY0357)
+        // Must run before generic inference — generic functions without *args must also reject
+        // iterable spread. Tuple spread is excluded because tuple size is statically known.
+        var hasVariadicParam = funcSymbol.Parameters.Any(p => p.IsVariadic);
+        if (!hasVariadicParam)
+        {
+            for (int i = 0; i < call.Arguments.Length; i++)
+            {
+                if (call.Arguments[i] is SpreadElement spreadElem)
+                {
+                    var spreadType = _semanticInfo.GetExpressionType(spreadElem.Value);
+                    if (spreadType is not null and not UnknownType and not TupleType)
+                    {
+                        AddError(
+                            $"Cannot spread '{spreadType.GetDisplayName()}' into non-variadic function '{funcSymbol.Name}'; " +
+                            "use a function with *args parameter or pass arguments individually",
+                            spreadElem.LineStart, spreadElem.ColumnStart,
+                            code: DiagnosticCodes.Semantic.SpreadIntoNonVariadic,
+                            span: spreadElem.Span);
+                        // Return early — skip argument count/type validation to avoid cascading errors.
+                        var earlyReturn = funcSymbol.ReturnType;
+                        if (isNullConditionalCall && earlyReturn is not NullableType and not OptionalType)
+                        {
+                            if (isOptionalNullConditional)
+                                return new OptionalType { UnderlyingType = earlyReturn };
+                            return new NullableType { UnderlyingType = earlyReturn };
+                        }
+                        return earlyReturn;
+                    }
+                }
+            }
+        }
+
         // Handle generic function inference: identity(42) -> infer T=int
         // This is triggered when calling a generic function without explicit type arguments
         if (funcSymbol.IsGeneric)
@@ -1063,37 +1096,6 @@ internal partial class TypeChecker
                     call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferGenericType,
                     span: call.Span);
                 return SemanticType.Unknown;
-            }
-        }
-
-        // Check for iterable spread into non-variadic function (SPY0357)
-        var hasVariadicParam = funcSymbol.Parameters.Any(p => p.IsVariadic);
-        if (!hasVariadicParam)
-        {
-            for (int i = 0; i < call.Arguments.Length; i++)
-            {
-                if (call.Arguments[i] is SpreadElement spreadElem)
-                {
-                    var spreadType = _semanticInfo.GetExpressionType(spreadElem.Value);
-                    if (spreadType is not null and not UnknownType and not TupleType)
-                    {
-                        AddError(
-                            $"Cannot spread '{spreadType.GetDisplayName()}' into non-variadic function '{funcSymbol.Name}'; " +
-                            "use a function with *args parameter or pass arguments individually",
-                            spreadElem.LineStart, spreadElem.ColumnStart,
-                            code: DiagnosticCodes.Semantic.SpreadIntoNonVariadic,
-                            span: spreadElem.Span);
-                        // Return early — skip argument count/type validation to avoid cascading errors.
-                        var earlyReturn = funcSymbol.ReturnType;
-                        if (isNullConditionalCall && earlyReturn is not NullableType and not OptionalType)
-                        {
-                            if (isOptionalNullConditional)
-                                return new OptionalType { UnderlyingType = earlyReturn };
-                            return new NullableType { UnderlyingType = earlyReturn };
-                        }
-                        return earlyReturn;
-                    }
-                }
             }
         }
 

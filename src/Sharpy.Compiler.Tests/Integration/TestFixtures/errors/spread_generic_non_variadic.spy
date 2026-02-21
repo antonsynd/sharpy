@@ -1,0 +1,7 @@
+def identity[T](x: T) -> T:
+    return x
+
+def main():
+    items: list[int] = [1, 2, 3]
+    result: int = identity(*items)
+    print(result)
