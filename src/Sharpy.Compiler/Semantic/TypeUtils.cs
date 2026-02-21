@@ -83,7 +83,7 @@ internal static class TypeUtils
     public static bool IsCollection(SemanticType type)
     {
         return type is GenericType generic &&
-            (generic.Name == "list" || generic.Name == "dict" || generic.Name == "set");
+            (generic.Name == BuiltinNames.List || generic.Name == BuiltinNames.Dict || generic.Name == BuiltinNames.Set);
     }
 
     /// <summary>
@@ -91,7 +91,7 @@ internal static class TypeUtils
     /// </summary>
     public static bool IsList(SemanticType type)
     {
-        return type is GenericType { Name: "list" };
+        return type is GenericType { Name: BuiltinNames.List };
     }
 
     /// <summary>
@@ -99,7 +99,7 @@ internal static class TypeUtils
     /// </summary>
     public static bool IsDict(SemanticType type)
     {
-        return type is GenericType { Name: "dict" };
+        return type is GenericType { Name: BuiltinNames.Dict };
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ internal static class TypeUtils
     /// </summary>
     public static bool IsSet(SemanticType type)
     {
-        return type is GenericType { Name: "set" };
+        return type is GenericType { Name: BuiltinNames.Set };
     }
 
     /// <summary>
@@ -127,9 +127,9 @@ internal static class TypeUtils
     {
         if (type is GenericType generic)
         {
-            if (generic.Name == "list" || generic.Name == "set")
+            if (generic.Name == BuiltinNames.List || generic.Name == BuiltinNames.Set)
                 return generic.TypeArguments.FirstOrDefault();
-            if (generic.Name == "dict")
+            if (generic.Name == BuiltinNames.Dict)
                 return generic.TypeArguments.Skip(1).FirstOrDefault(); // Value type
         }
         return null;
@@ -140,7 +140,7 @@ internal static class TypeUtils
     /// </summary>
     public static SemanticType? GetKeyType(SemanticType type)
     {
-        if (type is GenericType { Name: "dict" } generic)
+        if (type is GenericType { Name: BuiltinNames.Dict } generic)
         {
             return generic.TypeArguments.FirstOrDefault();
         }

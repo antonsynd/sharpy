@@ -1064,9 +1064,9 @@ internal partial class RoslynEmitter
     /// </summary>
     private static string? GetBuiltinCollectionTypeName(string sharpyName) => sharpyName switch
     {
-        "list" => CSharpTypeNames.SharpyList,
-        "dict" => CSharpTypeNames.SharpyDict,
-        "set" => CSharpTypeNames.SharpySet,
+        BuiltinNames.List => CSharpTypeNames.SharpyList,
+        BuiltinNames.Dict => CSharpTypeNames.SharpyDict,
+        BuiltinNames.Set => CSharpTypeNames.SharpySet,
         _ => null
     };
 

@@ -16,7 +16,7 @@ internal partial class TypeChecker
             {
                 return new GenericType
                 {
-                    Name = "list",
+                    Name = BuiltinNames.List,
                     TypeArguments = new List<SemanticType> { expected.TypeArguments[0] }
                 };
             }
@@ -35,7 +35,7 @@ internal partial class TypeChecker
             {
                 var spreadType = CheckExpression(spread.Value);
                 // Extract element type from the spread iterable
-                if (spreadType is GenericType { Name: "list" or "set" } gt && gt.TypeArguments.Count > 0)
+                if (spreadType is GenericType { Name: BuiltinNames.List or BuiltinNames.Set } gt && gt.TypeArguments.Count > 0)
                     elementTypes.Add(gt.TypeArguments[0]);
                 else
                     elementTypes.Add(spreadType);
@@ -52,7 +52,7 @@ internal partial class TypeChecker
 
         return new GenericType
         {
-            Name = "list",
+            Name = BuiltinNames.List,
             TypeArguments = new List<SemanticType> { commonType }
         };
     }
@@ -65,7 +65,7 @@ internal partial class TypeChecker
             {
                 return new GenericType
                 {
-                    Name = "dict",
+                    Name = BuiltinNames.Dict,
                     TypeArguments = new List<SemanticType> { expected.TypeArguments[0], expected.TypeArguments[1] }
                 };
             }
@@ -85,7 +85,7 @@ internal partial class TypeChecker
             {
                 // Dict spread: **other_dict — extract K, V from dict[K, V]
                 var spreadType = CheckExpression(entry.Value);
-                if (spreadType is GenericType { Name: "dict" } gt && gt.TypeArguments.Count == 2)
+                if (spreadType is GenericType { Name: BuiltinNames.Dict } gt && gt.TypeArguments.Count == 2)
                 {
                     keyTypes.Add(gt.TypeArguments[0]);
                     valueTypes.Add(gt.TypeArguments[1]);
@@ -104,7 +104,7 @@ internal partial class TypeChecker
 
         return new GenericType
         {
-            Name = "dict",
+            Name = BuiltinNames.Dict,
             TypeArguments = new List<SemanticType> { commonKeyType, commonValueType }
         };
     }
@@ -117,7 +117,7 @@ internal partial class TypeChecker
             {
                 return new GenericType
                 {
-                    Name = "set",
+                    Name = BuiltinNames.Set,
                     TypeArguments = new List<SemanticType> { expected.TypeArguments[0] }
                 };
             }
@@ -135,7 +135,7 @@ internal partial class TypeChecker
             if (elem is SpreadElement spread)
             {
                 var spreadType = CheckExpression(spread.Value);
-                if (spreadType is GenericType { Name: "list" or "set" } gt && gt.TypeArguments.Count > 0)
+                if (spreadType is GenericType { Name: BuiltinNames.List or BuiltinNames.Set } gt && gt.TypeArguments.Count > 0)
                     elementTypes.Add(gt.TypeArguments[0]);
                 else
                     elementTypes.Add(spreadType);
@@ -151,7 +151,7 @@ internal partial class TypeChecker
 
         return new GenericType
         {
-            Name = "set",
+            Name = BuiltinNames.Set,
             TypeArguments = new List<SemanticType> { commonType }
         };
     }
@@ -185,7 +185,7 @@ internal partial class TypeChecker
 
         return new GenericType
         {
-            Name = "list",
+            Name = BuiltinNames.List,
             TypeArguments = new List<SemanticType> { elementType }
         };
     }
@@ -205,7 +205,7 @@ internal partial class TypeChecker
 
         return new GenericType
         {
-            Name = "set",
+            Name = BuiltinNames.Set,
             TypeArguments = new List<SemanticType> { elementType }
         };
     }
@@ -226,7 +226,7 @@ internal partial class TypeChecker
 
         return new GenericType
         {
-            Name = "dict",
+            Name = BuiltinNames.Dict,
             TypeArguments = new List<SemanticType> { keyType, valueType }
         };
     }
@@ -367,7 +367,7 @@ internal partial class TypeChecker
             CheckExpression(sliceAccess.Step);
 
         // Slicing a list returns a list, slicing a str returns a str
-        if (objType is GenericType gt && gt.Name == "list")
+        if (objType is GenericType gt && gt.Name == BuiltinNames.List)
             return objType;
         if (objType == SemanticType.Str)
             return SemanticType.Str;

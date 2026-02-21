@@ -54,7 +54,7 @@ internal class ClrTypeMapper
 
             return new GenericType
             {
-                Name = "list",
+                Name = BuiltinNames.List,
                 TypeArguments = new List<SemanticType>
                 {
                     MapClrTypeToSemanticType(elementType)
@@ -112,7 +112,7 @@ internal class ClrTypeMapper
         {
             return new GenericType
             {
-                Name = "list",
+                Name = BuiltinNames.List,
                 TypeArguments = new List<SemanticType>
                 {
                     MapClrTypeToSemanticType(typeArgs[0])
@@ -127,7 +127,7 @@ internal class ClrTypeMapper
         {
             return new GenericType
             {
-                Name = "dict",
+                Name = BuiltinNames.Dict,
                 TypeArguments = new List<SemanticType>
                 {
                     MapClrTypeToSemanticType(typeArgs[0]),
@@ -143,7 +143,7 @@ internal class ClrTypeMapper
         {
             return new GenericType
             {
-                Name = "set",
+                Name = BuiltinNames.Set,
                 TypeArguments = new List<SemanticType>
                 {
                     MapClrTypeToSemanticType(typeArgs[0])
@@ -158,7 +158,7 @@ internal class ClrTypeMapper
             {
                 // Note: IEnumerable<T> is mapped to list for simplicity, losing lazy evaluation semantics.
                 // This is a known limitation - iterables are treated as eager lists in the type system.
-                Name = "list",
+                Name = BuiltinNames.List,
                 TypeArguments = new List<SemanticType>
                 {
                     MapClrTypeToSemanticType(typeArgs[0])

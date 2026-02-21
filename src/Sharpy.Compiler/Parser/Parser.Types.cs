@@ -4,6 +4,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Parser;
 
@@ -190,7 +191,7 @@ public partial class Parser
             _lastLoopPosition = -1;
 
             // For tuple types, check for named elements: tuple[x: float, y: float]
-            bool isTuple = name == "tuple";
+            bool isTuple = name == BuiltinNames.Tuple;
             bool hasNamedElements = false;
             bool hasUnnamedElements = false;
 
@@ -283,7 +284,7 @@ public partial class Parser
 
         return new TypeAnnotation
         {
-            Name = "list",
+            Name = BuiltinNames.List,
             TypeArguments = ImmutableArray.Create(elementType),
             IsOptional = false,
             LineStart = startLine,
@@ -323,7 +324,7 @@ public partial class Parser
 
             return new TypeAnnotation
             {
-                Name = "dict",
+                Name = BuiltinNames.Dict,
                 TypeArguments = ImmutableArray.Create(firstType, valueType),
                 IsOptional = false,
                 LineStart = startLine,
@@ -343,7 +344,7 @@ public partial class Parser
 
         return new TypeAnnotation
         {
-            Name = "set",
+            Name = BuiltinNames.Set,
             TypeArguments = ImmutableArray.Create(firstType),
             IsOptional = false,
             LineStart = startLine,
@@ -424,7 +425,7 @@ public partial class Parser
 
         return new TypeAnnotation
         {
-            Name = "tuple",
+            Name = BuiltinNames.Tuple,
             TypeArguments = types.ToImmutableArray(),
             IsOptional = false,
             LineStart = startLine,
@@ -569,7 +570,7 @@ public partial class Parser
     private bool IsTypeName(string name)
     {
         // Primitive types
-        if (name is "int" or "float" or "str" or "bool" or "list" or "dict" or "set" or "tuple" or "object" or "any")
+        if (name is "int" or "float" or "str" or "bool" or BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set or BuiltinNames.Tuple or "object" or "any")
             return true;
 
         // User-defined types typically start with uppercase letter

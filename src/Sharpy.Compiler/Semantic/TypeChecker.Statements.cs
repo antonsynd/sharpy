@@ -980,7 +980,7 @@ internal partial class TypeChecker
 
         // Determine element type from the source
         SemanticType elementType;
-        if (valueType is GenericType { Name: "list" } listType && listType.TypeArguments.Count > 0)
+        if (valueType is GenericType { Name: BuiltinNames.List } listType && listType.TypeArguments.Count > 0)
         {
             elementType = listType.TypeArguments[0];
         }
@@ -1005,7 +1005,7 @@ internal partial class TypeChecker
                 // Starred variable gets list[T] type
                 var listTypeForStar = new GenericType
                 {
-                    Name = "list",
+                    Name = BuiltinNames.List,
                     TypeArguments = new List<SemanticType> { elementType }
                 };
                 var starSymbol = new VariableSymbol

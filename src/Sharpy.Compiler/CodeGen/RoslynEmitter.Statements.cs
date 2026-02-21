@@ -1756,7 +1756,7 @@ internal partial class RoslynEmitter
 
         // Determine element type for the Sharpy.List<T> wrapper
         TypeSyntax elementTypeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        if (valueType is GenericType { Name: "list" } listType && listType.TypeArguments.Count > 0)
+        if (valueType is GenericType { Name: BuiltinNames.List } listType && listType.TypeArguments.Count > 0)
         {
             elementTypeSyntax = _typeMapper.MapSemanticType(listType.TypeArguments[0]);
         }

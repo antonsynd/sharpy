@@ -31,10 +31,10 @@ internal class TypeMapper
         }
 
         // Add non-primitive type mappings (collections, etc.)
-        _builtinTypeMap["list"] = CSharpTypeNames.SharpyList;
-        _builtinTypeMap["dict"] = CSharpTypeNames.SharpyDict;
-        _builtinTypeMap["set"] = CSharpTypeNames.SharpySet;
-        _builtinTypeMap["tuple"] = "System.ValueTuple";
+        _builtinTypeMap[BuiltinNames.List] = CSharpTypeNames.SharpyList;
+        _builtinTypeMap[BuiltinNames.Dict] = CSharpTypeNames.SharpyDict;
+        _builtinTypeMap[BuiltinNames.Set] = CSharpTypeNames.SharpySet;
+        _builtinTypeMap[BuiltinNames.Tuple] = "System.ValueTuple";
     }
 
     public TypeMapper(CodeGenContext context)
@@ -255,7 +255,7 @@ internal class TypeMapper
         var baseTypeName = GetMappedTypeName(type.Name);
 
         // Handle named tuple type annotations: tuple[x: float, y: float] -> (double x, double y)
-        if (type.Name == "tuple" && !type.TupleElementNames.IsEmpty && type.TypeArguments.Length >= 2)
+        if (type.Name == BuiltinNames.Tuple && !type.TupleElementNames.IsEmpty && type.TypeArguments.Length >= 2)
         {
             var elements = type.TypeArguments.Select((ta, i) =>
             {
@@ -705,10 +705,10 @@ internal class TypeMapper
             StringLiteral => "string",
             BooleanLiteral => "bool",
             NoneLiteral => "object",
-            ListLiteral => "list",
-            DictLiteral => "dict",
-            SetLiteral => "set",
-            TupleLiteral => "tuple",
+            ListLiteral => BuiltinNames.List,
+            DictLiteral => BuiltinNames.Dict,
+            SetLiteral => BuiltinNames.Set,
+            TupleLiteral => BuiltinNames.Tuple,
             _ => "object"
         };
     }
