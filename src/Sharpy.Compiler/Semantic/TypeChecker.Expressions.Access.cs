@@ -601,6 +601,15 @@ internal partial class TypeChecker
                 }
                 else
                 {
+                    // SPY0357: Check for iterable spread into non-variadic constructor
+                    var initMethod = typeSymbol.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
+                    if (initMethod != null)
+                    {
+                        var initParams = initMethod.Parameters.Skip(1).ToList(); // skip 'self'
+                        if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
+                            return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                    }
+
                     // Cannot instantiate abstract classes
                     if (typeSymbol.IsAbstract)
                     {
@@ -743,6 +752,20 @@ internal partial class TypeChecker
             var typeArgs = TryResolveTypeArguments(indexAccess.Index);
             if (typeArgs != null)
             {
+                // SPY0357: Check for iterable spread into non-variadic generic constructor
+                var initMethod = genericTypeSymbol.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
+                if (initMethod != null)
+                {
+                    var initParams = initMethod.Parameters.Skip(1).ToList();
+                    if (CheckSpreadIntoNonVariadic(call, genericTypeSymbol.Name, initParams))
+                        return new GenericType
+                        {
+                            Name = genericTypeSymbol.Name,
+                            TypeArguments = typeArgs,
+                            GenericDefinition = genericTypeSymbol
+                        };
+                }
+
                 // Cannot instantiate abstract classes
                 if (genericTypeSymbol.IsAbstract)
                 {
@@ -891,6 +914,30 @@ internal partial class TypeChecker
         if (overloads == null || overloads.Count <= 1)
             return null;
 
+        // SPY0357: Check for iterable spread into non-variadic overloaded method.
+        // Must run before argument count filtering, since spread collapses N args into 1.
+        var anyOverloadVariadic = overloads.Any(o => o.Parameters.Any(p => p.IsVariadic));
+        if (!anyOverloadVariadic)
+        {
+            for (int i = 0; i < call.Arguments.Length; i++)
+            {
+                if (call.Arguments[i] is SpreadElement spreadElem)
+                {
+                    var spreadType = _semanticInfo.GetExpressionType(spreadElem.Value);
+                    if (spreadType is not null and not UnknownType and not TupleType)
+                    {
+                        AddError(
+                            $"Cannot spread '{spreadType.GetDisplayName()}' into non-variadic function '{memberAccess.Member}'; " +
+                            "use a function with *args parameter or pass arguments individually",
+                            spreadElem.LineStart, spreadElem.ColumnStart,
+                            code: DiagnosticCodes.Semantic.SpreadIntoNonVariadic,
+                            span: spreadElem.Span);
+                        return SemanticType.Unknown;
+                    }
+                }
+            }
+        }
+
         // First pass: filter by argument count (skip 'self' parameter)
         var candidates = overloads.Where(o =>
         {
@@ -1023,6 +1070,41 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Checks for iterable spread arguments in a call to a non-variadic target.
+    /// Returns true if a violation was found and a diagnostic was emitted.
+    /// TupleType spreads are excluded because their size is statically known.
+    /// </summary>
+    private bool CheckSpreadIntoNonVariadic(
+        FunctionCall call, string targetName, IReadOnlyList<ParameterSymbol>? parameters)
+    {
+        if (parameters == null)
+            return false;
+
+        var hasVariadicParam = parameters.Any(p => p.IsVariadic);
+        if (hasVariadicParam)
+            return false;
+
+        for (int i = 0; i < call.Arguments.Length; i++)
+        {
+            if (call.Arguments[i] is SpreadElement spreadElem)
+            {
+                var spreadType = _semanticInfo.GetExpressionType(spreadElem.Value);
+                if (spreadType is not null and not UnknownType and not TupleType)
+                {
+                    AddError(
+                        $"Cannot spread '{spreadType.GetDisplayName()}' into non-variadic function '{targetName}'; " +
+                        "use a function with *args parameter or pass arguments individually",
+                        spreadElem.LineStart, spreadElem.ColumnStart,
+                        code: DiagnosticCodes.Semantic.SpreadIntoNonVariadic,
+                        span: spreadElem.Span);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Validates a function call against a resolved FunctionSymbol, including generic inference,
     /// argument count, positional/keyword argument type checking.
     /// </summary>
@@ -1034,34 +1116,16 @@ internal partial class TypeChecker
         // Check for iterable spread into non-variadic function (SPY0357)
         // Must run before generic inference — generic functions without *args must also reject
         // iterable spread. Tuple spread is excluded because tuple size is statically known.
-        var hasVariadicParam = funcSymbol.Parameters.Any(p => p.IsVariadic);
-        if (!hasVariadicParam)
+        if (CheckSpreadIntoNonVariadic(call, funcSymbol.Name, funcSymbol.Parameters))
         {
-            for (int i = 0; i < call.Arguments.Length; i++)
+            var earlyReturn = funcSymbol.ReturnType;
+            if (isNullConditionalCall && earlyReturn is not NullableType and not OptionalType)
             {
-                if (call.Arguments[i] is SpreadElement spreadElem)
-                {
-                    var spreadType = _semanticInfo.GetExpressionType(spreadElem.Value);
-                    if (spreadType is not null and not UnknownType and not TupleType)
-                    {
-                        AddError(
-                            $"Cannot spread '{spreadType.GetDisplayName()}' into non-variadic function '{funcSymbol.Name}'; " +
-                            "use a function with *args parameter or pass arguments individually",
-                            spreadElem.LineStart, spreadElem.ColumnStart,
-                            code: DiagnosticCodes.Semantic.SpreadIntoNonVariadic,
-                            span: spreadElem.Span);
-                        // Return early — skip argument count/type validation to avoid cascading errors.
-                        var earlyReturn = funcSymbol.ReturnType;
-                        if (isNullConditionalCall && earlyReturn is not NullableType and not OptionalType)
-                        {
-                            if (isOptionalNullConditional)
-                                return new OptionalType { UnderlyingType = earlyReturn };
-                            return new NullableType { UnderlyingType = earlyReturn };
-                        }
-                        return earlyReturn;
-                    }
-                }
+                if (isOptionalNullConditional)
+                    return new OptionalType { UnderlyingType = earlyReturn };
+                return new NullableType { UnderlyingType = earlyReturn };
             }
+            return earlyReturn;
         }
 
         // Handle generic function inference: identity(42) -> infer T=int
