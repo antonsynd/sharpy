@@ -616,7 +616,7 @@ internal class TypeInferenceService
         }
 
         // Enum types: iteration yields the enum values
-        if (iterableType is UserDefinedType { Symbol.TypeKind: TypeKind.Enum } enumUdt)
+        if (iterableType is UserDefinedType { Symbol.TypeKind: TypeKind.Enum })
         {
             return iterableType;
         }

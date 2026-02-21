@@ -916,15 +916,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Checks if an expression evaluates to an enum type.
-    /// Used to determine whether .value access should be translated to an int cast.
-    /// </summary>
-    private bool IsEnumTypeExpression(Expression expr)
-    {
-        return IsEnumInstance(expr);
-    }
-
-    /// <summary>
     /// Checks if an expression's type is an enum instance type.
     /// Uses both SemanticInfo (for type-checked expressions) and symbol table
     /// (for variables after reassignment where SemanticInfo may not have the type).
