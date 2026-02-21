@@ -82,10 +82,16 @@ internal partial class RoslynEmitter
             // Walrus operator
             WalrusExpression walrus => GenerateWalrusExpression(walrus),
 
-            // Spread/star — handled by collection literal and assignment codegen;
-            // if reached here, generate the inner value (best-effort fallthrough)
-            SpreadElement spread => GenerateExpression(spread.Value),
-            StarExpression star => GenerateExpression(star.Operand),
+            // Spread/star — normally handled by collection literal and assignment codegen.
+            // If reached here, emit a diagnostic — this is an unsupported context.
+            SpreadElement spread => EmitNotImplementedExpression(
+                "Spread expression (*) is not supported in this context",
+                DiagnosticCodes.CodeGen.UnsupportedExpressionType,
+                spread.LineStart, spread.ColumnStart),
+            StarExpression star => EmitNotImplementedExpression(
+                "Star expression (*) is not supported in this context",
+                DiagnosticCodes.CodeGen.UnsupportedExpressionType,
+                star.LineStart, star.ColumnStart),
 
             _ => EmitNotImplementedExpression(
                 $"Unsupported expression type in code generation: '{expr.GetType().Name}'",
