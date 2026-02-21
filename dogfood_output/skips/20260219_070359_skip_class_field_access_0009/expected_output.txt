@@ -1,8 +1,0 @@
-Hero
-Iron Sword
-15
-15
-Archer
-Longbow
-12
-20

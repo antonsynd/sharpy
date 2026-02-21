@@ -1,9 +1,0 @@
-Rectangle MyRect (5.0 x 3.0)
-Circle MyCircle (r=4.0)
-ID: 1000, Name: MyRect
-ID: 2000, Name: MyCircle
-Shape MyRect has area 15.00
-Shape MyCircle has area 50.27
-Point distance: 5.00
-Created ColoredRect with color Green
-Total shapes: 2

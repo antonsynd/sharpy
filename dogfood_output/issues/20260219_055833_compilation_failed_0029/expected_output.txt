@@ -1,9 +1,0 @@
-28.27431
-68.27431
-Circle radius=3.0 at (10, 5)
-Rectangle 4.0x5.0 at (0, 0)
-Triangle base=6.0 height=4.0
-Drawing circle with radius 3.0
-Drawing rectangle 4.0x5.0
-Drawing triangle with base 6.0
-Drawing circle with radius 3.0

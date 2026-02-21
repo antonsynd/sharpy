@@ -1,9 +1,0 @@
-1
-Person
-Entity: Alice, Age: 30
-active
-pending
-5.00
-Drawing Panel (100x50)
-Drawing SubmitBtn (80x30) [Button: Click Me]
-Widget

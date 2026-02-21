@@ -1,7 +1,0 @@
-Savings
-5000.0
-Checking
-1500.0
-Deposit: 250.5
-Deposit
-Checking

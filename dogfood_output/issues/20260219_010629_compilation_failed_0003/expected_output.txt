@@ -1,5 +1,0 @@
-0
--5
-True
--5
-negative is truthy

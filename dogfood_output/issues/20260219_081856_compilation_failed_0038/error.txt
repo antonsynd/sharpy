@@ -1,8 +1,0 @@
-Assembly compilation failed:
-
-error[CS0506]: 'Shapes.Circle.Draw()': cannot override inherited member 'Shapes.Shape.Draw()' because it is not marked virtual, abstract, or override
-  --> /tmp/tmp_jh7ob85/shapes.spy:43:32
-
-error[CS0506]: 'Shapes.Rectangle.Draw()': cannot override inherited member 'Shapes.Shape.Draw()' because it is not marked virtual, abstract, or override
-  --> /tmp/tmp_jh7ob85/shapes.spy:60:32
-

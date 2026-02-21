@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0113]: A member 'DogfoodTest.GameObject.ToString()' marked as override cannot be marked as new or virtual
-  --> dogfood_test.cs:13:40
-    |
- 13 |     health: int
-    |                ^
-    |
-

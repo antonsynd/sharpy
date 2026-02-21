@@ -1,8 +1,0 @@
-btn_ok
-Button 'OK' at (10.0, 20.0)
-TextLabel 'Ready'
-Panel 'main' with 2 children
-HIGH priority
-5000.0
-2
-High

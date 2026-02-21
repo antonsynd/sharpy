@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'Rectangle' is never used
-  --> /tmp/tmp_jh7ob85/utils.spy:3:3
-    |
-  3 | from shapes import IDrawable, Point, Shape, Circle, Rectangle
-    |   ^^^^^^^^^
-    |
-

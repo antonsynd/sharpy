@@ -1,5 +1,0 @@
-=== Report: Sales ===
-Sum: 1500
-Count: 5
-Average: 300
-Done!

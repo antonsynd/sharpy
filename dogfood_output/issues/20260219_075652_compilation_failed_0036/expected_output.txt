@@ -1,7 +1,0 @@
-HELLO WORLD
-this is a ...
-INFO: system ready
-apple, banana, cherry
-15
-100
-Area: 78.54

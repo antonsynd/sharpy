@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'IIdentifiable' is never used
-  --> /tmp/tmpubrpg_ab/widgets.spy:3:5
-    |
-  3 | # main -> helpers (standalone)
-    |     ^^^^^^^^^^^^^
-    |
-

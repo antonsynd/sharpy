@@ -1,7 +1,0 @@
-Rectangle MyRect: 10x20
-Circle MyCircle: r=5
-Button 'Click Me' at (100, 200)
-Label 'Hello' at (50, 50)
-first
-3
-2

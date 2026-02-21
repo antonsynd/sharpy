@@ -1,6 +1,0 @@
-[ALIVE] Hero (Lv.5, HP:100)
-[DEFEATED] Goblin (Lv.2, HP:0)
-(Common) Iron Sword worth 25g **
-(Rare) Elixir worth 150g ***************
-Description: [ALIVE] Hero (Lv.5, HP:100)
-[ALIVE] Hero (Lv.5, HP:100)

@@ -1,5 +1,0 @@
-=== Module Utils Demo ===
-Clamped 15 to range 5-10: 10
-Area of Shape: Box (Rectangle 5x3): 15.0
-Scaled 4x6 by 3: 12x18
-Circle area (r=5): 78.53975

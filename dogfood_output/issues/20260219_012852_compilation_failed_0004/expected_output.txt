@@ -1,8 +1,0 @@
-Distance: 5.0
-[INFO] Starting application
-Formatted: 3.14
-Count: 3
-Average: 20.0
-Centroid: (3.0, 4.0)
-P2 unchanged: 3.0
-LogLevel.ERROR: 3

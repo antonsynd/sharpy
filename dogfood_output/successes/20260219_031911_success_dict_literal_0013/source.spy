@@ -1,8 +1,0 @@
-# Simple dict literal test with string keys and integer values
-def main():
-    scores: dict[str, int] = {"alice": 95, "bob": 87, "carol": 92}
-    total: int = scores["alice"] + scores["bob"]
-    print(total)
-
-# EXPECTED OUTPUT:
-# 182

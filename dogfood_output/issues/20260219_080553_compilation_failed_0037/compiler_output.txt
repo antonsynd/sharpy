@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'Point2D' is never used
-  --> /tmp/tmp1t1rm5af/utils_module.spy:2:1
-    |
-  2 | from types_module import Status, Priority, IIdentifiable, ITrackable
-    | ^^^^^^^
-    |
-

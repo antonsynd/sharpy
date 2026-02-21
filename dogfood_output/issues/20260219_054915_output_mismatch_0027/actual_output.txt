@@ -1,7 +1,0 @@
-Square(s=2)
-Shape: Rectangle(4x6)
-Shape: Circle(r=3.5)
-Shape: Square(s=2)
-Shape: Triangle(b=5,h=8)
-It's a triangle!
-Shape: Square(s=5)

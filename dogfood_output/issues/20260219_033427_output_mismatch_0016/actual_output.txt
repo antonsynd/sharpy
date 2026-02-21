@@ -1,7 +1,0 @@
-Circle 'BigCircle' at (0.0, 0.0)
-Rectangle 'MyRect' size 4.0x6.0
-78.53975
-131.1746875
-2
-Rectangle
-98.1746875
