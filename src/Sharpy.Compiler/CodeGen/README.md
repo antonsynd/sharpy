@@ -4,15 +4,18 @@ This directory contains the Roslyn-based C# code generator.
 
 ## Key Files
 
-- `RoslynEmitter.cs` - Main emitter, orchestrates code generation
-- `RoslynEmitter.*.cs` - Partial classes for different AST node types:
+- `RoslynEmitter.cs` - Main emitter, orchestrates code generation and name resolution
+- `RoslynEmitter.*.cs` - Partial classes for different AST node types (11 files total):
   - `.Expressions.cs` - Expression generation
+  - `.Expressions.Access.cs` - Member access, indexing, slicing
+  - `.Expressions.Literals.cs` - Literal expressions (numbers, strings, collections)
+  - `.Expressions.Operators.cs` - Binary/unary operator expressions
   - `.Statements.cs` - Statement generation
   - `.TypeDeclarations.cs` - Class/struct/interface/enum generation
   - `.ClassMembers.cs` - Methods, properties, constructors
   - `.ModuleClass.cs` - Module class generation (named after source file)
   - `.CompilationUnit.cs` - Top-level compilation unit
-  - `.Operators.cs` - Binary/unary operators
+  - `.Operators.cs` - Operator method emission
 - `CodeGenContext.cs` - Shared context for emission
 - `TypeMapper.cs` - Maps Sharpy types to C# types
 - `NameMangler.cs` - Converts snake_case to PascalCase, dunder methods
@@ -136,13 +139,16 @@ Local variables still require tracking during emission for redeclaration handlin
 
 `TypeMapper` handles the translation from Sharpy types to C# types:
 
-- `list[T]` → `global::Sharpy.List<T>`
-- `dict[K, V]` → `global::Sharpy.Dict<K, V>`
-- `str` → `string`
 - `int` → `int`
 - `long` → `long`
 - `float` → `double`
+- `double` → `double`
+- `float32` → `float`
+- `str` → `string`
 - `bool` → `bool`
+- `list[T]` → `global::Sharpy.List<T>`
+- `dict[K, V]` → `global::Sharpy.Dict<K, V>`
+- `set[T]` → `global::Sharpy.Set<T>`
 - `None` → `void`
 
 ## Name Mangling

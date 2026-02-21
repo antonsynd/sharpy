@@ -19,17 +19,29 @@ The services layer provides common operations used throughout compilation:
 
 ## Files
 
+### Core
+- `CompilerServices.cs` - Main service container
+- `CompilerServicesBuilder.cs` - Builder for constructing services
+- `CompilerServicesConfiguration.cs` - Immutable configuration
+
+### Interfaces
 - `ITypeResolver.cs` - Type resolution service interface
 - `ISymbolLookup.cs` - Symbol lookup service interface
 - `IClrTypeMapper.cs` - CLR type mapping service interface
 - `IDiagnosticReporter.cs` - Diagnostic reporting service interface
+- `IDependencyQuery.cs` - Dependency graph query interface
+- `IImportQuery.cs` - Import resolution query interface
+- `ISemanticQuery.cs` - Semantic information query interface
+
+### Adapters
 - `TypeResolverAdapter.cs` - Adapter wrapping existing TypeResolver
 - `SymbolLookupAdapter.cs` - Adapter wrapping existing SymbolTable
 - `ClrTypeMapperAdapter.cs` - Adapter for CLR type mapping
+- `ImportQueryAdapter.cs` - Adapter for import queries
 - `DiagnosticReporter.cs` - Implementation of diagnostic reporting
-- `CompilerServicesConfiguration.cs` - Immutable configuration
-- `CompilerServices.cs` - Main service container
-- `CompilerServicesBuilder.cs` - Builder for constructing services
+
+### Utilities
+- `AstPositionService.cs` - AST position lookup utilities
 
 ## Usage
 

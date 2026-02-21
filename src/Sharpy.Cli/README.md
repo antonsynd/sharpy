@@ -40,6 +40,7 @@ sharpyc emit csharp <input.spy>   # Generated C# code
 ### Project Options
 
 - `-c, --configuration <Debug|Release>` - Build configuration (default: Debug)
+- `--incremental` - Enable incremental compilation (skip unchanged files)
 - `--clean` - Delete bin/ and obj/ directories before building
 - `--emit-cs-to <dir>` - Save generated C# code to directory
 
@@ -123,12 +124,12 @@ Create a `.spyproj` file to define your multi-file Sharpy project:
 ```
 bin/
   Debug/
-    net9.0/
+    net10.0/
       MyApp.exe
       MyApp.dll
       MyApp.pdb
   Release/
-    net9.0/
+    net10.0/
       MyApp.exe
       MyApp.dll
 ```
@@ -178,8 +179,8 @@ def greet(name: str) -> None:
     message: str = f"Hello, {name}!"
     print(message)
 
-x = 42
-greet("World")
+def main():
+    greet("World")
 ```
 
 Run the compiler:

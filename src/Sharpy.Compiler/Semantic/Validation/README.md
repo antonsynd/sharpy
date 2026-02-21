@@ -16,16 +16,23 @@ of semantic rules.
 - `SemanticContext.cs` - Shared context passed to validators
 - `AstTraversalContext.cs` - Tracks traversal state
 
-### Validators
+### Validators (ordered by execution priority)
 
-- `ModuleLevelValidator.cs` - Entry point rules, module-level type annotations
-- `DecoratorValidator.cs` - Decorator usage validation
-- `SignatureValidator.cs` - Function/method signature checks (dunders, protocols)
-- `DefaultParameterValidator.cs` - Default parameter constraints
-- `ControlFlowValidator.cs` - CFG-based control flow analysis
-- `AccessValidator.cs` - Member access validation
-- `ProtocolValidator.cs` - Protocol method validation (__len__, __iter__, etc.)
-- `OperatorValidator.cs` - Binary/unary operator type checking
+- `ModuleLevelValidator.cs` (Order 50) - Entry point rules, module-level type annotations
+- `NamingConventionValidator.cs` (Order 55) - Naming convention checks
+- `DecoratorValidator.cs` (Order 60) - Decorator usage validation
+- `SignatureValidator.cs` (Order 150) - Dunder method signatures, protocol conformance
+- `EqualityContractValidator.cs` (Order 160) - Equality contract checks (__eq__/__hash__)
+- `InterfaceConflictValidator.cs` (Order 170) - Interface conflict detection
+- `DefaultParameterValidator.cs` (Order 250) - Default parameter constraints
+- `ControlFlowValidator.cs` (Order 400) - CFG-based control flow analysis
+- `PropertyValidator.cs` (Order 410) - Property validation
+- `UnusedVariableValidator.cs` (Order 420) - Unused variable warnings
+- `UnusedImportValidator.cs` (Order 430) - Unused import warnings
+- `AccessValidator.cs` (Order 450) - Private/protected member access validation
+- `DunderInvocationValidator.cs` (Order 460) - Direct dunder call warnings
+- `ProtocolValidator.cs` (Order 500) - Protocol method validation (__len__, __iter__, etc.)
+- `OperatorValidator.cs` (Order 500) - Unsupported operator type checking
 
 ## Architecture
 
@@ -53,7 +60,7 @@ operate as a self-contained AST analysis.
 
 ### TypeChecker (type-inference-coupled)
 
-These validations live in `TypeChecker` because they are tightly coupled to the
+These validations live in `TypeChecker` (8 partial files) because they are tightly coupled to the
 type inference walk and depend on in-progress type resolution state:
 
 - **Type mismatches** — assignment/return type compatibility (SPY0220, SPY0221)

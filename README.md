@@ -9,11 +9,24 @@ Sharpy combines Python's elegant syntax with .NET's type safety and performance.
 
 ### Key Features
 
-🐍 **Pythonic Syntax** · ⚡ **Static Typing** · 🔗 **.NET Interop** · 🎯 **Null Safety** (`?.`, `??`) · 📦 **Zero Runtime Overhead**
+**Pythonic Syntax** | **Static Typing** | **.NET Interop** | **Null Safety** (`?.`, `??`) | **Zero Runtime Overhead**
 
 ## Quick Example
 
-TODO
+```python
+# hello.spy
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+def main():
+    message = greet("World")
+    print(message)
+```
+
+```bash
+$ dotnet run --project src/Sharpy.Cli -- run hello.spy
+Hello, World!
+```
 
 ## Language Highlights
 
@@ -56,7 +69,7 @@ def use_dotnet() -> None:
 
 ### Prerequisites
 
-- .NET 9.0 or .NET 10.0 SDK ([Download](https://dotnet.microsoft.com/download))
+- .NET 10.0 SDK ([Download](https://dotnet.microsoft.com/download))
 
 ### Build & Test
 
@@ -90,10 +103,7 @@ def main():
 
 ## Documentation
 
-- [Language Reference](docs/specs/language_reference.md) — Complete language specification
-- [Type System](docs/specs/type_system.md) — Type system details
-- [Manual](docs/manual/) — Variables, functions, types, control flow, errors
-- [Feature Support](docs/status/feature_support.md) — Implementation status
+- [Language Specification](docs/language_specification/) — Complete language reference
 
 ## Design Philosophy
 
@@ -111,13 +121,13 @@ Check our [issues](https://github.com/antonsynd/sharpy/issues) to get started.
 ```
 sharpy/
 ├── src/
-│   ├── Sharpy.Core/           # Standard library
+│   ├── Sharpy.Core/           # Standard library (runtime)
 │   ├── Sharpy.Compiler/       # Compiler (lexer, parser, semantic, codegen)
-│   ├── Sharpy.Cli/            # CLI tool
+│   ├── Sharpy.Cli/            # CLI tool (sharpyc)
 │   └── *.Tests/               # Test projects
-├── docs/                      # Documentation
-├── snippets/                  # Example programs
-└── lsp/sharpy/               # VS Code extension
+├── docs/language_specification/ # Language specification
+├── build_tools/               # Build automation and dogfooding tools
+└── snippets/                  # Example programs
 ```
 
 ## License

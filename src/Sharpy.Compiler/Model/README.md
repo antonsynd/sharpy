@@ -55,8 +55,8 @@ var errors = unit.Diagnostics.GetAll();
 2. **Thread-safety**: DiagnosticBag is thread-safe for future parallel
    compilation support.
 
-3. **Incremental compilation ready**: Content hashing and dependency
-   tracking support future incremental compilation.
+3. **Incremental compilation**: Content hashing and dependency
+   tracking enable incremental compilation (skip unchanged files).
 
 4. **LSP ready**: Token storage and source spans enable future IDE
    integration.

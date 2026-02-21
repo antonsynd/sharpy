@@ -43,9 +43,9 @@ Lexer → Parser → Semantic → Validation → CodeGen → Tests
 
 1. **Lexer** (`Lexer/`) — Add `TokenType` and recognition
 2. **Parser** (`Parser/Ast/`) — Add AST record, parsing rule (6 partial files)
-3. **Semantic** (`Semantic/`) — Add type checking in `TypeChecker*.cs` (5 partial files)
+3. **Semantic** (`Semantic/`) — Add type checking in `TypeChecker*.cs` (8 partial files)
 4. **Validation** (`Semantic/Validation/`) — Add validator if needed (pluggable pipeline)
-5. **CodeGen** (`CodeGen/RoslynEmitter*.cs`) — Emit via `SyntaxFactory` (8 partial files)
+5. **CodeGen** (`CodeGen/RoslynEmitter*.cs`) — Emit via `SyntaxFactory` (11 partial files)
 6. **Tests** — Unit tests per component + `.spy`/`.expected` file-based tests
 
 ## Key Directories

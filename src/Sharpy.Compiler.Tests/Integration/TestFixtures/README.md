@@ -43,6 +43,30 @@ errors/
 └── undefined_var.error  # Contains: "undefined_var" (substring to match)
 ```
 
+### Warning Tests (compilation should succeed with expected warnings)
+
+1. Create a `.spy` file with Sharpy code that produces warnings
+2. Create a matching `.expected` file with the expected stdout output
+3. Create a matching `.warning` file:
+   - Empty `.warning` file means expect **no** warnings
+   - Non-empty lines are expected substrings that must appear in warnings
+
+Example:
+```
+warnings/
+├── unused_var.spy          # Code that triggers a warning
+├── unused_var.expected     # Expected stdout output
+└── unused_var.warning      # Contains: "unused variable" (substring to match)
+```
+
+### C# Snapshot Tests (verify generated C# output)
+
+1. Create a `.spy` file and a matching `.expected.cs` file with the expected generated C#
+2. The expected C# is Roslyn-normalized
+3. To regenerate snapshots: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`
+
+Used selectively for representative fixtures to detect codegen changes that don't affect runtime output.
+
 ### Skipping Tests
 
 To temporarily skip a test that is pending a fix:
