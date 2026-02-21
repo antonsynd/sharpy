@@ -62,7 +62,7 @@ The semantic phase runs multiple ordered passes. Understanding this is critical 
 
 **Pass 2 — Type Resolution** (`TypeResolver.cs`): Resolves type annotations on declarations to concrete types. Type inference provided by `TypeInferenceService` and `GenericTypeInferenceService`.
 
-**Pass 3 — Type Checking** (`TypeChecker.cs`, split into 5 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Statements.cs`, `.Utilities.cs`): Traverses AST, infers types, records them in `SemanticInfo`. Then runs `ValidationPipeline`. Type narrowing (e.g., `if x is not None:` narrows `T?` → `T`) is tracked via `_narrowingContext` (`TypeNarrowingContext`).
+**Pass 3 — Type Checking** (`TypeChecker.cs`, split into 8 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Utilities.cs`): Traverses AST, infers types, records them in `SemanticInfo`. Then runs `ValidationPipeline`. Type narrowing (e.g., `if x is not None:` narrows `T?` → `T`) is tracked via `_narrowingContext` (`TypeNarrowingContext`).
 
 **Key registries**: `OperatorRegistry`, `ProtocolRegistry`, `BuiltinRegistry`, `ModuleRegistry`, `PrimitiveCatalog` (source of truth for primitive types and CLR mappings).
 
@@ -124,11 +124,15 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 55**: `NamingConventionValidator` — Naming convention checks
 - **Order 60**: `DecoratorValidator` — Decorator validation
 - **Order 150**: `SignatureValidator` — Dunder method signatures
+- **Order 160**: `EqualityContractValidator` — Equality contract checks
+- **Order 170**: `InterfaceConflictValidator` — Interface conflict detection
 - **Order 250**: `DefaultParameterValidator` — Default parameter validation
 - **Order 400**: `ControlFlowValidator` — CFG-based unreachable code, missing returns
+- **Order 410**: `PropertyValidator` — Property validation
 - **Order 420**: `UnusedVariableValidator` — Unused variable warnings
 - **Order 430**: `UnusedImportValidator` — Unused import warnings
 - **Order 450**: `AccessValidator` — Private/protected member access
+- **Order 460**: `DunderInvocationValidator` — Direct dunder call warnings
 - **Order 500**: `ProtocolValidator`, `OperatorValidator` — Protocol/operator validation
 
 **Responsibility split**: TypeChecker handles type mismatches and in-progress inference. ValidationPipeline handles self-contained AST analyses that don't need active inference state.
@@ -149,7 +153,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 8 partial classes (~6,225 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`.
+The `RoslynEmitter` is split into 11 partial classes (~10,300 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -268,6 +272,7 @@ Available in `.claude/skills/`:
 | `/project:verify-python <expr>` | Run Python 3 to verify behavior before implementing |
 | `/project:add-test-fixture <desc>` | Create a file-based integration test |
 | `/project:dogfood-analyze [dir]` | Analyze dogfood results and classify failures by root cause |
+| `/project:dogfood-run` | Run dogfooding iterations to test the Sharpy compiler |
 | `/project:compiler-audit [focus]` | Run a comprehensive compiler health audit |
 | `/project:verify-plan <plan.md>` | Verify a plan for accuracy and architectural soundness |
 | `/project:implement-plan <plan.md>` | Implement a plan with a coordinated agent team |
