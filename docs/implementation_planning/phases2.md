@@ -1,6 +1,6 @@
-<!-- TODO(#209): Update this file to mark Phase 6+7 features as complete -->
 <!-- Verified by /project:verify-plan on 2026-02-17 -->
 <!-- Verification result: PASS WITH CORRECTIONS -->
+<!-- Phase 6+7 marked complete on 2026-02-20 (closes #209) -->
 
 # Sharpy Language Feature Completeness — Phased Roadmap
 
@@ -28,6 +28,8 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 - Collection type wrappers (Sharpy.List, Sharpy.Set, Sharpy.Dict)
 - `try`/`maybe` expressions with Result/Optional types
 - Comparison chains, null-conditional/coalescing, type narrowing
+- **Phase 6 (v0.2.0):** Constructor chaining, enum `.name`/iteration, generic type aliases, method overloading
+- **Phase 7 (v0.2.1):** Complex tuple unpacking, rest patterns, tuple unpacking in comprehensions, spread in collection literals, spread in function calls
 
 ### Missing (grouped by phase below)
 
@@ -40,14 +42,14 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | # | Feature | Complexity | Notes |
 |---|---------|-----------|-------|
 | ~~6.1~~ | ~~`@final` decorator on classes/methods~~ | ~~S~~ | ~~Already completed~~ [CORRECTED: `@final` is already fully handled — `DecoratorNames.Final` maps to `SealedKeyword` in both `RoslynEmitter.TypeDeclarations.cs` and `RoslynEmitter.ClassMembers.cs`] |
-| 6.2 | `raise X from Y` (inner exception) | M | Parser populates `RaiseStatement.Cause` but semantic+codegen ignore it; pass as inner exception ctor arg |
+| ~~6.2~~ | ~~`raise X from Y` (inner exception)~~ | ~~M~~ | ~~Intentionally NOT implemented — language spec does not support inner exceptions~~ |
 | ~~6.3~~ | ~~`int * str` string repetition (reversed)~~ | ~~S~~ | ~~Already completed~~ [CORRECTED: Both `str * int` and `int * str` are handled in `TypeInferenceService.cs` (lines 194-200) AND in codegen via `GenerateStringRepetition` in `RoslynEmitter.Expressions.Operators.cs` (lines 172-179)] |
 | ~~6.4~~ | ~~`to` operator precedence~~ | ~~M~~ | ~~Already correct~~ [CORRECTED: `to` is already parsed at the correct level in `ParseCast()` (Parser.Expressions.cs:421), between pipe and comparisons, matching `docs/language_specification/type_casting.md`] |
 | ~~6.5~~ | ~~Interface default methods~~ | ~~M~~ | ~~Already supported~~ [CORRECTED: SPY0251 fires when interface methods have NO body (missing `...`/`pass`). Methods with real bodies (default implementations) are already explicitly allowed by `NameResolver.ValidateInterfaceMethod()`] |
-| 6.6 | Constructor chaining (`self.__init__()`) | M | Detect `self.__init__()` in constructor body; emit `ThisConstructorInitializer` (`: this(...)`). Note: `super().__init__()` → `: base(...)` already works. |
-| 6.7 | Enum `.name`, iteration | M | `.name` → `.ToString()` or `Enum.GetName()`, `for x in Enum:` → `Enum.GetValues()` [CORRECTED: `.value` is already implemented for integer enums via cast in `RoslynEmitter.Expressions.Access.cs`] |
-| 6.8 | Generic type aliases (`type Cb[T] = (T) -> None`) | M | Add `TypeParameters` to `TypeAlias` AST; handle substitution in TypeResolver |
-| 6.9 | Method overloading (user-defined) | L | `Scope.Define()` currently throws `InvalidOperationException` on duplicate non-variable symbols [CORRECTED: it throws, not silently overwrites]; add `MethodOverloads` to TypeSymbol; overload resolution in TypeChecker |
+| ~~6.6~~ | ~~Constructor chaining (`self.__init__()`)~~ | ~~M~~ | ~~Completed.~~ `self.__init__()` → `: this(...)`, `super().__init__()` → `: base(...)` |
+| ~~6.7~~ | ~~Enum `.name`, iteration~~ | ~~M~~ | ~~Completed.~~ `.name` → `Enum.GetName()`, `.value` → cast, `for x in Enum:` → `Enum.GetValues()` |
+| ~~6.8~~ | ~~Generic type aliases (`type Cb[T] = (T) -> None`)~~ | ~~M~~ | ~~Completed.~~ `TypeParameters` on `TypeAlias` AST; substitution in TypeResolver |
+| ~~6.9~~ | ~~Method overloading (user-defined)~~ | ~~L~~ | ~~Completed.~~ `MethodOverloads` on TypeSymbol; `SignatureKey`-based dedup; overload resolution in TypeChecker |
 
 **Key files:** `RoslynEmitter.TypeDeclarations.cs`, `RoslynEmitter.ClassMembers.cs`, `NameResolver.cs`, `TypeChecker.cs`, `TypeInferenceService.cs`, `Parser.Expressions.cs`
 
@@ -59,11 +61,11 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 | # | Feature | Complexity | Notes |
 |---|---------|-----------|-------|
-| 7.1 | Complex tuple unpacking | M | `a, (b, c) = nested` — nested targets beyond simple identifiers (currently SPY0517) |
-| 7.2 | Rest patterns in unpacking | M | `first, *rest = items` and `first, *middle, last = items`; `rest` typed as `list[T]` |
-| 7.3 | Tuple unpacking in comprehensions | M | `[a for a, b in pairs]` — currently SPY0516; lower to destructuring in LINQ lambda parameter |
-| 7.4 | Spread in collection literals | L | `[*a, *b]`, `{*s1, *s2}`, `{**d1, **d2}`, `(*t1, *t2)` — new `SpreadExpression` AST node + codegen lowering to `AddRange`/`UnionWith`/dict merge |
-| 7.5 | Spread in function calls | L | `f(*args_list)`, `f(**kwargs_dict)` — call-site unpacking with static type checking |
+| ~~7.1~~ | ~~Complex tuple unpacking~~ | ~~M~~ | ~~Completed.~~ Nested targets: `(a, (b, c)) = nested`; recursive destructuring with `.ItemN` access |
+| ~~7.2~~ | ~~Rest patterns in unpacking~~ | ~~M~~ | ~~Completed.~~ `first, *rest = items` and `first, *mid, last = items`; `*rest` typed as `list[T]` |
+| ~~7.3~~ | ~~Tuple unpacking in comprehensions~~ | ~~M~~ | ~~Completed.~~ `[a + b for a, b in pairs]`; lowered to lambda with `.ItemN` destructuring |
+| ~~7.4~~ | ~~Spread in collection literals~~ | ~~L~~ | ~~Completed.~~ `[*a, *b]`, `{*s1, *s2}`, `{**d1, **d2}` — `SpreadExpression` AST + `AddRange`/`UnionWith`/dict merge codegen |
+| ~~7.5~~ | ~~Spread in function calls~~ | ~~L~~ | ~~Completed.~~ `f(*args)` — call-site unpacking with static type checking |
 
 **Key files:** `Parser.Expressions.cs`, `RoslynEmitter.Expressions.Literals.cs`, `RoslynEmitter.Expressions.cs`, `TypeChecker.Expressions.cs`
 
@@ -168,8 +170,8 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 | Phase | Version | Theme | Items | Key Deliverables |
 |-------|---------|-------|-------|-----------------|
-| **6** | v0.2.0 | Correctness & Completion | 5 (was 9; 4 already done) | `raise from`, constructor chaining, enum polish, generic type aliases, method overloading [CORRECTED: reduced from 9 to 5 items — 6.1, 6.3, 6.4, 6.5 are already implemented] |
-| **7** | v0.2.1 | Destructuring & Spread | 5 | Complex unpacking, `*rest`, spread in literals/calls |
+| **6** | v0.2.0 | Correctness & Completion | ~~5~~ ✅ Complete | Constructor chaining, enum polish, generic type aliases, method overloading (6.2 `raise from` intentionally skipped) |
+| **7** | v0.2.1 | Destructuring & Spread | ~~5~~ ✅ Complete | Complex unpacking, `*rest`, spread in literals/calls |
 | **8** | v0.2.2 | Pattern Matching & Tagged Unions | 8 | Match expressions, all patterns, `union` keyword, exhaustiveness |
 | **9** | v0.2.3 | Generators & Iterators | 3 | `yield`/`yield from`, generator inference |
 | **10** | v0.2.4 | Async/Await | 6 | `async def`, `await`, `async for/with`, async generators |

@@ -177,6 +177,8 @@ See [function_definition.md](function_definition.md) for function definition syn
 
 See [function_parameters.md](function_parameters.md) for parameter types overview, named arguments, and function overloading.
 
+See [method_overloading.md](method_overloading.md) for class method overloading, constructor overloading, and operator overloading.
+
 See [function_default_parameters.md](function_default_parameters.md) for default parameter values and compile-time constant requirements.
 
 See [function_variadic_arguments.md](function_variadic_arguments.md) for variadic arguments (*args), unpacking, and C# interop.
@@ -281,6 +283,8 @@ See [maybe_expressions.md](maybe_expressions.md) for maybe expressions and optio
 ## Comprehensions
 
 See [comprehensions.md](comprehensions.md) for list, dict, and set comprehensions.
+
+See [tuple_unpacking.md](tuple_unpacking.md) for tuple destructuring, nested unpacking, rest patterns, and comprehension unpacking.
 
 ---
 ## Walrus Operator
