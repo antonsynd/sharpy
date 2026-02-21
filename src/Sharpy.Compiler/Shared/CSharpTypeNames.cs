@@ -1,3 +1,5 @@
+using Sharpy.Compiler.Semantic;
+
 namespace Sharpy.Compiler.Shared;
 
 /// <summary>
@@ -11,4 +13,15 @@ internal static class CSharpTypeNames
     internal const string SharpySet = "Sharpy.Set";
     internal const string SharpyOptional = "Sharpy.Optional";
     internal const string SharpyResult = "Sharpy.Result";
+
+    /// <summary>
+    /// Maps a Sharpy builtin collection type name to its fully-qualified C# type name.
+    /// </summary>
+    internal static string? FromSharpyName(string sharpyName) => sharpyName switch
+    {
+        BuiltinNames.List => SharpyList,
+        BuiltinNames.Dict => SharpyDict,
+        BuiltinNames.Set => SharpySet,
+        _ => null
+    };
 }

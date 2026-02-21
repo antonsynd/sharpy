@@ -30,7 +30,7 @@ internal partial class RoslynEmitter
             if (symbol is TypeSymbol genericTypeSymbol && genericTypeSymbol.IsGeneric)
             {
                 // Generate: new GenericType<TypeArgs>(args)
-                var csharpGenericTypeName = GetBuiltinCollectionTypeName(genericName.Name)
+                var csharpGenericTypeName = CSharpTypeNames.FromSharpyName(genericName.Name)
                     ?? NameMangler.ToPascalCase(genericName.Name);
                 var genericTypeSyntax = TypeMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
 
@@ -131,7 +131,7 @@ internal partial class RoslynEmitter
                 {
                     var typeArgsSyntax = resolvedGeneric.TypeArguments
                         .Select(t => _typeMapper.MapSemanticType(t));
-                    var csharpCollectionName = GetBuiltinCollectionTypeName(funcName.Name)
+                    var csharpCollectionName = CSharpTypeNames.FromSharpyName(funcName.Name)
                         ?? NameMangler.ToPascalCase(funcName.Name);
                     var genericTypeSyntax = TypeMapper.QualifiedGenericName(csharpCollectionName,
                             typeArgsSyntax.ToArray());
@@ -140,7 +140,7 @@ internal partial class RoslynEmitter
                 }
 
                 // For builtin collection types, use the fully-qualified Sharpy.X name
-                var collectionName = GetBuiltinCollectionTypeName(funcName.Name);
+                var collectionName = CSharpTypeNames.FromSharpyName(funcName.Name);
                 if (collectionName != null)
                 {
                     return ObjectCreationExpression(ParseName(collectionName))
@@ -1057,18 +1057,6 @@ internal partial class RoslynEmitter
     {
         return interfaceSymbol.Methods.Any(m => m.Name == methodName && !m.IsAbstract);
     }
-
-    /// <summary>
-    /// Returns the fully-qualified C# type name for builtin collection types
-    /// (list, dict, set), or null for non-builtin types.
-    /// </summary>
-    private static string? GetBuiltinCollectionTypeName(string sharpyName) => sharpyName switch
-    {
-        BuiltinNames.List => CSharpTypeNames.SharpyList,
-        BuiltinNames.Dict => CSharpTypeNames.SharpyDict,
-        BuiltinNames.Set => CSharpTypeNames.SharpySet,
-        _ => null
-    };
 
     /// <summary>
     /// Generates positional arguments for a function call, handling SpreadElement arguments.
