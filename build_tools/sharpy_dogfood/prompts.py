@@ -1213,7 +1213,7 @@ _CODE_INDICATORS = ["def ", "class ", "print(", "=", "import "]
 
 _MARKDOWN_LINE_PATTERNS = [
     re.compile(r"^\*\*.*\*\*"),  # Bold markdown: **text**
-    re.compile(r"^#+\s"),  # Headers: # heading
+    re.compile(r"^#{1,6}\s+[A-Z]"),  # Headers: # Heading (uppercase after #, not Python comments)
     re.compile(r"^\d+\.\s"),  # Numbered lists: 1. item
 ]
 

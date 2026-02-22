@@ -23,6 +23,7 @@ from .compiler import (
     verify_compiler_available,
 )
 from .prompts import (
+    _CODE_INDICATORS,
     get_code_generation_prompt,
     get_multifile_generation_prompt,
     get_multifile_regeneration_prompt,
@@ -56,9 +57,6 @@ _NON_CODE_ERROR_PATTERNS = [
     re.compile(r"^Error:", re.IGNORECASE),
     re.compile(r"^Sorry", re.IGNORECASE),
 ]
-
-# Minimum indicators that a response contains actual code.
-_CODE_INDICATORS = ["def ", "class ", "print(", "=", "import "]
 
 _MIN_CODE_LENGTH = 20
 
