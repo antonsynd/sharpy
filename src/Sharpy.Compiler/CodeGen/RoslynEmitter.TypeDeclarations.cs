@@ -21,12 +21,7 @@ internal partial class RoslynEmitter
         _cancellationToken.ThrowIfCancellationRequested();
 
         // Clear declared variables and version tracking for new function scope
-        _declaredVariables.Clear();
-        _variableVersions.Clear();
-        _constVariables.Clear();
-        _sourceVariableNames.Clear();
-        _narrowedOptionals.Clear();
-        _isNullableNarrowing.Clear();
+        ResetMethodScope();
 
         // Pre-scan the function body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide

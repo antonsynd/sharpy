@@ -240,6 +240,20 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Clears all local scope tracking fields for a new method/function scope.
+    /// Call at the start of each method, function, property accessor, or operator body.
+    /// </summary>
+    private void ResetMethodScope()
+    {
+        _declaredVariables.Clear();
+        _variableVersions.Clear();
+        _constVariables.Clear();
+        _sourceVariableNames.Clear();
+        _narrowedOptionals.Clear();
+        _isNullableNarrowing.Clear();
+    }
+
+    /// <summary>
     /// Restores the local scope state from a snapshot.
     /// Variables declared inside the block are removed from scope.
     /// </summary>

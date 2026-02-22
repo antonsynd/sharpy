@@ -254,12 +254,7 @@ internal partial class RoslynEmitter
         Dictionary<string, TypeAnnotation> fieldTypeMapping)
     {
         // Clear declared variables and version tracking for new method scope
-        _declaredVariables.Clear();
-        _variableVersions.Clear();
-        _constVariables.Clear();
-        _sourceVariableNames.Clear();
-        _narrowedOptionals.Clear();
-        _isNullableNarrowing.Clear();
+        ResetMethodScope();
 
         // Pre-scan the constructor body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
@@ -445,12 +440,7 @@ internal partial class RoslynEmitter
     private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
     {
         // Clear declared variables and version tracking for new method scope
-        _declaredVariables.Clear();
-        _variableVersions.Clear();
-        _constVariables.Clear();
-        _sourceVariableNames.Clear();
-        _narrowedOptionals.Clear();
-        _isNullableNarrowing.Clear();
+        ResetMethodScope();
 
         // Pre-scan the method body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
@@ -626,12 +616,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private PropertyDeclarationSyntax GenerateBoolProperty(FunctionDef func)
     {
-        _declaredVariables.Clear();
-        _variableVersions.Clear();
-        _constVariables.Clear();
-        _sourceVariableNames.Clear();
-        _narrowedOptionals.Clear();
-        _isNullableNarrowing.Clear();
+        ResetMethodScope();
         CollectSourceVariableNames(func.Body);
 
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
@@ -661,12 +646,7 @@ internal partial class RoslynEmitter
     private PropertyDeclarationSyntax GenerateLenProperty(FunctionDef func)
     {
         // Clear declared variables for new scope
-        _declaredVariables.Clear();
-        _variableVersions.Clear();
-        _constVariables.Clear();
-        _sourceVariableNames.Clear();
-        _narrowedOptionals.Clear();
-        _isNullableNarrowing.Clear();
+        ResetMethodScope();
 
         CollectSourceVariableNames(func.Body);
 
@@ -715,12 +695,7 @@ internal partial class RoslynEmitter
 
         // 2. Private NextImpl() method containing the user's __next__ body
         {
-            _declaredVariables.Clear();
-            _variableVersions.Clear();
-            _constVariables.Clear();
-            _sourceVariableNames.Clear();
-            _narrowedOptionals.Clear();
-            _isNullableNarrowing.Clear();
+            ResetMethodScope();
             CollectSourceVariableNames(funcDef.Body);
 
             // Track parameters (skip self)
@@ -827,12 +802,7 @@ internal partial class RoslynEmitter
                 .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(elementType))));
 
         // Set up method scope — same pattern as GenerateClassMethod
-        _declaredVariables.Clear();
-        _variableVersions.Clear();
-        _constVariables.Clear();
-        _sourceVariableNames.Clear();
-        _narrowedOptionals.Clear();
-        _isNullableNarrowing.Clear();
+        ResetMethodScope();
         CollectSourceVariableNames(funcDef.Body);
 
         // Track parameters (skip self) — same as GenerateClassMethod
@@ -1142,12 +1112,7 @@ internal partial class RoslynEmitter
         else
         {
             // Default interface method: emit the full body
-            _declaredVariables.Clear();
-            _variableVersions.Clear();
-            _constVariables.Clear();
-            _sourceVariableNames.Clear();
-            _narrowedOptionals.Clear();
-            _isNullableNarrowing.Clear();
+            ResetMethodScope();
             CollectSourceVariableNames(func.Body);
 
             // Track parameters as declared variables (skip self)
@@ -1285,12 +1250,7 @@ internal partial class RoslynEmitter
         foreach (var prop in propGroup)
         {
             // Clear method scope tracking for each accessor
-            _declaredVariables.Clear();
-            _variableVersions.Clear();
-            _constVariables.Clear();
-            _sourceVariableNames.Clear();
-            _narrowedOptionals.Clear();
-            _isNullableNarrowing.Clear();
+            ResetMethodScope();
             CollectSourceVariableNames(prop.Body);
 
             foreach (var param in prop.Parameters)
@@ -1514,12 +1474,7 @@ internal partial class RoslynEmitter
         }
 
         // Clear method scope tracking
-        _declaredVariables.Clear();
-        _variableVersions.Clear();
-        _constVariables.Clear();
-        _sourceVariableNames.Clear();
-        _narrowedOptionals.Clear();
-        _isNullableNarrowing.Clear();
+        ResetMethodScope();
         CollectSourceVariableNames(propDef.Body);
 
         // Track parameters (skip self)
@@ -1674,12 +1629,7 @@ internal partial class RoslynEmitter
             else
             {
                 // Default interface property implementation
-                _declaredVariables.Clear();
-                _variableVersions.Clear();
-                _constVariables.Clear();
-                _sourceVariableNames.Clear();
-                _narrowedOptionals.Clear();
-                _isNullableNarrowing.Clear();
+                ResetMethodScope();
                 CollectSourceVariableNames(propDef.Body);
 
                 foreach (var param in propDef.Parameters)
