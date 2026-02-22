@@ -33,11 +33,16 @@ namespace Sharpy
         }
 
         /// <inheritdoc/>
-        public override (T1, T2) __Next__()
+        public override bool MoveNext()
         {
-            var value1 = _iterator1.__Next__();
-            var value2 = _iterator2.__Next__();
-            return (value1, value2);
+            if (!_iterator1.MoveNext() || !_iterator2.MoveNext())
+            {
+                _current = default;
+                return false;
+            }
+
+            _current = (_iterator1.Current, _iterator2.Current);
+            return true;
         }
     }
 
@@ -82,12 +87,16 @@ namespace Sharpy
         }
 
         /// <inheritdoc/>
-        public override (T1, T2, T3) __Next__()
+        public override bool MoveNext()
         {
-            var value1 = _iterator1.__Next__();
-            var value2 = _iterator2.__Next__();
-            var value3 = _iterator3.__Next__();
-            return (value1, value2, value3);
+            if (!_iterator1.MoveNext() || !_iterator2.MoveNext() || !_iterator3.MoveNext())
+            {
+                _current = default;
+                return false;
+            }
+
+            _current = (_iterator1.Current, _iterator2.Current, _iterator3.Current);
+            return true;
         }
     }
 

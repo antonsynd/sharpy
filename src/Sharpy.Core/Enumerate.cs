@@ -27,12 +27,17 @@ namespace Sharpy
         }
 
         /// <inheritdoc/>
-        public override (int, T) __Next__()
+        public override bool MoveNext()
         {
-            var value = _iterator.__Next__();
-            var result = (_index, value);
+            if (!_iterator.MoveNext())
+            {
+                _current = default;
+                return false;
+            }
+
+            _current = (_index, _iterator.Current);
             _index++;
-            return result;
+            return true;
         }
     }
 

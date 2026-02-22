@@ -37,11 +37,12 @@ namespace Sharpy
             _n = n;
         }
 
-        public override T __Next__()
+        public override bool MoveNext()
         {
             if (_infinite)
             {
-                return _elem;
+                _current = _elem;
+                return true;
             }
 
             if (_active)
@@ -49,14 +50,17 @@ namespace Sharpy
                 if (_n > 0)
                 {
                     --_n;
-                    return _elem;
+                    _current = _elem;
+                    return true;
                 }
 
                 _active = false;
-                return _elem;
+                _current = _elem;
+                return true;
             }
 
-            throw new StopIteration();
+            _current = default;
+            return false;
         }
     }
 }

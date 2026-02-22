@@ -34,10 +34,16 @@ namespace Sharpy
         }
 
         /// <inheritdoc/>
-        public override TOut __Next__()
+        public override bool MoveNext()
         {
-            var value = _iterator.__Next__();
-            return _function(value);
+            if (!_iterator.MoveNext())
+            {
+                _current = default;
+                return false;
+            }
+
+            _current = _function(_iterator.Current);
+            return true;
         }
     }
 

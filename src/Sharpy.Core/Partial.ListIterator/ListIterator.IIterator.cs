@@ -3,19 +3,18 @@ namespace Sharpy
 {
     public sealed partial class ListIterator<T>
     {
-        /// <summary>
-        /// Deprecated: Use <see cref="Iterator{T}.Next()"/> instead.
-        /// </summary>
-        public override T __Next__()
+        /// <inheritdoc/>
+        public override bool MoveNext()
         {
             if (_index < ((IReadOnlyCollection<T>)_list).Count)
             {
-                var res = _list[(int)_index];
+                _current = _list[(int)_index];
                 ++_index;
-                return res;
+                return true;
             }
 
-            throw new StopIteration();
+            _current = default;
+            return false;
         }
     }
 }

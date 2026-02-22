@@ -8,7 +8,7 @@ namespace Sharpy
         private readonly int _start;
         private readonly int _stop;
         private readonly int _step;
-        private int _current;
+        private int _position;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RangeIterator"/> class.
@@ -26,30 +26,32 @@ namespace Sharpy
             _start = start;
             _stop = stop;
             _step = step;
-            _current = start;
+            _position = start;
         }
 
         /// <inheritdoc/>
-        public override int __Next__()
+        public override bool MoveNext()
         {
             if (_step > 0)
             {
-                if (_current >= _stop)
+                if (_position >= _stop)
                 {
-                    throw new StopIteration();
+                    _current = default;
+                    return false;
                 }
             }
             else
             {
-                if (_current <= _stop)
+                if (_position <= _stop)
                 {
-                    throw new StopIteration();
+                    _current = default;
+                    return false;
                 }
             }
 
-            var result = _current;
-            _current += _step;
-            return result;
+            _current = _position;
+            _position += _step;
+            return true;
         }
     }
 

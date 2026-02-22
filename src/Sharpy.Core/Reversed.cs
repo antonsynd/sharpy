@@ -44,14 +44,16 @@ namespace Sharpy
             _index = list.Count - 1;
         }
 
-        public override T __Next__()
+        public override bool MoveNext()
         {
             if (_index < 0)
             {
-                throw new StopIteration();
+                _current = default;
+                return false;
             }
 
-            return _list[_index--];
+            _current = _list[_index--];
+            return true;
         }
     }
 }

@@ -9,7 +9,7 @@ namespace Sharpy
                 throw TypeError.ArgNone("next", "iterator");
             }
 
-            return iterator.__Next__();
+            return iterator.Next();
         }
     }
 }

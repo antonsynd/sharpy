@@ -6,7 +6,7 @@ namespace Sharpy
 {
     public abstract partial class Iterator<T>
     {
-        private T? _current;
+        protected T? _current;
 
         /// <summary>
         /// Gets the element in the collection at the current position of the enumerator.
@@ -17,25 +17,6 @@ namespace Sharpy
         /// Type-erased version of <see cref="Current"/>.
         /// </summary>
         object? IEnumerator.Current => Current;
-
-        /// <summary>
-        /// Advances the enumerator to the next element of the collection.
-        /// </summary>
-        /// <returns>true if the enumerator was successfully advanced to the next element;
-        /// false if the enumerator has passed the end of the collection.</returns>
-        public bool MoveNext()
-        {
-            try
-            {
-                _current = __Next__();
-                return true;
-            }
-            catch (StopIteration)
-            {
-                _current = default;
-                return false;
-            }
-        }
 
         /// <summary>
         /// Sets the enumerator to its initial position, which is before the first element

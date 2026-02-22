@@ -19,7 +19,7 @@ namespace Sharpy
             _currentIterator = null;
         }
 
-        public override T __Next__()
+        public override bool MoveNext()
         {
             while (true)
             {
@@ -27,7 +27,8 @@ namespace Sharpy
                 {
                     if (_currentIterator.MoveNext())
                     {
-                        return _currentIterator.Current;
+                        _current = _currentIterator.Current;
+                        return true;
                     }
                     else
                     {
@@ -37,7 +38,8 @@ namespace Sharpy
 
                 if (!_iterables.MoveNext())
                 {
-                    throw new StopIteration();
+                    _current = default;
+                    return false;
                 }
 
                 _currentIterator = _iterables.Current.GetEnumerator();
@@ -88,20 +90,22 @@ namespace Sharpy
             }
         }
 
-        public override T __Next__()
+        public override bool MoveNext()
         {
             if (_exhausted || _currentIndex >= _stop)
             {
-                throw new StopIteration();
+                _current = default;
+                return false;
             }
 
             if (!_enumerator.MoveNext())
             {
                 _exhausted = true;
-                throw new StopIteration();
+                _current = default;
+                return false;
             }
 
-            T value = _enumerator.Current;
+            _current = _enumerator.Current;
             _currentIndex++;
 
             // Skip step - 1 elements
@@ -115,7 +119,7 @@ namespace Sharpy
                 _currentIndex++;
             }
 
-            return value;
+            return true;
         }
     }
 
@@ -155,17 +159,19 @@ namespace Sharpy
             }
         }
 
-        public override T[] __Next__()
+        public override bool MoveNext()
         {
             if (_exhausted)
             {
-                throw new StopIteration();
+                _current = default;
+                return false;
             }
 
             if (!_started)
             {
                 _started = true;
-                return _indices.Select(i => _pool[i]).ToArray();
+                _current = _indices.Select(i => _pool[i]).ToArray();
+                return true;
             }
 
             // Find the rightmost index that can be incremented
@@ -178,7 +184,8 @@ namespace Sharpy
             if (i < 0)
             {
                 _exhausted = true;
-                throw new StopIteration();
+                _current = default;
+                return false;
             }
 
             _indices[i]++;
@@ -187,7 +194,8 @@ namespace Sharpy
                 _indices[j] = _indices[j - 1] + 1;
             }
 
-            return _indices.Select(idx => _pool[idx]).ToArray();
+            _current = _indices.Select(idx => _pool[idx]).ToArray();
+            return true;
         }
     }
 
@@ -228,17 +236,19 @@ namespace Sharpy
             }
         }
 
-        public override T[] __Next__()
+        public override bool MoveNext()
         {
             if (_exhausted)
             {
-                throw new StopIteration();
+                _current = default;
+                return false;
             }
 
             if (!_started)
             {
                 _started = true;
-                return _indices.Take(_r).Select(i => _pool[i]).ToArray();
+                _current = _indices.Take(_r).Select(i => _pool[i]).ToArray();
+                return true;
             }
 
             for (int i = _r - 1; i >= 0; i--)
@@ -256,12 +266,14 @@ namespace Sharpy
                 {
                     int j = _pool.Length - _cycles[i];
                     (_indices[i], _indices[j]) = (_indices[j], _indices[i]);
-                    return _indices.Take(_r).Select(idx => _pool[idx]).ToArray();
+                    _current = _indices.Take(_r).Select(idx => _pool[idx]).ToArray();
+                    return true;
                 }
             }
 
             _exhausted = true;
-            throw new StopIteration();
+            _current = default;
+            return false;
         }
     }
 

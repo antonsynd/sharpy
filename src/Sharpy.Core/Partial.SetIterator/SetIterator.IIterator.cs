@@ -2,17 +2,17 @@ namespace Sharpy
 {
     public sealed partial class SetIterator<T>
     {
-        /// <summary>
-        /// Deprecated: Use <see cref="Iterator{T}.Next()"/> instead.
-        /// </summary>
-        public override T __Next__()
+        /// <inheritdoc/>
+        public override bool MoveNext()
         {
             if (_setEnumerator.MoveNext())
             {
-                return _setEnumerator.Current;
+                _current = _setEnumerator.Current;
+                return true;
             }
 
-            throw new StopIteration();
+            _current = default;
+            return false;
         }
     }
 }

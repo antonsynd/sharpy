@@ -3,20 +3,19 @@ namespace Sharpy
 {
     public sealed partial class ListReverseIterator<T>
     {
-        /// <summary>
-        /// Deprecated: Use <see cref="Iterator{T}.Next()"/> instead.
-        /// </summary>
-        public override T __Next__()
+        /// <inheritdoc/>
+        public override bool MoveNext()
         {
             var count = ((IReadOnlyCollection<T>)_list).Count;
             if (_index < count)
             {
-                var res = _list[(int)(count - _index - 1)];
+                _current = _list[(int)(count - _index - 1)];
                 ++_index;
-                return res;
+                return true;
             }
 
-            throw new StopIteration();
+            _current = default;
+            return false;
         }
     }
 }

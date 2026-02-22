@@ -6,7 +6,6 @@
 using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Builtins._Print(System.String,System.UInt32,System.Boolean)")]
-[assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Iterator`1.__Next__~`0")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.List`1._DeleteSliceMultiStep(System.UInt32,System.UInt32,System.UInt32)")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.List`1._DeleteSliceSingleStep(System.UInt32,System.UInt32)")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.List`1._SetSliceInsertion(Sharpy.List{`0},System.UInt32)")]

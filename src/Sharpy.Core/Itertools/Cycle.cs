@@ -27,18 +27,16 @@ namespace Sharpy
             _iteratorEmpty = false;
         }
 
-        public override T __Next__()
+        public override bool MoveNext()
         {
             // Iterate through the iterator first, saving each item as we go along
             if (!_iteratorEmpty)
             {
                 if (_enumerator.MoveNext())
                 {
-                    var res = _enumerator.Current;
-
-                    _saved.Append(res);
-
-                    return res;
+                    _current = _enumerator.Current;
+                    _saved.Append(_current);
+                    return true;
                 }
                 else
                 {
@@ -51,7 +49,8 @@ namespace Sharpy
             // Nothing saved means nothing to iterate through
             if (numSaved == 0)
             {
-                throw new StopIteration();
+                _current = default;
+                return false;
             }
 
             // Cycle back to the front
@@ -60,11 +59,9 @@ namespace Sharpy
                 _currentIndex = 0;
             }
 
-            var savedRes = _saved[(int)_currentIndex];
-
+            _current = _saved[(int)_currentIndex];
             ++_currentIndex;
-
-            return savedRes;
+            return true;
         }
     }
 }
