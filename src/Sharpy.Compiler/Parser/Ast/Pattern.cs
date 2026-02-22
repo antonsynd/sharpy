@@ -93,15 +93,25 @@ public record TypePattern : Pattern
     /// <summary>
     /// Optional variable to bind the casted value to.
     /// </summary>
-    // TODO(#220): Change BindingName to Identifier? when TypePattern is implemented,
-    // consistent with BindingPattern.Name (see #216)
-    public string? BindingName { get; init; }
+    public Identifier? BindingName { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
         base.ValidateInvariants();
         Debug.Assert(Type != null, "TypePattern.Type cannot be null");
+        if (BindingName != null)
+        {
+            Debug.Assert(!string.IsNullOrEmpty(BindingName.Name),
+                "TypePattern.BindingName.Name cannot be null or empty");
+        }
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        if (BindingName != null)
+            yield return BindingName;
     }
 }
 

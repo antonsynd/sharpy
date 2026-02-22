@@ -606,7 +606,7 @@ internal partial class RoslynEmitter
                 break;
 
             case TypePattern typePattern when typePattern.BindingName != null:
-                var typeBindingName = NameMangler.ToCamelCase(typePattern.BindingName);
+                var typeBindingName = NameMangler.ToCamelCase(typePattern.BindingName.Name);
                 _sourceVariableNames.Add(typeBindingName);
                 break;
 
