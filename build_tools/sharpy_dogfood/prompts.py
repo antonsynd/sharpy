@@ -219,8 +219,8 @@ ALLOWED_FEATURES_SECTION = """\
 
 #### Spread Operators
 - **List spreading**: `combined: list[int] = [*first, 3, *second]` — merge lists
-- **Set spreading**: `combined: set[int] = {{*set1, *set2}}` — merge sets
-- **Dict spreading**: `merged: dict[str, int] = {{**defaults, **overrides}}` — merge dicts (later values override)
+- **Set spreading**: `combined: set[int] = {*set1, *set2}` — merge sets
+- **Dict spreading**: `merged: dict[str, int] = {**defaults, **overrides}` — merge dicts (later values override)
 - **Function call spreading**: `result = func(*args)` — unpack list/tuple into positional arguments
 - **Spread range into list**: `nums: list[int] = [*range(5)]`
 - **IMPORTANT**: Spread in function calls only works with variadic functions (`*args` parameter) or when the spread matches exact parameter count. Non-variadic functions with `*args` spread will fail (SPY0357).
@@ -260,16 +260,16 @@ ALLOWED_FEATURES_SECTION = """\
 - **Single evaluation**: `a < f() < c` evaluates `f()` only once
 
 #### F-Strings (0.1.11)
-- **F-string interpolation**: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
-- **Format specifiers**: `f"{{value:.2f}}"`, `f"{{num:05d}}"`
+- **F-string interpolation**: `f"Hello {name}"`, `f"Result: {x + y}"`
+- **Format specifiers**: `f"{value:.2f}"`, `f"{num:05d}"`
 
 #### Collections (0.1.11)
 - **List literals**: `nums: list[int] = [1, 2, 3]`
-- **Dict literals**: `scores: dict[str, int] = {{"alice": 100, "bob": 85}}`
-- **Set literals**: `unique: set[int] = {{1, 2, 3}}`
+- **Dict literals**: `scores: dict[str, int] = {"alice": 100, "bob": 85}`
+- **Set literals**: `unique: set[int] = {1, 2, 3}`
 - **List comprehensions**: `[x * 2 for x in range(10)]`
-- **Dict comprehensions**: `{{k: v * 2 for k, v in items.items()}}`
-- **Set comprehensions**: `{{x for x in items if x > 0}}`
+- **Dict comprehensions**: `{k: v * 2 for k, v in items.items()}`
+- **Set comprehensions**: `{x for x in items if x > 0}`
 - **Collection iteration**: `for item in collection:`
 - **WARNING**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
 - **str.split()**: `"a,b,c".split(",")` returns `list[str]`.
