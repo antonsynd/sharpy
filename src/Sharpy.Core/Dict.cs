@@ -203,16 +203,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="Remove(K)"/> instead.
-        /// </summary>
-        public void __DelItem__(K key) => Remove(key);
-
-        /// <summary>
-        /// Deprecated: Use the indexer <c>dict[key]</c> instead.
-        /// </summary>
-        public V __GetItem__(K key) => this[key];
-
-        /// <summary>
         /// Gets or sets the value associated with the specified key.
         /// </summary>
         /// <exception cref="KeyError">Thrown if the key does not exist on get.</exception>
@@ -278,11 +268,6 @@ namespace Sharpy
 
             return false;
         }
-
-        /// <summary>
-        /// Deprecated: Use the indexer <c>dict[key] = value</c> instead.
-        /// </summary>
-        public void __SetItem__(K key, V value) => this[key] = value;
 
         /// <summary>
         /// Delegate to specialized GetEnumerator() for generalized one.
