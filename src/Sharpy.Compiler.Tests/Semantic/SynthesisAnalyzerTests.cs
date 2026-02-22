@@ -98,7 +98,56 @@ public class SynthesisAnalyzerTests
         info.TriggeringDunder.Should().Be(DunderNames.Bool);
     }
 
-    // ==================== Phase 2: Iterator Interfaces ====================
+    // ==================== Phase 2a: IReverseEnumerable ====================
+
+    [Fact]
+    public void ComputeSynthesizedInterfaces_ReversedDunder_ProducesIReverseEnumerableWithElementType()
+    {
+        // Arrange: __reversed__ returning str should synthesize IReverseEnumerable<str>
+        var reversedFunc = CreateFunctionSymbol(DunderNames.Reversed, returnType: SemanticType.Str);
+        var typeSymbol = CreateTypeSymbol(
+            protocolMethods: new()
+            {
+                [DunderNames.Reversed] = new List<FunctionSymbol> { reversedFunc }
+            });
+
+        // Act
+        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
+
+        // Assert
+        result.Should().ContainSingle();
+        var info = result[0];
+        info.InterfaceName.Should().Be("IReverseEnumerable");
+        info.Namespace.Should().Be("Sharpy");
+        info.TypeArgs.Should().HaveCount(1);
+        info.TypeArgs[0].Should().Be(SemanticType.Str);
+        info.TriggeringDunder.Should().Be(DunderNames.Reversed);
+    }
+
+    [Fact]
+    public void ComputeSynthesizedInterfaces_ReversedWithUnknownReturnType_FallsBackToObject()
+    {
+        // Arrange: __reversed__ with UnknownType should fall back to object
+        var reversedFunc = CreateFunctionSymbol(DunderNames.Reversed, returnType: SemanticType.Unknown);
+        var typeSymbol = CreateTypeSymbol(
+            protocolMethods: new()
+            {
+                [DunderNames.Reversed] = new List<FunctionSymbol> { reversedFunc }
+            });
+
+        // Act
+        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
+
+        // Assert
+        result.Should().ContainSingle();
+        var info = result[0];
+        info.InterfaceName.Should().Be("IReverseEnumerable");
+        info.TypeArgs.Should().HaveCount(1);
+        info.TypeArgs[0].Should().BeOfType<UserDefinedType>();
+        ((UserDefinedType)info.TypeArgs[0]).Name.Should().Be("object");
+    }
+
+    // ==================== Phase 2b: Iterator Interfaces ====================
 
     [Fact]
     public void ComputeSynthesizedInterfaces_NextDunder_ProducesIEnumeratorWithElementType()
