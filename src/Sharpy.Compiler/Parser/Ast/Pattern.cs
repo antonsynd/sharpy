@@ -32,9 +32,9 @@ public record WildcardPattern : Pattern;
 public record BindingPattern : Pattern
 {
     /// <summary>
-    /// The variable name to bind the matched value to.
+    /// The identifier for the variable to bind the matched value to.
     /// </summary>
-    public string Name { get; init; } = "";
+    public Identifier Name { get; init; } = null!;
 
     /// <summary>
     /// Optional type constraint for the binding.
@@ -45,7 +45,14 @@ public record BindingPattern : Pattern
     public override void ValidateInvariants()
     {
         base.ValidateInvariants();
-        Debug.Assert(!string.IsNullOrEmpty(Name), "BindingPattern.Name cannot be null or empty");
+        Debug.Assert(Name != null, "BindingPattern.Name cannot be null");
+        Debug.Assert(!string.IsNullOrEmpty(Name.Name), "BindingPattern.Name.Name cannot be null or empty");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Name;
     }
 }
 

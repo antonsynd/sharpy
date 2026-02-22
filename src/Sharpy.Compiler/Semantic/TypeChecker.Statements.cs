@@ -710,7 +710,7 @@ internal partial class TypeChecker
                 {
                     var newSymbol = new VariableSymbol
                     {
-                        Name = binding.Name,
+                        Name = binding.Name.Name,
                         Kind = SymbolKind.Variable,
                         Type = scrutineeType,
                         IsConstant = false,
@@ -721,6 +721,7 @@ internal partial class TypeChecker
 
                     _symbolTable.Define(newSymbol);
                     SemanticBinding.SetVariableType(newSymbol, scrutineeType);
+                    _semanticInfo.SetIdentifierSymbol(binding.Name, newSymbol);
                     break;
                 }
 

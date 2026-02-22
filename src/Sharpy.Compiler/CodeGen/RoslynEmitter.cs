@@ -576,7 +576,7 @@ internal partial class RoslynEmitter
         switch (pattern)
         {
             case BindingPattern binding:
-                var mangledName = NameMangler.ToCamelCase(binding.Name);
+                var mangledName = NameMangler.ToCamelCase(binding.Name.Name);
                 _sourceVariableNames.Add(mangledName);
                 break;
 

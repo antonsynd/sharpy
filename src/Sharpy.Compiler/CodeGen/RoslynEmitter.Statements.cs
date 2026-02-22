@@ -1691,7 +1691,7 @@ internal partial class RoslynEmitter
 
             case BindingPattern binding:
                 {
-                    var varName = GetMangledVariableName(binding.Name, isNewDeclaration: true);
+                    var varName = GetMangledVariableName(binding.Name.Name, isNewDeclaration: true);
                     return VarPattern(SingleVariableDesignation(Identifier(varName)));
                 }
 

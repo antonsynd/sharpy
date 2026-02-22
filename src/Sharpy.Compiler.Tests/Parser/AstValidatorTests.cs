@@ -486,7 +486,7 @@ for x in items:
     public void ValidateInvariants_ValidBindingPattern_PassesValidation()
     {
         // Arrange
-        var pattern = new BindingPattern { Name = "x" };
+        var pattern = new BindingPattern { Name = new Identifier { Name = "x" } };
 
         // Act & Assert - should not throw
         AstValidator.ValidateNode(pattern);
@@ -540,7 +540,7 @@ for x in items:
         {
             Elements = ImmutableArray.Create<Pattern>(
                 new WildcardPattern(),
-                new BindingPattern { Name = "x" }
+                new BindingPattern { Name = new Identifier { Name = "x" } }
             )
         };
 
@@ -554,8 +554,8 @@ for x in items:
         // Arrange
         var pattern = new ListPattern
         {
-            Elements = ImmutableArray.Create<Pattern>(new BindingPattern { Name = "head" }),
-            RestPattern = new BindingPattern { Name = "tail" }
+            Elements = ImmutableArray.Create<Pattern>(new BindingPattern { Name = new Identifier { Name = "head" } }),
+            RestPattern = new BindingPattern { Name = new Identifier { Name = "tail" } }
         };
 
         // Act & Assert - should not throw
@@ -585,7 +585,7 @@ for x in items:
         var pattern = new AndPattern
         {
             Left = new TypePattern { Type = new TypeAnnotation { Name = "int" } },
-            Right = new BindingPattern { Name = "x" }
+            Right = new BindingPattern { Name = new Identifier { Name = "x" } }
         };
 
         // Act & Assert - should not throw
@@ -598,7 +598,7 @@ for x in items:
         // Arrange
         var pattern = new GuardPattern
         {
-            Inner = new BindingPattern { Name = "x" },
+            Inner = new BindingPattern { Name = new Identifier { Name = "x" } },
             Guard = new BinaryOp
             {
                 Operator = BinaryOperator.GreaterThan,
@@ -662,8 +662,8 @@ for x in items:
     public void GetChildNodes_ListPattern_ReturnsElementsAndRestPattern()
     {
         // Arrange
-        var head = new BindingPattern { Name = "head" };
-        var tail = new BindingPattern { Name = "tail" };
+        var head = new BindingPattern { Name = new Identifier { Name = "head" } };
+        var tail = new BindingPattern { Name = new Identifier { Name = "tail" } };
         var pattern = new ListPattern
         {
             Elements = ImmutableArray.Create<Pattern>(head),

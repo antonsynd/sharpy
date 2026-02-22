@@ -1090,7 +1090,15 @@ public partial class Parser
 
             return new BindingPattern
             {
-                Name = token.Value,
+                Name = new Identifier
+                {
+                    Name = token.Value,
+                    LineStart = token.Line,
+                    ColumnStart = token.Column,
+                    LineEnd = token.Line,
+                    ColumnEnd = token.Column + token.Value.Length,
+                    Span = GetSpanFromToken(token)
+                },
                 LineStart = token.Line,
                 ColumnStart = token.Column,
                 LineEnd = token.Line,
