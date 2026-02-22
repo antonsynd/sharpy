@@ -26,10 +26,10 @@ public record SynthesizedInterfaceInfo(
 internal static class SynthesisAnalyzer
 {
     /// <summary>
-    /// Set of Sharpy.Core interfaces that are ready for implicit synthesis.
-    /// When a dunder method triggers an interface listed here (via ProtocolRegistry),
-    /// the interface is automatically added to the class's base type list.
-    /// Extend this set as new interfaces are added to Sharpy.Core.
+    /// Non-generic Sharpy.Core interfaces synthesized via Phase 1.
+    /// Generic Sharpy.Core interfaces (e.g. IReverseEnumerable&lt;T&gt;) are handled
+    /// in Phase 2a below because they require type argument inference.
+    /// Extend this set when adding new non-generic Sharpy.Core interfaces.
     /// </summary>
     public static readonly HashSet<string> SynthesizableSharpyCoreInterfaces = new()
     {
