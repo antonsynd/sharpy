@@ -21,7 +21,7 @@ public enum ProtocolKind
 /// <param name="DunderName">Lowercase Sharpy source name (e.g., "__len__")</param>
 /// <param name="Kind">The protocol category</param>
 /// <param name="SharpyCoreInterface">The Sharpy.Core interface name (e.g., "ISized"), or null if no interface</param>
-/// <param name="InterfaceMethodName">Sharpy.Core method/property name (e.g., "Count", "Contains", "__GetItem__"), or null if no interface method</param>
+/// <param name="InterfaceMethodName">Sharpy.Core method/property name (e.g., "Count", "Contains", "Next"), or null if no interface method</param>
 /// <param name="ClrMethodName">The .NET method/property name (e.g., "get_Count"), or null if no direct mapping</param>
 /// <param name="ExpectedParamCount">Expected parameter count including 'self'</param>
 /// <param name="ExpectedReturnType">Expected return type name (e.g., "int", "bool", "str"), or null for any</param>
