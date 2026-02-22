@@ -59,7 +59,7 @@ internal partial class RoslynEmitter
             return GenerateSpreadCollectionBuilder(list.Elements, listType, "Extend", "Add");
         }
 
-        var elements = list.Elements.Select(GenerateExpression);
+        var elements = list.Elements.Select(elem => GenerateWithNestedTargetType(elem, _targetTypeContext));
 
         return ObjectCreationExpression(listType)
             .WithArgumentList(ArgumentList())
@@ -152,7 +152,7 @@ internal partial class RoslynEmitter
             return GenerateSpreadCollectionBuilder(set.Elements, setType, "UnionWith", "Add");
         }
 
-        var elements = set.Elements.Select(GenerateExpression);
+        var elements = set.Elements.Select(elem => GenerateWithNestedTargetType(elem, _targetTypeContext));
 
         return ObjectCreationExpression(setType)
             .WithArgumentList(ArgumentList())
@@ -1033,5 +1033,36 @@ internal partial class RoslynEmitter
         }
 
         return IdentifierName(tempName);
+    }
+
+    /// <summary>
+    /// Generates an expression for a collection element, propagating the target type context
+    /// for nested collection literals (e.g., list[list[int]] = [[1, 2], [3, 4]]).
+    /// If the element is itself a collection literal and the parent target type has type arguments,
+    /// the inner element's target type is set to the parent's first type argument.
+    /// </summary>
+    private ExpressionSyntax GenerateWithNestedTargetType(Expression element, TypeAnnotation? parentTargetType)
+    {
+        if (parentTargetType == null ||
+            parentTargetType.TypeArguments.Length == 0 ||
+            element is not (ListLiteral or SetLiteral or DictLiteral))
+        {
+            return GenerateExpression(element);
+        }
+
+        // For list[list[int]], the inner target type is list[int] (first type argument)
+        // For set[set[str]], the inner target type is set[str] (first type argument)
+        var innerTargetType = parentTargetType.TypeArguments[0];
+
+        var previousTargetType = _targetTypeContext;
+        _targetTypeContext = innerTargetType;
+        try
+        {
+            return GenerateExpression(element);
+        }
+        finally
+        {
+            _targetTypeContext = previousTargetType;
+        }
     }
 }

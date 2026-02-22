@@ -1,0 +1,6 @@
+def main():
+    deep: list[list[list[int]]] = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+    for matrix in deep:
+        for row in matrix:
+            for val in row:
+                print(val)
