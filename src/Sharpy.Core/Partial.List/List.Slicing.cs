@@ -73,16 +73,7 @@ namespace Sharpy
                 throw new ValueError("slice step cannot be zero");
             }
 
-            if (slice.step < 0)
-            {
-                return new List<T>();
-            }
-
-            (int start, int end) = Slice.Normalize(slice.start, slice.end, _list.Count);
-
-            var res = new List<T>();
-            res._list.AddRange(_list.Skip(start).Take(end - start).Where((item, index) => index % slice.step == 0));
-            return res;
+            return Slice.GetSlice(this, slice.start, slice.end, slice.step);
         }
 
         #endregion

@@ -1,0 +1,11 @@
+def main():
+    nums: list[int] = [1, 2, 3, 4, 5]
+    reversed_list: list[int] = nums[::-1]
+    for n in reversed_list:
+        print(n)
+    partial: list[int] = nums[4:1:-1]
+    for n in partial:
+        print(n)
+    by_two: list[int] = nums[::-2]
+    for n in by_two:
+        print(n)
