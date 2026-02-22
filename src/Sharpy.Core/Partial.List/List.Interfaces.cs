@@ -73,7 +73,7 @@ namespace Sharpy
         /// <summary>
         /// Removes the element at the specified index.
         /// </summary>
-        void IList<T>.RemoveAt(int index) => __DelItem__(index);
+        void IList<T>.RemoveAt(int index) => DeleteAt(index);
 
         /// <summary>
         /// Gets or sets the element at the specified index (explicit IList implementation).

@@ -35,8 +35,8 @@ namespace Sharpy
         /// </summary>
         public List<T> this[int start, int end]
         {
-            get => __GetItem__(new Slice(start, end, 1));
-            set => __SetItem__(new Slice(start, end, 1), value);
+            get => GetSlice(new Slice(start, end, 1));
+            set => SetSlice(new Slice(start, end, 1), value);
         }
 
         /// <summary>
@@ -44,8 +44,8 @@ namespace Sharpy
         /// </summary>
         public List<T> this[int start, int end, int step]
         {
-            get => __GetItem__(new Slice(start, end, step));
-            set => __SetItem__(new Slice(start, end, step), value);
+            get => GetSlice(new Slice(start, end, step));
+            set => SetSlice(new Slice(start, end, step), value);
         }
 
         #endregion
@@ -53,20 +53,9 @@ namespace Sharpy
         #region Get Item Methods
 
         /// <summary>
-        /// Returns the element at the specified index.
-        /// </summary>
-        /// <remarks>
-        /// Compiler-internal: called by generated code. Sharpy code should use the indexer <c>list[index]</c>.
-        /// </remarks>
-        public T __GetItem__(int index) => this[index];
-
-        /// <summary>
         /// Returns a slice of the list.
         /// </summary>
-        /// <remarks>
-        /// Compiler-internal: called by generated code. Sharpy code should use the indexer <c>list[start, end]</c> or <c>list[start, end, step]</c>.
-        /// </remarks>
-        public List<T> __GetItem__(Slice slice)
+        public List<T> GetSlice(Slice slice)
         {
             if (slice.step == 0)
             {
@@ -81,33 +70,22 @@ namespace Sharpy
         #region Set Item Methods
 
         /// <summary>
-        /// Sets the element at the specified index.
-        /// </summary>
-        /// <remarks>
-        /// Compiler-internal: called by generated code. Sharpy code should use the indexer <c>list[index] = value</c>.
-        /// </remarks>
-        public void __SetItem__(int index, T value) => this[index] = value;
-
-        /// <summary>
         /// Sets a slice of the list from an enumerable.
         /// </summary>
-        /// <remarks>
-        /// Compiler-internal: called by generated code. Sharpy code should use <c>list[start, end] = other</c>.
-        /// </remarks>
-        public void __SetItem__(Slice slice, IEnumerable<T> other)
+        public void SetSlice(Slice slice, IEnumerable<T> other)
         {
             if (other is null)
             {
                 throw TypeError.IsNotInterface("NoneType", "iterable");
             }
 
-            __SetItem__(slice, new List<T>(other));
+            SetSlice(slice, new List<T>(other));
         }
 
         /// <summary>
         /// Sets a slice of the list from another list.
         /// </summary>
-        public void __SetItem__(Slice slice, List<T> other)
+        public void SetSlice(Slice slice, List<T> other)
         {
             if (other is null)
             {
@@ -226,10 +204,7 @@ namespace Sharpy
         /// <summary>
         /// Deletes the element at the specified index.
         /// </summary>
-        /// <remarks>
-        /// Compiler-internal: called by generated code. Sharpy code should use <c>list.Pop(index)</c>.
-        /// </remarks>
-        public void __DelItem__(int index)
+        public void DeleteAt(int index)
         {
             _list.RemoveAt(Sharpy.Index.Normalize(index, _list.Count, false, false));
         }
@@ -237,7 +212,7 @@ namespace Sharpy
         /// <summary>
         /// Deletes a slice of the list.
         /// </summary>
-        public void __DelItem__(Slice slice)
+        public void DeleteSlice(Slice slice)
         {
             if (slice.step == 0)
             {
