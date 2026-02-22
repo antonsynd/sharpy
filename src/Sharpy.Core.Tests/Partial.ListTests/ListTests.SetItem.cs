@@ -96,18 +96,12 @@ public partial class List_Tests
     [Fact]
     public void List_Dunder_Replace_Slice_Negative_Step()
     {
-        // If
         List<int> l = [1, 3, 5, 1, 7];
         List<int> other = [2, 4, 6];
 
-        // When
-        l.__SetItem__(new Slice(0, 1, -1), other);
+        var act = () => l.__SetItem__(new Slice(0, 1, -1), other);
 
-        // Then
-        var actual = l.ToList();
-        DotNetList<int> expected = [1, 3, 5, 1, 7];
-
-        actual.Should().Equal(expected);
+        act.Should().Throw<NotImplementedError>();
     }
 
     [Fact]

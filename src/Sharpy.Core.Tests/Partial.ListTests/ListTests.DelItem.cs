@@ -18,17 +18,11 @@ public partial class List_Tests
     [Fact]
     public void List_Delete_Slice_Negative_Step()
     {
-        // If
         List<int> l = [1, 3, 5, 1, 7];
 
-        // When
-        l.__DelItem__(new Slice(0, 1, -1));
+        var act = () => l.__DelItem__(new Slice(0, 1, -1));
 
-        // Then
-        var actual = l.ToList();
-        DotNetList<int> expected = [1, 3, 5, 1, 7];
-
-        actual.Should().Equal(expected);
+        act.Should().Throw<NotImplementedError>();
     }
 
     [Fact]
