@@ -1,0 +1,13 @@
+def get_label(x: int) -> str:
+    match x:
+        case 1:
+            return "one"
+        case 2:
+            return "two"
+        case _:
+            return "other"
+
+def main():
+    print(get_label(1))
+    print(get_label(2))
+    print(get_label(99))

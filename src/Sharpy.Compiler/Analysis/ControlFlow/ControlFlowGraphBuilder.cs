@@ -686,7 +686,15 @@ internal class ControlFlowGraphBuilder
             }
         }
 
-        Connect(condBlock, mergeBlock);
+        // Only add fallthrough to merge if match is NOT exhaustive.
+        // A wildcard pattern guarantees every path goes through a case body,
+        // so there is no "no match" fallthrough path.
+        bool hasWildcard = stmt.Cases.Any(c => c.Pattern is WildcardPattern);
+        if (!hasWildcard)
+        {
+            Connect(condBlock, mergeBlock);
+        }
+
         _currentBlock = mergeBlock;
     }
 }
