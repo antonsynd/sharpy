@@ -4,22 +4,19 @@ using System.Diagnostics;
 namespace Sharpy.Compiler.Parser.Ast;
 
 // =============================================================================
-// PATTERN AST NODES (v0.2.x)
-// Pattern matching for match expressions/statements and other future uses.
+// PATTERN AST NODES
+// Pattern matching for match expressions/statements.
 //
-// WARNING: These types are defined for forward compatibility but have NO parser,
-// semantic analysis, or code generation support. Do not reference them in
-// production code paths. Unrecognized AST nodes will trigger diagnostics
-// in TypeChecker and RoslynEmitter (see items 1.1 and 1.2).
+// Implemented patterns (parser + semantic + codegen): WildcardPattern,
+// BindingPattern, LiteralPattern, MemberAccessPattern, TuplePattern.
+//
+// Forward-declared patterns (no pipeline support yet): TypePattern,
+// UnionCasePattern, ListPattern, OrPattern, AndPattern, GuardPattern.
 // =============================================================================
 
 /// <summary>
 /// Base class for all pattern nodes in pattern matching.
 /// </summary>
-/// <remarks>
-/// PLACEHOLDER: Parser support not yet implemented.
-/// Target version: v0.2.x
-/// </remarks>
 public abstract record Pattern : Node;
 
 #region Basic Patterns

@@ -682,7 +682,7 @@ internal partial class TypeChecker
             if (matchCase.Guard != null)
             {
                 var guardType = CheckExpression(matchCase.Guard);
-                if (guardType is not BuiltinType { Name: "bool" })
+                if (!IsTruthTestable(guardType))
                 {
                     AddError("Guard condition must be a boolean expression",
                         matchCase.Guard.LineStart, matchCase.Guard.ColumnStart,
@@ -778,7 +778,7 @@ internal partial class TypeChecker
                         AddError(
                             $"Undefined type '{typeName}' in pattern",
                             memberAccess.LineStart, memberAccess.ColumnStart,
-                            code: DiagnosticCodes.Semantic.UndefinedVariable,
+                            code: DiagnosticCodes.Semantic.UndefinedType,
                             span: memberAccess.Span);
                         break;
                     }

@@ -169,7 +169,7 @@ namespace Sharpy
                 // Trivial case, replace 1-to-1
                 for (int i = start; i < end; ++i)
                 {
-                    _list[i] = other[i - start];
+                    _list[i] = other._list[i - start];
                 }
             }
         }

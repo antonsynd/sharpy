@@ -26,6 +26,7 @@ namespace Sharpy
 
         public static int Len(int start, int end, int step)
         {
+            System.Diagnostics.Debug.Assert(step > 0, "Slice.Len requires a positive step");
             // Ceiling division: ⌈(end - start) / step⌉
             var length = end - start;
             return (length + step - 1) / step;
