@@ -93,6 +93,8 @@ public record TypePattern : Pattern
     /// <summary>
     /// Optional variable to bind the casted value to.
     /// </summary>
+    // TODO(#220): Change BindingName to Identifier? when TypePattern is implemented,
+    // consistent with BindingPattern.Name (see #216)
     public string? BindingName { get; init; }
 
     /// <inheritdoc/>

@@ -710,7 +710,9 @@ internal class ControlFlowGraphBuilder
         {
             WildcardPattern => true,
             BindingPattern => true,
+            // If ANY alternative is exhaustive, the OrPattern as a whole can match everything
             OrPattern orPat => orPat.Alternatives.Any(IsUnconditionallyExhaustivePattern),
+            // GuardPattern is forward-declared; guard conditions use MatchCase.Guard instead
             GuardPattern => false,
             _ => false
         };

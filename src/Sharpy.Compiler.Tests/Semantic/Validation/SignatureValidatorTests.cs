@@ -739,6 +739,26 @@ class Container:
     }
 
     [Fact]
+    public void Reversed_EmitsUnsupportedWarning()
+    {
+        var code = @"
+class Container:
+    def __reversed__(self) -> int:
+        return 0
+";
+        var (module, context) = Parse(code);
+
+        var validator = new SignatureValidator();
+        validator.Validate(module, context);
+
+        var warnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnsupportedDunderReversed)
+            .ToList();
+        Assert.Single(warnings);
+        Assert.Contains("not fully supported", warnings[0].Message);
+    }
+
+    [Fact]
     public void Repr_ReportsUnknownDunderError()
     {
         var code = @"

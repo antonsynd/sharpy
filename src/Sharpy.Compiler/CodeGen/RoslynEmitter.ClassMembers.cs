@@ -815,10 +815,8 @@ internal partial class RoslynEmitter
     /// </summary>
     private MethodDeclarationSyntax GenerateReverseEnumeratorMethod(FunctionDef funcDef)
     {
-        // Element type T from __reversed__ return type annotation
-        TypeSyntax elementType = funcDef.ReturnType != null
-            ? _typeMapper.MapType(funcDef.ReturnType)
-            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        // Element type T from __reversed__ return type annotation (defaults to object if absent)
+        TypeSyntax elementType = _typeMapper.MapType(funcDef.ReturnType);
 
         // IEnumerator<T> — same construction as GenerateEnumerableBridgeMembers
         var returnType = QualifiedName(
