@@ -60,7 +60,12 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Spread requires variadic**: `func(*args)` only works if the function accepts `*args` variadic parameter, or if spreading a tuple that matches the exact parameter count.
 - **With statement requires IDisposable**: The `with` statement only works with .NET types that implement `IDisposable` (e.g., `StringWriter`, `StreamReader`). Requires importing from `System.IO` or similar.
 - **Named tuple field names**: All fields must be named, or none. Cannot mix named and unnamed fields in a named tuple type definition.
-- **Match exhaustiveness**: Match statements on enums or bools must cover all possible values OR include a `case _:` wildcard."""
+- **Match exhaustiveness**: Match statements on enums or bools must cover all possible values OR include a `case _:` wildcard.
+- **Instance fields not static**: Class fields with default values are INSTANCE fields, not static. There are no class-level mutable variables. Use module-level variables for shared state.
+- **Struct inheritance forbidden**: Classes CANNOT inherit from structs. Structs are sealed value types.
+- **Generic invariance**: Generic collections are INVARIANT. `list[Child]` cannot be assigned to `list[Parent]`. Declare the collection with the base/interface type.
+- **Abstract class decorator**: When using `@abstract` methods, the containing class MUST also be decorated with `@abstract`.
+- **Optional usage**: `Some()` and `None()` can only be used where the target type is `T?` (Optional). Cannot pass `None()` where a non-optional type is expected."""
 
 ENTRY_POINT_SECTION = """\
 ## CRITICAL: Program Entry Point Requirement
@@ -343,7 +348,10 @@ NAMING_RULES_SECTION = """\
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
 - **NEVER name functions or variables**: `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`, `long`, `float32`, `pow`, `divmod`, `isinstance`, `repr`, `iter`, `next`
 - Use **descriptive names** like `double_value`, `multiply_by_two`, `calculate_double`, `doubled` instead
-- Names like `double` conflict with the `double` type (float64) and will cause type errors"""
+- Names like `double` conflict with the `double` type (float64) and will cause type errors
+- **Reserved interfaces**: Do NOT define interfaces named `ISized` or `IBoolConvertible` — these are compiler-reserved protocol interfaces.
+- **Static decorator**: `@static` is the correct decorator for static methods, NOT `@staticmethod`.
+- **Module naming**: Do NOT name modules after Python standard library modules (`types`, `sys`, `os`, `math`, `collections`)."""
 
 MULTIFILE_MODULE_RULES_SECTION = """\
 ## CRITICAL: Module System Rules (Phase 0.1.10)
