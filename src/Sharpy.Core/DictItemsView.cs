@@ -48,14 +48,6 @@ namespace Sharpy
             }
         }
 
-        /// <summary>
-        /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
-        /// </summary>
-        public Iterator<(K, V)> __Iter__()
-        {
-            return new EnumeratorIterator<(K, V)>(GetEnumerator());
-        }
-
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

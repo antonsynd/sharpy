@@ -181,16 +181,5 @@ namespace Sharpy
 
         #endregion
 
-        #region Deprecated Dunder Methods
-
-        /// <summary>
-        /// Returns an iterator over the list elements.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
-        /// </remarks>
-        public Iterator<T> __Iter__() => (Iterator<T>)GetEnumerator();
-
-        #endregion
     }
 }

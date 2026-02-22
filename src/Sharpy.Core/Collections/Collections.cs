@@ -105,14 +105,6 @@ namespace Sharpy
         /// </summary>
         public int Count => _list.Count;
 
-        /// <summary>
-        /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
-        /// </summary>
-        public Iterator<T> __Iter__()
-        {
-            return new EnumeratorIterator<T>(_list.GetEnumerator());
-        }
-
         public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => _list.GetEnumerator();

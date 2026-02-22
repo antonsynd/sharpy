@@ -213,14 +213,6 @@ namespace Sharpy
         public V __GetItem__(K key) => this[key];
 
         /// <summary>
-        /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
-        /// </summary>
-        public Iterator<K> __Iter__()
-        {
-            return Keys().__Iter__();
-        }
-
-        /// <summary>
         /// Gets or sets the value associated with the specified key.
         /// </summary>
         /// <exception cref="KeyError">Thrown if the key does not exist on get.</exception>

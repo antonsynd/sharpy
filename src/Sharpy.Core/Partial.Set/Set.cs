@@ -6,7 +6,7 @@ namespace Sharpy
           System.IEquatable<Set<T>>,
           ISized
     {
-        // Internal for SetIterator access to avoid infinite recursion when GetEnumerator delegates to __Iter__
+        // Internal for SetIterator access to the underlying HashSet
         internal readonly HashSet<T> _set;
 
         public Set()

@@ -9,8 +9,7 @@ namespace Sharpy
         internal SetIterator(Set<T> set)
         {
             _set = set;
-            // Access the underlying HashSet directly to avoid infinite recursion
-            // since Set.GetEnumerator() now delegates to __Iter__()
+            // Access the underlying HashSet directly
             _setEnumerator = set._set.GetEnumerator();
         }
     }

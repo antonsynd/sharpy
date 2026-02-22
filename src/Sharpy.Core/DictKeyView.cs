@@ -142,14 +142,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
-        /// </summary>
-        public Iterator<K> __Iter__()
-        {
-            return new EnumeratorIterator<K>(GetEnumerator());
-        }
-
-        /// <summary>
         /// Check if this is a subset or equal to other.
         /// </summary>
         public bool IsSubset(Set<K> other)
