@@ -1,0 +1,10 @@
+def describe(n: int) -> str:
+    match n:
+        case 1:
+            return "one"
+        case x | _:
+            return "other"
+
+def main():
+    print(describe(1))
+    print(describe(42))

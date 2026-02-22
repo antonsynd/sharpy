@@ -686,15 +686,33 @@ internal class ControlFlowGraphBuilder
             }
         }
 
-        // Only add fallthrough to merge if match is NOT exhaustive.
-        // A wildcard pattern guarantees every path goes through a case body,
-        // so there is no "no match" fallthrough path.
-        bool isExhaustive = stmt.Cases.Any(c => c.Pattern is WildcardPattern or BindingPattern);
+        // Only connect the condition block to merge if the match is not exhaustive.
+        // An exhaustive match guarantees one of the cases will always be taken,
+        // so there is no "fall-through" path to the merge block.
+        bool isExhaustive = stmt.Cases.Any(c =>
+            c.Guard == null && IsUnconditionallyExhaustivePattern(c.Pattern));
+
         if (!isExhaustive)
         {
             Connect(condBlock, mergeBlock);
         }
 
         _currentBlock = mergeBlock;
+    }
+
+    /// <summary>
+    /// Checks whether a pattern unconditionally matches all values.
+    /// Recurses into OrPattern alternatives.
+    /// </summary>
+    private static bool IsUnconditionallyExhaustivePattern(Pattern pattern)
+    {
+        return pattern switch
+        {
+            WildcardPattern => true,
+            BindingPattern => true,
+            OrPattern orPat => orPat.Alternatives.Any(IsUnconditionallyExhaustivePattern),
+            GuardPattern => false,
+            _ => false
+        };
     }
 }
