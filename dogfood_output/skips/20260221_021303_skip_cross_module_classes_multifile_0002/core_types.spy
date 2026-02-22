@@ -1,0 +1,23 @@
+# Core types module - defines base classes for a publishing system
+
+class BaseItem:
+    _id: int
+    _title: str
+    
+    def __init__(self, id: int, title: str):
+        self._id = id
+        self._title = title
+    
+    @virtual
+    def __str__(self) -> str:
+        return f"Item({self._id}, {self._title})"
+    
+    @virtual
+    def display(self) -> str:
+        return f"Base: {self._title}"
+    
+    property get id(self) -> int:
+        return self._id
+    
+    property get title(self) -> str:
+        return self._title

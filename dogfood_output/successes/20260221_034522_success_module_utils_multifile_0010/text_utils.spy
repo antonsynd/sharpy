@@ -1,0 +1,49 @@
+# Text utility module that uses math functions
+
+from math_utils import square
+
+def repeat_text(text: str, count: int) -> str:
+    """Repeats text a specified number of times."""
+    result: str = ""
+    i: int = 0
+    while i < count:
+        result = result + text
+        i = i + 1
+    return result
+
+def pad_center(text: str, width: int) -> str:
+    """Pads text to be centered in a field."""
+    text_len: int = len(text)
+    if text_len >= width:
+        return text
+    
+    left_pad: int = (width - text_len) // 2
+    right_pad: int = width - text_len - left_pad
+    
+    left_spaces: str = repeat_text(" ", left_pad)
+    right_spaces: str = repeat_text(" ", right_pad)
+    
+    return left_spaces + text + right_spaces
+
+class TextFormatter:
+    prefix: str
+    
+    def __init__(self, prefix_str: str):
+        self.prefix = prefix_str
+    
+    def format_message(self, message: str) -> str:
+        return self.prefix + ": " + message
+    
+    def repeat_prefix(self, times: int) -> str:
+        return repeat_text(self.prefix, times)
+
+def count_vowels(text: str) -> int:
+    """Counts vowels in text."""
+    count: int = 0
+    for char in text:
+        c: str = str(char)
+        if c == "a" or c == "e" or c == "i" or c == "o" or c == "u":
+            count = count + 1
+        elif c == "A" or c == "E" or c == "I" or c == "O" or c == "U":
+            count = count + 1
+    return count

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-21T03:10:57.620287",
+  "generated_code": "# Test: Property with validation to ensure age stays within valid range\nclass Person:\n    _age: int\n    \n    def __init__(self, age: int):\n        self._age = age\n    \n    property get age(self) -> int:\n        return self._age\n    \n    property set age(self, value: int):\n        if value < 0:\n            self._age = 0\n        elif value > 150:\n            self._age = 150\n        else:\n            self._age = value\n\ndef main():\n    p = Person(25)\n    print(p.age)\n    p.age = -5\n    print(p.age)\n    p.age = 200\n    print(p.age)\n    p.age = 50\n    print(p.age)\n    # EXPECTED OUTPUT:\n    # 25\n    # 0\n    # 150\n    # 50",
+  "expected_output": "25\n0\n150\n50\n",
+  "actual_output": "25\n0\n150\n50",
+  "feature_focus": "property_with_validation",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 37.88322067260742,
+  "execution_duration": 4.779533863067627,
+  "source_files": null
+}

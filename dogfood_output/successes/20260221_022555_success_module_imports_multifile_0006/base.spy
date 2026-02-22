@@ -1,0 +1,14 @@
+# Base module providing interface and base class for counter functionality
+
+interface IResettable:
+    def reset(self) -> None: ...
+
+class Counter:
+    count: int
+    
+    def __init__(self, start: int):
+        self.count = start
+    
+    def increment(self) -> int:
+        self.count += 1
+        return self.count

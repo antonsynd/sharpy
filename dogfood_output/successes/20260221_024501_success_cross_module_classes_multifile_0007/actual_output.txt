@@ -1,0 +1,13 @@
+Counter main_counter=10
+TEST Counter named=25
+Info: Counter main_counter=10
+Value: 10
+Active: True
+Info: TEST Counter named=25
+Value: 25
+Active: True
+After increments: 12
+After decrement: 11
+Counter first=0
+Counter second=5
+TEST Counter named=25

@@ -1,0 +1,53 @@
+from shapes import Shape, Point, IDrawable
+
+class Circle(Shape, IDrawable):
+    center: Point
+    radius: float
+
+    def __init__(self, center: Point, radius: float):
+        super().__init__("Circle")
+        self.center = center
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def draw(self) -> str:
+        return f"Drawing circle at ({self.center.x}, {self.center.y})"
+
+class Rectangle(Shape, IDrawable):
+    width: float
+    height: float
+
+    def __init__(self, width: float, height: float):
+        super().__init__("Rectangle")
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def draw(self) -> str:
+        return f"Drawing rectangle {self.width} x {self.height}"
+
+class Square(Rectangle):
+    side: float
+
+    def __init__(self, side: float):
+        super().__init__(side, side)
+        self.side = side
+
+    @override
+    def describe(self) -> str:
+        return f"Square with side {self.side}"
+
+def create_shapes() -> list[Shape]:
+    p: Point = Point(0.0, 0.0)
+    circle: Circle = Circle(p, 5.0)
+    rect: Rectangle = Rectangle(3.0, 4.0)
+    square: Square = Square(2.0)
+    return [circle, rect, square]

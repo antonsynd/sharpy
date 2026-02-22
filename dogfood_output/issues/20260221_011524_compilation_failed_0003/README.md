@@ -1,0 +1,183 @@
+# Issue Report: compilation_failed
+
+**Timestamp:** 2026-02-21T01:11:10.962037
+**Type:** compilation_failed
+**Feature Focus:** result_type
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Complex Result type test with class hierarchies, interfaces, generics, and chaining
+# Tests Result<T,E> with inheritance, virtual methods, type aliases, and try expressions
+
+type ParseResult = int !str
+type ComputeResult = float !str
+
+# Interface for data processing
+interface IDataProcessor:
+    def process(self, data: int) -> float: ...
+
+# Abstract base with Result-returning methods
+@abstract
+class DataSource:
+    @abstract
+    def fetch(self) -> ParseResult: ...
+
+    @virtual
+    def validate(self, value: int) -> bool:
+        return value > 0
+
+# Concrete implementation with Result chaining
+class DatabaseSource(DataSource):
+    data_idx: int
+    dataset: list[int]
+
+    def __init__(self):
+        self.data_idx = 0
+        self.dataset = [42, -5, 100, 0, 75]
+
+    @override
+    def fetch(self) -> ParseResult:
+        if self.data_idx < len(self.dataset):
+            val: int = self.dataset[self.data_idx]
+            self.data_idx += 1
+            if self.validate(val):
+                return Ok(val)
+            return Err(f"invalid value: {val}")
+        return Err("no more data")
+
+# Processor implementing interface - uses Result internally
+class ComputeProcessor(IDataProcessor):
+    @override
+    def process(self, data: int) -> float:
+        return float(data) * 1.5
+
+    def compute_safe(self, data: int) -> ComputeResult:
+        try:
+            result: float = self.process(data) / 0.0  # Will cause issue
+            if result == 0.0:
+                return Err("division by zero")
+            return Ok(result)
+        except Exception:
+            return Ok(float(data) * 1.0)  # Fallback
+
+# Generic Result handler with constraints
+def handle_results[T, E](results: list[T !E]) -> list[T]:
+    valid: list[T] = []
+    for r in results:
+        if r.is_ok():
+            valid.append(r.unwrap())
+    return valid
+
+# Calculate average of valid results
+def calculate_average(values: list[int]) -> float !str:
+    if len(values) == 0:
+        return Err("empty list")
+    total: int = sum(values)
+    return Ok(float(total) / float(len(values)))
+
+def main():
+    source: DatabaseSource = DatabaseSource()
+    processor: ComputeProcessor = ComputeProcessor()
+
+    results: list[int !str] = []
+    for i in range(6):
+        res: int !str = source.fetch()
+        results.append(res)
+
+    print(f"Fetched {len(results)} results")
+
+    # Process with chain operations
+    ok_count: int = 0
+    for r in results:
+        if r.is_ok():
+            val: int = r.unwrap()
+            computed: ComputeResult = processor.compute_safe(val)
+            mapped: str !str = computed.map(lambda x: f"computed={x}")
+            print(mapped.unwrap_or("compute failed"))
+            ok_count += 1
+        else:
+            err_msg: str = r.unwrap_err()
+            mapped_err: str !str = r.map_err(lambda e: f"ERROR: {e}")
+            print(mapped_err.unwrap_err())
+    print(f"Success count: {ok_count}")
+
+    # Filter and compute average
+    valid: list[int] = handle_results(results)
+    avg_result: float !str = calculate_average(valid)
+    final: str = avg_result.map(lambda a: f"average={a:.2f}").unwrap_or("no average")
+    print(final)
+
+    # Test map_err transformation
+    empty_avg: float !str = calculate_average([])
+    doubled: str !str = empty_avg.map_err(lambda e: f"failed: {e}")
+    result_str: str = doubled.unwrap_or("fallback value")
+    print(f"Empty result: {result_str}")
+# EXPECTED OUTPUT:
+# Fetched 6 results
+# computed=63.0
+# ERROR: invalid value: -5
+# computed=150.0
+# ERROR: invalid value: 0
+# computed=112.5
+# ERROR: no more data
+# Success count: 3
+# average=72.33
+# Empty result: fallback value
+```
+
+## Error
+
+```
+Assembly compilation failed:
+
+error[CS0029]: Cannot implicitly convert type 'Sharpy.Result<int, string>' to 'Sharpy.Result<string, string>'
+  --> /tmp/tmp6k9yttfj/dogfood_test.spy:92:52
+    |
+ 92 |             mapped_err: str !str = r.map_err(lambda e: f"ERROR: {e}")
+    |                                                    ^
+    |
+
+error[CS0029]: Cannot implicitly convert type 'Sharpy.Result<double, string>' to 'Sharpy.Result<string, string>'
+  --> /tmp/tmp6k9yttfj/dogfood_test.spy:104:42
+     |
+ 104 |     doubled: str !str = empty_avg.map_err(lambda e: f"failed: {e}")
+     |                                          ^
+     |
+
+
+```
+
+## Compiler Output
+
+```
+warning[SPY0451]: Local variable 'err_msg' is assigned but never used
+  --> /tmp/tmp6k9yttfj/dogfood_test.spy:91:13
+    |
+ 91 |             err_msg: str = r.unwrap_err()
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+
+```
+
+## Generated C#
+
+```csharp
+warning[SPY0451]: Local variable 'err_msg' is assigned but never used
+  --> /tmp/tmp6k9yttfj/dogfood_test.spy:91:13
+    |
+ 91 |             err_msg: str = r.unwrap_err()
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+Generated C# code written to: /tmp/tmp6k9yttfj/dogfood_test.cs
+
+```
+
+## Timing
+
+- Generation: 239.25s
+- Execution: 4.90s

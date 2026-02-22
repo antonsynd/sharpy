@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Models.Person' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Models.Person' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmphq64hfjn/utils.spy:20:47
+    |
+ 20 |     
+    |     ^
+    |
+

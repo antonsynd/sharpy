@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Book' has no member 'title'. Did you mean '_title'?
+  --> /tmp/tmpm64kkyh7/main.spy:29:11
+    |
+ 29 |     print(book1.title)
+    |           ^^^^^^^^^^^
+    |
+

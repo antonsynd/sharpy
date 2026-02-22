@@ -1,0 +1,7 @@
+Creating cross-module shapes...
+Circle(r=3.0, color=Red)
+Rectangle(4.0x6.0, color=Green)
+Triangle(3.0, 4.0, 5.0, color=Blue)
+Total shapes: 5
+Total area: 122.56
+Total perimeter: 83.37

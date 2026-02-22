@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'IDrawable' is never used
+  --> /tmp/tmpztv___ra/module_shapes.spy:2:24
+    |
+  2 | from module_utils import Point, Color, format_measurement, SHAPE_RECTANGLE, SHAPE_CIRCLE
+    |                        ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IMeasurable' is never used
+  --> /tmp/tmpztv___ra/module_shapes.spy:2:35
+    |
+  2 | from module_utils import Point, Color, format_measurement, SHAPE_RECTANGLE, SHAPE_CIRCLE
+    |                                   ^^^^^^^^^^^
+    |
+

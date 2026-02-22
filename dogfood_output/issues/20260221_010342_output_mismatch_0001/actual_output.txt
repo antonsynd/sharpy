@@ -1,0 +1,8 @@
+A circle at Point(0, 0) with radius 5
+A rectangle at Point(0, 0)
+A triangle at Point(0, 0)
+Circle(r=5, color=Red)
+Rect area: 24
+Circle(r=1, color=Yellow)
+Rectangle(3x3, color=White)
+Chosen color value: Blue

@@ -1,0 +1,34 @@
+# Main entry point - imports from multiple modules
+from data_structures import TaskManager, WorkTask, PersonalTask, create_default_manager
+from utils import sort_by_priority, task_summary
+
+def main():
+    # Get pre-populated manager
+    manager: TaskManager = create_default_manager()
+    
+    # Print initial state
+    print(f"Total tasks in manager: {{len(manager.tasks)}}")
+    
+    # Sort and display tasks
+    sorted_tasks: list[Task] = sort_by_priority(manager.tasks)
+    print(f"Tasks sorted by priority:")
+    for t in sorted_tasks:
+        print(f"  {{t}}")
+    
+    # Get high priority tasks
+    high_priority: list[Task] = manager.get_high_priority()
+    print(f"High priority count: {{len(high_priority)}}")
+    
+    # Get task summary
+    summary: tuple[int, int] = task_summary(manager.tasks)
+    total, work = summary
+    print(f"Summary: {{total}} total, {{work}} work tasks")
+
+# EXPECTED OUTPUT:
+# Total tasks in manager: 3
+# Tasks sorted by priority:
+#   Review code (P1) -> Alice
+#   Fix bug (P2) -> Bob
+#   Buy groceries (P3) by Friday
+# High priority count: 2
+# Summary: 3 total, 2 work tasks

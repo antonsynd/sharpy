@@ -1,0 +1,35 @@
+warning[SPY0452]: Imported name 'Point' is never used
+  --> /tmp/tmpwmapnnpc/shape_registry.spy:2:33
+    |
+  2 | from geometry_types import Point, IShape, ShapeRectangle, ShapeCircle
+    |                                 ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Operation' is never used
+  --> /tmp/tmpwmapnnpc/shape_registry.spy:2:62
+    |
+  2 | from geometry_types import Point, IShape, ShapeRectangle, ShapeCircle
+    |                                                              ^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'apply_operation' is never used
+  --> /tmp/tmpwmapnnpc/shape_registry.spy:3:3
+    |
+  3 | from math_utils import PI, square, hypotenuse, clamp, Operation, apply_operation
+    |   ^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IShape' is never used
+  --> /tmp/tmpwmapnnpc/main.spy:2:35
+    |
+  2 | from geometry_types import Point, IShape, ShapeRectangle, ShapeCircle
+    |                                   ^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'PI' is never used
+  --> /tmp/tmpwmapnnpc/main.spy:3:24
+    |
+  3 | from math_utils import PI, square, hypotenuse, clamp, Operation, apply_operation
+    |                        ^^
+    |
+

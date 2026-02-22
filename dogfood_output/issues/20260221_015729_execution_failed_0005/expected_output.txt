@@ -1,0 +1,9 @@
+int as str: 42
+float as str: 3.14159
+bool as str: True
+0 is bool: False
+empty string is bool: False
+non-empty is bool: True
+int from str: 100
+float from str: 99.5
+Converted sum: 145.54

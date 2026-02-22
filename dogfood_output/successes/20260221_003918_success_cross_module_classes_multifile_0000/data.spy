@@ -1,0 +1,27 @@
+# Module providing data structures and validation
+
+class ValidationError:
+    message: str
+    
+    def __init__(self, message: str):
+        self.message = message
+    
+    def __str__(self) -> str:
+        return f"Error: {self.message}"
+
+
+class DataValidator:
+    min_length: int
+    max_length: int
+    
+    def __init__(self, min_len: int, max_len: int):
+        self.min_length = min_len
+        self.max_length = max_len
+    
+    @virtual
+    def validate(self, value: str) -> bool:
+        length: int = len(value)
+        return self.min_length <= length and length <= self.max_length
+    
+    def get_constraints(self) -> str:
+        return f"Length must be between {self.min_length} and {self.max_length}"

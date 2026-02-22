@@ -1,0 +1,60 @@
+# Base shape classes and interfaces
+from utils import ShapeType, Point, PI
+
+# Interface for shapes that can be measured
+interface IMeasurable:
+    def area(self) -> float: ...
+
+# Interface for shapes that can be drawn/described
+interface IDescribable:
+    def describe(self) -> str: ...
+
+# Abstract base class for all shapes
+@abstract
+class Shape(IDescribable):
+    _shape_type: ShapeType
+
+    def __init__(self, shape_type: ShapeType):
+        self._shape_type = shape_type
+
+    @virtual
+    def describe(self) -> str:
+        return "A generic shape"
+
+# Circle implementation with measurable area
+class Circle(Shape, IMeasurable):
+    center: Point
+    radius: float
+
+    def __init__(self, center: Point, radius: float):
+        super().__init__(ShapeType.CIRCLE)
+        self.center = center
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return PI * self.radius * self.radius
+
+    @override
+    def describe(self) -> str:
+        return "A circle with radius " + str(self.radius)
+
+# Rectangle implementation with measurable area
+class Rectangle(Shape, IMeasurable):
+    top_left: Point
+    width: float
+    height: float
+
+    def __init__(self, top_left: Point, width: float, height: float):
+        super().__init__(ShapeType.RECTANGLE)
+        self.top_left = top_left
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def describe(self) -> str:
+        return "A rectangle " + str(self.width) + "x" + str(self.height)

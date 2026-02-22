@@ -1,0 +1,43 @@
+# Item utilities module - provides classes that work with core types
+
+from core_types import BaseItem
+
+class Book(BaseItem):
+    author: str
+    pages: int
+    
+    def __init__(self, id: int, title: str, author: str, pages: int):
+        super().__init__(id, title)
+        self.author = author
+        self.pages = pages
+    
+    @override
+    def __str__(self) -> str:
+        return f"{self._title} by {self.author}"
+    
+    @override
+    def display(self) -> str:
+        return f"Book #{self._id}: {self._title} ({self.pages}pp)"
+
+class ItemManager:
+    items: list[BaseItem]
+    
+    def __init__(self):
+        self.items = []
+    
+    def add(self, item: BaseItem) -> None:
+        self.items.append(item)
+    
+    def get_count(self) -> int:
+        return len(self.items)
+    
+    def get_item_info(self, index: int) -> str:
+        if index >= 0 and index < len(self.items):
+            return self.items[index].__str__()
+        return "Invalid index"
+    
+    def get_all_items(self) -> list[str]:
+        results: list[str] = []
+        for item in self.items:
+            results.append(item.__str__())
+        return results

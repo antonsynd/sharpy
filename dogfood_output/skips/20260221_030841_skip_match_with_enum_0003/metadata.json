@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-21T02:59:17.372183",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0103]: Expected end of statement, got Identifier\n  --> /tmp/tmpsjvm1b05/dogfood_test.spy:1:12\n    |\n  1 | Connection error.\n    |            ^^^^^\n    |\n\n",
+  "generated_code": "Connection error.\n",
+  "expected_output": null,
+  "feature_focus": "match_with_enum",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 547.968316078186,
+  "source_files": null,
+  "validation_output": null
+}

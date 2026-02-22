@@ -1,0 +1,7 @@
+# Utility functions module
+
+def double_value(x: int) -> int:
+    return x * 2
+
+def format_person(name: str, score: int) -> str:
+    return f"{name}: {score}"

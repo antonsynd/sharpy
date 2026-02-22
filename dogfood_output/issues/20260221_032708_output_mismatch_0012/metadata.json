@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-21T03:25:38.592391",
+  "generated_code": "# Test: Property Initialization in __init__\n\nclass Rectangle:\n    width: float\n    height: float\n    property area: float\n    \n    def __init__(self, w: float, h: float):\n        self.width = w\n        self.height = h\n        self.area = w * h\n    \n    def scale(self, factor: float) -> None:\n        self.width *= factor\n        self.height *= factor\n        self.area = self.width * self.height\n\ndef main():\n    r = Rectangle(3.0, 4.0)\n    print(r.width)\n    print(r.height)\n    print(r.area)\n    r.scale(2.0)\n    print(r.area)\n\n# EXPECTED OUTPUT:\n# 3.0\n# 4.0\n# 12.0\n# 24.0",
+  "expected_output": "3.0\n4.0\n12.0\n24.0\n",
+  "actual_output": "3.0\n4.0\n12.0\n48.0",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "class_with_init",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 63.92774724960327,
+  "compilation_duration": null,
+  "execution_duration": 4.783138751983643,
+  "source_files": null
+}

@@ -1,0 +1,30 @@
+Assembly compilation failed:
+
+error[CS0120]: An object reference is required for the non-static field, method, or property 'Utils.ShapeCollector.TotalCreated'
+  --> /tmp/tmpt_q1osiz/main.spy:34:85
+    |
+ 34 |     print(f"Total shapes: {ShapeCollector.total_created}")
+    |                                                           ^
+    |
+
+error[CS0120]: An object reference is required for the non-static field, method, or property 'Utils.ShapeCollector.TotalCreated'
+  --> /tmp/tmpt_q1osiz/utils.spy:15:13
+    |
+ 15 |     rect: Rectangle = Rectangle(4.0, 6.0, Color.GREEN, center)
+    |             ^
+    |
+
+error[CS0120]: An object reference is required for the non-static field, method, or property 'Utils.ShapeCollector.TotalCreated'
+  --> /tmp/tmpt_q1osiz/utils.spy:15:43
+    |
+ 15 |     rect: Rectangle = Rectangle(4.0, 6.0, Color.GREEN, center)
+    |                                           ^
+    |
+
+error[CS1061]: 'Shapes.IShape' does not contain a definition for 'Describe' and no accessible extension method 'Describe' accepting a first argument of type 'Shapes.IShape' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpt_q1osiz/utils.spy:32:43
+    |
+ 32 |     collector.add(shape2)
+    |                          ^
+    |
+

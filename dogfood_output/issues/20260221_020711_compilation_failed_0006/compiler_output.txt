@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'Priority' is never used
+  --> /tmp/tmprgh6tfw_/config_utils.spy:2:8
+    |
+  2 | from core_types import Status, Priority, IDataProcessor, priority_name
+    |        ^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IDataProcessor' is never used
+  --> /tmp/tmprgh6tfw_/main.spy:2:42
+    |
+  2 | from core_types import Status, Priority, IDataProcessor, priority_name
+    |                                          ^^^^^^^^^^^^^^
+    |
+

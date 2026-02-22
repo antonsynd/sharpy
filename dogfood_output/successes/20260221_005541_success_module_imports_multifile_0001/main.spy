@@ -1,0 +1,30 @@
+# Main entry point - tests various import patterns
+
+from utils import clamp, Calculator
+from shapes import Rectangle, Circle
+
+def main():
+    # Test importing and using a function
+    value: float = 150.0
+    clamped: float = clamp(value, 0.0, 100.0)
+    print(clamped)
+    
+    # Test importing and using a class from utils
+    calc: Calculator = Calculator()
+    calc.add(10.0)
+    calc.add(20.0)
+    print(calc.total)
+    
+    # Test inheritance with imported classes
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    print(rect.area())
+    
+    # Test abstract class implementation
+    circle: Circle = Circle(2.0)
+    print(circle.perimeter())
+
+# EXPECTED OUTPUT:
+# 100.0
+# 30.0
+# 15.0
+# 12.56636

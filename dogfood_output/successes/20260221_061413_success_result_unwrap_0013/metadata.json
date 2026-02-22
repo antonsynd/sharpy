@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-21T06:13:32.294727",
+  "generated_code": "# Test: Result type unwrap and unwrap_or methods\n# Demonstrates safe error handling with Result types\n\ndef divide(a: int, b: int) -> int !str:\n    if b == 0:\n        return Err(\"division by zero\")\n    return Ok(a // b)\n\ndef parse_number(s: str) -> int !str:\n    if s == \"0\":\n        return Ok(0)\n    if s == \"5\":\n        return Ok(5)\n    if s == \"10\":\n        return Ok(10)\n    return Err(f\"invalid number: {s}\")\n\ndef main():\n    # Test unwrap_or with success\n    r1: int !str = divide(20, 4)\n    v1: int = r1.unwrap_or(0)\n    print(v1)\n    \n    # Test unwrap_or with error\n    r2: int !str = divide(10, 0)\n    v2: int = r2.unwrap_or(-1)\n    print(v2)\n    \n    # Test unwrap on success (use unwrap_or for safety)\n    r3: int !str = parse_number(\"5\")\n    v3: int = r3.unwrap_or(0)\n    print(v3)\n    \n    # Test unwrap_or with parse error\n    r4: int !str = parse_number(\"invalid\")\n    v4: int = r4.unwrap_or(999)\n    print(v4)\n    \n    # Chained operations with unwrap_or\n    r5: int !str = divide(100, 10)\n    v5: int = r5.map(lambda x: x * 2).unwrap_or(0)\n    print(v5)\n\n# EXPECTED OUTPUT:\n# 5\n# -1\n# 5\n# 999\n# 20",
+  "expected_output": "5\n-1\n5\n999\n20\n",
+  "actual_output": "5\n-1\n5\n999\n20",
+  "feature_focus": "result_unwrap",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 29.926955699920654,
+  "execution_duration": 5.08061957359314,
+  "source_files": null
+}

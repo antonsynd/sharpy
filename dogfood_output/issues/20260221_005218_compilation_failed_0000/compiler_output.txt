@@ -1,0 +1,28 @@
+warning[SPY0452]: Imported name 'ColorPalette' is never used
+  --> /tmp/tmpt_q1osiz/utils.spy:4:5
+    |
+  4 | from colors import Color, Point, ColorPalette
+    |     ^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IShape' is never used
+  --> /tmp/tmpt_q1osiz/main.spy:3:20
+    |
+  3 | from shapes import IShape, IDrawable, Circle, Rectangle, Triangle, Shape
+    |                    ^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IDrawable' is never used
+  --> /tmp/tmpt_q1osiz/main.spy:3:28
+    |
+  3 | from shapes import IShape, IDrawable, Circle, Rectangle, Triangle, Shape
+    |                            ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ColorPalette' is never used
+  --> /tmp/tmpt_q1osiz/main.spy:4:34
+    |
+  4 | from colors import Color, Point, ColorPalette
+    |                                  ^^^^^^^^^^^^
+    |
+

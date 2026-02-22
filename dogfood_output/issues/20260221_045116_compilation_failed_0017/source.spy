@@ -1,0 +1,52 @@
+# Main entry point - demonstrates complex multi-file imports
+from geometry_types import Point, IShape, ShapeRectangle, ShapeCircle
+from math_utils import PI, square, hypotenuse, clamp, Operation, apply_operation
+from shape_registry import ShapeRegistry, create_rectangle, create_circle
+
+def main():
+    # Test basic math utilities
+    a: float = 3.0
+    b: float = 4.0
+    c: float = hypotenuse(a, b)
+    print(c)
+    print(square(5.0))
+
+    # Test clamp function
+    val: float = 150.0
+    print(clamp(val, 0.0, 100.0))
+
+    # Test enum and operation
+    result: float = apply_operation(10.0, 5.0, Operation.MULTIPLY)
+    print(result)
+
+    # Test structs and point distance
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+    dist: float = p1.distance_to(p2)
+    print(dist)
+
+    # Test shapes and registry
+    registry: ShapeRegistry = ShapeRegistry()
+
+    rect: ShapeRectangle = create_rectangle(5.0, 3.0)
+    circ: ShapeCircle = create_circle(2.0)
+
+    registry.add(rect)
+    registry.add(circ)
+
+    # Print shape info
+    print(rect.area())
+    print(circ.area())
+    print(registry.total_area())
+    print(registry.count())
+
+# EXPECTED OUTPUT:
+# 5.0
+# 25.0
+# 100.0
+# 50.0
+# 5.0
+# 15.0
+# 12.566
+# 27.566
+# 2

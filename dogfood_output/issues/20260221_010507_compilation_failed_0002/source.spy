@@ -1,0 +1,37 @@
+# Test: Complex nested list literals with slicing and manipulation
+# Creates and transforms 2D data structures
+
+def transform_grid(grid: list[list[int]]) -> list[list[int]]:
+    result: list[list[int]] = []
+    for row in grid:
+        new_row: list[int] = [x * 2 for x in row]
+        result.append(new_row)
+    return result
+
+def main():
+    # Nested list literal representing a grid
+    grid: list[list[int]] = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    
+    # List literal with expression elements
+    offset: int = 10
+    augmented: list[int] = [offset + 1, offset + 2, offset + 3]
+    
+    # Empty list literal initialization
+    buffer: list[str] = []
+    buffer.append("first")
+    buffer.append("second")
+    
+    print(grid[1][1])
+    print(augmented[2])
+    print(len(buffer))
+    
+    transformed = transform_grid(grid)
+    print(transformed[0][0])
+    print(transformed[2][2])
+
+# EXPECTED OUTPUT:
+# 5
+# 13
+# 2
+# 2
+# 18

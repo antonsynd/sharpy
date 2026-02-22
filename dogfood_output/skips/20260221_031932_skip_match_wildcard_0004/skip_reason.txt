@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0266]: Function 'parse_command' must return a value of type 'str' in all code paths
+  --> /tmp/tmppe52sb8n/dogfood_test.spy:7:1
+    |
+  7 | def parse_command(cmd: object) -> str:
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

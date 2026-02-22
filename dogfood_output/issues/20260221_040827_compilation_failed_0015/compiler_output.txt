@@ -1,0 +1,7 @@
+warning[SPY0452]: Imported name 'Product' is never used
+  --> /tmp/tmphq64hfjn/utils.spy:2:44
+    |
+  2 | from models import Entity, Person, Product, create_test_person, create_test_product
+    |                                            ^^^^^^^
+    |
+

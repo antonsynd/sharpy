@@ -1,0 +1,9 @@
+=== Cross-Module Classes Test ===
+Person(name=Alice, age=30)
+Person(name=Bob, age=25)
+Employee ID: 1001
+Category: B
+Doubled: 42
+Charlie: 95
+Employee category: A
+=== Test Complete ===

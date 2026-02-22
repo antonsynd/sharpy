@@ -1,0 +1,52 @@
+# Main entry point for cross-module classes test
+
+from base import Person
+from types import Category
+from utils import double_value, format_person
+from derived import Employee
+
+def main():
+    print("=== Cross-Module Classes Test ===")
+    
+    # Create a person from base module
+    person: Person = Person("Alice", 30)
+    desc: str = person.describe()
+    print(desc)
+    
+    # Create an employee from derived module
+    employee: Employee = Employee("Bob", 25, 1001)
+    emp_desc: str = employee.describe()
+    print(emp_desc)
+    
+    # Get employee ID
+    emp_id: int = employee.get_id()
+    print(f"Employee ID: {emp_id}")
+    
+    # Test enum from types module
+    cat: Category = Category.B
+    print(f"Category: {cat}")
+    
+    # Test utility function from utils module
+    doubled: int = double_value(21)
+    print(f"Doubled: {doubled}")
+    
+    # Test formatting function
+    formatted: str = format_person("Charlie", 95)
+    print(formatted)
+    
+    # Test category on employee
+    emp_cat: Category = employee.category
+    print(f"Employee category: {emp_cat}")
+    
+    print("=== Test Complete ===")
+
+# EXPECTED OUTPUT:
+# === Cross-Module Classes Test ===
+# Person(name=Alice, age=30)
+# Person(name=Bob, age=25)
+# Employee ID: 1001
+# Category: B
+# Doubled: 42
+# Charlie: 95
+# Employee category: A
+# === Test Complete ===

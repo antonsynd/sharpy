@@ -1,0 +1,22 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-21T05:28:17.545861",
+  "generated_code": "# Main entry point - tests cross-module inheritance with abstract methods\n\nfrom base_shapes import Shape\nfrom shapes_impl import Circle, Rectangle\n\ndef print_shape_info(s: Shape, name: str) -> None:\n    print(f\"{name} area: {s.area():.2f}\")\n    print(f\"{name} perimeter: {s.perimeter():.2f}\")\n\ndef main():\n    c: Circle = Circle(5.0)\n    r: Rectangle = Rectangle(4.0, 6.0)\n    \n    print_shape_info(c, \"Circle\")\n    print_shape_info(r, \"Rectangle\")\n    print(f\"Circle radius: {c.radius}\")\n    print(f\"Rectangle dimensions: {r.width} x {r.height}\")\n    # EXPECTED OUTPUT:\n    # Circle area: 78.54\n    # Circle perimeter: 31.42\n    # Rectangle area: 24.00\n    # Rectangle perimeter: 20.00\n    # Circle radius: 5.0\n    # Rectangle dimensions: 4.0 x 6.0",
+  "expected_output": "Circle area: 78.54\nCircle perimeter: 31.42\nRectangle area: 24.00\nRectangle perimeter: 20.00\nCircle radius: 5.0\nRectangle dimensions: 4.0 x 6.0\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0513]: 'BaseShapes.Shape.Area()' is abstract but it is contained in non-abstract type 'BaseShapes.Shape'\n  --> base_shapes.cs:13:32\n    |\n 13 |     \n    |     ^\n    |\n\nerror[CS0513]: 'BaseShapes.Shape.Perimeter()' is abstract but it is contained in non-abstract type 'BaseShapes.Shape'\n  --> base_shapes.cs:14:32\n    |\n 14 |     print_shape_info(c, \"Circle\")\n    |                                ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 100.23556399345398,
+  "compilation_duration": null,
+  "execution_duration": 4.483119249343872,
+  "source_files": {
+    "base_shapes.spy": "# Base shapes module - provides abstract base class for cross-module inheritance\n\nclass Shape:\n    @abstract\n    def area(self) -> float:\n        ...\n    \n    @abstract  \n    def perimeter(self) -> float:\n        ...",
+    "shapes_impl.spy": "# Shape implementations module - extends base_shapes classes\n\nfrom base_shapes import Shape\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, radius: float):\n        self.radius = radius\n    \n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n    \n    @override\n    def perimeter(self) -> float:\n        return 2.0 * 3.14159 * self.radius\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, width: float, height: float):\n        self.width = width\n        self.height = height\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    @override\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)",
+    "main.spy": "# Main entry point - tests cross-module inheritance with abstract methods\n\nfrom base_shapes import Shape\nfrom shapes_impl import Circle, Rectangle\n\ndef print_shape_info(s: Shape, name: str) -> None:\n    print(f\"{name} area: {s.area():.2f}\")\n    print(f\"{name} perimeter: {s.perimeter():.2f}\")\n\ndef main():\n    c: Circle = Circle(5.0)\n    r: Rectangle = Rectangle(4.0, 6.0)\n    \n    print_shape_info(c, \"Circle\")\n    print_shape_info(r, \"Rectangle\")\n    print(f\"Circle radius: {c.radius}\")\n    print(f\"Rectangle dimensions: {r.width} x {r.height}\")\n    # EXPECTED OUTPUT:\n    # Circle area: 78.54\n    # Circle perimeter: 31.42\n    # Rectangle area: 24.00\n    # Rectangle perimeter: 20.00\n    # Circle radius: 5.0\n    # Rectangle dimensions: 4.0 x 6.0"
+  }
+}

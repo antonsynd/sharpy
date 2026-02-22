@@ -1,0 +1,39 @@
+# Math utility module providing mathematical operations
+
+const PI: float = 3.14159
+
+def square(x: int) -> int:
+    """Returns the square of a number."""
+    return x * x
+
+def cube(x: int) -> int:
+    """Returns the cube of a number."""
+    return x * x * x
+
+def calculate_average(values: list[int]) -> float:
+    """Calculates the average of a list of numbers."""
+    if len(values) == 0:
+        return 0.0
+    total: int = sum(values)
+    return total / len(values)
+
+class Calculator:
+    value: int
+    
+    def __init__(self, initial: int):
+        self.value = initial
+    
+    def square(self) -> int:
+        return self.value * self.value
+    
+    def reset(self, new_value: int):
+        self.value = new_value
+
+def power(base: int, exponent: int) -> int:
+    """Calculates base raised to the power."""
+    result: int = 1
+    i: int = 0
+    while i < exponent:
+        result = result * base
+        i = i + 1
+    return result

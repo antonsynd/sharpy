@@ -1,0 +1,51 @@
+# Main entry point demonstrating cross-module class usage
+
+from types import Color, Point, Shape, Renderable, Measurable
+from shapes import Circle, Rectangle, Triangle
+from utils import create_unit_circle, create_square, color_from_string
+
+def main():
+    # Create some shapes and demonstrate cross-module usage
+    origin: Point = Point(0.0, 0.0)
+    p1: Point = Point(1.0, 0.0)
+    p2: Point = Point(0.0, 1.0)
+    p3: Point = Point(0.0, 0.0)
+
+    # Create shapes using various methods
+    circle: Circle = Circle(Color.RED, origin, 5.0)
+    rect: Rectangle = Rectangle(Color.GREEN, origin, 4.0, 6.0)
+    tri: Triangle = Triangle(Color.BLUE, origin, p1, p2, p3)
+
+    # Demonstrate interface usage across modules
+    r: Renderable = circle
+    m: Measurable = rect
+
+    # Print shape info
+    print(circle.describe())
+    print(rect.describe())
+    print(tri.describe())
+
+    # Print interface method calls
+    print(r.render())
+    print(f"Rect area: {m.area()}")
+
+    # Use utility functions
+    unit_circle: Circle = create_unit_circle(Color.YELLOW)
+    square: Rectangle = create_square(Color.WHITE, 3.0)
+
+    print(unit_circle.render())
+    print(square.render())
+
+    # Demonstrate color utility
+    chosen: Color = color_from_string("blue")
+    print(f"Chosen color value: {chosen}")
+
+# EXPECTED OUTPUT:
+# A circle at Point(0, 0) with radius 5.0
+# A rectangle at Point(0, 0)
+# A triangle at Point(0, 0)
+# Circle(r=5.0, color=Red)
+# Rect area: 24
+# Circle(r=1.0, color=Yellow)
+# Rectangle(3.0x3.0, color=White)
+# Chosen color value: Blue

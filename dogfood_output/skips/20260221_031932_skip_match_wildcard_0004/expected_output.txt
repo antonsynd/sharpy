@@ -1,0 +1,5 @@
+starting system
+stopping system
+status code: 42
+system ok
+unknown command

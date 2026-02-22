@@ -1,0 +1,7 @@
+First batch: 2
+Red|Green
+Leftover: 2
+Second batch: 2
+Red|Green
+Blue|Yellow
+Complete

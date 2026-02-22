@@ -1,0 +1,12 @@
+# Base module with class definitions
+
+class Person:
+    name: str
+    age: int
+    
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+    
+    def describe(self) -> str:
+        return f"Person(name={self.name}, age={self.age})"

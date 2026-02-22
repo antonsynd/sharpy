@@ -1,0 +1,25 @@
+# Math utilities module - provides calculation functions and constants
+
+PI: float = 3.14159
+
+def square(x: int) -> int:
+    return x * x
+
+def calculate_area(radius: int) -> float:
+    return PI * square(radius)
+
+class Calculator:
+    history: list[str]
+    
+    def __init__(self):
+        self.history = []
+    
+    def add(self, a: int, b: int) -> int:
+        result: int = a + b
+        self.history.append(f"add({a}, {b}) = {result}")
+        return result
+    
+    def multiply(self, a: int, b: int) -> int:
+        result: int = a * b
+        self.history.append(f"multiply({a}, {b}) = {result}")
+        return result

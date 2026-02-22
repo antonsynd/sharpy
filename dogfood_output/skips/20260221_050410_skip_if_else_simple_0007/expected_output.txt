@@ -1,0 +1,10 @@
+check email
+refactor codebase
+quick
+very long
+Standard task: check email
+HIGH priority: refactor codebase
+MEDIUM priority: write tests
+Completed simple task: check email
+Executed complex task: refactor codebase
+all done

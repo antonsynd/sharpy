@@ -1,0 +1,79 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-02-21T01:15:24.730063
+**Feature Focus:** match_type_binding
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Testing type binding alternatives using if statements with type narrowing
+
+class OptionHandler:
+    def get_int_or_default(self, opt: int?, default_val: int) -> int:
+        if opt is not None:
+            n: int = opt
+            return n
+        return default_val
+    
+    def get_str_or_default(self, opt: str?, default_val: str) -> str:
+        if opt is not None:
+            s: str = opt
+            return s
+        return default_val
+    
+    def describe_bool(self, opt: bool?) -> str:
+        if opt is not None:
+            b: bool = opt
+            if b:
+                return f"true value: {b}"
+            return f"false value: {b}"
+        return "no boolean present"
+
+def main():
+    handler: OptionHandler = OptionHandler()
+    
+    some_val: int? = Some(42)
+    none_val: int? = None()
+    print(handler.get_int_or_default(some_val, 0))
+    print(handler.get_int_or_default(none_val, -1))
+    
+    some_str: str? = Some("hello")
+    print(handler.get_str_or_default(some_str, "empty"))
+    
+    true_opt: bool? = Some(True)
+    false_opt: bool? = Some(False)
+    print(handler.describe_bool(true_opt))
+    print(handler.describe_bool(false_opt))
+
+# EXPECTED OUTPUT:
+# 42
+# -1
+# hello
+# true value: True
+# false value: False
+```
+
+## Output
+
+```
+42
+-1
+hello
+true value: True
+false value: False
+```
+
+## Timing
+
+- Generation: 414.11s
+- Execution: 4.97s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

@@ -1,0 +1,24 @@
+# Validation utilities module - provides data validation functions
+
+def is_positive(n: int) -> bool:
+    return n > 0
+
+def clamp(value: int, min_val: int, max_val: int) -> int:
+    if value < min_val:
+        return min_val
+    if value > max_val:
+        return max_val
+    return value
+
+class ValidationResult:
+    is_valid: bool
+    message: str
+    
+    def __init__(self, valid: bool, msg: str):
+        self.is_valid = valid
+        self.message = msg
+
+def validate_range(value: int, start: int, end: int) -> ValidationResult:
+    if start <= value <= end:
+        return ValidationResult(True, "Value is within range")
+    return ValidationResult(False, "Value is out of range")

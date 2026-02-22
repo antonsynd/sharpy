@@ -1,0 +1,41 @@
+# Geometry utilities with structs, enums, and helper classes
+
+enum ShapeType:
+    RECTANGLE = 1
+    CIRCLE = 2
+    TRIANGLE = 3
+    POLYGON = 4
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_to(self, other: Point) -> float:
+        dx: float = self.x - other.x
+        dy: float = self.y - other.y
+        return (dx * dx + dy * dy) ** 0.5
+
+from shapes_base import Shape
+
+class GeometryHelper:
+    @static
+    def calculate_total_area(shapes: list[Shape]) -> float:
+        total: float = 0.0
+        for s in shapes:
+            total = total + s.area()
+        return total
+
+    @static
+    def get_shape_type_name(shape_type: ShapeType) -> str:
+        if shape_type == ShapeType.RECTANGLE:
+            return "Rectangle"
+        elif shape_type == ShapeType.CIRCLE:
+            return "Circle"
+        elif shape_type == ShapeType.TRIANGLE:
+            return "Triangle"
+        else:
+            return "Polygon"

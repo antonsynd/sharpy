@@ -1,0 +1,16 @@
+# Derived module that uses base
+
+from base import Person
+from types import Category
+
+class Employee(Person):
+    employee_id: int
+    category: Category
+    
+    def __init__(self, name: str, age: int, employee_id: int):
+        super().__init__(name, age)
+        self.employee_id = employee_id
+        self.category = Category.A
+    
+    def get_id(self) -> int:
+        return self.employee_id

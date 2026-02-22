@@ -1,0 +1,45 @@
+# main.spy - Entry point demonstrating cross-module type usage
+
+from shapes import IShape, IDrawable, Circle, Rectangle, Triangle, Shape
+from colors import Color, Point, ColorPalette
+from utils import ShapeCollector, create_random_shape, format_number
+
+def main():
+    print("Creating cross-module shapes...")
+    
+    # Create points and shapes using modules from different files
+    origin: Point = Point(0.0, 0.0)
+    center: Point = Point(5.0, 5.0)
+    
+    circle: Circle = Circle(3.0, Color.RED, origin)
+    rect: Rectangle = Rectangle(4.0, 6.0, Color.GREEN, center)
+    tri: Triangle = Triangle(3.0, 4.0, 5.0, Color.BLUE, Point(10.0, 10.0))
+    
+    print(circle.describe())
+    print(rect.describe())
+    print(tri.describe())
+    
+    # Test interface polymorphism
+    collector: ShapeCollector = ShapeCollector()
+    collector.add(circle)
+    collector.add(rect)
+    collector.add(tri)
+    
+    # Use utility functions
+    shape1: Shape = create_random_shape(0, Color.YELLOW, Point(1.0, 1.0))
+    shape2: Shape = create_random_shape(1, Color.PURPLE, Point(2.0, 2.0))
+    collector.add(shape1)
+    collector.add(shape2)
+    
+    print(f"Total shapes: {ShapeCollector.total_created}")
+    print(f"Total area: {format_number(collector.get_total_area(), 2)}")
+    print(f"Total perimeter: {format_number(collector.get_total_perimeter(), 2)}")
+
+# EXPECTED OUTPUT:
+# Creating cross-module shapes...
+# Circle(r=3.0, color=Red)
+# Rectangle(4.0x6.0, color=Green)
+# Triangle(3.0, 4.0, 5.0, color=Blue)
+# Total shapes: 5
+# Total area: 122.56
+# Total perimeter: 83.37

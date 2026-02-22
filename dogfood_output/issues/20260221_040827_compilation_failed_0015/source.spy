@@ -1,0 +1,45 @@
+# Main entry point - demonstrates cross-module class usage
+from models import Entity, Person, Product, create_test_person, create_test_product
+from utils import describe_entity, show_identifiable, format_printable, process_entity_list, create_person_clone
+
+def main():
+    # Create instances using constructors from models module
+    person: Person = Person(42, "Bob")
+    product: Product = Product(7, "MOUSE-023", 29.99)
+    
+    # Test methods from models module
+    print(person.to_display())
+    print(product.to_display())
+    
+    # Test functions from utils module operating on models
+    print(describe_entity(person))
+    print(describe_entity(product))
+    
+    # Test interface usage across modules
+    print(show_identifiable(person))
+    
+    # Test list processing with cross-module types
+    entities: list[Entity] = [person, product]
+    descriptions: list[str] = process_entity_list(entities)
+    print(descriptions[0])
+    print(descriptions[1])
+    
+    # Test cloning function from utils
+    clone: Person = create_person_clone(person)
+    print(clone.to_display())
+    
+    # Test factory functions from models
+    test_person: Person = create_test_person()
+    test_product: Product = create_test_product()
+    print(format_printable(test_person))
+    print(format_printable(test_product))
+
+# EXPECTED OUTPUT:
+# Person(Bob, id=42)
+# Product(MOUSE-023, $29.99)
+# Entity with ID: 4200
+# Entity with ID: 700
+# ID=4200
+# Person(Bob, id=42)
+# Person(Alice, id=1)
+# Product(LAPTOP-001, $999.99)

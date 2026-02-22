@@ -1,0 +1,18 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-02-21T01:43:14.867039",
+  "generated_code": "# Test builtin conversions with type operations and validation\nclass Converter:\n    values: list[str]\n    \n    def __init__(self):\n        self.values = [\"42\", \"3.14\", \"True\", \"0\", \"hello\"]\n    \n    def convert_and_sum(self) -> float:\n        total: float = 0.0\n        for item in self.values:\n            # Try to convert each string to float\n            converted: float = float(item)\n            total = total + converted\n        return total\n\ndef main():\n    c = Converter()\n    \n    # Test str() conversion with numbers\n    num: int = 42\n    pi: float = 3.14159\n    flag: bool = True\n    print(f\"int as str: {str(num)}\")\n    print(f\"float as str: {str(pi)}\")\n    print(f\"bool as str: {str(flag)}\")\n    \n    # Test bool() conversion\n    zero: int = 0\n    empty: str = \"\"\n    non_empty: str = \"hello\"\n    print(f\"0 is bool: {str(bool(zero))}\")\n    print(f\"empty string is bool: {str(bool(empty))}\")\n    print(f\"non-empty is bool: {str(bool(non_empty))}\")\n    \n    # Test int() and float() from string\n    int_str: str = \"100\"\n    float_str: str = \"99.5\"\n    result: int = int(int_str)\n    result_float: float = float(float_str)\n    print(f\"int from str: {str(result)}\")\n    print(f\"float from str: {str(result_float)}\")\n    \n    # Test the converter\n    total: float = c.convert_and_sum()\n    print(f\"Converted sum: {str(total)}\")\n\n# EXPECTED OUTPUT:\n# int as str: 42\n# float as str: 3.14159\n# bool as str: True\n# 0 is bool: False\n# empty string is bool: False\n# non-empty is bool: True\n# int from str: 100\n# float from str: 99.5\n# Converted sum: 145.54",
+  "expected_output": "int as str: 42\nfloat as str: 3.14159\nbool as str: True\n0 is bool: False\nempty string is bool: False\nnon-empty is bool: True\nint from str: 100\nfloat from str: 99.5\nConverted sum: 145.54\n",
+  "actual_output": null,
+  "error_message": "Unhandled exception. Sharpy.ValueError: could not convert string to float: 'True'\n   at Sharpy.Builtins.Double(String s)\n   at Sharpy.Builtins.Float(String s)\n   at DogfoodTest.Converter.ConvertAndSum() in /tmp/tmpmyf1j4rx/dogfood_test.spy:line 12\n   at DogfoodTest.Main() in /tmp/tmpmyf1j4rx/dogfood_test.spy:line 44\n",
+  "compiler_output": "int as str: 42\nfloat as str: 3.14159\nbool as str: True\n0 is bool: False\nempty string is bool: False\nnon-empty is bool: True\nint from str: 100\nfloat from str: 99.5\n",
+  "generated_cs": "Generated C# code written to: /tmp/tmpmyf1j4rx/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "builtin_conversions",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 833.5291867256165,
+  "compilation_duration": null,
+  "execution_duration": 6.120487213134766,
+  "source_files": null
+}

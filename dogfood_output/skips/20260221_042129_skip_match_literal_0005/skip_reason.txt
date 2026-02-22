@@ -1,0 +1,51 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0104]: Expected RightParen, got Dot
+  --> /tmp/tmpbmz8_d6f/dogfood_test.spy:60:28
+    |
+ 60 |             case (TaskState.PENDING, TaskState.RUNNING):
+    |                            ^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpbmz8_d6f/dogfood_test.spy:62:13
+    |
+ 62 |             case (TaskState.PENDING, TaskState.CANCELLED):
+    |             ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpbmz8_d6f/dogfood_test.spy:64:13
+    |
+ 64 |             case (TaskState.RUNNING, TaskState.COMPLETED):
+    |             ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpbmz8_d6f/dogfood_test.spy:66:13
+    |
+ 66 |             case (TaskState.RUNNING, TaskState.FAILED):
+    |             ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpbmz8_d6f/dogfood_test.spy:68:13
+    |
+ 68 |             case (TaskState.RUNNING, TaskState.CANCELLED):
+    |             ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpbmz8_d6f/dogfood_test.spy:70:13
+    |
+ 70 |             case _:
+    |             ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Dedent
+  --> /tmp/tmpbmz8_d6f/dogfood_test.spy:73:1
+    |
+ 73 | class StateLogger(IStateObserver):
+    | ^
+    |
+

@@ -1,0 +1,49 @@
+# Test: Result type unwrap and unwrap_or methods
+# Demonstrates safe error handling with Result types
+
+def divide(a: int, b: int) -> int !str:
+    if b == 0:
+        return Err("division by zero")
+    return Ok(a // b)
+
+def parse_number(s: str) -> int !str:
+    if s == "0":
+        return Ok(0)
+    if s == "5":
+        return Ok(5)
+    if s == "10":
+        return Ok(10)
+    return Err(f"invalid number: {s}")
+
+def main():
+    # Test unwrap_or with success
+    r1: int !str = divide(20, 4)
+    v1: int = r1.unwrap_or(0)
+    print(v1)
+    
+    # Test unwrap_or with error
+    r2: int !str = divide(10, 0)
+    v2: int = r2.unwrap_or(-1)
+    print(v2)
+    
+    # Test unwrap on success (use unwrap_or for safety)
+    r3: int !str = parse_number("5")
+    v3: int = r3.unwrap_or(0)
+    print(v3)
+    
+    # Test unwrap_or with parse error
+    r4: int !str = parse_number("invalid")
+    v4: int = r4.unwrap_or(999)
+    print(v4)
+    
+    # Chained operations with unwrap_or
+    r5: int !str = divide(100, 10)
+    v5: int = r5.map(lambda x: x * 2).unwrap_or(0)
+    print(v5)
+
+# EXPECTED OUTPUT:
+# 5
+# -1
+# 5
+# 999
+# 20

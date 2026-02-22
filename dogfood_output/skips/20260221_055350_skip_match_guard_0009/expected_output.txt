@@ -1,0 +1,9 @@
+small positive digit: 5
+medium positive: 42
+negative: -7
+exactly zero
+unit float: 0.50
+other: 2.71
+short text (2 chars): hi
+urgent message: urgent: action needed
+other: something else entirely

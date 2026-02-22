@@ -1,0 +1,32 @@
+# Test: Property with validation to ensure age stays within valid range
+class Person:
+    _age: int
+    
+    def __init__(self, age: int):
+        self._age = age
+    
+    property get age(self) -> int:
+        return self._age
+    
+    property set age(self, value: int):
+        if value < 0:
+            self._age = 0
+        elif value > 150:
+            self._age = 150
+        else:
+            self._age = value
+
+def main():
+    p = Person(25)
+    print(p.age)
+    p.age = -5
+    print(p.age)
+    p.age = 200
+    print(p.age)
+    p.age = 50
+    print(p.age)
+    # EXPECTED OUTPUT:
+    # 25
+    # 0
+    # 150
+    # 50

@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot assign type 'list[Shape]' to variable of type 'list[IMeasurable]'
+  --> /tmp/tmpacv7czel/main.spy:24:5
+    |
+ 24 |     shapes: list[IMeasurable] = [circle, rect, tri]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

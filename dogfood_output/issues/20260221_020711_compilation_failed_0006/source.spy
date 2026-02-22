@@ -1,0 +1,61 @@
+# Main entry point - demonstrates complex cross-module imports and usage
+from core_types import Status, Priority, IDataProcessor, priority_name
+from data_models import TextProcessor, AdvancedProcessor, create_processor
+from config_utils import Config, ConfigManager, Point, default_config, ConfigPair
+
+def main():
+    # Create and test basic processor
+    processor: TextProcessor = create_processor()
+    
+    # Process some data
+    result1: str = processor.process("hello")
+    print(result1)
+    
+    # Check validation
+    valid: bool = processor.is_valid()
+    print(valid)
+    
+    # Create advanced processor with HIGH priority
+    advanced: AdvancedProcessor = AdvancedProcessor(Priority.HIGH)
+    result2: str = advanced.process("world")
+    print(result2)
+    
+    # Use priority name helper
+    print(priority_name(Priority.CRITICAL))
+    
+    # Create and use Config struct
+    config: Config = default_config()
+    print(config.is_active())
+    
+    # Create ConfigManager and add configs
+    manager: ConfigManager = ConfigManager()
+    manager.add(config)
+    manager.add(Config(50, False))
+    manager.add(Config(200, True))
+    
+    # Count active configs
+    active_count: int = manager.count_active()
+    print(active_count)
+    
+    # Create a point and calculate distance
+    point: Point = Point(3.5, 4.5)
+    dist: float = point.distance_from_origin()
+    print(dist)
+    
+    # Work with enum values
+    current_status: Status = Status.SUCCESS
+    print(current_status == Status.SUCCESS)
+    
+    # Use ConfigPair struct (replaces named tuple)
+    pair1: ConfigPair = ConfigPair("test", 42)
+    print(pair1.name)
+# EXPECTED OUTPUT:
+# HELLO
+# True
+# [2] WORLD
+# critical
+# True
+# 2
+# 8.0
+# True
+# test

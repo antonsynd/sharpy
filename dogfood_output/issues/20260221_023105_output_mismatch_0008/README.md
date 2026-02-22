@@ -1,0 +1,95 @@
+# Issue Report: output_mismatch
+
+**Timestamp:** 2026-02-21T02:26:30.143307
+**Type:** output_mismatch
+**Feature Focus:** tuple_types
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: Tuple types in class methods with conditional logic
+# Tests: tuple type annotations, method returns, conditional unpacking,
+#        and combining control flow with tuple operations
+
+class Bounds:
+    min_point: tuple[int, int]
+    max_point: tuple[int, int]
+    
+    def __init__(self, min_pt: tuple[int, int], max_pt: tuple[int, int]):
+        self.min_point = min_pt
+        self.max_point = max_pt
+    
+    def get_center(self) -> tuple[int, int]:
+        min_x, min_y = self.min_point
+        max_x, max_y = self.max_point
+        center_x: int = (min_x + max_x) // 2
+        center_y: int = (min_y + max_y) // 2
+        return (center_x, center_y)
+    
+    def get_dimensions(self) -> tuple[int, int]:
+        x1, y1 = self.min_point
+        x2, y2 = self.max_point
+        width: int = x2 - x1
+        height: int = y2 - y1
+        return (width, height)
+
+def classify_size(dimensions: tuple[int, int]) -> str:
+    width, height = dimensions
+    area: int = width * height
+    
+    if area < 100:
+        return "small"
+    elif area < 1000:
+        return "medium"
+    else:
+        return "large"
+
+def main():
+    # Create bounds from tuple literals
+    bounds: Bounds = Bounds((10, 20), (50, 80))
+    
+    center: tuple[int, int] = bounds.get_center()
+    cx, cy = center
+    
+    dims: tuple[int, int] = bounds.get_dimensions()
+    size_class: str = classify_size(dims)
+    
+    print(cx)
+    print(cy)
+    print(size_class)
+
+# EXPECTED OUTPUT:
+# 30
+# 50
+# medium
+```
+
+## Error
+
+```
+AI explicitly reported mismatch
+```
+
+## Output Comparison
+
+### Expected
+```
+30
+50
+medium
+
+```
+
+### Actual
+```
+30
+50
+large
+```
+
+## Timing
+
+- Generation: 188.58s
+- Execution: 4.94s

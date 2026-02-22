@@ -1,0 +1,50 @@
+# Shape implementations with cross-module inheritance
+from shapes_base import Shape
+
+class Rectangle(Shape):
+    width: float
+    height: float
+    _color: str
+
+    def __init__(self, width: float, height: float, color: str):
+        super().__init__("Rectangle")
+        self.width = width
+        self.height = height
+        self._color = color
+
+    @override
+    def describe(self) -> str:
+        return f"Rectangle {self.width}x{self.height}"
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+    def get_color(self) -> str:
+        return self._color
+
+    def set_color(self, color: str) -> None:
+        self._color = color
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, radius: float):
+        super().__init__("Circle")
+        self.radius = radius
+
+    @override
+    def describe(self) -> str:
+        return f"Circle r={self.radius}"
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self.radius

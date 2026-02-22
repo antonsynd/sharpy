@@ -1,0 +1,19 @@
+# Test: Simple struct definition and usage
+# Structs are value types (copied on assignment)
+
+struct Point2D:
+    x: float
+    y: float
+    
+    def distance_from_origin(self) -> float:
+        return (self.x ** 2 + self.y ** 2) ** 0.5
+
+def main():
+    p: Point2D = Point2D(3.0, 4.0)
+    print(p.x)
+    print(p.y)
+    print(p.distance_from_origin())
+    # EXPECTED OUTPUT:
+    # 3.0
+    # 4.0
+    # 5.0

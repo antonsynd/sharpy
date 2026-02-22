@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0513]: 'BaseShapes.Shape.Area()' is abstract but it is contained in non-abstract type 'BaseShapes.Shape'
+  --> base_shapes.cs:13:32
+    |
+ 13 |     
+    |     ^
+    |
+
+error[CS0513]: 'BaseShapes.Shape.Perimeter()' is abstract but it is contained in non-abstract type 'BaseShapes.Shape'
+  --> base_shapes.cs:14:32
+    |
+ 14 |     print_shape_info(c, "Circle")
+    |                                ^
+    |
+

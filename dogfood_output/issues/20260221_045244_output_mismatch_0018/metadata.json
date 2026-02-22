@@ -1,0 +1,22 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-21T04:51:16.760609",
+  "generated_code": "# Main entry point - imports from utils and validators\n\nfrom utils import StringUtils, MathUtils, format_number\nfrom validators import Validator\n\ndef main():\n    # Test static methods from StringUtils\n    reversed_text: str = StringUtils.reverse(\"hello\")\n    print(reversed_text)\n    \n    capitalized: str = StringUtils.capitalize_words(\"hello world\")\n    print(capitalized)\n    \n    # Test MathUtils class\n    math_utils: MathUtils = MathUtils(5)\n    scaled: int = math_utils.scale(10)\n    print(format_number(scaled))\n    \n    # Test Validator from validators module\n    validator: Validator = Validator(0, 100)\n    value: int = 42\n    print(validator.is_valid(value))\n    print(validator.is_valid(150))\n\n# EXPECTED OUTPUT:\n# olleh\n# Hello World\n# Number: 50\n# True\n# False",
+  "expected_output": "olleh\nHello World\nNumber: 50\nTrue\nFalse\n",
+  "actual_output": "Hello World\nNumber: 50\nTrue\nFalse",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 42.335423946380615,
+  "compilation_duration": null,
+  "execution_duration": 4.945583343505859,
+  "source_files": {
+    "utils.spy": "# Utility module providing string and math helpers\n\nclass StringUtils:\n    @static\n    def reverse(s: str) -> str:\n        return s[::-1]\n    \n    @static\n    def capitalize_words(s: str) -> str:\n        words: list[str] = s.split(\" \")\n        result: list[str] = []\n        for word in words:\n            result.append(word.capitalize())\n        return \" \".join(result)\n\nclass MathUtils:\n    multiplier: int\n    \n    def __init__(self, multiplier: int):\n        self.multiplier = multiplier\n    \n    def scale(self, value: int) -> int:\n        return value * self.multiplier\n\ndef format_number(n: int) -> str:\n    return f\"Number: {{n}}\"",
+    "validators.spy": "# Validation module with reusable validators\n\nclass Validator:\n    min_value: int\n    max_value: int\n    \n    def __init__(self, min_val: int, max_val: int):\n        self.min_value = min_val\n        self.max_value = max_val\n    \n    def is_valid(self, value: int) -> bool:\n        return self.min_value <= value <= self.max_value",
+    "main.spy": "# Main entry point - imports from utils and validators\n\nfrom utils import StringUtils, MathUtils, format_number\nfrom validators import Validator\n\ndef main():\n    # Test static methods from StringUtils\n    reversed_text: str = StringUtils.reverse(\"hello\")\n    print(reversed_text)\n    \n    capitalized: str = StringUtils.capitalize_words(\"hello world\")\n    print(capitalized)\n    \n    # Test MathUtils class\n    math_utils: MathUtils = MathUtils(5)\n    scaled: int = math_utils.scale(10)\n    print(format_number(scaled))\n    \n    # Test Validator from validators module\n    validator: Validator = Validator(0, 100)\n    value: int = 42\n    print(validator.is_valid(value))\n    print(validator.is_valid(150))\n\n# EXPECTED OUTPUT:\n# olleh\n# Hello World\n# Number: 50\n# True\n# False"
+  }
+}

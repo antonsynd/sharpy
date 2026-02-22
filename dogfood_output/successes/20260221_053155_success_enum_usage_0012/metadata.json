@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-21T05:30:14.050687",
+  "generated_code": "# Test: Enum usage in class field and method dispatch\n# Demonstrates enum state machine with class encapsulation\n\nenum LogLevel:\n    DEBUG = 0\n    INFO = 1\n    WARNING = 2\n    ERROR = 3\n\nclass Logger:\n    level: LogLevel\n\n    def __init__(self, level: LogLevel):\n        self.level = level\n\n    def should_log(self, msg_level: LogLevel) -> bool:\n        return msg_level >= self.level\n\n    def log(self, message: str, msg_level: LogLevel) -> None:\n        if self.should_log(msg_level):\n            print(message)\n\ndef get_level_name(level: LogLevel) -> str:\n    if level == LogLevel.DEBUG:\n        return \"Debug\"\n    elif level == LogLevel.INFO:\n        return \"Info\"\n    elif level == LogLevel.WARNING:\n        return \"Warning\"\n    elif level == LogLevel.ERROR:\n        return \"Error\"\n    else:\n        return \"Unknown\"\n\ndef main():\n    logger: Logger = Logger(LogLevel.INFO)\n    print(get_level_name(LogLevel.INFO))\n    logger.log(\"Debug message\", LogLevel.DEBUG)\n    logger.log(\"Info message\", LogLevel.INFO)\n    logger.log(\"Error message\", LogLevel.ERROR)\n    logger.level = LogLevel.ERROR\n    logger.log(\"Another info\", LogLevel.INFO)\n\n# EXPECTED OUTPUT:\n# Info\n# Info message\n# Error message",
+  "expected_output": "Info\nInfo message\nError message\n",
+  "actual_output": "Info\nInfo message\nError message",
+  "feature_focus": "enum_usage",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 85.18489456176758,
+  "execution_duration": 4.973893642425537,
+  "source_files": null
+}
