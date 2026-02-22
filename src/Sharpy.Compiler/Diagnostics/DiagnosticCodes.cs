@@ -218,6 +218,7 @@ public static class DiagnosticCodes
         public const string EqWithoutObjectOverload = "SPY0454";
         public const string EqObjectWithoutHash = "SPY0455";
         public const string HashWithoutEqObject = "SPY0456";
+        public const string UnsupportedDunderReversed = "SPY0457";
 
         // Dunder invocation rules (SPY0460-SPY0469)
         public const string DunderDirectInvocation = "SPY0460";

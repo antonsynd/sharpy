@@ -138,10 +138,10 @@ internal partial class RoslynEmitter
                             members.Add(GenerateClassMethod(funcDef));
                         }
                     }
-                    // __reversed__ generates GetReverseEnumerator() method
+                    // __reversed__ generates GetReverseEnumerator() with IEnumerator<T> return type
                     else if (funcDef.Name == DunderNames.Reversed)
                     {
-                        members.Add(GenerateClassMethod(funcDef));
+                        members.Add(GenerateReverseEnumeratorMethod(funcDef));
                     }
                     // Check if this is a dunder method that needs operator synthesis
                     else if (DunderMapping.IsDunderMethod(funcDef.Name))
@@ -807,6 +807,68 @@ internal partial class RoslynEmitter
             .WithBody(Block()));
 
         return members;
+    }
+
+    /// <summary>
+    /// Generates GetReverseEnumerator() for __reversed__ with correct
+    /// IEnumerator&lt;T&gt; return type to satisfy IReverseEnumerable&lt;T&gt;.
+    /// </summary>
+    private MethodDeclarationSyntax GenerateReverseEnumeratorMethod(FunctionDef funcDef)
+    {
+        // Element type T from __reversed__ return type annotation
+        TypeSyntax elementType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+        // IEnumerator<T> — same construction as GenerateEnumerableBridgeMembers
+        var returnType = QualifiedName(
+            QualifiedName(
+                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                IdentifierName("Generic")),
+            GenericName("IEnumerator")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(elementType))));
+
+        // Set up method scope — same pattern as GenerateClassMethod
+        _declaredVariables.Clear();
+        _variableVersions.Clear();
+        _constVariables.Clear();
+        _sourceVariableNames.Clear();
+        _narrowedOptionals.Clear();
+        _isNullableNarrowing.Clear();
+        CollectSourceVariableNames(funcDef.Body);
+
+        // Track parameters (skip self) — same as GenerateClassMethod
+        foreach (var param in funcDef.Parameters)
+        {
+            if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                continue;
+            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            _declaredVariables.Add(paramName);
+            var baseName = NameMangler.ToCamelCase(param.Name);
+            _variableVersions[baseName] = 0;
+        }
+
+        // Generate body from user's __reversed__ implementation
+        var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
+
+        // Build parameter list — skip self
+        var parameters = funcDef.Parameters
+            .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+            .Select(GenerateParameter)
+            .ToArray();
+
+        var method = MethodDeclaration(returnType, "GetReverseEnumerator")
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithBody(body);
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(funcDef.DocString))
+        {
+            method = method.WithLeadingTrivia(GenerateXmlDocComment(funcDef.DocString));
+        }
+
+        return method;
     }
 
     /// <summary>

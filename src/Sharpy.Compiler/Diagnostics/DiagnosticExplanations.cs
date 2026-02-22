@@ -914,6 +914,16 @@ public static class DiagnosticExplanations
             "class Foo:\n    x: int\n    def __hash__(self) -> int:\n        return self.x",
             "Add an '__eq__(self, other: object) -> bool' method:\nclass Foo:\n    x: int\n    def __eq__(self, other: object) -> bool:\n        return False\n    def __hash__(self) -> int:\n        return self.x");
 
+        Add(dict, DiagnosticCodes.Validation.UnsupportedDunderReversed,
+            "__reversed__ not fully supported",
+            "Validation",
+            "The '__reversed__' dunder method is recognized and generates a 'GetReverseEnumerator()' method " +
+            "with the correct 'IEnumerator<T>' return type to satisfy 'IReverseEnumerable<T>'. However, full " +
+            "__reversed__ support requires generator/yield expressions, which are not yet implemented. " +
+            "The generated method body may not compile if it does not return an 'IEnumerator<T>'.",
+            "class Countdown:\n    start: int\n    def __reversed__(self) -> int:\n        return self.start  # body returns int, not IEnumerator<int>",
+            "Wait for generator/yield expression support, or manually return an IEnumerator<T> instance.");
+
         // ── Validation errors: Dunder invocation rules (SPY0460-SPY0469)
 
         Add(dict, DiagnosticCodes.Validation.DunderDirectInvocation,

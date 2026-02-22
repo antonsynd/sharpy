@@ -105,6 +105,18 @@ internal class SignatureValidator : SemanticValidatorBase
     {
         var methodName = funcDef.Name;
 
+        // __reversed__ is recognized but not fully supported until generator/yield expressions
+        if (methodName == DunderNames.Reversed)
+        {
+            AddWarning(_context,
+                $"'{owningType.Name}.__reversed__' is recognized but not fully supported. " +
+                "Full __reversed__ support requires generator/yield expressions (not yet implemented). " +
+                "The generated GetReverseEnumerator() must return IEnumerator<T>.",
+                funcDef.LineStart, funcDef.ColumnStart,
+                code: DiagnosticCodes.Validation.UnsupportedDunderReversed,
+                span: funcDef.Span);
+        }
+
         // Check operator dunders
         if (OperatorRegistry.IsOperatorDunder(methodName))
         {

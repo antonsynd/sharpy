@@ -307,6 +307,7 @@ public abstract class IntegrationTestBase
                 {
                     Success = false,
                     CompilationErrors = errors,
+                    CompilationWarnings = compilationWarnings,
                     GeneratedCSharp = generatedCSharp
                 };
             }
