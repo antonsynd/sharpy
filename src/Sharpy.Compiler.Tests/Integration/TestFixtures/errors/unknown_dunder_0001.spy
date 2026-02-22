@@ -1,0 +1,6 @@
+class Foo:
+    def __custom__(self) -> str:
+        return "hello"
+
+def main():
+    pass
