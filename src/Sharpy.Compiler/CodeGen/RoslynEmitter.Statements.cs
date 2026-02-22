@@ -1840,7 +1840,7 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Star element: var rest = __t.__GetItem__(new Sharpy.Slice(start, end))
+        // Star element: var rest = __t.GetSlice(new Sharpy.Slice(start, end))
         if (elements[starIndex] is StarExpression starExpr && starExpr.Operand is Identifier starId)
         {
             var starVarName = GetMangledVariableName(starId.Name, isNewDeclaration: true);
@@ -1860,7 +1860,7 @@ internal partial class RoslynEmitter
                         LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numAfter))))
                 : LiteralExpression(SyntaxKind.NullLiteralExpression);
 
-            // __t.__GetItem__(new global::Sharpy.Slice(start, end))
+            // __t.GetSlice(new global::Sharpy.Slice(start, end))
             var newSlice = ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "Slice"))
                 .WithArgumentList(ArgumentList(SeparatedList(new[]
                 {
@@ -1871,7 +1871,7 @@ internal partial class RoslynEmitter
             var sliceCall = InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                     IdentifierName(sourceVar),
-                    IdentifierName("__GetItem__")))
+                    IdentifierName("GetSlice")))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(newSlice))));
 
             statements.Add(LocalDeclarationStatement(

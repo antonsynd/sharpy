@@ -688,7 +688,7 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates iterator protocol members for a class defining __next__.
-    /// Produces: private _current field, private __NextImpl__() method,
+    /// Produces: private _current field, private NextImpl() method,
     /// public MoveNext(), Current property, Reset(), Dispose(),
     /// and explicit IEnumerator.Current.
     /// </summary>
@@ -708,7 +708,7 @@ internal partial class RoslynEmitter
                     VariableDeclarator(Identifier("_current")))))
             .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
 
-        // 2. Private __NextImpl__() method containing the user's __next__ body
+        // 2. Private NextImpl() method containing the user's __next__ body
         {
             _declaredVariables.Clear();
             _variableVersions.Clear();
@@ -731,23 +731,23 @@ internal partial class RoslynEmitter
 
             var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
 
-            var nextImpl = MethodDeclaration(elementType, "__NextImpl__")
+            var nextImpl = MethodDeclaration(elementType, "NextImpl")
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)))
                 .WithBody(body);
 
             members.Add(nextImpl);
         }
 
-        // 3. public bool MoveNext() — wraps __NextImpl__ in try/catch(StopIteration)
+        // 3. public bool MoveNext() — wraps NextImpl in try/catch(StopIteration)
         {
-            // try { _current = __NextImpl__(); return true; }
+            // try { _current = NextImpl(); return true; }
             var tryStatements = new StatementSyntax[]
             {
                 ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         IdentifierName("_current"),
-                        InvocationExpression(IdentifierName("__NextImpl__")))),
+                        InvocationExpression(IdentifierName("NextImpl")))),
                 ReturnStatement(LiteralExpression(SyntaxKind.TrueLiteralExpression))
             };
 

@@ -95,7 +95,7 @@ public static class ProtocolRegistry
             DunderName: DunderNames.GetItem,
             Kind: ProtocolKind.Container,
             SharpyCoreInterface: null,
-            InterfaceMethodName: "__GetItem__",
+            InterfaceMethodName: null,
             ClrMethodName: "get_Item",  // Maps to indexer property
             ExpectedParamCount: 2,  // self, key/index
             ExpectedReturnType: null  // Returns element type (generic)
@@ -105,7 +105,7 @@ public static class ProtocolRegistry
             DunderName: DunderNames.SetItem,
             Kind: ProtocolKind.Container,
             SharpyCoreInterface: null,
-            InterfaceMethodName: "__SetItem__",
+            InterfaceMethodName: null,
             ClrMethodName: "set_Item",  // Maps to indexer property setter
             ExpectedParamCount: 3,  // self, key/index, value
             ExpectedReturnType: "None"
@@ -116,7 +116,7 @@ public static class ProtocolRegistry
             DunderName: DunderNames.Iter,
             Kind: ProtocolKind.Iterator,
             SharpyCoreInterface: null,
-            InterfaceMethodName: "__Iter__",
+            InterfaceMethodName: null,
             ClrMethodName: "GetEnumerator",
             ExpectedParamCount: 1,  // Just self
             ExpectedReturnType: null  // Returns Iterator<T> (generic)
@@ -126,7 +126,7 @@ public static class ProtocolRegistry
             DunderName: DunderNames.Next,
             Kind: ProtocolKind.Iterator,
             SharpyCoreInterface: null,  // Part of Iterator<T> class, not an interface
-            InterfaceMethodName: "__Next__",
+            InterfaceMethodName: "Next",
             ClrMethodName: null,  // No direct .NET equivalent (MoveNext returns bool, __next__ returns element or raises)
             ExpectedParamCount: 1,  // Just self
             ExpectedReturnType: null  // Returns element type (generic)

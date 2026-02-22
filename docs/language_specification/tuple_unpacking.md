@@ -96,7 +96,7 @@ print(last)   # 5
   ```csharp
   var __t0 = items;
   var first = __t0[0];
-  var mid = __t0.__GetItem__(new global::Sharpy.Slice((int?)1, (int?)-1));
+  var mid = __t0.GetSlice(new global::Sharpy.Slice((int?)1, (int?)-1));
   var last = __t0[-1];
   ```
 
