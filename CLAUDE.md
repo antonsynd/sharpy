@@ -258,7 +258,8 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 Protocol interfaces enable builtin function dispatch (e.g., `len()`, `bool()`) via compile-time interfaces:
 
 - `ISized` — `int Count { get; }` — implemented by List, Set, Dict; synthesized when `__len__` is present
-- `IBoolConvertible` — `bool __Bool__()` — synthesized when `__bool__` is present
+- `IBoolConvertible` — `bool IsTrue { get; }` — synthesized when `__bool__` is present; enables `bool()` dispatch
+- `IReverseEnumerable<T>` — `IEnumerator<T> GetReverseEnumerator()` — synthesized when `__reversed__` is present
 
 The emitter implicitly adds these interfaces to a class's base list when the corresponding dunder method is detected (emits SPY1001 info diagnostic).
 
