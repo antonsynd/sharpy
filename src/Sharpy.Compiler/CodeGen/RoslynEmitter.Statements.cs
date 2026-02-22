@@ -1728,8 +1728,13 @@ internal partial class RoslynEmitter
                 }
 
             default:
-                throw new InvalidOperationException(
-                    $"Unsupported match pattern type: {pattern.GetType().Name} at {pattern.LineStart}:{pattern.ColumnStart}");
+                _context.AddError(
+                    $"Unsupported match pattern type '{pattern.GetType().Name}'. This pattern is not yet implemented in code generation.",
+                    DiagnosticCodes.CodeGen.UnsupportedFeature,
+                    pattern.LineStart,
+                    pattern.ColumnStart);
+                // Return a discard pattern as fallback so compilation can continue
+                return DiscardPattern();
         }
     }
 

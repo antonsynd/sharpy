@@ -180,6 +180,7 @@ public static class DiagnosticCodes
         public const string DuplicateMethodSignature = "SPY0355";
         public const string MultipleStarExpressions = "SPY0356";
         public const string SpreadIntoNonVariadic = "SPY0357";
+        public const string UnsupportedFeature = "SPY0358";
     }
 
     /// <summary>

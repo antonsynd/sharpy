@@ -26,7 +26,7 @@ namespace Sharpy
 
         public static int Len(int start, int end, int step)
         {
-            // Efficient ceil division (from ChatGPT)
+            // Ceiling division: ⌈(end - start) / step⌉
             var length = end - start;
             return (length + step - 1) / step;
         }

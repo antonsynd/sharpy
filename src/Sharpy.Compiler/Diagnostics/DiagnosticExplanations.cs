@@ -750,6 +750,11 @@ public static class DiagnosticExplanations
             "def foo(a: int, b: int): ...\nitems: list[int] = [1, 2]\nfoo(*items)",
             "Use a function with variadic parameters (*args) or pass arguments individually.");
 
+        Add(dict, DiagnosticCodes.Semantic.UnsupportedFeature, "Unsupported feature", "Semantic",
+            "A language feature was used that is recognized by the parser but not yet supported in semantic analysis or code generation.",
+            "match x:\n    case [1, 2, 3]:  # list patterns not yet supported\n        print(x)",
+            "Use a supported pattern type such as literal patterns, binding patterns, wildcard patterns, tuple patterns, or member access patterns.");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",

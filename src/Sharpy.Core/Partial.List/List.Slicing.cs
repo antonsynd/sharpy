@@ -121,8 +121,7 @@ namespace Sharpy
 
             if (slice.step < 0)
             {
-                // Negative slice is no-op
-                return;
+                throw new NotImplementedError("negative-step slice assignment is not yet supported");
             }
 
             (int start, int end) = Slice.Normalize(slice.start, slice.end, _list.Count);
@@ -247,8 +246,7 @@ namespace Sharpy
 
             if (slice.step < 0)
             {
-                // Negative slice is no-op
-                return;
+                throw new NotImplementedError("negative-step slice deletion is not yet supported");
             }
 
             (int start, int end) = Slice.Normalize(slice.start, slice.end, _list.Count);

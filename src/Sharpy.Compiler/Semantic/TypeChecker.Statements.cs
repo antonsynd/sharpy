@@ -824,7 +824,10 @@ internal partial class TypeChecker
                 }
 
             default:
-                _logger.LogWarning($"Unhandled pattern type: {pattern.GetType().Name}", 0, 0);
+                AddError(
+                    $"Unsupported pattern type '{pattern.GetType().Name}'. This pattern is not yet implemented.",
+                    pattern.LineStart, pattern.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UnsupportedFeature);
                 break;
         }
     }

@@ -1,0 +1,9 @@
+def classify(x: int) -> str:
+    match x:
+        case n:
+            return str(n)
+
+def main():
+    print(classify(42))
+    print(classify(-1))
+    print(classify(0))
