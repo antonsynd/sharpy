@@ -62,9 +62,9 @@ public class ProtocolRegistryTests
     [InlineData("__init__")]      // Maps to constructor, no interface
     [InlineData("__next__")]      // Part of Iterator<T> class, not an interface
     [InlineData("__contains__")]  // IContainer removed; method is Contains()
-    [InlineData("__getitem__")]   // ISequence removed; method is __GetItem__()
-    [InlineData("__setitem__")]   // IMutableSequence removed; method is __SetItem__()
-    [InlineData("__iter__")]      // IIterable removed; method is __Iter__()
+    [InlineData("__getitem__")]   // ISequence removed; method is GetSlice()/indexer
+    [InlineData("__setitem__")]   // IMutableSequence removed; method is SetSlice()/indexer
+    [InlineData("__iter__")]      // IIterable removed; uses GetEnumerator()
     [InlineData("__str__")]       // IStrConvertible removed; maps to ToString()
     [InlineData("__hash__")]      // IHashable removed; maps to GetHashCode()
     public void GetProtocol_ReturnsNullInterfaceForSpecialCases(string dunderName)
@@ -107,10 +107,7 @@ public class ProtocolRegistryTests
     [Theory]
     [InlineData("__len__", "Count")]
     [InlineData("__contains__", "Contains")]
-    [InlineData("__getitem__", "__GetItem__")]
-    [InlineData("__setitem__", "__SetItem__")]
-    [InlineData("__iter__", "__Iter__")]
-    [InlineData("__next__", "__Next__")]
+    [InlineData("__next__", "Next")]
     [InlineData("__str__", "ToString")]
     [InlineData("__hash__", "GetHashCode")]
     [InlineData("__bool__", "IsTrue")]
@@ -119,6 +116,17 @@ public class ProtocolRegistryTests
         var protocol = ProtocolRegistry.GetProtocol(dunderName);
         protocol.Should().NotBeNull();
         protocol!.InterfaceMethodName.Should().Be(expectedMethodName);
+    }
+
+    [Theory]
+    [InlineData("__getitem__")]
+    [InlineData("__setitem__")]
+    [InlineData("__iter__")]
+    public void GetProtocol_ReturnsNullInterfaceMethodNameForRemovedDunders(string dunderName)
+    {
+        var protocol = ProtocolRegistry.GetProtocol(dunderName);
+        protocol.Should().NotBeNull();
+        protocol!.InterfaceMethodName.Should().BeNull();
     }
 
     // ==================== Test Return Types ====================

@@ -90,7 +90,7 @@ public partial class List_Tests
         List<int> other = [2, 4, 6];
 
         // When/then
-        FluentActions.Invoking(() => l.__SetItem__(new Slice(0, 0, 0), other)).Should().Throw<ValueError>();
+        FluentActions.Invoking(() => l.SetSlice(new Slice(0, 0, 0), other)).Should().Throw<ValueError>();
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 1, 7];
         List<int> other = [2, 4, 6];
 
-        var act = () => l.__SetItem__(new Slice(0, 1, -1), other);
+        var act = () => l.SetSlice(new Slice(0, 1, -1), other);
 
         act.Should().Throw<NotImplementedError>();
     }
@@ -112,7 +112,7 @@ public partial class List_Tests
         List<int> other = [2, 4, 6];
 
         // When
-        l.__SetItem__(new Slice(1, 1), other);
+        l.SetSlice(new Slice(1, 1), other);
 
         // Then
         var actual = l.ToList();
@@ -129,7 +129,7 @@ public partial class List_Tests
         List<int> other = [2, 4];
 
         // When
-        l.__SetItem__(new Slice(1, 1), other);
+        l.SetSlice(new Slice(1, 1), other);
 
         // Then
         var actual = l.ToList();
@@ -146,7 +146,7 @@ public partial class List_Tests
         List<int> other = [2, 4, 6];
 
         // When
-        l.__SetItem__(new Slice(1, 3), other);
+        l.SetSlice(new Slice(1, 3), other);
 
         // Then
         var actual = l.ToList();
@@ -163,7 +163,7 @@ public partial class List_Tests
         List<int> other = [2];
 
         // When
-        l.__SetItem__(new Slice(1, 3), other);
+        l.SetSlice(new Slice(1, 3), other);
 
         // Then
         var actual = l.ToList();
@@ -180,7 +180,7 @@ public partial class List_Tests
         List<int> other = [2, 4];
 
         // When
-        l.__SetItem__(new Slice(1, 3), other);
+        l.SetSlice(new Slice(1, 3), other);
 
         // Then
         var actual = l.ToList();
@@ -197,7 +197,7 @@ public partial class List_Tests
         List<int> other = [2, 4, 6];
 
         // When/then
-        FluentActions.Invoking(() => l.__SetItem__(new Slice(1, 3, 4), other)).Should().Throw<ValueError>();
+        FluentActions.Invoking(() => l.SetSlice(new Slice(1, 3, 4), other)).Should().Throw<ValueError>();
     }
 
     [Fact]
@@ -208,7 +208,7 @@ public partial class List_Tests
         List<int> other = [2, 4];
 
         // When
-        l.__SetItem__(new Slice(1, 4, 2), other);
+        l.SetSlice(new Slice(1, 4, 2), other);
 
         // Then
         var actual = l.ToList();
@@ -225,7 +225,7 @@ public partial class List_Tests
         List<int> other = [2, 4, 6];
 
         // When/then
-        FluentActions.Invoking(() => l.__SetItem__(new Slice(1, 1, 4), other)).Should().Throw<ValueError>();
+        FluentActions.Invoking(() => l.SetSlice(new Slice(1, 1, 4), other)).Should().Throw<ValueError>();
     }
 
     [Fact]
@@ -236,7 +236,7 @@ public partial class List_Tests
         List<int> other = [];
 
         // When
-        l.__SetItem__(new Slice(1, 1, 2), other);
+        l.SetSlice(new Slice(1, 1, 2), other);
 
         // Then
         var actual = l.ToList();

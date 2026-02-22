@@ -14,13 +14,13 @@ public class Itertools_Tests
             new IEnumerable<int>[] { new[] { 1, 2 }, new[] { 3, 4 }, new[] { 5 } }
         );
 
-        chain.__Next__().Should().Be(1);
-        chain.__Next__().Should().Be(2);
-        chain.__Next__().Should().Be(3);
-        chain.__Next__().Should().Be(4);
-        chain.__Next__().Should().Be(5);
+        chain.Next().Should().Be(1);
+        chain.Next().Should().Be(2);
+        chain.Next().Should().Be(3);
+        chain.Next().Should().Be(4);
+        chain.Next().Should().Be(5);
 
-        FluentActions.Invoking(() => chain.__Next__())
+        FluentActions.Invoking(() => chain.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -31,7 +31,7 @@ public class Itertools_Tests
             new IEnumerable<int>[] { Array.Empty<int>(), Array.Empty<int>() }
         );
 
-        FluentActions.Invoking(() => chain.__Next__())
+        FluentActions.Invoking(() => chain.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -42,11 +42,11 @@ public class Itertools_Tests
             new IEnumerable<int>[] { new[] { 10, 20, 30 } }
         );
 
-        chain.__Next__().Should().Be(10);
-        chain.__Next__().Should().Be(20);
-        chain.__Next__().Should().Be(30);
+        chain.Next().Should().Be(10);
+        chain.Next().Should().Be(20);
+        chain.Next().Should().Be(30);
 
-        FluentActions.Invoking(() => chain.__Next__())
+        FluentActions.Invoking(() => chain.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -57,10 +57,10 @@ public class Itertools_Tests
             new IEnumerable<int>[] { new[] { 1 }, Array.Empty<int>(), new[] { 2 } }
         );
 
-        chain.__Next__().Should().Be(1);
-        chain.__Next__().Should().Be(2);
+        chain.Next().Should().Be(1);
+        chain.Next().Should().Be(2);
 
-        FluentActions.Invoking(() => chain.__Next__())
+        FluentActions.Invoking(() => chain.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -72,11 +72,11 @@ public class Itertools_Tests
         var source = new[] { 10, 20, 30, 40, 50 };
         var islice = new Sharpy.IsliceIterator<int>(source, 3);
 
-        islice.__Next__().Should().Be(10);
-        islice.__Next__().Should().Be(20);
-        islice.__Next__().Should().Be(30);
+        islice.Next().Should().Be(10);
+        islice.Next().Should().Be(20);
+        islice.Next().Should().Be(30);
 
-        FluentActions.Invoking(() => islice.__Next__())
+        FluentActions.Invoking(() => islice.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -86,11 +86,11 @@ public class Itertools_Tests
         var source = new[] { 10, 20, 30, 40, 50 };
         var islice = new Sharpy.IsliceIterator<int>(source, 1, 4);
 
-        islice.__Next__().Should().Be(20);
-        islice.__Next__().Should().Be(30);
-        islice.__Next__().Should().Be(40);
+        islice.Next().Should().Be(20);
+        islice.Next().Should().Be(30);
+        islice.Next().Should().Be(40);
 
-        FluentActions.Invoking(() => islice.__Next__())
+        FluentActions.Invoking(() => islice.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -100,11 +100,11 @@ public class Itertools_Tests
         var source = new[] { 10, 20, 30, 40, 50, 60 };
         var islice = new Sharpy.IsliceIterator<int>(source, 0, 6, 2);
 
-        islice.__Next__().Should().Be(10);
-        islice.__Next__().Should().Be(30);
-        islice.__Next__().Should().Be(50);
+        islice.Next().Should().Be(10);
+        islice.Next().Should().Be(30);
+        islice.Next().Should().Be(50);
 
-        FluentActions.Invoking(() => islice.__Next__())
+        FluentActions.Invoking(() => islice.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -127,7 +127,7 @@ public class Itertools_Tests
     {
         var islice = new Sharpy.IsliceIterator<int>(new[] { 1, 2 }, 10, 20);
 
-        FluentActions.Invoking(() => islice.__Next__())
+        FluentActions.Invoking(() => islice.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -138,11 +138,11 @@ public class Itertools_Tests
     {
         var combs = new Sharpy.CombinationsIterator<int>(new[] { 1, 2, 3 }, 2);
 
-        combs.__Next__().Should().Equal(1, 2);
-        combs.__Next__().Should().Equal(1, 3);
-        combs.__Next__().Should().Equal(2, 3);
+        combs.Next().Should().Equal(1, 2);
+        combs.Next().Should().Equal(1, 3);
+        combs.Next().Should().Equal(2, 3);
 
-        FluentActions.Invoking(() => combs.__Next__())
+        FluentActions.Invoking(() => combs.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -151,7 +151,7 @@ public class Itertools_Tests
     {
         var combs = new Sharpy.CombinationsIterator<int>(new[] { 1, 2 }, 5);
 
-        FluentActions.Invoking(() => combs.__Next__())
+        FluentActions.Invoking(() => combs.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -160,9 +160,9 @@ public class Itertools_Tests
     {
         var combs = new Sharpy.CombinationsIterator<int>(new[] { 1, 2, 3 }, 0);
 
-        combs.__Next__().Should().BeEmpty();
+        combs.Next().Should().BeEmpty();
 
-        FluentActions.Invoking(() => combs.__Next__())
+        FluentActions.Invoking(() => combs.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -178,9 +178,9 @@ public class Itertools_Tests
     {
         var combs = new Sharpy.CombinationsIterator<int>(new[] { 1, 2, 3 }, 3);
 
-        combs.__Next__().Should().Equal(1, 2, 3);
+        combs.Next().Should().Equal(1, 2, 3);
 
-        FluentActions.Invoking(() => combs.__Next__())
+        FluentActions.Invoking(() => combs.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -196,7 +196,7 @@ public class Itertools_Tests
         {
             while (true)
             {
-                results.Add(perms.__Next__());
+                results.Add(perms.Next());
             }
         }
         catch (Sharpy.StopIteration) { }
@@ -217,7 +217,7 @@ public class Itertools_Tests
         {
             while (true)
             {
-                results.Add(perms.__Next__());
+                results.Add(perms.Next());
             }
         }
         catch (Sharpy.StopIteration) { }
@@ -231,7 +231,7 @@ public class Itertools_Tests
     {
         var perms = new Sharpy.PermutationsIterator<int>(new[] { 1, 2 }, 5);
 
-        FluentActions.Invoking(() => perms.__Next__())
+        FluentActions.Invoking(() => perms.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 
@@ -247,9 +247,9 @@ public class Itertools_Tests
     {
         var perms = new Sharpy.PermutationsIterator<int>(new[] { 42 });
 
-        perms.__Next__().Should().Equal(42);
+        perms.Next().Should().Equal(42);
 
-        FluentActions.Invoking(() => perms.__Next__())
+        FluentActions.Invoking(() => perms.Next())
             .Should().Throw<Sharpy.StopIteration>();
     }
 }

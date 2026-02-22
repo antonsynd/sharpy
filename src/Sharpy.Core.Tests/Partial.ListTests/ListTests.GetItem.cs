@@ -81,7 +81,7 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 1, 7];
 
         // When/then
-        FluentActions.Invoking(() => l.__GetItem__(new Slice(0, 0, 0))).Should().Throw<ValueError>();
+        FluentActions.Invoking(() => l.GetSlice(new Slice(0, 0, 0))).Should().Throw<ValueError>();
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 1, 7];
 
         // When
-        var actual = l.__GetItem__(new Slice(0, 1, -1));
+        var actual = l.GetSlice(new Slice(0, 1, -1));
 
         // Then
         Len(actual).Should().Be(0);
@@ -104,7 +104,7 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 1, 7];
 
         // When
-        var actual = l.__GetItem__(new Slice(1, 1));
+        var actual = l.GetSlice(new Slice(1, 1));
 
         // Then
         Len(actual).Should().Be(0);
@@ -117,7 +117,7 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 7];
 
         // When
-        var res = l.__GetItem__(new Slice(1, 3));
+        var res = l.GetSlice(new Slice(1, 3));
 
         // Then
         var actual = res.ToList();
@@ -133,7 +133,7 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 7];
 
         // When
-        var res = l.__GetItem__(new Slice(1, 3, 4));
+        var res = l.GetSlice(new Slice(1, 3, 4));
 
         // Then
         var actual = res.ToList();
@@ -149,7 +149,7 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 7, 9];
 
         // When
-        var res = l.__GetItem__(new Slice(1, 5, 2));
+        var res = l.GetSlice(new Slice(1, 5, 2));
 
         // Then
         var actual = res.ToList();
@@ -165,7 +165,7 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 7, 9];
 
         // When
-        var res = l.__GetItem__(new Slice(-9, 4, 2));
+        var res = l.GetSlice(new Slice(-9, 4, 2));
 
         // Then
         var actual = res.ToList();
@@ -181,7 +181,7 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 7, 9];
 
         // When
-        var res = l.__GetItem__(new Slice(0, 9, 2));
+        var res = l.GetSlice(new Slice(0, 9, 2));
 
         // Then
         var actual = res.ToList();

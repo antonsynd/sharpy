@@ -15,7 +15,7 @@ public class Enumerate_Tests
         var enumerated = Enumerate(list);
 
         // Then
-        FluentActions.Invoking(() => enumerated.__Next__())
+        FluentActions.Invoking(() => enumerated.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -29,19 +29,19 @@ public class Enumerate_Tests
         var enumerated = Enumerate(list);
 
         // Then
-        var (index0, value0) = enumerated.__Next__();
+        var (index0, value0) = enumerated.Next();
         index0.Should().Be(0);
         value0.Should().Be("a");
 
-        var (index1, value1) = enumerated.__Next__();
+        var (index1, value1) = enumerated.Next();
         index1.Should().Be(1);
         value1.Should().Be("b");
 
-        var (index2, value2) = enumerated.__Next__();
+        var (index2, value2) = enumerated.Next();
         index2.Should().Be(2);
         value2.Should().Be("c");
 
-        FluentActions.Invoking(() => enumerated.__Next__())
+        FluentActions.Invoking(() => enumerated.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -55,11 +55,11 @@ public class Enumerate_Tests
         var enumerated = Enumerate(list, start: 10);
 
         // Then
-        var (index0, value0) = enumerated.__Next__();
+        var (index0, value0) = enumerated.Next();
         index0.Should().Be(10);
         value0.Should().Be("a");
 
-        var (index1, value1) = enumerated.__Next__();
+        var (index1, value1) = enumerated.Next();
         index1.Should().Be(11);
         value1.Should().Be("b");
     }

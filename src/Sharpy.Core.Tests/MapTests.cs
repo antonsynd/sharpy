@@ -15,7 +15,7 @@ public class Map_Tests
         var mapped = Map(x => x * 2, list);
 
         // Then
-        FluentActions.Invoking(() => mapped.__Next__())
+        FluentActions.Invoking(() => mapped.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -29,12 +29,12 @@ public class Map_Tests
         var mapped = Map(x => x * 2, list);
 
         // Then
-        mapped.__Next__().Should().Be(2);
-        mapped.__Next__().Should().Be(4);
-        mapped.__Next__().Should().Be(6);
-        mapped.__Next__().Should().Be(8);
+        mapped.Next().Should().Be(2);
+        mapped.Next().Should().Be(4);
+        mapped.Next().Should().Be(6);
+        mapped.Next().Should().Be(8);
 
-        FluentActions.Invoking(() => mapped.__Next__())
+        FluentActions.Invoking(() => mapped.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -48,11 +48,11 @@ public class Map_Tests
         var mapped = Map(x => $"Number {x}", list);
 
         // Then
-        mapped.__Next__().Should().Be("Number 1");
-        mapped.__Next__().Should().Be("Number 2");
-        mapped.__Next__().Should().Be("Number 3");
+        mapped.Next().Should().Be("Number 1");
+        mapped.Next().Should().Be("Number 2");
+        mapped.Next().Should().Be("Number 3");
 
-        FluentActions.Invoking(() => mapped.__Next__())
+        FluentActions.Invoking(() => mapped.Next())
             .Should().Throw<StopIteration>();
     }
 

@@ -12,13 +12,13 @@ public class Range_Tests
         var range = Range(5);
 
         // Then
-        range.__Next__().Should().Be(0);
-        range.__Next__().Should().Be(1);
-        range.__Next__().Should().Be(2);
-        range.__Next__().Should().Be(3);
-        range.__Next__().Should().Be(4);
+        range.Next().Should().Be(0);
+        range.Next().Should().Be(1);
+        range.Next().Should().Be(2);
+        range.Next().Should().Be(3);
+        range.Next().Should().Be(4);
 
-        FluentActions.Invoking(() => range.__Next__())
+        FluentActions.Invoking(() => range.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -29,13 +29,13 @@ public class Range_Tests
         var range = Range(2, 7);
 
         // Then
-        range.__Next__().Should().Be(2);
-        range.__Next__().Should().Be(3);
-        range.__Next__().Should().Be(4);
-        range.__Next__().Should().Be(5);
-        range.__Next__().Should().Be(6);
+        range.Next().Should().Be(2);
+        range.Next().Should().Be(3);
+        range.Next().Should().Be(4);
+        range.Next().Should().Be(5);
+        range.Next().Should().Be(6);
 
-        FluentActions.Invoking(() => range.__Next__())
+        FluentActions.Invoking(() => range.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -46,13 +46,13 @@ public class Range_Tests
         var range = Range(0, 10, 2);
 
         // Then
-        range.__Next__().Should().Be(0);
-        range.__Next__().Should().Be(2);
-        range.__Next__().Should().Be(4);
-        range.__Next__().Should().Be(6);
-        range.__Next__().Should().Be(8);
+        range.Next().Should().Be(0);
+        range.Next().Should().Be(2);
+        range.Next().Should().Be(4);
+        range.Next().Should().Be(6);
+        range.Next().Should().Be(8);
 
-        FluentActions.Invoking(() => range.__Next__())
+        FluentActions.Invoking(() => range.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -63,13 +63,13 @@ public class Range_Tests
         var range = Range(10, 0, -2);
 
         // Then
-        range.__Next__().Should().Be(10);
-        range.__Next__().Should().Be(8);
-        range.__Next__().Should().Be(6);
-        range.__Next__().Should().Be(4);
-        range.__Next__().Should().Be(2);
+        range.Next().Should().Be(10);
+        range.Next().Should().Be(8);
+        range.Next().Should().Be(6);
+        range.Next().Should().Be(4);
+        range.Next().Should().Be(2);
 
-        FluentActions.Invoking(() => range.__Next__())
+        FluentActions.Invoking(() => range.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -80,7 +80,7 @@ public class Range_Tests
         var range = Range(5, 5);
 
         // Then
-        FluentActions.Invoking(() => range.__Next__())
+        FluentActions.Invoking(() => range.Next())
             .Should().Throw<StopIteration>();
     }
 

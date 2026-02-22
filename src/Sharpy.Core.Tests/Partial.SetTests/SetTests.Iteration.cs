@@ -45,19 +45,19 @@ public partial class Set_Tests
     }
 
     [Fact]
-    public void Set_Iterator_Iteration_Dunder()
+    public void Set_Iterator_Iteration_GetEnumerator()
     {
         // If
         Set<int> s = [1, 3, 5, 7];
         var expected = s.ToHashSet();
-        var it = s.__Iter__();
 
         // When
         HashSet<int> actual = [];
+        var enumerator = s.GetEnumerator();
 
-        foreach (var elem in it)
+        while (enumerator.MoveNext())
         {
-            actual.Add(elem);
+            actual.Add(enumerator.Current);
         }
 
         // Then

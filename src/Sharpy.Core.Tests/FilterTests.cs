@@ -15,7 +15,7 @@ public class Filter_Tests
         var filtered = Filter(x => x > 0, list);
 
         // Then
-        FluentActions.Invoking(() => filtered.__Next__())
+        FluentActions.Invoking(() => filtered.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -29,11 +29,11 @@ public class Filter_Tests
         var filtered = Filter(x => x % 2 == 0, list);
 
         // Then
-        filtered.__Next__().Should().Be(2);
-        filtered.__Next__().Should().Be(4);
-        filtered.__Next__().Should().Be(6);
+        filtered.Next().Should().Be(2);
+        filtered.Next().Should().Be(4);
+        filtered.Next().Should().Be(6);
 
-        FluentActions.Invoking(() => filtered.__Next__())
+        FluentActions.Invoking(() => filtered.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -47,7 +47,7 @@ public class Filter_Tests
         var filtered = Filter(x => x % 2 == 0, list);
 
         // Then
-        FluentActions.Invoking(() => filtered.__Next__())
+        FluentActions.Invoking(() => filtered.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -61,11 +61,11 @@ public class Filter_Tests
         var filtered = Filter(x => x % 2 == 0, list);
 
         // Then
-        filtered.__Next__().Should().Be(2);
-        filtered.__Next__().Should().Be(4);
-        filtered.__Next__().Should().Be(6);
+        filtered.Next().Should().Be(2);
+        filtered.Next().Should().Be(4);
+        filtered.Next().Should().Be(6);
 
-        FluentActions.Invoking(() => filtered.__Next__())
+        FluentActions.Invoking(() => filtered.Next())
             .Should().Throw<StopIteration>();
     }
 

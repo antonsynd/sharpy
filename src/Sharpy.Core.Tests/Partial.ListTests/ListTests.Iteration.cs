@@ -45,19 +45,19 @@ public partial class List_Tests
     }
 
     [Fact]
-    public void List_Iterator_Iteration_Dunder()
+    public void List_Iterator_Iteration_GetEnumerator()
     {
         // If
         List<int> l = [1, 3, 5, 7];
         var expected = l.ToList();
-        var it = l.__Iter__();
 
         // When
         DotNetList<int> actual = [];
+        var enumerator = l.GetEnumerator();
 
-        foreach (var elem in it)
+        while (enumerator.MoveNext())
         {
-            actual.Add(elem);
+            actual.Add(enumerator.Current);
         }
 
         // Then

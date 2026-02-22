@@ -16,7 +16,7 @@ public class Zip_Tests
         var zipped = Zip(list1, list2);
 
         // Then
-        FluentActions.Invoking(() => zipped.__Next__())
+        FluentActions.Invoking(() => zipped.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -31,19 +31,19 @@ public class Zip_Tests
         var zipped = Zip(list1, list2);
 
         // Then
-        var (val1_0, val2_0) = zipped.__Next__();
+        var (val1_0, val2_0) = zipped.Next();
         val1_0.Should().Be(1);
         val2_0.Should().Be("a");
 
-        var (val1_1, val2_1) = zipped.__Next__();
+        var (val1_1, val2_1) = zipped.Next();
         val1_1.Should().Be(2);
         val2_1.Should().Be("b");
 
-        var (val1_2, val2_2) = zipped.__Next__();
+        var (val1_2, val2_2) = zipped.Next();
         val1_2.Should().Be(3);
         val2_2.Should().Be("c");
 
-        FluentActions.Invoking(() => zipped.__Next__())
+        FluentActions.Invoking(() => zipped.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -58,15 +58,15 @@ public class Zip_Tests
         var zipped = Zip(list1, list2);
 
         // Then
-        var (val1_0, val2_0) = zipped.__Next__();
+        var (val1_0, val2_0) = zipped.Next();
         val1_0.Should().Be(1);
         val2_0.Should().Be("a");
 
-        var (val1_1, val2_1) = zipped.__Next__();
+        var (val1_1, val2_1) = zipped.Next();
         val1_1.Should().Be(2);
         val2_1.Should().Be("b");
 
-        FluentActions.Invoking(() => zipped.__Next__())
+        FluentActions.Invoking(() => zipped.Next())
             .Should().Throw<StopIteration>();
     }
 
@@ -82,17 +82,17 @@ public class Zip_Tests
         var zipped = Zip(list1, list2, list3);
 
         // Then
-        var (val1_0, val2_0, val3_0) = zipped.__Next__();
+        var (val1_0, val2_0, val3_0) = zipped.Next();
         val1_0.Should().Be(1);
         val2_0.Should().Be("a");
         val3_0.Should().BeTrue();
 
-        var (val1_1, val2_1, val3_1) = zipped.__Next__();
+        var (val1_1, val2_1, val3_1) = zipped.Next();
         val1_1.Should().Be(2);
         val2_1.Should().Be("b");
         val3_1.Should().BeFalse();
 
-        FluentActions.Invoking(() => zipped.__Next__())
+        FluentActions.Invoking(() => zipped.Next())
             .Should().Throw<StopIteration>();
     }
 
