@@ -1,0 +1,16 @@
+def main():
+    maybe_flag: bool? = Some(True)
+    if maybe_flag is not None:
+        current: bool = maybe_flag
+        print(current)
+
+    maybe_false: bool? = Some(False)
+    if maybe_false is not None:
+        val: bool = maybe_false
+        print(val)
+
+    empty: bool? = None()
+    if empty is not None:
+        print("should not print")
+    else:
+        print("was none")

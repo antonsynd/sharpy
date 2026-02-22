@@ -1,0 +1,5 @@
+from models import Person
+
+def main():
+    p: Person = Person("Alice")
+    print(p.name)
