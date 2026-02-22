@@ -783,7 +783,7 @@ internal partial class TypeChecker
                         break;
                     }
 
-                    // Resolve remaining parts as field access
+                    // Resolve remaining parts as field or property access
                     SemanticType? resolvedType = null;
                     for (int i = 1; i < memberAccess.Parts.Length; i++)
                     {
@@ -795,12 +795,20 @@ internal partial class TypeChecker
                         }
                         else
                         {
-                            AddError(
-                                $"Type '{typeName}' has no member '{fieldName}'",
-                                memberAccess.LineStart, memberAccess.ColumnStart,
-                                code: DiagnosticCodes.Semantic.UndefinedMember,
-                                span: memberAccess.Span);
-                            break;
+                            var prop = typeSymbol.Properties.FirstOrDefault(p => p.Name == fieldName);
+                            if (prop != null)
+                            {
+                                resolvedType = prop.Type;
+                            }
+                            else
+                            {
+                                AddError(
+                                    $"Type '{typeName}' has no member '{fieldName}'",
+                                    memberAccess.LineStart, memberAccess.ColumnStart,
+                                    code: DiagnosticCodes.Semantic.UndefinedMember,
+                                    span: memberAccess.Span);
+                                break;
+                            }
                         }
                     }
 

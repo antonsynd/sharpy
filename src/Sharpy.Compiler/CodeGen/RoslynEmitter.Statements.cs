@@ -1623,37 +1623,31 @@ internal partial class RoslynEmitter
             var bodyStatements = matchCase.Body.SelectMany(GenerateBodyStatements).ToList();
             bodyStatements.Add(SyntaxFactory.BreakStatement());
 
-            var pattern = GenerateMatchPattern(matchCase.Pattern);
+            // Collect all MemberAccessPattern guards (including nested in tuples)
+            var memberGuards = new List<ExpressionSyntax>();
+            int matchVarCounter = 0;
+            var pattern = GenerateMatchPattern(matchCase.Pattern, memberGuards, ref matchVarCounter);
             SwitchLabelSyntax caseLabel;
 
-            // MemberAccessPattern needs a when clause for runtime equality check
-            // because the member value may not be a compile-time constant.
-            ExpressionSyntax? memberGuard = null;
-            if (matchCase.Pattern is MemberAccessPattern memberAccess)
+            // Combine all member access guards into a single expression
+            ExpressionSyntax? combinedGuard = null;
+            foreach (var guard in memberGuards)
             {
-                memberGuard = GenerateMemberAccessGuard(scrutineeExpr, memberAccess);
+                combinedGuard = combinedGuard == null
+                    ? guard
+                    : BinaryExpression(SyntaxKind.LogicalAndExpression, combinedGuard, guard);
             }
 
-            if (matchCase.Guard != null || memberGuard != null)
+            if (matchCase.Guard != null)
             {
-                // Combine user guard with member access guard if both present
-                ExpressionSyntax combinedGuard;
-                if (matchCase.Guard != null && memberGuard != null)
-                {
-                    combinedGuard = BinaryExpression(
-                        SyntaxKind.LogicalAndExpression,
-                        memberGuard,
-                        GenerateExpression(matchCase.Guard));
-                }
-                else if (memberGuard != null)
-                {
-                    combinedGuard = memberGuard;
-                }
-                else
-                {
-                    combinedGuard = GenerateExpression(matchCase.Guard!);
-                }
+                var userGuard = GenerateExpression(matchCase.Guard);
+                combinedGuard = combinedGuard == null
+                    ? userGuard
+                    : BinaryExpression(SyntaxKind.LogicalAndExpression, combinedGuard, userGuard);
+            }
 
+            if (combinedGuard != null)
+            {
                 caseLabel = CasePatternSwitchLabel(pattern, WhenClause(combinedGuard), Token(SyntaxKind.ColonToken));
             }
             else
@@ -1669,7 +1663,7 @@ internal partial class RoslynEmitter
         return SwitchStatement(scrutineeExpr, List(sections));
     }
 
-    private ExpressionSyntax GenerateMemberAccessGuard(ExpressionSyntax scrutinee, MemberAccessPattern memberAccess)
+    private ExpressionSyntax GenerateMemberAccessValue(MemberAccessPattern memberAccess)
     {
         // Build member access expression: Color.RED -> Color.RED
         // Type name is preserved as-is (ToTypeName), field names use ToPascalCase
@@ -1685,10 +1679,10 @@ internal partial class RoslynEmitter
                     memberAccess.Parts[i], NameContext.Field)));
         }
 
-        return BinaryExpression(SyntaxKind.EqualsExpression, scrutinee, expr);
+        return expr;
     }
 
-    private PatternSyntax GenerateMatchPattern(Pattern pattern)
+    private PatternSyntax GenerateMatchPattern(Pattern pattern, List<ExpressionSyntax> memberGuards, ref int matchVarCounter)
     {
         switch (pattern)
         {
@@ -1709,18 +1703,29 @@ internal partial class RoslynEmitter
 
             case TuplePattern tuplePattern:
                 {
-                    var subPatterns = tuplePattern.Elements
-                        .Select(elem => Subpattern(GenerateMatchPattern(elem)))
-                        .ToArray();
+                    var subPatterns = new SubpatternSyntax[tuplePattern.Elements.Length];
+                    for (int i = 0; i < tuplePattern.Elements.Length; i++)
+                    {
+                        subPatterns[i] = Subpattern(GenerateMatchPattern(
+                            tuplePattern.Elements[i], memberGuards, ref matchVarCounter));
+                    }
                     return RecursivePattern()
                         .WithPositionalPatternClause(
                             PositionalPatternClause(SeparatedList(subPatterns)));
                 }
 
-            case MemberAccessPattern:
-                // MemberAccessPattern emits as var _ with a when clause
-                // (handled in GenerateMatch). Return discard pattern here.
-                return VarPattern(DiscardDesignation());
+            case MemberAccessPattern memberAccess:
+                {
+                    // Bind to a named variable and add a when-clause guard for equality.
+                    // This handles both top-level and nested (e.g., inside TuplePattern) cases.
+                    var tempVarName = $"__match{matchVarCounter++}";
+                    var memberValue = GenerateMemberAccessValue(memberAccess);
+                    memberGuards.Add(BinaryExpression(
+                        SyntaxKind.EqualsExpression,
+                        IdentifierName(tempVarName),
+                        memberValue));
+                    return VarPattern(SingleVariableDesignation(Identifier(tempVarName)));
+                }
 
             default:
                 throw new InvalidOperationException(

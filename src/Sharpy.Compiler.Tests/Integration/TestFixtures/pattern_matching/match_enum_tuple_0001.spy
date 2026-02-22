@@ -1,0 +1,18 @@
+class Color:
+    const RED: int = 0
+    const GREEN: int = 1
+    const BLUE: int = 2
+
+def describe_pair(a: int, b: int) -> str:
+    match (a, b):
+        case (Color.RED, Color.GREEN):
+            return "red-green"
+        case (Color.BLUE, Color.RED):
+            return "blue-red"
+        case _:
+            return "other"
+
+def main():
+    print(describe_pair(0, 1))
+    print(describe_pair(2, 0))
+    print(describe_pair(1, 1))
