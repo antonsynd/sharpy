@@ -108,7 +108,7 @@ public static partial class FStringExpressions0003
 #line 64 "f_string_expressions_0003.spy"
         global::Sharpy.Builtins.Print(FormattableString.Invariant($"Base: {(competitive.BaseScore)}, Bonus: {(competitive.BonusPoints)}"));
 #line 65 "f_string_expressions_0003.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Score: {(competitive.GetFinalScore())} ({(competitive.Multiplier)}x multiplier)"));
+        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Score: {(competitive.GetFinalScore())} ({(global::Sharpy.Builtins.FormatFloat(competitive.Multiplier))}x multiplier)"));
 #line 66 "f_string_expressions_0003.spy"
         global::Sharpy.Builtins.Print(FormattableString.Invariant($"Rank: {(competitive.GetRank())}, Status: {(competitive.GetFinalScore() > 100)}"));
 #line 68 "f_string_expressions_0003.spy"

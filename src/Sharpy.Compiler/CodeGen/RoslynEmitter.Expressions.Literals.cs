@@ -692,7 +692,26 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    var interpolation = Interpolation(ParenthesizedExpression(GenerateExpression(part.Expression)));
+                    var innerExpr = GenerateExpression(part.Expression);
+
+                    // For floating-point types without a format spec, wrap in FormatFloat()
+                    // to ensure Python-compatible formatting (e.g., 5.0 instead of 5).
+                    // Format-specced interpolations already produce correct output.
+                    if (string.IsNullOrEmpty(part.FormatSpec))
+                    {
+                        var exprType = GetExpressionSemanticType(part.Expression);
+                        if (exprType == SemanticType.Float ||
+                            exprType == SemanticType.Double ||
+                            exprType == SemanticType.Float32)
+                        {
+                            innerExpr = InvocationExpression(
+                                MakeGlobalQualifiedName("Sharpy", "Builtins", "FormatFloat"))
+                                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                                    Argument(innerExpr))));
+                        }
+                    }
+
+                    var interpolation = Interpolation(ParenthesizedExpression(innerExpr));
 
                     // Add format specifier if present (e.g., ".2f" in f"{value:.2f}")
                     if (!string.IsNullOrEmpty(part.FormatSpec))

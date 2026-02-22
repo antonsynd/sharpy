@@ -90,7 +90,7 @@ namespace Sharpy
         /// Whole-number values get a trailing <c>.0</c>.
         /// NOTE: Keep in sync with <see cref="FormatFloat(float)"/> overload.
         /// </summary>
-        internal static string FormatFloat(double value)
+        public static string FormatFloat(double value)
         {
             if (double.IsNaN(value))
             {
@@ -123,7 +123,7 @@ namespace Sharpy
         /// Overload to avoid float→double widening precision issues.
         /// NOTE: Keep in sync with <see cref="FormatFloat(double)"/> overload.
         /// </summary>
-        internal static string FormatFloat(float value)
+        public static string FormatFloat(float value)
         {
             if (float.IsNaN(value))
             {

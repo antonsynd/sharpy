@@ -1,0 +1,10 @@
+def main():
+    x: float = 5.0
+    print(f"{x}")
+    print(f"The value is {x}")
+    y: float = 3.14
+    print(f"{y}")
+    z: int = 42
+    print(f"int={z} float={x}")
+    w: float = 0.0
+    print(f"{w}")
