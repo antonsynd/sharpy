@@ -56,7 +56,7 @@ namespace Sharpy
         /// Returns the element at the specified index.
         /// </summary>
         /// <remarks>
-        /// Deprecated: Use the indexer <c>list[index]</c> instead.
+        /// Compiler-internal: called by generated code. Sharpy code should use the indexer <c>list[index]</c>.
         /// </remarks>
         public T __GetItem__(int index) => this[index];
 
@@ -64,7 +64,7 @@ namespace Sharpy
         /// Returns a slice of the list.
         /// </summary>
         /// <remarks>
-        /// Deprecated: Use the indexer <c>list[start, end]</c> or <c>list[start, end, step]</c> instead.
+        /// Compiler-internal: called by generated code. Sharpy code should use the indexer <c>list[start, end]</c> or <c>list[start, end, step]</c>.
         /// </remarks>
         public List<T> __GetItem__(Slice slice)
         {
@@ -84,7 +84,7 @@ namespace Sharpy
         /// Sets the element at the specified index.
         /// </summary>
         /// <remarks>
-        /// Deprecated: Use the indexer <c>list[index] = value</c> instead.
+        /// Compiler-internal: called by generated code. Sharpy code should use the indexer <c>list[index] = value</c>.
         /// </remarks>
         public void __SetItem__(int index, T value) => this[index] = value;
 
@@ -92,7 +92,7 @@ namespace Sharpy
         /// Sets a slice of the list from an enumerable.
         /// </summary>
         /// <remarks>
-        /// Deprecated: Use <c>list[start, end] = other</c> instead.
+        /// Compiler-internal: called by generated code. Sharpy code should use <c>list[start, end] = other</c>.
         /// </remarks>
         public void __SetItem__(Slice slice, IEnumerable<T> other)
         {
@@ -227,7 +227,7 @@ namespace Sharpy
         /// Deletes the element at the specified index.
         /// </summary>
         /// <remarks>
-        /// Deprecated: Use <c>list.Pop(index)</c> instead.
+        /// Compiler-internal: called by generated code. Sharpy code should use <c>list.Pop(index)</c>.
         /// </remarks>
         public void __DelItem__(int index)
         {

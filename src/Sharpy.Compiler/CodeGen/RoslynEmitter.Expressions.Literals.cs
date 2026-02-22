@@ -341,7 +341,7 @@ internal partial class RoslynEmitter
                 ? _typeMapper.MapSemanticType(vType)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
             collectionType = TypeMapper.QualifiedGenericName(
-                    collectionKind == "dict" ? CSharpTypeNames.SharpyDict : CSharpTypeNames.SharpySet,
+                    CSharpTypeNames.SharpyDict,
                     kTypeSyntax, vTypeSyntax);
         }
         else
