@@ -1,4 +1,0 @@
-Hello World
-Number: 50
-True
-False

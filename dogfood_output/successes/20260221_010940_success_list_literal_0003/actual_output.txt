@@ -1,6 +1,0 @@
-5
-read
-debug
-2
-write
-test

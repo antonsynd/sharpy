@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0029]: Cannot implicitly convert type 'Sharpy.Optional<bool>' to 'bool'
-  --> /tmp/tmptjmecdy_/dogfood_test.spy:54:23
-    |
- 54 |         current = maybe_flag
-    |                       ^
-    |
-

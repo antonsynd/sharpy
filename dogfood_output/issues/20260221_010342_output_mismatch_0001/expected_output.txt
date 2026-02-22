@@ -1,8 +1,0 @@
-A circle at Point(0, 0) with radius 5.0
-A rectangle at Point(0, 0)
-A triangle at Point(0, 0)
-Circle(r=5.0, color=Red)
-Rect area: 24
-Circle(r=1.0, color=Yellow)
-Rectangle(3.0x3.0, color=White)
-Chosen color value: Blue

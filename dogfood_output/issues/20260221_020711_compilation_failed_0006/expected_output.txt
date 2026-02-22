@@ -1,9 +1,0 @@
-HELLO
-True
-[2] WORLD
-critical
-True
-2
-8.0
-True
-test

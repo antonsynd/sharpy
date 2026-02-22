@@ -1,7 +1,0 @@
-Total tasks in manager: 3
-Tasks sorted by priority:
-Review code (P1) -> Alice
-Fix bug (P2) -> Bob
-Buy groceries (P3) by Friday
-High priority count: 2
-Summary: 3 total, 2 work tasks

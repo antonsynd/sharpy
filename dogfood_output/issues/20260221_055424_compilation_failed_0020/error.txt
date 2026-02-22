@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS1729]: 'DogfoodTest.Point2D' does not contain a constructor that takes 2 arguments
-  --> /tmp/tmpnq4da47d/dogfood_test.spy:12:25
-    |
- 12 |     p: Point2D = Point2D(3.0, 4.0)
-    |                         ^
-    |
-

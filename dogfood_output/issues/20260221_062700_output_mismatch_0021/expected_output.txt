@@ -1,7 +1,0 @@
-5
-success_3
-not_found
-success_-2
-server_error
-4
-2

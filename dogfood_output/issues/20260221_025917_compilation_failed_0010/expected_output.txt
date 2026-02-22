@@ -1,8 +1,0 @@
-Origin distance: 0.00 units
-Corner distance: 22.36 units
-Favorite color: green
-Rectangle area: 15.00 sq units
-Circle area: 50.27 sq units
-Total area: 65.27 sq units
-Shape report: Rectangle(5.0x3.0): 15.00 sq units, Circle(r=4.0): 50.27 sq units, Rectangle(10.0x5.0): 50.00 sq units, Circle(r=7.0): 153.94 sq units
-Final total: 269.21 sq units

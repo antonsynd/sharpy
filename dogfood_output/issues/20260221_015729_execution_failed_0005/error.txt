@@ -1,5 +1,0 @@
-Unhandled exception. Sharpy.ValueError: could not convert string to float: 'True'
-   at Sharpy.Builtins.Double(String s)
-   at Sharpy.Builtins.Float(String s)
-   at DogfoodTest.Converter.ConvertAndSum() in /tmp/tmpmyf1j4rx/dogfood_test.spy:line 12
-   at DogfoodTest.Main() in /tmp/tmpmyf1j4rx/dogfood_test.spy:line 44

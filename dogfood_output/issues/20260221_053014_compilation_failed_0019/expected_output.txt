@@ -1,6 +1,0 @@
-Circle area: 78.54
-Circle perimeter: 31.42
-Rectangle area: 24.00
-Rectangle perimeter: 20.00
-Circle radius: 5.0
-Rectangle dimensions: 4.0 x 6.0

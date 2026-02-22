@@ -1,7 +1,0 @@
-Task: important-job
-Priority: 5
-Transition: starting
-Transition: finishing
-Task completed (transition #1)
-Cannot transition: completed->running
-Final: success

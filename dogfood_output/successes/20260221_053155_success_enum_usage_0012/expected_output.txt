@@ -1,3 +1,0 @@
-Info
-Info message
-Error message

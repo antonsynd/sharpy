@@ -1,8 +1,0 @@
-=== Shape System Demo ===
-Rectangle (10.0x5.0)
-Rectangle area: 50.0
-Circle (r=5.0)
-Circle area: 78.53975
-Distance: 5.0
-Drawing rectangle 10.0x5.0
-=== Demo Complete ===

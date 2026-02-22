@@ -1,8 +1,0 @@
-Person(Bob, id=42)
-Product(MOUSE-023, $29.99)
-Entity with ID: 4200
-Entity with ID: 700
-ID=4200
-Person(Bob, id=42)
-Person(Alice, id=1)
-Product(LAPTOP-001, $999.99)

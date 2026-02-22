@@ -1,4 +1,0 @@
-Circle 'Sun' with radius 5
-Rectangle 'Box' 3x4
-Circle 'Sun' with radius 10
-Total area: 404.70

@@ -1,6 +1,0 @@
-Distance: 5.0
-Shape: Rectangle [5.0x3.0]
-Area: 15.0
-Shape: Circle
-Area: 12.56636
-Square area: 1.0
