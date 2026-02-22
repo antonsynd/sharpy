@@ -433,7 +433,8 @@ internal partial class RoslynEmitter
             .WithType(param2Type);
 
         // Generate body - call the actual dunder method on left operand
-        // Use DunderMapping for dunder names (e.g., __add__ -> __Add__)
+        // Only __eq__/__ne__ use this non-inlined path; all other operators use TryGenerateInlinedOperatorOverload.
+        // DunderMapping resolves to the mapped C# name (e.g., __eq__ -> Equals, __ne__ -> NotEquals).
         var methodName = DunderMapping.ResolveCSharpName(funcDef.Name)
             ?? NameMangler.Transform(funcDef.Name, NameContext.Method);
         var invocation = InvocationExpression(

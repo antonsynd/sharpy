@@ -149,13 +149,13 @@ class MyList:
     }
 
     [Fact]
-    public void DunderRepr_WithoutOverrideDecorator_Succeeds()
+    public void DunderBool_WithoutOverrideDecorator_Succeeds()
     {
-        // __repr__ generates __Repr__(), not ToString() override
+        // __bool__ is a recognized protocol dunder, not an Object override
         var source = @"
 class MyClass:
-    def __repr__(self) -> str:
-        return ""MyClass()""
+    def __bool__(self) -> bool:
+        return True
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);

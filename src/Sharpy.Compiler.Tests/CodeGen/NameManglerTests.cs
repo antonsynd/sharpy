@@ -139,7 +139,7 @@ public class NameManglerTests
     [Theory]
     [InlineData("__init__", "__init__")]
     [InlineData("__str__", "__str__")]
-    [InlineData("__repr__", "__repr__")]
+    [InlineData("__bool__", "__bool__")]
     [InlineData("__eq__", "__eq__")]
     [InlineData("__add__", "__add__")]
     [InlineData("__sub__", "__sub__")]

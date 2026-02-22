@@ -63,8 +63,8 @@ class Foo:
     def __str__(self) -> str:
         return ""hello""
 
-    def __repr__(self) -> str:
-        return self.__str__()
+    def __contains__(self, item: int) -> bool:
+        return self.__str__() == ""hello""
 ";
         var (module, context) = Parse(code);
 
@@ -87,9 +87,9 @@ class Foo:
     def __str__(self) -> str:
         return ""hello""
 
-    def __repr__(self) -> str:
+    def __contains__(self, item: int) -> bool:
         other: Foo = Foo()
-        return other.__str__()
+        return other.__str__() == ""hello""
 ";
         var (module, context) = Parse(code);
 

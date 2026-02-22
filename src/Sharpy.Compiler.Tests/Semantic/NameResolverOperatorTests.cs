@@ -131,12 +131,12 @@ class SignedValue:
 class Example:
     def __init__(self):
         pass
-    
+
     def __str__(self) -> str:
         pass
-    
-    def __repr__(self) -> str:
-        pass
+
+    def __len__(self) -> int:
+        return 0
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
@@ -152,7 +152,7 @@ class Example:
         // But the methods should still be in the regular Methods list
         exampleType.Methods.Should().Contain(m => m.Name == "__init__");
         exampleType.Methods.Should().Contain(m => m.Name == "__str__");
-        exampleType.Methods.Should().Contain(m => m.Name == "__repr__");
+        exampleType.Methods.Should().Contain(m => m.Name == "__len__");
     }
 
     #endregion

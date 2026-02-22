@@ -659,4 +659,103 @@ class Container:
     }
 
     #endregion
+
+    #region Unknown Dunder Validation
+
+    [Fact]
+    public void UnknownDunder_ReportsError()
+    {
+        var code = @"
+class MyClass:
+    def __custom__(self):
+        pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new SignatureValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetErrors(),
+            e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnknownDunderMethod &&
+                 e.Message.Contains("__custom__"));
+    }
+
+    [Fact]
+    public void KnownOperatorDunder_NoUnknownDunderError()
+    {
+        var code = @"
+class Number:
+    def __add__(self, other: Number) -> Number:
+        return self
+";
+        var (module, context) = Parse(code);
+
+        var validator = new SignatureValidator();
+        validator.Validate(module, context);
+
+        var unknownErrors = context.Diagnostics.GetErrors()
+            .Where(e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnknownDunderMethod)
+            .ToList();
+        Assert.Empty(unknownErrors);
+    }
+
+    [Fact]
+    public void KnownProtocolDunder_NoUnknownDunderError()
+    {
+        var code = @"
+class Container:
+    def __len__(self) -> int:
+        return 0
+";
+        var (module, context) = Parse(code);
+
+        var validator = new SignatureValidator();
+        validator.Validate(module, context);
+
+        var unknownErrors = context.Diagnostics.GetErrors()
+            .Where(e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnknownDunderMethod)
+            .ToList();
+        Assert.Empty(unknownErrors);
+    }
+
+    [Fact]
+    public void Reversed_NoUnknownDunderError()
+    {
+        var code = @"
+class Container:
+    def __reversed__(self) -> object:
+        return self
+";
+        var (module, context) = Parse(code);
+
+        var validator = new SignatureValidator();
+        validator.Validate(module, context);
+
+        var unknownErrors = context.Diagnostics.GetErrors()
+            .Where(e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnknownDunderMethod)
+            .ToList();
+        Assert.Empty(unknownErrors);
+    }
+
+    [Fact]
+    public void Repr_ReportsUnknownDunderError()
+    {
+        var code = @"
+class MyClass:
+    def __repr__(self) -> str:
+        return """"
+";
+        var (module, context) = Parse(code);
+
+        var validator = new SignatureValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetErrors(),
+            e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnknownDunderMethod &&
+                 e.Message.Contains("__repr__"));
+    }
+
+    #endregion
 }

@@ -64,9 +64,9 @@ public class Wrapper_Tests
         var wrapper1 = new Wrapper<int>(1);
 
         // When/then
-        wrapper0.__Hash__().Should().NotBe(wrapper1.__Hash__());
-        wrapper0.__Hash__().Should().Be(wrapper0.GetHashCode());
-        wrapper1.__Hash__().Should().Be(wrapper1.GetHashCode());
+        wrapper0.Hash().Should().NotBe(wrapper1.Hash());
+        wrapper0.Hash().Should().Be(wrapper0.GetHashCode());
+        wrapper1.Hash().Should().Be(wrapper1.GetHashCode());
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class Wrapper_Tests
         var wrapper1_0 = new Wrapper<int>(1);
         var wrapper1_1 = new Wrapper<int>(1);
 
-        wrapper1_0.__Hash__().Should().NotBe(wrapper1_1.__Hash__());
+        wrapper1_0.Hash().Should().NotBe(wrapper1_1.Hash());
 
         // When/then
         wrapper0.Equals(wrapper1_0).Should().BeFalse();
@@ -103,21 +103,21 @@ public class Wrapper_Tests
         var wrapper1_0 = new Wrapper<int>(1);
         var wrapper1_1 = new Wrapper<int>(1);
 
-        wrapper1_0.__Hash__().Should().NotBe(wrapper1_1.__Hash__());
+        wrapper1_0.Hash().Should().NotBe(wrapper1_1.Hash());
 
         // When/then
-        wrapper0.__Ne__(wrapper1_0).Should().BeTrue();
-        wrapper0.__Ne__(wrapper1_1).Should().BeTrue();
-        wrapper0.__Ne__(null!).Should().BeTrue();
+        wrapper0.Ne(wrapper1_0).Should().BeTrue();
+        wrapper0.Ne(wrapper1_1).Should().BeTrue();
+        wrapper0.Ne(null!).Should().BeTrue();
 
         // Identity
-        wrapper0.__Ne__(wrapper0).Should().BeFalse();
-        wrapper1_0.__Ne__(wrapper1_0).Should().BeFalse();
-        wrapper1_1.__Ne__(wrapper1_1).Should().BeFalse();
+        wrapper0.Ne(wrapper0).Should().BeFalse();
+        wrapper1_0.Ne(wrapper1_0).Should().BeFalse();
+        wrapper1_1.Ne(wrapper1_1).Should().BeFalse();
 
         // Symmetric
-        wrapper1_0.__Ne__(wrapper1_1).Should().BeFalse();
-        wrapper1_1.__Ne__(wrapper1_0).Should().BeFalse();
+        wrapper1_0.Ne(wrapper1_1).Should().BeFalse();
+        wrapper1_1.Ne(wrapper1_0).Should().BeFalse();
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public class Wrapper_Tests
         var wrapper1_0 = new Wrapper<int>(1);
         var wrapper1_1 = new Wrapper<int>(1);
 
-        wrapper1_0.__Hash__().Should().NotBe(wrapper1_1.__Hash__());
+        wrapper1_0.Hash().Should().NotBe(wrapper1_1.Hash());
 
         // When/then
         wrapper0.Equals(wrapper1_0).Should().BeFalse();
@@ -156,9 +156,9 @@ public class Wrapper_Tests
         var wrapper1 = new Wrapper<int>(1);
 
         // When/then
-        wrapper0.__Id__().Should().NotBe(wrapper0.__Hash__());
-        wrapper1.__Id__().Should().NotBe(wrapper1.__Hash__());
-        wrapper0.__Id__().Should().NotBe(wrapper1.__Id__());
+        wrapper0.GetId().Should().NotBe(wrapper0.Hash());
+        wrapper1.GetId().Should().NotBe(wrapper1.Hash());
+        wrapper0.GetId().Should().NotBe(wrapper1.GetId());
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class Wrapper_Tests
         var wrapper1 = new Wrapper<int>(1);
 
         // When/then
-        wrapper0.__Repr__().Length.Should().BeGreaterThan(0);
-        wrapper0.__Repr__().Should().NotBe(wrapper1.__Repr__());
+        wrapper0.Repr().Length.Should().BeGreaterThan(0);
+        wrapper0.Repr().Should().NotBe(wrapper1.Repr());
     }
 }

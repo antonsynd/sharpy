@@ -24,7 +24,7 @@ public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>, Sharpy.IBoolCo
     }
 
     // Identifiable
-    public int __Id__()
+    public int GetId()
     {
         return (int)Id;
     }
@@ -43,13 +43,13 @@ public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>, Sharpy.IBoolCo
     }
 
     // Representable
-    public string __Repr__()
+    public string Repr()
     {
-        return $"<Wrapper object with id {Id} and value {Repr(Value)}>";
+        return $"<Wrapper object with id {Id} and value {Sharpy.Builtins.Repr(Value)}>";
     }
 
     // Hashable
-    public int __Hash__()
+    public int Hash()
     {
         var hashCode = new HashCode();
         hashCode.Add(typeof(Wrapper<T>).GetHashCode());
@@ -91,7 +91,7 @@ public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>, Sharpy.IBoolCo
     }
 
     // Inequatable<Wrapper<T>>
-    public bool __Ne__(Wrapper<T> other)
+    public bool Ne(Wrapper<T> other)
     {
         return !Equals(other);
     }
@@ -108,6 +108,6 @@ public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>, Sharpy.IBoolCo
 
     public override int GetHashCode()
     {
-        return __Hash__();
+        return Hash();
     }
 }

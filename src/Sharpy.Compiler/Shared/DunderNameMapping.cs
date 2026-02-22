@@ -22,6 +22,7 @@ internal static class DunderNameMapping
         { DunderNames.SetItem, "SetItem" },       // For indexer properties
         { DunderNames.Len, "Count" },              // For Count property
         { DunderNames.Contains, "Contains" },     // For Contains method
+        { DunderNames.Ne, "NotEquals" },          // For operator !=
         { DunderNames.Iter, "GetEnumerator" },    // For IEnumerable
         { DunderNames.Reversed, "GetReverseEnumerator" }, // For reverse iteration
         // __bool__ is handled as special codegen (operator true/false), not a simple name mapping
@@ -72,36 +73,15 @@ internal static class DunderNameMapping
         => DunderDetector.IsDunderMethod(name);
 
     /// <summary>
-    /// Resolve the C# name for a dunder method. Returns null if the name is not a dunder.
+    /// Resolve the C# name for a dunder method. Returns null if the name is not a dunder
+    /// or if the dunder is not in the known mapping.
     /// For known dunders, returns the mapped name (e.g., __str__ → ToString).
-    /// For unknown dunders, returns the transformed name (e.g., __add__ → __Add__).
+    /// Unknown dunders are now rejected at compile time by SignatureValidator (SPY0414).
     /// </summary>
     public static string? ResolveCSharpName(string name)
     {
         if (!IsDunderMethod(name))
             return null;
-        return GetCSharpName(name) ?? TransformUnknownDunder(name);
-    }
-
-    /// <summary>
-    /// Transform an unknown dunder method (not in the map) by capitalizing inner segments.
-    /// Strips leading/trailing <c>__</c>, splits on <c>_</c>, capitalizes each segment, rejoins with <c>__</c> bookends.
-    /// </summary>
-    /// <example>
-    /// <c>__add__</c> → <c>__Add__</c>, <c>__custom_method__</c> → <c>__CustomMethod__</c>
-    /// </example>
-    public static string TransformUnknownDunder(string name)
-    {
-        var middle = name[2..^2]; // Remove leading and trailing __
-        var capitalizedMiddle = string.Join("", middle.Split('_').Select(Capitalize));
-        return $"__{capitalizedMiddle}__";
-    }
-
-    private static string Capitalize(string word)
-    {
-        if (string.IsNullOrEmpty(word))
-            return word;
-
-        return char.ToUpperInvariant(word[0]) + word[1..].ToLowerInvariant();
+        return GetCSharpName(name);
     }
 }

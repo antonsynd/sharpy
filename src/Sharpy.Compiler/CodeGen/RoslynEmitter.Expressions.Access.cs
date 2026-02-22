@@ -180,7 +180,7 @@ internal partial class RoslynEmitter
             // Cross-dunder calls: transform operator dunders to C# operator expressions.
             // e.g., self.__lt__(other) → this < other, self.__neg__() → -this
             // This must happen BEFORE regular method name resolution so that operator dunders
-            // emit operators instead of __PascalCase__ method calls.
+            // emit operators instead of method calls. Unknown dunders are now compile errors (SPY0414).
             if (DunderMapping.IsDunderMethod(memberAccess.Member))
             {
                 var binaryKind = DunderMapping.TryGetBinaryExpressionKind(memberAccess.Member);

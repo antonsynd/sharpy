@@ -852,6 +852,16 @@ public static class DiagnosticExplanations
             "interface IMyProtocol:\n    def __len__(self) -> int:\n        ...",
             "Use a regular method name in your interface:\ninterface IMyProtocol:\n    def get_length(self) -> int:\n        ...");
 
+        Add(dict, DiagnosticCodes.Validation.UnknownDunderMethod,
+            "Unknown dunder method",
+            "Validation",
+            "Only recognized operator and protocol dunder methods are supported. " +
+            "Unknown dunder methods like __custom__ are rejected at compile time. " +
+            "Recognized operator dunders include __add__, __sub__, __eq__, __ne__, __lt__, __gt__, etc. " +
+            "Recognized protocol dunders include __len__, __bool__, __str__, __iter__, __next__, __contains__, __reversed__, etc.",
+            "class Foo:\n    def __custom__(self) -> int:\n        return 42",
+            "Use a regular method name instead:\nclass Foo:\n    def custom(self) -> int:\n        return 42");
+
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
         Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",

@@ -35,18 +35,11 @@ public class DunderMappingTests
 
     #endregion
 
-    #region TransformUnknownDunder Tests
-
-    [Theory]
-    [InlineData("__add__", "__Add__")]
-    [InlineData("__sub__", "__Sub__")]
-    [InlineData("__custom_method__", "__CustomMethod__")]
-    public void TransformUnknownDunder_CapitalizesMiddle(string input, string expected)
+    [Fact]
+    public void GetCSharpName_Ne_ReturnsNotEquals()
     {
-        DunderNameMapping.TransformUnknownDunder(input).Should().Be(expected);
+        DunderNameMapping.GetCSharpName("__ne__").Should().Be("NotEquals");
     }
-
-    #endregion
 
     #region IsDunderMethod Tests
 
@@ -70,12 +63,21 @@ public class DunderMappingTests
     [InlineData("__init__", "Constructor")]
     [InlineData("__str__", "ToString")]
     [InlineData("__eq__", "Equals")]
-    [InlineData("__add__", "__Add__")]       // Unknown dunder: transforms via TransformUnknownDunder
-    [InlineData("__sub__", "__Sub__")]
-    [InlineData("__custom_method__", "__CustomMethod__")]
-    public void ResolveCSharpName_DunderMethod_ReturnsCorrectName(string name, string expected)
+    [InlineData("__ne__", "NotEquals")]
+    [InlineData("__iter__", "GetEnumerator")]
+    [InlineData("__reversed__", "GetReverseEnumerator")]
+    public void ResolveCSharpName_KnownDunder_ReturnsCorrectName(string name, string expected)
     {
         DunderMapping.ResolveCSharpName(name).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("__add__")]       // Operator dunder — uses inlined path, no name mapping needed
+    [InlineData("__sub__")]
+    [InlineData("__custom_method__")]  // Unknown dunder — rejected at compile time (SPY0414)
+    public void ResolveCSharpName_UnmappedDunder_ReturnsNull(string name)
+    {
+        DunderMapping.ResolveCSharpName(name).Should().BeNull();
     }
 
     [Theory]

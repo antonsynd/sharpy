@@ -45,6 +45,6 @@ public sealed class IdentityWrapper<T> : Wrapper<T>
 
     public override int GetHashCode()
     {
-        return __Hash__();
+        return Hash();
     }
 }

@@ -115,6 +115,16 @@ internal class SignatureValidator : SemanticValidatorBase
         {
             ValidateProtocolSignature(funcDef, owningType);
         }
+        // Reject unknown dunders
+        else if (DunderDetector.IsDunderMethod(methodName))
+        {
+            AddError(_context,
+                $"Unknown dunder method '{methodName}' on '{owningType.Name}'. " +
+                "Only recognized operator and protocol dunder methods are supported.",
+                funcDef.LineStart, funcDef.ColumnStart,
+                code: DiagnosticCodes.Validation.UnknownDunderMethod,
+                span: funcDef.Span);
+        }
     }
 
     #region Operator Signature Validation

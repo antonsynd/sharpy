@@ -63,7 +63,25 @@ internal static class SynthesisAnalyzer
             }
         }
 
-        // Phase 2: IEnumerator<T> from __next__, IEnumerable<T> from __iter__+__next__
+        // Phase 2a: IReverseEnumerable<T> from __reversed__
+        if (typeSymbol.ProtocolMethods.TryGetValue(DunderNames.Reversed, out var reversedOverloads))
+        {
+            var reversedFunc = reversedOverloads.FirstOrDefault();
+            if (reversedFunc != null)
+            {
+                var elementType = reversedFunc.ReturnType is not UnknownType
+                    ? reversedFunc.ReturnType
+                    : new UserDefinedType { Name = "object" };
+
+                result.Add(new SynthesizedInterfaceInfo(
+                    "IReverseEnumerable",
+                    "Sharpy",
+                    new[] { elementType },
+                    DunderNames.Reversed));
+            }
+        }
+
+        // Phase 2b: IEnumerator<T> from __next__, IEnumerable<T> from __iter__+__next__
         if (typeSymbol.ProtocolMethods.TryGetValue(DunderNames.Next, out var nextOverloads))
         {
             var nextFunc = nextOverloads.FirstOrDefault();

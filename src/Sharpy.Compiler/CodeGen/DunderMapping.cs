@@ -17,9 +17,10 @@ internal static class DunderMapping
         => DunderNameMapping.IsDunderMethod(name);
 
     /// <summary>
-    /// Resolve the C# name for a dunder method. Returns null if the name is not a dunder.
+    /// Resolve the C# name for a dunder method. Returns null if the name is not a dunder
+    /// or if the dunder is not in the known mapping.
     /// For known dunders, returns the mapped name (e.g., __str__ → ToString).
-    /// For unknown dunders, returns the transformed name (e.g., __add__ → __Add__).
+    /// Unknown dunders are rejected at compile time by SignatureValidator (SPY0414).
     /// </summary>
     public static string? ResolveCSharpName(string name)
         => DunderNameMapping.ResolveCSharpName(name);

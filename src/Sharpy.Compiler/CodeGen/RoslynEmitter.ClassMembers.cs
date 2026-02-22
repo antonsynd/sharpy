@@ -138,6 +138,11 @@ internal partial class RoslynEmitter
                             members.Add(GenerateClassMethod(funcDef));
                         }
                     }
+                    // __reversed__ generates GetReverseEnumerator() method
+                    else if (funcDef.Name == DunderNames.Reversed)
+                    {
+                        members.Add(GenerateClassMethod(funcDef));
+                    }
                     // Check if this is a dunder method that needs operator synthesis
                     else if (DunderMapping.IsDunderMethod(funcDef.Name))
                     {

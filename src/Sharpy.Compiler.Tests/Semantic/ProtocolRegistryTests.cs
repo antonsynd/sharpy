@@ -24,6 +24,7 @@ public class ProtocolRegistryTests
     [InlineData("__str__", ProtocolKind.Representation)]
     [InlineData("__hash__", ProtocolKind.Hashing)]
     [InlineData("__bool__", ProtocolKind.Conversion)]
+    [InlineData("__reversed__", ProtocolKind.Iterator)]
     public void GetProtocol_ReturnsCorrectKind(string dunderName, ProtocolKind expectedKind)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);
@@ -51,6 +52,7 @@ public class ProtocolRegistryTests
     [Theory]
     [InlineData("__len__", "ISized")]
     [InlineData("__bool__", "IBoolConvertible")]
+    [InlineData("__reversed__", "IReverseEnumerable")]
     public void GetProtocol_ReturnsCorrectInterface(string dunderName, string expectedInterface)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);
@@ -85,6 +87,7 @@ public class ProtocolRegistryTests
     [InlineData("__iter__", "GetEnumerator")]
     [InlineData("__str__", "ToString")]
     [InlineData("__hash__", "GetHashCode")]
+    [InlineData("__reversed__", "GetReverseEnumerator")]
     public void GetProtocol_ReturnsCorrectClrMethodName(string dunderName, string expectedClrMethod)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);
@@ -111,6 +114,7 @@ public class ProtocolRegistryTests
     [InlineData("__str__", "ToString")]
     [InlineData("__hash__", "GetHashCode")]
     [InlineData("__bool__", "IsTrue")]
+    [InlineData("__reversed__", "GetReverseEnumerator")]
     public void GetProtocol_ReturnsCorrectInterfaceMethodName(string dunderName, string expectedMethodName)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);
@@ -150,6 +154,7 @@ public class ProtocolRegistryTests
     [InlineData("__getitem__")]  // Returns element type (generic)
     [InlineData("__iter__")]     // Returns Iterator<T> (generic)
     [InlineData("__next__")]     // Returns element type (generic)
+    [InlineData("__reversed__")] // Returns Iterator<T> (generic)
     public void GetProtocol_ReturnsNullReturnTypeForGenericMethods(string dunderName)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);
@@ -169,6 +174,7 @@ public class ProtocolRegistryTests
     [InlineData("__str__", 1)]      // self
     [InlineData("__hash__", 1)]     // self
     [InlineData("__bool__", 1)]     // self
+    [InlineData("__reversed__", 1)] // self
     public void GetProtocol_ReturnsCorrectParameterCount(string dunderName, int expectedCount)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);
@@ -194,6 +200,7 @@ public class ProtocolRegistryTests
         ProtocolRegistry.IsProtocolDunder("__len__").Should().BeTrue();
         ProtocolRegistry.IsProtocolDunder("__iter__").Should().BeTrue();
         ProtocolRegistry.IsProtocolDunder("__str__").Should().BeTrue();
+        ProtocolRegistry.IsProtocolDunder("__reversed__").Should().BeTrue();
     }
 
     [Fact]
@@ -219,7 +226,7 @@ public class ProtocolRegistryTests
         // Protocols (dunders) registered:
         // __init__, __len__, __contains__, __getitem__, __setitem__,
         // __iter__, __next__, __str__, __hash__, __bool__
-        protocols.Should().HaveCount(10, "exactly 10 protocols are registered");
+        protocols.Should().HaveCount(11, "exactly 11 protocols are registered");
 
         // Verify we have at least one of each kind (except Comparison which is handled by operators)
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Lifecycle);
@@ -242,9 +249,10 @@ public class ProtocolRegistryTests
     public void GetProtocolsByKind_Iterator_ReturnsIteratorProtocols()
     {
         var iteratorProtocols = ProtocolRegistry.GetProtocolsByKind(ProtocolKind.Iterator).ToList();
-        iteratorProtocols.Should().HaveCount(2);  // __iter__, __next__
+        iteratorProtocols.Should().HaveCount(3);  // __iter__, __next__, __reversed__
         iteratorProtocols.Select(p => p.DunderName).Should().Contain("__iter__");
         iteratorProtocols.Select(p => p.DunderName).Should().Contain("__next__");
+        iteratorProtocols.Select(p => p.DunderName).Should().Contain("__reversed__");
     }
 
     // ==================== Test Helper Methods ====================
@@ -252,6 +260,7 @@ public class ProtocolRegistryTests
     [Theory]
     [InlineData("__len__", "ISized")]
     [InlineData("__bool__", "IBoolConvertible")]
+    [InlineData("__reversed__", "IReverseEnumerable")]
     [InlineData("__iter__", null)]   // IIterable removed
     [InlineData("__str__", null)]    // IStrConvertible removed
     [InlineData("__init__", null)]   // No interface for constructor
@@ -263,7 +272,8 @@ public class ProtocolRegistryTests
     [Theory]
     [InlineData("__len__", "get_Count")]
     [InlineData("__str__", "ToString")]
-    [InlineData("__repr__", null)]  // Not registered (removed per spec)
+    [InlineData("__repr__", null)]  // Not registered
+    [InlineData("__reversed__", "GetReverseEnumerator")]
     public void GetClrMethodName_ReturnsCorrectMethod(string dunderName, string? expectedMethod)
     {
         ProtocolRegistry.GetClrMethodName(dunderName).Should().Be(expectedMethod);
@@ -293,7 +303,7 @@ public class ProtocolRegistryTests
     [Fact]
     public void Count_ReturnsNumberOfRegisteredProtocols()
     {
-        ProtocolRegistry.Count.Should().Be(10, "exactly 10 protocols are registered");
+        ProtocolRegistry.Count.Should().Be(11, "exactly 11 protocols are registered");
     }
 
     // ==================== Test Consistency with OperatorRegistry ====================
@@ -340,6 +350,7 @@ public class ProtocolRegistryTests
         ProtocolRegistry.IsAnyDunder("__len__").Should().BeTrue();
         ProtocolRegistry.IsAnyDunder("__str__").Should().BeTrue();
         ProtocolRegistry.IsAnyDunder("__iter__").Should().BeTrue();
+        ProtocolRegistry.IsAnyDunder("__reversed__").Should().BeTrue();
     }
 
     [Fact]
@@ -376,6 +387,7 @@ public class ProtocolRegistryTests
     [Theory]
     [InlineData("__getitem__")]  // Returns element type (generic)
     [InlineData("__iter__")]     // Returns Iterator<T> (generic)
+    [InlineData("__reversed__")] // Returns Iterator<T> (generic)
     public void GetExpectedSignature_ReturnsNullReturnTypeForGenericMethods(string dunder)
     {
         var result = ProtocolRegistry.GetExpectedSignature(dunder);

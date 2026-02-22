@@ -168,6 +168,17 @@ public static class ProtocolRegistry
             ExpectedReturnType: "bool"
         ));
 
+        // 2.2.7 Reverse iteration protocol
+        Register(protocols, new ProtocolInfo(
+            DunderName: DunderNames.Reversed,
+            Kind: ProtocolKind.Iterator,
+            SharpyCoreInterface: "IReverseEnumerable",
+            InterfaceMethodName: "GetReverseEnumerator",
+            ClrMethodName: "GetReverseEnumerator",
+            ExpectedParamCount: 1,    // Just self
+            ExpectedReturnType: null  // Returns Iterator<T> (generic, like __iter__)
+        ));
+
         // Note: __eq__ and __ne__ are handled by OperatorRegistry as they
         // are comparison operators that map to .NET operator overloads.
         // However, they also integrate with Sharpy.Object for equality semantics.
