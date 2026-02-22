@@ -1209,6 +1209,35 @@ def extract_expected_output(code: str) -> Optional[str]:
     return None
 
 
+_CODE_INDICATORS = ["def ", "class ", "print(", "=", "import "]
+
+_MARKDOWN_LINE_PATTERNS = [
+    re.compile(r"^\*\*.*\*\*"),  # Bold markdown: **text**
+    re.compile(r"^#+\s"),  # Headers: # heading
+    re.compile(r"^\d+\.\s"),  # Numbered lists: 1. item
+]
+
+
+def _strip_markdown_lines(code: str) -> str:
+    """Strip lines that look like markdown prose from extracted code.
+
+    Only strips if the remaining content still contains code indicators,
+    to avoid accidentally stripping legitimate code.
+    """
+    lines = code.split("\n")
+    cleaned = [
+        line
+        for line in lines
+        if not any(pat.match(line.strip()) for pat in _MARKDOWN_LINE_PATTERNS)
+    ]
+    cleaned_text = "\n".join(cleaned).strip()
+    # Only use cleaned version if it still looks like code
+    if any(indicator in cleaned_text for indicator in _CODE_INDICATORS):
+        return cleaned_text
+    # Fall back to original if stripping removed too much
+    return code
+
+
 def extract_code_block(response: str) -> Optional[str]:
     """Extract code from a response that might have markdown formatting."""
     import re
@@ -1219,7 +1248,8 @@ def extract_code_block(response: str) -> Optional[str]:
 
     if matches:
         # Return the longest match (most likely the main code)
-        return max(matches, key=len).strip()
+        code = max(matches, key=len).strip()
+        return _strip_markdown_lines(code)
 
     # If no code block, check if the entire response looks like code
     lines = response.strip().split("\n")
@@ -1227,7 +1257,7 @@ def extract_code_block(response: str) -> Optional[str]:
         # Check if it looks like code (has def, print, assignments, etc.)
         code_indicators = ["def ", "print(", "= ", "if ", "for ", "while ", "#"]
         if any(indicator in response for indicator in code_indicators):
-            return response.strip()
+            return _strip_markdown_lines(response.strip())
 
     return None
 

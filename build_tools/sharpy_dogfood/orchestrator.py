@@ -50,6 +50,36 @@ from .reporting import (
 
 _INTERNAL_COMPILER_ERROR_PATTERN = re.compile(r"SPY09\d{2}")
 
+# Patterns that indicate the AI returned an error message instead of code.
+_NON_CODE_ERROR_PATTERNS = [
+    re.compile(r"^Connection error", re.IGNORECASE),
+    re.compile(r"^Error:", re.IGNORECASE),
+    re.compile(r"^Sorry", re.IGNORECASE),
+]
+
+# Minimum indicators that a response contains actual code.
+_CODE_INDICATORS = ["def ", "class ", "print(", "=", "import "]
+
+_MIN_CODE_LENGTH = 20
+
+
+def _is_valid_code_response(text: str) -> tuple[bool, str]:
+    """Check whether extracted text looks like valid code, not an error message.
+
+    Returns (is_valid, reason) where reason explains why validation failed.
+    """
+    if len(text) < _MIN_CODE_LENGTH:
+        return False, f"Response too short ({len(text)} chars, minimum {_MIN_CODE_LENGTH})"
+
+    for pattern in _NON_CODE_ERROR_PATTERNS:
+        if pattern.match(text.strip()):
+            return False, f"Response looks like an error message: {text[:80]!r}"
+
+    if not any(indicator in text for indicator in _CODE_INDICATORS):
+        return False, "Response contains no code indicators (def, class, print, =, import)"
+
+    return True, ""
+
 
 def _is_internal_compiler_error(error_message: str) -> bool:
     """Check if an error message contains an internal compiler error (SPY09xx).
@@ -1113,6 +1143,30 @@ class DogfoodOrchestrator:
                 )
 
             code = extract_code_block(gen_result.output) or gen_result.output
+
+            # Step 1.4: Validate that the response looks like actual code
+            is_valid_code, invalid_reason = _is_valid_code_response(code)
+            if not is_valid_code:
+                print(
+                    f"  Non-code response detected: {invalid_reason}", file=sys.stderr
+                )
+                last_error = f"Non-code response: {invalid_reason}"
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return GenerationResult(
+                        success=False,
+                        code=code,
+                        skip_reason=f"Non-code response after {attempt} attempts: {invalid_reason}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
             last_code = code
             print(f"  Generated {len(code)} chars of code", file=sys.stderr)
 
@@ -1358,6 +1412,30 @@ class DogfoodOrchestrator:
                     generation_duration=total_duration,
                     attempts=attempt,
                 )
+
+            # Step 1.4: Validate that the response looks like actual code
+            is_valid_code, invalid_reason = _is_valid_code_response(
+                gen_result.output
+            )
+            if not is_valid_code:
+                print(
+                    f"  Non-code response detected: {invalid_reason}", file=sys.stderr
+                )
+                last_error = f"Non-code response: {invalid_reason}"
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return MultifileGenerationResult(
+                        success=False,
+                        skip_reason=f"Non-code response after {attempt} attempts: {invalid_reason}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
 
             # Parse multi-file response
             files = extract_multifile_code(gen_result.output)
