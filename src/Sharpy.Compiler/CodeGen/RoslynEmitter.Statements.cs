@@ -1626,10 +1626,35 @@ internal partial class RoslynEmitter
             var pattern = GenerateMatchPattern(matchCase.Pattern);
             SwitchLabelSyntax caseLabel;
 
-            if (matchCase.Guard != null)
+            // MemberAccessPattern needs a when clause for runtime equality check
+            // because the member value may not be a compile-time constant.
+            ExpressionSyntax? memberGuard = null;
+            if (matchCase.Pattern is MemberAccessPattern memberAccess)
             {
-                var guardExpr = GenerateExpression(matchCase.Guard);
-                caseLabel = CasePatternSwitchLabel(pattern, WhenClause(guardExpr), Token(SyntaxKind.ColonToken));
+                memberGuard = GenerateMemberAccessGuard(scrutineeExpr, memberAccess);
+            }
+
+            if (matchCase.Guard != null || memberGuard != null)
+            {
+                // Combine user guard with member access guard if both present
+                ExpressionSyntax combinedGuard;
+                if (matchCase.Guard != null && memberGuard != null)
+                {
+                    combinedGuard = BinaryExpression(
+                        SyntaxKind.LogicalAndExpression,
+                        memberGuard,
+                        GenerateExpression(matchCase.Guard));
+                }
+                else if (memberGuard != null)
+                {
+                    combinedGuard = memberGuard;
+                }
+                else
+                {
+                    combinedGuard = GenerateExpression(matchCase.Guard!);
+                }
+
+                caseLabel = CasePatternSwitchLabel(pattern, WhenClause(combinedGuard), Token(SyntaxKind.ColonToken));
             }
             else
             {
@@ -1642,6 +1667,25 @@ internal partial class RoslynEmitter
         }
 
         return SwitchStatement(scrutineeExpr, List(sections));
+    }
+
+    private ExpressionSyntax GenerateMemberAccessGuard(ExpressionSyntax scrutinee, MemberAccessPattern memberAccess)
+    {
+        // Build member access expression: Color.RED -> Color.RED
+        // Type name is preserved as-is (ToTypeName), field names use ToPascalCase
+        ExpressionSyntax expr = IdentifierName(
+            NameMangler.Transform(memberAccess.Parts[0], NameContext.Type));
+
+        for (int i = 1; i < memberAccess.Parts.Length; i++)
+        {
+            expr = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                expr,
+                IdentifierName(NameMangler.Transform(
+                    memberAccess.Parts[i], NameContext.Field)));
+        }
+
+        return BinaryExpression(SyntaxKind.EqualsExpression, scrutinee, expr);
     }
 
     private PatternSyntax GenerateMatchPattern(Pattern pattern)
@@ -1672,6 +1716,11 @@ internal partial class RoslynEmitter
                         .WithPositionalPatternClause(
                             PositionalPatternClause(SeparatedList(subPatterns)));
                 }
+
+            case MemberAccessPattern:
+                // MemberAccessPattern emits as var _ with a when clause
+                // (handled in GenerateMatch). Return discard pattern here.
+                return VarPattern(DiscardDesignation());
 
             default:
                 throw new InvalidOperationException(

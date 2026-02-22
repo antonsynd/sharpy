@@ -99,6 +99,25 @@ public record TypePattern : Pattern
     }
 }
 
+/// <summary>
+/// Member access pattern (e.g., Color.RED) - matches a specific member value.
+/// Used for matching against class constants, enum members, etc.
+/// </summary>
+public record MemberAccessPattern : Pattern
+{
+    /// <summary>
+    /// The dotted parts of the member access (e.g., ["Color", "RED"]).
+    /// </summary>
+    public ImmutableArray<string> Parts { get; init; } = ImmutableArray<string>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Parts.Length >= 2, "MemberAccessPattern.Parts must have at least 2 elements");
+    }
+}
+
 #endregion
 
 #region Compound Patterns

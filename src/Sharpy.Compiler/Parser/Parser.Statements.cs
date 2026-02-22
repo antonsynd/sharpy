@@ -1050,11 +1050,44 @@ public partial class Parser
             (Peek(1).Type == TokenType.Integer || Peek(1).Type == TokenType.Float))
             return ParseLiteralPattern();
 
-        // Binding pattern: identifier (captures the value)
+        // Member access pattern: identifier.identifier (e.g., Color.RED)
+        // or Binding pattern: identifier (captures the value)
         if (Current.Type == TokenType.Identifier)
         {
             var token = Current;
             Advance();
+
+            if (Current.Type == TokenType.Dot)
+            {
+                // Parse dotted member access pattern (e.g., Color.RED)
+                var parts = new List<string> { token.Value };
+                Token endToken = token;
+
+                while (Current.Type == TokenType.Dot)
+                {
+                    Advance(); // consume '.'
+                    if (Current.Type != TokenType.Identifier)
+                    {
+                        throw ReportError($"Expected identifier after '.' in pattern, got '{Current.Value}'",
+                            Current.Line, Current.Column,
+                            DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
+                    }
+                    endToken = Current;
+                    parts.Add(Current.Value);
+                    Advance();
+                }
+
+                return new MemberAccessPattern
+                {
+                    Parts = parts.ToImmutableArray(),
+                    LineStart = token.Line,
+                    ColumnStart = token.Column,
+                    LineEnd = endToken.Line,
+                    ColumnEnd = endToken.Column + endToken.Value.Length,
+                    Span = GetSpanFromTokens(token, endToken)
+                };
+            }
+
             return new BindingPattern
             {
                 Name = token.Value,

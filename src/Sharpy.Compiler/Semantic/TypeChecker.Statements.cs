@@ -767,6 +767,54 @@ internal partial class TypeChecker
                     break;
                 }
 
+            case MemberAccessPattern memberAccess:
+                {
+                    // Resolve the dotted path as a member access (e.g., Color.RED).
+                    // Look up the first part as a type, then resolve subsequent parts as fields/members.
+                    var typeName = memberAccess.Parts[0];
+                    var typeSymbol = _symbolTable.Lookup(typeName) as TypeSymbol;
+                    if (typeSymbol == null)
+                    {
+                        AddError(
+                            $"Undefined type '{typeName}' in pattern",
+                            memberAccess.LineStart, memberAccess.ColumnStart,
+                            code: DiagnosticCodes.Semantic.UndefinedVariable,
+                            span: memberAccess.Span);
+                        break;
+                    }
+
+                    // Resolve remaining parts as field access
+                    SemanticType? resolvedType = null;
+                    for (int i = 1; i < memberAccess.Parts.Length; i++)
+                    {
+                        var fieldName = memberAccess.Parts[i];
+                        var field = typeSymbol.Fields.FirstOrDefault(f => f.Name == fieldName);
+                        if (field != null)
+                        {
+                            resolvedType = field.Type;
+                        }
+                        else
+                        {
+                            AddError(
+                                $"Type '{typeName}' has no member '{fieldName}'",
+                                memberAccess.LineStart, memberAccess.ColumnStart,
+                                code: DiagnosticCodes.Semantic.UndefinedMember,
+                                span: memberAccess.Span);
+                            break;
+                        }
+                    }
+
+                    if (resolvedType != null && !IsAssignable(resolvedType, scrutineeType) && !IsAssignable(scrutineeType, resolvedType))
+                    {
+                        AddError(
+                            $"Pattern type '{resolvedType.GetDisplayName()}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                            memberAccess.LineStart, memberAccess.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: memberAccess.Span);
+                    }
+                    break;
+                }
+
             default:
                 _logger.LogWarning($"Unhandled pattern type: {pattern.GetType().Name}", 0, 0);
                 break;
