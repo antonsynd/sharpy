@@ -68,14 +68,20 @@ def _is_valid_code_response(text: str) -> tuple[bool, str]:
     Returns (is_valid, reason) where reason explains why validation failed.
     """
     if len(text) < _MIN_CODE_LENGTH:
-        return False, f"Response too short ({len(text)} chars, minimum {_MIN_CODE_LENGTH})"
+        return (
+            False,
+            f"Response too short ({len(text)} chars, minimum {_MIN_CODE_LENGTH})",
+        )
 
     for pattern in _NON_CODE_ERROR_PATTERNS:
         if pattern.match(text.strip()):
             return False, f"Response looks like an error message: {text[:80]!r}"
 
     if not any(indicator in text for indicator in _CODE_INDICATORS):
-        return False, "Response contains no code indicators (def, class, print, =, import)"
+        return (
+            False,
+            "Response contains no code indicators (def, class, print, =, import)",
+        )
 
     return True, ""
 
@@ -99,11 +105,13 @@ def _errors_are_equivalent(err1: Optional[str], err2: Optional[str]) -> bool:
     """
     if not err1 or not err2:
         return False
+
     # Normalize: strip whitespace, collapse spaces, remove file:line:col refs
     def normalize(s: str) -> str:
-        s = re.sub(r'-->\s*\S+:\d+:\d+', '', s)  # Remove file:line:col
-        s = re.sub(r'\s+', ' ', s).strip()
+        s = re.sub(r"-->\s*\S+:\d+:\d+", "", s)  # Remove file:line:col
+        s = re.sub(r"\s+", " ", s).strip()
         return s
+
     return normalize(err1) == normalize(err2)
 
 
@@ -279,14 +287,14 @@ async def _verify_expected_with_python(
         "str?",
         "float?",
         "bool?",
-        "property ",          # Sharpy properties (auto or function-style)
+        "property ",  # Sharpy properties (auto or function-style)
         "property get ",
         "property set ",
         "property init ",
-        "with ",              # Sharpy with statement uses IDisposable, not Python __enter__/__exit__
-        "from System",        # .NET interop imports
+        "with ",  # Sharpy with statement uses IDisposable, not Python __enter__/__exit__
+        "from System",  # .NET interop imports
         "from system",
-        "type ",              # Named tuple type aliases (type Point = tuple[x: ...])
+        "type ",  # Named tuple type aliases (type Point = tuple[x: ...])
     ]
     if any(feature in code for feature in sharpy_only_features):
         return True, None, "Sharpy-specific features - skipping Python verification"
@@ -1209,7 +1217,9 @@ class DogfoodOrchestrator:
                     return GenerationResult(
                         success=False,
                         code=code,
-                        expected_output=extract_expected_output_from_response(gen_result.output),
+                        expected_output=extract_expected_output_from_response(
+                            gen_result.output
+                        ),
                         skip_reason=f"Repeated identical error (likely compiler bug): {prevalidation_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
@@ -1226,7 +1236,9 @@ class DogfoodOrchestrator:
                     return GenerationResult(
                         success=False,
                         code=code,
-                        expected_output=extract_expected_output_from_response(gen_result.output),
+                        expected_output=extract_expected_output_from_response(
+                            gen_result.output
+                        ),
                         skip_reason=f"Pre-validation failed after {attempt} attempts: {prevalidation_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
@@ -1245,7 +1257,9 @@ class DogfoodOrchestrator:
                     return GenerationResult(
                         success=False,
                         code=code,
-                        expected_output=extract_expected_output_from_response(gen_result.output),
+                        expected_output=extract_expected_output_from_response(
+                            gen_result.output
+                        ),
                         skip_reason=f"Internal compiler error: {semantic_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
@@ -1266,7 +1280,9 @@ class DogfoodOrchestrator:
                     return GenerationResult(
                         success=False,
                         code=code,
-                        expected_output=extract_expected_output_from_response(gen_result.output),
+                        expected_output=extract_expected_output_from_response(
+                            gen_result.output
+                        ),
                         skip_reason=f"Repeated identical compiler error (likely compiler bug): {semantic_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
@@ -1283,7 +1299,9 @@ class DogfoodOrchestrator:
                     return GenerationResult(
                         success=False,
                         code=code,
-                        expected_output=extract_expected_output_from_response(gen_result.output),
+                        expected_output=extract_expected_output_from_response(
+                            gen_result.output
+                        ),
                         skip_reason=f"Sharpy compiler error after {attempt} attempts: {semantic_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
@@ -1335,7 +1353,11 @@ class DogfoodOrchestrator:
         return GenerationResult(
             success=False,
             code=last_code,
-            expected_output=extract_expected_output_from_response(last_raw_output) if last_raw_output else None,
+            expected_output=(
+                extract_expected_output_from_response(last_raw_output)
+                if last_raw_output
+                else None
+            ),
             skip_reason="Generation failed after all retry attempts",
             backend_used=backend_used,
             generation_duration=total_duration,
@@ -1469,9 +1491,7 @@ class DogfoodOrchestrator:
                 )
 
             # Step 1.4: Validate that the response looks like actual code
-            is_valid_code, invalid_reason = _is_valid_code_response(
-                gen_result.output
-            )
+            is_valid_code, invalid_reason = _is_valid_code_response(gen_result.output)
             if not is_valid_code:
                 print(
                     f"  Non-code response detected: {invalid_reason}", file=sys.stderr

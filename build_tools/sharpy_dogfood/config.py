@@ -142,7 +142,10 @@ class Config(BaseConfig):
 
     @property
     def snippets_dir(self) -> Path:
-        return self.project_root / "src/Sharpy.Compiler.Tests/Integration/TestFixtures/basics"
+        return (
+            self.project_root
+            / "src/Sharpy.Compiler.Tests/Integration/TestFixtures/basics"
+        )
 
     @property
     def test_fixtures_dir(self) -> Path:
