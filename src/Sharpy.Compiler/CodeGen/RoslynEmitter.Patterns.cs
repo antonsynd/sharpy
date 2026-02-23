@@ -21,7 +21,15 @@ internal partial class RoslynEmitter
         foreach (var matchCase in matchStmt.Cases)
         {
             var bodyStatements = matchCase.Body.SelectMany(GenerateBodyStatements).ToList();
-            bodyStatements.Add(BreakStatement());
+
+            // Only add break if the last statement isn't an unconditional jump
+            var lastStatement = bodyStatements.LastOrDefault();
+            if (lastStatement is not (ReturnStatementSyntax or ThrowStatementSyntax
+                or BreakStatementSyntax or ContinueStatementSyntax)
+                && !(lastStatement is YieldStatementSyntax { ReturnOrBreakKeyword.RawKind: (int)SyntaxKind.BreakKeyword }))
+            {
+                bodyStatements.Add(BreakStatement());
+            }
 
             // Collect all MemberAccessPattern guards (including nested in tuples).
             // matchVarCounter resets per case arm — each switch section is an independent

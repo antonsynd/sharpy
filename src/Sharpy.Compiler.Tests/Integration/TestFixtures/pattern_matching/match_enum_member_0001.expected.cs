@@ -22,19 +22,15 @@ public static partial class MatchEnumMember0001
             case var __match0 when __match0 == Color.RED:
 #line 9 "match_enum_member_0001.spy"
                 return "red";
-                break;
             case var __match0 when __match0 == Color.GREEN:
 #line 11 "match_enum_member_0001.spy"
                 return "green";
-                break;
             case var __match0 when __match0 == Color.BLUE:
 #line 13 "match_enum_member_0001.spy"
                 return "blue";
-                break;
             case var _:
 #line 15 "match_enum_member_0001.spy"
                 return "unknown";
-                break;
         }
     }
 
