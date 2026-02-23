@@ -362,6 +362,7 @@ internal partial class TypeChecker
 
         // Detect generators early: set flag before body checking so CheckReturn
         // knows bare return is valid (it becomes yield break).
+        var previousFunctionReturnType = _currentFunctionReturnType;
         var previousIsGenerator = _currentFunctionIsGenerator;
         var isGenerator = ContainsYield(functionDef.Body);
         _currentFunctionIsGenerator = isGenerator;
@@ -418,7 +419,7 @@ internal partial class TypeChecker
         _superInitCalled = previousSuperInitCalled;
 
         _symbolTable.ExitScope();
-        _currentFunctionReturnType = null;
+        _currentFunctionReturnType = previousFunctionReturnType;
     }
 
     private void CheckClass(ClassDef classDef)

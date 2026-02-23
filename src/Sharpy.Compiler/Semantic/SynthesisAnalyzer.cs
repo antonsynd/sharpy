@@ -117,7 +117,7 @@ internal static class SynthesisAnalyzer
             {
                 var elementType = iterFunc.ReturnType is not (UnknownType or VoidType)
                     ? iterFunc.ReturnType
-                    : new UserDefinedType { Name = "object" };
+                    : SemanticType.Object;
                 result.Add(new SynthesizedInterfaceInfo(
                     "IEnumerable",
                     "System.Collections.Generic",

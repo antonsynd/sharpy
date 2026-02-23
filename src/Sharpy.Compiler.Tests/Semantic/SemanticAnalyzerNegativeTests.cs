@@ -689,7 +689,7 @@ return 42  # return at module level
         typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Return statement outside of function"));
     }
 
-    [Fact(Skip = "Unimplemented: Yield statements not yet supported")]
+    [Fact]
     public void RejectsYieldOutsideFunction()
     {
         var source = @"
@@ -698,7 +698,8 @@ yield 42  # yield at module level
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        // If yield is supported
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
+            e.Message.Contains("yield") && e.Message.Contains("outside"));
     }
 
     #endregion

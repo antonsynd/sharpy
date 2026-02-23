@@ -935,14 +935,14 @@ public static class DiagnosticExplanations
             "Add an '__eq__(self, other: object) -> bool' method:\nclass Foo:\n    x: int\n    def __eq__(self, other: object) -> bool:\n        return False\n    def __hash__(self) -> int:\n        return self.x");
 
         Add(dict, DiagnosticCodes.Validation.UnsupportedDunderReversed,
-            "__reversed__ not fully supported",
+            "__reversed__ now fully supported via generators",
             "Validation",
-            "The '__reversed__' dunder method is recognized and generates a 'GetReverseEnumerator()' method " +
-            "with the correct 'IEnumerator<T>' return type to satisfy 'IReverseEnumerable<T>'. However, full " +
-            "__reversed__ support requires generator/yield expressions, which are not yet implemented. " +
-            "The generated method body may not compile if it does not return an 'IEnumerator<T>'.",
-            "class Countdown:\n    start: int\n    def __reversed__(self) -> int:\n        return self.start  # body returns int, not IEnumerator<int>",
-            "Wait for generator/yield expression support, or manually return an IEnumerator<T> instance.");
+            "This diagnostic is no longer emitted. The '__reversed__' dunder method is fully supported " +
+            "using generator functions with 'yield'. Define '__reversed__' as a generator that yields " +
+            "elements in reverse order, and the compiler will generate a 'GetReverseEnumerator()' method " +
+            "returning 'IEnumerator<T>' to satisfy 'IReverseEnumerable<T>'.",
+            "class Countdown:\n    start: int\n    def __init__(self, start: int):\n        self.start = start\n    def __reversed__(self) -> int:\n        i = self.start\n        while i > 0:\n            yield i\n            i = i - 1",
+            "Use 'yield' in '__reversed__' to produce elements in reverse order.");
 
         // ── Validation errors: Dunder invocation rules (SPY0460-SPY0469)
 

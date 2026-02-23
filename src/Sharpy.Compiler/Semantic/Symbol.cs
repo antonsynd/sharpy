@@ -105,6 +105,11 @@ public record FunctionSymbol : Symbol
     public bool IsAbstract { get; init; }
     public bool IsVirtual { get; init; }
     public bool IsOverride { get; init; }
+    /// <summary>
+    /// Set by TypeChecker.Definitions.cs in sync with SemanticInfo.MarkAsGenerator().
+    /// CodeGen uses SemanticInfo.IsGenerator(FunctionDef) when it has the AST node;
+    /// SynthesisAnalyzer uses this property when it has only the FunctionSymbol.
+    /// </summary>
     public bool IsGenerator { get; internal set; }
 
     // Generic type parameters (for generic functions like def identity[T](value: T) -> T)
