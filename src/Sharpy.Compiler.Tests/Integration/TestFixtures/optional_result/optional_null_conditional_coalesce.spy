@@ -1,0 +1,28 @@
+# Test: Optional ?. combined with ?? coalescing
+# Verifies that the false branch of ?. ternary uses default(T) instead of bare default,
+# which avoids CS8716 when the ternary result is used with ??.
+
+class Config:
+    label: str
+
+    def __init__(self, label: str):
+        self.label = label
+
+    def get_label(self) -> str:
+        return self.label
+
+def main():
+    cfg1: Config? = Some(Config("prod"))
+    cfg2: Config? = None()
+
+    # Method call with ?. and ??
+    name1: str = cfg1?.get_label() ?? "default"
+    name2: str = cfg2?.get_label() ?? "default"
+    print(name1)
+    print(name2)
+
+    # Field access with ?. and ??
+    label1: str = cfg1?.label ?? "none"
+    label2: str = cfg2?.label ?? "none"
+    print(label1)
+    print(label2)

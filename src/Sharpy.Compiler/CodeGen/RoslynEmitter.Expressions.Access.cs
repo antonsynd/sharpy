@@ -265,10 +265,13 @@ internal partial class RoslynEmitter
                         cond = BinaryExpression(SyntaxKind.LogicalAndExpression, capture, cond);
 
                     // Use Optional<T>.None for the false branch so C# resolves the ternary
-                    // as Optional<T> (via implicit conversion on the true branch if needed)
-                    var falseExpr = GetExpressionSemanticType(call) is OptionalType optCallType
+                    // as Optional<T> (via implicit conversion on the true branch if needed).
+                    // Use default(T) instead of bare default — bare default lacks a target type
+                    // when combined with ?? (CS8716).
+                    var callType = GetExpressionSemanticType(call);
+                    var falseExpr = callType is OptionalType optCallType
                         ? (ExpressionSyntax)GenerateOptionalNone(optCallType)
-                        : (ExpressionSyntax)LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+                        : (ExpressionSyntax)DefaultExpression(_typeMapper.MapSemanticType(callType ?? SemanticType.Unknown));
 
                     return ConditionalExpression(cond, methodCall, falseExpr);
                 }
@@ -436,10 +439,13 @@ internal partial class RoslynEmitter
                     member);
 
                 // Use Optional<T>.None for the false branch so C# resolves the ternary
-                // as Optional<T> (via implicit conversion on the true branch if needed)
-                var falseExpr = GetExpressionSemanticType(memberAccess) is OptionalType optExprType
+                // as Optional<T> (via implicit conversion on the true branch if needed).
+                // Use default(T) instead of bare default — bare default lacks a target type
+                // when combined with ?? (CS8716).
+                var exprType = GetExpressionSemanticType(memberAccess);
+                var falseExpr = exprType is OptionalType optExprType
                     ? (ExpressionSyntax)GenerateOptionalNone(optExprType)
-                    : LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+                    : (ExpressionSyntax)DefaultExpression(_typeMapper.MapSemanticType(exprType ?? SemanticType.Unknown));
 
                 result = ConditionalExpression(cond, trueExpr, falseExpr);
             }
