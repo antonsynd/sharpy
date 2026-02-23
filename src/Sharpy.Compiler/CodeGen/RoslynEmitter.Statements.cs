@@ -231,7 +231,7 @@ internal partial class RoslynEmitter
 
         // yield from expr → foreach (var __yieldItem_N in expr) { yield return __yieldItem_N; }
         var iterableExpr = GenerateExpression(yieldStmt.Value);
-        var itemName = $"__yieldItem_{_yieldFromCounter++}";
+        var itemName = GenerateTempVarName("yieldItem");
         var itemIdentifier = Identifier(itemName);
         var yieldReturn = YieldStatement(
             SyntaxKind.YieldReturnStatement,
