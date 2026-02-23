@@ -164,6 +164,29 @@ public record ReturnStatement : Statement
 }
 
 /// <summary>
+/// Yield statement (yield value or yield from iterable)
+/// </summary>
+public record YieldStatement : Statement
+{
+    /// <summary>The expression to yield. Required (bare yield not supported).</summary>
+    public Expression Value { get; init; } = null!;
+
+    /// <summary>True for "yield from iterable" (delegation).</summary>
+    public bool IsFrom { get; init; }
+
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Value != null, "YieldStatement.Value cannot be null");
+    }
+
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Value;
+    }
+}
+
+/// <summary>
 /// Raise statement (raise exception or raise)
 /// </summary>
 public record RaiseStatement : Statement

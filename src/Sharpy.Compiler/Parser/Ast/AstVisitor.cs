@@ -178,6 +178,9 @@ public abstract class AstVisitor
             case ReturnStatement n:
                 VisitReturnStatement(n);
                 break;
+            case YieldStatement n:
+                VisitYieldStatement(n);
+                break;
             case RaiseStatement n:
                 VisitRaiseStatement(n);
                 break;
@@ -408,6 +411,7 @@ public abstract class AstVisitor
     public virtual void VisitBreakWithFlagStatement(BreakWithFlagStatement node) => VisitStatement(node);
     public virtual void VisitContinueStatement(ContinueStatement node) => VisitStatement(node);
     public virtual void VisitReturnStatement(ReturnStatement node) => VisitStatement(node);
+    public virtual void VisitYieldStatement(YieldStatement node) => VisitStatement(node);
     public virtual void VisitRaiseStatement(RaiseStatement node) => VisitStatement(node);
 
     #endregion
@@ -548,6 +552,7 @@ public abstract class AstVisitor<T>
             BreakWithFlagStatement n => VisitBreakWithFlagStatement(n),
             ContinueStatement n => VisitContinueStatement(n),
             ReturnStatement n => VisitReturnStatement(n),
+            YieldStatement n => VisitYieldStatement(n),
             RaiseStatement n => VisitRaiseStatement(n),
 
             // Statements - Compound
@@ -721,6 +726,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitBreakWithFlagStatement(BreakWithFlagStatement node) => VisitStatement(node);
     public virtual T VisitContinueStatement(ContinueStatement node) => VisitStatement(node);
     public virtual T VisitReturnStatement(ReturnStatement node) => VisitStatement(node);
+    public virtual T VisitYieldStatement(YieldStatement node) => VisitStatement(node);
     public virtual T VisitRaiseStatement(RaiseStatement node) => VisitStatement(node);
 
     #endregion

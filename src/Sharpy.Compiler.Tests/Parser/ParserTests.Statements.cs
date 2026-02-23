@@ -100,6 +100,33 @@ public partial class ParserTests
         raise.Exception.Should().BeOfType<FunctionCall>();
     }
 
+    [Fact]
+    public void ParseYieldStatement()
+    {
+        var module = Parse("def gen():\n    yield 42");
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        var yieldStmt = funcDef.Body[0].Should().BeOfType<YieldStatement>().Subject;
+        yieldStmt.Value.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("42");
+        yieldStmt.IsFrom.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ParseYieldFromStatement()
+    {
+        var module = Parse("def gen():\n    yield from items");
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        var yieldStmt = funcDef.Body[0].Should().BeOfType<YieldStatement>().Subject;
+        yieldStmt.Value.Should().BeOfType<Identifier>().Which.Name.Should().Be("items");
+        yieldStmt.IsFrom.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseBareYield_ShouldFail()
+    {
+        var errors = ParseExpectingError("def gen():\n    yield");
+        errors.Should().NotBeEmpty();
+    }
+
     #endregion
 
     #region Control Flow

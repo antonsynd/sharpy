@@ -510,6 +510,37 @@ public partial class Parser
         };
     }
 
+    private YieldStatement ParseYieldStatement()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        var yieldToken = Current;
+
+        Expect(TokenType.Yield);
+
+        bool isFrom = false;
+        if (Current.Type == TokenType.From)
+        {
+            isFrom = true;
+            Advance();
+        }
+
+        var value = ParseExpression();
+
+        ExpectStatementEnd();
+
+        return new YieldStatement
+        {
+            Value = value,
+            IsFrom = isFrom,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = CombineSpans(GetSpanFromToken(yieldToken), value.Span)
+        };
+    }
+
     private RaiseStatement ParseRaiseStatement()
     {
         var startLine = Current.Line;

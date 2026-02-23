@@ -402,6 +402,7 @@ public partial class Parser
             TokenType.For => ParseForStatement(),
             TokenType.With => ParseWithStatement(),
             TokenType.Return => ParseReturnStatement(),
+            TokenType.Yield => ParseYieldStatement(),
             TokenType.Raise => ParseRaiseStatement(),
             TokenType.Assert => ParseAssertStatement(),
             TokenType.Pass => ParsePassStatement(),
