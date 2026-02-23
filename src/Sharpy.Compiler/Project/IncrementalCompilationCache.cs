@@ -20,6 +20,7 @@ internal record CacheMetadata(string CompilerVersion, Dictionary<string, string>
 ///   v1 (2026-02): Initial versioned format
 ///   v2 (2026-02): Added CodeGenInfo, exports, re-exports
 ///   v3 (2026-02): InterfaceIds replaced with InterfaceEntries (CachedInterfaceEntry) to preserve type args
+///   v4 (2026-02): Added IsGenerator to CachedSymbol for generator function persistence
 ///
 /// When making breaking changes:
 ///   1. Increment CurrentSchemaVersion
@@ -38,7 +39,7 @@ internal class IncrementalCompilationCache
     /// Current schema version for the symbol cache.
     /// Increment this when making breaking changes to FileCacheEntry or CachedSymbol structures.
     /// </summary>
-    internal const int CurrentSchemaVersion = 3;
+    internal const int CurrentSchemaVersion = 4;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

@@ -144,6 +144,7 @@ internal static class SymbolSerializer
             IsAbstract = fs.IsAbstract,
             IsVirtual = fs.IsVirtual,
             IsOverride = fs.IsOverride,
+            IsGenerator = fs.IsGenerator,
             IsReExport = fs.IsReExport,
             OriginalModule = fs.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(fs.CodeGenInfo)
@@ -383,6 +384,7 @@ internal static class SymbolSerializer
             IsAbstract = cached.IsAbstract,
             IsVirtual = cached.IsVirtual,
             IsOverride = cached.IsOverride,
+            IsGenerator = cached.IsGenerator,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)

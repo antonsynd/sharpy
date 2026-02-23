@@ -122,6 +122,11 @@ internal record CachedSymbol
     public bool IsOverride { get; init; }
 
     /// <summary>
+    /// For FunctionSymbol: whether it's a generator (contains yield)
+    /// </summary>
+    public bool IsGenerator { get; init; }
+
+    /// <summary>
     /// For ModuleSymbol: exports (symbol IDs)
     /// </summary>
     public Dictionary<string, string>? ExportIds { get; init; }
