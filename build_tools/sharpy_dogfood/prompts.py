@@ -52,7 +52,7 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Float division by zero**: Float division by zero produces `Infinity` (not an exception). Only integer division by zero raises `ZeroDivisionError`.
 - **Self prefix**: Always use `self.field_name` to access instance fields inside methods.
 - **Try-block scoping**: Variables declared inside `try`/`except`/`finally` blocks are block-scoped — they are NOT visible outside those blocks. Declare variables before the `try` if they need to be used in `except`/`else`/`finally` or after the `try`.
-- **Float output**: Floats always print with at least one decimal place (e.g., `print(5.0)` outputs `5.0`). This matches Python behavior.
+- **Float output**: When printing float values, the output ALWAYS includes a decimal point (e.g., `print(100.0)` outputs `100.0`, NOT `100`). In EXPECTED OUTPUT comments, always write `100.0` for float values, never `100`. This matches Python behavior.
 - **Set iteration order**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
 - **Properties are not method calls**: Access properties WITHOUT parentheses: `obj.area` (NOT `obj.area()`). Properties look like field access.
 - **Property backing fields**: Function-style properties need a separate backing field (e.g., `_name: str`). Auto-properties generate this automatically.
@@ -723,6 +723,7 @@ IMPORTANT:
 - Use ONLY simple print() calls with ONE argument: print(value)
 - For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
 - Every print() output should appear in EXPECTED OUTPUT
+- Float values ALWAYS print with a decimal point: write `100.0` not `100`, `5.0` not `5`
 - Keep the code simple and focused on testing the specified feature
 - Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
 
@@ -877,7 +878,8 @@ CRITICAL RULES:
 5. Module names match filenames exactly (without .spy)
 6. All print() calls must be in main.spy
 7. NO circular imports between modules
-8. Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
+8. Float values ALWAYS print with a decimal point: write `100.0` not `100`, `5.0` not `5`
+9. Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
 
 
 def get_regeneration_prompt(
@@ -972,6 +974,7 @@ IMPORTANT:
 - Use ONLY simple print() calls with ONE argument
 - For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
 - Every print() output should appear in EXPECTED OUTPUT
+- Float values ALWAYS print with a decimal point: write `100.0` not `100`, `5.0` not `5`
 - Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
 
 
@@ -1091,7 +1094,8 @@ CRITICAL RULES:
 7. NO circular imports between modules
 8. Use ONLY simple print() calls with ONE argument
 9. For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
-10. Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
+10. Float values ALWAYS print with a decimal point: write `100.0` not `100`, `5.0` not `5`
+11. Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
 
 
 def get_output_verification_prompt(
