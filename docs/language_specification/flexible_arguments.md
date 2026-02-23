@@ -1,5 +1,7 @@
 # Flexible Arguments
 
+> **Implementation status:** Not yet implemented — planned for Phase 11 (v0.2.5). Positional-only (`/`), keyword-only (`*`), `@kwargs`, and `@dynamic_kwargs` are all not yet parsed.
+
 This document specifies Sharpy's extended argument handling features, which provide Python-style parameter flexibility while maintaining static type safety.
 
 ## Overview

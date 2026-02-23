@@ -1,5 +1,7 @@
 # Tagged Unions (Algebraic Data Types)
 
+> **Implementation status:** User-defined tagged unions (`union` keyword) are not yet implemented — planned for Phase 8 (v0.2.2). The built-in `Result[T, E]` and `Optional[T]` types are implemented as compiler primitives (see below).
+
 Tagged unions (also called algebraic data types or sum types) allow defining types that can be one of several variants, where each variant can carry associated data.
 
 ## Overview

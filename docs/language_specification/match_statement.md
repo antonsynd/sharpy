@@ -24,6 +24,9 @@ def describe(value: object) -> str:
 
 ## Match Statement vs Match Expression
 
+> **Implementation status:** The match **expression** form is not yet implemented (planned for Phase 8, v0.2.2).
+> Only the match **statement** form is currently available.
+
 Sharpy supports both statement and expression forms of `match`, corresponding to C#'s switch statement and switch expression:
 
 **Statement Form:**
@@ -139,26 +142,28 @@ if condition:
 **Parser hint:** If `case pattern:` is followed by `NEWLINE INDENT`, it's statement form. If followed by an expression on the same line, it's expression form.
 
 *Implementation*
-- *🔄 Lowered*
-  - *Statement form: C# `switch` statement*
-  - *Expression form: C# `switch` expression*
+- *Statement form: ✅ Implemented — C# `switch` statement*
+- *Expression form: ❌ Not yet implemented — will map to C# `switch` expression (Phase 8)*
 
 ## Supported Patterns
 
-| Pattern | Syntax | C# 9.0 Mapping |
-|---------|--------|----------------|
-| Literal | `case 0:` | `case 0:` |
-| Type | `case int():` | `case int:` |
-| Type with binding | `case int() as n:` | `case int n:` |
-| Wildcard | `case _:` | `default:` or `_` |
-| Guard | `case int() as n if n > 0:` | `case int n when n > 0:` |
-| Or | `case "a" \| "b":` | `case "a" or "b":` |
-| Tuple | `case (0, 0):` | Direct support |
-| Property | `case Point(x=0):` | `case Point { X: 0 }:` |
-| Relational | `case > 0:` | Direct support (C# 9) |
+| Pattern | Syntax | C# 9.0 Mapping | Status |
+|---------|--------|----------------|--------|
+| Literal | `case 0:` | `case 0:` | ✅ Implemented |
+| Type with binding | `case int() as n:` | `case int n:` | ✅ Implemented |
+| Wildcard | `case _:` | `default:` or `_` | ✅ Implemented |
+| Guard | `case int() as n if n > 0:` | `case int n when n > 0:` | ✅ Implemented |
+| Tuple | `case (0, 0):` | Direct support | ✅ Implemented |
+| Member access | `case Color.RED:` | `case Color.RED:` | ✅ Implemented |
+| Binding | `case x:` | `var x` | ✅ Implemented |
+| Or | `case "a" \| "b":` | `case "a" or "b":` | ❌ Not yet implemented (Phase 8) |
+| Property | `case Point(x=0):` | `case Point { X: 0 }:` | ❌ Not yet implemented (Phase 8) |
+| Positional | `case Point(0, y):` | Positional pattern | ❌ Not yet implemented (Phase 8) |
+| Relational | `case > 0:` | Direct support (C# 9) | ❌ Not yet implemented (Phase 8) |
 
 *Implementation*
-- *✅ Native - All patterns map to C# 9.0 pattern matching.*
+- *Implemented patterns (Literal, Type+binding, Wildcard, Guard, Tuple, MemberAccess, Binding) map to C# 9.0 pattern matching.*
+- *Remaining patterns (Or, Property, Positional, Relational) are planned for Phase 8 (v0.2.2). AST nodes exist as placeholders but are not yet wired into the parser or codegen.*
 
 ## Tuple Patterns
 
@@ -176,6 +181,8 @@ match point:
 
 ## Property Patterns
 
+> **Not yet implemented** — planned for Phase 8 (v0.2.2).
+
 ```python
 match shape:
     case Point(x=0, y=0):
@@ -185,6 +192,8 @@ match shape:
 ```
 
 ## Positional Patterns
+
+> **Not yet implemented** — planned for Phase 8 (v0.2.2).
 
 For types with a `Deconstruct` method (like records or types with explicit deconstruction), positional patterns extract values in order:
 
@@ -218,7 +227,9 @@ match value:
 
 ## Exhaustiveness Checking
 
-The compiler checks that `match` statements cover all possible cases for certain types:
+> **Not yet implemented** — planned for Phase 8 (v0.2.2). Will require an `ExhaustivenessValidator` in the validation pipeline.
+
+The compiler will check that `match` statements cover all possible cases for certain types:
 
 **Checked Types:**
 

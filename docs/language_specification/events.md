@@ -1,5 +1,7 @@
 # Events
 
+> **Implementation status:** Not yet implemented — planned for Phase 12 (v0.2.6). No `EventDef` AST node exists yet.
+
 Events provide a publish-subscribe pattern:
 
 ```python

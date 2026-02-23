@@ -1,5 +1,7 @@
 # Expression Blocks
 
+> **Implementation status:** Deferred post-v0.2.x — lambdas and helper functions suffice for most use cases.
+
 Expression blocks (`do:`) allow multiple statements to be grouped into a single expression that evaluates to the last value, inspired by Rust's everything-is-an-expression philosophy.
 
 ## Syntax

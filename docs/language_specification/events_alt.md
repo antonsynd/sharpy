@@ -1,5 +1,7 @@
 # Events
 
+> **Implementation status:** Not yet implemented — planned for Phase 12 (v0.2.6). This is an alternate design document; see also [events.md](events.md).
+
 Events provide a mechanism for objects to notify subscribers when something of interest occurs. Sharpy events map directly to .NET events, enabling seamless interop with UI frameworks, reactive patterns, and the broader .NET ecosystem.
 
 ## Basic Syntax

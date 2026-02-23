@@ -1,6 +1,7 @@
 <!-- Verified by /project:verify-plan on 2026-02-17 -->
 <!-- Verification result: PASS WITH CORRECTIONS -->
 <!-- Phase 6+7 marked complete on 2026-02-20 (closes #209) -->
+<!-- Phase 9 marked complete on 2026-02-23 (generators fully implemented) -->
 
 # Sharpy Language Feature Completeness — Phased Roadmap
 
@@ -30,6 +31,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 - Comparison chains, null-conditional/coalescing, type narrowing
 - **Phase 6 (v0.2.0):** Constructor chaining, enum `.name`/iteration, generic type aliases, method overloading
 - **Phase 7 (v0.2.1):** Complex tuple unpacking, rest patterns, tuple unpacking in comprehensions, spread in collection literals, spread in function calls
+- **Phase 9 (v0.2.3):** `yield` statement, `yield from` delegation, generator return type inference
 
 ### Missing (grouped by phase below)
 
@@ -100,11 +102,11 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 | # | Feature | Complexity | Notes |
 |---|---------|-----------|-------|
-| 9.1 | `yield` statement | L | New `YieldStatement` AST node; parser + semantic (function becomes generator) + codegen (C# `yield return`) |
-| 9.2 | `yield from` delegation | M | `yield from other_iter` → C# `foreach (var x in other) yield return x;` |
-| 9.3 | Generator return type inference | M | If function body contains `yield`, infer return type `Iterator[T]` → `IEnumerable<T>` |
+| ~~9.1~~ | ~~`yield` statement~~ | ~~L~~ | ~~Completed.~~ `YieldStatement` AST node; parser `ParseYieldStatement()`; semantic marks `IsGenerator` on `FunctionSymbol`; codegen emits C# `yield return`. Diagnostics: SPY0265 (yield outside function), SPY0267 (return with value in generator), SPY0268 (yield in `__next__`), SPY0269 (generator `__iter__` + `__next__` conflict). |
+| ~~9.2~~ | ~~`yield from` delegation~~ | ~~M~~ | ~~Completed.~~ `YieldStatement.IsFrom` flag; parser detects `yield from`; codegen emits `foreach (var __yieldItem_N in expr) { yield return __yieldItem_N; }` |
+| ~~9.3~~ | ~~Generator return type inference~~ | ~~M~~ | ~~Completed.~~ Functions with `yield` automatically get `IEnumerable<T>` return type via `WrapInIEnumerable()`. `__iter__` and `__reversed__` with `yield` get `IEnumerator<T>`. `GeneratorValidator` enforces constraints. |
 
-**Key files:** New AST nodes in `Statement.cs`, `Parser.Statements.cs`, `TypeChecker.Definitions.cs`, `RoslynEmitter.Statements.cs`
+**Key files:** `Statement.cs` (YieldStatement), `Parser.Statements.cs` (ParseYieldStatement), `TypeChecker.Statements.cs` (CheckYield), `RoslynEmitter.Statements.cs` (GenerateYield), `GeneratorValidator.cs`
 
 **Dependencies:** 9.1 → 9.2 → 9.3 (linear chain). Must complete before Phase 10.5 (async generators).
 
@@ -116,8 +118,8 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 | # | Feature | Complexity | Notes |
 |---|---------|-----------|-------|
-| 10.1 | `async def` functions | L | Parser recognizes `async` prefix on `def`; semantic marks function as async; return type wrapped in `Task<T>` |
-| 10.2 | `await` expressions | L | `AwaitExpression` AST already exists; wire parser + semantic (operand must be `Task<T>`, result is `T`) + codegen (C# `await`) |
+| 10.1 | `async def` functions | L | Parser recognizes `async` prefix on `def`; semantic marks function as async; return type wrapped in `Task<T>`. **Groundwork:** `TokenType.Async` and `TokenType.Await` already defined in `Token.cs`; `async` reserved as keyword. `FunctionDef` needs `IsAsync` property. |
+| 10.2 | `await` expressions | L | `AwaitExpression` AST already exists in `Expression.Future.cs` (placeholder); wire parser + semantic (operand must be `Task<T>`, result is `T`) + codegen (C# `await`). **Groundwork:** `BasicBlock.ContainsAwait`, `AsyncStateRegion`, `IdentifyAsyncRegions()` exist in control flow analysis. |
 | 10.3 | `async for` loops | M | `async for item in aiter:` → C# `await foreach`; operand must be `IAsyncEnumerable<T>` |
 | 10.4 | `async with` statements | M | `async with resource() as r:` → C# `await using`; operand must be `IAsyncDisposable` |
 | 10.5 | Async generators | L | `async def` + `yield` → `AsyncIterator[T]` → `IAsyncEnumerable<T>` (depends on Phase 9) |
@@ -173,38 +175,38 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | **6** | v0.2.0 | Correctness & Completion | ~~5~~ ✅ Complete | Constructor chaining, enum polish, generic type aliases, method overloading (6.2 `raise from` intentionally skipped) |
 | **7** | v0.2.1 | Destructuring & Spread | ~~5~~ ✅ Complete | Complex unpacking, `*rest`, spread in literals/calls |
 | **8** | v0.2.2 | Pattern Matching & Tagged Unions | 8 | Match expressions, all patterns, `union` keyword, exhaustiveness |
-| **9** | v0.2.3 | Generators & Iterators | 3 | `yield`/`yield from`, generator inference |
+| **9** | v0.2.3 | Generators & Iterators | ~~3~~ ✅ Complete | `yield`/`yield from`, generator inference, 4 new diagnostics (SPY0265–SPY0269) |
 | **10** | v0.2.4 | Async/Await | 6 | `async def`, `await`, `async for/with`, async generators |
 | **11** | v0.2.5 | Advanced Functions | 5 | Pos-only/kw-only, `@kwargs`, partial application |
 | **12** | v0.2.6 | Type System & Polish | 6 | Variance, delegates, events, custom decorators, spec audit |
 
-**Total: ~38 items across 7 phases (v0.2.0–v0.2.6)** [CORRECTED: was ~42, reduced by 4 already-completed Phase 6 items]
+**Total: ~35 remaining items across 4 phases (v0.2.2–v0.2.6)** — Phases 6, 7, 9 complete (13 items delivered)
 
 ---
 
 ## Critical Path
 
 ```
-Phase 6 (v0.2.0) ──→ Phase 7 (v0.2.1) ──→ Phase 8 (v0.2.2) ──→ ┐
-                                                                    ├──→ Phase 12 (v0.2.6)
-Phase 9 (v0.2.3) ──→ Phase 10 (v0.2.4) ──→ Phase 11 (v0.2.5) ──→ ┘
+✅ Phase 6 (v0.2.0) ──→ ✅ Phase 7 (v0.2.1) ──→ Phase 8 (v0.2.2)  ──→ ┐
+                                                                          ├──→ Phase 12 (v0.2.6)
+✅ Phase 9 (v0.2.3) ──→    Phase 10 (v0.2.4)  ──→ Phase 11 (v0.2.5) ──→ ┘
 ```
 
-- Phases 6 and 9 can begin in parallel (independent)
-- Phase 7 depends on Phase 6 (method overloading needed for spread resolution)
-- Phase 8 depends on Phase 7 (unpacking patterns relate to destructuring)
-- Phase 10 depends on Phase 9 (async generators need generators)
+- ✅ Phases 6, 7, 9 complete
+- **Phase 8 is unblocked** — depends on Phase 7 (complete); all items are NOT STARTED
+- **Phase 10 is unblocked** — depends on Phase 9 (complete); groundwork exists (async tokens, AwaitExpression placeholder, control flow infrastructure)
+- Phases 8 and 10 can proceed in parallel (independent tracks)
 - Phases 11–12 can begin once 10 is done (or in parallel with 10 if capacity allows)
 
 ---
 
 ## Ordering Rationale
 
-1. **Phase 6 first** — fixes correctness issues in shipped features; no new syntax risk
-2. **Phase 7 before 8** — spread/unpacking is foundational; tagged union destruction uses similar patterns
-3. **Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy
-4. **Phase 9 before 10** — generators are prerequisite for async generators
-5. **Phase 10 completes the async story** — last major syntax feature
+1. ~~**Phase 6 first** — fixes correctness issues in shipped features; no new syntax risk~~ ✅ Done
+2. ~~**Phase 7 before 8** — spread/unpacking is foundational; tagged union destruction uses similar patterns~~ ✅ Done
+3. **Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy. **Next priority.** All 8 items are NOT STARTED; AST placeholders exist for MatchExpression, UnionDef, OrPattern, TypePattern, UnionCasePattern.
+4. ~~**Phase 9 before 10** — generators are prerequisite for async generators~~ ✅ Done
+5. **Phase 10 completes the async story** — last major syntax feature. Can proceed in parallel with Phase 8. Groundwork exists: `TokenType.Async`/`Await` reserved, `AwaitExpression` AST placeholder, `AsyncStateRegion`/`IdentifyAsyncRegions()` in control flow.
 6. **Phases 11–12 are polish** — advanced function params, type system, and gap-filling
 
 ---
@@ -270,7 +272,7 @@ Intentional language design decisions:
 | **File paths** | All key files referenced in Phases 6-12 | All exist |
 | **Diagnostic codes** | SPY0515, SPY0516, SPY0517, SPY0251 | All confirmed in `DiagnosticCodes.cs` |
 | **AST nodes (existing)** | MatchExpression, OrPattern, TypePattern, BindingPattern, UnionDef, AwaitExpression, RaiseStatement.Cause | All confirmed |
-| **AST nodes (new needed)** | RelationalPattern, SpreadExpression, YieldStatement, PlaceholderExpression | Confirmed none exist yet |
+| **AST nodes (new needed)** | RelationalPattern, ~~SpreadExpression~~, ~~YieldStatement~~, PlaceholderExpression | RelationalPattern and PlaceholderExpression still needed; SpreadExpression and YieldStatement now implemented |
 | **Completed features** | Properties, `with`, match, walrus, generics, comprehensions, named tuples, pipe, collections, try/maybe, chains | All confirmed in codegen |
 | **Spec file count** | 108 .md files + grammar.ebnf.txt | Confirmed (109 total) |
 | **Deferred C# versions** | C# 10 (record structs), C# 11 (@file, list patterns, static abstract), C# 13 (field), C# 14 (extensions, +=) | All match `docs/language_specification/deferred_features.md` |
@@ -286,3 +288,30 @@ Intentional language design decisions:
 - **6.8 TypeResolver substitution for generic type aliases**: The technical approach (substitution in TypeResolver) was not validated against TypeResolver internals.
 - **8.5 `Deconstruct` awareness**: Did not verify whether any Deconstruct pattern exists in codegen.
 - **10.6 `asyncio.gather` mapping**: Did not verify if any stdlib mapping exists for this.
+
+---
+
+## Status Audit (2026-02-23)
+
+**Phase 9 verified COMPLETE** — all 3 items (yield, yield from, generator return type inference) fully implemented across parser, semantic, validation, and codegen.
+
+**Phase 8 audit** — all 8 items confirmed NOT STARTED. AST placeholder nodes exist (`MatchExpression`, `UnionDef`, `OrPattern`, `TypePattern`, `UnionCasePattern`) but none are wired into parser, semantic analysis, or codegen. Match statements work only with 5 basic patterns: Literal, Wildcard, Binding, Tuple, MemberAccess.
+
+**Phase 10 audit** — all 6 items confirmed NOT STARTED. `TokenType.Async`/`Await` exist as reserved keywords. `AwaitExpression` is a Future.cs placeholder. Control flow infrastructure (`AsyncStateRegion`, `IdentifyAsyncRegions()`, `BasicBlock.ContainsAwait`) provides groundwork but is not connected to any pipeline stage. `FunctionDef` AST lacks `IsAsync` property.
+
+**Phase 11 audit** — all 5 items confirmed NOT STARTED. No positional-only/keyword-only parameter parsing, no `@kwargs`/`@dynamic_kwargs` decorator handling, no `PlaceholderExpression` AST node.
+
+**Phase 12 audit** — all 6 items confirmed NOT STARTED. No `DelegateDef`/`EventDef` AST nodes, no variance markers on `TypeParameterDef`, SPY0515 still blocks nested comprehensions, no custom decorator arguments.
+
+### Language Spec Accuracy Issues Found
+
+| Spec File | Issue | Severity |
+|-----------|-------|----------|
+| `async_programming.md` | Claims "✅ Native" for async/await but features are NOT implemented | HIGH |
+| `match_statement.md` | Lists Or/Property/Relational/Positional patterns as supported but they're NOT parsed | HIGH |
+| `comprehensions.md` | Shows nested comprehension example as working but SPY0515 blocks it | MEDIUM |
+| `generators.md` | Accurate — all features verified | OK |
+| `method_overloading.md` | Accurate — diagnostics SPY0353/0354/0355 confirmed | OK |
+| `enums.md` | Accurate — .name, .value, iteration all working | OK |
+| `constructors.md` | Accurate — constructor chaining working | OK |
+| `exception_handling.md` | Accurate — correctly documents `raise from` not supported (SPY0122) | OK |

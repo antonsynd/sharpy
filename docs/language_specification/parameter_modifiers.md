@@ -1,5 +1,7 @@
 # Parameter Modifiers (`ref`, `out`, `in`)
 
+> **Implementation status:** Deferred post-v0.2.x — most Sharpy code won't need pass-by-reference semantics.
+
 Sharpy supports pass-by-reference semantics for function parameters using type wrapper syntax. These modifiers enable direct mutation of caller variables and efficient passing of large value types.
 
 ## Syntax

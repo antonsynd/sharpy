@@ -1,5 +1,9 @@
 # Async Programming
 
+> **Implementation status:** Async/await is **not yet implemented** (planned for Phase 10, v0.2.4).
+> The `async` and `await` keywords are reserved but not parsed as part of function definitions or expressions.
+> See [generators.md](generators.md) for the currently implemented synchronous generator support (`yield`/`yield from`).
+
 ## Async Functions
 
 ```python
@@ -12,7 +16,7 @@ async def main():
     print(result)
 ```
 
-*Implementation: ✅ Native - `async` method returning `Task<T>`.*
+*Implementation: ❌ Not yet implemented — `async` and `await` are reserved keywords but not parsed. Planned for v0.2.4 (Phase 10). Will map to C# `async` method returning `Task<T>`.*
 
 ## Concurrent Execution
 
@@ -23,7 +27,7 @@ async def fetch_all(urls: list[str]) -> list[str]:
     return results
 ```
 
-*Implementation: ✅ Native - `Task.WhenAll()`*
+*Implementation: ❌ Not yet implemented — requires `async def` and `await`. Will map to `Task.WhenAll()`.*
 
 ## Async Iteration
 
@@ -38,21 +42,19 @@ async def process():
         print(f"Number: {num}")
 ```
 
+*Implementation: ❌ Not yet implemented — requires `async def`, `await`, and `async for`. Will map to `IAsyncEnumerable<T>` (C# 8+).*
+
 **No Async Comprehensions:**
 
 Sharpy does not support async comprehensions (`async for` inside comprehensions). C# 9.0's LINQ doesn't natively support `IAsyncEnumerable` in query syntax, making this feature complex to implement.
 
 ```python
-# ❌ PARSE ERROR - async comprehension not supported
+# ❌ NOT SUPPORTED - async comprehension
 results = [x async for x in async_iterator()]
-# Error: 'async' is not valid in this context. Async comprehensions are not supported.
 
-# ❌ PARSE ERROR - async comprehension with filter
+# ❌ NOT SUPPORTED - async comprehension with filter
 results = [x async for x in async_iterator() if await predicate(x)]
-# Error: 'async' is not valid in this context. Async comprehensions are not supported.
 ```
-
-**Implementation note:** `async for` inside a comprehension is a **parse error**, not a semantic error. The parser rejects this construct immediately.
 
 **Await in synchronous comprehension (inside async function):**
 
@@ -62,9 +64,8 @@ Using `await` inside a regular comprehension within an async function is also **
 async def fetch_all(urls: list[str]) -> list[str]:
     # ❌ NOT SUPPORTED - await inside comprehension
     results = [await fetch(url) for url in urls]
-    # Error: 'await' in comprehension is not supported
 
-    # ✅ Use explicit loop
+    # ✅ Use explicit loop instead
     results: list[str] = []
     for url in urls:
         results.append(await fetch(url))
@@ -76,7 +77,7 @@ async def fetch_all(urls: list[str]) -> list[str]:
     return results
 ```
 
-**Rationale:** C# LINQ expressions don't support `await` inside query expressions. While it's technically possible to lower this to explicit loops, we've chosen to make it a parse error for clarity and to encourage the use of `asyncio.gather` for concurrent operations.
+**Rationale:** C# LINQ expressions don't support `await` inside query expressions. While it's technically possible to lower this to explicit loops, we've chosen to reject it for clarity and to encourage the use of `asyncio.gather` for concurrent operations.
 
 **Workarounds:**
 
@@ -103,28 +104,28 @@ Async comprehensions may be added in a future version when better runtime suppor
 
 Functions using `yield` have special return type annotations:
 
-| Pattern | Return Type | Notes |
-|---------|-------------|-------|
-| `yield` in function | `Iterator[T]` | Synchronous generator |
-| `yield` in `async def` | `AsyncIterator[T]` | Asynchronous generator |
-| `yield from` | Same as yielded iterator | Delegation |
+| Pattern | Return Type | Implementation Status |
+|---------|-------------|----------------------|
+| `yield` in function | `-> T` (compiler infers `IEnumerable<T>`) | ✅ Implemented |
+| `yield` in `async def` | `AsyncIterator[T]` → `IAsyncEnumerable<T>` | ❌ Not yet implemented |
+| `yield from` | Same as yielded iterator | ✅ Implemented |
 
 ```python
-# Synchronous generator
-def fibonacci(n: int) -> Iterator[int]:
+# ✅ Synchronous generator (implemented)
+def fibonacci(n: int) -> int:
     a, b = 0, 1
     for _ in range(n):
         yield a
         a, b = b, a + b
 
-# Async generator
+# ❌ Async generator (not yet implemented)
 async def stream_data(url: str) -> AsyncIterator[bytes]:
     async with http_client.stream(url) as response:
         async for chunk in response:
             yield chunk
 ```
 
-*Implementation: ✅ Native - `IAsyncEnumerable<T>` (C# 8+)*
+See [generators.md](generators.md) for complete synchronous generator documentation.
 
 ## Async Context Managers
 
@@ -134,6 +135,6 @@ async def use_resource():
         await resource.process()
 ```
 
-*Implementation: 🔄 Lowered - `await using (var r = resource) { ... }`*
+*Implementation: ❌ Not yet implemented — requires `async with`. Will map to `await using (var r = resource) { ... }`.*
 
 ---

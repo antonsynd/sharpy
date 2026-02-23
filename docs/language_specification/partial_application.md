@@ -1,5 +1,7 @@
 # Partial Application
 
+> **Implementation status:** Not yet implemented — planned for Phase 11 (v0.2.5). No `PlaceholderExpression` AST node exists yet.
+
 Partial application creates new functions by fixing some arguments of an existing function using the underscore `_` placeholder.
 
 ## Syntax

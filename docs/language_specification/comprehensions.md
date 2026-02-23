@@ -17,10 +17,19 @@ evens = [x for x in range(10) if x % 2 == 0]
 doubled_evens = [x * 2 for x in range(10) if x % 2 == 0]
 # [0, 4, 8, 12, 16]
 
-# Nested comprehension (comprehension inside comprehension)
-matrix = [[i * j for j in range(3)] for i in range(3)]
-# [[0, 0, 0], [0, 1, 2], [0, 2, 4]]
+# ❌ Nested comprehension (comprehension inside comprehension) — NOT YET SUPPORTED
+# matrix = [[i * j for j in range(3)] for i in range(3)]
+# Error: SPY0515 — Nested comprehensions are not yet supported. Use a for loop instead.
+# Workaround:
+matrix: list[list[int]] = []
+for i in range(3):
+    matrix.append([i * j for j in range(3)])
 ```
+
+> **Note:** Multiple `for` clauses in a single comprehension (e.g., `[(x, y) for x in A for y in B]`)
+> are supported — see [Multiple For Clauses](#multiple-for-clauses) below. What is not yet supported
+> is a comprehension whose element expression is itself a comprehension (e.g., `[[expr for ...] for ...]`).
+> This is planned for Phase 12 (v0.2.6).
 
 *Implementation*
 - *🔄 Lowered - LINQ expressions:*

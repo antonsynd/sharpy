@@ -2,6 +2,10 @@
 
 See [introduction.md](introduction.md) for goals, principles, and philosophy.
 
+> **Note:** This reference describes the complete Sharpy language design. Some features are not yet implemented
+> in the compiler — these are marked with implementation status banners in their respective documents.
+> For the implementation roadmap, see [phases2.md](../implementation_planning/phases2.md).
+
 ## Lexical Structure
 
 See [source_files.md](source_files.md) for file format, line structure, and continuation rules.

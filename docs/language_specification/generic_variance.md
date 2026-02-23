@@ -1,5 +1,7 @@
 # Generic Variance (`in` and `out` Type Parameters)
 
+> **Implementation status:** Not yet implemented — planned for Phase 12 (v0.2.6). `TypeParameterDef` does not yet have variance markers.
+
 Generic variance allows substitution of generic types based on their type arguments' inheritance relationships. Sharpy supports covariance (`out`) and contravariance (`in`) annotations on interface and delegate type parameters.
 
 ## Overview
