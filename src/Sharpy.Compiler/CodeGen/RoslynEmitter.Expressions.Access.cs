@@ -386,7 +386,12 @@ internal partial class RoslynEmitter
                 if (fqn.Contains('.'))
                 {
                     // Cross-module: already qualified (e.g., "Types.VehicleType")
-                    enumType = ParseExpression(fqn);
+                    // Build via SyntaxFactory to avoid ParseExpression (string templating).
+                    var parts = fqn.Split('.');
+                    enumType = parts.Skip(1).Aggregate(
+                        (ExpressionSyntax)IdentifierName(parts[0]),
+                        (left, part) => MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName(part)));
                 }
                 else if (_currentTypeSymbol != null)
                 {

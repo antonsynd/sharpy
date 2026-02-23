@@ -68,8 +68,8 @@ internal class BuiltinRegistry
 
         // Register generic builtins that are filtered out by OverloadIndexBuilder
         // (it excludes generic method definitions). These are special-cased in TypeChecker/CodeGen.
-        RegisterGenericBuiltin("reversed", 1);
-        RegisterGenericBuiltin("sorted", 1);
+        RegisterGenericBuiltin(BuiltinNames.Reversed, 1);
+        RegisterGenericBuiltin(BuiltinNames.Sorted, 1);
 
         // Auto-discover and register public types from Sharpy.Core (exceptions, etc.)
         LoadBuiltinTypes();
