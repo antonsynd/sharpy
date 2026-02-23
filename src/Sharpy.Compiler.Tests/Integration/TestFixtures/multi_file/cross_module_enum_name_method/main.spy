@@ -1,0 +1,20 @@
+from types import VehicleType
+
+class Vehicle:
+    vtype: VehicleType
+
+    def __init__(self, vtype: VehicleType):
+        self.vtype = vtype
+
+    def vehicle_type(self) -> VehicleType:
+        return self.vtype
+
+    def describe(self) -> str:
+        return self.vehicle_type().name
+
+def main():
+    car = Vehicle(VehicleType.CAR)
+    truck = Vehicle(VehicleType.TRUCK)
+    print(car.describe())
+    print(truck.describe())
+    print(car.vtype.name)

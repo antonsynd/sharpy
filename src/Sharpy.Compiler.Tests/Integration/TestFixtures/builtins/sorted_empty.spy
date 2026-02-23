@@ -1,0 +1,6 @@
+# Test: sorted() with empty list
+def main():
+    empty: list[int] = []
+    result: list[int] = sorted(empty)
+    print(result)
+    print(len(result))

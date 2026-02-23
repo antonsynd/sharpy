@@ -1,0 +1,10 @@
+# Test: reversed() in for loop does not modify original list
+def main():
+    nums: list[int] = [10, 20, 30]
+
+    # Iterate reversed
+    for x in reversed(nums):
+        print(x)
+
+    # Original should be unchanged
+    print(nums)
