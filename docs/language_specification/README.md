@@ -60,6 +60,8 @@ See [named_tuples.md](named_tuples.md) for named tuple syntax and usage.
 
 See [function_types.md](function_types.md) for function type syntax, compatibility, and usage.
 
+See [delegates.md](delegates.md) for named delegate type declarations with variance support.
+
 ---
 
 ## Operators

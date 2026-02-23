@@ -12,11 +12,12 @@ with open("in.txt") as input, open("out.txt", "w") as output:
     output.write(input.read())
 ```
 
-Sharpy doesn't currently support context managers like Python. They are planned for a future version.
+Sharpy's `with` statement requires the object to implement `IDisposable`. Unlike Python's `__enter__`/`__exit__` protocol, Sharpy uses the .NET `IDisposable` pattern directly.
 
 **Protocol:**
-- Object passed to `with` should implement `IDisposable`:
-  - `Dispose()` called on exit
+- Object passed to `with` must implement `IDisposable`
+- `Dispose()` is called automatically on scope exit (even if an exception is thrown)
 
-*Implementation:*
-- *For `IDisposable`, ✅ Native - `using (var r = resource) { ... }`*
+> **Note:** Multiple resources in a single `with` statement (e.g., `with a as x, b as y:`) are not yet supported. Use nested `with` statements as a workaround.
+
+*Implementation: ✅ Native — `with expr as name:` → C# `using (var name = expr) { ... }`*

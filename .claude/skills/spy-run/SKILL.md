@@ -16,8 +16,8 @@ Compile and execute a Sharpy (.spy) source file.
 
 **Examples:**
 ```
-/spy-run snippets/test.spy
-/spy-run src/Sharpy.Compiler.Tests/Integration/TestFixtures/hello.spy
+/spy-run src/Sharpy.Compiler.Tests/Integration/TestFixtures/basics/hello_world.spy
+/spy-run test.spy
 ```
 
 ## Steps

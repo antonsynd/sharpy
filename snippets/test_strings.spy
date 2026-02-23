@@ -1,5 +1,0 @@
-def main():
-    raw_str = r"no\nescaping"
-    fstring = f"value is {expr}"
-    binary_str = b"bytes"
-    regular = "hello\nworld"

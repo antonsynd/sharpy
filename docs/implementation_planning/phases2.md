@@ -11,7 +11,7 @@ Sharpy's v0.1.x series (16 phases, v0.1.0–v0.1.15) is complete, delivering the
 
 Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from those plans have been completed (properties, `with` statement, match statement basics, walrus codegen, multi-for comprehensions, named tuples, pipe forward, generic constraints). This roadmap picks up what remains and adds everything else needed for language spec completeness (syntax + semantics, not stdlib).
 
-**Source of truth:** `docs/language_specification/` (108 spec files + grammar.ebnf.txt)
+**Source of truth:** `docs/language_specification/` (111 spec files + grammar.ebnf.txt)
 
 ---
 
@@ -274,7 +274,7 @@ Intentional language design decisions:
 | **AST nodes (existing)** | MatchExpression, OrPattern, TypePattern, BindingPattern, UnionDef, AwaitExpression, RaiseStatement.Cause | All confirmed |
 | **AST nodes (new needed)** | RelationalPattern, ~~SpreadExpression~~, ~~YieldStatement~~, PlaceholderExpression | RelationalPattern and PlaceholderExpression still needed; SpreadExpression and YieldStatement now implemented |
 | **Completed features** | Properties, `with`, match, walrus, generics, comprehensions, named tuples, pipe, collections, try/maybe, chains | All confirmed in codegen |
-| **Spec file count** | 108 .md files + grammar.ebnf.txt | Confirmed (109 total) |
+| **Spec file count** | 111 .md files + grammar.ebnf.txt | Updated from 108 → 111 (generators.md, method_overloading.md, delegates.md added) |
 | **Deferred C# versions** | C# 10 (record structs), C# 11 (@file, list patterns, static abstract), C# 13 (field), C# 14 (extensions, +=) | All match `docs/language_specification/deferred_features.md` |
 | **Out-of-scope items** | `__call__`, `@classmethod`/`@static`, `**kwargs`, reverse operators | All confirmed correct |
 
@@ -295,7 +295,7 @@ Intentional language design decisions:
 
 **Phase 9 verified COMPLETE** — all 3 items (yield, yield from, generator return type inference) fully implemented across parser, semantic, validation, and codegen.
 
-**Phase 8 audit** — all 8 items confirmed NOT STARTED. AST placeholder nodes exist (`MatchExpression`, `UnionDef`, `OrPattern`, `TypePattern`, `UnionCasePattern`) but none are wired into parser, semantic analysis, or codegen. Match statements work only with 5 basic patterns: Literal, Wildcard, Binding, Tuple, MemberAccess.
+**Phase 8 audit** — all 8 items confirmed NOT STARTED. AST placeholder nodes exist (`MatchExpression`, `UnionDef`, `OrPattern`, `TypePattern`, `UnionCasePattern`) but none are wired into parser, semantic analysis, or codegen. Match statements work only with 5 basic patterns + guard clauses: Literal, Wildcard, Binding, Tuple, MemberAccess. Note: `TypePattern` (`case int() as n:`) is **not implemented** despite being previously listed as ✅ in match_statement.md — the AST record exists but `ParsePattern()`, `CheckPattern()`, and `GenerateMatchPattern()` have no code path for it.
 
 **Phase 10 audit** — all 6 items confirmed NOT STARTED. `TokenType.Async`/`Await` exist as reserved keywords. `AwaitExpression` is a Future.cs placeholder. Control flow infrastructure (`AsyncStateRegion`, `IdentifyAsyncRegions()`, `BasicBlock.ContainsAwait`) provides groundwork but is not connected to any pipeline stage. `FunctionDef` AST lacks `IsAsync` property.
 
@@ -305,13 +305,16 @@ Intentional language design decisions:
 
 ### Language Spec Accuracy Issues Found
 
-| Spec File | Issue | Severity |
-|-----------|-------|----------|
-| `async_programming.md` | Claims "✅ Native" for async/await but features are NOT implemented | HIGH |
-| `match_statement.md` | Lists Or/Property/Relational/Positional patterns as supported but they're NOT parsed | HIGH |
-| `comprehensions.md` | Shows nested comprehension example as working but SPY0515 blocks it | MEDIUM |
-| `generators.md` | Accurate — all features verified | OK |
-| `method_overloading.md` | Accurate — diagnostics SPY0353/0354/0355 confirmed | OK |
-| `enums.md` | Accurate — .name, .value, iteration all working | OK |
-| `constructors.md` | Accurate — constructor chaining working | OK |
-| `exception_handling.md` | Accurate — correctly documents `raise from` not supported (SPY0122) | OK |
+| Spec File | Issue | Severity | Resolution |
+|-----------|-------|----------|------------|
+| `async_programming.md` | Claims "✅ Native" for async/await but features are NOT implemented | HIGH | **FIXED** — added "not yet implemented" banner and ❌ markers on all sections |
+| `match_statement.md` | Lists Or/Property/Relational/Positional patterns as ✅ but they're NOT parsed | HIGH | **FIXED** — marked ❌ for Or, Property, Positional, Relational |
+| `match_statement.md` | Lists "Type with binding" (`case int() as n:`) as ✅ but `TypePattern` is entirely unwired — no parser, semantic, or codegen path | HIGH | **FIXED** — marked ❌, moved to Phase 8 items |
+| `comprehensions.md` | Shows nested comprehension example as working but SPY0515 blocks it | MEDIUM | **FIXED** — added ❌ comment, SPY0515 explanation, and workaround |
+| `spread_operator.md` | No implementation status banner | LOW | **FIXED** — added status banner noting partial implementation |
+| `delegates.md` | Missing document — referenced by `generic_variance.md` and `events_alt.md` | LOW | **FIXED** — created stub with Phase 12 implementation status |
+| `generators.md` | Accurate — all features verified | OK | — |
+| `method_overloading.md` | Accurate — diagnostics SPY0353/0354/0355 confirmed | OK | — |
+| `enums.md` | Accurate — .name, .value, iteration all working | OK | — |
+| `constructors.md` | Accurate — constructor chaining working | OK | — |
+| `exception_handling.md` | Accurate — correctly documents `raise from` not supported (SPY0122) | OK | — |

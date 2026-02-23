@@ -1,9 +1,0 @@
-@static
-@private
-def private_static_method():
-    pass
-
-@protected
-@override
-def protected_override_method():
-    pass

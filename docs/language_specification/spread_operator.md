@@ -1,5 +1,9 @@
 # Spread Operator
 
+> **Implementation status:** Spreading in collection literals (`[*a, *b]`, `{*s1, *s2}`, `{**d1, **d2}`) and
+> positional call-site spreading (`f(*args)`) are implemented. Tuple spreading, object copy with overrides,
+> and `**kwargs` call-site spreading are not yet supported.
+
 The spread operator enables concise syntax for unpacking collections and objects in various contexts, extending Python's `*` and `**` operators.
 
 ## List Spreading
@@ -47,7 +51,7 @@ config = {
 
 ## Function Call Spreading
 
-Unpack arguments in function calls:
+Unpack positional arguments in function calls:
 
 ```python
 # Positional arguments
@@ -55,16 +59,19 @@ args = [1, 2, 3]
 result = some_function(*args)
 # Equivalent to: some_function(1, 2, 3)
 
-# Keyword arguments
-kwargs = {"prefix": ">>", "suffix": "<<"}
-format_text(*args, **kwargs)
-# Equivalent to: format_text(1, 2, 3, prefix=">>", suffix="<<")
+# Tuples are expanded to .Item1, .Item2, etc.
+pair = (10, 20)
+add(*pair)  # Equivalent to: add(pair.Item1, pair.Item2)
 
-# Mixed usage
-process_data(initial_value, *middle_args, final_value, **options)
+# ❌ NOT SUPPORTED: **kwargs spreading in function calls
+# kwargs = {"prefix": ">>", "suffix": "<<"}
+# format_text(**kwargs)  # ERROR: dict spreading in calls not supported
+# Use named arguments instead: format_text(prefix=">>", suffix="<<")
 ```
 
 ## Tuple Spreading
+
+> **Not yet implemented.**
 
 Spread into tuple literals:
 
@@ -93,6 +100,8 @@ expanded = {*original_set, new_element}
 ```
 
 ## Object Copy with Overrides
+
+> **Not yet implemented.**
 
 Create modified copies of objects using spread:
 
@@ -197,13 +206,13 @@ all_tags = {*required_tags, *optional_tags}
 
 **Function Argument Forwarding:**
 ```python
-def wrapper(*args, **kwargs):
-    # Forward all arguments to another function
-    return underlying_function(*args, **kwargs)
+# Positional argument forwarding (supported)
+def wrapper(*args: int):
+    return underlying_function(*args)
 
-def enhanced_function(*args, extra: str, **kwargs):
-    # Add extra argument while forwarding rest
-    return base_function(*args, **kwargs, modifier=extra)
+# ❌ NOT YET SUPPORTED: **kwargs forwarding requires @dynamic_kwargs (Phase 11)
+# def wrapper(*args, **kwargs):
+#     return underlying_function(*args, **kwargs)
 ```
 
 **Immutable Updates:**
@@ -232,14 +241,15 @@ request_data = {
 
 Where spreading is allowed:
 
-| Context | Syntax | Example |
-|---------|--------|---------|
-| List literal | `[*expr]` | `[1, *others, 5]` |
-| Dict literal | `{**expr}` | `{**base, "key": val}` |
-| Tuple literal | `(*expr)` | `(1, *others, 5)` |
-| Set literal | `{*expr}` | `{1, *others, 5}` |
-| Function call | `f(*args, **kwargs)` | `func(*items, key=val, **opts)` |
-| Unpacking | `a, *rest = ...` | `first, *middle, last = items` |
+| Context | Syntax | Example | Status |
+|---------|--------|---------|--------|
+| List literal | `[*expr]` | `[1, *others, 5]` | ✅ |
+| Dict literal | `{**expr}` | `{**base, "key": val}` | ✅ |
+| Set literal | `{*expr}` | `{1, *others, 5}` | ✅ |
+| Function call (positional) | `f(*args)` | `func(*items)` | ✅ |
+| Unpacking | `a, *rest = ...` | `first, *middle, last = items` | ✅ |
+| Tuple literal | `(*expr)` | `(1, *others, 5)` | ❌ Not yet |
+| Function call (kwargs) | `f(**kwargs)` | `func(**opts)` | ❌ Not yet |
 
 ## Limitations
 
@@ -293,19 +303,15 @@ foreach (var kvp in user_config) {
 merged["override"] = true;
 ```
 
-**Function call spreading:**
+**Function call spreading (positional):**
 ```python
 # Sharpy
-result = function(*args, **kwargs)
+result = function(*args)
 ```
 ```csharp
-// C# 9.0 (with generated code for kwargs)
-var __kwargs = new Dictionary<string, object>(kwargs);
-var result = function(
-    args[0], args[1], args[2],
-    prefix: (string)__kwargs["prefix"],
-    suffix: (string)__kwargs["suffix"]
-);
+// C# 9.0 — tuple spread expands to .Item1, .Item2, etc.
+// Iterable spread → .ToArray() for params T[]
+var result = function(args[0], args[1], args[2]);
 ```
 
 ## Performance Considerations

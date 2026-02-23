@@ -3,24 +3,31 @@
 ## Match Statement
 
 ```python
-def describe(value: object) -> str:
-    match value:
-        case 0:
-            return "zero"
-        case 1:
-            return "one"
-        case int() as n if n > 0:
-            return "positive integer"
-        case int() as n:
-            return "negative integer"
-        case str() as s:
-            return f"string: {s}"
-        case _:
-            return "unknown"
+# Currently implemented patterns
+match value:
+    case 0:
+        print("zero")
+    case 1:
+        print("one")
+    case (x, y):
+        print(f"tuple: ({x}, {y})")
+    case Color.RED:
+        print("red")
+    case n if n > 0:
+        print(f"positive: {n}")
+    case _:
+        print("other")
+
+# Type patterns with binding (Phase 8 — not yet implemented)
+# match value:
+#     case int() as n if n > 0:
+#         return "positive integer"
+#     case str() as s:
+#         return f"string: {s}"
 ```
 
 *Implementation*
-- *✅ Native - Maps to C# `switch` expression/statement (C# 8+).*
+- *✅ Match statement maps to C# `switch` statement. Currently supports 5 pattern types + guard clauses (see [Supported Patterns](#supported-patterns) below).*
 
 ## Match Statement vs Match Expression
 
@@ -150,20 +157,20 @@ if condition:
 | Pattern | Syntax | C# 9.0 Mapping | Status |
 |---------|--------|----------------|--------|
 | Literal | `case 0:` | `case 0:` | ✅ Implemented |
-| Type with binding | `case int() as n:` | `case int n:` | ✅ Implemented |
 | Wildcard | `case _:` | `default:` or `_` | ✅ Implemented |
-| Guard | `case int() as n if n > 0:` | `case int n when n > 0:` | ✅ Implemented |
+| Binding | `case x:` | `var x` | ✅ Implemented |
 | Tuple | `case (0, 0):` | Direct support | ✅ Implemented |
 | Member access | `case Color.RED:` | `case Color.RED:` | ✅ Implemented |
-| Binding | `case x:` | `var x` | ✅ Implemented |
+| Guard clause | `case x if x > 0:` | `when` clause | ✅ Implemented |
+| Type with binding | `case int() as n:` | `case int n:` | ❌ Not yet implemented (Phase 8) |
 | Or | `case "a" \| "b":` | `case "a" or "b":` | ❌ Not yet implemented (Phase 8) |
 | Property | `case Point(x=0):` | `case Point { X: 0 }:` | ❌ Not yet implemented (Phase 8) |
 | Positional | `case Point(0, y):` | Positional pattern | ❌ Not yet implemented (Phase 8) |
 | Relational | `case > 0:` | Direct support (C# 9) | ❌ Not yet implemented (Phase 8) |
 
 *Implementation*
-- *Implemented patterns (Literal, Type+binding, Wildcard, Guard, Tuple, MemberAccess, Binding) map to C# 9.0 pattern matching.*
-- *Remaining patterns (Or, Property, Positional, Relational) are planned for Phase 8 (v0.2.2). AST nodes exist as placeholders but are not yet wired into the parser or codegen.*
+- *Implemented patterns (Literal, Wildcard, Binding, Tuple, MemberAccess) map to C# 9.0 pattern matching. Guard clauses (`if expr`) are supported on any implemented pattern via C# `when` clauses.*
+- *Remaining patterns (Type+binding, Or, Property, Positional, Relational) are planned for Phase 8 (v0.2.2). AST nodes exist as placeholders but are not yet wired into the parser or codegen.*
 
 ## Tuple Patterns
 
@@ -217,13 +224,15 @@ match value:
         print(f"Non-empty string: {s}")
 ```
 
+> **Note:** All three pattern forms above (Property, Positional, Type with binding) are **not yet implemented** — planned for Phase 8 (v0.2.2).
+
 **Pattern Forms:**
 
-| Pattern | Syntax | Use Case |
-|---------|--------|----------|
-| Property | `Point(x=0, y=y)` | Extract by property name |
-| Positional | `Point(0, y)` | Extract by position (requires `Deconstruct`) |
-| Type with binding | `int() as n` | Check type and bind entire value |
+| Pattern | Syntax | Use Case | Status |
+|---------|--------|----------|--------|
+| Property | `Point(x=0, y=y)` | Extract by property name | ❌ Phase 8 |
+| Positional | `Point(0, y)` | Extract by position (requires `Deconstruct`) | ❌ Phase 8 |
+| Type with binding | `int() as n` | Check type and bind entire value | ❌ Phase 8 |
 
 ## Exhaustiveness Checking
 

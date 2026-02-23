@@ -211,7 +211,7 @@ class TodoService:
 
 ## Flexible Argument Decorators
 
-These decorators enable Python-style keyword argument flexibility. See [Flexible Arguments](flexible_arguments.md) for complete details.
+> **Not yet implemented** — planned for Phase 11 (v0.2.5). See [Flexible Arguments](flexible_arguments.md) for complete design details.
 
 | Decorator | Purpose | Cost |
 |-----------|---------|------|

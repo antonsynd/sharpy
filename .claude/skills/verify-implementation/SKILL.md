@@ -95,8 +95,8 @@ You are checking for regressions introduced by recent implementation work. Focus
    - Search for .skip files in src/Sharpy.Compiler.Tests/Integration/TestFixtures/
    - Flag any .skip files that appear to be recently created (check git status)
 
-4. Run representative snippets through the compiler:
-   - Pick 5 .spy files from snippets/ directory
+4. Run representative test fixtures through the compiler:
+   - Pick 5 .spy files from src/Sharpy.Compiler.Tests/Integration/TestFixtures/
    - Run each with: `dotnet run --project src/Sharpy.Cli -- run <file>`
    - Report any runtime errors
 

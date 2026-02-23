@@ -39,7 +39,6 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 | Build Tools | `build_tools/` | Python-based build automation and dogfooding tools |
 | Agents | `.github/agents/` | Domain-specific agent guidance (copilot/AI) |
 | Instructions | `.github/instructions/` | Per-component contribution guides |
-| Snippets | `snippets/*.spy` | Quick test programs |
 
 ## Critical Rules
 

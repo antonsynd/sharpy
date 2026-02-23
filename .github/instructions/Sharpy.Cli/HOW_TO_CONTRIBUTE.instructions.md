@@ -11,22 +11,22 @@ Command-line interface for the Sharpy compiler. Location: `src/Sharpy.Cli/`
 
 ```bash
 # Run a single file
-dotnet run --project src/Sharpy.Cli -- run snippets/hello.spy
+dotnet run --project src/Sharpy.Cli -- run hello.spy
 
 # Build a single file
-dotnet run --project src/Sharpy.Cli -- build snippets/hello.spy
+dotnet run --project src/Sharpy.Cli -- build hello.spy
 
-# Build a project (when samples/ exists)
+# Build a project
 # dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
 
 # Debug: inspect generated C#
-dotnet run --project src/Sharpy.Cli -- emit csharp snippets/hello.spy
+dotnet run --project src/Sharpy.Cli -- emit csharp hello.spy
 
 # Debug: inspect AST
-dotnet run --project src/Sharpy.Cli -- emit ast snippets/hello.spy
+dotnet run --project src/Sharpy.Cli -- emit ast hello.spy
 
 # Debug: inspect tokens
-dotnet run --project src/Sharpy.Cli -- emit tokens snippets/hello.spy
+dotnet run --project src/Sharpy.Cli -- emit tokens hello.spy
 
 # Help
 dotnet run --project src/Sharpy.Cli -- --help

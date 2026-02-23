@@ -1,8 +1,0 @@
-def greet(name: str) -> None:
-    message: str = f"Hello, {name}!"
-    print(message)
-
-x: auto = 42
-
-def main():
-    greet("World")

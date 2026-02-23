@@ -122,7 +122,7 @@ After all implementation tasks are complete, the `verification-expert` runs:
 1. `dotnet build sharpy.sln` — must succeed
 2. `dotnet test` — compare against baseline (no new failures)
 3. File-based integration tests: `dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`
-4. Sample `emit csharp` on representative .spy files: pick 3-5 from `snippets/` or test fixtures
+4. Sample `emit csharp` on representative .spy files: pick 3-5 from test fixtures
 5. `dotnet format whitespace` — verify no changes needed (clean working tree)
 6. `git diff --stat` — summarize all changes made
 

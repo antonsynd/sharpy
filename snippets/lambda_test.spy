@@ -1,3 +1,0 @@
-def main():
-    simple_lambda = lambda x: x + 1
-    complex_lambda = lambda a, b: a * b + 2

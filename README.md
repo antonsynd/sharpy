@@ -85,7 +85,7 @@ dotnet test
 Compile and execute immediately:
 
 ```bash
-dotnet run --project src/Sharpy.Cli -- run snippets/hello.spy
+dotnet run --project src/Sharpy.Cli -- run hello.spy
 ```
 
 ### Your First Program
@@ -126,8 +126,7 @@ sharpy/
 │   ├── Sharpy.Cli/            # CLI tool (sharpyc)
 │   └── *.Tests/               # Test projects
 ├── docs/language_specification/ # Language specification
-├── build_tools/               # Build automation and dogfooding tools
-└── snippets/                  # Example programs
+└── build_tools/               # Build automation and dogfooding tools
 ```
 
 ## License

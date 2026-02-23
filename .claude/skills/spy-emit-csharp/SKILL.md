@@ -16,8 +16,8 @@ Generate and display the C# code that would be produced from a Sharpy (.spy) sou
 
 **Examples:**
 ```
-/spy-emit-csharp snippets/test.spy
-/spy-emit-csharp src/Sharpy.Compiler.Tests/Integration/TestFixtures/hello.spy
+/spy-emit-csharp src/Sharpy.Compiler.Tests/Integration/TestFixtures/basics/hello_world.spy
+/spy-emit-csharp test.spy
 ```
 
 ## Steps

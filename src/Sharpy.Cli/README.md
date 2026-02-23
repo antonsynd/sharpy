@@ -167,7 +167,7 @@ dotnet run -- <args>
 
 Example:
 ```bash
-dotnet run -- run ../../snippets/hello.spy
+dotnet run -- run hello.spy
 ```
 
 ### Testing

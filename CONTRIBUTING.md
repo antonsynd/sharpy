@@ -24,7 +24,7 @@ dotnet test                # Run all tests (~4400 tests)
 ### Run a Sharpy Program
 
 ```bash
-dotnet run --project src/Sharpy.Cli -- run snippets/hello.spy
+dotnet run --project src/Sharpy.Cli -- run hello.spy
 ```
 
 ### Inspect Compiler Output

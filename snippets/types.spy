@@ -1,8 +1,0 @@
-def main():
-    type Int = int
-    type IntList = list[int]
-    type StringMap = dict[str, str]
-    type NullableInt = int | None
-    type OptionalInt = int?
-    type NestedDict = dict[str, dict[str, int?]?]
-    type SomeCallable = (int, str) -> bool

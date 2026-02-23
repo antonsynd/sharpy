@@ -1,8 +1,0 @@
-def greet(name: str):
-    print("Hello,", name, "!")
-
-def main():
-    print("=== Sharpy Demo ===")
-    greet("World")
-    greet("from Sharpy")
-    print("=== Complete ===")
