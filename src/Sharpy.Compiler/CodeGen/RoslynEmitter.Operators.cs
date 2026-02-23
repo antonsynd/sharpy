@@ -920,8 +920,19 @@ internal partial class RoslynEmitter
     {
         // First try SemanticInfo (most reliable for type-checked expressions)
         var semType = GetExpressionSemanticType(expr);
-        if (semType is Semantic.UserDefinedType udt && udt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
-            return true;
+        if (semType is Semantic.UserDefinedType udt)
+        {
+            if (udt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
+                return true;
+
+            // Cross-module: Symbol may be null but name is set — look up by name
+            if (udt.Symbol == null && !string.IsNullOrEmpty(udt.Name))
+            {
+                var lookedUp = _context.LookupSymbol(udt.Name);
+                if (lookedUp is TypeSymbol ts && ts.TypeKind == Semantic.TypeKind.Enum)
+                    return true;
+            }
+        }
 
         // Fallback: symbol table lookup for identifiers (handles post-reassignment cases)
         if (expr is Identifier id)

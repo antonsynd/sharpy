@@ -1,0 +1,4 @@
+enum Category:
+    FOOD = 1
+    DRINK = 2
+    SNACK = 3

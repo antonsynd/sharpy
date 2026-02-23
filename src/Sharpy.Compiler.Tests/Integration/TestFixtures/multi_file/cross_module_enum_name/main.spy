@@ -1,0 +1,15 @@
+from types import Category
+
+class Product:
+    category: Category
+
+    def __init__(self, category: Category):
+        self.category = category
+
+    def describe(self) -> str:
+        return self.category.name
+
+def main():
+    p = Product(Category.FOOD)
+    print(p.describe())
+    print(Category.DRINK.name)
