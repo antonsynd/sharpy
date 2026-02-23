@@ -1,0 +1,26 @@
+# Test: Enum type name collides with method name after PascalCase mangling
+# vehicle_type() -> VehicleType() collides with VehicleType enum
+
+enum VehicleType:
+    CAR = 1
+    TRUCK = 2
+    BIKE = 3
+
+class Vehicle:
+    vtype: VehicleType
+
+    def __init__(self, vtype: VehicleType):
+        self.vtype = vtype
+
+    def vehicle_type(self) -> VehicleType:
+        return self.vtype
+
+    def describe(self) -> str:
+        return self.vehicle_type().name
+
+def main():
+    car = Vehicle(VehicleType.CAR)
+    truck = Vehicle(VehicleType.TRUCK)
+    print(car.describe())
+    print(truck.describe())
+    print(car.vehicle_type().name)

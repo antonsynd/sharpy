@@ -335,11 +335,32 @@ internal partial class RoslynEmitter
             if (symbol is TypeSymbol enumSymbol && enumSymbol.TypeKind == Semantic.TypeKind.Enum)
             {
                 // Enum member access: Color.RED -> Color.Red
-                // Types are nested in the module class, accessible via unqualified names
                 var enumTypeName = NameMangler.ToPascalCase(enumTypeIdentifier.Name);
 
-                // Use the enum type directly (nested types are accessible within the module class)
-                var enumType = IdentifierName(enumTypeName);
+                // Qualify enum type to avoid method name shadowing (e.g., vehicle_type() -> VehicleType()
+                // collides with VehicleType enum). Cross-file types are already qualified by
+                // GetFullyQualifiedTypeName; same-file types inside a class need module class qualification.
+                ExpressionSyntax enumType;
+                var fqn = GetFullyQualifiedTypeName(enumSymbol, enumTypeIdentifier.Name);
+                if (fqn.Contains('.'))
+                {
+                    // Cross-module: already qualified (e.g., "Types.VehicleType")
+                    enumType = ParseExpression(fqn);
+                }
+                else if (_currentTypeSymbol != null)
+                {
+                    // Same-file but inside a class — qualify with module class to prevent
+                    // method name shadowing (e.g., vehicle_type() -> VehicleType())
+                    var moduleClassName = GetModuleClassName();
+                    enumType = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(moduleClassName),
+                        IdentifierName(enumTypeName));
+                }
+                else
+                {
+                    enumType = IdentifierName(enumTypeName);
+                }
 
                 // Check if this is a string enum (string enums are generated as classes, not C# enums)
                 if (IsStringEnumSymbol(enumSymbol))
