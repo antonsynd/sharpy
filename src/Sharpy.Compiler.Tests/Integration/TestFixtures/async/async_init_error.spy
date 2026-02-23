@@ -1,0 +1,6 @@
+class Foo:
+    async def __init__(self):
+        self.x = 1
+
+def main():
+    pass

@@ -379,6 +379,16 @@ internal partial class TypeChecker
                 span: functionDef.Span);
         }
 
+        // Async constructors are not supported (C# constructors cannot be async)
+        if (functionDef.IsAsync && functionDef.Name == DunderNames.Init)
+        {
+            AddError(
+                "Constructors cannot be declared as 'async'; remove 'async' from '__init__'",
+                functionDef.LineStart, functionDef.ColumnStart,
+                code: DiagnosticCodes.Semantic.UnsupportedFeature,
+                span: functionDef.Span);
+        }
+
         // Check function body
         foreach (var statement in functionDef.Body)
         {
