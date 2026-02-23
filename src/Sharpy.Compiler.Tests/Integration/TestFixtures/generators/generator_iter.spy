@@ -1,0 +1,12 @@
+class Countdown:
+    values: list[int]
+    def __init__(self, values: list[int]):
+        self.values = values
+    def __iter__(self) -> int:
+        for v in self.values:
+            yield v
+
+def main():
+    c = Countdown([3, 2, 1])
+    for x in c:
+        print(x)

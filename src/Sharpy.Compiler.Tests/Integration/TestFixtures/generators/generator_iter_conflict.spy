@@ -1,0 +1,8 @@
+class BadClass:
+    def __iter__(self) -> int:
+        yield 1
+    def __next__(self) -> int:
+        return 1
+
+def main():
+    pass

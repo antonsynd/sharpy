@@ -47,6 +47,7 @@ internal partial class TypeChecker
     private string? _currentMethodName = null;
     private bool _currentMethodIsOverride = false;
     private bool _currentMethodIsDunder = false;
+    private bool _currentFunctionIsGenerator = false;
     private int _controlFlowDepth = 0;
     private bool _superInitCalled = false;  // Track if super().__init__() was called
 

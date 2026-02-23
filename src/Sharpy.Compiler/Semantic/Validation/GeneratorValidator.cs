@@ -127,53 +127,64 @@ internal class GeneratorValidator : SemanticValidatorBase
             if (stmt is IfStatement ifStmt)
             {
                 found = FindReturnWithValue(ifStmt.ThenBody);
-                if (found != null) return found;
+                if (found != null)
+                    return found;
                 foreach (var elif in ifStmt.ElifClauses)
                 {
                     found = FindReturnWithValue(elif.Body);
-                    if (found != null) return found;
+                    if (found != null)
+                        return found;
                 }
                 found = FindReturnWithValue(ifStmt.ElseBody);
-                if (found != null) return found;
+                if (found != null)
+                    return found;
             }
             else if (stmt is WhileStatement whileStmt)
             {
                 found = FindReturnWithValue(whileStmt.Body);
-                if (found != null) return found;
+                if (found != null)
+                    return found;
             }
             else if (stmt is ForStatement forStmt)
             {
                 found = FindReturnWithValue(forStmt.Body);
-                if (found != null) return found;
+                if (found != null)
+                    return found;
             }
             else if (stmt is TryStatement tryStmt)
             {
                 found = FindReturnWithValue(tryStmt.Body);
-                if (found != null) return found;
+                if (found != null)
+                    return found;
                 foreach (var handler in tryStmt.Handlers)
                 {
                     found = FindReturnWithValue(handler.Body);
-                    if (found != null) return found;
+                    if (found != null)
+                        return found;
                 }
                 found = FindReturnWithValue(tryStmt.ElseBody);
-                if (found != null) return found;
+                if (found != null)
+                    return found;
                 if (tryStmt.FinallyBody != null)
                 {
                     found = FindReturnWithValue(tryStmt.FinallyBody);
-                    if (found != null) return found;
+                    if (found != null)
+                        return found;
                 }
             }
             else if (stmt is WithStatement withStmt)
             {
                 found = FindReturnWithValue(withStmt.Body);
-                if (found != null) return found;
+                if (found != null)
+                    return found;
             }
             else if (stmt is MatchStatement matchStmt)
             {
                 foreach (var matchCase in matchStmt.Cases)
                 {
                     found = FindReturnWithValue(matchCase.Body);
-                    if (found != null) return found;
+                    if (found != null)
+                        return found;
                 }
             }
         }

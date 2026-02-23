@@ -1,0 +1,7 @@
+def bad_gen() -> int:
+    yield 1
+    return 42
+
+def main():
+    for x in bad_gen():
+        print(x)

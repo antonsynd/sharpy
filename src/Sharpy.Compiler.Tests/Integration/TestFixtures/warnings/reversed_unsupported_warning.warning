@@ -1,1 +1,1 @@
-not fully supported
+implicitly implements 'Sharpy.IReverseEnumerable<int>' via '__reversed__'

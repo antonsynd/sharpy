@@ -1,0 +1,14 @@
+class Numbers:
+    def __iter__(self) -> int:
+        yield 1
+        yield 2
+        yield 3
+    def __reversed__(self) -> int:
+        yield 3
+        yield 2
+        yield 1
+
+def main():
+    n = Numbers()
+    for x in n:
+        print(x)

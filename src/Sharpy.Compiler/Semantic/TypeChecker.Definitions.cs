@@ -360,18 +360,50 @@ internal partial class TypeChecker
             }
         }
 
+        // Detect generators early: set flag before body checking so CheckReturn
+        // knows bare return is valid (it becomes yield break).
+        var previousIsGenerator = _currentFunctionIsGenerator;
+        var isGenerator = ContainsYield(functionDef.Body);
+        _currentFunctionIsGenerator = isGenerator;
+
         // Check function body
         foreach (var statement in functionDef.Body)
         {
             CheckStatement(statement);
         }
 
-        // Detect generators: functions containing yield statements
-        if (ContainsYield(functionDef.Body))
+        // Mark generator metadata and update symbol after body checking
+        if (isGenerator)
         {
             _semanticInfo.MarkAsGenerator(functionDef);
             if (functionSymbol != null)
-                functionSymbol.IsGenerator = true;
+            {
+                // For class methods, look up the current symbol from the TypeSymbol's Methods list,
+                // because the TypeChecker creates a new class scope (NameResolver's scope was popped),
+                // so the symbol table doesn't contain the method. The Methods list has the
+                // updatedSymbol (from the return type update at line 319), which is also the same
+                // reference stored in ProtocolMethods/OperatorMethods.
+                // For top-level functions, fall back to the symbol table.
+                var currentSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name)
+                    ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol
+                    ?? functionSymbol;
+                currentSymbol.IsGenerator = true;
+
+                // For non-dunder generators (standalone functions and regular class methods),
+                // wrap the return type so callers see IEnumerable<T> instead of T.
+                // Dunder methods (__iter__, __reversed__) keep their element type as ReturnType
+                // because SynthesisAnalyzer reads it to determine interface type arguments,
+                // and codegen handles the wrapping independently via AST annotations.
+                var isDunder = Shared.DunderDetector.IsDunderMethod(functionDef.Name);
+                if (!isDunder && currentSymbol.ReturnType is not (VoidType or UnknownType))
+                {
+                    currentSymbol.ReturnType = new GenericType
+                    {
+                        Name = "IEnumerable",
+                        TypeArguments = new List<SemanticType> { currentSymbol.ReturnType }
+                    };
+                }
+            }
         }
 
         // Control flow validation (break/continue, unreachable code, missing return)
@@ -381,6 +413,7 @@ internal partial class TypeChecker
         _currentMethodName = previousMethodName;
         _currentMethodIsOverride = previousMethodIsOverride;
         _currentMethodIsDunder = previousMethodIsDunder;
+        _currentFunctionIsGenerator = previousIsGenerator;
         _controlFlowDepth = previousControlFlowDepth;
         _superInitCalled = previousSuperInitCalled;
 

@@ -100,7 +100,7 @@ public record VariableSymbol : Symbol
 public record FunctionSymbol : Symbol
 {
     public List<ParameterSymbol> Parameters { get; init; } = new();
-    public SemanticType ReturnType { get; init; } = SemanticType.Unknown;
+    public SemanticType ReturnType { get; internal set; } = SemanticType.Unknown;
     public bool IsStatic { get; init; }
     public bool IsAbstract { get; init; }
     public bool IsVirtual { get; init; }

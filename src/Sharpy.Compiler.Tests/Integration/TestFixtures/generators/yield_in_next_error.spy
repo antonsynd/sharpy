@@ -1,0 +1,6 @@
+class BadIterator:
+    def __next__(self) -> int:
+        yield 1
+
+def main():
+    pass

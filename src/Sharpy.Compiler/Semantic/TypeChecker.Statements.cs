@@ -350,8 +350,9 @@ internal partial class TypeChecker
                 }
             }
         }
-        else if (_currentFunctionReturnType != SemanticType.Void)
+        else if (_currentFunctionReturnType != SemanticType.Void && !_currentFunctionIsGenerator)
         {
+            // Bare return in a generator is valid (becomes yield break in C#)
             AddError($"Function expects return type '{_currentFunctionReturnType.GetDisplayName()}' but got no return value",
                 returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue,
                 span: returnStmt.Span);
