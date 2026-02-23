@@ -1,0 +1,5 @@
+# Test: sorted() with string list
+def main():
+    fruits: list[str] = ["banana", "apple", "cherry"]
+    result: list[str] = sorted(fruits)
+    print(result)

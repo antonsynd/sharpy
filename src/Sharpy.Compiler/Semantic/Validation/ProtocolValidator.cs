@@ -328,8 +328,9 @@ internal class ProtocolValidator : SemanticValidatorBase
                 BuiltinNames.Dict => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem or DunderNames.SetItem,
                 BuiltinNames.Set => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains,
                 BuiltinNames.Tuple => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.GetItem,
-                // Generator functions return IEnumerable<T> at the semantic level
-                "IEnumerable" or "IEnumerator" => dunderName is DunderNames.Iter,
+                // Generator functions return IEnumerable<T> at the semantic level;
+                // Iterator<T> is returned by reversed() and other iterator builtins
+                "IEnumerable" or "IEnumerator" or "Iterator" => dunderName is DunderNames.Iter,
                 _ => false
             };
         }

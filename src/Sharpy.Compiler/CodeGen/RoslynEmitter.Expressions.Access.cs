@@ -112,6 +112,12 @@ internal partial class RoslynEmitter
 
             if (isBuiltinFunc)
             {
+                // Generic builtins need explicit type arguments
+                if (funcName.Name is BuiltinNames.Reversed or BuiltinNames.Sorted)
+                {
+                    return GenerateGenericBuiltinCall(funcName.Name, call, allArgs);
+                }
+
                 // Use explicit AliasQualifiedName to handle all expression contexts (f-strings, etc.)
                 var builtinName = MakeGlobalQualifiedName("Sharpy", "Builtins", NameMangler.ToPascalCase(funcName.Name));
                 return InvocationExpression(builtinName)
@@ -315,6 +321,41 @@ internal partial class RoslynEmitter
         return EmitNotImplementedExpression(
             "Unsupported expression type in code generation: complex function expressions are not yet supported",
             DiagnosticCodes.CodeGen.UnsupportedExpressionType, call.LineStart, call.ColumnStart);
+    }
+
+    /// <summary>
+    /// Generate a call to a generic builtin function (reversed, sorted) with explicit type arguments.
+    /// These builtins exist in Sharpy.Core as generic methods but are filtered out by OverloadIndexBuilder.
+    /// </summary>
+    private ExpressionSyntax GenerateGenericBuiltinCall(string name, FunctionCall call, ArgumentSyntax[] allArgs)
+    {
+        var csharpName = NameMangler.ToPascalCase(name);
+
+        // Infer element type from first argument's semantic type
+        TypeSyntax? typeArg = null;
+        if (call.Arguments.Length > 0)
+        {
+            var argType = GetExpressionSemanticType(call.Arguments[0]);
+            var elemType = argType switch
+            {
+                GenericType gt when gt.TypeArguments.Count > 0 => gt.TypeArguments[0],
+                _ when argType == SemanticType.Str => SemanticType.Str,
+                _ => null
+            };
+            if (elemType != null)
+                typeArg = _typeMapper.MapSemanticType(elemType);
+        }
+
+        // Build: global::Sharpy.Builtins.Reversed<T>(args)
+        var qualifiedBase = MakeGlobalQualifiedName("Sharpy", "Builtins");
+        SimpleNameSyntax methodName = typeArg != null
+            ? GenericName(csharpName).WithTypeArgumentList(
+                TypeArgumentList(SingletonSeparatedList(typeArg)))
+            : IdentifierName(csharpName);
+
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, qualifiedBase, methodName))
+            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
     }
 
     private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess)

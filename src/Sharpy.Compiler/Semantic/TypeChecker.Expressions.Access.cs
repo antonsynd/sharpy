@@ -585,6 +585,22 @@ internal partial class TypeChecker
                 return hashType ?? SemanticType.Unknown;
             }
 
+            // reversed(iterable) -> Iterator<T>
+            if (id.Name == BuiltinNames.Reversed && argTypes.Count == 1)
+            {
+                var elementType = _typeInference.InferIterableElementType(argTypes[0]);
+                if (elementType != null)
+                    return new GenericType { Name = "Iterator", TypeArguments = new List<SemanticType> { elementType } };
+            }
+
+            // sorted(iterable, ...) -> list<T>
+            if (id.Name == BuiltinNames.Sorted && argTypes.Count >= 1)
+            {
+                var elementType = _typeInference.InferIterableElementType(argTypes[0]);
+                if (elementType != null)
+                    return new GenericType { Name = "list", TypeArguments = new List<SemanticType> { elementType } };
+            }
+
             var symbol = _symbolTable.Lookup(id.Name);
 
             // Special handling for constructor calls (calling a type)

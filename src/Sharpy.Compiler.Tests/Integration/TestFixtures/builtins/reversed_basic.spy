@@ -1,0 +1,5 @@
+# Test: reversed() builtin with list
+def main():
+    nums: list[int] = [1, 2, 3]
+    for x in reversed(nums):
+        print(x)
