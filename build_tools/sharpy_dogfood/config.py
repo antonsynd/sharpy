@@ -47,8 +47,8 @@ class BackendConfig:
 
 
 # Default models for dogfooding
-CLAUDE_CLI_MODEL = "claude-sonnet-4-5-20250929"  # Full model name for Claude CLI
-COPILOT_CLI_MODEL = "claude-sonnet-4.5"  # Copilot CLI model format
+CLAUDE_CLI_MODEL = "claude-sonnet-4-6"  # Full model name for Claude CLI
+COPILOT_CLI_MODEL = "claude-sonnet-4-6"  # Copilot CLI model format
 
 
 @dataclass

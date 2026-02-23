@@ -331,8 +331,8 @@ class Config:
     force_regenerate: bool = False  # regenerate all docs regardless of timestamps
     execution_log_path: str = "docs/implementation_walkthrough/execution_log.jsonl"
     spec_dir: str = "docs/language_specification"
-    claude_model: Optional[str] = "claude-sonnet-4-5-20250929"  # Model for Claude CLI
-    copilot_model: Optional[str] = "claude-sonnet-4.5"  # Model for Copilot CLI
+    claude_model: Optional[str] = "claude-sonnet-4-6"  # Model for Claude CLI
+    copilot_model: Optional[str] = "claude-sonnet-4-6"  # Model for Copilot CLI
 
     def get_model_for_provider(self, provider: str) -> Optional[str]:
         """Get the appropriate model for the given provider."""
@@ -1491,15 +1491,15 @@ Security Model:
 
     parser.add_argument(
         "--claude-model",
-        default="claude-sonnet-4-5-20250929",
-        help="Model for Claude CLI (default: claude-sonnet-4-5-20250929)",
+        default="claude-sonnet-4-6",
+        help="Model for Claude CLI (default: claude-sonnet-4-6)",
     )
 
     parser.add_argument(
         "--copilot-model",
-        default="claude-sonnet-4.5",
-        help="Model for Copilot CLI. Choices: claude-sonnet-4.5, gpt-5.1, "
-        "gemini-3-pro-preview, etc. (default: claude-sonnet-4.5)",
+        default="claude-sonnet-4-6",
+        help="Model for Copilot CLI. Choices: claude-sonnet-4-6, gpt-5.1, "
+        "gemini-3-pro-preview, etc. (default: claude-sonnet-4-6)",
     )
 
     args = parser.parse_args()

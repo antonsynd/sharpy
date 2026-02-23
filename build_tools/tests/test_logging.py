@@ -304,7 +304,7 @@ class TestExecutionLogger:
         logger.log_model_selection(
             "code_generation",
             "medium",
-            "claude-sonnet-4-5",
+            "claude-sonnet-4-6",
             "Sonnet handles medium complexity well",
         )
 
@@ -312,7 +312,7 @@ class TestExecutionLogger:
         assert events[0].event_type == "model_selected"
         assert events[0].details["task_type"] == "code_generation"
         assert events[0].details["complexity"] == "medium"
-        assert events[0].details["selected_model"] == "claude-sonnet-4-5"
+        assert events[0].details["selected_model"] == "claude-sonnet-4-6"
         assert "reasoning" in events[0].details
 
     def test_log_task(self, tmp_path):

@@ -5,7 +5,7 @@
     "claude_code": {
       "name": "claude_code",
       "enabled": true,
-      "model": "claude-sonnet-4-5-20250929",
+      "model": "claude-sonnet-4-6",
       "max_tokens": 16384,
       "rate_limit": {
         "max_requests_per_window": 50,
@@ -16,7 +16,7 @@
     "copilot": {
       "name": "copilot",
       "enabled": false,
-      "model": "claude-sonnet-4-5-20250929",
+      "model": "claude-sonnet-4-6",
       "max_tokens": 16384,
       "rate_limit": {
         "max_requests_per_window": 100,

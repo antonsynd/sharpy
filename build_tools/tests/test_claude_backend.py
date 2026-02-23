@@ -76,13 +76,13 @@ class TestClaudeCodeBackend:
     def test_build_command_with_model(self):
         """Test command building with model specification."""
         backend = ClaudeCodeBackend(cli_path="claude")
-        config = BackendConfig(model="claude-sonnet-4-5-20250929")
+        config = BackendConfig(model="claude-sonnet-4-6")
 
         cmd = backend._build_command(config)
 
         assert "--model" in cmd
         model_idx = cmd.index("--model") + 1
-        assert cmd[model_idx] == "claude-sonnet-4-5-20250929"
+        assert cmd[model_idx] == "claude-sonnet-4-6"
 
     @pytest.mark.asyncio
     async def test_execute_cli_not_found(self):

@@ -62,11 +62,11 @@ class TestCLIBuilderClaude:
         cmd = CLIBuilder.build_claude_command(
             prompt="Test",
             tools=set(),
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
         )
         assert "--model" in cmd.args
         model_idx = cmd.args.index("--model")
-        assert cmd.args[model_idx + 1] == "claude-3-5-haiku-20241022"
+        assert cmd.args[model_idx + 1] == "claude-haiku-4-5-20251001"
 
     def test_without_print_mode(self):
         """Test command without print mode."""
@@ -92,7 +92,7 @@ class TestCLIBuilderClaude:
         cmd = CLIBuilder.build_claude_command(
             prompt="Complex prompt",
             tools=tools,
-            model="claude-sonnet-4-5-20250929",
+            model="claude-sonnet-4-6",
             print_mode=True,
             cli_path="claude",
         )
@@ -210,7 +210,7 @@ class TestCLIBuilderGeneric:
             backend_type=BackendType.CLAUDE_CODE,
             prompt="Test",
             tools={ToolPermission.READ},
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
         )
         assert "claude" in cmd.args
         assert cmd.stdin == "Test"
@@ -301,7 +301,7 @@ class TestCLIBuilderIntegration:
         cmd = CLIBuilder.build_claude_command(
             prompt="Generate documentation for this module",
             tools={ToolPermission.READ, ToolPermission.WRITE},
-            model="claude-sonnet-4-5-20250929",
+            model="claude-sonnet-4-6",
         )
         assert "claude" in cmd.args
         assert "--model" in cmd.args
@@ -321,7 +321,7 @@ class TestCLIBuilderIntegration:
         cmd = CLIBuilder.build_claude_command(
             prompt="Fix the bug in the test suite",
             tools={ToolPermission.READ, ToolPermission.WRITE, ToolPermission.BASH},
-            model="claude-opus-4-5-20251101",
+            model="claude-opus-4-6",
         )
         assert "--model" in cmd.args
         model_idx = cmd.args.index("--model")

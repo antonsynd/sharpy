@@ -240,8 +240,8 @@ This parses the task list and creates the ground truth state file.
 # Run with specific backend
 ./auto_builder.sh run --backend claude_code --max-tasks 3
 
-# Run with a specific model (default: claude-sonnet-4-5-20250929)
-./auto_builder.sh run --model claude-sonnet-4-5-20250929
+# Run with a specific model (default: claude-sonnet-4-6)
+./auto_builder.sh run --model claude-sonnet-4-6
 
 # Skip validation steps for faster iteration
 ./auto_builder.sh run --skip-spec-check --skip-verification --skip-hallucination-check
@@ -291,7 +291,7 @@ Execute the orchestrator to process tasks. Supports session resumption and autom
 Options:
   --max-tasks N           Maximum tasks to process
   --backend BACKEND       Use only this backend (claude_code or copilot)
-  --model MODEL           Model to use (default: claude-sonnet-4-5-20250929)
+  --model MODEL           Model to use (default: claude-sonnet-4-6)
   --skip-spec-check       Skip spec adherence validation
   --skip-verification     Skip verification validation
   --skip-hallucination-check  Skip hallucination defense

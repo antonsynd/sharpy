@@ -1153,7 +1153,7 @@ def main():
     )
     run_parser.add_argument(
         "--model",
-        help="Model to use (default: claude-sonnet-4-5-20250929)",
+        help="Model to use (default: claude-sonnet-4-6)",
         default=None,
     )
     run_parser.add_argument(

@@ -216,20 +216,20 @@ class ModelSelector:
 
     Routing Guidelines:
 
-    Haiku (claude-3-5-haiku-20241022):
+    Haiku (claude-haiku-4-5-20251001):
     - Classification tasks (is this a rate limit error?)
     - Simple validation (does this match a pattern?)
     - Yes/no decisions with clear criteria
     - Extracting structured data from text
 
-    Sonnet (claude-sonnet-4-5-20250929):
+    Sonnet (claude-sonnet-4-6):
     - Code generation following established patterns
     - Documentation generation
     - Bug fixes with clear reproduction steps
     - Test writing
     - Straightforward refactoring
 
-    Opus (claude-opus-4-5-20251101):
+    Opus (claude-opus-4-6):
     - Architecture decisions
     - Complex debugging with unclear cause
     - Novel feature implementation
@@ -242,15 +242,15 @@ class ModelSelector:
         ...     TaskComplexity.MEDIUM
         ... )
         >>> print(rec.model)
-        'claude-sonnet-4-5-20250929'
+        'claude-sonnet-4-6'
         >>> print(rec.reasoning)
         'Medium complexity code generation is well-suited for Sonnet'
     """
 
     # Model identifiers
-    HAIKU = "claude-3-5-haiku-20241022"
-    SONNET = "claude-sonnet-4-5-20250929"
-    OPUS = "claude-opus-4-5-20251101"
+    HAIKU = "claude-haiku-4-5-20251001"
+    SONNET = "claude-sonnet-4-6"
+    OPUS = "claude-opus-4-6"
 
     # Model selection matrix: TaskType -> TaskComplexity -> Model
     # This implements the mapping table from the task specification
@@ -768,7 +768,7 @@ class ModelSelector:
             ...     context={"file_count": 3}
             ... )
             >>> print(rec.model)
-            'claude-sonnet-4-5-20250929'
+            'claude-sonnet-4-6'
         """
         task_type, complexity = cls.classify_task(description, context)
         return cls.select_model(

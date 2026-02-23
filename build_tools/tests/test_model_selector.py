@@ -28,15 +28,15 @@ class TestModelConstants:
     """Tests for model constant definitions."""
 
     def test_haiku_constant(self):
-        assert HAIKU == "claude-3-5-haiku-20241022"
+        assert HAIKU == "claude-haiku-4-5-20251001"
         assert ModelSelector.HAIKU == HAIKU
 
     def test_sonnet_constant(self):
-        assert SONNET == "claude-sonnet-4-5-20250929"
+        assert SONNET == "claude-sonnet-4-6"
         assert ModelSelector.SONNET == SONNET
 
     def test_opus_constant(self):
-        assert OPUS == "claude-opus-4-5-20251101"
+        assert OPUS == "claude-opus-4-6"
         assert ModelSelector.OPUS == OPUS
 
     def test_get_all_models(self):

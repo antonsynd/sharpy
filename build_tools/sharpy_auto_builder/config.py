@@ -53,7 +53,7 @@ class BackendConfig:
     rate_limit: RateLimitConfig = field(default_factory=RateLimitConfig)
 
     # Backend-specific settings
-    model: str = "claude-sonnet-4-5-20250929"  # Default to Sonnet 4.5
+    model: str = "claude-sonnet-4-6"  # Default to Sonnet 4.6
     max_tokens: int = 16384
 
     # Timeout for agent execution (seconds). None means use global config default.
@@ -187,7 +187,7 @@ class Config(BaseConfig):
             "claude_code": BackendConfig(
                 name="claude_code",
                 enabled=True,
-                model="claude-sonnet-4-5-20250929",
+                model="claude-sonnet-4-6",
                 rate_limit=RateLimitConfig(
                     max_requests_per_window=50,
                     window_seconds=3600,
@@ -344,7 +344,7 @@ class Config(BaseConfig):
                 if name in config.backends:
                     config.backends[name].enabled = cfg_data.get("enabled", True)
                     config.backends[name].model = cfg_data.get(
-                        "model", "claude-sonnet-4-5-20250929"
+                        "model", "claude-sonnet-4-6"
                     )
                     if "max_tokens" in cfg_data:
                         config.backends[name].max_tokens = cfg_data["max_tokens"]

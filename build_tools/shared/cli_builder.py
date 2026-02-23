@@ -41,7 +41,7 @@ class CLIBuilder:
         cmd = CLIBuilder.build_claude_command(
             prompt="Generate a function",
             tools=tools,
-            model="claude-sonnet-4-5-20250929"
+            model="claude-sonnet-4-6"
         )
 
         # cmd.args = ["claude", "--print", "--allowedTools", "Read,Write", "--model", "..."]
@@ -63,7 +63,7 @@ class CLIBuilder:
         Args:
             prompt: The prompt to send to Claude
             tools: Set of allowed tool permissions
-            model: Optional model identifier (e.g., "claude-sonnet-4-5-20250929")
+            model: Optional model identifier (e.g., "claude-sonnet-4-6")
             print_mode: Whether to use --print flag (default: True)
             cli_path: Path to claude CLI executable (default: "claude")
 
@@ -75,7 +75,7 @@ class CLIBuilder:
             cmd = CLIBuilder.build_claude_command(
                 prompt="Write a test",
                 tools={ToolPermission.READ, ToolPermission.WRITE},
-                model="claude-3-5-haiku-20241022"
+                model="claude-haiku-4-5-20251001"
             )
             ```
         """
@@ -169,7 +169,7 @@ class CLIBuilder:
                 BackendType.CLAUDE_CODE,
                 prompt="Generate code",
                 tools={ToolPermission.READ},
-                model="claude-sonnet-4-5-20250929"
+                model="claude-sonnet-4-6"
             )
             ```
         """

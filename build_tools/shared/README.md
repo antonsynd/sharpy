@@ -121,7 +121,7 @@ response, backend = await manager.execute("Write a hello world function")
 config = BackendConfig(
     timeout_seconds=300,
     allowed_tools={ToolPermission.READ, ToolPermission.WRITE},
-    model="claude-3-5-haiku-20241022",
+    model="claude-haiku-4-5-20251001",
 )
 response, backend = await manager.execute(prompt, config)
 ```
@@ -211,9 +211,9 @@ Intelligent routing of tasks to cost-effective models based on task type and com
 from build_tools.shared.model_selector import HAIKU, SONNET, OPUS
 
 # Model identifiers
-HAIKU  = "claude-3-5-haiku-20241022"    # $0.80/$4.00 per 1M tokens
-SONNET = "claude-sonnet-4-5-20250929"   # $3.00/$15.00 per 1M tokens
-OPUS   = "claude-opus-4-5-20251101"     # $15.00/$75.00 per 1M tokens
+HAIKU  = "claude-haiku-4-5-20251001"    # $0.80/$4.00 per 1M tokens
+SONNET = "claude-sonnet-4-6"   # $3.00/$15.00 per 1M tokens
+OPUS   = "claude-opus-4-6"     # $15.00/$75.00 per 1M tokens
 ```
 
 **Manual Model Selection:**
@@ -310,7 +310,7 @@ from build_tools.shared.model_selector import ModelOverride
 
 # Explicitly override model selection
 override = ModelOverride(
-    model="claude-opus-4-5-20251101",
+    model="claude-opus-4-6",
     reason="This specific bug requires extended reasoning"
 )
 
@@ -427,7 +427,7 @@ logger = ExecutionLogger(Path("execution.log"))
 event_id = logger.log_prompt(
     prompt="Generate a function",
     backend="claude",
-    model="claude-sonnet-4-5-20250929",
+    model="claude-sonnet-4-6",
 )
 
 # Log the response (correlated to prompt)
@@ -464,7 +464,7 @@ logger.log_backend_switch(
 logger.log_model_selection(
     task_type="code_generation",
     complexity="medium",
-    selected_model="claude-sonnet-4-5-20250929",
+    selected_model="claude-sonnet-4-6",
     reasoning="Standard code generation task",
 )
 
@@ -528,7 +528,7 @@ tools = {ToolPermission.READ, ToolPermission.WRITE}
 cmd = CLIBuilder.build_claude_command(
     prompt="Generate a function",
     tools=tools,
-    model="claude-sonnet-4-5-20250929",
+    model="claude-sonnet-4-6",
     print_mode=True,
 )
 
