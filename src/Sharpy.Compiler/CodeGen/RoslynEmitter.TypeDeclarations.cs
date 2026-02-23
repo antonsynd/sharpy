@@ -34,10 +34,20 @@ internal partial class RoslynEmitter
             ? "MainFunc"  // Rename to avoid C# entry point conflict in non-entry files
             : NameMangler.Transform(func.Name, NameContext.Method);
 
+        // Check if this function is a generator
+        var wasGenerator = _isCurrentMethodGenerator;
+        _isCurrentMethodGenerator = _context.SemanticInfo?.IsGenerator(func) == true;
+
         // Determine return type from annotation or infer void
         TypeSyntax returnType = func.ReturnType != null
             ? _typeMapper.MapType(func.ReturnType)
             : PredefinedType(Token(SyntaxKind.VoidKeyword));
+
+        // For generators, wrap the annotated return type T in IEnumerable<T>
+        if (_isCurrentMethodGenerator)
+        {
+            returnType = WrapInIEnumerable(returnType);
+        }
 
         // Process decorators to determine modifiers
         var modifiers = GenerateModifiersFromDecorators(func.Decorators);
@@ -59,6 +69,9 @@ internal partial class RoslynEmitter
 
         // Generate method body
         var body = Block(func.Body.SelectMany(GenerateBodyStatements));
+
+        // Restore generator flag
+        _isCurrentMethodGenerator = wasGenerator;
 
         var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)

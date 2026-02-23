@@ -54,6 +54,7 @@ internal partial class RoslynEmitter
         var result = stmt switch
         {
             ReturnStatement ret => GenerateReturn(ret),
+            YieldStatement yieldStmt => GenerateYield(yieldStmt),
             Assignment assign => GenerateAssignment(assign),
             VariableDeclaration varDecl => GenerateVariableDeclaration(varDecl),
             ExpressionStatement exprStmt => GenerateExpressionStatement(exprStmt),
@@ -205,13 +206,40 @@ internal partial class RoslynEmitter
         };
     }
 
-    private ReturnStatementSyntax GenerateReturn(ReturnStatement ret)
+    private StatementSyntax GenerateReturn(ReturnStatement ret)
     {
+        // In generator methods, bare return → yield break
+        if (ret.Value == null && _isCurrentMethodGenerator)
+        {
+            return YieldStatement(SyntaxKind.YieldBreakStatement);
+        }
+
         if (ret.Value != null)
         {
             return ReturnStatement(GenerateExpression(ret.Value));
         }
         return ReturnStatement();
+    }
+
+    private StatementSyntax GenerateYield(YieldStatement yieldStmt)
+    {
+        if (!yieldStmt.IsFrom)
+        {
+            // yield expr → yield return expr;
+            return YieldStatement(SyntaxKind.YieldReturnStatement, GenerateExpression(yieldStmt.Value));
+        }
+
+        // yield from expr → foreach (var __yieldItem in expr) { yield return __yieldItem; }
+        var iterableExpr = GenerateExpression(yieldStmt.Value);
+        var itemIdentifier = Identifier("__yieldItem");
+        var yieldReturn = YieldStatement(
+            SyntaxKind.YieldReturnStatement,
+            IdentifierName("__yieldItem"));
+        return ForEachStatement(
+            IdentifierName("var"),
+            itemIdentifier,
+            iterableExpr,
+            Block(yieldReturn));
     }
 
     private StatementSyntax GenerateAssignment(Assignment assign)

@@ -114,6 +114,11 @@ internal partial class RoslynEmitter
     // Used for implicit abstract method detection (ellipsis body in abstract class = abstract method)
     private bool _isInAbstractClass;
 
+    // Track if the current method being generated is a generator (contains yield statements).
+    // When true, GenerateReturn emits yield break instead of return, and the method's
+    // return type is wrapped in IEnumerable<T> or IEnumerator<T>.
+    private bool _isCurrentMethodGenerator;
+
     // Track the current TypeSymbol being generated (for IEquatable virtual detection, etc.)
     private TypeSymbol? _currentTypeSymbol;
 
@@ -251,6 +256,20 @@ internal partial class RoslynEmitter
         _sourceVariableNames.Clear();
         _narrowedOptionals.Clear();
         _isNullableNarrowing.Clear();
+    }
+
+    /// <summary>
+    /// Wraps a type T in System.Collections.Generic.IEnumerable&lt;T&gt;.
+    /// Used for standalone generator functions whose annotated return type is the element type.
+    /// </summary>
+    private static NameSyntax WrapInIEnumerable(TypeSyntax elementType)
+    {
+        return QualifiedName(
+            QualifiedName(
+                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                IdentifierName("Generic")),
+            GenericName("IEnumerable")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(elementType))));
     }
 
     /// <summary>

@@ -130,6 +130,13 @@ internal partial class RoslynEmitter
                                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
                             members.AddRange(GenerateEnumerableBridgeMembers(elemType));
                         }
+                        else if (_context.SemanticInfo?.IsGenerator(funcDef) == true)
+                        {
+                            // Generator __iter__: body contains yield → emit
+                            // IEnumerator<T> GetEnumerator() with the user's body
+                            // plus the non-generic IEnumerable.GetEnumerator() bridge
+                            members.AddRange(GenerateGeneratorIterMethod(funcDef));
+                        }
                         else
                         {
                             // Iterable-only: just generate GetEnumerator() with user body
@@ -141,7 +148,10 @@ internal partial class RoslynEmitter
                     // __reversed__ generates GetReverseEnumerator() with IEnumerator<T> return type
                     else if (funcDef.Name == DunderNames.Reversed)
                     {
+                        var wasGenerator = _isCurrentMethodGenerator;
+                        _isCurrentMethodGenerator = _context.SemanticInfo?.IsGenerator(funcDef) == true;
                         members.Add(GenerateReverseEnumeratorMethod(funcDef));
+                        _isCurrentMethodGenerator = wasGenerator;
                     }
                     // Check if this is a dunder method that needs operator synthesis
                     else if (DunderMapping.IsDunderMethod(funcDef.Name))
@@ -442,6 +452,10 @@ internal partial class RoslynEmitter
         // Clear declared variables and version tracking for new method scope
         ResetMethodScope();
 
+        // Check if this method is a generator
+        var wasGenerator = _isCurrentMethodGenerator;
+        _isCurrentMethodGenerator = _context.SemanticInfo?.IsGenerator(func) == true;
+
         // Pre-scan the method body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
         // with user-declared variables.
@@ -469,6 +483,12 @@ internal partial class RoslynEmitter
                 BuiltinNames.None or "void" => PredefinedType(Token(SyntaxKind.VoidKeyword)),
                 _ => func.ReturnType != null ? _typeMapper.MapType(func.ReturnType) : returnType
             };
+        }
+
+        // For non-dunder generator methods, wrap return type T in IEnumerable<T>
+        if (_isCurrentMethodGenerator && !DunderMapping.IsDunderMethod(func.Name))
+        {
+            returnType = WrapInIEnumerable(returnType);
         }
 
         // Process decorators to determine modifiers
@@ -607,6 +627,7 @@ internal partial class RoslynEmitter
             method = method.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
         }
 
+        _isCurrentMethodGenerator = wasGenerator;
         return method;
     }
 
@@ -837,6 +858,73 @@ internal partial class RoslynEmitter
         }
 
         return method;
+    }
+
+    /// <summary>
+    /// Generates IEnumerator&lt;T&gt; GetEnumerator() with the user's generator body
+    /// plus the non-generic IEnumerable.GetEnumerator() bridge for generator __iter__.
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateGeneratorIterMethod(FunctionDef funcDef)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        // Element type from __iter__'s return type annotation (defaults to object if absent)
+        TypeSyntax elementType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+        // IEnumerator<T> return type
+        var returnType = QualifiedName(
+            QualifiedName(
+                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                IdentifierName("Generic")),
+            GenericName("IEnumerator")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(elementType))));
+
+        // Set up method scope
+        ResetMethodScope();
+        CollectSourceVariableNames(funcDef.Body);
+
+        // Track parameters (skip self)
+        foreach (var param in funcDef.Parameters)
+        {
+            if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                continue;
+            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            _declaredVariables.Add(paramName);
+            var baseName = NameMangler.ToCamelCase(param.Name);
+            _variableVersions[baseName] = 0;
+        }
+
+        // Set generator flag so yield statements and bare returns emit correctly
+        var wasGenerator = _isCurrentMethodGenerator;
+        _isCurrentMethodGenerator = true;
+
+        var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
+
+        _isCurrentMethodGenerator = wasGenerator;
+
+        var parameters = funcDef.Parameters
+            .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+            .Select(GenerateParameter)
+            .ToArray();
+
+        var method = MethodDeclaration(returnType, "GetEnumerator")
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithBody(body);
+
+        if (!string.IsNullOrEmpty(funcDef.DocString))
+        {
+            method = method.WithLeadingTrivia(GenerateXmlDocComment(funcDef.DocString));
+        }
+
+        members.Add(method);
+
+        // Non-generic IEnumerable.GetEnumerator() bridge
+        members.Add(GenerateNonGenericGetEnumeratorBridge());
+
+        return members;
     }
 
     /// <summary>
