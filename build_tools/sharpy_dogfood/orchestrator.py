@@ -564,8 +564,6 @@ _TIER3_ADVANCED: list[str] = [
     "match_type_binding",
     "match_wildcard",
     "match_guard",
-    # Context Managers
-    "with_statement",
     # Named Tuples
     "named_tuple",
     # Comparison Chaining

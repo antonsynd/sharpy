@@ -58,7 +58,7 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Property backing fields**: Function-style properties need a separate backing field (e.g., `_name: str`). Auto-properties generate this automatically.
 - **Spread type safety**: All elements in a spread must be compatible types: `[*int_list, *str_list]` is an error unless the target type is `list[object]`.
 - **Spread requires variadic**: `func(*args)` only works if the function accepts `*args` variadic parameter, or if spreading a tuple that matches the exact parameter count.
-- **With statement requires IDisposable**: The `with` statement only works with .NET types that implement `IDisposable` (e.g., `StringWriter`, `StreamReader`). Requires importing from `System.IO` or similar.
+- **With statement CLR limitation**: The `with` statement works with `IDisposable` types, but CLR type discovery currently cannot resolve inherited methods. Avoid using `StringWriter.WriteLine()` (inherited from `TextWriter`). Stick to types whose methods are defined directly on the type, not inherited.
 - **Named tuple field names**: All fields must be named, or none. Cannot mix named and unnamed fields in a named tuple type definition.
 - **Match exhaustiveness**: Match statements on enums or bools must cover all possible values OR include a `case _:` wildcard.
 - **Instance fields not static**: Class fields with default values are INSTANCE fields, not static. There are no class-level mutable variables. Use module-level variables for shared state.
@@ -251,12 +251,10 @@ ALLOWED_FEATURES_SECTION = """\
 - **Exhaustiveness**: Match on enums must cover all values or have `_` wildcard
 - **IMPORTANT**: When matching with `case _:`, this is the catch-all default case
 
-#### Context Managers (With Statement)
+#### Context Managers (With Statement) — RESTRICTED
 - **With statement**: `with expr as name:` for automatic resource cleanup
-- **Without binding**: `with expr:` (no `as` clause)
-- **Multiple resources**: `with expr1 as a, expr2 as b:`
+- **⚠️ LIMITATION**: CLR type method resolution currently does not resolve inherited methods. Avoid `StringWriter`, `StreamReader`, and other types whose useful methods come from a base class.
 - **Requires IDisposable**: The object must implement `System.IDisposable`
-- **Common usage**: `from System.IO import StringWriter` then `with StringWriter() as writer:`
 - **IMPORTANT**: Only works with .NET types implementing `IDisposable`. Not a general Python-style context manager.
 
 #### Comparison Chaining
