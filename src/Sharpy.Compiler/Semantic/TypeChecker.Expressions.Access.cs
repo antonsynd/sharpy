@@ -590,7 +590,7 @@ internal partial class TypeChecker
             {
                 var elementType = _typeInference.InferIterableElementType(argTypes[0]);
                 if (elementType != null)
-                    return new GenericType { Name = "Iterator", TypeArguments = new List<SemanticType> { elementType } };
+                    return new GenericType { Name = BuiltinNames.Iterator, TypeArguments = new List<SemanticType> { elementType } };
             }
 
             // sorted(iterable, ...) -> list<T>
@@ -598,7 +598,7 @@ internal partial class TypeChecker
             {
                 var elementType = _typeInference.InferIterableElementType(argTypes[0]);
                 if (elementType != null)
-                    return new GenericType { Name = "list", TypeArguments = new List<SemanticType> { elementType } };
+                    return new GenericType { Name = BuiltinNames.List, TypeArguments = new List<SemanticType> { elementType } };
             }
 
             var symbol = _symbolTable.Lookup(id.Name);

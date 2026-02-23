@@ -50,6 +50,7 @@ internal static class BuiltinNames
 
     // ---- Iteration ----
     public const string Range = "range";
+    public const string Iterator = "Iterator";
 
     // ---- Additional type names ----
     public const string Long = "long";
