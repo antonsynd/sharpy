@@ -90,6 +90,23 @@ def _is_internal_compiler_error(error_message: str) -> bool:
     return bool(_INTERNAL_COMPILER_ERROR_PATTERN.search(error_message))
 
 
+def _errors_are_equivalent(err1: Optional[str], err2: Optional[str]) -> bool:
+    """Check if two validation errors are essentially identical.
+
+    Compares normalized error text to detect when the AI is producing
+    the same failing code across retry attempts (likely a compiler bug,
+    not a fixable code issue).
+    """
+    if not err1 or not err2:
+        return False
+    # Normalize: strip whitespace, collapse spaces, remove file:line:col refs
+    def normalize(s: str) -> str:
+        s = re.sub(r'-->\s*\S+:\d+:\d+', '', s)  # Remove file:line:col
+        s = re.sub(r'\s+', ' ', s).strip()
+        return s
+    return normalize(err1) == normalize(err2)
+
+
 class IterationStatus(Enum):
     """Status of a dogfooding iteration."""
 
@@ -1066,6 +1083,7 @@ class DogfoodOrchestrator:
         last_code: Optional[str] = None
         last_raw_output: Optional[str] = None
         last_error: Optional[str] = None
+        previous_error: Optional[str] = None
         total_duration = 0.0
         backend_used: Optional[str] = None
 
@@ -1183,6 +1201,21 @@ class DogfoodOrchestrator:
                     f"  Pre-validation failed: {prevalidation_error}", file=sys.stderr
                 )
                 last_error = f"Pre-validation error: {prevalidation_error}"
+                if _errors_are_equivalent(last_error, previous_error):
+                    print(
+                        f"  Same error on consecutive attempts — likely a compiler limitation. Stopping retries.",
+                        file=sys.stderr,
+                    )
+                    return GenerationResult(
+                        success=False,
+                        code=code,
+                        expected_output=extract_expected_output_from_response(gen_result.output),
+                        skip_reason=f"Repeated identical error (likely compiler bug): {prevalidation_error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+                previous_error = last_error
                 if attempt < max_attempts:
                     print(
                         f"  Will retry with feedback ({attempt}/{max_attempts})...",
@@ -1225,6 +1258,21 @@ class DogfoodOrchestrator:
                     file=sys.stderr,
                 )
                 last_error = f"Sharpy compiler error: {semantic_error}"
+                if _errors_are_equivalent(last_error, previous_error):
+                    print(
+                        f"  Same error on consecutive attempts — likely a compiler limitation. Stopping retries.",
+                        file=sys.stderr,
+                    )
+                    return GenerationResult(
+                        success=False,
+                        code=code,
+                        expected_output=extract_expected_output_from_response(gen_result.output),
+                        skip_reason=f"Repeated identical compiler error (likely compiler bug): {semantic_error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+                previous_error = last_error
                 if attempt < max_attempts:
                     print(
                         f"  Will retry with feedback ({attempt}/{max_attempts})...",
@@ -1355,6 +1403,7 @@ class DogfoodOrchestrator:
         max_attempts = self.config.max_regeneration_attempts
         last_files: Optional[dict[str, str]] = None
         last_error: Optional[str] = None
+        previous_error: Optional[str] = None
         total_duration = 0.0
         backend_used: Optional[str] = None
 
@@ -1486,6 +1535,21 @@ class DogfoodOrchestrator:
                     break
 
             if prevalidation_failed:
+                if _errors_are_equivalent(last_error, previous_error):
+                    print(
+                        f"  Same error on consecutive attempts — likely a compiler limitation. Stopping retries.",
+                        file=sys.stderr,
+                    )
+                    return MultifileGenerationResult(
+                        success=False,
+                        files=files,
+                        expected_output=extract_expected_output_from_multifile(files),
+                        skip_reason=f"Repeated identical error (likely compiler bug): {last_error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+                previous_error = last_error
                 if attempt < max_attempts:
                     print(
                         f"  Will retry with feedback ({attempt}/{max_attempts})...",
@@ -1528,6 +1592,21 @@ class DogfoodOrchestrator:
                     file=sys.stderr,
                 )
                 last_error = f"Sharpy compiler error: {semantic_error}"
+                if _errors_are_equivalent(last_error, previous_error):
+                    print(
+                        f"  Same error on consecutive attempts — likely a compiler limitation. Stopping retries.",
+                        file=sys.stderr,
+                    )
+                    return MultifileGenerationResult(
+                        success=False,
+                        files=files,
+                        expected_output=extract_expected_output_from_multifile(files),
+                        skip_reason=f"Repeated identical compiler error (likely compiler bug): {semantic_error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+                previous_error = last_error
                 if attempt < max_attempts:
                     print(
                         f"  Will retry with feedback ({attempt}/{max_attempts})...",
