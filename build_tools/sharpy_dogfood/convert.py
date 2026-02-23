@@ -173,6 +173,7 @@ def get_category_from_feature(feature_focus: Optional[str]) -> str:
         "dunder_bool": "classes",
         "dunder_len": "classes",
         "dunder_iter": "classes",
+        "dunder_reversed": "classes",
         "dunder_operators": "classes",
         "dunder_comparison": "classes",
         "dunder_unary": "classes",
@@ -212,6 +213,12 @@ def get_category_from_feature(feature_focus: Optional[str]) -> str:
         "named_tuple": "named_tuples",
         # Comparison Chaining
         "comparison_chaining": "type_system",
+        # Generators & Yield
+        "generator_basic": "generators",
+        "generator_yield_from": "generators",
+        "generator_early_return": "generators",
+        "generator_iter_class": "generators",
+        "generator_reversed_class": "generators",
     }
 
     return category_map.get(feature_focus, "misc")

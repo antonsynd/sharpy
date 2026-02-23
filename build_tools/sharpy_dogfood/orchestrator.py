@@ -523,6 +523,7 @@ _TIER2_INTERMEDIATE: list[str] = [
     "dunder_bool",
     "dunder_len",
     "dunder_iter",
+    "dunder_reversed",
     "dunder_operators",
     "dunder_comparison",
     "dunder_unary",
@@ -568,6 +569,12 @@ _TIER3_ADVANCED: list[str] = [
     "named_tuple",
     # Comparison Chaining
     "comparison_chaining",
+    # Generators & Yield
+    "generator_basic",
+    "generator_yield_from",
+    "generator_early_return",
+    "generator_iter_class",
+    "generator_reversed_class",
     # Feature Combinations (advanced)
     "nested_if_in_loop",
     "loop_in_function",

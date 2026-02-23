@@ -146,7 +146,8 @@ ALLOWED_FEATURES_SECTION = """\
 - **`__eq__(self, other) -> bool`** / **`__hash__(self) -> int`**: Equality and hashing (must define both or neither)
 - **`__bool__(self) -> bool`**: Truthiness in `if` statements (synthesizes `IBoolConvertible`)
 - **`__len__(self) -> int`**: Enables `len(obj)` (synthesizes `ISized`)
-- **`__iter__(self)`** / **`__next__(self)`**: Iterator protocol, enables `for item in obj:`
+- **`__iter__(self)`** / **`__next__(self)`**: Iterator protocol, enables `for item in obj:`. Prefer `yield` inside `__iter__` over manual `__next__`.
+- **`__reversed__(self)`**: Reverse iteration, enables `reversed(obj)`. Use `yield` to produce values in reverse order.
 - **Arithmetic operators**: `__add__`, `__sub__`, `__mul__`, `__div__`, `__mod__` → `+`, `-`, `*`, `/`, `%`
 - **Bitwise operators**: `__and__`, `__or__`, `__xor__`, `__lshift__`, `__rshift__`
 - **Comparison operators**: `__lt__`, `__le__`, `__gt__`, `__ge__`, `__ne__`
@@ -305,6 +306,17 @@ ALLOWED_FEATURES_SECTION = """\
 - **IMPORTANT**: The receiving function MUST declare its parameter with a function type: `def apply(fn: (int) -> int) -> int:`
 - **WARNING**: Lambdas CANNOT be assigned to `auto` variables — there is no type context to infer parameter types. Use an explicit function type: `square: (int) -> int = lambda n: n * n`, NOT `square: auto = lambda n: n * n`.
 
+#### Generators & Yield
+- **Generator function**: Any function containing `yield` becomes a generator — it returns `IEnumerable<T>` and can be iterated with `for x in gen():`
+- **Yield statement**: `yield value` produces a value to the caller, suspending the generator
+- **Yield from**: `yield from other_generator()` delegates to another generator, yielding all its values
+- **Generator return type**: Annotate with the ELEMENT type, not the collection type: `def count() -> int:` (not `-> IEnumerable<int>`)
+- **Early return in generators**: `return` (without a value) terminates the generator early. `return value` in a generator is FORBIDDEN.
+- **Generator __iter__**: Use `yield` inside `__iter__(self)` to make a class iterable: `def __iter__(self) -> int: yield 1; yield 2`
+- **Generator __reversed__**: Use `yield` inside `__reversed__(self)` for reverse iteration: `def __reversed__(self) -> int: ...`
+- **IMPORTANT**: `yield` CANNOT appear inside `__next__()` — it is only allowed in regular functions, `__iter__`, and `__reversed__`
+- **IMPORTANT**: A class CANNOT define both generator `__iter__` (with yield) AND `__next__` — these are mutually exclusive approaches
+
 #### Optional Types (0.1.15)
 - **Optional type**: `x: int? = Some(42)`, `y: int? = None()`
 - **Optional constructors**: `Some(value)` wraps a value, `None()` represents absence
@@ -342,7 +354,10 @@ FORBIDDEN_FEATURES_SECTION = """\
 - **NO `__repr__()` method**: removed — only `__str__()` exists (maps to `.ToString()`)
 - **NO `del` statement**: `del x` — not supported
 - **NO `**kwargs` spreading in function calls**: `func(**kwargs)` — not yet supported for keyword argument spreading
-- **NO spread in non-variadic function calls**: `func(*args)` only works when the function has `*args` parameter or when spreading a tuple that matches exact parameter count"""
+- **NO spread in non-variadic function calls**: `func(*args)` only works when the function has `*args` parameter or when spreading a tuple that matches exact parameter count
+- **NO `yield` inside `__next__`**: `yield` is only allowed in regular functions, `__iter__`, and `__reversed__`
+- **NO `return value` in generators**: Generators cannot return a value — use bare `return` for early termination
+- **NO mixing generator `__iter__` with `__next__`**: A class cannot have both `yield`-based `__iter__` AND a `__next__` method"""
 
 NAMING_RULES_SECTION = """\
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
@@ -638,6 +653,43 @@ print(p.x)
 # Comparison chaining
 if 0 < x < 10:
     print("in range")
+
+# Generator function with yield
+def count_up(n: int) -> int:
+    i = 0
+    while i < n:
+        yield i
+        i += 1
+
+for x in count_up(3):
+    print(x)  # 0, 1, 2
+
+# Yield from delegation
+def inner() -> int:
+    yield 1
+    yield 2
+
+def outer() -> int:
+    yield 0
+    yield from inner()
+
+# Class with generator __iter__ and __reversed__
+class Range:
+    start: int
+    end: int
+    def __init__(self, start: int, end: int):
+        self.start = start
+        self.end = end
+    def __iter__(self) -> int:
+        i = self.start
+        while i < self.end:
+            yield i
+            i += 1
+    def __reversed__(self) -> int:
+        i = self.end - 1
+        while i >= self.start:
+            yield i
+            i -= 1
 ```
 
 ## Output Format
