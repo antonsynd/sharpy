@@ -20,7 +20,9 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
     (r"SPY0220.*list\[.*\?\]", "Cannot create list[T?] from mixed T and None literals. "
      "Use an empty list and .append() each value individually."),
     (r"SPY0301.*no exported symbol", "Check that the imported symbol name matches exactly "
-     "(case-sensitive) and that the symbol is defined at the module's top level."),
+     "(case-sensitive) and that the symbol is defined at the module's top level. "
+     "If the symbol is an @abstract class, try simplifying: remove the @abstract decorator "
+     "or move the class to the importing file. Abstract class cross-module imports can be unreliable."),
     (r"SPY0907", "An internal compiler error occurred. Try simplifying your code — "
      "avoid deeply nested generics or complex cross-module patterns."),
     (r"FormatException.*0x", "Hex literals are supported in Sharpy. If you see a FormatException, "
