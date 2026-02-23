@@ -1,7 +1,6 @@
 ---
 name: regenerate-snapshots
 description: Regenerate C# snapshot tests after intentional codegen changes
-type: agent
 ---
 
 Regenerate the `.expected.cs` snapshot files for file-based integration tests. Use after intentional codegen changes that you want to capture.

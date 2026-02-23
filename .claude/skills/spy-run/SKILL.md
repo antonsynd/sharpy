@@ -1,7 +1,6 @@
 ---
 name: spy-run
 description: Run a Sharpy source file
-type: agent
 argument-hint: "<file.spy>"
 ---
 

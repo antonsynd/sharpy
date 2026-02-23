@@ -39,18 +39,12 @@ All skills below capture full output to `.claude/tmp/*.log` while showing trunca
 When a skill fails, use the full log for deeper investigation without re-running:
 
 ```bash
-# Read the full log (be mindful of token usage with large files)
-/read .claude/tmp/last-test-run.log
-
-# Read just the first part
-/head -200 .claude/tmp/last-test-run.log
+# Read the full log (use the Read tool or cat)
+cat .claude/tmp/last-test-run.log
 
 # Search for specific patterns
-/grep "Exception" .claude/tmp/last-test-run.log
-/grep "error" .claude/tmp/last-build.log
-
-# Read specific line ranges
-/read .claude/tmp/last-test-run.log 0 100
+grep "Exception" .claude/tmp/last-test-run.log
+grep "error" .claude/tmp/last-build.log
 ```
 
 ## Log File Cleanup
@@ -58,12 +52,12 @@ When a skill fails, use the full log for deeper investigation without re-running
 Logs are overwritten on each skill run. To clean up:
 
 ```bash
-/rm -rf .claude/tmp/*.log
+rm -rf .claude/tmp/*.log
 ```
 
 ## Skill Structure
 
 Skills are implemented as directories with `SKILL.md` files containing:
-- YAML frontmatter with `name`, `description`, and `type`
+- YAML frontmatter with `name`, `description`, and optional `argument-hint`
 - Documentation for usage and expected behavior
-- Optional `argument-hint` in frontmatter for CLI usage hints
+- Optional `disable-model-invocation: true` to prevent automatic invocation

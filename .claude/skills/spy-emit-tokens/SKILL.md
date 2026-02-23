@@ -1,7 +1,6 @@
 ---
 name: spy-emit-tokens
 description: Emit lexer tokens from a .spy file for lexer debugging
-type: agent
 argument-hint: "<file.spy>"
 ---
 

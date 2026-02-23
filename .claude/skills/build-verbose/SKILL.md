@@ -1,7 +1,6 @@
 ---
 name: build-verbose
 description: Build with verbose diagnostics for debugging complex build issues
-type: agent
 ---
 
 Build the Sharpy solution with diagnostic verbosity. Use when investigating complex build failures.

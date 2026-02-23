@@ -1,7 +1,6 @@
 ---
 name: spy-emit-csharp
 description: Emit generated C# from a .spy file for codegen debugging
-type: agent
 argument-hint: "<file.spy>"
 ---
 

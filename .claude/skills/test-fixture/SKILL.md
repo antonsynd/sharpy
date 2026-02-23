@@ -1,7 +1,6 @@
 ---
 name: test-fixture
 description: Run a specific file-based integration test by name
-type: agent
 argument-hint: "<test_name>"
 ---
 

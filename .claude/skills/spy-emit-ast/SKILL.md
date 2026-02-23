@@ -1,7 +1,6 @@
 ---
 name: spy-emit-ast
 description: Emit parsed AST from a .spy file for parser debugging
-type: agent
 argument-hint: "<file.spy>"
 ---
 

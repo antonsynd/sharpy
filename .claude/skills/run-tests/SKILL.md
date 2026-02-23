@@ -1,7 +1,6 @@
 ---
 name: run-tests
 description: Run Sharpy tests with smart output - shows summary on success, last 80 lines on failure with full log saved
-type: agent
 argument-hint: "[filter]"
 ---
 

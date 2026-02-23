@@ -1,7 +1,6 @@
 ---
 name: format
 description: Format code whitespace per project conventions (required before commits)
-type: agent
 ---
 
 Format code whitespace using `dotnet format`. This is required before commits per CLAUDE.md guidelines.
