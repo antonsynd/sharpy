@@ -704,6 +704,75 @@ yield 42  # yield at module level
 
     #endregion
 
+    #region Generator Tests
+
+    [Fact]
+    public void GeneratorFunction_IsMarkedAsGenerator()
+    {
+        var source = @"
+def gen() -> int:
+    yield 1
+    yield 2
+";
+        var (module, symbolTable, semanticInfo, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.HasErrors.Should().BeFalse(
+            string.Join("; ", typeChecker.Diagnostics.GetErrors().Select(d => d.Message)));
+
+        var funcDef = module.Body.OfType<FunctionDef>().First();
+        semanticInfo.IsGenerator(funcDef).Should().BeTrue("function containing yield should be marked as generator");
+    }
+
+    [Fact]
+    public void NestedGenerator_DoesNotMarkOuterFunction()
+    {
+        var source = @"
+def outer() -> int:
+    def inner() -> int:
+        yield 1
+    return 0
+";
+        var (module, symbolTable, semanticInfo, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        var outerFunc = module.Body.OfType<FunctionDef>().First();
+        semanticInfo.IsGenerator(outerFunc).Should().BeFalse("yield in nested function should not mark outer function as generator");
+    }
+
+    [Fact]
+    public void RejectsYieldTypeMismatch()
+    {
+        var source = @"
+def gen() -> int:
+    yield ""hello""
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
+            e.Message.Contains("Yielded type") && e.Message.Contains("not assignable"));
+    }
+
+    [Fact]
+    public void YieldFromNonIterable_DoesNotCrash()
+    {
+        // yield from 42 — int is not iterable, so InferIterableElementType returns null.
+        // The type check is skipped when elementType is null, so no error is raised.
+        // This test verifies that the compiler does not crash.
+        var source = @"
+def gen() -> int:
+    yield from 42
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        // No crash is the primary assertion; no type mismatch error expected
+        // because elementType is null and the check is skipped.
+    }
+
+    #endregion
+
     #region Assignment Errors
 
     [Fact]

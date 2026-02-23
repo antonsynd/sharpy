@@ -814,13 +814,7 @@ internal partial class RoslynEmitter
         // Element type T from __reversed__ return type annotation (defaults to object if absent)
         TypeSyntax elementType = _typeMapper.MapType(funcDef.ReturnType);
 
-        // IEnumerator<T> — same construction as GenerateEnumerableBridgeMembers
-        var returnType = QualifiedName(
-            QualifiedName(
-                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
-                IdentifierName("Generic")),
-            GenericName("IEnumerator")
-                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(elementType))));
+        var returnType = WrapInIEnumerator(elementType);
 
         // Set up method scope — same pattern as GenerateClassMethod
         ResetMethodScope();
@@ -873,13 +867,7 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapType(funcDef.ReturnType)
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
-        // IEnumerator<T> return type
-        var returnType = QualifiedName(
-            QualifiedName(
-                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
-                IdentifierName("Generic")),
-            GenericName("IEnumerator")
-                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(elementType))));
+        var returnType = WrapInIEnumerator(elementType);
 
         // Set up method scope
         ResetMethodScope();

@@ -273,6 +273,20 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Wraps a type T in System.Collections.Generic.IEnumerator&lt;T&gt;.
+    /// Used for generator __iter__ (GetEnumerator) and __reversed__ (GetReverseEnumerator).
+    /// </summary>
+    private static NameSyntax WrapInIEnumerator(TypeSyntax elementType)
+    {
+        return QualifiedName(
+            QualifiedName(
+                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                IdentifierName("Generic")),
+            GenericName("IEnumerator")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(elementType))));
+    }
+
+    /// <summary>
     /// Restores the local scope state from a snapshot.
     /// Variables declared inside the block are removed from scope.
     /// </summary>

@@ -337,6 +337,59 @@ def main():
     }
 
     [Fact]
+    public void SymbolSerializer_RoundTrip_GeneratorFunction_PreservesIsGenerator()
+    {
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "my_generator",
+            Kind = SymbolKind.Function,
+            AccessLevel = AccessLevel.Public,
+            DeclarationLine = 1,
+            DeclarationColumn = 1,
+            DeclaringFilePath = "/test/gen.spy",
+            Parameters = new List<ParameterSymbol>(),
+            ReturnType = BuiltinType.Int,
+            IsGenerator = true
+        };
+
+        var filePath = CreateTempFile("gen.spy", "def my_generator() -> int:\n    yield 1");
+        var cached = SymbolSerializer.Serialize(funcSymbol, filePath);
+
+        Assert.True(cached.IsGenerator, "Serialized symbol should have IsGenerator=true");
+
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as FunctionSymbol;
+
+        Assert.NotNull(restored);
+        Assert.True(restored!.IsGenerator, "Deserialized generator function should preserve IsGenerator=true");
+        Assert.Equal("my_generator", restored.Name);
+        Assert.Equal(BuiltinType.Int, restored.ReturnType);
+    }
+
+    [Fact]
+    public void SymbolSerializer_RoundTrip_NonGeneratorFunction_IsGeneratorDefaultsFalse()
+    {
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "normal_func",
+            Kind = SymbolKind.Function,
+            Parameters = new List<ParameterSymbol>(),
+            ReturnType = BuiltinType.Int
+        };
+
+        var filePath = CreateTempFile("normal.spy", "def normal_func() -> int:\n    return 42");
+        var cached = SymbolSerializer.Serialize(funcSymbol, filePath);
+
+        Assert.False(cached.IsGenerator, "Non-generator should serialize IsGenerator=false");
+
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as FunctionSymbol;
+
+        Assert.NotNull(restored);
+        Assert.False(restored!.IsGenerator, "Deserialized non-generator should have IsGenerator=false");
+    }
+
+    [Fact]
     public void SymbolSerializer_RoundTrip_TypeSymbol()
     {
         var typeSymbol = new TypeSymbol
