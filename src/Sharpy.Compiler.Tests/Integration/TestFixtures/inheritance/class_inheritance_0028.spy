@@ -1,0 +1,37 @@
+# Test: Polymorphic dispatch through virtual method override with super().__init__
+
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @virtual
+    def speak(self) -> str:
+        return "..."
+
+    def describe(self) -> None:
+        print(f"{self.name} says: {self.speak()}")
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    @override
+    def speak(self) -> str:
+        return "Woof"
+
+class Cat(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    @override
+    def speak(self) -> str:
+        return "Meow"
+
+def main():
+    animals: list[Animal] = [Dog("Rex"), Cat("Whiskers"), Dog("Buddy")]
+    for animal in animals:
+        animal.describe()
+
+# EXPECTED OUTPUT:

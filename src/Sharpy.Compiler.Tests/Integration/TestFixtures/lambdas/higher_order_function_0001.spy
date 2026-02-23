@@ -1,0 +1,74 @@
+# Higher-order function pipeline with abstract transforms and fold
+
+@abstract
+class Transform:
+    @abstract
+    def apply(self, items: list[int]) -> list[int]:
+        ...
+
+class MapTransform(Transform):
+    _fn: (int) -> int
+
+    def __init__(self, fn: (int) -> int):
+        self._fn = fn
+
+    @override
+    def apply(self, items: list[int]) -> list[int]:
+        result: list[int] = []
+        for x in items:
+            result.append(self._fn(x))
+        return result
+
+class FilterTransform(Transform):
+    _pred: (int) -> bool
+
+    def __init__(self, pred: (int) -> bool):
+        self._pred = pred
+
+    @override
+    def apply(self, items: list[int]) -> list[int]:
+        result: list[int] = []
+        for x in items:
+            if self._pred(x):
+                result.append(x)
+        return result
+
+def run_pipeline(transforms: list[Transform], data: list[int]) -> list[int]:
+    result: list[int] = data
+    for t in transforms:
+        result = t.apply(result)
+    return result
+
+def fold(fn: (int, int) -> int, items: list[int], initial: int) -> int:
+    acc: int = initial
+    for x in items:
+        acc = fn(acc, x)
+    return acc
+
+def main():
+    data: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    double_it: (int) -> int = lambda x: x * 2
+    add_one: (int) -> int = lambda x: x + 1
+    is_even: (int) -> bool = lambda x: x % 2 == 0
+    add: (int, int) -> int = lambda a, b: a + b
+
+    evens: list[int] = FilterTransform(is_even).apply(data)
+    print(f"Even count: {len(evens)}")
+
+    doubled: list[int] = MapTransform(double_it).apply(evens)
+    print(f"First doubled: {doubled[0]}")
+
+    pipeline: list[Transform] = [FilterTransform(is_even), MapTransform(add_one)]
+    result: list[int] = run_pipeline(pipeline, data)
+    print(f"Pipeline result count: {len(result)}")
+    print(f"Pipeline first: {result[0]}")
+
+    total: int = fold(add, result, 0)
+    print(f"Sum of pipeline result: {total}")
+
+    incremented: list[int] = MapTransform(add_one).apply(MapTransform(double_it).apply(data))
+    print(f"Last element: {incremented[9]}")
+    print(f"Total sum: {fold(add, incremented, 0)}")
+
+# EXPECTED OUTPUT:

@@ -1,0 +1,78 @@
+# Test: Result type - unwrap, map, map_err with abstract DataSource hierarchy
+@abstract
+class DataSource:
+    @abstract
+    def lookup(self, key: int) -> int !str:
+        ...
+
+    @virtual
+    def safe_lookup(self, key: int, default: int) -> int:
+        result: int !str = self.lookup(key)
+        return result.unwrap_or(default)
+
+
+class InMemoryStore(DataSource):
+    data: dict[int, int]
+
+    def __init__(self):
+        self.data = {10: 100, 20: 200, 30: 300}
+
+    @override
+    def lookup(self, key: int) -> int !str:
+        if key in self.data:
+            return Ok(self.data[key])
+        return Err(f"Key {key} not found")
+
+
+class TransformedStore(DataSource):
+    base: InMemoryStore
+    multiplier: int
+
+    def __init__(self, store: InMemoryStore, mult: int):
+        self.base = store
+        self.multiplier = mult
+
+    @override
+    def lookup(self, key: int) -> int !str:
+        mult: int = self.multiplier
+        result: int !str = self.base.lookup(key)
+        return result.map(lambda v: v * mult)
+
+
+def main():
+    store = InMemoryStore()
+    transformed = TransformedStore(store, 3)
+
+    r1: int !str = store.lookup(10)
+    print(r1.unwrap())
+
+    r2: int !str = store.lookup(99)
+    print(r2.unwrap_or(-1))
+
+    r3: int !str = store.lookup(20).map(lambda v: v + 50)
+    print(r3.unwrap())
+
+    r4: int !str = store.lookup(55).map_err(lambda e: f"[FAIL] {e}")
+    print(r4.unwrap_or(0))
+
+    r5: int !str = transformed.lookup(30)
+    print(r5.unwrap())
+
+    val: int = store.safe_lookup(10, 0)
+    print(val)
+
+    r6: int !str = store.lookup(10).map(lambda v: v * 2).map(lambda v: v + 5)
+    print(r6.unwrap())
+
+    r7: int !str = store.lookup(99).map(lambda v: v * 2)
+    print(r7.unwrap_or(-99))
+
+# EXPECTED OUTPUT:
+# 100
+# -1
+# 250
+# 0
+# 900
+# 100
+# 205
+# -99

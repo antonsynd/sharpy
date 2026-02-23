@@ -1,0 +1,35 @@
+# Test: __bool__ dunder method for custom truthiness via IBoolConvertible
+
+class Ticket:
+    _count: int
+
+    def __init__(self, count: int):
+        self._count = count
+
+    def use(self) -> None:
+        if self._count > 0:
+            self._count -= 1
+
+    def remaining(self) -> int:
+        return self._count
+
+    def __bool__(self) -> bool:
+        return self._count > 0
+
+def main():
+    t = Ticket(2)
+    print(bool(t))
+    t.use()
+    t.use()
+    print(bool(t))
+    if t:
+        print("still valid")
+    else:
+        print("exhausted")
+    print(t.remaining())
+
+# EXPECTED OUTPUT:
+# True
+# False
+# exhausted
+# 0

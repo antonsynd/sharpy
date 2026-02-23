@@ -1,0 +1,34 @@
+def partition(numbers: list[int]) -> tuple[list[int], list[int], list[int]]:
+    negatives: list[int] = []
+    zeros: list[int] = []
+    positives: list[int] = []
+    for n in numbers:
+        if n < 0:
+            negatives.append(n)
+        elif n == 0:
+            zeros.append(n)
+        else:
+            positives.append(n)
+    return (negatives, zeros, positives)
+
+def main():
+    data: list[int] = [3, -1, 0, 7, -4, 2, 0, -2]
+    negs, zs, pos = partition(data)
+
+    ordered: list[int] = [*negs, *zs, *pos]
+    bounded: list[int] = [-99, *ordered, 99]
+    prefix: list[int] = [0, 1, 2]
+    extended: list[int] = [*prefix, *bounded]
+
+    print(len(negs))
+    print(len(pos))
+    print(len(ordered))
+    print(bounded[0])
+    print(len(extended))
+
+# EXPECTED OUTPUT:
+# 3
+# 3
+# 8
+# -99
+# 13

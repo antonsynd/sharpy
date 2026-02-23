@@ -1,0 +1,54 @@
+class Temperature:
+    celsius: float
+
+    def __init__(self, c: float):
+        self.celsius = c
+
+    def __lt__(self, other: Temperature) -> bool:
+        return self.celsius < other.celsius
+
+    def __le__(self, other: Temperature) -> bool:
+        return self.celsius <= other.celsius
+
+    def __gt__(self, other: Temperature) -> bool:
+        return self.celsius > other.celsius
+
+    def __ge__(self, other: Temperature) -> bool:
+        return self.celsius >= other.celsius
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Temperature):
+            return self.celsius == other.celsius
+        return False
+
+    def __hash__(self) -> int:
+        return hash(int(self.celsius))
+
+def main():
+    temps: list[Temperature] = [Temperature(100.0), Temperature(0.0), Temperature(37.0), Temperature(37.0)]
+    pivot = Temperature(37.0)
+
+    lower = 0
+    equal = 0
+    higher = 0
+
+    for t in temps:
+        if t < pivot:
+            lower += 1
+        elif t == pivot:
+            equal += 1
+        else:
+            higher += 1
+
+    print(lower)
+    print(equal)
+    print(higher)
+    print(pivot >= Temperature(37.0))
+    print(pivot <= Temperature(0.0))
+
+# EXPECTED OUTPUT:
+# 1
+# 2
+# 1
+# True
+# False

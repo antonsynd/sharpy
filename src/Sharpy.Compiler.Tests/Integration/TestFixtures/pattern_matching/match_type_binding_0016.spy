@@ -1,0 +1,24 @@
+def grade(score: int) -> str:
+    match score:
+        case 100:
+            return "perfect"
+        case _ if score >= 90:
+            return "excellent"
+        case _ if score >= 70:
+            return "passing"
+        case _ if score >= 50:
+            return "below average"
+        case _:
+            return "failing"
+
+def main():
+    scores: list[int] = [100, 95, 75, 55, 30]
+    for s in scores:
+        print(f"{s}: {grade(s)}")
+
+# EXPECTED OUTPUT:
+# 100: perfect
+# 95: excellent
+# 75: passing
+# 55: below average
+# 30: failing

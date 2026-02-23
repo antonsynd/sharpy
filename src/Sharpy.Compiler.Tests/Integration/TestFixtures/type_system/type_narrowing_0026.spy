@@ -1,0 +1,14 @@
+def describe(n: int?) -> str:
+    if n is not None:
+        return f"got {n}"
+    return "nothing"
+
+def main():
+    a: int? = Some(7)
+    b: int? = None()
+    print(describe(a))
+    print(describe(b))
+
+# EXPECTED OUTPUT:
+# got 7
+# nothing

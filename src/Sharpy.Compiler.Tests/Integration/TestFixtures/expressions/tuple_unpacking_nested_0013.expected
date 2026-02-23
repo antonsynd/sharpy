@@ -1,0 +1,8 @@
+Rectangle: top-left=(2,3), size=6x4
+Circle: top-left=(2,2), size=6x6
+First pair: 1, 10
+Remaining: 2
+Origin: 0,0
+Extent: 100,200
+  rest[0]: (2,20)
+  rest[1]: (3,30)

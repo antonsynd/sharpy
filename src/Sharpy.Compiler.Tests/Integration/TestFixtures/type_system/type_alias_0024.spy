@@ -1,0 +1,24 @@
+type ProductId = int
+type Price = float
+type ProductRecord = tuple[id: ProductId, label: str, base_price: Price]
+
+def apply_markup(base: Price, percent: int) -> Price:
+    return base * (100 + percent) / 100.0
+
+def main():
+    item: ProductRecord = (id=42, label="Gadget", base_price=20.0)
+
+    print(f"Product: {item.label}")
+    print(f"ID: {item.id}")
+    print(f"Base price: {item.base_price}")
+
+    marked_up: Price = apply_markup(item.base_price, 25)
+    print(f"Retail price: {marked_up}")
+
+    catalog_ids: list[ProductId] = [42, 43, 44, 45]
+    total: int = len(catalog_ids)
+    print(f"Catalog items: {total}")
+
+# EXPECTED OUTPUT:
+# Product: Gadget
+# ID: 42
