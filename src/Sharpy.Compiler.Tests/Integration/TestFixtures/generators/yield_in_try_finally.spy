@@ -1,0 +1,10 @@
+def gen() -> int:
+    try:
+        yield 1
+        yield 2
+    finally:
+        pass
+
+def main():
+    for x in gen():
+        print(x)

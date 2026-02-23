@@ -594,6 +594,14 @@ public static class DiagnosticExplanations
             "class Bad:\n    def __iter__(self) -> int:\n        yield 1\n    def __next__(self) -> int:\n        return 0",
             "Choose one pattern:\nclass GenIter:\n    def __iter__(self) -> int:\n        yield 1\n        yield 2");
 
+        Add(dict, DiagnosticCodes.Semantic.YieldInTryExcept,
+            "Yield in try/except block", "Semantic",
+            "A 'yield' statement cannot appear inside a 'try' block that has 'except' handlers. " +
+            "This is a .NET restriction: the CLR does not support yield return inside try-catch. " +
+            "Move the yield outside the try/except block or use try/finally instead.",
+            "def gen() -> int:\n    try:\n        yield 1  # not allowed\n    except Exception as e:\n        pass",
+            "Move yield outside try/except:\ndef gen() -> int:\n    yield 1\n    try:\n        risky_operation()\n    except Exception as e:\n        handle_error(e)");
+
         // ── Semantic errors: Class and inheritance (SPY0280-SPY0299) ────
 
         Add(dict, DiagnosticCodes.Semantic.AbstractInstantiation, "Cannot instantiate abstract class", "Semantic",

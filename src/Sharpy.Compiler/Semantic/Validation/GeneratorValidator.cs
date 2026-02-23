@@ -10,7 +10,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - yield in __next__ is forbidden (SPY0268)
 /// - Generator __iter__ conflicts with __next__ (SPY0269)
 /// - yield + return-with-value in the same function (SPY0267)
-/// - yield in try block with catch/except handlers (SPY0267)
+/// - yield in try block with catch/except handlers (SPY0270)
 /// </summary>
 internal class GeneratorValidator : SemanticValidatorBase
 {
@@ -106,9 +106,34 @@ internal class GeneratorValidator : SemanticValidatorBase
                 code: DiagnosticCodes.Semantic.YieldWithReturn,
                 span: returnWithValue.Span);
         }
+
+        // Guard 4: yield in try/except is forbidden (SPY0270)
+        var yieldInTry = FindYieldInTryExcept(funcDef.Body);
+        if (yieldInTry != null)
+        {
+            AddError(context,
+                "'yield' cannot be used inside a 'try' block that has 'except' handlers; " +
+                "move the 'yield' outside the try/except or use try/finally instead",
+                yieldInTry.LineStart, yieldInTry.ColumnStart,
+                code: DiagnosticCodes.Semantic.YieldInTryExcept,
+                span: yieldInTry.Span);
+        }
     }
 
     private static ReturnStatement? FindReturnWithValue(ImmutableArray<Statement> statements)
         => StatementWalker.FirstOrDefault(statements,
             stmt => stmt is ReturnStatement ret && ret.Value != null ? ret : null);
+
+    private static YieldStatement? FindYieldInTryExcept(ImmutableArray<Statement> statements)
+    {
+        return StatementWalker.FirstOrDefault(statements, stmt =>
+        {
+            if (stmt is TryStatement tryStmt && tryStmt.Handlers.Length > 0)
+            {
+                return StatementWalker.FirstOrDefault(tryStmt.Body,
+                    inner => inner is YieldStatement ys ? ys : null);
+            }
+            return null;
+        });
+    }
 }
