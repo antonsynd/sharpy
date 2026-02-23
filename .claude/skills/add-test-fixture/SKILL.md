@@ -15,7 +15,7 @@ Create a new file-based integration test in `src/Sharpy.Compiler.Tests/Integrati
 
 ## Existing categories
 
-basics, access_modifiers, class_with_init, classes, collections, control_flow, cross_module_inheritance, enums, errors, fstrings, functions, generic_function, imports, inheritance, interface_definition, interfaces, module_imports, strings, structs, structs_enums, type_shorthand, type_system, warnings
+access_modifiers, basics, builtins, class_with_init, classes, collections, control_flow, cross_module_inheritance, enums, errors, exception_handling, exceptions, expressions, fstrings, functions, generic_function, imports, inheritance, interface_definition, interfaces, module_imports, modules, multi_file, name_collision, named_tuples, optional_result, pattern_matching, properties, statements, strings, structs, structs_enums, type_aliases, type_shorthand, type_system, variable_name_collision, warnings, with_statement
 
 ## Steps
 

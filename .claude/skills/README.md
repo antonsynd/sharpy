@@ -1,21 +1,21 @@
 # Skills Quick Reference
 
-All skills are invoked with `/{skill-name}` (or the path prefix if organized in subdirectories).
+All skills are invoked with `/{skill-name}`.
 
-## Test & Build Skills (Smart Truncation + Logging)
+## Build & Test (Smart Truncation + Logging)
 
 All skills below capture full output to `.claude/tmp/*.log` while showing truncated output:
 
 | Skill | Usage | Log File | On Failure Shows |
 |-------|-------|----------|------------------|
-| `/run-tests` [filter] | Run tests with optional filter | `last-test-run.log` | Last 80 lines |
 | `/build` | Build solution | `last-build.log` | Last 100 lines |
 | `/build-verbose` | Build with diagnostics | `last-build-verbose.log` | Last 100 lines |
+| `/run-tests` [filter] | Run tests with optional filter | `last-test-run.log` | Last 80 lines |
+| `/test-fixture` `<name>` | Run specific test | `last-test-fixture.log` | Last 80 lines |
 | `/format` | Format whitespace | `last-format.log` | Last 50 lines |
 | `/regenerate-snapshots` | Update `.expected.cs` files | `last-snapshot-regen.log` | Last 80 lines |
-| `/test-fixture` `<name>` | Run specific test | `last-test-fixture.log` | Last 80 lines |
 
-## Debug/Development Skills
+## Debug & Development
 
 | Skill | Usage | Log File | Notes |
 |-------|-------|----------|-------|
@@ -23,24 +23,27 @@ All skills below capture full output to `.claude/tmp/*.log` while showing trunca
 | `/spy-emit-ast` `<file.spy>` | Emit parsed AST | `last-spy-emit.log` | Shows last 100 lines |
 | `/spy-emit-tokens` `<file.spy>` | Emit lexer tokens | `last-spy-emit.log` | Shows last 100 lines |
 | `/spy-run` `<file.spy>` | Execute .spy file | `last-spy-run.log` | Shows full output on success |
+| `/verify-python` `<expr>` | Verify Python behavior | — | Direct execution |
 
-## Existing Skills (unchanged)
+## Analysis & Planning
 
-- `/compiler-audit` [focus-area] - Comprehensive compiler health audit
-- `/verify-plan` `<plan.md>` - Verify a plan for accuracy
-- `/verify-implementation` `<plan.md>` - Verify implementation, fix gaps
-- `/add-test-fixture` `<desc>` - Create file-based integration test
-- `/dogfood-analyze` [dir] - Analyze dogfood results
-- `/dogfood-run` - Run dogfooding iterations
-- `/verify-python` `<expr>` - Verify Python behavior
+| Skill | Usage | Notes |
+|-------|-------|-------|
+| `/compiler-audit` [focus-area] | Comprehensive compiler health audit | Spawns parallel read-only agents |
+| `/verify-plan` `<plan.md>` | Verify plan accuracy against codebase | Adds verification stamp |
+| `/implement-plan` `<plan.md>` | Implement plan with agent team | Incremental commits |
+| `/verify-implementation` `<plan.md>` | Verify implementation, fix gaps | Post-implementation audit |
+| `/add-test-fixture` `<desc>` | Create file-based integration test | .spy + .expected/.error pair |
+| `/dogfood-run` [N] | Run dogfooding iterations | Defaults to 5 iterations |
+| `/dogfood-analyze` [dir] | Analyze dogfood results | Classifies failures C1-C5 |
 
 ## Investigating Failures
 
 When a skill fails, use the full log for deeper investigation without re-running:
 
 ```bash
-# Read the full log (use the Read tool or cat)
-cat .claude/tmp/last-test-run.log
+# Read the full log (use the Read tool)
+/read .claude/tmp/last-test-run.log
 
 # Search for specific patterns
 grep "Exception" .claude/tmp/last-test-run.log

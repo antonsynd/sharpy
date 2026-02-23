@@ -24,8 +24,8 @@ Before spawning any agents, perform these checks yourself:
 ### 1. Read the plan file completely
 
 ### 2. Check for verification stamp
-- Look for `<!-- Verified by /project:verify-plan` at the top
-- If **absent**: warn the user "This plan has not been verified. Consider running `/project:verify-plan` first." Ask whether to proceed or stop.
+- Look for `<!-- Verified by /verify-plan` at the top
+- If **absent**: warn the user "This plan has not been verified. Consider running `/verify-plan` first." Ask whether to proceed or stop.
 - If stamp says **NEEDS REVISION**: stop and tell the user "This plan was flagged as needing revision. Please address the issues in the Verification Summary before implementing."
 - If stamp says **PASS** or **PASS WITH CORRECTIONS**: proceed
 

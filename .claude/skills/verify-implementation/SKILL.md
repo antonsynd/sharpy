@@ -26,11 +26,11 @@ Before spawning any agents, perform these checks yourself:
 ### 1. Validate plan file
 
 - Confirm the file exists and is readable
-- Check for the `/project:verify-plan` stamp — search for `<!-- Verified by /project:verify-plan` near the top of the file
+- Check for the `/verify-plan` stamp — search for `<!-- Verified by /verify-plan` near the top of the file
   - If **absent**: warn the user that the plan was never verified but proceed anyway
   - If present and result says **NEEDS REVISION**: warn the user that the plan was flagged as needing revision — proceed but note this in the final report
   - If present and result says **PASS** or **PASS WITH CORRECTIONS**: proceed normally
-- Check for the `/project:implement-plan` evidence — look for implementation commits by checking `git log --oneline` for commit messages referencing the plan
+- Check for the `/implement-plan` evidence — look for implementation commits by checking `git log --oneline` for commit messages referencing the plan
 
 ### 2. Establish baseline
 

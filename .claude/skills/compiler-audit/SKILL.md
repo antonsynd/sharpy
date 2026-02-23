@@ -40,7 +40,7 @@ Audit the Sharpy compiler for architecture and modularity health. Focus on:
 - Separation of concerns: verify TypeChecker vs ValidationPipeline responsibility split, RoslynEmitter partial file boundaries
 
 Key directories: src/Sharpy.Compiler/ (Lexer/, Parser/, Semantic/, CodeGen/, Diagnostics/, Analysis/)
-Key files: RoslynEmitter*.cs (8 partials), TypeChecker*.cs (5 partials), Parser*.cs (6 partials)
+Key files: RoslynEmitter*.cs (11 partials), TypeChecker*.cs (8 partials), Parser*.cs (6 partials)
 
 Output your findings as structured markdown with: Critical (must fix), Warning (should fix), Opportunity (nice to have).
 ```
@@ -80,11 +80,11 @@ Output your findings as structured markdown with metrics tables and gap analysis
 Audit .NET runtime compatibility. Focus on:
 - C# 9.0 compliance in Sharpy.Core (no global usings, file-scoped namespaces, record structs, init-only setters)
 - C# 9.0 compliance in generated code (check RoslynEmitter output patterns)
-- Type mapping completeness in CodeGen/TypeMapper.cs and Discovery/TypeMapper.cs
+- Type mapping completeness in CodeGen/TypeMapper.cs and Discovery/ClrTypeMapper.cs
 - netstandard2.0/2.1 compatibility of Sharpy.Core APIs
 - Check for any .NET 6+ APIs used in Sharpy.Core that aren't available in netstandard2.1
 
-Key files: src/Sharpy.Core/Sharpy.Core.csproj, src/Sharpy.Compiler/CodeGen/TypeMapper.cs, src/Sharpy.Compiler/Discovery/TypeMapper.cs
+Key files: src/Sharpy.Core/Sharpy.Core.csproj, src/Sharpy.Compiler/CodeGen/TypeMapper.cs, src/Sharpy.Compiler/Discovery/ClrTypeMapper.cs
 
 Output your findings as structured markdown with: Critical, Warning, Opportunity.
 ```

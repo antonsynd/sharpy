@@ -88,7 +88,7 @@ After verification, edit the plan file directly:
 ### 1. Add verification stamp at the very top of the file
 
 ```markdown
-<!-- Verified by /project:verify-plan on YYYY-MM-DD -->
+<!-- Verified by /verify-plan on YYYY-MM-DD -->
 <!-- Verification result: [PASS / PASS WITH CORRECTIONS / NEEDS REVISION] -->
 ```
 

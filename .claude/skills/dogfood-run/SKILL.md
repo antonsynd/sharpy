@@ -24,4 +24,4 @@ Run the Sharpy dogfooding pipeline to generate, compile, and verify AI-generated
 
 5. **Present results**. After the task completes:
    - Read `dogfood_output/SUMMARY.md` (relative to the project root `/Users/anton/Documents/github/sharpy/`) and present its contents to the user.
-   - If the summary mentions failures or issues, suggest running `/project:dogfood-analyze` to classify them by root cause.
+   - If the summary mentions failures or issues, suggest running `/dogfood-analyze` to classify them by root cause.
