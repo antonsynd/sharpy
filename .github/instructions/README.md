@@ -32,6 +32,8 @@ When axioms conflict: **.NET > Type Safety > Python Syntax**
 4. **Follow existing patterns** — search codebase for similar code
 5. **C# 9.0 target for Sharpy.Core** — no file-scoped namespaces, global usings, record structs
 6. **C# latest for Compiler/CLI** — `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0`
+7. **Warnings are errors** — `TreatWarningsAsErrors` is enabled solution-wide via `Directory.Build.props`
+8. **TODO/BUG/FIXME → create GitHub issues** — create issue first (`gh issue create`), reference in comment (`// TODO(#123): ...`)
 
 ## Feature Implementation Flow
 

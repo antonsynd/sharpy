@@ -85,8 +85,8 @@ parser-expert → semantic-expert → codegen-expert → test-expert
 
 1. **Lexer** — Add tokens if needed (`Token.cs`, `Lexer.cs`)
 2. **Parser** — Add AST records (`Ast/*.cs`), parsing rules in `Parser*.cs` (6 partial files)
-3. **Semantic** — Add type rules (`TypeChecker*.cs` — 5 partial files), validators if needed
-4. **CodeGen** — Emit C# via SyntaxFactory (`RoslynEmitter*.cs` — 8 partial files)
+3. **Semantic** — Add type rules (`TypeChecker*.cs` — 8 partial files), validators if needed
+4. **CodeGen** — Emit C# via SyntaxFactory (`RoslynEmitter*.cs` — 11 partial files)
 5. **Tests** — Unit tests per component + `.spy`/`.expected` file-based tests
 
 ## Semantic Analysis Pipeline (Critical Knowledge)

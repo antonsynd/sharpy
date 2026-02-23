@@ -15,7 +15,7 @@ Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, 
 - `NameResolver.cs` — Symbol table construction, name binding
 - `ImportResolver.cs` — Module imports via `ModuleLoader`
 - `TypeResolver.cs` — Type annotation resolution
-- `TypeChecker*.cs` — Type checking (5 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Statements.cs`, `.Utilities.cs`)
+- `TypeChecker*.cs` — Type checking (8 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Utilities.cs`)
 - `SemanticInfo.cs` — Type/symbol annotations (separate from AST)
 - `SemanticBinding.cs` — Computed data, materialized at phase boundaries
 - `Symbol.cs` — Symbol hierarchy (VariableSymbol, FunctionSymbol, TypeSymbol, etc.)
@@ -38,10 +38,11 @@ Five-pass architecture (order matters):
 
 ```
 NameResolver.ResolveDeclarations()  → Pass 1: build symbol table
-NameResolver.ResolveInheritance()   → Pass 2: resolve base classes
-TypeResolver.ResolveTypes()         → Pass 3: resolve type annotations
-TypeChecker.CheckModule()           → Pass 4: type checking + inference
-ValidationPipeline.Validate()       → Pass 5: operators/protocols/access
+NameResolver.ResolveInheritance()   → Pass 1b: resolve base classes
+ImportResolver                      → Pass 1.5: module imports
+TypeResolver.ResolveTypes()         → Pass 2: resolve type annotations
+TypeChecker.CheckModule()           → Pass 3: type checking + inference
+ValidationPipeline.Validate()       → Pass 4: operators/protocols/access
 ```
 
 ### Materialization Points
@@ -104,11 +105,15 @@ Pluggable validators run after `TypeChecker.CheckModule()` via `ValidationPipeli
 | 55 | `NamingConventionValidator` | Naming convention checks |
 | 60 | `DecoratorValidator` | Decorator validation |
 | 150 | `SignatureValidator` | Dunder method signatures |
+| 160 | `EqualityContractValidator` | Equality contract checks |
+| 170 | `InterfaceConflictValidator` | Interface conflict detection |
 | 250 | `DefaultParameterValidator` | Default parameter validation |
 | 400 | `ControlFlowValidator` | CFG-based unreachable code, missing returns |
+| 410 | `PropertyValidator` | Property validation |
 | 420 | `UnusedVariableValidator` | Unused variable warnings |
 | 430 | `UnusedImportValidator` | Unused import warnings |
 | 450 | `AccessValidator` | Private/protected member access |
+| 460 | `DunderInvocationValidator` | Direct dunder call warnings |
 | 500 | `ProtocolValidator`, `OperatorValidator` | Protocol/operator validation |
 
 **Responsibility split:** TypeChecker handles type mismatches and in-progress inference. ValidationPipeline handles self-contained AST analyses. See `Semantic/Validation/README.md`.
@@ -127,8 +132,12 @@ Pluggable validators run after `TypeChecker.CheckModule()` via `ValidationPipeli
 | `SemanticBinding.cs` | Computed data, materialized at boundaries |
 | `TypeChecker.cs` | Main type checking entry point |
 | `TypeChecker.Expressions.cs` | Expression type inference |
+| `TypeChecker.Expressions.Access.cs` | Attribute/index/slice access |
+| `TypeChecker.Expressions.Literals.cs` | Literal expressions |
+| `TypeChecker.Expressions.Operators.cs` | Binary/unary operators |
 | `TypeChecker.Statements.cs` | Statement type checking |
 | `TypeChecker.Definitions.cs` | Function/class definition checking |
+| `TypeChecker.Utilities.cs` | Shared utilities |
 | `SymbolTable.cs` | Symbol storage and lookup |
 | `PrimitiveCatalog.cs` | Primitive types and CLR mappings |
 | `OperatorRegistry.cs` | Operator type rules |

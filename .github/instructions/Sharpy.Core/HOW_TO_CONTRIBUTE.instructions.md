@@ -1,3 +1,6 @@
+---
+applyTo: "src/Sharpy.Core/**"
+---
 # Sharpy.Core
 
 Standard library with Pythonic APIs for .NET. Location: `src/Sharpy.Core/`
@@ -16,7 +19,6 @@ Sharpy.Core/
 ├── Operator/           # Operator protocols (IAdd, IMul, etc.)
 ├── Random/             # random module
 ├── Sys/                # sys module
-├── Partial.ByteArray/  # bytearray type
 ├── Partial.Complex/    # complex type
 ├── Partial.Iterator/   # Iterator base
 ├── Partial.List/       # list[T] wrapping List<T> with Python methods

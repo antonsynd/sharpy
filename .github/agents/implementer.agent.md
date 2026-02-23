@@ -34,8 +34,8 @@ Full-stack implementation agent for Sharpy compiler and standard library.
 For new language features, touch in order:
 1. `Lexer/Token.cs` + `Lexer.cs` — new token types
 2. `Parser/Ast/*.cs` + `Parser*.cs` (6 partial files) — AST records and parsing
-3. `Semantic/TypeChecker*.cs` (5 partial files) — type rules, add validator if needed
-4. `CodeGen/RoslynEmitter*.cs` (8 partial files) — C# emission via SyntaxFactory
+3. `Semantic/TypeChecker*.cs` (8 partial files) — type rules, add validator if needed
+4. `CodeGen/RoslynEmitter*.cs` (11 partial files) — C# emission via SyntaxFactory
 5. Tests in `*Tests/` projects
 
 ## Commands
@@ -65,5 +65,5 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer
 | `NameMangler.cs` | `snake_case` → `PascalCase`, `__str__` → `ToString()` |
 | `SemanticInfo.cs` | Type/symbol annotations (separate from AST) |
 | `SemanticBinding.cs` | Computed data, materialized at phase boundaries |
-| `RoslynEmitter*.cs` | 8 partial classes by AST category |
+| `RoslynEmitter*.cs` | 11 partial classes by AST category |
 | `PrimitiveCatalog.cs` | Primitive types and CLR mappings |

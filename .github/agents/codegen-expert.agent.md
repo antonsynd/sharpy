@@ -13,14 +13,17 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type 
 
 **Owns:** `src/Sharpy.Compiler/CodeGen/`
 - `RoslynEmitter.cs` — Main emitter orchestration, name resolution
-- `RoslynEmitter.*.cs` — 8 partial classes (~5,900 lines total):
+- `RoslynEmitter.*.cs` — 11 partial classes (~10,300 lines total):
   - `.Expressions.cs` — Expression generation
+  - `.Expressions.Access.cs` — Attribute/index/slice access
+  - `.Expressions.Literals.cs` — Literal expressions
+  - `.Expressions.Operators.cs` — Binary/unary expression operators
   - `.Statements.cs` — Statement generation
   - `.TypeDeclarations.cs` — Class/struct/interface/enum
   - `.ClassMembers.cs` — Methods, properties, constructors
   - `.ModuleClass.cs` — Module class generation (file-named static class)
   - `.CompilationUnit.cs` — Top-level compilation unit
-  - `.Operators.cs` — Binary/unary operators
+  - `.Operators.cs` — Operator declarations
 - `TypeMapper.cs` — Sharpy types → C# types
 - `NameMangler.cs` — Name transformations
 - `CodeValidator.cs` — Validates generated code compiles
@@ -66,7 +69,7 @@ $"public {returnType} MyMethod() {{ {body} }}"
 
 | Sharpy | C# |
 |--------|-----|
-| `int` | `long` |
+| `int` | `int` |
 | `str` | `string` |
 | `float` | `double` |
 | `float32` | `float` |

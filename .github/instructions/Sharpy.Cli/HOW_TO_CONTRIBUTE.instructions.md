@@ -1,3 +1,6 @@
+---
+applyTo: "src/Sharpy.Cli/**"
+---
 # Sharpy.Cli
 
 Command-line interface for the Sharpy compiler. Location: `src/Sharpy.Cli/`

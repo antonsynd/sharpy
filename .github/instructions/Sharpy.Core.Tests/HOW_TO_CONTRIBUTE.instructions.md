@@ -1,3 +1,6 @@
+---
+applyTo: "src/Sharpy.Core.Tests/**"
+---
 # Sharpy.Core.Tests
 
 Standard library tests. Location: `src/Sharpy.Core.Tests/`
@@ -11,28 +14,44 @@ Sharpy.Core.Tests/
 ├── Partial.SetTests/      # Set tests
 ├── AllTests.cs            # all() builtin tests
 ├── AnyTests.cs            # any() builtin tests
+├── CollectionsModuleTests.cs # collections module tests
+├── DatetimeTests.cs       # datetime module tests
 ├── DictTests.cs           # Dictionary tests
 ├── DictViewsTests.cs      # Dict views tests
+├── DivModTests.cs         # divmod() tests
+├── DoubleConversionTests.cs # float conversion tests
 ├── EnumerateTests.cs      # Enumerate tests
 ├── FilterTests.cs         # filter() tests
 ├── FormatTests.cs         # format() tests
 ├── FrozenSetTests.cs      # frozenset tests
+├── FrozenSetConversionTests.cs # frozenset conversion tests
+├── IntConversionTests.cs  # int conversion tests
 ├── IsinstanceTests.cs     # isinstance() tests
 ├── IssubclassTests.cs     # issubclass() tests
+├── IteratorInteropTests.cs # Iterator interop tests
+├── ItertoolsTests.cs      # itertools module tests
+├── ListConversionTests.cs # list conversion tests
 ├── MapTests.cs            # map() tests
 ├── MaxTests.cs            # max() tests
 ├── MinTests.cs            # min() tests
+├── ModuleIntegrationTests.cs # Module integration tests
+├── OperatorModuleTests.cs # operator module tests
 ├── OptionalTests.cs       # Optional type tests
 ├── PowTests.cs            # pow() tests
 ├── PrintTests.cs          # print() builtin tests
+├── RandomTests.cs         # random module tests
 ├── RangeTests.cs          # Range tests
+├── ResultTests.cs         # Result type tests
 ├── RoundTests.cs          # round() tests
+├── SetConversionTests.cs  # set conversion tests
 ├── SortedTests.cs         # sorted() tests
+├── StringExtensionsTests.cs # String extension tests
 ├── StrTests.cs            # String type tests
-├── StrMethodsTests.cs     # String method tests
+├── SysModuleTests.cs      # sys module tests
+├── TupleConversionTests.cs # tuple conversion tests
 ├── TypeTests.cs           # type() tests
-├── ZipTests.cs            # zip() tests
-└── *Tests.cs              # Other builtin/type tests
+├── WrapperTests.cs        # Wrapper tests
+└── ZipTests.cs            # zip() tests
 ```
 
 ## Running Tests

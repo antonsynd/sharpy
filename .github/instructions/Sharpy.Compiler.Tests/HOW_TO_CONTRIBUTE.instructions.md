@@ -1,3 +1,6 @@
+---
+applyTo: "src/Sharpy.Compiler.Tests/**"
+---
 # Sharpy.Compiler.Tests
 
 Compiler test suite. Location: `src/Sharpy.Compiler.Tests/`
@@ -94,9 +97,13 @@ TestFixtures/
 
 **Warning tests:** `.warning` file — empty means expect no warnings, non-empty lines are expected substrings. Can combine with `.expected`.
 
+**C# snapshot tests:** `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Regenerate with: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`
+
+**Error location assertions:** `.error` lines can end with `@line:col` to assert error position.
+
 **Multi-file tests:** A subdirectory with multiple `.spy` files and a `main.spy` entry point, plus `main.expected` or `main.error`.
 
-**Test categories:** `access_modifiers/`, `basics/`, `class_with_init/`, `classes/`, `collections/`, `control_flow/`, `cross_module_inheritance/`, `enums/`, `errors/`, `fstrings/`, `functions/`, `generic_function/`, `imports/`, `inheritance/`, `interface_definition/`, `interfaces/`, `module_imports/`, `multi_file/`, `strings/`, `structs/`, `structs_enums/`, `type_shorthand/`, `type_system/`, `warnings/`
+**Test categories:** `access_modifiers/`, `basics/`, `builtins/`, `class_with_init/`, `classes/`, `collections/`, `control_flow/`, `cross_module_inheritance/`, `enums/`, `errors/`, `exception_handling/`, `exceptions/`, `expressions/`, `fstrings/`, `functions/`, `generators/`, `generic_function/`, `imports/`, `inheritance/`, `interface_definition/`, `interfaces/`, `lambdas/`, `module_imports/`, `modules/`, `multi_file/`, `name_collision/`, `named_tuples/`, `optional_result/`, `pattern_matching/`, `properties/`, `statements/`, `strings/`, `structs/`, `structs_enums/`, `type_aliases/`, `type_shorthand/`, `type_system/`, `warnings/`, `with_statement/`
 
 ## Critical Rules
 

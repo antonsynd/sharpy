@@ -1,3 +1,6 @@
+---
+applyTo: "src/Sharpy.Compiler/**"
+---
 # Sharpy.Compiler
 
 Core compiler: Lexer → Parser → Semantic → ValidationPipeline → CodeGen. Location: `src/Sharpy.Compiler/`
@@ -6,11 +9,11 @@ Core compiler: Lexer → Parser → Semantic → ValidationPipeline → CodeGen.
 
 ```
 Sharpy.Compiler/
-├── Lexer/           # Tokenization (Lexer.cs, Token.cs)
+├── Lexer/           # Tokenization (Lexer*.cs — 4 partials, Token.cs)
 ├── Parser/          # Recursive descent → AST (Parser*.cs — 6 files, Ast/*.cs)
-├── Semantic/        # NameResolver → TypeResolver → TypeChecker (5 partial files)
+├── Semantic/        # NameResolver → ImportResolver → TypeResolver → TypeChecker (8 partial files)
 │   └── Validation/  # Pluggable validators (OperatorValidator, etc.)
-├── CodeGen/         # RoslynEmitter*.cs (8 partial files), TypeMapper.cs, NameMangler.cs
+├── CodeGen/         # RoslynEmitter*.cs (11 partial files), TypeMapper.cs, NameMangler.cs
 ├── Discovery/       # CLR type discovery, module imports, caching
 ├── Analysis/        # Control flow analysis (ControlFlowGraph, BasicBlock)
 ├── Diagnostics/     # DiagnosticBag, DiagnosticCodes, DiagnosticRenderer
@@ -73,10 +76,11 @@ Five-pass architecture (order matters):
 
 ```
 NameResolver.ResolveDeclarations()  → Pass 1: build symbol table
-NameResolver.ResolveInheritance()   → Pass 2: resolve base classes
-TypeResolver.ResolveTypes()         → Pass 3: resolve type annotations
-TypeChecker.CheckModule()           → Pass 4: type checking + inference
-ValidationPipeline.Validate()       → Pass 5: operators/protocols/access
+NameResolver.ResolveInheritance()   → Pass 1b: resolve base classes
+ImportResolver                      → Pass 1.5: module imports
+TypeResolver.ResolveTypes()         → Pass 2: resolve type annotations
+TypeChecker.CheckModule()           → Pass 3: type checking + inference
+ValidationPipeline.Validate()       → Pass 4: operators/protocols/access
 ```
 
 **Materialization points:** After each phase, computed data is frozen from `SemanticBinding` onto `Symbol` properties.
@@ -88,11 +92,18 @@ After `TypeChecker`, pluggable validators run via `ValidationPipeline`. Validato
 | Order | Validator | Purpose |
 |-------|-----------|---------|
 | 50 | `ModuleLevelValidator` | Entry point validation |
+| 55 | `NamingConventionValidator` | Naming convention checks |
 | 60 | `DecoratorValidator` | Decorator validation |
-| 150 | `SignatureValidator` | Dunder method signatures || 250 | `DefaultParameterValidator` | Default parameter validation || 400 | `ControlFlowValidator` | CFG-based unreachable code, missing returns |
+| 150 | `SignatureValidator` | Dunder method signatures |
+| 160 | `EqualityContractValidator` | Equality contract checks |
+| 170 | `InterfaceConflictValidator` | Interface conflict detection |
+| 250 | `DefaultParameterValidator` | Default parameter validation |
+| 400 | `ControlFlowValidator` | CFG-based unreachable code, missing returns |
+| 410 | `PropertyValidator` | Property validation |
 | 420 | `UnusedVariableValidator` | Unused variable warnings |
 | 430 | `UnusedImportValidator` | Unused import warnings |
 | 450 | `AccessValidator` | Private/protected member access |
+| 460 | `DunderInvocationValidator` | Direct dunder call warnings |
 | 500 | `ProtocolValidator`, `OperatorValidator` | Protocol/operator validation |
 
 **Responsibility split:** TypeChecker handles type mismatches and in-progress inference. ValidationPipeline handles self-contained AST analyses. See `Semantic/Validation/README.md`.
@@ -132,7 +143,7 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect tokens
 | `SemanticInfo.cs` | Type/symbol annotations (separate from AST) |
 | `SemanticBinding.cs` | Computed data, materialized at phase boundaries |
 | `CodeGenInfo.cs` | Per-symbol codegen metadata (invocation style, etc.) |
-| `RoslynEmitter*.cs` | 8 partial classes by AST category |
+| `RoslynEmitter*.cs` | 11 partial classes by AST category |
 | `PrimitiveCatalog.cs` | Source of truth for primitive types and CLR mappings |
 | `OperatorRegistry.cs` | Operator type rules |
 
