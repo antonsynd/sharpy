@@ -53,6 +53,9 @@ public class SemanticInfo : ISemanticQuery
     private readonly Dictionary<FunctionCall, List<SemanticType>> _inferredTypeArguments =
         new(ReferenceEqualityComparer.Instance);
 
+    // Track functions that contain yield statements (generators)
+    private readonly HashSet<FunctionDef> _generatorFunctions = new(ReferenceEqualityComparer.Instance);
+
     // Track expressions whose type was set to UnknownType due to a user error
     // (i.e., a diagnostic was already emitted for the node). This distinguishes
     // expected error-recovery Unknown types from unexpected ones (compiler bugs).
@@ -166,6 +169,16 @@ public class SemanticInfo : ISemanticQuery
     {
         return _errorRecoveryNodes.Contains(expr);
     }
+
+    /// <summary>
+    /// Marks a function as a generator (contains yield statements).
+    /// </summary>
+    public void MarkAsGenerator(FunctionDef funcDef) => _generatorFunctions.Add(funcDef);
+
+    /// <summary>
+    /// Returns true if the function has been marked as a generator.
+    /// </summary>
+    public bool IsGenerator(FunctionDef funcDef) => _generatorFunctions.Contains(funcDef);
 
     /// <summary>
     /// Returns true if any expression type in the semantic info is UnknownType.

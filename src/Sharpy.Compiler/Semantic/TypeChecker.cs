@@ -328,6 +328,10 @@ internal partial class TypeChecker
                 CheckReturn(returnStmt);
                 break;
 
+            case YieldStatement yieldStmt:
+                CheckYield(yieldStmt);
+                break;
+
             case IfStatement ifStmt:
                 CheckIf(ifStmt);
                 break;

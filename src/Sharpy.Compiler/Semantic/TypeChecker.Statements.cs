@@ -358,6 +358,59 @@ internal partial class TypeChecker
         }
     }
 
+    private void CheckYield(YieldStatement yieldStmt)
+    {
+        // yield is only valid inside a function
+        if (_currentFunctionReturnType == null)
+        {
+            AddError("'yield' cannot be used outside of a function",
+                yieldStmt.LineStart, yieldStmt.ColumnStart,
+                code: DiagnosticCodes.Semantic.YieldOutsideFunction,
+                span: yieldStmt.Span);
+            return;
+        }
+
+        if (yieldStmt.IsFrom)
+        {
+            // yield from expr: the value must be iterable, element type must match
+            var iterableType = CheckExpression(yieldStmt.Value);
+            var elementType = _typeInference.InferIterableElementType(iterableType);
+
+            if (elementType != null && _currentFunctionReturnType != SemanticType.Void
+                && _currentFunctionReturnType is not UnknownType)
+            {
+                // If there's a return type annotation, verify the element type matches
+                if (!IsAssignable(elementType, _currentFunctionReturnType))
+                {
+                    AddError(
+                        $"'yield from' element type '{elementType.GetDisplayName()}' is not assignable to declared return type '{_currentFunctionReturnType.GetDisplayName()}'",
+                        yieldStmt.LineStart, yieldStmt.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: yieldStmt.Span);
+                }
+            }
+        }
+        else
+        {
+            // yield expr: type-check the value
+            var valueType = CheckExpression(yieldStmt.Value);
+
+            if (_currentFunctionReturnType != SemanticType.Void
+                && _currentFunctionReturnType is not UnknownType)
+            {
+                // If there's a return type annotation, verify the yielded type matches
+                if (!IsAssignable(valueType, _currentFunctionReturnType))
+                {
+                    AddError(
+                        $"Yielded type '{valueType.GetDisplayName()}' is not assignable to declared return type '{_currentFunctionReturnType.GetDisplayName()}'",
+                        yieldStmt.LineStart, yieldStmt.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: yieldStmt.Span);
+                }
+            }
+        }
+    }
+
     private void CheckIf(IfStatement ifStmt)
     {
         var condType = CheckExpression(ifStmt.Test);

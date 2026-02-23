@@ -138,7 +138,11 @@ public static class DiagnosticCodes
         public const string ReturnOutsideFunction = "SPY0262";
         public const string BreakOutsideLoop = "SPY0263";
         public const string ContinueOutsideLoop = "SPY0264";
+        public const string YieldOutsideFunction = "SPY0265";
         public const string NotAllPathsReturn = "SPY0266";
+        public const string YieldWithReturn = "SPY0267";
+        public const string YieldInNext = "SPY0268";
+        public const string GeneratorIterConflict = "SPY0269";
 
         // Class and inheritance (SPY0280-SPY0299)
         public const string AbstractInstantiation = "SPY0280";

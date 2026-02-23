@@ -105,6 +105,7 @@ public record FunctionSymbol : Symbol
     public bool IsAbstract { get; init; }
     public bool IsVirtual { get; init; }
     public bool IsOverride { get; init; }
+    public bool IsGenerator { get; internal set; }
 
     // Generic type parameters (for generic functions like def identity[T](value: T) -> T)
     public List<TypeParameterDef> TypeParameters { get; init; } = new();
