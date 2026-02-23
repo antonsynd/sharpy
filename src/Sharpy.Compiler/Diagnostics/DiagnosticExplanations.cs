@@ -569,10 +569,30 @@ public static class DiagnosticExplanations
             "def main():\n    continue  # not inside a loop",
             "Move the continue inside a loop.");
 
+        Add(dict, DiagnosticCodes.Semantic.YieldOutsideFunction, "Yield outside function", "Semantic",
+            "A yield statement was used outside of a function body. Yield can only be used inside function definitions to create generator functions.",
+            "yield 42  # not inside a function",
+            "Move the yield inside a function definition:\ndef gen():\n    yield 42");
+
         Add(dict, DiagnosticCodes.Semantic.NotAllPathsReturn, "Not all paths return a value", "Semantic",
             "A function declared with a non-void return type has execution paths that do not return a value. All possible paths through the function must end with a return statement.",
             "def abs_val(x: int) -> int:\n    if x >= 0:\n        return x\n    # missing return for x < 0",
             "Ensure all paths return a value:\ndef abs_val(x: int) -> int:\n    if x >= 0:\n        return x\n    return -x");
+
+        Add(dict, DiagnosticCodes.Semantic.YieldWithReturn, "Yield with return value in generator", "Semantic",
+            "A generator function (one that uses yield) cannot also use 'return' with a value. Use yield to produce values and bare 'return' to stop the generator.",
+            "def gen() -> int:\n    yield 1\n    return 42  # cannot return a value",
+            "Use bare return to stop the generator:\ndef gen() -> int:\n    yield 1\n    return  # stops iteration");
+
+        Add(dict, DiagnosticCodes.Semantic.YieldInNext, "Yield in __next__ method", "Semantic",
+            "The __next__ method cannot contain yield statements. Use __iter__ for generator-based iteration, or implement __next__ as an explicit iterator (with return).",
+            "class MyIter:\n    def __next__(self) -> int:\n        yield 1  # not allowed",
+            "Use __iter__ for generators:\nclass MyIter:\n    def __iter__(self) -> int:\n        yield 1\n        yield 2");
+
+        Add(dict, DiagnosticCodes.Semantic.GeneratorIterConflict, "Generator __iter__ conflicts with __next__", "Semantic",
+            "A class cannot have both a generator __iter__ (using yield) and a __next__ method. Choose either the generator pattern (yield in __iter__) or the explicit iterator pattern (__next__ with return).",
+            "class Bad:\n    def __iter__(self) -> int:\n        yield 1\n    def __next__(self) -> int:\n        return 0",
+            "Choose one pattern:\nclass GenIter:\n    def __iter__(self) -> int:\n        yield 1\n        yield 2");
 
         // ── Semantic errors: Class and inheritance (SPY0280-SPY0299) ────
 

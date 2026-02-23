@@ -739,7 +739,7 @@ class Container:
     }
 
     [Fact]
-    public void Reversed_EmitsUnsupportedWarning()
+    public void Reversed_NoLongerEmitsUnsupportedWarning()
     {
         var code = @"
 class Container:
@@ -754,8 +754,7 @@ class Container:
         var warnings = context.Diagnostics.GetWarnings()
             .Where(w => w.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnsupportedDunderReversed)
             .ToList();
-        Assert.Single(warnings);
-        Assert.Contains("not fully supported", warnings[0].Message);
+        Assert.Empty(warnings);
     }
 
     [Fact]

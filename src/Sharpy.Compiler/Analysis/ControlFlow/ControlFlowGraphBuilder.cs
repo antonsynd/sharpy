@@ -197,6 +197,11 @@ internal class ControlFlowGraphBuilder
                 BuildMatch(matchStmt);
                 break;
 
+            case YieldStatement:
+                // Yield does not terminate a block — it produces a value and continues
+                AddStatement(stmt);
+                break;
+
             default:
                 // Simple statements - add to current block
                 AddStatement(stmt);

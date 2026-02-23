@@ -87,9 +87,9 @@ internal class ControlFlowValidator : SemanticValidatorBase
                 span: info.FirstUnreachableStatement.Span);
         }
 
-        // 2. Check return paths (if function has return type)
+        // 2. Check return paths (if function has return type, and not a generator)
         var returnType = GetFunctionReturnType(func);
-        if (returnType != SemanticType.Void)
+        if (returnType != SemanticType.Void && !_context.SemanticInfo.IsGenerator(func))
         {
             var missingReturnBlocks = ControlFlowAnalysis.FindMissingReturnPaths(cfg);
             if (missingReturnBlocks.Length > 0)
