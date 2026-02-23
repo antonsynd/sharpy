@@ -1265,7 +1265,9 @@ _CODE_INDICATORS = ["def ", "class ", "print(", "=", "import "]
 
 _MARKDOWN_LINE_PATTERNS = [
     re.compile(r"^\*\*.*\*\*"),  # Bold markdown: **text**
-    re.compile(r"^#{1,6}\s+[A-Z]"),  # Headers: # Heading (uppercase after #, not Python comments)
+    re.compile(
+        r"^#{1,6}\s+[A-Z][a-z]+\s+[a-z]"
+    ),  # Markdown headers: "# Some heading" (requires prose-like text, not Python comments)
     re.compile(r"^\d+\.\s"),  # Numbered lists: 1. item
 ]
 
@@ -1290,8 +1292,12 @@ def _strip_markdown_lines(code: str) -> str:
     return code
 
 
-def extract_code_block(response: str) -> Optional[str]:
-    """Extract code from a response that might have markdown formatting."""
+def _extract_raw_code_block(response: str) -> Optional[str]:
+    """Extract raw code from a response without stripping markdown-like comments.
+
+    This preserves all comment lines (including # EXPECTED OUTPUT blocks)
+    exactly as they appear in the code.
+    """
     import re
 
     # Try to find code block with python/sharpy markers
@@ -1299,18 +1305,23 @@ def extract_code_block(response: str) -> Optional[str]:
     matches = re.findall(pattern, response, re.DOTALL)
 
     if matches:
-        # Return the longest match (most likely the main code)
-        code = max(matches, key=len).strip()
-        return _strip_markdown_lines(code)
+        return max(matches, key=len).strip()
 
     # If no code block, check if the entire response looks like code
     lines = response.strip().split("\n")
     if lines and not any(line.startswith("```") for line in lines):
-        # Check if it looks like code (has def, print, assignments, etc.)
         code_indicators = ["def ", "print(", "= ", "if ", "for ", "while ", "#"]
         if any(indicator in response for indicator in code_indicators):
-            return _strip_markdown_lines(response.strip())
+            return response.strip()
 
+    return None
+
+
+def extract_code_block(response: str) -> Optional[str]:
+    """Extract code from a response that might have markdown formatting."""
+    raw = _extract_raw_code_block(response)
+    if raw is not None:
+        return _strip_markdown_lines(raw)
     return None
 
 
@@ -1398,3 +1409,17 @@ def extract_expected_output_from_multifile(files: dict[str, str]) -> Optional[st
         return None
 
     return extract_expected_output(files["main.spy"])
+
+
+def extract_expected_output_from_response(response: str) -> Optional[str]:
+    """Extract expected output from the raw AI response before markdown stripping.
+
+    This works on the raw response text, extracting the code block without
+    stripping markdown-like comment lines (which can remove # EXPECTED OUTPUT
+    blocks). Use this instead of extract_expected_output(code) when code has
+    already been through extract_code_block/_strip_markdown_lines.
+    """
+    raw = _extract_raw_code_block(response)
+    if raw is not None:
+        return extract_expected_output(raw)
+    return extract_expected_output(response)

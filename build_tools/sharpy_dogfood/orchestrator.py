@@ -30,6 +30,7 @@ from .prompts import (
     get_regeneration_prompt,
     get_test_uniqueness_prompt,
     extract_expected_output,
+    extract_expected_output_from_response,
     extract_code_block,
     extract_multifile_code,
     extract_expected_output_from_multifile,
@@ -1065,6 +1066,7 @@ class DogfoodOrchestrator:
         """
         max_attempts = self.config.max_regeneration_attempts
         last_code: Optional[str] = None
+        last_raw_output: Optional[str] = None
         last_error: Optional[str] = None
         total_duration = 0.0
         backend_used: Optional[str] = None
@@ -1173,6 +1175,7 @@ class DogfoodOrchestrator:
                     )
 
             last_code = code
+            last_raw_output = gen_result.output
             print(f"  Generated {len(code)} chars of code", file=sys.stderr)
 
             # Step 1.5: Quick pre-validation (programmatic check for forbidden features)
@@ -1192,7 +1195,7 @@ class DogfoodOrchestrator:
                     return GenerationResult(
                         success=False,
                         code=code,
-                        expected_output=extract_expected_output(code),
+                        expected_output=extract_expected_output_from_response(gen_result.output),
                         skip_reason=f"Pre-validation failed after {attempt} attempts: {prevalidation_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
@@ -1211,7 +1214,7 @@ class DogfoodOrchestrator:
                     return GenerationResult(
                         success=False,
                         code=code,
-                        expected_output=extract_expected_output(code),
+                        expected_output=extract_expected_output_from_response(gen_result.output),
                         skip_reason=f"Internal compiler error: {semantic_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
@@ -1234,7 +1237,7 @@ class DogfoodOrchestrator:
                     return GenerationResult(
                         success=False,
                         code=code,
-                        expected_output=extract_expected_output(code),
+                        expected_output=extract_expected_output_from_response(gen_result.output),
                         skip_reason=f"Sharpy compiler error after {attempt} attempts: {semantic_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
@@ -1245,7 +1248,7 @@ class DogfoodOrchestrator:
             # Skip AI spec validation (emit csharp runs the full pipeline).
 
             # Step 1.6: Verify expected output using Python
-            expected_output = extract_expected_output(code)
+            expected_output = extract_expected_output_from_response(gen_result.output)
             if expected_output:
                 is_valid, python_output, verify_error = (
                     await _verify_expected_with_python(code, expected_output)
@@ -1286,7 +1289,7 @@ class DogfoodOrchestrator:
         return GenerationResult(
             success=False,
             code=last_code,
-            expected_output=extract_expected_output(last_code) if last_code else None,
+            expected_output=extract_expected_output_from_response(last_raw_output) if last_raw_output else None,
             skip_reason="Generation failed after all retry attempts",
             backend_used=backend_used,
             generation_duration=total_duration,
