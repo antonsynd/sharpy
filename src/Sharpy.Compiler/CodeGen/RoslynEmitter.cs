@@ -259,6 +259,30 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Sets the generator scope flag and returns a disposable that restores the previous value.
+    /// </summary>
+    private GeneratorScope SetGeneratorScope(bool isGenerator)
+    {
+        var previous = _isCurrentMethodGenerator;
+        _isCurrentMethodGenerator = isGenerator;
+        return new GeneratorScope(this, previous);
+    }
+
+    private readonly struct GeneratorScope : IDisposable
+    {
+        private readonly RoslynEmitter _emitter;
+        private readonly bool _previous;
+
+        public GeneratorScope(RoslynEmitter emitter, bool previous)
+        {
+            _emitter = emitter;
+            _previous = previous;
+        }
+
+        public void Dispose() => _emitter._isCurrentMethodGenerator = _previous;
+    }
+
+    /// <summary>
     /// Wraps a type T in System.Collections.Generic.IEnumerable&lt;T&gt;.
     /// Used for standalone generator functions whose annotated return type is the element type.
     /// </summary>

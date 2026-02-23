@@ -148,10 +148,8 @@ internal partial class RoslynEmitter
                     // __reversed__ generates GetReverseEnumerator() with IEnumerator<T> return type
                     else if (funcDef.Name == DunderNames.Reversed)
                     {
-                        var wasGenerator = _isCurrentMethodGenerator;
-                        _isCurrentMethodGenerator = _context.SemanticInfo?.IsGenerator(funcDef) == true;
+                        using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(funcDef) == true);
                         members.Add(GenerateReverseEnumeratorMethod(funcDef));
-                        _isCurrentMethodGenerator = wasGenerator;
                     }
                     // Check if this is a dunder method that needs operator synthesis
                     else if (DunderMapping.IsDunderMethod(funcDef.Name))
@@ -453,8 +451,7 @@ internal partial class RoslynEmitter
         ResetMethodScope();
 
         // Check if this method is a generator
-        var wasGenerator = _isCurrentMethodGenerator;
-        _isCurrentMethodGenerator = _context.SemanticInfo?.IsGenerator(func) == true;
+        using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
 
         // Pre-scan the method body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
@@ -627,7 +624,6 @@ internal partial class RoslynEmitter
             method = method.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
         }
 
-        _isCurrentMethodGenerator = wasGenerator;
         return method;
     }
 
@@ -885,12 +881,9 @@ internal partial class RoslynEmitter
         }
 
         // Set generator flag so yield statements and bare returns emit correctly
-        var wasGenerator = _isCurrentMethodGenerator;
-        _isCurrentMethodGenerator = true;
+        using var _gen = SetGeneratorScope(true);
 
         var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
-
-        _isCurrentMethodGenerator = wasGenerator;
 
         var parameters = funcDef.Parameters
             .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))

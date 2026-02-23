@@ -35,8 +35,7 @@ internal partial class RoslynEmitter
             : NameMangler.Transform(func.Name, NameContext.Method);
 
         // Check if this function is a generator
-        var wasGenerator = _isCurrentMethodGenerator;
-        _isCurrentMethodGenerator = _context.SemanticInfo?.IsGenerator(func) == true;
+        using var _ = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
 
         // Determine return type from annotation or infer void
         TypeSyntax returnType = func.ReturnType != null
@@ -69,9 +68,6 @@ internal partial class RoslynEmitter
 
         // Generate method body
         var body = Block(func.Body.SelectMany(GenerateBodyStatements));
-
-        // Restore generator flag
-        _isCurrentMethodGenerator = wasGenerator;
 
         var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)
