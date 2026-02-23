@@ -108,6 +108,24 @@ internal static class SynthesisAnalyzer
             }
         }
 
+        // Phase 2c: IEnumerable<T> from generator __iter__ (without __next__)
+        if (!typeSymbol.ProtocolMethods.ContainsKey(DunderNames.Next)
+            && typeSymbol.ProtocolMethods.TryGetValue(DunderNames.Iter, out var iterOverloads))
+        {
+            var iterFunc = iterOverloads.FirstOrDefault();
+            if (iterFunc is { IsGenerator: true })
+            {
+                var elementType = iterFunc.ReturnType is not (UnknownType or VoidType)
+                    ? iterFunc.ReturnType
+                    : new UserDefinedType { Name = "object" };
+                result.Add(new SynthesizedInterfaceInfo(
+                    "IEnumerable",
+                    "System.Collections.Generic",
+                    new[] { elementType },
+                    DunderNames.Iter));
+            }
+        }
+
         // Phase 3: IEquatable<T> from __eq__(self, other: T) where T is not object
         if (typeSymbol.OperatorMethods.TryGetValue(DunderNames.Eq, out var eqOverloads))
         {
