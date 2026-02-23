@@ -79,7 +79,7 @@ public class AstExhaustivenessTests
             "ExpressionStatement", "Assignment", "VariableDeclaration",
             "AssertStatement", "PassStatement", "BreakStatement",
             "BreakWithFlagStatement", "ContinueStatement", "ReturnStatement",
-            "RaiseStatement",
+            "YieldStatement", "RaiseStatement",
             // Compound
             "IfStatement", "WhileStatement", "ForStatement", "TryStatement",
             "WithStatement",
