@@ -1,0 +1,13 @@
+class Greeter:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    async def greet(self) -> str:
+        return "hello " + self.name
+
+def main():
+    g: Greeter = Greeter("world")
+    result: str = g.greet().Result
+    print(result)

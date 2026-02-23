@@ -432,8 +432,12 @@ internal partial class TypeChecker
             }
         }
 
-        // Mark async metadata and wrap return type in TaskType
-        if (functionDef.IsAsync)
+        // Mark async metadata and wrap return type in TaskType.
+        // Skip if async was used in an invalid context (async __init__, async generator)
+        // to avoid emitting broken C# (e.g., async constructor, async + yield).
+        var asyncHasError = functionDef.IsAsync &&
+            (isGenerator || functionDef.Name == DunderNames.Init);
+        if (functionDef.IsAsync && !asyncHasError)
         {
             var asyncSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
                 ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;

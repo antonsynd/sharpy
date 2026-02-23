@@ -1,8 +1,13 @@
 # Async Programming
 
-> **Implementation status:** Async/await is **not yet implemented** (planned for Phase 10, v0.2.4).
-> The `async` and `await` keywords are reserved but not parsed as part of function definitions or expressions.
-> See [generators.md](generators.md) for the currently implemented synchronous generator support (`yield`/`yield from`).
+> **Implementation status:** `async def` declarations are **partially implemented** (v0.2.x).
+> - `async def` is parsed and emits C# `async` methods returning `Task` or `Task<T>`.
+> - `await` expressions are **not yet implemented** — the `await` keyword is reserved but not parsed.
+> - Async generators (`async def` with `yield`) are rejected at compile time (SPY0358).
+> - Async constructors (`async def __init__`) are rejected at compile time (SPY0358).
+> - `async for`, `async with`, and `asyncio` are not yet implemented.
+>
+> See [generators.md](generators.md) for synchronous generator support (`yield`/`yield from`).
 
 ## Async Functions
 
@@ -16,7 +21,7 @@ async def main():
     print(result)
 ```
 
-*Implementation: ❌ Not yet implemented — `async` and `await` are reserved keywords but not parsed. Planned for v0.2.4 (Phase 10). Will map to C# `async` method returning `Task<T>`.*
+*Implementation: ⚠️ Partially implemented — `async def` is parsed and emits C# `async Task<T>` methods. `await` expressions are not yet parsed (planned for Phase 10, v0.2.4). Without `await`, async functions can be called with `.Result` or `.Wait()` from synchronous code.*
 
 ## Concurrent Execution
 
