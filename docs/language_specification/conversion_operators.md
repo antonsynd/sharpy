@@ -1,5 +1,7 @@
 # Conversion Operators
 
+> **Implementation status:** Deferred post-v0.2.x — spec not finalized. `@implicit` and `@explicit` decorators are not yet recognized.
+
 Sharpy currently doesn't support user-provided implicit or explicit conversion operators. They are planned for a future version. .NET numeric types and all (.NET, Sharpy, or user-provided) polymorphic types have the same conversion semantics as they would in C#/.NET.
 
 ## See Also

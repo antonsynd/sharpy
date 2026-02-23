@@ -238,12 +238,12 @@ TryParse("42", out int value);
 Calculate(in largeData);  // or just Calculate(largeData)
 ```
 
-*Implementation: ✅ Native*
-- *`ref[T]` → `ref T` parameter*
-- *`out[T]` → `out T` parameter*
-- *`in[T]` → `in T` parameter*
-- *Call site keywords map directly*
-- *Inline `out` declaration → C# inline out declaration*
+*Implementation: ❌ Deferred post-v0.2.x*
+- *`ref[T]` → `ref T` parameter — not yet parsed*
+- *`out[T]` → `out T` parameter — not yet parsed*
+- *`in[T]` → `in T` parameter — not yet parsed*
+- *Call site keywords will map directly to C# `ref`/`out`/`in`*
+- *Inline `out` declaration will map to C# inline out declaration*
 
 ## See Also
 

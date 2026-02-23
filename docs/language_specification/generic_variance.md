@@ -245,11 +245,11 @@ public delegate T Factory<out T>();
 public delegate void Handler<in T>(T value);
 ```
 
-*Implementation: ✅ Native*
-- *`out T` → `out T` (C# covariance)*
-- *`in T` → `in T` (C# contravariance)*
-- *Variance validation performed at compile time*
-- *Position checking enforced by semantic analyzer*
+*Implementation: ❌ Not yet implemented — planned for Phase 12 (v0.2.6)*
+- *`out T` → `out T` (C# covariance) — not yet parsed*
+- *`in T` → `in T` (C# contravariance) — not yet parsed*
+- *Variance validation will be performed at compile time*
+- *Position checking will be enforced by semantic analyzer*
 
 ## Compiler Validation
 

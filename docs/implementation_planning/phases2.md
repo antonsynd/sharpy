@@ -11,7 +11,7 @@ Sharpy's v0.1.x series (16 phases, v0.1.0–v0.1.15) is complete, delivering the
 
 Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from those plans have been completed (properties, `with` statement, match statement basics, walrus codegen, multi-for comprehensions, named tuples, pipe forward, generic constraints). This roadmap picks up what remains and adds everything else needed for language spec completeness (syntax + semantics, not stdlib).
 
-**Source of truth:** `docs/language_specification/` (111 spec files + grammar.ebnf.txt)
+**Source of truth:** `docs/language_specification/` (112 spec files + grammar.ebnf.txt)
 
 ---
 
@@ -180,7 +180,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | **11** | v0.2.5 | Advanced Functions | 5 | Pos-only/kw-only, `@kwargs`, partial application |
 | **12** | v0.2.6 | Type System & Polish | 6 | Variance, delegates, events, custom decorators, spec audit |
 
-**Total: ~35 remaining items across 4 phases (v0.2.2–v0.2.6)** — Phases 6, 7, 9 complete (13 items delivered)
+**Total: 25 remaining items across 4 phases (v0.2.2–v0.2.6)** — Phases 6, 7, 9 complete (13 items delivered)
 
 ---
 
@@ -274,7 +274,7 @@ Intentional language design decisions:
 | **AST nodes (existing)** | MatchExpression, OrPattern, TypePattern, BindingPattern, UnionDef, AwaitExpression, RaiseStatement.Cause | All confirmed |
 | **AST nodes (new needed)** | RelationalPattern, ~~SpreadExpression~~, ~~YieldStatement~~, PlaceholderExpression | RelationalPattern and PlaceholderExpression still needed; SpreadExpression and YieldStatement now implemented |
 | **Completed features** | Properties, `with`, match, walrus, generics, comprehensions, named tuples, pipe, collections, try/maybe, chains | All confirmed in codegen |
-| **Spec file count** | 111 .md files + grammar.ebnf.txt | Updated from 108 → 111 (generators.md, method_overloading.md, delegates.md added) |
+| **Spec file count** | 112 .md files + grammar.ebnf.txt | Updated from 108 → 112 (generators.md, method_overloading.md, delegates.md, context_managers.md added) |
 | **Deferred C# versions** | C# 10 (record structs), C# 11 (@file, list patterns, static abstract), C# 13 (field), C# 14 (extensions, +=) | All match `docs/language_specification/deferred_features.md` |
 | **Out-of-scope items** | `__call__`, `@classmethod`/`@static`, `**kwargs`, reverse operators | All confirmed correct |
 
@@ -301,7 +301,7 @@ Intentional language design decisions:
 
 **Phase 11 audit** — all 5 items confirmed NOT STARTED. No positional-only/keyword-only parameter parsing, no `@kwargs`/`@dynamic_kwargs` decorator handling, no `PlaceholderExpression` AST node.
 
-**Phase 12 audit** — all 6 items confirmed NOT STARTED. No `DelegateDef`/`EventDef` AST nodes, no variance markers on `TypeParameterDef`, SPY0515 still blocks nested comprehensions, no custom decorator arguments.
+**Phase 12 audit** — all 6 items confirmed NOT STARTED. No `DelegateDef`/`EventDef` AST nodes, no variance markers on `TypeParameterDef`, SPY0515 still blocks nested comprehensions, no custom decorator arguments. `TokenType.Event` is reserved but unused by parser.
 
 ### Language Spec Accuracy Issues Found
 
@@ -313,6 +313,10 @@ Intentional language design decisions:
 | `comprehensions.md` | Shows nested comprehension example as working but SPY0515 blocks it | MEDIUM | **FIXED** — added ❌ comment, SPY0515 explanation, and workaround |
 | `spread_operator.md` | No implementation status banner | LOW | **FIXED** — added status banner noting partial implementation |
 | `delegates.md` | Missing document — referenced by `generic_variance.md` and `events_alt.md` | LOW | **FIXED** — created stub with Phase 12 implementation status |
+| `generic_variance.md` | Contradictory: intro says "not yet implemented" but footer says "✅ Native" | HIGH | **FIXED** — updated footer to ❌ Not yet implemented |
+| `parameter_modifiers.md` | Contradictory: intro says "deferred post-v0.2.x" but footer says "✅ Native" | HIGH | **FIXED** — updated footer to match deferred status |
+| `conversion_operators.md` | No formal implementation status banner | LOW | **FIXED** — added deferred status banner |
+| `README.md` | Duplicate "Operators" section header; missing entries for several spec files | MEDIUM | **FIXED** — reorganized sections, added missing entries |
 | `generators.md` | Accurate — all features verified | OK | — |
 | `method_overloading.md` | Accurate — diagnostics SPY0353/0354/0355 confirmed | OK | — |
 | `enums.md` | Accurate — .name, .value, iteration all working | OK | — |
