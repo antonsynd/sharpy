@@ -144,10 +144,16 @@ internal class GeneratorValidator : SemanticValidatorBase
                 found = FindReturnWithValue(whileStmt.Body);
                 if (found != null)
                     return found;
+                found = FindReturnWithValue(whileStmt.ElseBody);
+                if (found != null)
+                    return found;
             }
             else if (stmt is ForStatement forStmt)
             {
                 found = FindReturnWithValue(forStmt.Body);
+                if (found != null)
+                    return found;
+                found = FindReturnWithValue(forStmt.ElseBody);
                 if (found != null)
                     return found;
             }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
@@ -387,23 +388,26 @@ internal partial class TypeChecker
                 // reference stored in ProtocolMethods/OperatorMethods.
                 // For top-level functions, fall back to the symbol table.
                 var currentSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
-                    ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol
-                    ?? functionSymbol;
-                currentSymbol.IsGenerator = true;
-
-                // For non-dunder generators (standalone functions and regular class methods),
-                // wrap the return type so callers see IEnumerable<T> instead of T.
-                // Dunder methods (__iter__, __reversed__) keep their element type as ReturnType
-                // because SynthesisAnalyzer reads it to determine interface type arguments,
-                // and codegen handles the wrapping independently via AST annotations.
-                var isDunder = Shared.DunderDetector.IsDunderMethod(functionDef.Name);
-                if (!isDunder && currentSymbol.ReturnType is not (VoidType or UnknownType))
+                    ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
+                Debug.Assert(currentSymbol != null, $"Generator function '{functionDef.Name}' not found in Methods list or SymbolTable");
+                if (currentSymbol != null)
                 {
-                    currentSymbol.ReturnType = new GenericType
+                    currentSymbol.IsGenerator = true;
+
+                    // For non-dunder generators (standalone functions and regular class methods),
+                    // wrap the return type so callers see IEnumerable<T> instead of T.
+                    // Dunder methods (__iter__, __reversed__) keep their element type as ReturnType
+                    // because SynthesisAnalyzer reads it to determine interface type arguments,
+                    // and codegen handles the wrapping independently via AST annotations.
+                    var isDunder = DunderDetector.IsDunderMethod(functionDef.Name);
+                    if (!isDunder && currentSymbol.ReturnType is not (VoidType or UnknownType))
                     {
-                        Name = "IEnumerable",
-                        TypeArguments = new List<SemanticType> { currentSymbol.ReturnType }
-                    };
+                        currentSymbol.ReturnType = new GenericType
+                        {
+                            Name = "IEnumerable",
+                            TypeArguments = new List<SemanticType> { currentSymbol.ReturnType }
+                        };
+                    }
                 }
             }
         }
@@ -793,10 +797,14 @@ internal partial class TypeChecker
             {
                 if (ContainsYield(whileStmt.Body))
                     return true;
+                if (ContainsYield(whileStmt.ElseBody))
+                    return true;
             }
             else if (stmt is ForStatement forStmt)
             {
                 if (ContainsYield(forStmt.Body))
+                    return true;
+                if (ContainsYield(forStmt.ElseBody))
                     return true;
             }
             else if (stmt is TryStatement tryStmt)
