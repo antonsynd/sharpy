@@ -11,7 +11,8 @@ namespace Sharpy.Compiler.Parser.Ast;
 // BindingPattern, LiteralPattern, MemberAccessPattern, TuplePattern.
 //
 // Forward-declared patterns (no pipeline support yet): TypePattern,
-// UnionCasePattern, ListPattern, OrPattern, AndPattern, GuardPattern.
+// UnionCasePattern, ListPattern, OrPattern, AndPattern, GuardPattern,
+// RelationalPattern, PropertyPattern, PositionalPattern.
 // =============================================================================
 
 /// <summary>
@@ -200,6 +201,41 @@ public record TuplePattern : Pattern
 }
 
 /// <summary>
+/// Relational pattern (e.g., case > 0, case >= 10) - matches by comparison.
+/// </summary>
+/// <example>
+/// case > 0:            // Greater than zero
+/// case >= 10:          // Greater than or equal to 10
+/// case &lt; 100:          // Less than 100
+/// </example>
+public record RelationalPattern : Pattern
+{
+    /// <summary>
+    /// The comparison operator ("&gt;", "&gt;=", "&lt;", "&lt;=").
+    /// </summary>
+    public string Operator { get; init; } = "";
+
+    /// <summary>
+    /// The value to compare against.
+    /// </summary>
+    public Expression Value { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Operator), "RelationalPattern.Operator cannot be null or empty");
+        Debug.Assert(Value != null, "RelationalPattern.Value cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Value;
+    }
+}
+
+/// <summary>
 /// List pattern - matches list structure.
 /// </summary>
 /// <example>
@@ -235,6 +271,96 @@ public record ListPattern : Pattern
         if (RestPattern != null)
             yield return RestPattern;
     }
+}
+
+/// <summary>
+/// A single field in a property pattern (e.g., x=0 in case Point(x=0, y=1)).
+/// </summary>
+public record PropertyPatternField : Node
+{
+    /// <summary>
+    /// The property name being matched.
+    /// </summary>
+    public string Name { get; init; } = "";
+
+    /// <summary>
+    /// The pattern to match the property value against.
+    /// </summary>
+    public Pattern Pattern { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "PropertyPatternField.Name cannot be null or empty");
+        Debug.Assert(Pattern != null, "PropertyPatternField.Pattern cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Pattern;
+    }
+}
+
+/// <summary>
+/// Property pattern (e.g., case Point(x=0, y=1)) - matches by named properties.
+/// </summary>
+/// <example>
+/// case Point(x=0):         // Match point with x=0
+/// case Rect(w=10, h=20):   // Match rect with specific dimensions
+/// </example>
+public record PropertyPattern : Pattern
+{
+    /// <summary>
+    /// Optional type being matched (e.g., Point in Point(x=0)).
+    /// </summary>
+    public TypeAnnotation? Type { get; init; }
+
+    /// <summary>
+    /// The named property patterns to match.
+    /// </summary>
+    public ImmutableArray<PropertyPatternField> Fields { get; init; } = ImmutableArray<PropertyPatternField>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Fields != null, "PropertyPattern.Fields cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes() => Fields;
+}
+
+/// <summary>
+/// Positional pattern (e.g., case Point(1, 2)) - matches by position.
+/// </summary>
+/// <example>
+/// case Point(0, 0):        // Match origin
+/// case Pair(x, _):         // Match first element, discard second
+/// </example>
+public record PositionalPattern : Pattern
+{
+    /// <summary>
+    /// Optional type being matched (e.g., Point in Point(1, 2)).
+    /// </summary>
+    public TypeAnnotation? Type { get; init; }
+
+    /// <summary>
+    /// Positional sub-patterns to match.
+    /// </summary>
+    public ImmutableArray<Pattern> Elements { get; init; } = ImmutableArray<Pattern>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Elements != null, "PositionalPattern.Elements cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes() => Elements;
 }
 
 /// <summary>

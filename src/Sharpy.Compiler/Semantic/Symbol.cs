@@ -112,6 +112,13 @@ public record FunctionSymbol : Symbol
     /// </summary>
     public bool IsGenerator { get; internal set; }
 
+    /// <summary>
+    /// Set by TypeChecker.Definitions.cs when the function is declared with 'async def'.
+    /// CodeGen uses this to wrap return types in Task&lt;T&gt; and enable await expressions.
+    /// Follows the same pattern as IsGenerator.
+    /// </summary>
+    public bool IsAsync { get; internal set; }
+
     // Generic type parameters (for generic functions like def identity[T](value: T) -> T)
     public List<TypeParameterDef> TypeParameters { get; init; } = new();
     public bool IsGeneric => TypeParameters.Count > 0;

@@ -1051,96 +1051,102 @@ public partial class Parser
 
     private Pattern ParsePattern()
     {
-        // Tuple pattern: (a, b, ...)
-        if (Current.Type == TokenType.LeftParen)
-            return ParseTuplePattern();
-
-        // Wildcard pattern: _
-        if (Current.Type == TokenType.Identifier && Current.Value == "_")
+        switch (Current.Type)
         {
-            var token = Current;
-            Advance();
-            return new WildcardPattern
-            {
-                LineStart = token.Line,
-                ColumnStart = token.Column,
-                LineEnd = token.Line,
-                ColumnEnd = token.Column + token.Value.Length,
-                Span = GetSpanFromToken(token)
-            };
+            case TokenType.LeftParen:
+                return ParseTuplePattern();
+
+            case TokenType.Integer:
+            case TokenType.Float:
+            case TokenType.String:
+            case TokenType.True:
+            case TokenType.False:
+            case TokenType.None:
+                return ParseLiteralPattern();
+
+            case TokenType.Minus when Peek(1).Type == TokenType.Integer || Peek(1).Type == TokenType.Float:
+                return ParseLiteralPattern();
+
+            case TokenType.Identifier when Current.Value == "_":
+                return ParseWildcardPattern();
+
+            case TokenType.Identifier:
+                return ParseIdentifierOrMemberAccessPattern();
+
+            default:
+                throw ReportError($"Expected a pattern, got '{Current.Value}'",
+                    Current.Line, Current.Column,
+                    DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
         }
+    }
 
-        // Literal patterns: integers, floats, strings, booleans, None
-        if (Current.Type == TokenType.Integer || Current.Type == TokenType.Float ||
-            Current.Type == TokenType.String || Current.Type == TokenType.True ||
-            Current.Type == TokenType.False || Current.Type == TokenType.None)
-            return ParseLiteralPattern();
-
-        // Negative numeric literal
-        if (Current.Type == TokenType.Minus &&
-            (Peek(1).Type == TokenType.Integer || Peek(1).Type == TokenType.Float))
-            return ParseLiteralPattern();
-
-        // Member access pattern: identifier.identifier (e.g., Color.RED)
-        // or Binding pattern: identifier (captures the value)
-        if (Current.Type == TokenType.Identifier)
+    private WildcardPattern ParseWildcardPattern()
+    {
+        var token = Current;
+        Advance();
+        return new WildcardPattern
         {
-            var token = Current;
-            Advance();
+            LineStart = token.Line,
+            ColumnStart = token.Column,
+            LineEnd = token.Line,
+            ColumnEnd = token.Column + token.Value.Length,
+            Span = GetSpanFromToken(token)
+        };
+    }
 
-            if (Current.Type == TokenType.Dot)
+    private Pattern ParseIdentifierOrMemberAccessPattern()
+    {
+        var token = Current;
+        Advance();
+
+        if (Current.Type == TokenType.Dot)
+        {
+            // Parse dotted member access pattern (e.g., Color.RED)
+            var parts = new List<string> { token.Value };
+            Token endToken = token;
+
+            while (Current.Type == TokenType.Dot)
             {
-                // Parse dotted member access pattern (e.g., Color.RED)
-                var parts = new List<string> { token.Value };
-                Token endToken = token;
-
-                while (Current.Type == TokenType.Dot)
+                Advance(); // consume '.'
+                if (Current.Type != TokenType.Identifier)
                 {
-                    Advance(); // consume '.'
-                    if (Current.Type != TokenType.Identifier)
-                    {
-                        throw ReportError($"Expected identifier after '.' in pattern, got '{Current.Value}'",
-                            Current.Line, Current.Column,
-                            DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
-                    }
-                    endToken = Current;
-                    parts.Add(Current.Value);
-                    Advance();
+                    throw ReportError($"Expected identifier after '.' in pattern, got '{Current.Value}'",
+                        Current.Line, Current.Column,
+                        DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
                 }
-
-                return new MemberAccessPattern
-                {
-                    Parts = parts.ToImmutableArray(),
-                    LineStart = token.Line,
-                    ColumnStart = token.Column,
-                    LineEnd = endToken.Line,
-                    ColumnEnd = endToken.Column + endToken.Value.Length,
-                    Span = GetSpanFromTokens(token, endToken)
-                };
+                endToken = Current;
+                parts.Add(Current.Value);
+                Advance();
             }
 
-            return new BindingPattern
+            return new MemberAccessPattern
             {
-                Name = new Identifier
-                {
-                    Name = token.Value,
-                    LineStart = token.Line,
-                    ColumnStart = token.Column,
-                    LineEnd = token.Line,
-                    ColumnEnd = token.Column + token.Value.Length,
-                    Span = GetSpanFromToken(token)
-                },
+                Parts = parts.ToImmutableArray(),
+                LineStart = token.Line,
+                ColumnStart = token.Column,
+                LineEnd = endToken.Line,
+                ColumnEnd = endToken.Column + endToken.Value.Length,
+                Span = GetSpanFromTokens(token, endToken)
+            };
+        }
+
+        return new BindingPattern
+        {
+            Name = new Identifier
+            {
+                Name = token.Value,
                 LineStart = token.Line,
                 ColumnStart = token.Column,
                 LineEnd = token.Line,
                 ColumnEnd = token.Column + token.Value.Length,
                 Span = GetSpanFromToken(token)
-            };
-        }
-
-        throw ReportError($"Expected a pattern, got '{Current.Value}'",
-            Current.Line, Current.Column,
-            DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
+            },
+            LineStart = token.Line,
+            ColumnStart = token.Column,
+            LineEnd = token.Line,
+            ColumnEnd = token.Column + token.Value.Length,
+            Span = GetSpanFromToken(token)
+        };
     }
 
     private TuplePattern ParseTuplePattern()

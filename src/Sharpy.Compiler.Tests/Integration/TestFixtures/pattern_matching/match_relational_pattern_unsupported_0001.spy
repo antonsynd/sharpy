@@ -1,0 +1,7 @@
+def main():
+    x: int = 5
+    match x:
+        case > 0:
+            print("positive")
+        case _:
+            print("non-positive")

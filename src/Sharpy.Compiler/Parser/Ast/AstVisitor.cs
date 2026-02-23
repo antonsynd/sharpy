@@ -275,6 +275,18 @@ public abstract class AstVisitor
             case MemberAccessPattern n:
                 VisitMemberAccessPattern(n);
                 break;
+            case RelationalPattern n:
+                VisitRelationalPattern(n);
+                break;
+            case PropertyPatternField n:
+                VisitPropertyPatternField(n);
+                break;
+            case PropertyPattern n:
+                VisitPropertyPattern(n);
+                break;
+            case PositionalPattern n:
+                VisitPositionalPattern(n);
+                break;
 
             default:
                 DefaultVisit(node);
@@ -465,6 +477,10 @@ public abstract class AstVisitor
     public virtual void VisitAndPattern(AndPattern node) => VisitPattern(node);
     public virtual void VisitGuardPattern(GuardPattern node) => VisitPattern(node);
     public virtual void VisitMemberAccessPattern(MemberAccessPattern node) => VisitPattern(node);
+    public virtual void VisitRelationalPattern(RelationalPattern node) => VisitPattern(node);
+    public virtual void VisitPropertyPatternField(PropertyPatternField node) => DefaultVisit(node);
+    public virtual void VisitPropertyPattern(PropertyPattern node) => VisitPattern(node);
+    public virtual void VisitPositionalPattern(PositionalPattern node) => VisitPattern(node);
 
     #endregion
 }
@@ -591,6 +607,10 @@ public abstract class AstVisitor<T>
             AndPattern n => VisitAndPattern(n),
             GuardPattern n => VisitGuardPattern(n),
             MemberAccessPattern n => VisitMemberAccessPattern(n),
+            RelationalPattern n => VisitRelationalPattern(n),
+            PropertyPatternField n => VisitPropertyPatternField(n),
+            PropertyPattern n => VisitPropertyPattern(n),
+            PositionalPattern n => VisitPositionalPattern(n),
 
             _ => DefaultVisit(node)
         };
@@ -780,6 +800,10 @@ public abstract class AstVisitor<T>
     public virtual T VisitAndPattern(AndPattern node) => VisitPattern(node);
     public virtual T VisitGuardPattern(GuardPattern node) => VisitPattern(node);
     public virtual T VisitMemberAccessPattern(MemberAccessPattern node) => VisitPattern(node);
+    public virtual T VisitRelationalPattern(RelationalPattern node) => VisitPattern(node);
+    public virtual T VisitPropertyPatternField(PropertyPatternField node) => DefaultVisit(node);
+    public virtual T VisitPropertyPattern(PropertyPattern node) => VisitPattern(node);
+    public virtual T VisitPositionalPattern(PositionalPattern node) => VisitPattern(node);
 
     #endregion
 }
