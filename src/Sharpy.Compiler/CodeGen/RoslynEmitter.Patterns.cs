@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
@@ -22,9 +21,11 @@ internal partial class RoslynEmitter
         foreach (var matchCase in matchStmt.Cases)
         {
             var bodyStatements = matchCase.Body.SelectMany(GenerateBodyStatements).ToList();
-            bodyStatements.Add(SyntaxFactory.BreakStatement());
+            bodyStatements.Add(BreakStatement());
 
-            // Collect all MemberAccessPattern guards (including nested in tuples)
+            // Collect all MemberAccessPattern guards (including nested in tuples).
+            // matchVarCounter resets per case arm — each switch section is an independent
+            // scope in C#, so __match0, __match1 etc. can safely repeat across arms.
             var memberGuards = new List<ExpressionSyntax>();
             int matchVarCounter = 0;
             var pattern = GenerateMatchPattern(matchCase.Pattern, memberGuards, ref matchVarCounter);

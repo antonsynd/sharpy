@@ -117,6 +117,7 @@ public record FunctionSymbol : Symbol
     /// CodeGen uses this to wrap return types in Task&lt;T&gt; and enable await expressions.
     /// Follows the same pattern as IsGenerator.
     /// </summary>
+    // TODO(#226): Wire IsAsync in Phase 10 — TypeChecker sets it, CodeGen reads it
     public bool IsAsync { get; internal set; }
 
     // Generic type parameters (for generic functions like def identity[T](value: T) -> T)
