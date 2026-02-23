@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -107,94 +108,7 @@ internal class GeneratorValidator : SemanticValidatorBase
         }
     }
 
-    /// <summary>
-    /// Finds the first return statement with a value in the statement list.
-    /// Does not descend into nested FunctionDef nodes.
-    /// </summary>
     private static ReturnStatement? FindReturnWithValue(ImmutableArray<Statement> statements)
-    {
-        foreach (var stmt in statements)
-        {
-            if (stmt is ReturnStatement ret && ret.Value != null)
-                return ret;
-
-            // Do not descend into nested function/class definitions
-            if (stmt is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef)
-                continue;
-
-            // Recursively check compound statements
-            ReturnStatement? found = null;
-            if (stmt is IfStatement ifStmt)
-            {
-                found = FindReturnWithValue(ifStmt.ThenBody);
-                if (found != null)
-                    return found;
-                foreach (var elif in ifStmt.ElifClauses)
-                {
-                    found = FindReturnWithValue(elif.Body);
-                    if (found != null)
-                        return found;
-                }
-                found = FindReturnWithValue(ifStmt.ElseBody);
-                if (found != null)
-                    return found;
-            }
-            else if (stmt is WhileStatement whileStmt)
-            {
-                found = FindReturnWithValue(whileStmt.Body);
-                if (found != null)
-                    return found;
-                found = FindReturnWithValue(whileStmt.ElseBody);
-                if (found != null)
-                    return found;
-            }
-            else if (stmt is ForStatement forStmt)
-            {
-                found = FindReturnWithValue(forStmt.Body);
-                if (found != null)
-                    return found;
-                found = FindReturnWithValue(forStmt.ElseBody);
-                if (found != null)
-                    return found;
-            }
-            else if (stmt is TryStatement tryStmt)
-            {
-                found = FindReturnWithValue(tryStmt.Body);
-                if (found != null)
-                    return found;
-                foreach (var handler in tryStmt.Handlers)
-                {
-                    found = FindReturnWithValue(handler.Body);
-                    if (found != null)
-                        return found;
-                }
-                found = FindReturnWithValue(tryStmt.ElseBody);
-                if (found != null)
-                    return found;
-                if (tryStmt.FinallyBody != null)
-                {
-                    found = FindReturnWithValue(tryStmt.FinallyBody);
-                    if (found != null)
-                        return found;
-                }
-            }
-            else if (stmt is WithStatement withStmt)
-            {
-                found = FindReturnWithValue(withStmt.Body);
-                if (found != null)
-                    return found;
-            }
-            else if (stmt is MatchStatement matchStmt)
-            {
-                foreach (var matchCase in matchStmt.Cases)
-                {
-                    found = FindReturnWithValue(matchCase.Body);
-                    if (found != null)
-                        return found;
-                }
-            }
-        }
-
-        return null;
-    }
+        => StatementWalker.FirstOrDefault(statements,
+            stmt => stmt is ReturnStatement ret && ret.Value != null ? ret : null);
 }
