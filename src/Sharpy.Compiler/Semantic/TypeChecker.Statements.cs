@@ -377,6 +377,16 @@ internal partial class TypeChecker
             var iterableType = CheckExpression(yieldStmt.Value);
             var elementType = _typeInference.InferIterableElementType(iterableType);
 
+            if (elementType == null && iterableType is not UnknownType)
+            {
+                AddError(
+                    $"'yield from' requires an iterable, but got '{iterableType.GetDisplayName()}'",
+                    yieldStmt.Value.LineStart, yieldStmt.Value.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: yieldStmt.Value.Span);
+                return;
+            }
+
             if (elementType != null && _currentFunctionReturnType != SemanticType.Void
                 && _currentFunctionReturnType is not UnknownType)
             {

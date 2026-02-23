@@ -119,6 +119,9 @@ internal partial class RoslynEmitter
     // return type is wrapped in IEnumerable<T> or IEnumerator<T>.
     private bool _isCurrentMethodGenerator;
 
+    // Counter for unique compiler-generated variable names in yield from expansion
+    private int _yieldFromCounter;
+
     // Track the current TypeSymbol being generated (for IEquatable virtual detection, etc.)
     private TypeSymbol? _currentTypeSymbol;
 

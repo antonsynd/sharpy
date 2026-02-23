@@ -229,12 +229,13 @@ internal partial class RoslynEmitter
             return YieldStatement(SyntaxKind.YieldReturnStatement, GenerateExpression(yieldStmt.Value));
         }
 
-        // yield from expr → foreach (var __yieldItem in expr) { yield return __yieldItem; }
+        // yield from expr → foreach (var __yieldItem_N in expr) { yield return __yieldItem_N; }
         var iterableExpr = GenerateExpression(yieldStmt.Value);
-        var itemIdentifier = Identifier("__yieldItem");
+        var itemName = $"__yieldItem_{_yieldFromCounter++}";
+        var itemIdentifier = Identifier(itemName);
         var yieldReturn = YieldStatement(
             SyntaxKind.YieldReturnStatement,
-            IdentifierName("__yieldItem"));
+            IdentifierName(itemName));
         return ForEachStatement(
             IdentifierName("var"),
             itemIdentifier,

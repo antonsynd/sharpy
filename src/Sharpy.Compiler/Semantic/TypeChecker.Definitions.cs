@@ -80,6 +80,8 @@ internal partial class TypeChecker
             returnType = SemanticType.Void;
         }
 
+        // Save previous return type BEFORE overwriting (needed for nested function restore)
+        var previousFunctionReturnType = _currentFunctionReturnType;
         _currentFunctionReturnType = returnType;
 
         // Save previous method context and set new context for super() validation
@@ -362,7 +364,6 @@ internal partial class TypeChecker
 
         // Detect generators early: set flag before body checking so CheckReturn
         // knows bare return is valid (it becomes yield break).
-        var previousFunctionReturnType = _currentFunctionReturnType;
         var previousIsGenerator = _currentFunctionIsGenerator;
         var isGenerator = ContainsYield(functionDef.Body);
         _currentFunctionIsGenerator = isGenerator;
@@ -385,7 +386,7 @@ internal partial class TypeChecker
                 // updatedSymbol (from the return type update at line 319), which is also the same
                 // reference stored in ProtocolMethods/OperatorMethods.
                 // For top-level functions, fall back to the symbol table.
-                var currentSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name)
+                var currentSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
                     ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol
                     ?? functionSymbol;
                 currentSymbol.IsGenerator = true;

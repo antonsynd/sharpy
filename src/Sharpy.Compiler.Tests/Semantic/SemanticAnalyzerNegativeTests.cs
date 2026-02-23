@@ -755,11 +755,9 @@ def gen() -> int:
     }
 
     [Fact]
-    public void YieldFromNonIterable_DoesNotCrash()
+    public void YieldFromNonIterable_EmitsError()
     {
-        // yield from 42 — int is not iterable, so InferIterableElementType returns null.
-        // The type check is skipped when elementType is null, so no error is raised.
-        // This test verifies that the compiler does not crash.
+        // yield from 42 — int is not iterable, so an error should be emitted.
         var source = @"
 def gen() -> int:
     yield from 42
@@ -767,8 +765,8 @@ def gen() -> int:
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        // No crash is the primary assertion; no type mismatch error expected
-        // because elementType is null and the check is skipped.
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
+            e.Message.Contains("requires an iterable"));
     }
 
     #endregion
