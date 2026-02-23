@@ -438,6 +438,7 @@ public record FunctionDef : Statement
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
     public string? DocString { get; init; }
+    public bool IsAsync { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()

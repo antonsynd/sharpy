@@ -337,6 +337,7 @@ public partial class Parser
         TokenType.With => true,
         TokenType.Maybe => true,
         TokenType.Match => true,
+        TokenType.Async => true,
         TokenType.At => true,
         TokenType.Dedent => true,
         _ => false,
@@ -390,6 +391,7 @@ public partial class Parser
 
         return Current.Type switch
         {
+            TokenType.Async => ParseAsyncFunctionDef(),
             TokenType.Def => ParseFunctionDef(),
             TokenType.Class => ParseClassDef(),
             TokenType.Struct => ParseStructDef(),
@@ -456,6 +458,7 @@ public partial class Parser
             // Parse the decorated definition
             stmt = Current.Type switch
             {
+                TokenType.Async => ParseAsyncFunctionDef(),
                 TokenType.Def => ParseFunctionDef(),
                 TokenType.Class => ParseClassDef(),
                 TokenType.Struct => ParseStructDef(),

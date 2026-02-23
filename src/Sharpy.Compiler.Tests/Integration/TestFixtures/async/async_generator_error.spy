@@ -1,0 +1,5 @@
+async def gen() -> int:
+    yield 1
+
+def main():
+    pass

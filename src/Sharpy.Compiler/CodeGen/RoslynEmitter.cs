@@ -311,6 +311,33 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Wraps a type T in System.Threading.Tasks.Task&lt;T&gt;.
+    /// Used for async functions whose annotated return type is the result type.
+    /// </summary>
+    private static NameSyntax WrapInTask(TypeSyntax resultType)
+    {
+        return QualifiedName(
+            QualifiedName(
+                QualifiedName(IdentifierName("System"), IdentifierName("Threading")),
+                IdentifierName("Tasks")),
+            GenericName("Task")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(resultType))));
+    }
+
+    /// <summary>
+    /// Returns System.Threading.Tasks.Task (no type parameter).
+    /// Used for async void functions.
+    /// </summary>
+    private static NameSyntax TaskType()
+    {
+        return QualifiedName(
+            QualifiedName(
+                QualifiedName(IdentifierName("System"), IdentifierName("Threading")),
+                IdentifierName("Tasks")),
+            IdentifierName("Task"));
+    }
+
+    /// <summary>
     /// Restores the local scope state from a snapshot.
     /// Variables declared inside the block are removed from scope.
     /// </summary>

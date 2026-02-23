@@ -1,0 +1,6 @@
+async def greet() -> str:
+    return "hello"
+
+def main():
+    result: str = greet().Result
+    print(result)

@@ -488,6 +488,20 @@ internal partial class RoslynEmitter
             returnType = WrapInIEnumerable(returnType);
         }
 
+        // For async methods, wrap return type in Task<T> or Task
+        bool isAsync = func.IsAsync;
+        if (isAsync)
+        {
+            if (func.ReturnType != null)
+            {
+                returnType = WrapInTask(returnType);
+            }
+            else
+            {
+                returnType = TaskType();
+            }
+        }
+
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
 
@@ -572,6 +586,11 @@ internal partial class RoslynEmitter
         var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)
             .WithParameterList(ParameterList(SeparatedList(parameters)));
+
+        if (isAsync)
+        {
+            method = method.AddModifiers(Token(SyntaxKind.AsyncKeyword));
+        }
 
         // Abstract methods must not have a body in C#
         if (isAbstract)

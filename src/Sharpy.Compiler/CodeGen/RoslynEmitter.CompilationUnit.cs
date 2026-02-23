@@ -157,6 +157,7 @@ internal partial class RoslynEmitter
         usings.Add(UsingDirective(ParseName("System")));
         usings.Add(UsingDirective(ParseName("System.Collections.Generic")));
         usings.Add(UsingDirective(ParseName("System.Linq")));
+        usings.Add(UsingDirective(ParseName("System.Threading.Tasks")));
 
         // Add Sharpy runtime usings (use global:: to avoid conflicts when output namespace contains "Sharpy")
         usings.Add(UsingDirective(MakeGlobalQualifiedName("Sharpy")));

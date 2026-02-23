@@ -369,6 +369,16 @@ internal partial class TypeChecker
         var isGenerator = ContainsYield(functionDef.Body);
         _currentFunctionIsGenerator = isGenerator;
 
+        // Async generators are not yet supported
+        if (functionDef.IsAsync && isGenerator)
+        {
+            AddError(
+                "Async generators (async def with yield) are not yet supported",
+                functionDef.LineStart, functionDef.ColumnStart,
+                code: DiagnosticCodes.Semantic.UnsupportedFeature,
+                span: functionDef.Span);
+        }
+
         // Check function body
         foreach (var statement in functionDef.Body)
         {
@@ -408,6 +418,26 @@ internal partial class TypeChecker
                             TypeArguments = new List<SemanticType> { currentSymbol.ReturnType }
                         };
                     }
+                }
+            }
+        }
+
+        // Mark async metadata and wrap return type in TaskType
+        if (functionDef.IsAsync)
+        {
+            var asyncSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
+                ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
+            if (asyncSymbol != null)
+            {
+                asyncSymbol.IsAsync = true;
+
+                if (asyncSymbol.ReturnType is VoidType or UnknownType)
+                {
+                    asyncSymbol.ReturnType = new TaskType { ResultType = null };
+                }
+                else
+                {
+                    asyncSymbol.ReturnType = new TaskType { ResultType = asyncSymbol.ReturnType };
                 }
             }
         }

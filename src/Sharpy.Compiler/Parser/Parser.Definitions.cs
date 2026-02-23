@@ -201,6 +201,21 @@ public partial class Parser
         _ => throw ReportError($"Not an assignment operator: {type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
     };
 
+    private FunctionDef ParseAsyncFunctionDef()
+    {
+        var asyncToken = Current;
+        Expect(TokenType.Async);
+        var funcDef = ParseFunctionDef();
+        return funcDef with
+        {
+            IsAsync = true,
+            LineStart = asyncToken.Line,
+            ColumnStart = asyncToken.Column,
+            Span = CombineSpans(GetSpanFromToken(asyncToken), funcDef.Span)
+                ?? GetSpanFromToken(asyncToken)
+        };
+    }
+
     private FunctionDef ParseFunctionDef()
     {
         var startLine = Current.Line;
