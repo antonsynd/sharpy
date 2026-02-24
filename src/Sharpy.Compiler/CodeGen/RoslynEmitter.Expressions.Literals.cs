@@ -622,11 +622,6 @@ internal partial class RoslynEmitter
                         .AddArgumentListArguments(Argument(lambda));
                     break;
 
-                case ForClause:
-                    var forError = EmitNotImplementedExpression(
-                        "Nested comprehensions (multiple 'for' clauses) are not yet supported. Use a for loop instead.",
-                        DiagnosticCodes.CodeGen.NestedComprehension, lineStart, columnStart);
-                    return (null!, null!, null, forError);
             }
         }
 

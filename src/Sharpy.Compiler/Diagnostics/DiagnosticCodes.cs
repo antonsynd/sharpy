@@ -245,9 +245,6 @@ public static class DiagnosticCodes
         public const string NonAbstractMethodWithoutBody = "SPY0506";
         public const string VarWithoutInitializer = "SPY0507";
         public const string UnrecognizedStatementType = "SPY0510";
-        public const string NestedComprehension = "SPY0515";
-        public const string TupleUnpackingComprehension = "SPY0516";
-        public const string ComplexTupleUnpacking = "SPY0517";
         public const string UnsupportedExpressionType = "SPY0518";
         public const string UnsupportedOperator = "SPY0519";
         public const string NameCollision = "SPY0520";

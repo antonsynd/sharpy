@@ -1031,24 +1031,6 @@ public static class DiagnosticExplanations
             null,
             "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
-        Add(dict, DiagnosticCodes.CodeGen.NestedComprehension, "Nested comprehensions not yet supported", "CodeGen",
-            "Nested comprehensions with multiple 'for' clauses (e.g., [x for row in matrix for x in row]) " +
-            "are not yet supported in code generation. The compiler recognizes the syntax but cannot emit the equivalent C# LINQ expression.",
-            "[x for row in matrix for x in row]",
-            "Use a for loop instead:\n  result: list[int] = []\n  for row in matrix:\n      for x in row:\n          result.append(x)");
-
-        Add(dict, DiagnosticCodes.CodeGen.TupleUnpackingComprehension, "Tuple unpacking in comprehensions not yet supported", "CodeGen",
-            "Tuple unpacking in comprehension for-clauses (e.g., [v for k, v in items]) is not yet supported " +
-            "in code generation. Only single-variable iteration is currently supported.",
-            "[v for k, v in items]",
-            "Use a for loop instead:\n  result: list[int] = []\n  for k, v in items:\n      result.append(v)");
-
-        Add(dict, DiagnosticCodes.CodeGen.ComplexTupleUnpacking, "Complex tuple unpacking not yet supported", "CodeGen",
-            "Complex tuple unpacking with non-identifier targets (e.g., nested tuples) is not yet supported " +
-            "in code generation. Only simple identifier targets are supported for tuple unpacking.",
-            null,
-            "Use intermediate variables to unpack in multiple steps.");
-
         Add(dict, DiagnosticCodes.CodeGen.UnsupportedExpressionType, "Unsupported expression type in code generation", "CodeGen",
             "The code generator encountered an expression or statement type that it does not know how to emit. " +
             "This is either a not-yet-implemented feature or a compiler bug.",
