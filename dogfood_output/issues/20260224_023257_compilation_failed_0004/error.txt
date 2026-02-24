@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0513]: 'Shapes.Shape.Area()' is abstract but it is contained in non-abstract type 'Shapes.Shape'
+  --> shapes.cs:15:32
+    |
+ 15 |     print(circ.perimeter())
+    |                            ^
+    |
+
+error[CS0513]: 'Shapes.Shape.Perimeter()' is abstract but it is contained in non-abstract type 'Shapes.Shape'
+  --> shapes.cs:16:32
+    |
+ 16 | 
+    | ^
+    |
+

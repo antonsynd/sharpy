@@ -1,0 +1,36 @@
+# Main entry point - imports and uses both utility modules
+from math_utils import square, cube, sum_range, PI
+from text_utils import repeat_text, format_number, TextFormatter
+
+def main():
+    # Test math utils
+    x: float = 4.0
+    squared: float = square(x)
+    cubed: float = cube(x)
+    print(squared)
+    print(cubed)
+    
+    # Test string operations
+    repeated: str = repeat_text("ha", 3)
+    print(repeated)
+    
+    # Test sum range
+    total: int = sum_range(5)
+    print(total)
+    
+    # Test formatter class
+    formatter: TextFormatter = TextFormatter(2)
+    result: str = formatter.process("hello")
+    print(result)
+    
+    # Test formatted number
+    formatted: str = format_number(PI)
+    print(formatted)
+    
+    # EXPECTED OUTPUT:
+    # 16.0
+    # 64.0
+    # hahaha
+    # 15
+    # hello (length 5 * 10)
+    # Number: 3.14

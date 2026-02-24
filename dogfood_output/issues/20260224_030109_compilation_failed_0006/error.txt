@@ -1,0 +1,44 @@
+Assembly compilation failed:
+
+error[CS0029]: Cannot implicitly convert type 'DogfoodTest.RangeError' to 'System.Exception'
+  --> /tmp/tmp3p3t2ov_/dogfood_test.spy:33:23
+    |
+ 33 |             raise RangeError("port", value, 1024, 65535)
+    |                       ^
+    |
+
+error[CS0155]: The type caught or thrown must be derived from System.Exception
+  --> /tmp/tmp3p3t2ov_/dogfood_test.spy:61:20
+    |
+ 61 |             print("Caught range error")
+    |                    ^
+    |
+
+error[CS0155]: The type caught or thrown must be derived from System.Exception
+  --> /tmp/tmp3p3t2ov_/dogfood_test.spy:69:16
+    |
+ 69 |         return "validation_failed"
+    |                ^
+    |
+
+error[CS0029]: Cannot implicitly convert type 'DogfoodTest.ValidationError' to 'System.Exception'
+  --> /tmp/tmp3p3t2ov_/dogfood_test.spy:38:23
+    |
+ 38 |             raise ValidationError("timeout", "must be positive")
+    |                       ^
+    |
+
+error[CS0029]: Cannot implicitly convert type 'DogfoodTest.RangeError' to 'System.Exception'
+  --> /tmp/tmp3p3t2ov_/dogfood_test.spy:40:23
+    |
+ 40 |             raise RangeError("timeout", seconds, 1, 300)
+    |                       ^
+    |
+
+error[CS0029]: Cannot implicitly convert type 'DogfoodTest.ValidationError' to 'System.Exception'
+  --> /tmp/tmp3p3t2ov_/dogfood_test.spy:45:23
+    |
+ 45 |             raise ValidationError("config", "port is required")
+    |                       ^
+    |
+

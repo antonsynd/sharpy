@@ -1,0 +1,53 @@
+# Main entry point demonstrating cross-module inheritance and complex imports
+
+from shapes import Rectangle, Circle, Color, Shape
+from utils import Point, collect_drawables, calculate_total_area
+from rendering import Triangle, ShapeGroup
+
+def main():
+    # Create various shapes from different modules
+    rect: Rectangle = Rectangle("R1", 5.0, 3.0)
+    circle: Circle = Circle("C1", 2.5)
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(4.0, 0.0)
+    p3: Point = Point(2.0, 3.0)
+    triangle: Triangle = Triangle("T1", p1, p2, p3, Color.BLUE)
+    
+    # Test interface-based polymorphism
+    drawables: list[IDrawable] = [rect, circle, triangle]
+    descriptions: list[str] = collect_drawables(drawables)
+    for desc in descriptions:
+        print(desc)
+    
+    # Test method calls
+    print(rect.describe())
+    print(f"Area: {rect.area()}")
+    print(f"Circle perimeter: {circle.perimeter()}")
+    
+    # Test shape group
+    group: ShapeGroup = ShapeGroup("MyGroup")
+    group.add(rect)
+    group.add(circle)
+    print(group.draw())
+    
+    # Test total area calculation
+    all_shapes: list[Shape] = [rect, circle, triangle]
+    total: float = calculate_total_area(all_shapes)
+    print(f"Total area: {total}")
+    
+    # Test movement via IMovable interface
+    rect.move(10.0, 20.0)
+    print(rect.draw())
+
+# EXPECTED OUTPUT:
+# Drawing rectangle R1 at (0.0, 0.0)
+# Drawing circle C1 with radius 2.5
+# Drawing Blue triangle T1
+# Shape: R1
+# Area: 15.0
+# Circle perimeter: 15.70795
+# Group MyGroup:
+#  Drawing rectangle R1 at (0.0, 0.0)
+#  Drawing circle C1 with radius 2.5
+# Total area: 40.6349375
+# Drawing rectangle R1 at (10.0, 20.0)

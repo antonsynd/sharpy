@@ -1,0 +1,23 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Circle' has no member 'color'. Did you mean '_color'?
+  --> /tmp/tmp176m9v8o/main.spy:23:22
+    |
+ 23 |     print(color_name(circle.color))
+    |                      ^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Rectangle' has no member 'color'. Did you mean '_color'?
+  --> /tmp/tmp176m9v8o/main.spy:24:22
+    |
+ 24 |     print(color_name(rect.color))
+    |                      ^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type 'list[Shape]' to variable of type 'list[IScalable]'
+  --> /tmp/tmp176m9v8o/main.spy:31:5
+    |
+ 31 |     scaleables: list[IScalable] = [circle, rect]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

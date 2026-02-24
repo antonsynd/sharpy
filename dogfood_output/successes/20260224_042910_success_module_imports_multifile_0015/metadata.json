@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-02-24T04:22:08.997577",
+  "generated_code": "# Main entry point - tests module imports and cross-module inheritance\nfrom shapes import Shape, Rectangle\nfrom utils import calculate_total_area, create_square, scale_rectangle\n\ndef main():\n    # Create shapes\n    r1: Rectangle = Rectangle(3.0, 4.0)\n    r2: Rectangle = create_square(5.0)\n    \n    # Test individual methods\n    print(r1.area())\n    print(r1.describe())\n    print(r2.area())\n    \n    # Test scaling function from utils\n    r3: Rectangle = scale_rectangle(r1, 2.0)\n    print(r3.area())\n    \n    # Test list and function import\n    shapes: list[Shape] = [r1, r2, r3]\n    total: float = calculate_total_area(shapes)\n    print(total)\n\n# EXPECTED OUTPUT:\n# 12.0\n# Rectangle: 3.0 x 4.0\n# 25.0\n# 48.0\n# 85.0",
+  "expected_output": "12.0\nRectangle: 3.0 x 4.0\n25.0\n48.0\n85.0\n",
+  "actual_output": "12.0\nRectangle: 3.0 x 4.0\n25.0\n48.0\n85.0",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 405.2537188529968,
+  "execution_duration": 4.529983997344971,
+  "source_files": {
+    "shapes.spy": "# Shape class module with inheritance demonstration\n\n@abstract\nclass Shape:\n    def __init__(self):\n        pass\n    \n    @abstract\n    def area(self) -> float: ...\n    \n    @virtual\n    def describe(self) -> str:\n        return \"A shape\"\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, w: float, h: float):\n        super().__init__()\n        self.width = w\n        self.height = h\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    @override\n    def describe(self) -> str:\n        return f\"Rectangle: {self.width} x {self.height}\"",
+    "utils.spy": "# Utility functions for shape operations\nfrom shapes import Shape, Rectangle\n\ndef calculate_total_area(shapes: list[Shape]) -> float:\n    total: float = 0.0\n    for s in shapes:\n        total += s.area()\n    return total\n\ndef create_square(size: float) -> Rectangle:\n    return Rectangle(size, size)\n\ndef scale_rectangle(r: Rectangle, factor: float) -> Rectangle:\n    return Rectangle(r.width * factor, r.height * factor)",
+    "main.spy": "# Main entry point - tests module imports and cross-module inheritance\nfrom shapes import Shape, Rectangle\nfrom utils import calculate_total_area, create_square, scale_rectangle\n\ndef main():\n    # Create shapes\n    r1: Rectangle = Rectangle(3.0, 4.0)\n    r2: Rectangle = create_square(5.0)\n    \n    # Test individual methods\n    print(r1.area())\n    print(r1.describe())\n    print(r2.area())\n    \n    # Test scaling function from utils\n    r3: Rectangle = scale_rectangle(r1, 2.0)\n    print(r3.area())\n    \n    # Test list and function import\n    shapes: list[Shape] = [r1, r2, r3]\n    total: float = calculate_total_area(shapes)\n    print(total)\n\n# EXPECTED OUTPUT:\n# 12.0\n# Rectangle: 3.0 x 4.0\n# 25.0\n# 48.0\n# 85.0"
+  }
+}

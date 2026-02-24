@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-24T06:19:26.689268",
+  "generated_code": "interface IResizable:\n    def resize(self, scale: float) -> None: ...\n\ninterface IDescribable:\n    def describe(self) -> str: ...\n    property label: str\n\nclass AdaptiveBox(IResizable, IDescribable):\n    property width: float = 10.0\n    property height: float = 10.0\n    property label: str = \"box\"\n\n    def __init__(self, w: float, h: float, name: str):\n        self.width = w\n        self.height = h\n        self.label = name\n\n    def resize(self, scale: float) -> None:\n        self.width = self.width * scale\n        self.height = self.height * scale\n\n    def describe(self) -> str:\n        return f\"{self.label}: {self.width:.1f} x {self.height:.1f}\"\n\ndef make_square(item: IResizable, size: float) -> None:\n    if size > 0.0:\n        item.resize(size / 10.0)\n\ndef main():\n    box = AdaptiveBox(20.0, 30.0, \"widget\")\n    print(box.describe())\n    make_square(box, 50.0)\n    print(box.describe())\n    if box.width == box.height:\n        print(\"is_square\")\n    else:\n        print(\"not_square\")\n    print(box.label)\n\n# EXPECTED OUTPUT:\n# widget: 20.0 x 30.0\n# widget: 50.0 x 50.0\n# is_square\n# widget",
+  "expected_output": "widget: 20.0 x 30.0\nwidget: 50.0 x 50.0\nis_square\nwidget\n",
+  "actual_output": "widget: 20.0 x 30.0\nwidget: 100.0 x 150.0\nnot_square\nwidget",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "interface_implementation",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 233.55388593673706,
+  "compilation_duration": null,
+  "execution_duration": 4.613052606582642,
+  "source_files": null
+}

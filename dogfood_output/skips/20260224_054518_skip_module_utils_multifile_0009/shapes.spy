@@ -1,0 +1,60 @@
+# Concrete shape implementations using cross-module inheritance
+from geometry_base import ShapeBase, IColorable
+
+class Rectangle(ShapeBase, IColorable):
+    width: float
+    height: float
+    _color: str
+    
+    def __init__(self, w: float, h: float):
+        super().__init__("Rectangle")
+        self.width = w
+        self.height = h
+        self._color = "black"
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+    
+    @override
+    def describe(self) -> str:
+        return f"Rectangle({self.width} x {self.height})"
+    
+    def get_color(self) -> str:
+        return self._color
+    
+    def set_color(self, color: str) -> None:
+        self._color = color
+
+class Circle(ShapeBase):
+    radius: float
+    PI: float = 3.14159
+    
+    def __init__(self, r: float):
+        super().__init__("Circle")
+        self.radius = r
+    
+    @override
+    def area(self) -> float:
+        return self.PI * self.radius * self.radius
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * self.PI * self.radius
+    
+    @override
+    def scale(self, factor: float) -> None:
+        self.radius = self.radius * factor
+
+@final
+class Square(Rectangle):
+    def __init__(self, side: float):
+        super().__init__(side, side)
+    
+    @override
+    def describe(self) -> str:
+        return f"Square(side={self.width})"

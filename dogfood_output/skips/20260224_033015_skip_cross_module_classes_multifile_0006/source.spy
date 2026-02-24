@@ -1,0 +1,89 @@
+# Main entry point - tests cross-module classes, inheritance, interfaces, and generics
+from types import ShapeType, Shape, IScalable, IPrintable
+from shapes import Circle, Rectangle, Square, create_shape
+from geometry import Point, Dimension, BoundingBox, calculate_total_area, scale_all
+
+def print_shape_info(shape: Shape):
+    print(shape.describe())
+    print(shape.area())
+
+def test_basic_shapes():
+    c: Circle = Circle(5.0, "red")
+    r: Rectangle = Rectangle(4.0, 3.0, "blue", 0, 0)
+    s: Square = Square(2.0, "green", 1, 1)
+    shapes: list[Shape] = [c, r, s]
+    for shape in shapes:
+        print_shape_info(shape)
+        print(shape.perimeter())
+
+def test_polymorphism():
+    shape: Shape = create_shape(ShapeType.CIRCLE, 10.0)
+    print(shape.area())
+    shape = create_shape(ShapeType.RECTANGLE, 5.0)
+    print(shape.area())
+
+def test_scaling():
+    c: Circle = Circle(3.0, "yellow")
+    scaled: float = c.scale(2.0)
+    print(scaled)
+    print(c.area())
+
+def test_structs():
+    p1: Point = Point(3.0, 4.0)
+    p2: Point = Point(0.0, 0.0)
+    print(p1.distance_to(p2))
+    print(p1.get_quadrant())
+    d: Dimension = Dimension(1920.0, 1080.0)
+    print(d.aspect_ratio())
+
+def test_generic_box():
+    c: Circle = Circle(7.0, "purple")
+    box: BoundingBox[Circle] = BoundingBox[Circle](c)
+    print(box.get_area())
+
+def test_total_area():
+    shapes: list[Shape] = [
+        Circle(1.0, "red"),
+        Rectangle(2.0, 2.0, "blue", 0, 0),
+        Square(3.0, "green", 0, 0)
+    ]
+    total: float = calculate_total_area(shapes)
+    print(total)
+
+def main():
+    test_basic_shapes()
+    print(0.0)
+    test_polymorphism()
+    print(1.0)
+    test_scaling()
+    print(2.0)
+    test_structs()
+    print(3.0)
+    test_generic_box()
+    print(4.0)
+    test_total_area()
+
+# EXPECTED OUTPUT:
+# Circle (red)
+# 78.53975
+# 31.4159
+# Rectangle: 4.0x3.0
+# 12.0
+# 14.0
+# Square with side 2.0
+# 4.0
+# 8.0
+# 0.0
+# 314.159
+# 100.0
+# 1.0
+# 6.0
+# 113.097
+# 2.0
+# 25.0
+# 1
+# 1.7777777777777777
+# 3.0
+# 153.93805
+# 4.0
+# 17.14159

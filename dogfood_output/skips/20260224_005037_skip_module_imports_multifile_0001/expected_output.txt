@@ -1,0 +1,8 @@
+5.0
+34.6349375
+Rectangle(5.0x3.0)
+Circle(r=2.5)
+True
+Drawing rectangle with area 15.0
+Drawing circle at (0.0, 0.0)
+1

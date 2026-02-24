@@ -1,0 +1,31 @@
+# Shape utilities module - generic functions operating on shapes
+# Tests interface types across modules
+
+from shapes_base import Shape, IScalable, IDrawable, Color
+from shapes_derived import Point
+
+def total_area(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for shape in shapes:
+        total = total + shape.area()
+    return total
+
+def scale_all(items: list[IScalable], factor: float) -> None:
+    for item in items:
+        item.scale(factor)
+
+def color_name(c: Color) -> str:
+    if c == Color.RED:
+        return "Red"
+    elif c == Color.GREEN:
+        return "Green"
+    elif c == Color.BLUE:
+        return "Blue"
+    else:
+        return "Yellow"
+
+def create_origin() -> Point:
+    return Point(0.0, 0.0)
+
+def describe_drawable(d: IDrawable) -> str:
+    return d.draw()

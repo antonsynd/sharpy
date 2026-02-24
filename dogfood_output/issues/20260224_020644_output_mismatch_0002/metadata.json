@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-24T01:59:28.591026",
+  "generated_code": "class Point2D:\n    x_pos: float\n    y_pos: float\n\n    def __init__(self, x: float, y: float):\n        self.x_pos = x\n        self.y_pos = y\n\n    def __eq__(self, other: object) -> bool:\n        if not isinstance(other, Point2D):\n            return False\n        p: Point2D = other as Point2D\n        return self.x_pos == p.x_pos and self.y_pos == p.y_pos\n\n    def __hash__(self) -> int:\n        return int(self.x_pos * 1000) + int(self.y_pos)\n\nclass LabeledPoint(Point2D):\n    tag: str\n\n    def __init__(self, x: float, y: float, label: str):\n        super().__init__(x, y)\n        self.tag = label\n\n    def __eq__(self, other: object) -> bool:\n        if not isinstance(other, LabeledPoint):\n            return False\n        lp: LabeledPoint = other as LabeledPoint\n        return (super().__eq__(lp) and self.tag == lp.tag)\n\n    @override\n    def __hash__(self) -> int:\n        base: int = super().__hash__()\n        extra: int = 0\n        idx: int = 0\n        for c in self.tag:\n            extra += (ord(c) * (idx + 1))\n            idx += 1\n        return base + extra\n\nclass HashAnalyzer:\n    def __init__(self):\n        pass\n\n    def check_collision(self, p1: Point2D, p2: Point2D) -> bool:\n        return hash(p1) == hash(p2) and not (p1 == p2)\n\ndef main():\n    p1: Point2D = Point2D(3.0, 4.0)\n    p2: Point2D = Point2D(3.0, 4.0)\n    p3: Point2D = Point2D(4.0, 3.0)\n    print(p1 == p2)\n    print(p1 == p3)\n    print(hash(p1))\n    print(hash(p2))\n\n    lp1: LabeledPoint = LabeledPoint(1.0, 2.0, \"alpha\")\n    lp2: LabeledPoint = LabeledPoint(1.0, 2.0, \"beta\")\n    print(lp1 == lp2)\n    print(hash(lp1) == hash(lp2))\n    points: list[Point2D] = [p1, p3, lp1, lp2]\n    hashes: list[int] = []\n    for pt in points:\n        hashes.append(hash(pt))\n        print(hash(pt))\n\n    analyzer: HashAnalyzer = HashAnalyzer()\n    print(analyzer.check_collision(p1, p2))\n    print(analyzer.check_collision(lp1, lp2))\n\n# EXPECTED OUTPUT:\n# True\n# False\n# 3004\n# 3004\n# False\n# False\n# 3004\n# 4003\n# 1097\n# 1126\n# False\n# False",
+  "expected_output": "True\nFalse\n3004\n3004\nFalse\nFalse\n3004\n4003\n1097\n1126\nFalse\nFalse\n",
+  "actual_output": "True\nFalse\n3004\n3004\nFalse\nFalse\n3004\n4003\n2552\n2038\nFalse\nFalse",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "dunder_eq_hash",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 287.2024133205414,
+  "compilation_duration": null,
+  "execution_duration": 4.712095260620117,
+  "source_files": null
+}

@@ -1,0 +1,37 @@
+# Main entry point - demonstrates cross-module imports and usage
+# Imports from THREE different modules
+
+from geometry import Shape, ShapeType
+from shapes import Rectangle, Circle
+from utils import Point, analyze_shapes, classify_shape
+
+def create_shapes() -> list[Shape]:
+    shapes: list[Shape] = []
+    
+    shapes.append(Circle(5.0, 0, 0))
+    shapes.append(Circle(3.0, 10, 10))
+    shapes.append(Rectangle(4.0, 4.0, 5, 5))
+    shapes.append(Rectangle(6.0, 3.0, 15, 15))
+    
+    return shapes
+
+def main():
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+    distance: float = p1.distance_to(p2)
+    
+    shapes: list[Shape] = create_shapes()
+    stats: dict[str, float] = analyze_shapes(shapes)
+    
+    print(f"Shape analysis demo")
+    print(len(shapes))
+    print(distance)
+    print(stats["total_area"])
+    print(stats["total_perimeter"])
+
+# EXPECTED OUTPUT:
+# Shape analysis demo
+# 4
+# 5.0
+# 140.81406
+# 84.26544

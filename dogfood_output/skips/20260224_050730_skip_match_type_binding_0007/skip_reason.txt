@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0104]: Expected Colon, got LeftParen
+  --> /tmp/tmpmpma71uk/dogfood_test.spy:65:20
+    |
+ 65 |         case Circle() as c:
+    |                    ^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpmpma71uk/dogfood_test.spy:70:9
+    |
+ 70 |         case Rectangle() as r:
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpmpma71uk/dogfood_test.spy:75:9
+    |
+ 75 |         case _:
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Dedent
+  --> /tmp/tmpmpma71uk/dogfood_test.spy:78:1
+    |
+ 78 | def check_container(obj: Container) -> str:
+    | ^
+    |
+

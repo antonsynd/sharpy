@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-24T06:24:36.798433",
+  "generated_code": "# Test: Spread operators combined with list comprehensions\nclass DataCombiner:\n    threshold: int\n    \n    def __init__(self, threshold: int):\n        self.threshold = threshold\n    \n    def combine(self, values: list[int]) -> list[int]:\n        filtered: list[int] = [x for x in values if x > self.threshold]\n        doubled: list[int] = [x * 2 for x in values]\n        return [*filtered, 0, *doubled]\n\ndef generate_data(n: int) -> list[int]:\n    return [i * 3 for i in range(1, n + 1)]\n\ndef main():\n    combiner = DataCombiner(5)\n    data: list[int] = generate_data(3)\n    result: list[int] = combiner.combine(data)\n    \n    for val in result:\n        print(val)\n\n# EXPECTED OUTPUT:\n# 6\n# 9\n# 0\n# 6\n# 12\n# 18",
+  "expected_output": "6\n9\n0\n6\n12\n18\n",
+  "actual_output": "6\n9\n0\n6\n12\n18",
+  "feature_focus": "spread_with_comprehension",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 392.0700054168701,
+  "execution_duration": 4.824079513549805,
+  "source_files": null
+}

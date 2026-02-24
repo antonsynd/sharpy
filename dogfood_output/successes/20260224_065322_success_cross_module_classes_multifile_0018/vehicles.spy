@@ -1,0 +1,20 @@
+# Base vehicle module with interface and base class
+
+interface IDrivable:
+    def drive(self) -> str: ...
+
+class Vehicle:
+    speed: int
+    name: str
+
+    def __init__(self, name: str, speed: int):
+        self.name = name
+        self.speed = speed
+
+    @virtual
+    def describe(self) -> str:
+        return f"{self.name} moving at {self.speed}"
+
+    @virtual
+    def honk(self) -> str:
+        return "Beep!"

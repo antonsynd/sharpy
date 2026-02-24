@@ -1,0 +1,39 @@
+# Base shapes module - defines interfaces, abstract classes, and enums
+# Used as foundation for cross-module class hierarchy testing
+
+interface IScalable:
+    def scale(self, factor: float) -> None: ...
+
+interface IDrawable:
+    def draw(self) -> str: ...
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+    YELLOW = 4
+
+@abstract
+class Shape:
+    _name: str
+    _color: Color
+
+    def __init__(self, name: str, color: Color):
+        self._name = name
+        self._color = color
+
+    property get name(self) -> str:
+        return self._name
+
+    property get color(self) -> Color:
+        return self._color
+
+    @abstract
+    def area(self) -> float: ...
+
+    @abstract
+    def perimeter(self) -> float: ...
+
+    @virtual
+    def describe(self) -> str:
+        return f"Shape: {self._name}"

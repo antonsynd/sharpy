@@ -1,0 +1,50 @@
+# Composite shape collection that aggregates multiple shapes
+# Demonstrates cross-module inheritance
+
+from geometry_types import ShapeCategory
+from shapes import ShapeBase, Circle
+
+class ShapeGroup(ShapeBase):
+    shapes: list[ShapeBase]
+    group_name: str
+    
+    def __init__(self, name: str):
+        super().__init__(ShapeCategory.COMPOSITE)
+        self.group_name = name
+        self.shapes = []
+    
+    def add_shape(self, shape: ShapeBase) -> None:
+        self.shapes.append(shape)
+    
+    @override
+    def area(self) -> float:
+        total: float = 0.0
+        for shape in self.shapes:
+            total = total + shape.area()
+        return total
+    
+    @override
+    def perimeter(self) -> float:
+        total: float = 0.0
+        for shape in self.shapes:
+            total = total + shape.perimeter()
+        return total
+    
+    @override
+    def get_description(self) -> str:
+        return "Group '" + self.group_name + "' with " + str(len(self.shapes)) + " shapes"
+
+class BoundedCircle(Circle):
+    max_radius: float
+    
+    def __init__(self, radius: float, max_radius: float):
+        super().__init__(radius)
+        self.max_radius = max_radius
+    
+    @override
+    def get_description(self) -> str:
+        bounded_info: str = " (max " + str(self.max_radius) + ")"
+        return "BoundedCircle: " + str(self.radius) + bounded_info
+    
+    def is_within_bounds(self) -> bool:
+        return self.radius <= self.max_radius

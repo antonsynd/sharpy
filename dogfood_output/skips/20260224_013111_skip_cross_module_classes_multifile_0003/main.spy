@@ -1,0 +1,56 @@
+# Main entry point - tests cross-module class interactions
+
+from geometry_types import Circle, Rectangle, Square, Point
+from shapes_base import IDrawable
+from graphics_enums import Color, ShapeType
+from shape_factory import create_circle, create_rectangle, create_square, process_circles
+
+def main():
+    # Create shapes using factory and direct constructors
+    circle: Circle = Circle(5.0, Color.RED)
+    rect: Rectangle = Rectangle(4.0, 6.0, Color.BLUE)
+    square: Square = create_square(3.0, 10.0, 20.0, Color.GREEN)
+
+    # Test polymorphic behavior
+    print("=== Shape Areas ===")
+    print(circle.area())
+    print(rect.area())
+    print(square.area())
+
+    print("=== Shape Drawings ===")
+    print(circle.draw())
+    print(rect.draw())
+    print(square.draw())
+
+    # Test interface polymorphism
+    drawables: list[IDrawable] = [circle, rect, square]
+    for d in drawables:
+        print(d.shape_type())
+
+    # Test Point struct
+    print("=== Point Operations ===")
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+    print(p1.distance_to(p2))
+
+    # Test factory functions
+    print("=== Factory Created ===")
+    c2: Circle = create_circle(2.0, Color.YELLOW)
+    print(c2.area())
+
+# EXPECTED OUTPUT:
+# === Shape Areas ===
+# 78.53975
+# 24.0
+# 9.0
+# === Shape Drawings ===
+# Circle(r=5.00)
+# Rectangle(4.0x6.0)
+# Square(side=3.00 at 10,20)
+# 0
+# 1
+# 3
+# === Point Operations ===
+# 5.0
+# === Factory Created ===
+# 12.56636

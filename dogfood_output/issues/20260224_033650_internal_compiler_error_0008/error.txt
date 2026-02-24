@@ -1,0 +1,9 @@
+Internal compiler error: Compilation errors:
+
+error[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.
+  --> /tmp/tmphq4yth1b/dogfood_test.spy:27:18
+    |
+ 27 |     for score in reversed[int](tracker):
+    |                  ^^^^^^^^^^^^^^^^^^^^^^
+    |
+

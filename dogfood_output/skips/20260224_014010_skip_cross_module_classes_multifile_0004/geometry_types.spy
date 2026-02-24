@@ -1,0 +1,20 @@
+# Core geometric types - enums and structs
+# This module provides foundational types used across the geometry system
+
+enum ShapeCategory:
+    BASIC = 1
+    COMPOSITE = 2
+    SPECIAL = 3
+
+struct Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    def distance_to(self, other: Point) -> float:
+        dx: float = self.x - other.x
+        dy: float = self.y - other.y
+        return (dx * dx + dy * dy) ** 0.5

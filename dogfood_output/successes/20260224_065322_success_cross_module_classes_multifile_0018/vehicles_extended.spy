@@ -1,0 +1,29 @@
+# Extended vehicle types importing from base module
+
+from vehicles import Vehicle, IDrivable
+
+class Car(Vehicle, IDrivable):
+    doors: int
+
+    def __init__(self, name: str, speed: int, doors: int):
+        super().__init__(name, speed)
+        self.doors = doors
+
+    @override
+    def describe(self) -> str:
+        return f"{self.name} car with {self.doors} doors at {self.speed} speed"
+
+    def drive(self) -> str:
+        return f"Driving {self.name}"
+
+class Truck(Vehicle):
+    capacity: float
+
+    def __init__(self, name: str, speed: int, capacity: float):
+        super().__init__(name, speed)
+        self.capacity = capacity
+
+    @override
+    def describe(self) -> str:
+        base: str = super().describe()
+        return f"{base}, capacity: {self.capacity}"

@@ -1,0 +1,19 @@
+class CapacityTracker:
+    used_slots: int
+    max_slots: int
+
+    def __init__(self, slots: int):
+        self.used_slots = 2
+        self.max_slots = slots
+
+    def __len__(self) -> int:
+        return self.max_slots - self.used_slots
+
+def main():
+    tracker = CapacityTracker(7)
+    print(len(tracker))
+    print(tracker.used_slots)
+
+# EXPECTED OUTPUT:
+# 5
+# 2

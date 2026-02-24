@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot assign type 'list[Shape]' to variable of type 'list[IShape]'
+  --> /tmp/tmphhkwp06i/main.spy:20:5
+    |
+ 20 |     shapes: list[IShape] = [rect, circle]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Rectangle' has no member 'type'
+  --> /tmp/tmphhkwp06i/main.spy:32:21
+    |
+ 32 |     is_rect: bool = rect.type == ShapeType.RECTANGLE
+    |                     ^^^^^^^^^
+    |
+

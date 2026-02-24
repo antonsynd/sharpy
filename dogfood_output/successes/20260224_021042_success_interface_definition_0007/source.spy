@@ -1,0 +1,17 @@
+interface IGreeter:
+    def greet(self) -> str: ...
+
+class SimpleGreeter(IGreeter):
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    def greet(self) -> str:
+        return f"Hello, {self.name}!"
+
+def main():
+    g: IGreeter = SimpleGreeter("World")
+    print(g.greet())
+# EXPECTED OUTPUT:
+# Hello, World!

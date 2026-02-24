@@ -1,0 +1,12 @@
+True
+False
+3004
+3004
+False
+False
+3004
+4003
+2552
+2038
+False
+False

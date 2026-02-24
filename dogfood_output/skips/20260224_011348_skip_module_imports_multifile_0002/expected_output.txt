@@ -1,0 +1,11 @@
+Drawing rectangle R1 at (0.0, 0.0)
+Drawing circle C1 with radius 2.5
+Drawing Blue triangle T1
+Shape: R1
+Area: 15.0
+Circle perimeter: 15.70795
+Group MyGroup:
+Drawing rectangle R1 at (0.0, 0.0)
+Drawing circle C1 with radius 2.5
+Total area: 40.6349375
+Drawing rectangle R1 at (10.0, 20.0)

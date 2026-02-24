@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-24T05:45:18.604454",
+  "generated_code": "# Dictionary-based frequency analysis with tuple return types\ntype FrequencyResult = tuple[most_common: str, total: int, unique: int]\n\nclass FrequencyAnalyzer:\n    frequencies: dict[str, int]\n    \n    def __init__(self):\n        self.frequencies = {}\n    \n    def add_word(self, word: str) -> None:\n        current = self.frequencies.get(word)\n        if current is None:\n            self.frequencies[word] = 1\n        else:\n            self.frequencies[word] = current + 1\n    \n    def get_top(self) -> FrequencyResult:\n        if len(self.frequencies) == 0:\n            return (most_common=\"\", total=0, unique=0)\n        \n        top_word = \"\"\n        top_count = 0\n        total_words = 0\n        \n        keys_list = self.frequencies.keys()\n        for k in keys_list:\n            v = self.frequencies[k]\n            total_words = total_words + v\n            if v > top_count:\n                top_word = k\n                top_count = v\n        \n        return (most_common=top_word, total=total_words, unique=len(self.frequencies))\n\ndef analyze_string(text: str) -> FrequencyResult:\n    analyzer = FrequencyAnalyzer()\n    words = text.split(\" \")\n    for word in words:\n        if len(word) > 0:\n            analyzer.add_word(word)\n    return analyzer.get_top()\n\ndef main():\n    phrase = \"tuple types test tuple variance tuple\"\n    result = analyze_string(phrase)\n    word, total, unique = result\n    print(total)\n    print(unique)\n    print(word)\n    \n    analyzer = FrequencyAnalyzer()\n    items: list[str] = [\"alpha\", \"beta\", \"alpha\", \"gamma\", \"beta\", \"alpha\"]\n    for item in items:\n        analyzer.add_word(item)\n    \n    top = analyzer.get_top()\n    print(top.total)\n    \n    freq_keys = analyzer.frequencies.keys()\n    for key in freq_keys:\n        value = analyzer.frequencies[key]\n        if key == \"alpha\":\n            print(value)\n        elif key == \"beta\":\n            print(value)\n        else:\n            print(value)\n\n# EXPECTED OUTPUT:\n# 6\n# 3\n# tuple\n# 6\n# 3\n# 2\n# 1",
+  "expected_output": "6\n3\ntuple\n6\n3\n2\n1\n",
+  "actual_output": "6\n4\ntuple\n6\n3\n2\n1",
+  "error_message": "AI verification backend failure",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "tuple_types",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 525.5632810592651,
+  "compilation_duration": null,
+  "execution_duration": 4.769880533218384,
+  "source_files": null
+}

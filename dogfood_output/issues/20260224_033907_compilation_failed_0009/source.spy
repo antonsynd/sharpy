@@ -1,0 +1,41 @@
+# Main entry point - tests module imports and cross-module usage
+
+from shapes import Rectangle, Circle
+from math_utils import add, factorial, describe_shape, circle_stats, GOLDEN_RATIO
+
+def process_rectangles(rects: list[Rectangle]) -> float:
+    total: float = 0.0
+    for rect in rects:
+        total += rect.area()
+    return total
+
+def main():
+    # Test 1: Basic function import from math_utils
+    sum_result: float = add(10.0, 25.0)
+    print(f"Sum: {sum_result}")
+
+    # Test 2: Constant import
+    print(f"Golden ratio: {GOLDEN_RATIO}")
+
+    # Test 3: Factorial function
+    fact7: int = factorial(7)
+    print(f"7! = {fact7}")
+
+    # Test 4: Class import and usage
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    circle: Circle = Circle(2.5)
+
+    desc: str = describe_shape(rect)
+    print(f"Shape description: {desc}")
+
+    # Test 5: Multiple shapes and total area calculation
+    shapes_list: list[Rectangle] = [Rectangle(2.0, 4.0), Rectangle(3.0, 6.0)]
+    total_area: float = process_rectangles(shapes_list)
+    print(f"Total rectangle area: {total_area}")
+
+    # EXPECTED OUTPUT:
+    # Sum: 35.0
+    # Golden ratio: 1.61803
+    # 7! = 5040
+    # Shape description: Rectangle 5.0x3.0: area=15.00, perimeter=16.00
+    # Total rectangle area: 30.0

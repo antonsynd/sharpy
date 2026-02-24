@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-24T03:58:52.718893",
+  "generated_code": "type Point = tuple[x: float, y: float]\ntype Dimension = tuple[width: float, height: float]\ntype Rectangle = tuple[origin: Point, size: Dimension]\n\nstruct Box:\n    min_corner: Point\n    max_corner: Point\n    \n    def __init__(self, min_c: Point, max_c: Point):\n        self.min_corner = min_c\n        self.max_corner = max_c\n    \n    def area(self) -> float:\n        width = self.max_corner.x - self.min_corner.x\n        height = self.max_corner.y - self.min_corner.y\n        return width * height\n\ndef main():\n    p1: Point = (x=0.0, y=0.0)\n    p2: Point = (x=10.0, y=20.0)\n    \n    box = Box(p1, p2)\n    print(box.area())\n    \n    points: list[Point] = [(x=1.0, y=2.0), (x=3.0, y=4.0), (x=5.0, y=6.0)]\n    total: float = 0.0\n    for x_val, y_val in points:\n        total = total + x_val + y_val\n    print(total)\n    \n    rect: Rectangle = (origin=(x=1.0, y=2.0), size=(width=50.0, height=30.0))\n    print(rect.origin.x)\n    print(rect.size.height)\n    \n    if p2.x > p1.x:\n        print(p2.x - p1.x)\n# EXPECTED OUTPUT:\n# 200.0\n# 21.0\n# 1.0\n# 30.0\n# 10.0",
+  "expected_output": "200.0\n21.0\n1.0\n30.0\n10.0\n",
+  "actual_output": "200.0\n21.0\n1.0\n30.0\n10.0",
+  "feature_focus": "named_tuple",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 128.19860172271729,
+  "execution_duration": 4.589107275009155,
+  "source_files": null
+}

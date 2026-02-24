@@ -1,0 +1,29 @@
+=== Test 1: Normal Transfer ===
+LOG[1]: Withdrew 200.0, balance: 800.0
+Deposited 200.0 to target account
+LOG[2]: Transfer completed: 200.0
+LOG[3]: Transfer attempt completed
+Transfer successful - no exceptions
+Final balance: 800.0
+Status: Completed
+
+=== Test 2: Locked Target Account ===
+LOG[4]: Withdrew 100.0, balance: 700.0
+LOG[5]: Transfer attempt completed
+Refund issued due to target failure
+Bank error: Target account locked (code: AccountLocked)
+Final balance: 800.0
+Status: Failed
+LOG[6]: Account unlocked
+
+=== Test 3: Insufficient Funds ===
+Final balance: 800.0
+Bank error: Insufficient funds (code: InsufficientFunds)
+Status: Failed
+
+=== Test 4: Batch Processing ===
+LOG[7]: Withdrew 100.0, balance: 200.0
+LOG[8]: Account locked
+Account 1 failed: skipped
+LOG[9]: Withdrew 100.0, balance: 700.0
+Successful withdrawals: 2

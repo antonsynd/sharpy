@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-24T06:53:22.709063",
+  "generated_code": "# Test: Basic generator function with stateful iteration\n# A generator that yields values with accumulated state\n\ndef accumulate_sums(values: list[int]) -> int:\n    running_total: int = 0\n    for value in values:\n        running_total += value\n        yield running_total\n\ndef count_down(start: int) -> int:\n    current: int = start\n    while current > 0:\n        yield current\n        current -= 1\n\ndef main():\n    numbers: list[int] = [3, 5, 2, 1]\n    \n    print(\"Accumulated sums:\")\n    for total in accumulate_sums(numbers):\n        print(total)\n    \n    print(\"Count down:\")\n    for n in count_down(3):\n        print(n)\n    \n    print(\"Combined iteration:\")\n    for val in accumulate_sums([10, 20]):\n        print(val)\n\n# EXPECTED OUTPUT:\n# 3\n# 8\n# 10\n# 11\n# 3\n# 2\n# 1\n# 10\n# 30",
+  "expected_output": "Accumulated sums:\n3\n8\n10\n11\nCount down:\n3\n2\n1\nCombined iteration:\n10\n30\n",
+  "actual_output": "Accumulated sums:\n3\n8\n10\n11\nCount down:\n3\n2\n1\nCombined iteration:\n10\n30",
+  "feature_focus": "generator_basic",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 37.887490034103394,
+  "execution_duration": 4.943043947219849,
+  "source_files": null
+}

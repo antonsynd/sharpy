@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-24T01:40:10.516003",
+  "generated_code": "from system import Math\n\ndef main():\n    base: float = 3.0\n    power: float = Math.Pow(base, 2.0)\n    rounded: float = Math.Round(power)\n    print(rounded)\n    # EXPECTED OUTPUT:\n    # 9.0",
+  "expected_output": "9.0\n",
+  "actual_output": "9.0",
+  "feature_focus": "dotnet_import",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 47.982441425323486,
+  "execution_duration": 4.655995607376099,
+  "source_files": null
+}

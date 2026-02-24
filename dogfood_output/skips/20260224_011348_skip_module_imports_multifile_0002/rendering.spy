@@ -1,0 +1,61 @@
+# Rendering module with specialized shape implementations
+
+from shapes import Shape, IDrawable, IMovable, Color
+from utils import Point, format_color
+
+class Triangle(Shape, IDrawable):
+    p1: Point
+    p2: Point
+    p3: Point
+    color: Color
+    
+    def __init__(self, name: str, p1: Point, p2: Point, p3: Point, color: Color):
+        super().__init__(name)
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+        self.color = color
+    
+    @override
+    def area(self) -> float:
+        # Using the shoelace formula
+        return abs((self.p1.x * (self.p2.y - self.p3.y) + self.p2.x * (self.p3.y - self.p1.y) + self.p3.x * (self.p1.y - self.p2.y)) / 2.0)
+    
+    @override
+    def perimeter(self) -> float:
+        return self.p1.distance_to(self.p2) + self.p2.distance_to(self.p3) + self.p3.distance_to(self.p1)
+    
+    def draw(self) -> str:
+        color_name: str = format_color(self.color)
+        return f"Drawing {color_name} triangle {self.name}"
+
+class ShapeGroup(IDrawable, IMovable):
+    shapes: list[Shape]
+    group_name: str
+    offset_x: float
+    offset_y: float
+    
+    def __init__(self, name: str):
+        self.group_name = name
+        self.shapes = []
+        self.offset_x = 0.0
+        self.offset_y = 0.0
+    
+    def add(self, shape: Shape):
+        self.shapes.append(shape)
+    
+    def draw(self) -> str:
+        parts: list[str] = [f"Group {self.group_name}:"]
+        for shape in self.shapes:
+            if shape is IDrawable:
+                drawable: IDrawable = shape
+                parts.append(" " + drawable.draw())
+        return "\n".join(parts)
+    
+    def move(self, x: float, y: float):
+        self.offset_x = x
+        self.offset_y = y
+        for shape in self.shapes:
+            if shape is IMovable:
+                movable: IMovable = shape
+                movable.move(x, y)

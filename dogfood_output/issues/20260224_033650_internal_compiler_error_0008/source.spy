@@ -1,0 +1,37 @@
+class ScoreTracker:
+    scores: list[int]
+
+    def __init__(self):
+        self.scores = []
+
+    def record(self, points: int) -> None:
+        self.scores.append(points)
+
+    def __iter__(self) -> int:
+        for i in range(len(self.scores)):
+            yield self.scores[i]
+
+    def __reversed__(self) -> int:
+        for i in range(len(self.scores) - 1, -1, -1):
+            yield self.scores[i]
+
+def main():
+    tracker = ScoreTracker()
+    tracker.record(100)
+    tracker.record(200)
+    tracker.record(300)
+    print("oldest_first")
+    for score in tracker:
+        print(score)
+    print("newest_first")
+    for score in reversed[int](tracker):
+        print(score)
+# EXPECTED OUTPUT:
+# oldest_first
+# 100
+# 200
+# 300
+# newest_first
+# 300
+# 200
+# 100

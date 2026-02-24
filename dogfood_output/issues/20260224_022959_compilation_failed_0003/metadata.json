@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-24T02:26:27.112265",
+  "generated_code": "# Test __bool__ dunder method with abstract base class and inheritance\n\n@abstract\nclass Resource:\n    _name: str\n    \n    @abstract\n    def __bool__(self) -> bool: ...\n    \n    def get_status(self) -> str:\n        if self:\n            return f\"{self._name}: active\"\n        return f\"{self._name}: inactive\"\n\nclass Connection(Resource):\n    _connected: bool\n    \n    def __init__(self, name: str):\n        self._name = name\n        self._connected = False\n    \n    @virtual\n    def connect(self) -> None:\n        self._connected = True\n    \n    @virtual\n    def disconnect(self) -> None:\n        self._connected = False\n    \n    @override\n    def __bool__(self) -> bool:\n        return self._connected\n\nclass SecureConnection(Connection):\n    _authenticated: bool\n    \n    def __init__(self, name: str):\n        super().__init__(name)\n        self._authenticated = False\n    \n    @override\n    def connect(self) -> None:\n        super().connect()\n        self._authenticated = True\n    \n    @override\n    def disconnect(self) -> None:\n        super().disconnect()\n        self._authenticated = False\n    \n    @override\n    def __bool__(self) -> bool:\n        return self._connected and self._authenticated\n\ndef main():\n    conn = Connection(\"basic\")\n    print(bool(conn))\n    print(conn.get_status())\n    \n    conn.connect()\n    print(bool(conn))\n    print(conn.get_status())\n    \n    secure = SecureConnection(\"secure\")\n    print(bool(secure))\n    \n    secure.connect()\n    print(bool(secure))\n    \n    secure.disconnect()\n    print(bool(secure))\n    print(secure.get_status())\n\n# EXPECTED OUTPUT:\n# False\n# basic: inactive\n# True\n# basic: active\n# False\n# True\n# False\n# secure: inactive",
+  "expected_output": "False\nbasic: inactive\nTrue\nbasic: active\nFalse\nTrue\nFalse\nsecure: inactive\n",
+  "actual_output": null,
+  "error_message": "Unhandled exception. System.NotImplementedException: The method or operation is not implemented.\n   at DogfoodTest.Resource.get_IsTrue() in /tmp/tmpjfoqwkad/dogfood_test.spy:line 8\n   at DogfoodTest.Resource.op_True(Resource value) in /tmp/tmpjfoqwkad/dogfood_test.spy:line 14\n   at DogfoodTest.Resource.GetStatus() in /tmp/tmpjfoqwkad/dogfood_test.spy:line 11\n   at DogfoodTest.Main() in /tmp/tmpjfoqwkad/dogfood_test.spy:line 58\n",
+  "compiler_output": "False\n",
+  "generated_cs": "Generated C# code written to: /tmp/tmpjfoqwkad/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "dunder_bool",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 197.37504124641418,
+  "compilation_duration": null,
+  "execution_duration": 5.842046737670898,
+  "source_files": null
+}

@@ -1,0 +1,26 @@
+# Module providing mathematical and utility functions
+
+def calculate_factorial(n: int) -> int:
+    if n <= 1:
+        return 1
+    return n * calculate_factorial(n - 1)
+
+def clamp_value(value: int, minimum: int, maximum: int) -> int:
+    if value < minimum:
+        return minimum
+    if value > maximum:
+        return maximum
+    return value
+
+class Counter:
+    count: int
+    
+    def __init__(self, start: int = 0):
+        self.count = start
+    
+    def increment(self) -> int:
+        self.count += 1
+        return self.count
+    
+    def reset(self) -> None:
+        self.count = 0

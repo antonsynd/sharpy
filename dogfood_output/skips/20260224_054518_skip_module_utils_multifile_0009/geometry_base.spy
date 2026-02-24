@@ -1,0 +1,28 @@
+# Base module defining geometric interfaces and abstract classes
+
+interface IShape:
+    def area(self) -> float: ...
+
+interface IColorable:
+    def get_color(self) -> str: ...
+
+@abstract
+class ShapeBase:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @abstract
+    def area(self) -> float: ...
+    
+    @abstract
+    def perimeter(self) -> float: ...
+    
+    @virtual
+    def describe(self) -> str:
+        return f"Shape: {self.name}"
+    
+    @virtual
+    def scale(self, factor: float) -> None:
+        pass

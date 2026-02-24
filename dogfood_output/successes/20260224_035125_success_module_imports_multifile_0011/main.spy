@@ -1,0 +1,29 @@
+# Entry point demonstrating module imports
+# Imports from both operations and calculator modules
+from operations import double_value, triple_value, ValueTransformer
+from calculator import ScalingTransformer, calculate_scaled
+
+def main():
+    # Test direct function imports from operations
+    print("Direct function results:")
+    print(double_value(5.0))
+    print(triple_value(4.0))
+    
+    # Test class import using its internal imports
+    print("Cross-module class result:")
+    result: float = calculate_scaled(2.0, 2)
+    print(result)
+    
+    # Test base class import (operations -> main)
+    print("Base class chain:")
+    transformer: ValueTransformer = ScalingTransformer(1)
+    print(transformer.get_name())
+    
+    # EXPECTED OUTPUT:
+    # Direct function results:
+    # 10.0
+    # 12.0
+    # Cross-module class result:
+    # 24.0
+    # Base class chain:
+    # Scaler

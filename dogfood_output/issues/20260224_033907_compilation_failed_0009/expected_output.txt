@@ -1,0 +1,5 @@
+Sum: 35.0
+Golden ratio: 1.61803
+7! = 5040
+Shape description: Rectangle 5.0x3.0: area=15.00, perimeter=16.00
+Total rectangle area: 30.0

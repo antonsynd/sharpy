@@ -1,0 +1,26 @@
+# Main entry point - demonstrates module imports with inheritance
+from base_utils import Processor, double_value
+from advanced_utils import AdvancedProcessor, apply_twice
+
+def main():
+    simple = Processor(3)
+    print(simple.compute())
+    
+    doubled = double_value(7)
+    print(doubled)
+    
+    advanced = AdvancedProcessor(4, 5)
+    print(advanced.compute())
+    
+    total = apply_twice(advanced)
+    print(total)
+    
+    combined = simple.compute() + doubled
+    print(combined)
+
+# EXPECTED OUTPUT:
+# 13
+# 14
+# 20
+# 40
+# 27

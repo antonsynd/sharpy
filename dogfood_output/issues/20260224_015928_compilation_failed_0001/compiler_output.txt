@@ -1,0 +1,21 @@
+warning[SPY0452]: Imported name 'ShapeType' is never used
+  --> /tmp/tmpu33bx1tr/utils.spy:4:22
+    |
+  4 | from geometry import Shape, ShapeType
+    |                      ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ShapeType' is never used
+  --> /tmp/tmpu33bx1tr/main.spy:4:29
+    |
+  4 | from geometry import Shape, ShapeType
+    |                             ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'classify_shape' is never used
+  --> /tmp/tmpu33bx1tr/main.spy:6:42
+    |
+  6 | from utils import Point, analyze_shapes, classify_shape
+    |                                          ^^^^^^^^^^^^^^
+    |
+

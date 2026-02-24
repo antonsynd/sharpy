@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-24T00:24:42.668346",
+  "generated_code": "# Test: Multi-range if/elif/else chain for temperature classification\ndef main():\n    temp_fahrenheit: int = 72\n    status: str = \"\"\n    \n    if temp_fahrenheit >= 100:\n        status = \"extreme heat\"\n    elif temp_fahrenheit >= 90:\n        status = \"hot\"\n    elif temp_fahrenheit >= 75:\n        status = \"warm\"\n    elif temp_fahrenheit >= 60:\n        status = \"mild\"\n    elif temp_fahrenheit >= 40:\n        status = \"cool\"\n    elif temp_fahrenheit >= 20:\n        status = \"cold\"\n    else:\n        status = \"freezing\"\n    print(status)\n    \n    temp_fahrenheit = 60\n    if temp_fahrenheit >= 100:\n        status = \"extreme heat\"\n    elif temp_fahrenheit >= 90:\n        status = \"hot\"\n    elif temp_fahrenheit >= 75:\n        status = \"warm\"\n    elif temp_fahrenheit >= 60:\n        status = \"mild\"\n    elif temp_fahrenheit >= 40:\n        status = \"cool\"\n    elif temp_fahrenheit >= 20:\n        status = \"cold\"\n    else:\n        status = \"freezing\"\n    print(status)\n    \n    temp_fahrenheit = 15\n    if temp_fahrenheit >= 100:\n        status = \"extreme heat\"\n    elif temp_fahrenheit >= 90:\n        status = \"hot\"\n    elif temp_fahrenheit >= 75:\n        status = \"warm\"\n    elif temp_fahrenheit >= 60:\n        status = \"mild\"\n    elif temp_fahrenheit >= 40:\n        status = \"cool\"\n    elif temp_fahrenheit >= 20:\n        status = \"cold\"\n    else:\n        status = \"freezing\"\n    print(status)\n\n# EXPECTED OUTPUT:\n# mild\n# mild\n# freezing\n",
+  "expected_output": "mild\nmild\nfreezing",
+  "actual_output": "mild\nmild\nfreezing",
+  "feature_focus": "if_elif_else",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 266.00528264045715,
+  "execution_duration": 4.468644142150879,
+  "source_files": null
+}

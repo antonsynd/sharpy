@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'IColorable' has no member 'set_color'. Did you mean 'get_color'?
+  --> /tmp/tmpqsnbh8yh/main.spy:10:5
+    |
+ 10 |     c.set_color("red")
+    |     ^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'ShapeType' has no member 'RECTANGLE'
+  --> /tmp/tmpqsnbh8yh/main.spy:42:14
+    |
+ 42 |         case ShapeType.RECTANGLE:
+    |              ^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'ShapeType' has no member 'CIRCLE'
+  --> /tmp/tmpqsnbh8yh/main.spy:44:14
+    |
+ 44 |         case ShapeType.CIRCLE:
+    |              ^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'ShapeType' has no member 'SQUARE'
+  --> /tmp/tmpqsnbh8yh/main.spy:46:14
+    |
+ 46 |         case ShapeType.SQUARE:
+    |              ^^^^^^^^^^^^^^^^
+    |
+

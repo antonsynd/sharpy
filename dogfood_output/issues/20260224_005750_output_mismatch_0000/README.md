@@ -1,0 +1,89 @@
+# Issue Report: output_mismatch
+
+**Timestamp:** 2026-02-24T00:50:37.597685
+**Type:** output_mismatch
+**Feature Focus:** cross_module_classes
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Main entry point - demonstrates cross-module class usage
+from shapes import Shape, Rectangle, Circle
+from utils import total_area, create_square, scale_width
+
+def main():
+    # Create shapes from shapes module
+    rect: Rectangle = Rectangle(3.0, 4.0)
+    circ: Circle = Circle(5.0)
+    square: Rectangle = create_square(2.0)
+    
+    # Test describe methods (showing inheritance)
+    print(rect.describe())
+    print(circ.describe())
+    print(square.describe())
+    
+    # Test area calculations via method calls
+    rect_area: float = rect.get_area()
+    circ_area: float = circ.get_area()
+    square_area: float = square.get_area()
+    
+    # Calculate total manually
+    total: float = rect_area + circ_area + square_area
+    print(total)
+    
+    # Test scaling via utils module
+    scaled_width: float = scale_width(rect.width, 2.0)
+    scaled_rect: Rectangle = Rectangle(scaled_width, rect.height)
+    print(scaled_rect.get_area())
+    
+    # Test individual areas
+    print(rect_area)
+    print(circ_area)
+
+# EXPECTED OUTPUT:
+# Rectangle 3.0 x 4.0
+# Circle r=5.0
+# Rectangle 2.0 x 2.0
+# 88.53975
+# 48.0
+# 12.0
+# 78.53975
+```
+
+## Error
+
+```
+AI explicitly reported mismatch
+```
+
+## Output Comparison
+
+### Expected
+```
+Rectangle 3.0 x 4.0
+Circle r=5.0
+Rectangle 2.0 x 2.0
+88.53975
+48.0
+12.0
+78.53975
+
+```
+
+### Actual
+```
+Rectangle 3.0 x 4.0
+Circle r=5.0
+Rectangle 2.0 x 2.0
+94.53975
+24.0
+12.0
+78.53975
+```
+
+## Timing
+
+- Generation: 295.54s
+- Execution: 4.63s

@@ -1,0 +1,44 @@
+Assembly compilation failed:
+
+error[CS1061]: '(string, int, int)' does not contain a definition for 'Count' and no accessible extension method 'Count' accepting a first argument of type '(string, int, int)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp39yucdjb/dogfood_test.spy:58:20
+    |
+ 58 |     if config.count > 0:
+    |                    ^
+    |
+
+error[CS1061]: '(string, int, int)' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type '(string, int, int)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp39yucdjb/dogfood_test.spy:59:50
+    |
+ 59 |         print(config.value)
+    |                            ^
+    |
+
+error[CS1061]: '(string, int, int)' does not contain a definition for 'Key' and no accessible extension method 'Key' accepting a first argument of type '(string, int, int)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp39yucdjb/dogfood_test.spy:69:69
+    |
+ 69 |         updated: Config[str, int] = (key=cfg.key, value=cfg.value + 1, count=cfg.count)
+    |                                                                     ^
+    |
+
+error[CS1061]: '(string, int, int)' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type '(string, int, int)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp39yucdjb/dogfood_test.spy:69:85
+    |
+ 69 |         updated: Config[str, int] = (key=cfg.key, value=cfg.value + 1, count=cfg.count)
+    |                                                                                     ^
+    |
+
+error[CS1061]: '(string, int, int)' does not contain a definition for 'Count' and no accessible extension method 'Count' accepting a first argument of type '(string, int, int)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp39yucdjb/dogfood_test.spy:69:107
+    |
+ 69 |         updated: Config[str, int] = (key=cfg.key, value=cfg.value + 1, count=cfg.count)
+    |                                                                                        ^
+    |
+
+error[CS1061]: '(string, int, int)' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type '(string, int, int)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp39yucdjb/dogfood_test.spy:70:51
+    |
+ 70 |         print(updated.value)
+    |                             ^
+    |
+

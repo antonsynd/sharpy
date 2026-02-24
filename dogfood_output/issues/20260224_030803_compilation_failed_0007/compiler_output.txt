@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'Shape' is never used
+  --> /tmp/tmp0f5lk7ns/main.spy:2:39
+    |
+  2 | from shapes import Rectangle, Circle, Shape
+    |                                       ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'create_rectangle_list' is never used
+  --> /tmp/tmp0f5lk7ns/main.spy:3:31
+    |
+  3 | from utils import total_area, create_rectangle_list
+    |                               ^^^^^^^^^^^^^^^^^^^^^
+    |
+

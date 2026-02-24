@@ -1,0 +1,59 @@
+# Test: Multi-range if/elif/else chain for temperature classification
+def main():
+    temp_fahrenheit: int = 72
+    status: str = ""
+    
+    if temp_fahrenheit >= 100:
+        status = "extreme heat"
+    elif temp_fahrenheit >= 90:
+        status = "hot"
+    elif temp_fahrenheit >= 75:
+        status = "warm"
+    elif temp_fahrenheit >= 60:
+        status = "mild"
+    elif temp_fahrenheit >= 40:
+        status = "cool"
+    elif temp_fahrenheit >= 20:
+        status = "cold"
+    else:
+        status = "freezing"
+    print(status)
+    
+    temp_fahrenheit = 60
+    if temp_fahrenheit >= 100:
+        status = "extreme heat"
+    elif temp_fahrenheit >= 90:
+        status = "hot"
+    elif temp_fahrenheit >= 75:
+        status = "warm"
+    elif temp_fahrenheit >= 60:
+        status = "mild"
+    elif temp_fahrenheit >= 40:
+        status = "cool"
+    elif temp_fahrenheit >= 20:
+        status = "cold"
+    else:
+        status = "freezing"
+    print(status)
+    
+    temp_fahrenheit = 15
+    if temp_fahrenheit >= 100:
+        status = "extreme heat"
+    elif temp_fahrenheit >= 90:
+        status = "hot"
+    elif temp_fahrenheit >= 75:
+        status = "warm"
+    elif temp_fahrenheit >= 60:
+        status = "mild"
+    elif temp_fahrenheit >= 40:
+        status = "cool"
+    elif temp_fahrenheit >= 20:
+        status = "cold"
+    else:
+        status = "freezing"
+    print(status)
+
+# EXPECTED OUTPUT:
+# mild
+# mild
+# freezing

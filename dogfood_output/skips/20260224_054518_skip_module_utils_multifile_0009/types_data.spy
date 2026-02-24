@@ -1,0 +1,46 @@
+# Structs, enums, and type aliases for geometric operations
+
+struct Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    def distance_to(self, other: Point) -> float:
+        dx: float = self.x - other.x
+        dy: float = self.y - other.y
+        return pow(dx * dx + dy * dy, 0.5)
+    
+    def midpoint(self, other: Point) -> Point:
+        return Point((self.x + other.x) / 2.0, (self.y + other.y) / 2.0)
+
+enum ShapeType:
+    RECTANGLE = 0
+    CIRCLE = 1
+    SQUARE = 2
+    TRIANGLE = 3
+
+enum RenderMode:
+    WIREFRAME = 1
+    SOLID = 2
+    SHADED = 3
+
+class ShapeCollection[T: IShape]:
+    items: list[T]
+    
+    def __init__(self):
+        self.items = []
+    
+    def add(self, item: T) -> None:
+        self.items.append(item)
+    
+    def total_area(self) -> float:
+        total: float = 0.0
+        for shape in self.items:
+            total = total + shape.area()
+        return total
+    
+    def count(self) -> int:
+        return len(self.items)

@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0029]: Cannot implicitly convert type 'Sharpy.Dict<string, object>' to 'Sharpy.Dict<string, double>'
+  --> /tmp/tmpu33bx1tr/utils.spy:28:16
+    |
+ 28 |     print(distance)
+    |                ^
+    |
+

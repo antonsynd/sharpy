@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-24T01:13:48.248861",
+  "generated_code": "def main():\n    data: list[int] = [-5, 10, -3, 8, 0, 12]\n    \n    total: int = 0\n    for x in data:\n        total = total + x\n    \n    smallest: int = data[0]\n    for x in data:\n        if x < smallest:\n            smallest = x\n    \n    largest: int = data[0]\n    for x in data:\n        if x > largest:\n            largest = x\n    \n    range_val: int = largest - smallest\n    \n    all_non_zero: bool = False\n    for x in data:\n        if x == 0:\n            all_non_zero = True\n    \n    any_negative: bool = False\n    for x in data:\n        if x < 0:\n            any_negative = True\n    \n    print(total)\n    print(range_val)\n    print(smallest)\n    print(largest)\n    print(any_negative)\n    print(all_non_zero)\n\n# EXPECTED OUTPUT:\n# 22\n# 17\n# -5\n# 12\n# True\n# True",
+  "expected_output": "22\n17\n-5\n12\nTrue\nTrue\n",
+  "actual_output": "22\n17\n-5\n12\nTrue\nTrue",
+  "feature_focus": "builtin_aggregation",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 273.28771805763245,
+  "execution_duration": 4.586014270782471,
+  "source_files": null
+}

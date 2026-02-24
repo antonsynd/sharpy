@@ -1,0 +1,13 @@
+Starting pipeline processing
+Transform failed for: 100
+Parse failed for: -5
+Transform failed for: 250
+Parse failed for: 0
+Transform failed for: 1500
+Parse failed for: abc
+Transform failed for: 300
+Successful results: 0
+Total: 0
+Count: 0
+Average: 0.0
+Final limit check failed as expected

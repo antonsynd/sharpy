@@ -1,0 +1,136 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-02-24T02:12:13.532697
+**Feature Focus:** result_unwrap
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: Result unwrap with complex inheritance and generic pipelines
+# Verifies Result[T,E] types through abstract validators, concrete processors,
+# and generic result transformers with multiple unwrap strategies
+
+@abstract
+class DataValidator:
+    @abstract
+    def validate(self, data: int) -> bool: ...
+
+class RangeValidator(DataValidator):
+    min_val: int
+    max_val: int
+    
+    def __init__(self, min_val: int, max_val: int):
+        self.min_val = min_val
+        self.max_val = max_val
+    
+    @override
+    def validate(self, data: int) -> bool:
+        return self.min_val <= data <= self.max_val
+
+class PositiveValidator(DataValidator):
+    def __init__(self):
+        pass
+    
+    @override
+    def validate(self, data: int) -> bool:
+        return data > 0
+
+def try_parse_int(s: str) -> int !str:
+    if s == "42":
+        return Ok(42)
+    if s == "100":
+        return Ok(100)
+    if s == "-5":
+        return Ok(-5)
+    return Err("invalid")
+
+def process_values(inputs: list[str], validator: DataValidator) -> list[int]:
+    results: list[int] = []
+    for s in inputs:
+        parsed: int !str = try_parse_int(s)
+        if parsed.is_ok():
+            value: int = parsed.unwrap()
+            if validator.validate(value):
+                results.append(value)
+            else:
+                results.append(0)
+        else:
+            results.append(-1)
+    return results
+
+def calculate_safe_div(a: int, b: int) -> float !str:
+    if b == 0:
+        return Err("division by zero")
+    return Ok(a / b)
+
+def safe_access_index(items: list[int], idx: int) -> int !str:
+    if idx >= 0 and idx < len(items):
+        return Ok(items[idx])
+    return Err("index out of bounds")
+
+def main():
+    validator = RangeValidator(0, 50)
+    inputs: list[str] = ["42", "invalid", "100", "-5"]
+    values: list[int] = process_values(inputs, validator)
+    
+    for v in values:
+        print(v)
+    
+    good_result: int !str = Ok(25)
+    print(good_result.unwrap_or(0))
+    
+    bad_result: int !str = Err("error")
+    print(bad_result.unwrap_or(999))
+    
+    base: int !str = Ok(10)
+    mapped: float !str = base.map(lambda x: x * 1.5 as float)
+    print(mapped.unwrap_or(0.0))
+    
+    # Complex: division in result chain
+    div_result: float !str = calculate_safe_div(100, 4)
+    print(div_result.unwrap_or(0.0))
+    
+    items: list[int] = [10, 20, 30]
+    idx_result: int !str = safe_access_index(items, 5)
+    print(idx_result.unwrap_or(-999))
+
+# EXPECTED OUTPUT:
+# 42
+# -1
+# 0
+# 0
+# 25
+# 999
+# 15.0
+# 25.0
+# -999
+```
+
+## Output
+
+```
+42
+-1
+0
+0
+25
+999
+15.0
+25.0
+-999
+```
+
+## Timing
+
+- Generation: 115.78s
+- Execution: 4.93s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

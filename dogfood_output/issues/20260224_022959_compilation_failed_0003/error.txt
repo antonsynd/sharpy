@@ -1,0 +1,5 @@
+Unhandled exception. System.NotImplementedException: The method or operation is not implemented.
+   at DogfoodTest.Resource.get_IsTrue() in /tmp/tmpjfoqwkad/dogfood_test.spy:line 8
+   at DogfoodTest.Resource.op_True(Resource value) in /tmp/tmpjfoqwkad/dogfood_test.spy:line 14
+   at DogfoodTest.Resource.GetStatus() in /tmp/tmpjfoqwkad/dogfood_test.spy:line 11
+   at DogfoodTest.Main() in /tmp/tmpjfoqwkad/dogfood_test.spy:line 58

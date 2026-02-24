@@ -1,0 +1,52 @@
+# Base types module - defines abstract classes, interfaces, and enums
+
+# Shape category enum
+enum ShapeType:
+    CIRCLE = 1
+    RECTANGLE = 2
+    TRIANGLE = 3
+    POLYGON = 4
+
+# Base abstract class for all shapes
+@abstract
+class Shape:
+    name: str
+    color: str
+    
+    def __init__(self, name: str, color: str):
+        self.name = name
+        self.color = color
+    
+    @abstract
+    def area(self) -> float:
+        ...
+    
+    @abstract
+    def perimeter(self) -> float:
+        ...
+    
+    @virtual
+    def describe(self) -> str:
+        return self.name + " (" + self.color + ")"
+
+# Interface for shapes that can be scaled
+interface IScalable:
+    def scale(self, factor: float) -> float:
+        ...
+
+# Interface for printable objects
+interface IPrintable:
+    def get_info(self) -> str:
+        ...
+
+# Mixin-style base for bounded shapes
+@abstract
+class BoundedShape(Shape):
+    bounds: tuple[int, int, int, int]
+    
+    def __init__(self, name: str, color: str, min_x: int, min_y: int, max_x: int, max_y: int):
+        super().__init__(name, color)
+        self.bounds = (min_x, min_y, max_x, max_y)
+    
+    def get_bounds(self) -> str:
+        return "Bounds: " + str(self.bounds[0]) + "," + str(self.bounds[1]) + " to " + str(self.bounds[2]) + "," + str(self.bounds[3])

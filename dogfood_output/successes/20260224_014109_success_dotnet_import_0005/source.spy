@@ -1,0 +1,9 @@
+from system import Math
+
+def main():
+    base: float = 3.0
+    power: float = Math.Pow(base, 2.0)
+    rounded: float = Math.Round(power)
+    print(rounded)
+    # EXPECTED OUTPUT:
+    # 9.0

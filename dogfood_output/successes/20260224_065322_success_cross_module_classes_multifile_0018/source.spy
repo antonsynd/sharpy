@@ -1,0 +1,27 @@
+# Main entry point - tests cross-module class inheritance
+
+from vehicles import Vehicle, IDrivable
+from vehicles_extended import Car, Truck
+
+def main():
+    # Test base class
+    v: Vehicle = Vehicle("Generic", 30)
+    print(v.describe())
+
+    # Test Car class (inherits Vehicle + implements IDrivable)
+    c: Car = Car("Sedan", 60, 4)
+    print(c.describe())
+
+    # Test interface through polymorphism
+    drivable: IDrivable = c
+    print(drivable.drive())
+
+    # Test Truck class (inherits Vehicle, adds capacity)
+    t: Truck = Truck("Semi", 55, 20.5)
+    print(t.describe())
+
+    # EXPECTED OUTPUT:
+    # Generic moving at 30
+    # Sedan car with 4 doors at 60 speed
+    # Driving Sedan
+    # Semi moving at 55, capacity: 20.5

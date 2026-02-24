@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1501]: No overload for method 'Status' takes 1 arguments
+  --> /tmp/tmpe5gfcjfo/dogfood_test.spy:126:35
+     |
+ 126 |         base: str = Entity.status(self)
+     |                                   ^
+     |
+

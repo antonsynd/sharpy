@@ -1,0 +1,16 @@
+Internal compiler error: Compilation errors:
+
+error[SPY0907]: Internal: type inference produced UnknownType for 'IndexAccess' without a corresponding error diagnostic. This is a compiler bug.
+  --> /tmp/tmpniu0fq4q/dogfood_test.spy:52:22
+    |
+ 52 |         first_item = items[0]
+    |                      ^^^^^^^^
+    |
+
+error[SPY0907]: Internal: type inference produced UnknownType for 'IndexAccess' without a corresponding error diagnostic. This is a compiler bug.
+  --> /tmp/tmpniu0fq4q/dogfood_test.spy:85:18
+    |
+ 85 |         print(f"{keys_list[0]}")
+    |                  ^^^^^^^^^^^^
+    |
+
