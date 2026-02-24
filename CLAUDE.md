@@ -123,6 +123,7 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 55**: `NamingConventionValidator` — Naming convention checks
 - **Order 60**: `DecoratorValidator` — Decorator validation
 - **Order 150**: `SignatureValidator` — Dunder method signatures
+- **Order 155**: `GeneratorValidator` — Generator function validation
 - **Order 160**: `EqualityContractValidator` — Equality contract checks
 - **Order 170**: `InterfaceConflictValidator` — Interface conflict detection
 - **Order 250**: `DefaultParameterValidator` — Default parameter validation
@@ -148,11 +149,12 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 | SPY0400–SPY0449 | Error | Validation |
 | SPY0450–SPY0499 | Warning | Validation (unreachable code, naming conventions) |
 | SPY0500–SPY0599 | Error | Code generation |
+| SPY0900–SPY0999 | Error | Infrastructure (compilation, file I/O) |
 | SPY1000–SPY1099 | Info | Informational (e.g., implicit interface synthesis) |
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 11 partial classes (~10,300 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`.
+The `RoslynEmitter` is split into 12 partial classes (~10,800 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -354,5 +356,6 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 `.github/workflows/`:
 - `dotnet10.yml` — Active; tests on .NET 10
 - `python-build-tools.yml` — Runs pytest for `build_tools/` on Python 3.11 and 3.12
+- `benchmarks.yml` — Performance benchmarks
 
 An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
