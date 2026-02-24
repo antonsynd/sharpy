@@ -1,0 +1,4 @@
+# Test: f-string integer decimal format spec
+def main():
+    x: int = 42
+    print(f"{x:d}")

@@ -1,0 +1,4 @@
+# Test: f-string right-align format spec
+def main():
+    x: int = 42
+    print(f"{x:>10}")

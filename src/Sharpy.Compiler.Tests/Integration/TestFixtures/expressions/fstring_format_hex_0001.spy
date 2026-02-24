@@ -1,0 +1,5 @@
+# Test: f-string hex format spec (lowercase and uppercase)
+def main():
+    x: int = 42
+    print(f"{x:x}")
+    print(f"{x:X}")

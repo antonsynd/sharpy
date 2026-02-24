@@ -1,0 +1,6 @@
+# Test: f-string combined format specs (alignment + precision, thousands + precision)
+def main():
+    x: float = 3.14
+    print(f"{x:>10.2f}")
+    y: float = 1234.5
+    print(f"{y:,.2f}")

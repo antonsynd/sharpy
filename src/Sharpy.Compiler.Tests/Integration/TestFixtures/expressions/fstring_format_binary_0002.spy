@@ -1,0 +1,4 @@
+# Test: f-string zero-padded binary format spec
+def main():
+    x: int = 42
+    print(f"{x:08b}")

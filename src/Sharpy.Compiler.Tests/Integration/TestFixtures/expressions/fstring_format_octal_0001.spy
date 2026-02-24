@@ -1,0 +1,4 @@
+# Test: f-string octal format spec
+def main():
+    x: int = 42
+    print(f"{x:o}")

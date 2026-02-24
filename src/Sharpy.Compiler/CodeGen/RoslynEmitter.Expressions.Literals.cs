@@ -685,45 +685,138 @@ internal partial class RoslynEmitter
                             "%",
                             TriviaList())));
                 }
+                else if (!string.IsNullOrEmpty(part.FormatSpec))
+                {
+                    var result = TranslatePythonFormatSpec(part.FormatSpec);
+
+                    if (result.NeedsExpressionRewrite && result.Base.HasValue)
+                    {
+                        // Binary/octal: f"{x:b}" -> $"{Convert.ToString(x, 2)}"
+                        var innerExpr = GenerateExpression(part.Expression);
+                        var convertCall = InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                IdentifierName("Convert"), IdentifierName("ToString")))
+                            .WithArgumentList(ArgumentList(SeparatedList(new[]
+                            {
+                                Argument(innerExpr),
+                                Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                                    Literal(result.Base.Value)))
+                            })));
+                        ExpressionSyntax formatted = convertCall;
+                        if (result.Width.HasValue && result.Width.Value > 0)
+                        {
+                            formatted = InvocationExpression(
+                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    formatted, IdentifierName("PadLeft")))
+                                .WithArgumentList(ArgumentList(SeparatedList(new[]
+                                {
+                                    Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                                        Literal(result.Width.Value))),
+                                    Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
+                                        Literal(result.FillChar ?? '0')))
+                                })));
+                        }
+                        parts.Add(Interpolation(ParenthesizedExpression(formatted)));
+                    }
+                    else if (result.NeedsExpressionRewrite && result.AlignmentMode.HasValue)
+                    {
+                        // Center-align or custom fill: f"{x:*^10}" ->
+                        //   $"{Sharpy.Builtins.FormatAlign(x.ToString(), 10, '*', '^')}"
+                        var innerExpr = GenerateExpression(part.Expression);
+                        ExpressionSyntax toStringExpr;
+                        if (!string.IsNullOrEmpty(result.FormatString))
+                        {
+                            toStringExpr = InvocationExpression(
+                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    innerExpr, IdentifierName("ToString")))
+                                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
+                                        Literal(result.FormatString))))));
+                        }
+                        else
+                        {
+                            toStringExpr = InvocationExpression(
+                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    innerExpr, IdentifierName("ToString")))
+                                .WithArgumentList(ArgumentList());
+                        }
+                        var alignCall = InvocationExpression(
+                            MakeGlobalQualifiedName("Sharpy", "Builtins", "FormatAlign"))
+                            .WithArgumentList(ArgumentList(SeparatedList(new[]
+                            {
+                                Argument(toStringExpr),
+                                Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                                    Literal(result.Width ?? 0))),
+                                Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
+                                    Literal(result.FillChar ?? ' '))),
+                                Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
+                                    Literal(result.AlignmentMode!.Value)))
+                            })));
+                        parts.Add(Interpolation(ParenthesizedExpression(alignCall)));
+                    }
+                    else
+                    {
+                        // General case: simple format string with optional C# alignment
+                        var innerExpr = GenerateExpression(part.Expression);
+                        var interpolation = Interpolation(ParenthesizedExpression(innerExpr));
+
+                        if (result.Alignment.HasValue)
+                        {
+                            ExpressionSyntax alignmentExpr;
+                            if (result.Alignment.Value < 0)
+                            {
+                                alignmentExpr = PrefixUnaryExpression(
+                                    SyntaxKind.UnaryMinusExpression,
+                                    LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                                        Literal(Math.Abs(result.Alignment.Value))));
+                            }
+                            else
+                            {
+                                alignmentExpr = LiteralExpression(
+                                    SyntaxKind.NumericLiteralExpression,
+                                    Literal(result.Alignment.Value));
+                            }
+                            interpolation = interpolation.WithAlignmentClause(
+                                InterpolationAlignmentClause(
+                                    Token(SyntaxKind.CommaToken),
+                                    alignmentExpr));
+                        }
+
+                        if (!string.IsNullOrEmpty(result.FormatString))
+                        {
+                            interpolation = interpolation.WithFormatClause(
+                                InterpolationFormatClause(
+                                    Token(SyntaxKind.ColonToken),
+                                    Token(
+                                        TriviaList(),
+                                        SyntaxKind.InterpolatedStringTextToken,
+                                        result.FormatString,
+                                        result.FormatString,
+                                        TriviaList())));
+                        }
+
+                        parts.Add(interpolation);
+                    }
+                }
                 else
                 {
+                    // No format spec — default formatting
                     var innerExpr = GenerateExpression(part.Expression);
 
                     // For floating-point types without a format spec, wrap in FormatFloat()
                     // to ensure Python-compatible formatting (e.g., 5.0 instead of 5).
-                    // Format-specced interpolations already produce correct output.
-                    if (string.IsNullOrEmpty(part.FormatSpec))
+                    var exprType = GetExpressionSemanticType(part.Expression);
+                    if (exprType == SemanticType.Float ||
+                        exprType == SemanticType.Double ||
+                        exprType == SemanticType.Float32)
                     {
-                        var exprType = GetExpressionSemanticType(part.Expression);
-                        if (exprType == SemanticType.Float ||
-                            exprType == SemanticType.Double ||
-                            exprType == SemanticType.Float32)
-                        {
-                            innerExpr = InvocationExpression(
-                                MakeGlobalQualifiedName("Sharpy", "Builtins", "FormatFloat"))
-                                .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                                    Argument(innerExpr))));
-                        }
+                        innerExpr = InvocationExpression(
+                            MakeGlobalQualifiedName("Sharpy", "Builtins", "FormatFloat"))
+                            .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                                Argument(innerExpr))));
                     }
 
-                    var interpolation = Interpolation(ParenthesizedExpression(innerExpr));
-
-                    // Add format specifier if present (e.g., ".2f" in f"{value:.2f}")
-                    if (!string.IsNullOrEmpty(part.FormatSpec))
-                    {
-                        var csharpFormatSpec = TranslatePythonFormatSpec(part.FormatSpec);
-                        interpolation = interpolation.WithFormatClause(
-                            InterpolationFormatClause(
-                                Token(SyntaxKind.ColonToken),
-                                Token(
-                                    TriviaList(),
-                                    SyntaxKind.InterpolatedStringTextToken,
-                                    csharpFormatSpec,
-                                    csharpFormatSpec,
-                                    TriviaList())));
-                    }
-
-                    parts.Add(interpolation);
+                    parts.Add(Interpolation(ParenthesizedExpression(innerExpr)));
                 }
             }
         }
@@ -743,68 +836,209 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Translates Python format specifiers to C# format specifiers.
-    /// Python: [[fill]align][sign][#][0][width][grouping_option][.precision][type]
-    ///
-    /// Supported conversions:
-    /// - .Nf -> FN (fixed-point, N decimal places)
-    /// - .Ne -> EN (scientific notation)
-    /// - .N% -> PN (percent)
-    /// - 0N -> DN (zero-padded integer width N)
-    /// - , -> N0 (number with thousand separators)
-    /// - .Ng -> GN (general format)
+    /// Result of parsing a Python format spec into C#-compatible components.
     /// </summary>
-    private static string TranslatePythonFormatSpec(string pythonSpec)
+    private readonly record struct FormatSpecResult(
+        string FormatString,
+        int? Alignment,
+        bool NeedsExpressionRewrite,
+        char? FillChar,
+        char? AlignmentMode,
+        int? Width,
+        int? Base);
+
+    /// <summary>
+    /// Parses Python's format specification mini-language into C#-compatible components.
+    /// Python: [[fill]align][sign][z][#][0][width][grouping_option][.precision][type]
+    /// </summary>
+    private static FormatSpecResult TranslatePythonFormatSpec(string pythonSpec)
     {
         if (string.IsNullOrEmpty(pythonSpec))
-            return pythonSpec;
+            return new FormatSpecResult(pythonSpec, null, false, null, null, null, null);
 
-        // Handle thousand separator only: "," -> "N0"
-        if (pythonSpec == ",")
-            return "N0";
+        var pos = 0;
+        char? fillChar = null;
+        char? alignmentMode = null;
+        // char? sign = null; — sign is not currently mapped to C# output
+        bool zeroPad = false;
+        int? width = null;
+        char? grouping = null;
+        int? precision = null;
+        char? typeChar = null;
 
-        // Handle .Nf (fixed-point): ".2f" -> "F2"
-        if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("f"))
+        // Step 1: Parse optional [fill]align
+        if (pos < pythonSpec.Length)
         {
-            var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
-            if (int.TryParse(precision, out _))
-                return "F" + precision;
+            if (pos + 1 < pythonSpec.Length && IsAlignChar(pythonSpec[pos + 1]))
+            {
+                fillChar = pythonSpec[pos];
+                alignmentMode = pythonSpec[pos + 1];
+                pos += 2;
+            }
+            else if (IsAlignChar(pythonSpec[pos]))
+            {
+                alignmentMode = pythonSpec[pos];
+                pos += 1;
+            }
         }
 
-        // Handle .Ne (scientific): ".2e" -> "E2"
-        if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("e"))
+        // Step 2: Parse optional sign (+, -, space)
+        if (pos < pythonSpec.Length && (pythonSpec[pos] == '+' || pythonSpec[pos] == '-' || pythonSpec[pos] == ' '))
         {
-            var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
-            if (int.TryParse(precision, out _))
-                return "E" + precision;
+            // sign = pythonSpec[pos]; — not mapped to C# output currently
+            pos++;
         }
 
-        // Handle .N% (percent): ".1%" -> "P1"
-        if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("%"))
+        // Step 3: Skip optional 'z' (coerce negative zero)
+        if (pos < pythonSpec.Length && pythonSpec[pos] == 'z')
+            pos++;
+
+        // Step 4: Skip optional '#' (alternate form)
+        if (pos < pythonSpec.Length && pythonSpec[pos] == '#')
+            pos++;
+
+        // Step 5: Parse optional '0' (zero-pad flag)
+        if (pos < pythonSpec.Length && pythonSpec[pos] == '0')
         {
-            var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
-            if (int.TryParse(precision, out _))
-                return "P" + precision;
+            zeroPad = true;
+            pos++;
         }
 
-        // Handle .Ng (general): ".3g" -> "G3"
-        if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("g"))
+        // Step 6: Parse optional width (digits)
+        var widthStart = pos;
+        while (pos < pythonSpec.Length && char.IsDigit(pythonSpec[pos]))
+            pos++;
+        if (pos > widthStart)
+            width = int.Parse(pythonSpec.Substring(widthStart, pos - widthStart));
+
+        // Step 7: Parse optional grouping (, or _)
+        if (pos < pythonSpec.Length && (pythonSpec[pos] == ',' || pythonSpec[pos] == '_'))
         {
-            var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
-            if (int.TryParse(precision, out _))
-                return "G" + precision;
+            grouping = pythonSpec[pos];
+            pos++;
         }
 
-        // Handle 0N (zero-padded): "05" -> "D5" for integers
-        if (pythonSpec.StartsWith("0") && pythonSpec.Length > 1)
+        // Step 8: Parse optional .precision
+        if (pos < pythonSpec.Length && pythonSpec[pos] == '.')
         {
-            var width = pythonSpec.Substring(1);
-            if (int.TryParse(width, out _))
-                return "D" + width;
+            pos++; // skip '.'
+            var precStart = pos;
+            while (pos < pythonSpec.Length && char.IsDigit(pythonSpec[pos]))
+                pos++;
+            if (pos > precStart)
+                precision = int.Parse(pythonSpec.Substring(precStart, pos - precStart));
+            else
+                precision = 0;
         }
 
-        // Fall back to passing through (may not work, but allows custom C# formats)
-        return pythonSpec;
+        // Step 9: Parse optional type char
+        if (pos < pythonSpec.Length && IsTypeChar(pythonSpec[pos]))
+        {
+            typeChar = pythonSpec[pos];
+            pos++;
+        }
+
+        // Compose result
+        return ComposeFormatSpecResult(fillChar, alignmentMode, zeroPad, width, grouping, precision, typeChar);
+    }
+
+    private static bool IsAlignChar(char c) => c == '<' || c == '>' || c == '^' || c == '=';
+
+    private static bool IsTypeChar(char c) => "bcdeEfFgGnosxX%".IndexOf(c) >= 0;
+
+    private static FormatSpecResult ComposeFormatSpecResult(
+        char? fillChar, char? alignmentMode, bool zeroPad,
+        int? width, char? grouping, int? precision, char? typeChar)
+    {
+        // Binary and octal need expression rewriting
+        if (typeChar == 'b')
+        {
+            var padWidth = (zeroPad && width.HasValue) ? width.Value : (width ?? 0);
+            var padChar = zeroPad ? '0' : ' ';
+            return new FormatSpecResult("", null, true, padChar, alignmentMode, padWidth > 0 ? padWidth : null, 2);
+        }
+
+        if (typeChar == 'o')
+        {
+            var padWidth = (zeroPad && width.HasValue) ? width.Value : (width ?? 0);
+            var padChar = zeroPad ? '0' : ' ';
+            return new FormatSpecResult("", null, true, padChar, alignmentMode, padWidth > 0 ? padWidth : null, 8);
+        }
+
+        // Percent format — handled by special-case in caller (IsPercentFormat)
+        if (typeChar == '%')
+        {
+            var prec = precision?.ToString() ?? "0";
+            return new FormatSpecResult("P" + prec, null, false, null, null, null, null);
+        }
+
+        // Build the C# format string from type + precision + grouping
+        var formatString = BuildCSharpFormatString(typeChar, precision, grouping, zeroPad, width,
+            alignmentMode.HasValue);
+
+        // Alignment handling
+        if (alignmentMode.HasValue)
+        {
+            bool needsRewrite = alignmentMode == '^' || (fillChar.HasValue && fillChar != ' ');
+            if (needsRewrite)
+            {
+                return new FormatSpecResult(formatString, null, true, fillChar ?? ' ',
+                    alignmentMode, width, null);
+            }
+
+            // Simple space-fill alignment: use C# alignment component
+            int alignment = alignmentMode == '<' ? -(width ?? 0) : (width ?? 0);
+            if (alignment != 0)
+                return new FormatSpecResult(formatString, alignment, false, null, null, null, null);
+        }
+
+        // Zero-pad without alignment for integer types: 05 -> D5
+        if (zeroPad && width.HasValue && typeChar == null && precision == null && grouping == null)
+            return new FormatSpecResult("D" + width.Value, null, false, null, null, null, null);
+
+        return new FormatSpecResult(formatString, null, false, null, null, null, null);
+    }
+
+    private static string BuildCSharpFormatString(char? typeChar, int? precision, char? grouping,
+        bool zeroPad, int? width, bool hasAlignment)
+    {
+        // Grouping only: "," -> "N0", ",.2f" -> "N2"
+        if (grouping == ',')
+        {
+            if (typeChar == 'f' || typeChar == 'F')
+                return "N" + (precision?.ToString() ?? "0");
+            if (typeChar == null)
+                return "N" + (precision?.ToString() ?? "0");
+        }
+
+        // Map type characters to C# format specifiers
+        var csharpType = typeChar switch
+        {
+            'd' => "D",
+            'f' or 'F' => "F",
+            'e' => "E",
+            'E' => "E",
+            'g' => "G",
+            'G' => "G",
+            'x' => "x",
+            'X' => "X",
+            'n' => "N",
+            's' => "",
+            'c' => "",
+            _ => ""
+        };
+
+        if (precision.HasValue && csharpType.Length > 0)
+            return csharpType + precision.Value;
+
+        if (csharpType.Length > 0)
+            return csharpType;
+
+        // Zero-pad without type: "05" -> "D5" (handled in ComposeFormatSpecResult for no-alignment case)
+        if (zeroPad && width.HasValue && !hasAlignment)
+            return "D" + width.Value;
+
+        return "";
     }
 
     /// <summary>
@@ -813,10 +1047,13 @@ internal partial class RoslynEmitter
     private static bool IsPercentFormat(string pythonSpec, out string precision)
     {
         precision = "0";
-        if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("%"))
+        if (string.IsNullOrEmpty(pythonSpec))
+            return false;
+        var result = TranslatePythonFormatSpec(pythonSpec);
+        if (result.FormatString.StartsWith("P") && !result.NeedsExpressionRewrite)
         {
-            precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
-            return int.TryParse(precision, out _);
+            precision = result.FormatString.Length > 1 ? result.FormatString.Substring(1) : "0";
+            return true;
         }
         return false;
     }

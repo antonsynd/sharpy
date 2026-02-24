@@ -1,0 +1,4 @@
+# Test: f-string custom fill character with right-align
+def main():
+    x: int = 42
+    print(f"{x:*>10}")
