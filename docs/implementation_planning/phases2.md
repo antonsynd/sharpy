@@ -158,9 +158,8 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | 12.1 | Delegate type declarations | M | `delegate Factory[out T]() -> T` — new AST node; parser + codegen emit C# delegate type |
 | 12.2 | Generic variance (`out T`, `in T`) | L | Covariant/contravariant on interfaces and delegates; compiler validates position correctness (return vs. parameter positions) |
 | 12.3 | Events | L | `event clicked: (object, EventArgs) -> None`; `+=`/`-=` subscribe; `?.invoke()` thread-safe invocation; only declaring class can fire |
-| 12.4 | Nested comprehensions | S | Comprehension inside comprehension (currently SPY0515); lower to nested LINQ |
-| 12.5 | Custom decorator arguments | M | Extend `Decorator` record with `Arguments`; parse `@decorator(args)`; attribute mapping |
-| 12.6 | Spec gap audit + integration test sweep | M | Systematic pass through all 108 spec files vs. test fixtures; file issues for any remaining gaps |
+| 12.4 | Custom decorator arguments | M | Extend `Decorator` record with `Arguments`; parse `@decorator(args)`; attribute mapping |
+| 12.5 | Spec gap audit + integration test sweep | M | Systematic pass through all 112 spec files vs. test fixtures; file issues for any remaining gaps |
 
 **Key files:** New AST nodes, `Parser.Definitions.cs`, `Parser.Types.cs`, `TypeChecker.cs`, `RoslynEmitter.TypeDeclarations.cs`, `RoslynEmitter.Expressions.Literals.cs`
 
@@ -178,9 +177,9 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | **9** | v0.2.3 | Generators & Iterators | ~~3~~ ✅ Complete | `yield`/`yield from`, generator inference, 4 new diagnostics (SPY0265–SPY0269) |
 | **10** | v0.2.4 | Async/Await | 6 | `async def`, `await`, `async for/with`, async generators |
 | **11** | v0.2.5 | Advanced Functions | 5 | Pos-only/kw-only, `@kwargs`, partial application |
-| **12** | v0.2.6 | Type System & Polish | 6 | Variance, delegates, events, custom decorators, spec audit |
+| **12** | v0.2.6 | Type System & Polish | 5 | Variance, delegates, events, custom decorators, spec audit |
 
-**Total: 25 remaining items across 4 phases (v0.2.2–v0.2.6)** — Phases 6, 7, 9 complete (13 items delivered)
+**Total: 24 remaining items across 4 phases (v0.2.2–v0.2.6)** — Phases 6, 7, 9 complete (13 items delivered)
 
 ---
 
@@ -270,7 +269,7 @@ Intentional language design decisions:
 | Dimension | Items Checked | Result |
 |-----------|--------------|--------|
 | **File paths** | All key files referenced in Phases 6-12 | All exist |
-| **Diagnostic codes** | SPY0515, SPY0516, SPY0517, SPY0251 | All confirmed in `DiagnosticCodes.cs` |
+| **Diagnostic codes** | SPY0251 | Confirmed in `DiagnosticCodes.cs` (SPY0515/0516/0517 removed — dead code) |
 | **AST nodes (existing)** | MatchExpression, OrPattern, TypePattern, BindingPattern, UnionDef, AwaitExpression, RaiseStatement.Cause | All confirmed |
 | **AST nodes (new needed)** | RelationalPattern, ~~SpreadExpression~~, ~~YieldStatement~~, PlaceholderExpression | RelationalPattern and PlaceholderExpression still needed; SpreadExpression and YieldStatement now implemented |
 | **Completed features** | Properties, `with`, match, walrus, generics, comprehensions, named tuples, pipe, collections, try/maybe, chains | All confirmed in codegen |
@@ -301,7 +300,7 @@ Intentional language design decisions:
 
 **Phase 11 audit** — all 5 items confirmed NOT STARTED. No positional-only/keyword-only parameter parsing, no `@kwargs`/`@dynamic_kwargs` decorator handling, no `PlaceholderExpression` AST node.
 
-**Phase 12 audit** — all 6 items confirmed NOT STARTED. No `DelegateDef`/`EventDef` AST nodes, no variance markers on `TypeParameterDef`, SPY0515 still blocks nested comprehensions, no custom decorator arguments. `TokenType.Event` is reserved but unused by parser.
+**Phase 12 audit** — 5 items remaining, NOT STARTED. No `DelegateDef`/`EventDef` AST nodes, no variance markers on `TypeParameterDef`, no custom decorator arguments. `TokenType.Event` is reserved but unused by parser. (Nested comprehensions removed — SPY0515 was dead code; feature already works.)
 
 ### Language Spec Accuracy Issues Found
 
@@ -310,7 +309,7 @@ Intentional language design decisions:
 | `async_programming.md` | Claims "✅ Native" for async/await but features are NOT implemented | HIGH | **FIXED** — added "not yet implemented" banner and ❌ markers on all sections |
 | `match_statement.md` | Lists Or/Property/Relational/Positional patterns as ✅ but they're NOT parsed | HIGH | **FIXED** — marked ❌ for Or, Property, Positional, Relational |
 | `match_statement.md` | Lists "Type with binding" (`case int() as n:`) as ✅ but `TypePattern` is entirely unwired — no parser, semantic, or codegen path | HIGH | **FIXED** — marked ❌, moved to Phase 8 items |
-| `comprehensions.md` | Shows nested comprehension example as working but SPY0515 blocks it | MEDIUM | **FIXED** — added ❌ comment, SPY0515 explanation, and workaround |
+| `comprehensions.md` | Previously showed nested comprehension as blocked by SPY0515 | MEDIUM | **FIXED** — removed ❌, feature is implemented (SPY0515 was dead code) |
 | `spread_operator.md` | No implementation status banner | LOW | **FIXED** — added status banner noting partial implementation |
 | `delegates.md` | Missing document — referenced by `generic_variance.md` and `events_alt.md` | LOW | **FIXED** — created stub with Phase 12 implementation status |
 | `generic_variance.md` | Contradictory: intro says "not yet implemented" but footer says "✅ Native" | HIGH | **FIXED** — updated footer to ❌ Not yet implemented |
