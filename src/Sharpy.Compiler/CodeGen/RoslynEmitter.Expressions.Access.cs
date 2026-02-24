@@ -318,9 +318,22 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
-        return EmitNotImplementedExpression(
-            "Unsupported expression type in code generation: complex function expressions are not yet supported",
-            DiagnosticCodes.CodeGen.UnsupportedExpressionType, call.LineStart, call.ColumnStart);
+        // Fallback: arbitrary expression as call target
+        // Handles: get_handler()("arg"), callbacks[0]("arg"), (lambda x: x)(42), chained calls, etc.
+        var callTarget = GenerateExpression(call.Function);
+
+        // Lambdas must be parenthesized before invocation in C#: ((x) => x * 2)(21)
+        if (callTarget is SimpleLambdaExpressionSyntax or ParenthesizedLambdaExpressionSyntax)
+            callTarget = ParenthesizedExpression(callTarget);
+
+        var fallbackPositionalArgs = GeneratePositionalArguments(call.Arguments);
+        var fallbackKeywordArgs = call.KeywordArguments.Select(kwarg =>
+            Argument(GenerateExpression(kwarg.Value))
+                .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
+        var fallbackAllArgs = fallbackPositionalArgs.Concat(fallbackKeywordArgs).ToArray();
+
+        return InvocationExpression(callTarget)
+            .WithArgumentList(ArgumentList(SeparatedList(fallbackAllArgs)));
     }
 
     /// <summary>

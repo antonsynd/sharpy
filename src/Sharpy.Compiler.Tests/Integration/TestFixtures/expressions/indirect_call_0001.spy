@@ -1,0 +1,6 @@
+def get_greeter() -> (str) -> str:
+    return lambda name: f"Hello, {name}"
+
+def main():
+    result = get_greeter()("World")
+    print(result)

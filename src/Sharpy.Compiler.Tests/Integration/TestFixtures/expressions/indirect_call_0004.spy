@@ -1,0 +1,5 @@
+def make_adder(n: int) -> (int) -> int:
+    return lambda x: x + n
+
+def main():
+    print(make_adder(10)(5))

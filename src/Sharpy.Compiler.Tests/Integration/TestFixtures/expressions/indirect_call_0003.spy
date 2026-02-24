@@ -1,0 +1,13 @@
+def double(x: int) -> int:
+    return x * 2
+
+def triple(x: int) -> int:
+    return x * 3
+
+def apply_at(index: int) -> int:
+    funcs = [double, triple]
+    return funcs[index](5)
+
+def main():
+    print(apply_at(0))
+    print(apply_at(1))
