@@ -322,9 +322,33 @@ internal partial class RoslynEmitter
         // Handles: get_handler()("arg"), callbacks[0]("arg"), (lambda x: x)(42), chained calls, etc.
         var callTarget = GenerateExpression(call.Function);
 
-        // Lambdas must be parenthesized before invocation in C#: ((x) => x * 2)(21)
-        if (callTarget is SimpleLambdaExpressionSyntax or ParenthesizedLambdaExpressionSyntax)
-            callTarget = ParenthesizedExpression(callTarget);
+        // Lambdas need explicit delegate cast for invocation in C#: ((Func<int, int>)(x => x * 2))(21)
+        // The lambda may be bare or wrapped in a Parenthesized AST node → ParenthesizedExpressionSyntax
+        var innerExprForCheck = callTarget;
+        if (innerExprForCheck is ParenthesizedExpressionSyntax parenSyntax)
+            innerExprForCheck = parenSyntax.Expression;
+
+        if (innerExprForCheck is SimpleLambdaExpressionSyntax or ParenthesizedLambdaExpressionSyntax)
+        {
+            // Get the type of the lambda from semantic info (unwrap Parenthesized AST nodes)
+            var funcAstNode = call.Function;
+            while (funcAstNode is Parenthesized p)
+                funcAstNode = p.Expression;
+
+            var lambdaType = _context.SemanticInfo?.GetExpressionType(funcAstNode);
+            if (lambdaType is Semantic.FunctionType ft && !ft.HasUnresolvedTypes())
+            {
+                var delegateType = _typeMapper.MapSemanticType(ft);
+                callTarget = ParenthesizedExpression(CastExpression(delegateType, innerExprForCheck));
+            }
+            else
+            {
+                // TODO(#231): Type not fully resolved (e.g., bare lambda without type annotations in IIFE).
+                // C# requires explicit delegate type for lambda invocation — this will produce
+                // a CS0149 error. Requires semantic analysis to infer lambda types from call-site args.
+                callTarget = ParenthesizedExpression(innerExprForCheck);
+            }
+        }
 
         var fallbackPositionalArgs = GeneratePositionalArguments(call.Arguments);
         var fallbackKeywordArgs = call.KeywordArguments.Select(kwarg =>
