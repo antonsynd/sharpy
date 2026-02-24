@@ -1,4 +1,4 @@
-<!-- Verified by /verify-plan on 2026-02-23 -->
+<!-- Verified by /verify-plan on 2026-02-23 (rev 2) -->
 <!-- Verification result: PASS WITH CORRECTIONS -->
 
 # Phase A: Foundation Fixes — Implementation Plan
@@ -559,36 +559,24 @@ python3 -c "print((lambda x: x * 2)(21))"
 
 ---
 
-## Task 5: Convert super().__init__() outside __init__ to compile-time error
+## ~~Task 5: Convert super().__init__() outside __init__ to compile-time error~~
 
-**Commit message:** `fix: reject super().__init__() outside __init__ as compile-time error`
+**[CORRECTED: Task 5 is already implemented and should be removed from this plan.]**
 
-### Rationale
+~~**Commit message:** `fix: reject super().__init__() outside __init__ as compile-time error`~~
 
-Currently, `super().__init__()` outside an `__init__` method body reaches codegen and hits `EmitNotImplementedExpression` at `RoslynEmitter.Expressions.Access.cs:216`. This produces a codegen-phase error, but it should be caught earlier in semantic analysis (TypeChecker) with a clear diagnostic.
+### Status: ALREADY IMPLEMENTED
 
-In Python, `super().__init__()` is valid inside any method (it calls the parent's `__init__` as a regular method call). In Sharpy/C#, `super().__init__()` is special-cased to emit `: base(...)` constructor chaining, which only works in constructors. Calling the parent constructor as a regular method is not valid C#.
+Verification found that `ValidateSuperContextRules()` in `TypeChecker.Utilities.cs` (lines 661-736) already handles all super() context validation:
 
-### Implementation approach
+- **Case 1 (lines 672-696):** Inside `__init__` — validates super() only calls `__init__`, not inside control flow, not called multiple times
+- **Case 2 (lines 699-715):** Inside `@override` method — allows same-name or cross-dunder calls
+- **Case 3 (lines 717-729):** Inside dunder method (not `__init__`, not `@override`) — allows any dunder via super()
+- **Case 4 (lines 731-735):** Regular method — emits `SPY0287` (`InvalidSuperUsage`): "super() cannot be used in regular methods; only in __init__, @override, or dunder methods"
 
-1. **Add a new semantic diagnostic** (or reuse an existing one) in TypeChecker that checks: when a `FunctionCall` has `Function: MemberAccess(Object: SuperExpression, Member: "__init__")`, verify that the current method context is `__init__`. If not, emit an error.
+The codegen guard at `RoslynEmitter.Expressions.Access.cs:214-219` uses `DiagnosticCodes.CodeGen.UnsupportedFeature` (SPY0501, not SPY0351 as previously claimed) and serves as a safety net that should never be reached.
 
-2. **Keep the codegen guard** as a safety net but it should never be reached after the semantic check.
-
-### Specific changes
-
-1. **`src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs`** — In the `FunctionCall` checking logic:
-   - Add a check: if `call.Function is MemberAccess { Object: SuperExpression, Member: "__init__" }` and the current function is not `__init__`, emit diagnostic.
-   - Use an appropriate existing code (SPY0351 is already used in codegen for this) or create a new one.
-
-2. **Add test fixture**:
-   - `super_init_outside_init_0001.spy` + `.error` — calling `super().__init__()` from a non-init method → compile error with clear message.
-
-### Verification
-
-- `dotnet build sharpy.sln` — compiles
-- `dotnet test` — all tests pass
-- The test fixture gets a semantic error, not a codegen error
+**No changes needed. Skip this task.**
 
 ---
 
@@ -623,12 +611,11 @@ Task 1 (dead diagnostics) ─→ Task 2 (docs update) ─→ Task 6 (final verif
 Task 3 (f-string formats) ──────────────────────────
                                                     ↗
 Task 4 (complex calls) ────────────────────────────
-                                                    ↗
-Task 5 (super guard) ──────────────────────────────
 ```
 
 - Tasks 1→2 must be sequential (Task 2 references removed codes)
-- Tasks 3, 4, 5 are independent of each other and of Tasks 1-2
+- Tasks 3 and 4 are independent of each other and of Tasks 1-2
+- ~~Task 5 removed — already implemented~~
 - Task 6 must be last (final verification after all changes)
 
 ## Files Modified Summary
@@ -639,7 +626,7 @@ Task 5 (super guard) ───────────────────�
 | 2 | `comprehensions.md`, `phases2.md`, `audit-2026-02-23.md` |
 | 3 | `RoslynEmitter.Expressions.Literals.cs`, new `Sharpy.Core/Builtins/FormatAlign.cs`, new test fixtures (11 files) |
 | 4 | `RoslynEmitter.Expressions.Access.cs`, possibly `TypeChecker.Expressions.cs`, new test fixtures (4 files) |
-| 5 | `TypeChecker.Expressions.cs`, `RoslynEmitter.Expressions.Access.cs`, new test fixtures (1 file) |
+| ~~5~~ | ~~REMOVED — already implemented~~ |
 | 6 | Snapshot `.expected.cs` files (if needed) |
 
 ## Scope Exclusions
@@ -656,21 +643,62 @@ The following items from the audit are **intentionally excluded** from this plan
 ## Verification Summary
 
 **Result:** PASS WITH CORRECTIONS
-**Verified on:** 2026-02-23
+**Verified on:** 2026-02-23 (rev 2)
 **Plan file:** `docs/plans/phase-a-foundation-fixes.md`
 
 ### Corrections Made
+
+**Rev 1 corrections (retained):**
 - **Task 1**: Added missing file `src/Sharpy.Compiler/Diagnostics/DiagnosticExplanations.cs` (lines 1034-1050) which contains `Add()` calls for all three dead diagnostic codes. Without removing these entries, `dotnet build` would fail after deleting the constants from `DiagnosticCodes.cs`. Added corresponding grep verification step.
 
-### Warnings
-- None
+**Rev 2 corrections:**
+- **Task 5: REMOVED — already implemented.** `ValidateSuperContextRules()` in `TypeChecker.Utilities.cs` (lines 661-736) already validates super() context with 4 cases. Regular methods get `SPY0287` (InvalidSuperUsage). The codegen guard at `RoslynEmitter.Expressions.Access.cs:214-219` uses `SPY0501` (UnsupportedFeature), not SPY0351 as previously claimed. SPY0351 is `ConflictingConstructorInitializers` — unrelated. Task 5 was struck through and marked as skip.
 
-### Missing Steps Added
-- None (the correction above was the only gap)
+### Warnings
+- **Task 3**: The percent format special-case comment block starts at line 660, not 663 as stated. The condition itself starts at line 663, so the implementation range is correct but the description is slightly imprecise.
+
+### Verified Claims (all tasks)
+
+| Task | Claim | Status |
+|------|-------|--------|
+| 1 | DiagnosticCodes.cs lines 248-250 (3 constants) | Verified exactly |
+| 1 | DiagnosticExplanations.cs lines 1034-1050 (3 Add() calls) | Verified exactly |
+| 1 | RoslynEmitter.Expressions.Literals.cs lines 625-629 (dead ForClause guard) | Verified exactly |
+| 1 | Multi-for routing to GenerateImperativeComprehension() at line 193 | Verified exactly |
+| 1 | Recursive GenerateExpression() at line 204 | Verified exactly |
+| 1 | Test fixtures tuple_unpacking_comprehension_0001, tuple_unpack_deep, tuple_unpack_nested | All exist with .expected files |
+| 1 | No other references to SPY0515/0516/0517 in src/ | Verified — only 3 locations |
+| 2 | comprehensions.md lines 20-32 (NOT YET SUPPORTED block) | Verified exactly |
+| 2 | phases2.md line 161 (12.4 Nested comprehensions row) | Verified exactly |
+| 2 | phases2.md line 163 (12.6 item) | Verified exactly |
+| 2 | phases2.md line 181 (Phase 12 = 6 items) | Verified exactly |
+| 2 | phases2.md line 183 (Total = 25 items) | Verified exactly |
+| 2 | phases2.md line 273 (diagnostic codes verification row) | Verified exactly |
+| 2 | phases2.md line 304 (Phase 12 audit) | Verified exactly |
+| 2 | phases2.md line 313 (comprehensions.md accuracy) | Verified exactly |
+| 2 | audit-2026-02-23.md line 374 (Doable Now table) | Verified exactly |
+| 2 | audit-2026-02-23.md line 405 (Recommended Action Items) | Verified exactly |
+| 3 | TranslatePythonFormatSpec() at lines 750-813 | Verified exactly |
+| 3 | Handles 6 patterns | Verified exactly |
+| 3 | GenerateFString() percent special-case at lines 663-692 | Verified (condition at 663, comment at 660) |
+| 3 | Format spec handling at lines 693-734 | Verified exactly |
+| 3 | Builtins/ directory exists | Verified (contains Builtins.cs, Exceptions.cs) |
+| 3 | Sharpy.Core LangVersion 9.0, netstandard2.1;netstandard2.0 | Verified exactly |
+| 4 | GenerateCall() at lines 18-324 | Verified exactly |
+| 4 | Dispatch: IndexAccess → Identifier → MemberAccess | Verified exactly |
+| 4 | EmitNotImplementedExpression fallback at lines 321-323 | Verified exactly |
+| 4 | Error message text matches | Verified exactly |
+| 4 | IndexAccess only handles `indexAccess.Object is Identifier` at line 22-23 | Verified exactly |
+| 4 | TypeChecker.CheckFunctionCall calls CheckExpression(call.Function) at line 438 | Verified exactly |
+| 4 | DiagnosticCodes.CodeGen.UnsupportedExpressionType = SPY0518 | Verified exactly |
+| 4 | TestFixtures/expressions/ directory exists | Verified (71 files) |
+| 5 | EmitNotImplementedExpression at line 216 for super().__init__() | Verified at lines 214-219 |
+| 5 | SPY0351 used in codegen for this | **INCORRECT** — uses SPY0501 (UnsupportedFeature) |
+| 5 | TypeChecker validation missing | **INCORRECT** — already implemented in ValidateSuperContextRules() |
 
 ### Unchecked Claims
 - **Roslyn InterpolationAlignmentClause API**: Standard Roslyn API, not verified against specific NuGet version but is part of the stable API surface.
-- **TypeChecker handling of complex call targets**: Verification confirmed that `TypeChecker.CheckFunctionCall` calls `CheckExpression(call.Function)` at line 438 of TypeChecker.Expressions.Access.cs, meaning arbitrary call targets are already type-checked. However, whether type inference correctly resolves the return type for chained calls (e.g., `get_handler()("arg")`) was not fully traced through the inference pipeline.
-- **FormatAlign C# 9.0 compatibility**: Switch expression used in FormatAlign.cs is C# 8.0+ feature, compatible with netstandard2.1 target. Not verified against netstandard2.0 (may need if-else fallback if netstandard2.0 compilation fails).
-- **Python center-align rounding**: Plan claims extra padding goes on the right for odd total padding. This matches Python behavior (`f"{'hi':^5}"` → `" hi  "`) but should be verified during implementation.
-- **Convert.ToString base parameter**: Plan claims `Convert.ToString(int, int)` accepts base 2 and 8. This is standard .NET API but should be verified for edge cases (negative numbers, long values).
+- **TypeChecker return type inference for chained calls**: `CheckFunctionCall` calls `CheckExpression(call.Function)` at line 438, so arbitrary call targets are type-checked. However, whether type inference correctly resolves the return type for chained calls (e.g., `get_handler()("arg")`) was not fully traced through the inference pipeline.
+- **FormatAlign C# 9.0 compatibility**: Switch expression is C# 8.0+, compatible with LangVersion 9.0 and netstandard2.1. Not verified against netstandard2.0 target (may need if-else fallback).
+- **Python center-align rounding**: Plan claims extra padding goes on the right for odd total padding. Should be verified with `python3 -c "print(f\"{'hi':^5}\")"` during implementation.
+- **Convert.ToString base parameter**: Plan claims `Convert.ToString(int, int)` accepts base 2 and 8. Standard .NET API but edge cases (negative numbers, long values) should be verified during implementation.
