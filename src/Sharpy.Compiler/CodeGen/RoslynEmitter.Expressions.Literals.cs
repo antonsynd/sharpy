@@ -705,16 +705,36 @@ internal partial class RoslynEmitter
                         ExpressionSyntax formatted = convertCall;
                         if (result.Width.HasValue && result.Width.Value > 0)
                         {
-                            formatted = InvocationExpression(
-                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                    formatted, IdentifierName("PadLeft")))
-                                .WithArgumentList(ArgumentList(SeparatedList(new[]
-                                {
-                                    Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                                        Literal(result.Width.Value))),
-                                    Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
-                                        Literal(result.FillChar ?? '0')))
-                                })));
+                            if (result.AlignmentMode.HasValue && result.AlignmentMode.Value != '>')
+                            {
+                                // Non-right alignment: Sharpy.Builtins.FormatAlign(formatted, width, fill, align)
+                                formatted = InvocationExpression(
+                                    MakeGlobalQualifiedName("Sharpy", "Builtins", "FormatAlign"))
+                                    .WithArgumentList(ArgumentList(SeparatedList(new[]
+                                    {
+                                        Argument(formatted),
+                                        Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                                            Literal(result.Width.Value))),
+                                        Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
+                                            Literal(result.FillChar ?? ' '))),
+                                        Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
+                                            Literal(result.AlignmentMode!.Value)))
+                                    })));
+                            }
+                            else
+                            {
+                                // Right-align (default): PadLeft
+                                formatted = InvocationExpression(
+                                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                        formatted, IdentifierName("PadLeft")))
+                                    .WithArgumentList(ArgumentList(SeparatedList(new[]
+                                    {
+                                        Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                                            Literal(result.Width.Value))),
+                                        Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
+                                            Literal(result.FillChar ?? '0')))
+                                    })));
+                            }
                         }
                         parts.Add(Interpolation(ParenthesizedExpression(formatted)));
                     }
@@ -954,14 +974,14 @@ internal partial class RoslynEmitter
         if (typeChar == 'b')
         {
             var padWidth = (zeroPad && width.HasValue) ? width.Value : (width ?? 0);
-            var padChar = zeroPad ? '0' : ' ';
+            var padChar = fillChar ?? (zeroPad ? '0' : ' ');
             return new FormatSpecResult("", null, true, padChar, alignmentMode, padWidth > 0 ? padWidth : null, 2);
         }
 
         if (typeChar == 'o')
         {
             var padWidth = (zeroPad && width.HasValue) ? width.Value : (width ?? 0);
-            var padChar = zeroPad ? '0' : ' ';
+            var padChar = fillChar ?? (zeroPad ? '0' : ' ');
             return new FormatSpecResult("", null, true, padChar, alignmentMode, padWidth > 0 ? padWidth : null, 8);
         }
 

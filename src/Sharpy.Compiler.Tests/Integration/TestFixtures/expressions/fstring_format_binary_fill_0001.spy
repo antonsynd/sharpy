@@ -1,0 +1,5 @@
+def main():
+    x: int = 42
+    print(f"{x:*^10b}")
+    print(f"{x:*<10b}")
+    print(f"{x:*>10b}")
