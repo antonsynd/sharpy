@@ -641,7 +641,7 @@ internal partial class TypeChecker
                     // UnknownType args for wildcard matching.
                     if (typeSymbol.IsGeneric)
                     {
-                        List<SemanticType> typeArgs;
+                        List<SemanticType>? typeArgs = null;
                         if (_expectedType is GenericType expectedGeneric
                             && expectedGeneric.Name == typeSymbol.Name
                             && expectedGeneric.TypeArguments.Count == typeSymbol.TypeParameters.Count)
@@ -656,8 +656,37 @@ internal partial class TypeChecker
                                 span: call.Span);
                             return SemanticType.Unknown;
                         }
+                        else if (call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
+                        {
+                            // Single-argument constructor: try to infer type args from iterable argument type
+                            var argType = argTypes.Count > 0 ? argTypes[0] : null;
+                            if (argType != null && argType != SemanticType.Unknown)
+                            {
+                                var elementType = _typeInference.InferIterableElementType(argType);
+                                if (elementType != null && elementType != SemanticType.Unknown)
+                                {
+                                    if (typeSymbol.Name is BuiltinNames.List or BuiltinNames.Set
+                                        && typeSymbol.TypeParameters.Count == 1)
+                                    {
+                                        typeArgs = new List<SemanticType> { elementType };
+                                    }
+                                    else if (typeSymbol.Name == BuiltinNames.Dict
+                                             && typeSymbol.TypeParameters.Count == 2
+                                             && elementType is TupleType tt && tt.ElementTypes.Count == 2)
+                                    {
+                                        typeArgs = new List<SemanticType> { tt.ElementTypes[0], tt.ElementTypes[1] };
+                                    }
+                                }
+                            }
+
+                            // Fall through to Unknown if inference failed
+                            typeArgs ??= Enumerable.Range(0, typeSymbol.TypeParameters.Count)
+                                .Select(_ => (SemanticType)SemanticType.Unknown)
+                                .ToList();
+                        }
                         else
                         {
+                            // Multiple arguments or keyword arguments: cannot infer type args
                             typeArgs = Enumerable.Range(0, typeSymbol.TypeParameters.Count)
                                 .Select(_ => (SemanticType)SemanticType.Unknown)
                                 .ToList();

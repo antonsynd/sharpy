@@ -1,0 +1,11 @@
+# Test: list(my_set) preserves element type from set
+
+def main():
+    my_set: set[int] = {10, 20, 30}
+    items: list[int] = list(my_set)
+    print(len(items))
+    # Verify element type is int by performing arithmetic
+    total: int = 0
+    for item in items:
+        total += item
+    print(total)

@@ -1,0 +1,9 @@
+# Test: set(my_list) preserves element type from list
+
+def main():
+    my_list: list[str] = ["hello", "world", "hello"]
+    unique: set[str] = set(my_list)
+    print(len(unique))
+    # Verify element type is str by using string operations
+    for item in sorted(unique):
+        print(item.upper())

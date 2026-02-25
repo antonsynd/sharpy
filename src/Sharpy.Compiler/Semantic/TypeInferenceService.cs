@@ -620,6 +620,24 @@ internal class TypeInferenceService
             return iterableType;
         }
 
+        // User-defined types with __iter__() or __getitem__()
+        if (iterableType is UserDefinedType udt && udt.Symbol != null)
+        {
+            var iterMethod = udt.Symbol.Methods.FirstOrDefault(m => m.Name == DunderNames.Iter);
+            if (iterMethod?.ReturnType is GenericType iterReturn
+                && iterReturn.Name == BuiltinNames.Iterator
+                && iterReturn.TypeArguments.Count > 0)
+            {
+                return iterReturn.TypeArguments[0];
+            }
+
+            var getitemMethod = udt.Symbol.Methods.FirstOrDefault(m => m.Name == DunderNames.GetItem);
+            if (getitemMethod?.ReturnType is { } itemType && itemType != SemanticType.Unknown)
+            {
+                return itemType;
+            }
+        }
+
         // CLR Iterator<T> types
         if (iterableType is BuiltinType builtin && builtin.ClrType != null)
         {
