@@ -144,6 +144,8 @@ public static class DiagnosticCodes
         public const string YieldInNext = "SPY0268";
         public const string GeneratorIterConflict = "SPY0269";
         public const string YieldInTryExcept = "SPY0270";
+        public const string YieldInCatchHandler = "SPY0271";
+        public const string YieldInFinallyBlock = "SPY0272";
 
         // Class and inheritance (SPY0280-SPY0299)
         public const string AbstractInstantiation = "SPY0280";

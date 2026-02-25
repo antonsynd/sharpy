@@ -118,6 +118,28 @@ internal class GeneratorValidator : SemanticValidatorBase
                 code: DiagnosticCodes.Semantic.YieldInTryExcept,
                 span: yieldInTry.Span);
         }
+
+        // Guard 5: yield in catch/except handler body (SPY0271)
+        var yieldInCatch = FindYieldInCatchHandler(funcDef.Body);
+        if (yieldInCatch != null)
+        {
+            AddError(context,
+                "'yield' cannot be used inside an 'except' handler",
+                yieldInCatch.LineStart, yieldInCatch.ColumnStart,
+                code: DiagnosticCodes.Semantic.YieldInCatchHandler,
+                span: yieldInCatch.Span);
+        }
+
+        // Guard 6: yield in finally block (SPY0272)
+        var yieldInFinally = FindYieldInFinallyBlock(funcDef.Body);
+        if (yieldInFinally != null)
+        {
+            AddError(context,
+                "'yield' cannot be used inside a 'finally' block",
+                yieldInFinally.LineStart, yieldInFinally.ColumnStart,
+                code: DiagnosticCodes.Semantic.YieldInFinallyBlock,
+                span: yieldInFinally.Span);
+        }
     }
 
     private static ReturnStatement? FindReturnWithValue(ImmutableArray<Statement> statements)
@@ -131,6 +153,36 @@ internal class GeneratorValidator : SemanticValidatorBase
             if (stmt is TryStatement tryStmt && tryStmt.Handlers.Length > 0)
             {
                 return StatementWalker.FirstOrDefault(tryStmt.Body,
+                    inner => inner is YieldStatement ys ? ys : null);
+            }
+            return null;
+        });
+    }
+
+    private static YieldStatement? FindYieldInCatchHandler(ImmutableArray<Statement> statements)
+    {
+        return StatementWalker.FirstOrDefault(statements, stmt =>
+        {
+            if (stmt is TryStatement tryStmt)
+            {
+                foreach (var handler in tryStmt.Handlers)
+                {
+                    var found = StatementWalker.FirstOrDefault(handler.Body,
+                        inner => inner is YieldStatement ys ? ys : null);
+                    if (found != null) return found;
+                }
+            }
+            return null;
+        });
+    }
+
+    private static YieldStatement? FindYieldInFinallyBlock(ImmutableArray<Statement> statements)
+    {
+        return StatementWalker.FirstOrDefault(statements, stmt =>
+        {
+            if (stmt is TryStatement tryStmt && tryStmt.FinallyBody != null && tryStmt.FinallyBody.Length > 0)
+            {
+                return StatementWalker.FirstOrDefault(tryStmt.FinallyBody,
                     inner => inner is YieldStatement ys ? ys : null);
             }
             return null;

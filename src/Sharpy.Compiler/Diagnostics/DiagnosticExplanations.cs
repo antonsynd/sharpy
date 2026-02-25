@@ -602,6 +602,22 @@ public static class DiagnosticExplanations
             "def gen() -> int:\n    try:\n        yield 1  # not allowed\n    except Exception as e:\n        pass",
             "Move yield outside try/except:\ndef gen() -> int:\n    yield 1\n    try:\n        risky_operation()\n    except Exception as e:\n        handle_error(e)");
 
+        Add(dict, DiagnosticCodes.Semantic.YieldInCatchHandler,
+            "Yield in except handler", "Semantic",
+            "A 'yield' statement cannot appear inside an 'except' handler. " +
+            "This is a .NET restriction: the CLR does not support yield return inside catch blocks (CS1631). " +
+            "Move the yield outside the except handler.",
+            "def gen() -> int:\n    try:\n        pass\n    except Exception as e:\n        yield 1  # not allowed",
+            "Move yield outside the except handler:\ndef gen() -> int:\n    try:\n        risky_operation()\n    except Exception as e:\n        handle_error(e)\n    yield 1");
+
+        Add(dict, DiagnosticCodes.Semantic.YieldInFinallyBlock,
+            "Yield in finally block", "Semantic",
+            "A 'yield' statement cannot appear inside a 'finally' block. " +
+            "This is a .NET restriction: the CLR does not support yield return inside finally blocks (CS1625). " +
+            "Move the yield outside the finally block.",
+            "def gen() -> int:\n    try:\n        pass\n    finally:\n        yield 1  # not allowed",
+            "Move yield outside the finally block:\ndef gen() -> int:\n    yield 1\n    try:\n        risky_operation()\n    finally:\n        cleanup()");
+
         // ── Semantic errors: Class and inheritance (SPY0280-SPY0299) ────
 
         Add(dict, DiagnosticCodes.Semantic.AbstractInstantiation, "Cannot instantiate abstract class", "Semantic",
