@@ -1,0 +1,13 @@
+# Dict literal contextual type inference from return type.
+# Float literals are typed as 'double' internally, but a float variable
+# is typed as 'float'. Mixing these in a dict produces LCA = object.
+# The contextual return type dict[str, float] should refine to the
+# correct type since both double and float are assignable to float.
+
+def get_dimensions(width: float) -> dict[str, float]:
+    return {"width": width, "default_height": 10.0}
+
+def main():
+    dims = get_dimensions(5.0)
+    print(dims["width"])
+    print(dims["default_height"])

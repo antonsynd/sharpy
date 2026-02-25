@@ -1,0 +1,10 @@
+# Dict literal contextual type inference from annotated assignment.
+# Annotated variable d: dict[str, float] with a dict literal whose
+# values mix float variables and float literals (typed as double).
+
+def main():
+    x: float = 1.5
+    y: float = 2.5
+    d: dict[str, float] = {"a": x, "b": 3.0}
+    print(d["a"])
+    print(d["b"])

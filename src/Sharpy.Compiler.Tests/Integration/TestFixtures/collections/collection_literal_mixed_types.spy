@@ -1,0 +1,9 @@
+# Collection literal with genuinely mixed types that should remain object.
+# When dict values are truly different types (int and str), the LCA
+# is correctly object even if there is no contextual type.
+
+def main():
+    # Mixed int and str values - LCA is object, no contextual type to narrow
+    data: dict[str, object] = {"count": 42, "name": "alice"}
+    print(data["count"])
+    print(data["name"])

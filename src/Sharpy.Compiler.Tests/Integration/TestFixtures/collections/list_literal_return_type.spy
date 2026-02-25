@@ -1,0 +1,11 @@
+# List literal contextual type inference from return type.
+# Float variables (typed float) and float literals (typed double)
+# produce LCA = object. The return type list[float] should refine this.
+
+def get_values(x: float) -> list[float]:
+    return [x, 2.0, 3.0]
+
+def main():
+    vals = get_values(1.0)
+    for v in vals:
+        print(v)
