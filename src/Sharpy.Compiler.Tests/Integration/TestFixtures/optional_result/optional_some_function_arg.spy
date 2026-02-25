@@ -1,0 +1,13 @@
+# Test: Some(value) and None() passed as function arguments to T? parameters (regression guard)
+def greet(name: str, title: str? = None()) -> str:
+    return title.unwrap_or("") + name
+
+def format_score(label: str, score: int?) -> str:
+    return label + ": " + str(score.unwrap_or(-1))
+
+def main():
+    print(greet("Alice", Some("Dr. ")))
+    print(greet("Bob", None()))
+    print(greet("Charlie"))
+    print(format_score("Math", Some(95)))
+    print(format_score("Art", None()))

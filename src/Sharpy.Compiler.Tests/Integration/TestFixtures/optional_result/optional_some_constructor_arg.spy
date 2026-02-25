@@ -1,0 +1,20 @@
+# Test: Some(value) and None() passed as constructor arguments to T? parameters
+class Person:
+    name: str
+    score: int?
+
+    def __init__(self, name: str, score: int? = None()):
+        self.name = name
+        self.score = score
+
+    def describe(self) -> str:
+        return self.name + ": " + str(self.score.unwrap_or(-1))
+
+def main():
+    p1: Person = Person("Alice", Some(100))
+    p2: Person = Person("Bob", None())
+    p3: Person = Person("Charlie")
+
+    print(p1.describe())
+    print(p2.describe())
+    print(p3.describe())

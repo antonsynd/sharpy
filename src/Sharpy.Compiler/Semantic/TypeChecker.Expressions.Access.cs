@@ -476,6 +476,7 @@ internal partial class TypeChecker
         // For simple identifier calls (foo(Some(42))), we can look up the function before
         // checking arguments, allowing _expectedType to be set per-parameter.
         FunctionSymbol? earlyFuncSymbol = null;
+        int earlyParamOffset = 0; // offset to skip 'self' parameter for __init__ methods
         if (call.Function is Identifier earlyId)
         {
             var earlySymbol = _symbolTable.Lookup(earlyId.Name);
@@ -488,6 +489,17 @@ internal partial class TypeChecker
                 if (overloads == null || overloads.Count <= 1 || !overloads.Contains(fs))
                 {
                     earlyFuncSymbol = fs;
+                }
+            }
+            else if (earlySymbol is TypeSymbol ts)
+            {
+                // Constructor call: Person(Some(42)) — look up __init__ for parameter types.
+                // __init__ includes 'self' at index 0, but call arguments don't, so offset by 1.
+                var initMethod = ts.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
+                if (initMethod != null && !initMethod.IsGeneric)
+                {
+                    earlyFuncSymbol = initMethod;
+                    earlyParamOffset = 1; // skip 'self' parameter
                 }
             }
         }
@@ -524,9 +536,9 @@ internal partial class TypeChecker
                 continue;
             }
 
-            if (earlyFuncSymbol != null && argIdx < earlyFuncSymbol.Parameters.Count)
+            if (earlyFuncSymbol != null && argIdx + earlyParamOffset < earlyFuncSymbol.Parameters.Count)
             {
-                var paramType = earlyFuncSymbol.Parameters[argIdx].Type;
+                var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
                 _expectedType = paramType is UnknownType ? null : paramType;
             }
             else if (calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)

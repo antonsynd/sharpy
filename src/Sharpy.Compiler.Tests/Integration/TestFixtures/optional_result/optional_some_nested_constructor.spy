@@ -1,0 +1,27 @@
+# Test: Nested constructors with Some(value) - Outer(Inner(Some(42)))
+class Inner:
+    value: int?
+
+    def __init__(self, value: int? = None()):
+        self.value = value
+
+    def get_value_or(self, default_val: int) -> int:
+        return self.value.unwrap_or(default_val)
+
+class Outer:
+    inner: Inner
+
+    def __init__(self, inner: Inner):
+        self.inner = inner
+
+    def get_inner_value(self, default_val: int) -> int:
+        return self.inner.get_value_or(default_val)
+
+def main():
+    o1: Outer = Outer(Inner(Some(42)))
+    o2: Outer = Outer(Inner(None()))
+    o3: Outer = Outer(Inner())
+
+    print(o1.get_inner_value(0))
+    print(o2.get_inner_value(-1))
+    print(o3.get_inner_value(-1))
