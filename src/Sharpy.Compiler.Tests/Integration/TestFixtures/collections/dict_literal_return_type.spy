@@ -1,0 +1,13 @@
+# Dict literal return type uses contextual type from function signature
+# When LCA infers object but return type provides dict[str, float],
+# the contextual type should be used since int is assignable to float.
+
+def make_config() -> dict[str, float]:
+    x: int = 10
+    y: float = 3.14
+    return {"width": x, "height": y}
+
+def main():
+    config = make_config()
+    print(config["width"])
+    print(config["height"])

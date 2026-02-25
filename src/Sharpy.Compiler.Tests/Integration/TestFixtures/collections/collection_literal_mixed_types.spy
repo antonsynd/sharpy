@@ -1,0 +1,8 @@
+# Dict with genuinely mixed types should remain dict[str, object]
+# When the types are not assignable to a common contextual type,
+# the LCA result (object) should be preserved.
+
+def main():
+    d: dict[str, object] = {"a": 1, "b": "hello"}
+    print(d["a"])
+    print(d["b"])

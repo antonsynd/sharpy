@@ -197,6 +197,15 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Check if all types in a list are assignable to a target type.
+    /// Used by contextual type inference for collection literals.
+    /// </summary>
+    private bool AllAssignableTo(List<SemanticType> types, SemanticType target)
+    {
+        return types.All(t => IsAssignable(t, target));
+    }
+
+    /// <summary>
     /// Substitutes type parameters with their corresponding type arguments in a type.
     /// For example, given return type T and type argument int, returns int.
     /// </summary>

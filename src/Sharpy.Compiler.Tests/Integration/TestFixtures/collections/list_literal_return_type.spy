@@ -1,0 +1,13 @@
+# List literal return type uses contextual type from function signature
+# When LCA infers object but return type provides list[float],
+# the contextual type should be used since int is assignable to float.
+
+def get_values() -> list[float]:
+    a: int = 1
+    b: float = 2.5
+    return [a, b]
+
+def main():
+    values = get_values()
+    for v in values:
+        print(v)

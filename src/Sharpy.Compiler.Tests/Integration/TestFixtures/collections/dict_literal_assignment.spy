@@ -1,0 +1,9 @@
+# Dict literal with annotated assignment uses contextual type
+# The annotation dict[str, float] guides type inference when LCA yields object.
+
+def main():
+    x: int = 5
+    y: float = 2.5
+    d: dict[str, float] = {"a": x, "b": y}
+    print(d["a"])
+    print(d["b"])

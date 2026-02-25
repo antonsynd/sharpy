@@ -52,6 +52,18 @@ internal partial class TypeChecker
         // This handles cases like [Bug(), Feature()] -> list[WorkItem]
         var commonType = FindLeastCommonAncestor(elementTypes);
 
+        // When LCA falls back to object but a contextual type is available,
+        // use the expected element type if all elements are assignable to it.
+        // This handles cases like: x: list[float] = [a, b] where a,b are float.
+        if (commonType is UserDefinedType { Name: "object" }
+            && _expectedType is GenericType expectedList
+            && expectedList.Name == BuiltinNames.List
+            && expectedList.TypeArguments.Count == 1
+            && AllAssignableTo(elementTypes, expectedList.TypeArguments[0]))
+        {
+            commonType = expectedList.TypeArguments[0];
+        }
+
         return new GenericType
         {
             Name = BuiltinNames.List,
@@ -104,6 +116,21 @@ internal partial class TypeChecker
         var commonKeyType = FindLeastCommonAncestor(keyTypes);
         var commonValueType = FindLeastCommonAncestor(valueTypes);
 
+        // When LCA falls back to object but a contextual type is available,
+        // use the expected key/value types if all elements are assignable.
+        // This handles cases like: d: dict[str, float] = {"a": x, "b": y}
+        if (_expectedType is GenericType expectedDict
+            && expectedDict.Name == BuiltinNames.Dict
+            && expectedDict.TypeArguments.Count == 2)
+        {
+            if (commonKeyType is UserDefinedType { Name: "object" }
+                && AllAssignableTo(keyTypes, expectedDict.TypeArguments[0]))
+                commonKeyType = expectedDict.TypeArguments[0];
+            if (commonValueType is UserDefinedType { Name: "object" }
+                && AllAssignableTo(valueTypes, expectedDict.TypeArguments[1]))
+                commonValueType = expectedDict.TypeArguments[1];
+        }
+
         return new GenericType
         {
             Name = BuiltinNames.Dict,
@@ -152,6 +179,17 @@ internal partial class TypeChecker
 
         // Find least common ancestor of all element types
         var commonType = FindLeastCommonAncestor(elementTypes);
+
+        // When LCA falls back to object but a contextual type is available,
+        // use the expected element type if all elements are assignable to it.
+        if (commonType is UserDefinedType { Name: "object" }
+            && _expectedType is GenericType expectedSet
+            && expectedSet.Name == BuiltinNames.Set
+            && expectedSet.TypeArguments.Count == 1
+            && AllAssignableTo(elementTypes, expectedSet.TypeArguments[0]))
+        {
+            commonType = expectedSet.TypeArguments[0];
+        }
 
         return new GenericType
         {
