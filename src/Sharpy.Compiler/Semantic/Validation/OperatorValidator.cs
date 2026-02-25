@@ -469,9 +469,30 @@ internal class OperatorValidator : SemanticValidatorBase
         return type is BuiltinType || type == SemanticType.Str;
     }
 
-    private static bool IsEnumType(SemanticType type)
+    /// <summary>
+    /// Checks whether a SemanticType represents an enum type.
+    /// Handles both fully-resolved types (Symbol.TypeKind == Enum) and partially-resolved
+    /// types from cross-module imports where Symbol may be null.
+    /// </summary>
+    private bool IsEnumType(SemanticType type)
     {
-        return type is UserDefinedType { Symbol.TypeKind: TypeKind.Enum };
+        if (type is not UserDefinedType udt)
+            return false;
+
+        // Fast path: Symbol is already resolved with TypeKind
+        if (udt.Symbol is { TypeKind: TypeKind.Enum })
+            return true;
+
+        // Cross-module fallback: ModuleLoader creates UserDefinedType without Symbol
+        // for field types in imported classes. Look up the type name in the SymbolTable.
+        if (udt.Symbol == null && udt.Name != null)
+        {
+            var symbol = _context.SymbolTable.Lookup(udt.Name);
+            if (symbol is TypeSymbol { TypeKind: TypeKind.Enum })
+                return true;
+        }
+
+        return false;
     }
 
     private bool IsComparisonOperator(BinaryOperator op)

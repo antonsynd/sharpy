@@ -1,0 +1,13 @@
+enum Priority:
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+
+def main():
+    p: Priority = Priority.HIGH
+    print(str(p == Priority.HIGH))
+    print(str(p == Priority.LOW))
+    print(str(p != Priority.MEDIUM))
+    print(str(p != Priority.HIGH))
+    print(str(p > Priority.LOW))
+    print(str(p < Priority.MEDIUM))

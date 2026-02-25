@@ -83,8 +83,7 @@ internal class TypeInferenceService
             return typeParamResult;
 
         // Enum types support comparison operators natively (backed by integers in C#)
-        if (left is UserDefinedType { Symbol.TypeKind: TypeKind.Enum } &&
-            right is UserDefinedType { Symbol.TypeKind: TypeKind.Enum })
+        if (IsEnumType(left) && IsEnumType(right))
         {
             if (op is BinaryOperator.Equal or BinaryOperator.NotEqual
                 or BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
@@ -854,4 +853,32 @@ internal class TypeInferenceService
     }
 
     #endregion
+
+    /// <summary>
+    /// Checks whether a SemanticType represents an enum type.
+    /// Handles both fully-resolved types (Symbol.TypeKind == Enum) and partially-resolved
+    /// types from cross-module imports where Symbol may be null. In the latter case,
+    /// falls back to looking up the type name in the SymbolTable.
+    /// </summary>
+    private bool IsEnumType(SemanticType type)
+    {
+        if (type is not UserDefinedType udt)
+            return false;
+
+        // Fast path: Symbol is already resolved with TypeKind
+        if (udt.Symbol is { TypeKind: TypeKind.Enum })
+            return true;
+
+        // Cross-module fallback: ModuleLoader creates UserDefinedType without Symbol
+        // for field types in imported classes. Look up the type name in the SymbolTable
+        // to resolve the actual TypeKind.
+        if (udt.Symbol == null && udt.Name != null)
+        {
+            var symbol = _symbolTable.Lookup(udt.Name);
+            if (symbol is TypeSymbol { TypeKind: TypeKind.Enum })
+                return true;
+        }
+
+        return false;
+    }
 }
