@@ -34,7 +34,6 @@ namespace Sharpy
             // Fallback: materialize and reverse using LINQ
             return new EnumeratorIterator<T>(sequence.Reverse().GetEnumerator());
         }
-
     }
 
     /// <summary>

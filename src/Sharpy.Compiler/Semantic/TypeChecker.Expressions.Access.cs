@@ -491,7 +491,7 @@ internal partial class TypeChecker
                     earlyFuncSymbol = fs;
                 }
             }
-            else if (earlySymbol is TypeSymbol ts)
+            else if (earlySymbol is TypeSymbol ts && !ts.IsGeneric)
             {
                 // Constructor call: Person(Some(42)) — look up __init__ for parameter types.
                 // __init__ includes 'self' at index 0, but call arguments don't, so offset by 1.
