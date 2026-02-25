@@ -158,6 +158,30 @@ public class ClrTypeMapperTests
     }
 
     [Fact]
+    public void MapTask_ReturnsTaskTypeWithNullResult()
+    {
+        // Arrange & Act
+        var result = _mapper.MapClrTypeToSemanticType(typeof(System.Threading.Tasks.Task));
+
+        // Assert
+        Assert.IsType<TaskType>(result);
+        var taskType = (TaskType)result;
+        Assert.Null(taskType.ResultType);
+    }
+
+    [Fact]
+    public void MapTaskOfInt_ReturnsTaskTypeWithIntResult()
+    {
+        // Arrange & Act
+        var result = _mapper.MapClrTypeToSemanticType(typeof(System.Threading.Tasks.Task<int>));
+
+        // Assert
+        Assert.IsType<TaskType>(result);
+        var taskType = (TaskType)result;
+        Assert.Equal(SemanticType.Int, taskType.ResultType);
+    }
+
+    [Fact]
     public void MapRangeIterator_ToBuiltinType()
     {
         // Arrange & Act

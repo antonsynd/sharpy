@@ -84,6 +84,10 @@ internal class ClrTypeMapper
             };
         }
 
+        // Handle non-generic Task
+        if (clrType == typeof(System.Threading.Tasks.Task))
+            return new TaskType { ResultType = null };
+
         // Handle generic types
         if (clrType.IsGenericType)
         {
@@ -163,6 +167,15 @@ internal class ClrTypeMapper
                 {
                     MapClrTypeToSemanticType(typeArgs[0])
                 }
+            };
+        }
+
+        // Task<T>
+        if (IsGenericTypeDefinition(genericDef, typeof(System.Threading.Tasks.Task<>)))
+        {
+            return new TaskType
+            {
+                ResultType = MapClrTypeToSemanticType(typeArgs[0])
             };
         }
 
