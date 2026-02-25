@@ -657,14 +657,40 @@ internal partial class RoslynEmitter
 
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
-        var bodyStatements = func.Body
-            .SelectMany(GenerateBodyStatements);
+        // Check if this is an abstract property:
+        // 1. Has @abstract decorator explicitly, OR
+        // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
+        bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool hasEllipsisBody = func.Body.Length == 1
+            && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+        bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
 
-        var getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-            .WithBody(Block(bodyStatements));
+        // Apply modifiers from decorators (handles public/virtual/override/abstract)
+        var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
+
+        // Ensure abstract modifier is present for abstract properties
+        if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
+        }
+
+        // Build getter: abstract properties use semicolon, concrete use body
+        AccessorDeclarationSyntax getter;
+        if (isAbstract)
+        {
+            getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+        else
+        {
+            var bodyStatements = func.Body
+                .SelectMany(GenerateBodyStatements);
+            getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                .WithBody(Block(bodyStatements));
+        }
 
         var property = PropertyDeclaration(returnType, "IsTrue")
-            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithModifiers(modifiers)
             .WithAccessorList(AccessorList(SingletonList(getter)));
 
         if (!string.IsNullOrEmpty(func.DocString))
@@ -688,15 +714,41 @@ internal partial class RoslynEmitter
 
         var returnType = PredefinedType(Token(SyntaxKind.IntKeyword));
 
-        // Generate getter body from __len__ body
-        var bodyStatements = func.Body
-            .SelectMany(GenerateBodyStatements);
+        // Check if this is an abstract property:
+        // 1. Has @abstract decorator explicitly, OR
+        // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
+        bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool hasEllipsisBody = func.Body.Length == 1
+            && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+        bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
 
-        var getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-            .WithBody(Block(bodyStatements));
+        // Apply modifiers from decorators (handles public/virtual/override/abstract)
+        var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
+
+        // Ensure abstract modifier is present for abstract properties
+        if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
+        }
+
+        // Build getter: abstract properties use semicolon, concrete use body
+        AccessorDeclarationSyntax getter;
+        if (isAbstract)
+        {
+            getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+        else
+        {
+            // Generate getter body from __len__ body
+            var bodyStatements = func.Body
+                .SelectMany(GenerateBodyStatements);
+            getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                .WithBody(Block(bodyStatements));
+        }
 
         var property = PropertyDeclaration(returnType, "Count")
-            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithModifiers(modifiers)
             .WithAccessorList(AccessorList(SingletonList(getter)));
 
         if (!string.IsNullOrEmpty(func.DocString))

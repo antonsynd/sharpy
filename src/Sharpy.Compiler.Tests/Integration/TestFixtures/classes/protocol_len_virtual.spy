@@ -1,0 +1,41 @@
+# Test virtual __len__ with override for polymorphic dispatch via ISized
+
+class Collection:
+    size: int
+
+    def __init__(self, size: int):
+        self.size = size
+
+    @virtual
+    def __len__(self) -> int:
+        return self.size
+
+class BoundedCollection(Collection):
+    max_size: int
+
+    def __init__(self, size: int, max_size: int):
+        super().__init__(size)
+        self.max_size = max_size
+
+    @override
+    def __len__(self) -> int:
+        if self.size > self.max_size:
+            return self.max_size
+        return self.size
+
+def main():
+    # Direct call on base
+    base: Collection = Collection(5)
+    print(len(base))
+
+    # Direct call on subclass (within bounds)
+    bounded = BoundedCollection(3, 10)
+    print(len(bounded))
+
+    # Direct call on subclass (exceeds bounds)
+    bounded2 = BoundedCollection(15, 10)
+    print(len(bounded2))
+
+    # Polymorphic dispatch: subclass via base-typed variable
+    poly: Collection = BoundedCollection(20, 8)
+    print(len(poly))

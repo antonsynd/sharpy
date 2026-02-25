@@ -1,0 +1,21 @@
+# Test abstract __bool__ with override for polymorphic dispatch via IBoolConvertible
+
+@abstract
+class Checkable:
+    def __bool__(self) -> bool: ...
+
+class AlwaysTrue(Checkable):
+    @override
+    def __bool__(self) -> bool:
+        return True
+
+class AlwaysFalse(Checkable):
+    @override
+    def __bool__(self) -> bool:
+        return False
+
+def main():
+    t: Checkable = AlwaysTrue()
+    f: Checkable = AlwaysFalse()
+    print(bool(t))
+    print(bool(f))

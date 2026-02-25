@@ -1,0 +1,39 @@
+# Test virtual __bool__ with override for polymorphic dispatch via IBoolConvertible
+
+class Container:
+    items: int
+
+    def __init__(self, items: int):
+        self.items = items
+
+    @virtual
+    def __bool__(self) -> bool:
+        return self.items > 0
+
+class StrictContainer(Container):
+    threshold: int
+
+    def __init__(self, items: int, threshold: int):
+        super().__init__(items)
+        self.threshold = threshold
+
+    @override
+    def __bool__(self) -> bool:
+        return self.items >= self.threshold
+
+def main():
+    # Direct call on base
+    base: Container = Container(3)
+    print(bool(base))
+
+    # Direct call on subclass
+    strict = StrictContainer(3, 5)
+    print(bool(strict))
+
+    # Polymorphic dispatch: subclass via base-typed variable
+    poly: Container = StrictContainer(3, 5)
+    print(bool(poly))
+
+    # Polymorphic dispatch: subclass meets threshold
+    poly2: Container = StrictContainer(10, 5)
+    print(bool(poly2))
