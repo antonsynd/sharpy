@@ -379,6 +379,19 @@ internal partial class RoslynEmitter
                 _ when argType == SemanticType.Str => SemanticType.Str,
                 _ => null
             };
+
+            // Fallback: for user-defined types (e.g., with __reversed__), extract element type
+            // from the call's resolved return type (Iterator<T> -> T).
+            if (elemType == null)
+            {
+                var callType = _context.SemanticInfo?.GetExpressionType(call);
+                if (callType is GenericType callGeneric
+                    && callGeneric.TypeArguments.Count > 0)
+                {
+                    elemType = callGeneric.TypeArguments[0];
+                }
+            }
+
             if (elemType != null)
                 typeArg = _typeMapper.MapSemanticType(elemType);
         }

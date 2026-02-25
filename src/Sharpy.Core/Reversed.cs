@@ -19,6 +19,12 @@ namespace Sharpy
                 throw TypeError.ArgNone("reversed", "sequence");
             }
 
+            // Check for IReverseEnumerable<T> at runtime (user-defined __reversed__)
+            if (sequence is IReverseEnumerable<T> reversible)
+            {
+                return new EnumeratorIterator<T>(reversible.GetReverseEnumerator());
+            }
+
             // Optimization for IList<T>: iterate backwards without materializing
             if (sequence is IList<T> list)
             {
@@ -28,6 +34,7 @@ namespace Sharpy
             // Fallback: materialize and reverse using LINQ
             return new EnumeratorIterator<T>(sequence.Reverse().GetEnumerator());
         }
+
     }
 
     /// <summary>

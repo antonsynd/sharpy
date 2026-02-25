@@ -1,0 +1,10 @@
+# Test: reversed() on list continues to work (regression guard)
+def main():
+    nums: list[int] = [1, 2, 3, 4, 5]
+    for x in reversed(nums):
+        print(x)
+
+    # Also test with strings
+    names: list[str] = ["alice", "bob", "charlie"]
+    for name in reversed(names):
+        print(name)

@@ -1,0 +1,2 @@
+implicitly implements 'Sharpy.IReverseEnumerable<int>' via '__reversed__'
+implicitly implements 'System.Collections.Generic.IEnumerable<int>' via '__iter__'

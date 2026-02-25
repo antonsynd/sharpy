@@ -650,6 +650,40 @@ internal class TypeInferenceService
     }
 
     /// <summary>
+    /// Infers the element type produced by reversed() on a given type.
+    /// Handles standard iterables (list, str, etc.) and user-defined types
+    /// with __reversed__() protocol methods.
+    /// </summary>
+    /// <remarks>
+    /// Kept separate from <see cref="InferIterableElementType"/> because reversed
+    /// semantics differ from forward iteration — a type may support __reversed__
+    /// without supporting __iter__ (or vice versa).
+    /// </remarks>
+    public SemanticType? InferReversedElementType(SemanticType type)
+    {
+        // First try standard iterable inference (works for list, str, etc.)
+        var iterableElement = InferIterableElementType(type);
+        if (iterableElement != null)
+            return iterableElement;
+
+        // Check for __reversed__ protocol method on user-defined types
+        if (type is UserDefinedType udt && udt.Symbol != null)
+        {
+            var reversedMethod = udt.Symbol.Methods.FirstOrDefault(
+                m => m.Name == DunderNames.Reversed);
+            if (reversedMethod?.ReturnType is { } returnType
+                && returnType != SemanticType.Unknown
+                && returnType != SemanticType.Void)
+            {
+                // __reversed__ returns the element type directly (it's a generator yielding T)
+                return returnType;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Infers the result type of an index access operation.
     /// Returns null if the type is not indexable.
     /// </summary>

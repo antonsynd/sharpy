@@ -588,7 +588,7 @@ internal partial class TypeChecker
             // reversed(iterable) -> Iterator<T>
             if (id.Name == BuiltinNames.Reversed && argTypes.Count == 1)
             {
-                var elementType = _typeInference.InferIterableElementType(argTypes[0]);
+                var elementType = _typeInference.InferReversedElementType(argTypes[0]);
                 if (elementType != null)
                     return new GenericType { Name = BuiltinNames.Iterator, TypeArguments = new List<SemanticType> { elementType } };
             }
