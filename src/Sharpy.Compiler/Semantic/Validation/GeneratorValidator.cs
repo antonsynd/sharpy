@@ -169,7 +169,8 @@ internal class GeneratorValidator : SemanticValidatorBase
                 {
                     var found = StatementWalker.FirstOrDefault(handler.Body,
                         inner => inner is YieldStatement ys ? ys : null);
-                    if (found != null) return found;
+                    if (found != null)
+                        return found;
                 }
             }
             return null;
