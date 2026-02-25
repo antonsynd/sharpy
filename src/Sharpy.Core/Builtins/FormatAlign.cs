@@ -27,6 +27,18 @@ namespace Sharpy
                         // Python puts extra padding on the right when total padding is odd
                         return value.PadLeft(value.Length + leftPadding, fill).PadRight(width, fill);
                     }
+                case '=':
+                    {
+                        string sign = "";
+                        string digits = value;
+                        if (value.Length > 0 && (value[0] == '-' || value[0] == '+'))
+                        {
+                            sign = value.Substring(0, 1);
+                            digits = value.Substring(1);
+                        }
+                        int digitPadWidth = width - sign.Length;
+                        return sign + digits.PadLeft(digitPadWidth, fill);
+                    }
                 default:
                     return value;
             }

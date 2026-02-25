@@ -1,0 +1,4 @@
+def main():
+    x: int = -42
+    print(f"{x:=10}")
+    print(f"{x:0=10}")

@@ -738,6 +738,38 @@ internal partial class RoslynEmitter
                         }
                         parts.Add(Interpolation(ParenthesizedExpression(formatted)));
                     }
+                    else if (result.NeedsExpressionRewrite && result.Grouping == '_')
+                    {
+                        // Underscore grouping: f"{x:_}" ->
+                        //   $"{x.ToString("N0", System.Globalization.CultureInfo.InvariantCulture).Replace(",", "_")}"
+                        var innerExpr = GenerateExpression(part.Expression);
+                        var toStringCall = InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                innerExpr, IdentifierName("ToString")))
+                            .WithArgumentList(ArgumentList(SeparatedList(new[]
+                            {
+                                Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
+                                    Literal("N0"))),
+                                Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                            IdentifierName("System"),
+                                            IdentifierName("Globalization")),
+                                        IdentifierName("CultureInfo")),
+                                    IdentifierName("InvariantCulture")))
+                            })));
+                        var replaceCall = InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                toStringCall, IdentifierName("Replace")))
+                            .WithArgumentList(ArgumentList(SeparatedList(new[]
+                            {
+                                Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
+                                    Literal(","))),
+                                Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
+                                    Literal("_")))
+                            })));
+                        parts.Add(Interpolation(ParenthesizedExpression(replaceCall)));
+                    }
                     else if (result.NeedsExpressionRewrite && result.AlignmentMode.HasValue)
                     {
                         // Center-align or custom fill: f"{x:*^10}" ->
@@ -865,7 +897,8 @@ internal partial class RoslynEmitter
         char? FillChar,
         char? AlignmentMode,
         int? Width,
-        int? Base);
+        int? Base,
+        char? Grouping = null);
 
     /// <summary>
     /// Parses Python's format specification mini-language into C#-compatible components.
@@ -999,7 +1032,8 @@ internal partial class RoslynEmitter
         // Alignment handling
         if (alignmentMode.HasValue)
         {
-            bool needsRewrite = alignmentMode == '^' || (fillChar.HasValue && fillChar != ' ');
+            bool needsRewrite = alignmentMode == '^' || alignmentMode == '='
+                || (fillChar.HasValue && fillChar != ' ');
             if (needsRewrite)
             {
                 return new FormatSpecResult(formatString, null, true, fillChar ?? ' ',
@@ -1010,6 +1044,12 @@ internal partial class RoslynEmitter
             int alignment = alignmentMode == '<' ? -(width ?? 0) : (width ?? 0);
             if (alignment != 0)
                 return new FormatSpecResult(formatString, alignment, false, null, null, null, null);
+        }
+
+        // Underscore grouping needs expression rewrite
+        if (grouping == '_')
+        {
+            return new FormatSpecResult(formatString, null, true, null, null, null, null, '_');
         }
 
         // Zero-pad without alignment for integer types: 05 -> D5
