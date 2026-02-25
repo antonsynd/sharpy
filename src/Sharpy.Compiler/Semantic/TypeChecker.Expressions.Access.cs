@@ -476,6 +476,10 @@ internal partial class TypeChecker
         // For simple identifier calls (foo(Some(42))), we can look up the function before
         // checking arguments, allowing _expectedType to be set per-parameter.
         FunctionSymbol? earlyFuncSymbol = null;
+        // Parameter offset: __init__ parameters include 'self' at index 0, but call
+        // arguments don't include 'self'. When earlyFuncSymbol comes from a constructor,
+        // we offset by 1 to skip the 'self' parameter.
+        int earlyParamOffset = 0;
         if (call.Function is Identifier earlyId)
         {
             var earlySymbol = _symbolTable.Lookup(earlyId.Name);
@@ -488,6 +492,17 @@ internal partial class TypeChecker
                 if (overloads == null || overloads.Count <= 1 || !overloads.Contains(fs))
                 {
                     earlyFuncSymbol = fs;
+                }
+            }
+            else if (earlySymbol is TypeSymbol ts && !ts.IsGeneric)
+            {
+                // Constructor call: look up __init__ to get parameter types for
+                // tagged union constructor inference (Some/None()/Ok/Err) in arguments.
+                var initMethod = ts.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
+                if (initMethod != null)
+                {
+                    earlyFuncSymbol = initMethod;
+                    earlyParamOffset = 1; // skip 'self' parameter
                 }
             }
         }
@@ -524,9 +539,9 @@ internal partial class TypeChecker
                 continue;
             }
 
-            if (earlyFuncSymbol != null && argIdx < earlyFuncSymbol.Parameters.Count)
+            if (earlyFuncSymbol != null && (argIdx + earlyParamOffset) < earlyFuncSymbol.Parameters.Count)
             {
-                var paramType = earlyFuncSymbol.Parameters[argIdx].Type;
+                var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
                 _expectedType = paramType is UnknownType ? null : paramType;
             }
             else if (calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)

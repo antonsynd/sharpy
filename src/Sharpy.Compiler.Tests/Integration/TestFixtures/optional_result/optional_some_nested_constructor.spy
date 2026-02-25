@@ -1,0 +1,31 @@
+# Test: Nested constructors with Some(value) in T? parameters
+class Inner:
+    value: int?
+
+    def __init__(self, value: int? = None()):
+        self.value = value
+
+    def get_value_or(self, default: int) -> int:
+        if self.value is not None:
+            return self.value
+        return default
+
+class Outer:
+    inner: Inner
+    label: str
+
+    def __init__(self, inner: Inner, label: str):
+        self.inner = inner
+        self.label = label
+
+    def describe(self) -> str:
+        v: int = self.inner.get_value_or(0)
+        return f"{self.label}: {v}"
+
+def main():
+    o1: Outer = Outer(Inner(Some(42)), "with-value")
+    o2: Outer = Outer(Inner(None()), "with-none")
+    o3: Outer = Outer(Inner(), "default")
+    print(o1.describe())
+    print(o2.describe())
+    print(o3.describe())

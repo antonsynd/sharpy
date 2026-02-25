@@ -1,0 +1,31 @@
+# Test: Some(value) and None() passed as constructor arguments to T? parameters
+class Address:
+    city: str
+
+    def __init__(self, city: str):
+        self.city = city
+
+    def __str__(self) -> str:
+        return self.city
+
+class Person:
+    name: str
+    addr: Address?
+
+    def __init__(self, name: str, addr: Address? = None()):
+        self.name = name
+        self.addr = addr
+
+    def describe(self) -> str:
+        if self.addr is not None:
+            return f"{self.name} lives in {self.addr}"
+        return f"{self.name} has no address"
+
+def main():
+    addr1: Address = Address("Springfield")
+    p1: Person = Person("Alice", Some(addr1))
+    p2: Person = Person("Bob", None())
+    p3: Person = Person("Charlie")
+    print(p1.describe())
+    print(p2.describe())
+    print(p3.describe())

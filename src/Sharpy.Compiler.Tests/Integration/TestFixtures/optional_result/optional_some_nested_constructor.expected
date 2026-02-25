@@ -1,0 +1,3 @@
+with-value: 42
+with-none: 0
+default: 0
