@@ -115,6 +115,82 @@ def _errors_are_equivalent(err1: Optional[str], err2: Optional[str]) -> bool:
     return normalize(err1) == normalize(err2)
 
 
+_SPY0301_MODULE_PATTERN = re.compile(r"SPY0301.*module\s+'(\w+)'")
+
+
+def _extract_top_level_symbols(source: str) -> list[str]:
+    """Extract top-level symbol names (classes, functions, constants) from Sharpy source.
+
+    This is a lightweight regex-based extraction, not a full parse.
+    Used to provide helpful context when SPY0301 (no exported symbol) errors occur.
+    """
+    symbols: list[str] = []
+    for line in source.split("\n"):
+        stripped = line.strip()
+        # Top-level declarations start at column 0 (no indentation)
+        if line and not line[0].isspace():
+            # class Foo: or class Foo(Bar):
+            m = re.match(r"^(?:@\w+\s+)*class\s+(\w+)", stripped)
+            if m:
+                symbols.append(m.group(1))
+                continue
+            # struct Foo: or enum Foo:
+            m = re.match(r"^(?:struct|enum|interface)\s+(\w+)", stripped)
+            if m:
+                symbols.append(m.group(1))
+                continue
+            # def foo(...):
+            m = re.match(r"^def\s+(\w+)\s*\(", stripped)
+            if m:
+                name = m.group(1)
+                if name != "main":
+                    symbols.append(name)
+                continue
+            # type Foo = ...
+            m = re.match(r"^type\s+(\w+)\s*=", stripped)
+            if m:
+                symbols.append(m.group(1))
+                continue
+            # const FOO: type = ... or FOO: type = ...
+            m = re.match(r"^(?:const\s+)?(\w+)\s*:", stripped)
+            if m:
+                symbols.append(m.group(1))
+                continue
+    return symbols
+
+
+def _enrich_error_with_module_symbols(
+    error: str, files: dict[str, str]
+) -> str:
+    """If error contains SPY0301, append available symbols from the referenced module.
+
+    This gives the AI concrete information about what symbols are actually
+    available in the module, rather than forcing it to guess.
+    """
+    match = _SPY0301_MODULE_PATTERN.search(error)
+    if not match:
+        return error
+
+    module_name = match.group(1)
+    source_filename = f"{module_name}.spy"
+
+    if source_filename not in files:
+        return error
+
+    symbols = _extract_top_level_symbols(files[source_filename])
+    if not symbols:
+        return error + (
+            f"\n\nNote: Module '{module_name}' ({source_filename}) appears to have "
+            f"no top-level exported symbols. Check that declarations are at the "
+            f"top level (not indented)."
+        )
+
+    return error + (
+        f"\n\nAvailable top-level symbols in '{module_name}' ({source_filename}): "
+        f"{', '.join(symbols)}"
+    )
+
+
 class IterationStatus(Enum):
     """Status of a dogfooding iteration."""
 
@@ -1612,6 +1688,8 @@ class DogfoodOrchestrator:
                     file=sys.stderr,
                 )
                 last_error = f"Sharpy compiler error: {semantic_error}"
+                # Enrich SPY0301 errors with available symbols from the module
+                last_error = _enrich_error_with_module_symbols(last_error, files)
                 if _errors_are_equivalent(last_error, previous_error):
                     print(
                         f"  Same error on consecutive attempts — likely a compiler limitation. Stopping retries.",

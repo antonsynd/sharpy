@@ -33,7 +33,8 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "Check that the imported symbol name matches exactly "
         "(case-sensitive) and that the symbol is defined at the module's top level. "
         "If the symbol is an @abstract class, try simplifying: remove the @abstract decorator "
-        "or move the class to the importing file. Abstract class cross-module imports can be unreliable.",
+        "or move the class to the importing file. Abstract class cross-module imports can be unreliable. "
+        "IMPORTANT: Do NOT reference symbols that you did not define in the source file.",
     ),
     (
         r"SPY0907",
@@ -44,6 +45,33 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         r"FormatException.*0x",
         "Hex literals are supported in Sharpy. If you see a FormatException, "
         "ensure hex values don't exceed the 64-bit signed integer range (max 0x7FFFFFFFFFFFFFFF).",
+    ),
+    (
+        r"CS0513.*abstract.*non-abstract",
+        "The class containing @abstract methods must itself be decorated with @abstract. "
+        "Add @abstract before the class definition.",
+    ),
+    (
+        r"CS0506.*not.*virtual",
+        "Cannot @override a method that is not @virtual or @abstract in the base class. "
+        "Add @virtual to the base class method, or remove @override from the subclass method.",
+    ),
+    (
+        r"SPY0222",
+        "Operator not supported on this type. For enum comparisons, ensure both sides "
+        "are the same enum type. For class comparisons, implement __eq__.",
+    ),
+    (
+        r"CS0029.*Exception|CS0155",
+        "Custom exception classes must extend Exception or a builtin exception type. "
+        "Change 'class MyError:' to 'class MyError(Exception):'.",
+    ),
+    (
+        r"SPY0220.*list\[.*\].*list\[",
+        "Generic collections are INVARIANT in Sharpy — list[Child] cannot be assigned to "
+        "list[Parent], even if Child extends Parent. Fix: declare the variable/parameter as "
+        "list[Parent] from the start, and add items individually. "
+        "Example: shapes: list[Shape] = [] then shapes.append(Circle(5.0)).",
     ),
 ]
 
@@ -85,7 +113,9 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Struct inheritance forbidden**: Classes CANNOT inherit from structs. Structs are sealed value types.
 - **Generic invariance**: Generic collections are INVARIANT. `list[Child]` cannot be assigned to `list[Parent]`. Declare the collection with the base/interface type.
 - **Abstract class decorator**: When using `@abstract` methods, the containing class MUST also be decorated with `@abstract`.
-- **Optional usage**: `Some()` and `None()` can only be used where the target type is `T?` (Optional). Cannot pass `None()` where a non-optional type is expected."""
+- **Optional usage**: `Some()` and `None()` can only be used where the target type is `T?` (Optional). Cannot pass `None()` where a non-optional type is expected.
+- **Virtual/override required for polymorphism**: Polymorphic dispatch requires `@virtual` on the base class method AND `@override` on each subclass method. Without these decorators, the base class method is called even when the object is a subclass instance.
+- **Custom exception hierarchy**: Classes used with `raise` or `except` MUST extend `Exception` (or a builtin exception type like `ValueError`, `RuntimeError`). A plain class cannot be raised or caught."""
 
 ENTRY_POINT_SECTION = """\
 ## CRITICAL: Program Entry Point Requirement
@@ -737,6 +767,15 @@ def main():
 # 11
 ```
 
+### Expected Output Verification (CRITICAL)
+
+After writing the code and expected output:
+1. **Mentally trace `main()` line by line** — compute each print() argument by hand.
+2. **Verify arithmetic** — especially modular arithmetic (%), floating-point (*), and hash computations.
+3. **Count carefully** — for collections, count unique elements by listing them explicitly.
+4. **Check method dispatch** — if a method is NOT @virtual, the BASE class version runs regardless of the actual type.
+5. **Verify every line of expected output matches your trace.** If it doesn't, fix the expected output.
+
 IMPORTANT:
 - Use ONLY simple print() calls with ONE argument: print(value)
 - For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
@@ -887,6 +926,15 @@ def main():
 # 10
 # 10
 ```
+
+### Expected Output Verification (CRITICAL)
+
+After writing the code and expected output:
+1. **Mentally trace `main()` line by line** — compute each print() argument by hand.
+2. **Verify arithmetic** — especially modular arithmetic (%), floating-point (*), and hash computations.
+3. **Count carefully** — for collections, count unique elements by listing them explicitly.
+4. **Check method dispatch** — if a method is NOT @virtual, the BASE class version runs regardless of the actual type.
+5. **Verify every line of expected output matches your trace.** If it doesn't, fix the expected output.
 
 CRITICAL RULES:
 1. Each file starts with `=== FILE: filename.spy ===`
