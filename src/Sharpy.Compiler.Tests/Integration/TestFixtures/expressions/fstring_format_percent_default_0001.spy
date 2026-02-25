@@ -1,0 +1,4 @@
+def main():
+    x: float = 0.75
+    print(f"{x:%}")
+    print(f"{x:.2%}")

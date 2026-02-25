@@ -968,7 +968,7 @@ internal partial class RoslynEmitter
         // Percent format — handled by special-case in caller (IsPercentFormat)
         if (typeChar == '%')
         {
-            var prec = precision?.ToString() ?? "0";
+            var prec = precision?.ToString() ?? "6";
             return new FormatSpecResult("P" + prec, null, false, null, null, null, null);
         }
 
@@ -1046,13 +1046,13 @@ internal partial class RoslynEmitter
     /// </summary>
     private static bool IsPercentFormat(string pythonSpec, out string precision)
     {
-        precision = "0";
+        precision = "6";
         if (string.IsNullOrEmpty(pythonSpec))
             return false;
         var result = TranslatePythonFormatSpec(pythonSpec);
         if (result.FormatString.StartsWith("P") && !result.NeedsExpressionRewrite)
         {
-            precision = result.FormatString.Length > 1 ? result.FormatString.Substring(1) : "0";
+            precision = result.FormatString.Length > 1 ? result.FormatString.Substring(1) : "6";
             return true;
         }
         return false;
