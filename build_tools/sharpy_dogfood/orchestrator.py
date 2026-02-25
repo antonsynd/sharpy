@@ -159,9 +159,7 @@ def _extract_top_level_symbols(source: str) -> list[str]:
     return symbols
 
 
-def _enrich_error_with_module_symbols(
-    error: str, files: dict[str, str]
-) -> str:
+def _enrich_error_with_module_symbols(error: str, files: dict[str, str]) -> str:
     """If error contains SPY0301, append available symbols from the referenced module.
 
     This gives the AI concrete information about what symbols are actually
