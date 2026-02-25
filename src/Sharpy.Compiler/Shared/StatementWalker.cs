@@ -16,18 +16,7 @@ internal static class StatementWalker
     public static bool Any(
         ImmutableArray<Statement> statements,
         Func<Statement, bool> predicate)
-    {
-        foreach (var stmt in statements)
-        {
-            if (predicate(stmt))
-                return true;
-
-            if (TryRecurse(stmt, predicate))
-                return true;
-        }
-
-        return false;
-    }
+        => FirstOrDefault(statements, s => predicate(s) ? s : null) != null;
 
     /// <summary>
     /// Returns the first non-null result from the selector (with early exit).
@@ -48,71 +37,6 @@ internal static class StatementWalker
         }
 
         return null;
-    }
-
-    private static bool TryRecurse(
-        Statement stmt,
-        Func<Statement, bool> predicate)
-    {
-        // Skip nested definition scopes
-        if (stmt is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef)
-            return false;
-
-        if (stmt is IfStatement ifStmt)
-        {
-            if (Any(ifStmt.ThenBody, predicate))
-                return true;
-            foreach (var elif in ifStmt.ElifClauses)
-            {
-                if (Any(elif.Body, predicate))
-                    return true;
-            }
-            if (Any(ifStmt.ElseBody, predicate))
-                return true;
-        }
-        else if (stmt is WhileStatement whileStmt)
-        {
-            if (Any(whileStmt.Body, predicate))
-                return true;
-            if (Any(whileStmt.ElseBody, predicate))
-                return true;
-        }
-        else if (stmt is ForStatement forStmt)
-        {
-            if (Any(forStmt.Body, predicate))
-                return true;
-            if (Any(forStmt.ElseBody, predicate))
-                return true;
-        }
-        else if (stmt is TryStatement tryStmt)
-        {
-            if (Any(tryStmt.Body, predicate))
-                return true;
-            foreach (var handler in tryStmt.Handlers)
-            {
-                if (Any(handler.Body, predicate))
-                    return true;
-            }
-            if (Any(tryStmt.ElseBody, predicate))
-                return true;
-            if (tryStmt.FinallyBody != null && Any(tryStmt.FinallyBody, predicate))
-                return true;
-        }
-        else if (stmt is WithStatement withStmt)
-        {
-            if (Any(withStmt.Body, predicate))
-                return true;
-        }
-        else if (stmt is MatchStatement matchStmt)
-        {
-            foreach (var matchCase in matchStmt.Cases)
-            {
-                if (Any(matchCase.Body, predicate))
-                    return true;
-            }
-        }
-
-        return false;
     }
 
     private static T? TryRecurseSelect<T>(
