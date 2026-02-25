@@ -339,7 +339,11 @@ internal partial class RoslynEmitter
             if (lambdaType is Semantic.FunctionType ft && !ft.HasUnresolvedTypes())
             {
                 var delegateType = _typeMapper.MapSemanticType(ft);
-                callTarget = ParenthesizedExpression(CastExpression(delegateType, innerExprForCheck));
+                // Parenthesize the lambda before casting to prevent C# parser ambiguity:
+                // (Func<int,int>)x => x*2 is parsed as cast-of-x, not cast-of-lambda.
+                // ((Func<int,int>)(x => x*2)) is correct.
+                callTarget = ParenthesizedExpression(
+                    CastExpression(delegateType, ParenthesizedExpression(innerExprForCheck)));
             }
             else
             {

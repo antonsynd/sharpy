@@ -1,1 +1,0 @@
-IIFE requires semantic analysis to infer lambda parameter types from call-site arguments. See #231.

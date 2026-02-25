@@ -430,6 +430,15 @@ internal partial class TypeChecker
                 return constructorResult;
         }
 
+        // Detect IIFE: (lambda x: ...)(args) — check arguments first to infer lambda param types
+        var iifeLambda = call.Function is LambdaExpression directLambda ? directLambda
+            : call.Function is Parenthesized paren && paren.Expression is LambdaExpression innerLambda ? innerLambda
+            : null;
+        if (iifeLambda != null && call.KeywordArguments.Length == 0)
+        {
+            return CheckIifeLambdaCall(call, iifeLambda);
+        }
+
         // Check if this is a null conditional method call (obj?.method())
         bool isNullConditionalCall = call.Function is MemberAccess { IsNullConditional: true };
         bool isOptionalNullConditional = false;
@@ -1493,6 +1502,42 @@ internal partial class TypeChecker
         }
 
         return null; // Not a tagged union constructor — fall through to normal handling
+    }
+
+    private SemanticType CheckIifeLambdaCall(FunctionCall call, LambdaExpression lambda)
+    {
+        // 1. Check arguments first to get concrete types
+        var argTypes = new List<SemanticType>();
+        foreach (var arg in call.Arguments)
+            argTypes.Add(CheckExpression(arg));
+
+        // 2. Validate argument count
+        if (argTypes.Count != lambda.Parameters.Length)
+        {
+            AddError($"Lambda expects {lambda.Parameters.Length} argument(s) but {argTypes.Count} were given",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                span: call.Span);
+            // Check lambda for error recovery (records its type in SemanticInfo)
+            CheckExpression(call.Function);
+            return SemanticType.Unknown;
+        }
+
+        // 3. Build expected FunctionType from argument types
+        var expectedFuncType = new FunctionType
+        {
+            ParameterTypes = argTypes,
+            ReturnType = SemanticType.Unknown
+        };
+
+        // 4. Check lambda with expected type context
+        var saved = _expectedType;
+        _expectedType = expectedFuncType;
+        var lambdaType = CheckExpression(call.Function);
+        _expectedType = saved;
+
+        // 5. Return the inferred return type
+        return lambdaType is FunctionType ft ? ft.ReturnType : SemanticType.Unknown;
     }
 
     private SemanticType CheckLambda(LambdaExpression lambda)
