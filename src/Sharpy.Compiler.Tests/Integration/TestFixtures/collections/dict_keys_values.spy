@@ -1,0 +1,6 @@
+def main():
+    d: dict[str, int] = {"x": 10, "y": 20}
+    for k in d.keys():
+        print(k)
+    for v in d.values():
+        print(v)

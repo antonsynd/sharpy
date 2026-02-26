@@ -251,7 +251,7 @@ internal partial class RoslynEmitter
             if (memberAccess.IsNullConditional)
             {
                 // For Optional<T>: lower to ternary since ?.  doesn't work on structs
-                if (GetExpressionSemanticType(memberAccess.Object) is OptionalType)
+                if (GetExpressionSemanticType(memberAccess.Object) is OptionalType objOptType)
                 {
                     // Ensure obj is only evaluated once for complex expressions
                     var (safeObj, capture) = EnsureSingleEvaluation(obj, memberAccess.Object);
@@ -270,16 +270,30 @@ internal partial class RoslynEmitter
                     if (capture != null)
                         cond = BinaryExpression(SyntaxKind.LogicalAndExpression, capture, cond);
 
-                    // Use Optional<T>.None for the false branch so C# resolves the ternary
-                    // as Optional<T> (via implicit conversion on the true branch if needed).
-                    // Use default(T) instead of bare default — bare default lacks a target type
-                    // when combined with ?? (CS8716).
+                    // Determine the Optional type and whether to wrap the true branch.
+                    // Case 1: callType is OptionalType — the method itself returns Optional<T>
+                    //   (e.g., get_city() -> str?). The true branch already returns Optional<T>,
+                    //   so we use it as-is and only set the false branch to Optional<T>.None.
+                    // Case 2: callType is Unknown or non-Optional — the method returns a plain type
+                    //   (e.g., str.upper() -> str, resolved via CLR discovery). The true branch returns
+                    //   the raw type, so we wrap it in Optional<T>.Some() using the object's
+                    //   Optional underlying type. This ensures both branches have the same type.
                     var callType = GetExpressionSemanticType(call);
-                    var falseExpr = callType is OptionalType optCallType
-                        ? (ExpressionSyntax)GenerateOptionalNone(optCallType)
-                        : (ExpressionSyntax)DefaultExpression(_typeMapper.MapSemanticType(callType ?? SemanticType.Unknown));
-
-                    return ConditionalExpression(cond, methodCall, falseExpr);
+                    ExpressionSyntax trueBranch;
+                    ExpressionSyntax falseExpr;
+                    if (callType is OptionalType optCallType)
+                    {
+                        // Method returns Optional<T> — true branch is already correct
+                        trueBranch = methodCall;
+                        falseExpr = GenerateOptionalNone(optCallType);
+                    }
+                    else
+                    {
+                        // Method returns non-Optional (or Unknown) — wrap both branches
+                        trueBranch = WrapInOptionalSome(methodCall, objOptType);
+                        falseExpr = GenerateOptionalNone(objOptType);
+                    }
+                    return ConditionalExpression(cond, trueBranch, falseExpr);
                 }
 
                 // Generate: obj?.Method(args)
@@ -542,7 +556,7 @@ internal partial class RoslynEmitter
         if (memberAccess.IsNullConditional)
         {
             // For Optional<T>: lower to ternary since ?. doesn't work on structs
-            if (GetExpressionSemanticType(memberAccess.Object) is OptionalType)
+            if (GetExpressionSemanticType(memberAccess.Object) is OptionalType propObjOptType)
             {
                 // Ensure obj is only evaluated once for complex expressions
                 var (safeObj, capture) = EnsureSingleEvaluation(obj, memberAccess.Object);
@@ -559,16 +573,25 @@ internal partial class RoslynEmitter
                         .WithArgumentList(ArgumentList()),
                     member);
 
-                // Use Optional<T>.None for the false branch so C# resolves the ternary
-                // as Optional<T> (via implicit conversion on the true branch if needed).
-                // Use default(T) instead of bare default — bare default lacks a target type
-                // when combined with ?? (CS8716).
+                // Determine the Optional type and whether to wrap the true branch.
+                // Same logic as method calls: if the member type is already Optional,
+                // the true branch is correct as-is. Otherwise wrap in Optional<T>.Some().
                 var exprType = GetExpressionSemanticType(memberAccess);
-                var falseExpr = exprType is OptionalType optExprType
-                    ? (ExpressionSyntax)GenerateOptionalNone(optExprType)
-                    : (ExpressionSyntax)DefaultExpression(_typeMapper.MapSemanticType(exprType ?? SemanticType.Unknown));
-
-                result = ConditionalExpression(cond, trueExpr, falseExpr);
+                ExpressionSyntax falseExpr;
+                ExpressionSyntax wrappedTrue;
+                if (exprType is OptionalType optExprType)
+                {
+                    // Member returns Optional<T> — true branch is already correct
+                    wrappedTrue = trueExpr;
+                    falseExpr = GenerateOptionalNone(optExprType);
+                }
+                else
+                {
+                    // Member returns non-Optional (or Unknown) — wrap both branches
+                    wrappedTrue = WrapInOptionalSome(trueExpr, propObjOptType);
+                    falseExpr = GenerateOptionalNone(propObjOptType);
+                }
+                result = ConditionalExpression(cond, wrappedTrue, falseExpr);
             }
             else
             {
@@ -1075,6 +1098,24 @@ internal partial class RoslynEmitter
             GenericName("Optional")
                 .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(underlyingType))),
             IdentifierName("None"));
+    }
+
+    /// <summary>
+    /// Wraps an already-generated expression in Optional&lt;T&gt;.Some(value).
+    /// Used for null-conditional ternary true branches where C# cannot reconcile
+    /// the unwrapped result type with Optional&lt;T&gt;.None on the false branch.
+    /// </summary>
+    private ExpressionSyntax WrapInOptionalSome(ExpressionSyntax value, OptionalType optType)
+    {
+        var underlyingType = _typeMapper.MapSemanticType(optType.UnderlyingType);
+
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                GenericName("Optional")
+                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(underlyingType))),
+                IdentifierName("Some")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(value))));
     }
 
     /// <summary>

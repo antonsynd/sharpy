@@ -595,6 +595,14 @@ internal class TypeInferenceService
     /// </summary>
     public SemanticType? InferIterableElementType(SemanticType iterableType)
     {
+        // Dict view types: items() yields (K, V) tuples, keys() yields K, values() yields V
+        if (iterableType is GenericType { Name: "DictItemsView" } itemsView && itemsView.TypeArguments.Count == 2)
+            return new TupleType { ElementTypes = new List<SemanticType>(itemsView.TypeArguments) };
+        if (iterableType is GenericType { Name: "DictKeyView" } keyView && keyView.TypeArguments.Count >= 1)
+            return keyView.TypeArguments[0];
+        if (iterableType is GenericType { Name: "DictValuesView" } valuesView && valuesView.TypeArguments.Count >= 1)
+            return valuesView.TypeArguments[0];
+
         // Generic containers
         if (iterableType is GenericType generic && generic.TypeArguments.Count > 0)
         {

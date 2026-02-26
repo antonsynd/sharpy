@@ -1,0 +1,19 @@
+class Base:
+    x: int
+    y: str
+
+    def __init__(self, x: int, y: str):
+        self.x = x
+        self.y = y
+
+    def describe(self) -> str:
+        return f"{self.y}: {self.x}"
+
+class Child(Base):
+    def greet(self) -> str:
+        return f"Hello from {self.describe()}"
+
+def main():
+    c: Child = Child(42, "value")
+    print(c.greet())
+    print(c.x)

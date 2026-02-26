@@ -229,6 +229,14 @@ internal partial class RoslynEmitter
             members.Add(GenerateConstructor(initMethod, className, fieldMapping, fieldTypeMapping));
         }
 
+        // Generate forwarding constructors if this class has no __init__ and inherits
+        // from a class with constructors. C# doesn't inherit constructors, so subclasses
+        // without __init__ need forwarding constructors to call the parent's constructor.
+        if (initMethods.Count == 0 && _currentTypeSymbol?.BaseType != null)
+        {
+            members.AddRange(GenerateForwardingConstructors(className));
+        }
+
         // Generate complementary operators for C# requirements
         // If __bool__ is defined, operator true was generated above — also generate operator false
         if (dunders.Contains(DunderNames.Bool))
@@ -443,6 +451,90 @@ internal partial class RoslynEmitter
         }
 
         return constructor;
+    }
+
+    /// <summary>
+    /// Generates forwarding constructors for a class that doesn't define __init__
+    /// but inherits from a class that has constructors with parameters.
+    /// C# doesn't inherit constructors, so we must explicitly forward them.
+    /// Walks up the inheritance chain to find the nearest ancestor with __init__.
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateForwardingConstructors(string className)
+    {
+        var constructors = new List<MemberDeclarationSyntax>();
+
+        // Walk up inheritance chain to find nearest ancestor with __init__
+        var ancestor = _currentTypeSymbol?.BaseType;
+        while (ancestor != null)
+        {
+            var initMethods = ancestor.Constructors;
+            if (initMethods.Count > 0)
+            {
+                foreach (var initMethod in initMethods)
+                {
+                    // Skip parameterless constructors — C# handles these automatically
+                    var nonSelfParams = initMethod.Parameters
+                        .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                    if (nonSelfParams.Count == 0)
+                        continue;
+
+                    // Generate parameter list from semantic ParameterSymbol data
+                    var parameters = nonSelfParams.Select(p =>
+                    {
+                        var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                        var paramType = p.Type is not null and not UnknownType
+                            ? _typeMapper.MapSemanticType(p.Type)
+                            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+                        // For variadic parameters, wrap the element type in an array
+                        if (p.IsVariadic)
+                        {
+                            paramType = ArrayType(paramType)
+                                .WithRankSpecifiers(SingletonList(ArrayRankSpecifier()));
+                        }
+
+                        var paramSyntax = Parameter(Identifier(paramName)).WithType(paramType);
+
+                        // For variadic parameters, add the 'params' modifier
+                        if (p.IsVariadic)
+                        {
+                            paramSyntax = paramSyntax.WithModifiers(TokenList(Token(SyntaxKind.ParamsKeyword)));
+                        }
+
+                        // Handle default values
+                        if (p.DefaultValue != null)
+                        {
+                            paramSyntax = paramSyntax.WithDefault(
+                                EqualsValueClause(GenerateExpression(p.DefaultValue)));
+                        }
+
+                        return paramSyntax;
+                    }).ToArray();
+
+                    // Generate base constructor call arguments
+                    var baseArgs = nonSelfParams.Select(p =>
+                    {
+                        var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                        return Argument(IdentifierName(paramName));
+                    }).ToArray();
+
+                    var ctor = ConstructorDeclaration(Identifier(className))
+                        .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                        .WithParameterList(ParameterList(SeparatedList(parameters)))
+                        .WithInitializer(ConstructorInitializer(
+                            SyntaxKind.BaseConstructorInitializer,
+                            ArgumentList(SeparatedList(baseArgs))))
+                        .WithBody(Block());
+
+                    constructors.Add(ctor);
+                }
+                break; // Only forward from nearest ancestor with constructors
+            }
+            ancestor = ancestor.BaseType;
+        }
+
+        return constructors;
     }
 
     private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)

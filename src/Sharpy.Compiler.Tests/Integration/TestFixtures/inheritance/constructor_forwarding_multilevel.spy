@@ -1,0 +1,16 @@
+class GrandParent:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Parent(GrandParent):
+    pass
+
+class Child(Parent):
+    def greet(self) -> str:
+        return f"Hi, I'm {self.name}"
+
+def main():
+    c: Child = Child("Alice")
+    print(c.greet())

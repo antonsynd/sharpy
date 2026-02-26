@@ -22,7 +22,7 @@ public static partial class SetComprehension
             3
         };
 #line 4 "set_comprehension.spy"
-        Sharpy.Set<int> result = new Sharpy.Set<int>(items.Select(x => x));
+        Sharpy.Set<int> result = new Sharpy.Set<int>(items.Select((int x) => x));
 #line 5 "set_comprehension.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(result));
     }

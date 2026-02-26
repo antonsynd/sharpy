@@ -66,10 +66,8 @@ internal class BuiltinRegistry
         // Load builtin functions using reflection-based discovery
         LoadBuiltinFunctions();
 
-        // Register generic builtins that are filtered out by OverloadIndexBuilder
-        // (it excludes generic method definitions). These are special-cased in TypeChecker/CodeGen.
-        RegisterGenericBuiltin(BuiltinNames.Reversed, 1);
-        RegisterGenericBuiltin(BuiltinNames.Sorted, 1);
+        // Generic builtins (reversed, sorted, min, max) are now auto-discovered
+        // via reflection. Their type inference is handled by TypeChecker special cases.
 
         // Auto-discover and register public types from Sharpy.Core (exceptions, etc.)
         LoadBuiltinTypes();
@@ -107,6 +105,11 @@ internal class BuiltinRegistry
         // Note: This is called during construction, so no concurrent access is expected here
         foreach (var function in builtinFunctions)
         {
+            // Skip generic functions that conflict with registered type constructors
+            // (e.g., Builtins.List<T>() would conflict with the list type constructor)
+            if (function.IsGeneric && _types.ContainsKey(function.Name))
+                continue;
+
             if (!_functions.ContainsKey(function.Name))
             {
                 _functions[function.Name] = new List<FunctionSymbol>();

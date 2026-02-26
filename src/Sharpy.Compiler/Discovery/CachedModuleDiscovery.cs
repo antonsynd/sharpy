@@ -181,7 +181,12 @@ internal class CachedModuleDiscovery
                     IsVariadic = p.IsVariadic
                 })
                 .ToList(),
-            AccessLevel = AccessLevel.Public
+            AccessLevel = AccessLevel.Public,
+            TypeParameters = signature.TypeParameters.Count > 0
+                ? signature.TypeParameters
+                    .Select(name => new Parser.Ast.TypeParameterDef { Name = name })
+                    .ToList()
+                : new List<Parser.Ast.TypeParameterDef>()
         };
     }
 
@@ -206,6 +211,12 @@ internal class CachedModuleDiscovery
     /// </summary>
     private SemanticType ConvertTypeSignature(TypeSignature signature)
     {
+        // Handle generic type parameters (e.g., T in Min<T>)
+        if (signature.IsGenericParameter)
+        {
+            return new TypeParameterType { Name = signature.Name };
+        }
+
         // Handle primitive types
         if (signature.Name == "int")
             return SemanticType.Int;

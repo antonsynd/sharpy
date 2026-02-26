@@ -331,6 +331,8 @@ internal class ProtocolValidator : SemanticValidatorBase
                 // Generator functions return IEnumerable<T> at the semantic level;
                 // Iterator<T> is returned by reversed() and other iterator builtins
                 "IEnumerable" or "IEnumerator" or BuiltinNames.Iterator => dunderName is DunderNames.Iter,
+                // Dict view types are iterable (returned by dict.items(), .keys(), .values())
+                "DictItemsView" or "DictKeyView" or "DictValuesView" => dunderName is DunderNames.Iter or DunderNames.Len,
                 _ => false
             };
         }

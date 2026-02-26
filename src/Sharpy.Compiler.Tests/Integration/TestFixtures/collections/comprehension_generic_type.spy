@@ -1,0 +1,15 @@
+class Transformer:
+    factor: int
+
+    def __init__(self, factor: int):
+        self.factor = factor
+
+    def apply(self, x: int) -> int:
+        return x * self.factor
+
+def main():
+    t: Transformer = Transformer(2)
+    values: list[int] = [1, 2, 3]
+    results: list[int] = [t.apply(v) for v in values]
+    for r in results:
+        print(r)

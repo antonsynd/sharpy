@@ -1,0 +1,25 @@
+# Test null conditional method call and property access on Optional
+# user-defined types. Verifies that b?.get_value() and b?.value
+# produce correctly typed Optional<T> ternary expressions.
+
+class Box:
+    value: str
+
+    def __init__(self, value: str):
+        self.value = value
+
+    def get_upper(self) -> str:
+        return self.value.upper()
+
+def get_value(b: Box?) -> str?:
+    return b?.get_upper()
+
+def get_field(b: Box?) -> str?:
+    return b?.value
+
+def main():
+    box: Box = Box("hello")
+    print(get_value(box))
+    print(get_value(None()))
+    print(get_field(box))
+    print(get_field(None()))

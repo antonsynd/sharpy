@@ -211,12 +211,66 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // Resolve dict method types at semantic time for tuple unpacking support
+        // (e.g., `for k, v in d.items()` needs the element type to validate unpacking)
+        if (memberLookupType is GenericType { Name: BuiltinNames.Dict } dictType && dictType.TypeArguments.Count == 2)
+        {
+            var dictMethodType = ResolveDictMethodType(dictType, memberAccess.Member);
+            if (dictMethodType != null)
+                return dictMethodType;
+        }
+
         // Intentional Unknown without error for non-UserDefinedType member access:
         // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
         // are resolved by the codegen layer through CLR member discovery, not the
         // type checker. Mark as error recovery to suppress SPY0907 false positives.
         MarkExpressionAsErrorRecovery(memberAccess);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Resolves the return type of dict methods at semantic time.
+    /// This is needed because dict methods like items(), keys(), values() return
+    /// view types whose element types are needed for tuple unpacking in for-loops.
+    /// Returns a FunctionType for known methods, or null for unknown methods
+    /// (which fall through to CLR discovery at codegen time).
+    /// </summary>
+    private static SemanticType? ResolveDictMethodType(GenericType dictType, string methodName)
+    {
+        var keyType = dictType.TypeArguments[0];
+        var valueType = dictType.TypeArguments[1];
+
+        return methodName switch
+        {
+            "items" => new FunctionType
+            {
+                ParameterTypes = new List<SemanticType>(),
+                ReturnType = new GenericType
+                {
+                    Name = "DictItemsView",
+                    TypeArguments = new List<SemanticType> { keyType, valueType }
+                }
+            },
+            "keys" => new FunctionType
+            {
+                ParameterTypes = new List<SemanticType>(),
+                ReturnType = new GenericType
+                {
+                    Name = "DictKeyView",
+                    TypeArguments = new List<SemanticType> { keyType }
+                }
+            },
+            "values" => new FunctionType
+            {
+                ParameterTypes = new List<SemanticType>(),
+                ReturnType = new GenericType
+                {
+                    Name = "DictValuesView",
+                    TypeArguments = new List<SemanticType> { valueType }
+                }
+            },
+            _ => null  // Fall through to Unknown for other methods (e.g., get, update, pop)
+        };
     }
 
     /// <summary>
@@ -620,6 +674,26 @@ internal partial class TypeChecker
                 var elementType = _typeInference.InferIterableElementType(argTypes[0]);
                 if (elementType != null)
                     return new GenericType { Name = BuiltinNames.List, TypeArguments = new List<SemanticType> { elementType } };
+            }
+
+            // min(iterable) -> T, min(a, b, ...) -> T
+            if (id.Name == BuiltinNames.Min && argTypes.Count >= 1)
+            {
+                var elementType = argTypes.Count == 1
+                    ? _typeInference.InferIterableElementType(argTypes[0])
+                    : argTypes[0];  // min(a, b, ...) returns same type as arguments
+                if (elementType != null)
+                    return elementType;
+            }
+
+            // max(iterable) -> T, max(a, b, ...) -> T
+            if (id.Name == BuiltinNames.Max && argTypes.Count >= 1)
+            {
+                var elementType = argTypes.Count == 1
+                    ? _typeInference.InferIterableElementType(argTypes[0])
+                    : argTypes[0];  // max(a, b, ...) returns same type as arguments
+                if (elementType != null)
+                    return elementType;
             }
 
             var symbol = _symbolTable.Lookup(id.Name);

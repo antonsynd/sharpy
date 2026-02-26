@@ -493,6 +493,15 @@ internal partial class RoslynEmitter
     {
         if (tupleTarget == null)
         {
+            // When the parameter has an explicit type annotation, C# requires parenthesized
+            // lambda syntax: (int x) => body. SimpleLambdaExpression only supports untyped: x => body.
+            if (param.Type != null)
+            {
+                return ParenthesizedLambdaExpression()
+                    .WithParameterList(ParameterList(SingletonSeparatedList(param)))
+                    .WithExpressionBody(body);
+            }
+
             return SimpleLambdaExpression(param)
                 .WithExpressionBody(body);
         }
@@ -603,6 +612,25 @@ internal partial class RoslynEmitter
                     GenericName(Identifier("GetValues"))
                         .WithTypeArgumentList(TypeArgumentList(
                             SingletonSeparatedList(enumTypeSyntax)))));
+        }
+
+        // Add explicit type annotation to lambda parameter to help C# generic type inference.
+        // Without this, C# may infer 'object' for the lambda parameter when the collection
+        // element type is generic, causing compilation errors on member access.
+        if (iterType is GenericType gt && gt.TypeArguments.Count > 0)
+        {
+            // For list[T], set[T]: element type is first type arg
+            // For dict[K,V]: iteration yields keys, so element type is also first type arg
+            var elemType = gt.TypeArguments[0];
+            if (elemType is not UnknownType)
+            {
+                param = param.WithType(_typeMapper.MapSemanticType(elemType));
+            }
+        }
+        else if (iterType is Semantic.TupleType tupleIterType)
+        {
+            // Iterating over a tuple — type the parameter with the tuple type itself
+            param = param.WithType(_typeMapper.MapSemanticType(tupleIterType));
         }
 
         // Apply each if clause as .Where(x => condition)

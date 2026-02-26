@@ -28,7 +28,7 @@ internal class OverloadIndexBuilder
         {
             Identity = identity,
             CreatedAt = DateTime.UtcNow,
-            CacheFormatVersion = 2
+            CacheFormatVersion = 3
         };
 
         // Find all module classes decorated with [SharpyModule]
@@ -137,9 +137,8 @@ internal class OverloadIndexBuilder
             .Where(m => !m.Name.StartsWith("get_"))
             .Where(m => !m.Name.StartsWith("set_"))
             .Where(m => !m.IsSpecialName)
-            .Where(m => !m.IsGenericMethodDefinition)  // Skip generic methods for now
-                                                       // Note: Type constructors (Int, Bool, etc.) are included as they are
-                                                       // valid builtin functions that can be called for type conversion.
+            // Note: Type constructors (Int, Bool, etc.) are included as they are
+            // valid builtin functions that can be called for type conversion.
             .ToList();
 
         // Group by function name
@@ -197,6 +196,14 @@ internal class OverloadIndexBuilder
             MethodToken = CreateMethodToken(method)
         };
 
+        // Extract generic type parameters (e.g., T from Min<T>)
+        if (method.IsGenericMethodDefinition)
+        {
+            signature.TypeParameters = method.GetGenericArguments()
+                .Select(t => t.Name)
+                .ToList();
+        }
+
         foreach (var param in method.GetParameters())
         {
             signature.Parameters.Add(CreateParameterSignature(param));
@@ -219,6 +226,17 @@ internal class OverloadIndexBuilder
 
     private TypeSignature CreateTypeSignature(Type clrType)
     {
+        // Handle generic type parameters (e.g., T in Min<T>(T[] items))
+        if (clrType.IsGenericParameter)
+        {
+            return new TypeSignature
+            {
+                Name = clrType.Name,
+                IsGenericParameter = true,
+                ClrTypeName = string.Empty
+            };
+        }
+
         var semanticType = _typeMapper.MapClrTypeToSemanticType(clrType);
 
         var signature = new TypeSignature

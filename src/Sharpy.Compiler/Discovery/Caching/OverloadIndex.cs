@@ -9,7 +9,7 @@ internal class OverloadIndex
 {
     public AssemblyIdentity Identity { get; set; } = new();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public int CacheFormatVersion { get; set; } = 2;
+    public int CacheFormatVersion { get; set; } = 3;
     public Dictionary<string, ModuleOverloads> Modules { get; set; } = new();
 }
 
@@ -46,6 +46,12 @@ internal class FunctionSignature
     public TypeSignature ReturnType { get; set; } = new();
 
     /// <summary>
+    /// Generic type parameter names (e.g., ["T"] for Min&lt;T&gt;).
+    /// Empty for non-generic methods.
+    /// </summary>
+    public List<string> TypeParameters { get; set; } = new();
+
+    /// <summary>
     /// Method reference for rehydration: AssemblyName|TypeName|MethodName|ParamCount
     /// </summary>
     public string MethodToken { get; set; } = string.Empty;
@@ -71,6 +77,11 @@ internal class TypeSignature
     public string Name { get; set; } = string.Empty;
     public bool IsGeneric { get; set; }
     public List<TypeSignature> TypeArguments { get; set; } = new();
+
+    /// <summary>
+    /// True if this type references a generic type parameter (e.g., T in Min&lt;T&gt;).
+    /// </summary>
+    public bool IsGenericParameter { get; set; }
 
     /// <summary>
     /// CLR type name for mapping back.

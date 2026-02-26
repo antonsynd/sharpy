@@ -663,6 +663,14 @@ internal partial class RoslynEmitter
                 CollectVariableNamesFromExpression(cond.ThenValue);
                 CollectVariableNamesFromExpression(cond.ElseValue);
                 break;
+
+            case FStringLiteral fstring:
+                foreach (var part in fstring.Parts)
+                {
+                    if (part.Expression != null)
+                        CollectVariableNamesFromExpression(part.Expression);
+                }
+                break;
         }
     }
 

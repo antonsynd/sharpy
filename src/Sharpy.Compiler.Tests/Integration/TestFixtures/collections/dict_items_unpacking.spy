@@ -1,0 +1,4 @@
+def main():
+    d: dict[str, int] = {"alice": 1, "bob": 2}
+    for k, v in d.items():
+        print(f"{k}: {v}")

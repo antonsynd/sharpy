@@ -76,7 +76,7 @@ public class OverloadIndexCacheTests : IDisposable
         {
             Identity = identity,
             CreatedAt = DateTime.UtcNow,
-            CacheFormatVersion = 2
+            CacheFormatVersion = 3
         };
 
         originalIndex.Modules["testmodule"] = new ModuleOverloads

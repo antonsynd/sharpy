@@ -1,0 +1,10 @@
+# Test null conditional method call on Optional with builtin str type.
+# Before the fix, name?.upper() on str? failed with CS0266 because
+# the ternary true branch resolved to object instead of Optional<string>.
+
+def greet(name: str?) -> str?:
+    return name?.upper()
+
+def main():
+    print(greet("hello"))
+    print(greet(None()))

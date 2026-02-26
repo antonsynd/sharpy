@@ -1,0 +1,13 @@
+class Temperature:
+    _celsius: float
+
+    def __init__(self, celsius: float):
+        self._celsius = celsius
+
+    property get display(self) -> str:
+        f: float = self._celsius * 9.0 / 5.0 + 32.0
+        return f"{f:.1f}F"
+
+def main():
+    t: Temperature = Temperature(100.0)
+    print(t.display)
