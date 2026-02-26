@@ -1598,7 +1598,7 @@ class DogfoodOrchestrator:
                 )
                 last_error = (
                     "Malformed response: you have an unclosed <code> tag. "
-                    "Make sure every <code> or <code file=\"name.spy\"> tag has a matching </code>."
+                    'Make sure every <code> or <code file="name.spy"> tag has a matching </code>.'
                 )
                 if attempt < max_attempts:
                     print(
@@ -1641,7 +1641,7 @@ class DogfoodOrchestrator:
             files = extract_multifile_code(gen_result.output)
             if not files:
                 print("  Failed to parse multi-file response", file=sys.stderr)
-                last_error = "Failed to parse multi-file response. Use <code file=\"name.spy\">...</code> tags for each file, and include a main.spy file."
+                last_error = 'Failed to parse multi-file response. Use <code file="name.spy">...</code> tags for each file, and include a main.spy file.'
                 # Keep last_files from previous attempt if available
                 # Only retry if we have previous files to include in feedback
                 if attempt < max_attempts and last_files is not None:
@@ -1773,10 +1773,9 @@ class DogfoodOrchestrator:
 
             # All validation passed
             # Try XML <expected> tags from raw response first, fall back to comment-based
-            expected_output = (
-                extract_expected_output_from_response(gen_result.output)
-                or extract_expected_output_from_multifile(files)
-            )
+            expected_output = extract_expected_output_from_response(
+                gen_result.output
+            ) or extract_expected_output_from_multifile(files)
             print("  All files validated successfully (compiler)", file=sys.stderr)
             return MultifileGenerationResult(
                 success=True,
