@@ -66,8 +66,9 @@ internal class BuiltinRegistry
         // Load builtin functions using reflection-based discovery
         LoadBuiltinFunctions();
 
-        // Generic builtins (reversed, sorted, min, max) are now auto-discovered
-        // via reflection. Their type inference is handled by TypeChecker special cases.
+        // Generic builtins (reversed, sorted, min, max) are now auto-discovered via
+        // reflection instead of manual RegisterGenericBuiltin() calls. Type inference
+        // for their return types is handled by TypeChecker special cases.
 
         // Auto-discover and register public types from Sharpy.Core (exceptions, etc.)
         LoadBuiltinTypes();

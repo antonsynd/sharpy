@@ -242,7 +242,7 @@ internal partial class TypeChecker
 
         return methodName switch
         {
-            "items" => new FunctionType
+            BuiltinNames.DictMethodItems => new FunctionType
             {
                 ParameterTypes = new List<SemanticType>(),
                 ReturnType = new GenericType
@@ -251,7 +251,7 @@ internal partial class TypeChecker
                     TypeArguments = new List<SemanticType> { keyType, valueType }
                 }
             },
-            "keys" => new FunctionType
+            BuiltinNames.DictMethodKeys => new FunctionType
             {
                 ParameterTypes = new List<SemanticType>(),
                 ReturnType = new GenericType
@@ -260,7 +260,7 @@ internal partial class TypeChecker
                     TypeArguments = new List<SemanticType> { keyType, valueType }
                 }
             },
-            "values" => new FunctionType
+            BuiltinNames.DictMethodValues => new FunctionType
             {
                 ParameterTypes = new List<SemanticType>(),
                 ReturnType = new GenericType
