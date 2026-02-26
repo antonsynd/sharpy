@@ -1122,18 +1122,7 @@ internal partial class RoslynEmitter
     /// Generates: Optional&lt;T&gt;.Some(value)
     /// </summary>
     private ExpressionSyntax GenerateSomeExpression(FunctionCall call, OptionalType opt)
-    {
-        var underlyingType = _typeMapper.MapSemanticType(opt.UnderlyingType);
-        var arg = GenerateExpression(call.Arguments[0]);
-
-        return InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                GenericName("Optional")
-                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(underlyingType))),
-                IdentifierName("Some")))
-            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(arg))));
-    }
+        => WrapInOptionalSome(GenerateExpression(call.Arguments[0]), opt);
 
     /// <summary>
     /// Generates: Result&lt;T, E&gt;.Ok(value)
