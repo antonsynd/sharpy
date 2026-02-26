@@ -257,7 +257,7 @@ internal partial class TypeChecker
                 ReturnType = new GenericType
                 {
                     Name = BuiltinNames.DictKeyView,
-                    TypeArguments = new List<SemanticType> { keyType }
+                    TypeArguments = new List<SemanticType> { keyType, valueType }
                 }
             },
             "values" => new FunctionType
@@ -266,7 +266,7 @@ internal partial class TypeChecker
                 ReturnType = new GenericType
                 {
                     Name = BuiltinNames.DictValuesView,
-                    TypeArguments = new List<SemanticType> { valueType }
+                    TypeArguments = new List<SemanticType> { keyType, valueType }
                 }
             },
             _ => null  // Fall through to Unknown for other methods (e.g., get, update, pop)
@@ -676,22 +676,18 @@ internal partial class TypeChecker
                     return new GenericType { Name = BuiltinNames.List, TypeArguments = new List<SemanticType> { elementType } };
             }
 
-            // min(iterable) -> T, min(a, b, ...) -> T
-            if (id.Name == BuiltinNames.Min && argTypes.Count >= 1)
+            // min(iterable) -> T
+            if (id.Name == BuiltinNames.Min && argTypes.Count == 1)
             {
-                var elementType = argTypes.Count == 1
-                    ? _typeInference.InferIterableElementType(argTypes[0])
-                    : argTypes[0];  // min(a, b, ...) returns same type as arguments
+                var elementType = _typeInference.InferIterableElementType(argTypes[0]);
                 if (elementType != null)
                     return elementType;
             }
 
-            // max(iterable) -> T, max(a, b, ...) -> T
-            if (id.Name == BuiltinNames.Max && argTypes.Count >= 1)
+            // max(iterable) -> T
+            if (id.Name == BuiltinNames.Max && argTypes.Count == 1)
             {
-                var elementType = argTypes.Count == 1
-                    ? _typeInference.InferIterableElementType(argTypes[0])
-                    : argTypes[0];  // max(a, b, ...) returns same type as arguments
+                var elementType = _typeInference.InferIterableElementType(argTypes[0]);
                 if (elementType != null)
                     return elementType;
             }
