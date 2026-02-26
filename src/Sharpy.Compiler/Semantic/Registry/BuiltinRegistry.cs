@@ -105,8 +105,11 @@ internal class BuiltinRegistry
         // Note: This is called during construction, so no concurrent access is expected here
         foreach (var function in builtinFunctions)
         {
-            // Skip generic functions that conflict with registered type constructors
-            // (e.g., Builtins.List<T>() would conflict with the list type constructor)
+            // Skip generic functions whose name collides with a registered type constructor.
+            // This specifically prevents CLR-discovered generic overloads like Builtins.List<T>(),
+            // Builtins.Bool<T>(), Builtins.Int<T>() from shadowing the type constructors
+            // registered by RegisterTypeConstructor(). User-defined types cannot collide here
+            // because _types only contains compiler-registered builtin type names.
             if (function.IsGeneric && _types.ContainsKey(function.Name))
                 continue;
 

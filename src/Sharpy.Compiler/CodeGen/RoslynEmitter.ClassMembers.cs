@@ -464,7 +464,10 @@ internal partial class RoslynEmitter
         var constructors = new List<MemberDeclarationSyntax>();
 
         // Walk up inheritance chain to find nearest ancestor with __init__
-        var ancestor = _currentTypeSymbol?.BaseType;
+        // Use SemanticBinding first (consistent with base list generation at line 1194)
+        var ancestor = _currentTypeSymbol is not null
+            ? _context.SemanticBinding.GetBaseType(_currentTypeSymbol) ?? _currentTypeSymbol.BaseType
+            : null;
         while (ancestor != null)
         {
             var initMethods = ancestor.Constructors;
@@ -531,7 +534,7 @@ internal partial class RoslynEmitter
                 }
                 break; // Only forward from nearest ancestor with constructors
             }
-            ancestor = ancestor.BaseType;
+            ancestor = _context.SemanticBinding.GetBaseType(ancestor) ?? ancestor.BaseType;
         }
 
         return constructors;

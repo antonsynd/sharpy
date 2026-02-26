@@ -62,4 +62,9 @@ internal static class BuiltinNames
     public const string Tuple = "tuple";
     public const string None = "None";
     public const string Object = "object";
+
+    // ---- Dict view types (returned by dict.items(), .keys(), .values()) ----
+    public const string DictItemsView = "DictItemsView";
+    public const string DictKeyView = "DictKeyView";
+    public const string DictValuesView = "DictValuesView";
 }

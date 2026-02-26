@@ -332,7 +332,7 @@ internal class ProtocolValidator : SemanticValidatorBase
                 // Iterator<T> is returned by reversed() and other iterator builtins
                 "IEnumerable" or "IEnumerator" or BuiltinNames.Iterator => dunderName is DunderNames.Iter,
                 // Dict view types are iterable (returned by dict.items(), .keys(), .values())
-                "DictItemsView" or "DictKeyView" or "DictValuesView" => dunderName is DunderNames.Iter or DunderNames.Len,
+                BuiltinNames.DictItemsView or BuiltinNames.DictKeyView or BuiltinNames.DictValuesView => dunderName is DunderNames.Iter or DunderNames.Len,
                 _ => false
             };
         }

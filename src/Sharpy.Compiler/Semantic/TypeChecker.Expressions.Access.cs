@@ -247,7 +247,7 @@ internal partial class TypeChecker
                 ParameterTypes = new List<SemanticType>(),
                 ReturnType = new GenericType
                 {
-                    Name = "DictItemsView",
+                    Name = BuiltinNames.DictItemsView,
                     TypeArguments = new List<SemanticType> { keyType, valueType }
                 }
             },
@@ -256,7 +256,7 @@ internal partial class TypeChecker
                 ParameterTypes = new List<SemanticType>(),
                 ReturnType = new GenericType
                 {
-                    Name = "DictKeyView",
+                    Name = BuiltinNames.DictKeyView,
                     TypeArguments = new List<SemanticType> { keyType }
                 }
             },
@@ -265,7 +265,7 @@ internal partial class TypeChecker
                 ParameterTypes = new List<SemanticType>(),
                 ReturnType = new GenericType
                 {
-                    Name = "DictValuesView",
+                    Name = BuiltinNames.DictValuesView,
                     TypeArguments = new List<SemanticType> { valueType }
                 }
             },
