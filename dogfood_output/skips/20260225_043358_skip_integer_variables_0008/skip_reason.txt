@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0200]: Undefined identifier 'factorial'
+  --> /tmp/tmp6d1ksz2n/dogfood_test.spy:41:20
+    |
+ 41 |         return n * factorial(n - 1)
+    |                    ^^^^^^^^^
+    |
+
+error[SPY0200]: Undefined identifier 'factorial'
+  --> /tmp/tmp6d1ksz2n/dogfood_test.spy:43:19
+    |
+ 43 |     fact_5: int = factorial(5)
+    |                   ^^^^^^^^^
+    |
+
+error[SPY0200]: Undefined identifier 'min'. Did you mean 'main'?
+  --> /tmp/tmp6d1ksz2n/dogfood_test.spy:74:20
+    |
+ 74 |     min_val: int = min([50, 20, 80, 10, 60])
+    |                    ^^^
+    |
+
+error[SPY0200]: Undefined identifier 'max'. Did you mean 'x'?
+  --> /tmp/tmp6d1ksz2n/dogfood_test.spy:75:20
+    |
+ 75 |     max_val: int = max([50, 20, 80, 10, 60])
+    |                    ^^^
+    |
+

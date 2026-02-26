@@ -1,130 +1,77 @@
 # Dogfooding Summary Report
 
-**Generated:** 2026-02-24T06:55:38.844049
+**Generated:** 2026-02-25T13:17:38.240887
 
 ## Overall Statistics
 
-- **Total Iterations:** 50
-- **Successful:** 20 (40.0%)
-- **Failed:** 18 (36.0%)
-- **Skipped:** 12 (24.0%)
+- **Total Iterations:** 100
+- **Successful:** 48 (48.0%)
+- **Failed:** 31 (31.0%)
+- **Skipped:** 21 (21.0%)
 
 ## Issues by Type
 
-- **compilation_failed:** 9
-- **internal_compiler_error:** 2
-- **output_mismatch:** 7
-- **skipped:** 12
+- **compilation_failed:** 15
+- **generation_failed:** 5
+- **output_mismatch:** 11
+- **skipped:** 21
 
 ## Recent Failures
 
-- [internal_compiler_error](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260224_033650_internal_compiler_error_0008) - generator_reversed_class/medium - 394.5s
-- [compilation_failed](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260224_033907_compilation_failed_0009) - module_imports/medium - 137.0s
-- [output_mismatch](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260224_034625_output_mismatch_0010) - module_utils/medium - 438.4s
-- [compilation_failed](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260224_034807_compilation_failed_0011) - cross_module_classes/medium - 101.9s
-- [output_mismatch](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260224_035852_output_mismatch_0012) - module_utils/medium - 446.9s
-- [compilation_failed](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260224_044422_compilation_failed_0013) - virtual_override/complex - 912.1s
-- [output_mismatch](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260224_051649_output_mismatch_0014) - try_expression/complex - 440.6s
-- [output_mismatch](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260224_055649_output_mismatch_0015) - tuple_types/medium - 691.3s
-- [compilation_failed](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260224_060512_compilation_failed_0016) - named_tuple/complex - 502.6s
-- [output_mismatch](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260224_062436_output_mismatch_0017) - interface_implementation/medium - 310.1s
+- [compilation_failed](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260225_101030_compilation_failed_0021) - module_imports/complex - 849.1s
+- [output_mismatch](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260225_102629_output_mismatch_0022) - module_utils/medium - 223.7s
+- [compilation_failed](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260225_111946_compilation_failed_0023) - module_imports/complex - 1499.8s
+- [output_mismatch](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260225_120547_output_mismatch_0024) - spread_call/medium - 294.1s
+- [compilation_failed](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260225_120917_compilation_failed_0025) - module_utils/medium - 107.3s
+- [compilation_failed](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260225_121233_compilation_failed_0026) - module_imports/complex - 195.7s
+- [compilation_failed](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260225_122338_compilation_failed_0027) - null_conditional/medium - 435.1s
+- [output_mismatch](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260225_123148_output_mismatch_0028) - cross_module_classes/complex - 400.2s
+- [compilation_failed](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260225_125444_compilation_failed_0029) - module_imports/medium - 251.3s
+- [output_mismatch](/home/anton/Documents/github/sharpy/dogfood_output/issues/20260225_125757_output_mismatch_0030) - class_inheritance/medium - 193.6s
 
 ## Recent Skips
 
-- match_type_binding/complex - Sharpy compiler error after 3 attempts: Compilation errors:
+- module_utils/medium - Sharpy compiler error after 3 attempts: Compilation errors:
 
-error[SPY0104]: Expected Colon, got LeftParen
-  --> /tmp/tmpmpma71uk/dogfood_test.spy:65:20
+error[SPY0203]: Type 'DataSource' has no member 'name'
+  --> /tmp/tmpxc_0_4x7/main.spy:7:32
     |
- 65 |         case Circle() as c:
-    |                    ^
-    |
-
-error[SPY0100]: Unexpected token: Case
-  --> /tmp/tmpmpma71uk/dogfood_test.spy:70:9
-    |
- 70 |         case Rectangle() as r:
-    |         ^^^^
+  7 |     report: str = "Source: " + source.name + "\n"
+    |                                ^^^^^^^^^^^
     |
 
-error[SPY0100]: Unexpected token: Case
-  --> /tmp/tmpmpma71uk/dogfood_test.spy:75:9
+error[SPY0203]: Type 'DataSource' has no member 'size'
+  --> /tmp/tmpxc_0_4x7/main.spy:8:38
     |
- 75 |         case _:
-    |         ^^^^
-    |
-
-error[SPY0100]: Unexpected token: Dedent
-  --> /tmp/tmpmpma71uk/dogfood_test.spy:78:1
-    |
- 78 | def check_container(obj: Container) -> str:
-    | ^
+  8 |     report = report + "Size: " + str(source.size) + "\n"
+    |                                      ^^^^^^^^^^^
     |
 
-
-- property_inheritance/complex - Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0103]: Expected end of statement, got For
-  --> /tmp/tmp4g16429p/dogfood_test.spy:45:5
+error[SPY0203]: Type 'FileSource' has no member 'name'
+  --> /tmp/tmpxc_0_4x7/main.spy:21:33
     |
- 45 |     for i in range(len(appliances)):
-    |     ^^^
+ 21 |         print("Source name: " + source.name)
+    |                                 ^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'FileSource' has no member 'size'
+  --> /tmp/tmpxc_0_4x7/main.spy:22:37
+    |
+ 22 |         print("Source size: " + str(source.size))
+    |                                     ^^^^^^^^^^^
     |
 
 
-- module_utils/complex - Sharpy compiler error after 3 attempts: Compilation errors:
+- float_variables/complex - Non-code response after 3 attempts: Response too short (19 chars, minimum 20)
+- while_loop/complex - Generation timed out after 900.0s
+- type_narrowing/medium - Sharpy compiler error after 3 attempts: Compilation errors:
 
-error[SPY0203]: Type 'IColorable' has no member 'set_color'. Did you mean 'get_color'?
-  --> /tmp/tmpqsnbh8yh/main.spy:10:5
+error[SPY0220]: Cannot assign type 'float?' to variable of type 'float'
+  --> /tmp/tmp0bakozxt/dogfood_test.spy:14:5
     |
- 10 |     c.set_color("red")
-    |     ^^^^^^^^^^^
-    |
-
-error[SPY0203]: Type 'ShapeType' has no member 'RECTANGLE'
-  --> /tmp/tmpqsnbh8yh/main.spy:42:14
-    |
- 42 |         case ShapeType.RECTANGLE:
-    |              ^^^^^^^^^^^^^^^^^^^
-    |
-
-error[SPY0203]: Type 'ShapeType' has no member 'CIRCLE'
-  --> /tmp/tmpqsnbh8yh/main.spy:44:14
-    |
- 44 |         case ShapeType.CIRCLE:
-    |              ^^^^^^^^^^^^^^^^
-    |
-
-error[SPY0203]: Type 'ShapeType' has no member 'SQUARE'
-  --> /tmp/tmpqsnbh8yh/main.spy:46:14
-    |
- 46 |         case ShapeType.SQUARE:
-    |              ^^^^^^^^^^^^^^^^
+ 14 |     v: float = value.numeric_value
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 
 
-- try_except_basic/complex - Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0200]: Undefined identifier 'be'
-  --> /tmp/tmpgy9m4zd1/dogfood_test.spy:79:34
-    |
- 79 |             print(f"Bank error: {be.message} (code: {be.code})")
-    |                                  ^^
-    |
-
-error[SPY0200]: Undefined identifier 'be'
-  --> /tmp/tmpgy9m4zd1/dogfood_test.spy:79:54
-    |
- 79 |             print(f"Bank error: {be.message} (code: {be.code})")
-    |                                                      ^^
-    |
-
-error[SPY0200]: Undefined identifier 've'
-  --> /tmp/tmpgy9m4zd1/dogfood_test.spy:82:40
-    |
- 82 |             print(f"Validation error: {ve}")
-    |                                        ^^
-    |
-
-
-- module_imports/complex - Generation timed out after 900.0s
+- cross_module_classes/complex - Non-code response after 3 attempts: Response too short (15 chars, minimum 20)

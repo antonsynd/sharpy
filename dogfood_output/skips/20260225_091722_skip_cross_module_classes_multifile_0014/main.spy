@@ -1,0 +1,53 @@
+# Main entry point - demonstrates cross-module class hierarchies
+
+from geometry import ShapeKind, ShapeMetrics
+from shapes import Circle, Rectangle
+from utils import Vector2D, distance_between, shapes_report
+
+def main():
+    # Create a ShapeMetrics struct
+    metrics: ShapeMetrics = ShapeMetrics(24.0, 20.0)
+    
+    # Create Vector2D structs
+    origin: Vector2D = Vector2D(0.0, 0.0)
+    point_a: Vector2D = Vector2D(3.0, 4.0)
+    
+    # Test Vector2D operations
+    dist_origin: float = origin.magnitude
+    dist_points: float = distance_between(origin, point_a)
+    print(dist_origin)
+    print(dist_points)
+    
+    # Create shapes
+    circle: Circle = Circle(5.0)
+    rect: Rectangle = Rectangle(4.0, 6.0)
+    
+    # Test polymorphic dispatch
+    circle_area: float = circle.area()
+    rect_area: float = rect.area()
+    print(circle_area)
+    print(rect_area)
+    
+    # Test enum
+    kind: ShapeKind = circle.get_kind()
+    if kind == ShapeKind.CURVED:
+        print(1)
+    else:
+        print(0)
+    
+    # Test struct property
+    dens: float = metrics.density
+    print(dens)
+    
+    # Test cross-module utility function
+    report: str = shapes_report(metrics)
+    print(report)
+
+# EXPECTED OUTPUT:
+# 0.0
+# 25.0
+# 78.5
+# 24.0
+# 1
+# 1.2
+# Area: 24.0

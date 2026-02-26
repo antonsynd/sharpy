@@ -1,0 +1,114 @@
+# Shapes module - implements various geometric shapes with cross-module inheritance
+from types import ShapeType, IDrawable, IDimensional, Point, ITransformable
+
+# Abstract base class for all shapes
+@abstract
+class ShapeBase:
+    shape_type: ShapeType
+
+    def __init__(self, shape_type: ShapeType):
+        self.shape_type = shape_type
+
+    @abstract
+    def get_name(self) -> str: ...
+
+    def get_category(self) -> str:
+        match self.shape_type:
+            case ShapeType.CIRCLE:
+                return "Round"
+            case ShapeType.RECTANGLE:
+                return "Angular"
+            case _:
+                return "Other"
+
+# Circle implementation
+class Circle(ShapeBase, IDrawable, IDimensional, ITransformable):
+    radius: float
+    center: Point
+
+    def __init__(self, radius: float, center: Point):
+        super().__init__(ShapeType.CIRCLE)
+        self.radius = radius
+        self.center = center
+
+    @override
+    def get_name(self) -> str:
+        return f"Circle(r={self.radius})"
+
+    def draw(self) -> str:
+        return f"Drawing circle at {self.center}"
+
+    def get_area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    def get_perimeter(self) -> float:
+        return 2.0 * 3.14159 * self.radius
+
+    def translate(self, dx: float, dy: float) -> Point:
+        return Point(self.center.x + dx, self.center.y + dy)
+
+# Rectangle implementation
+class Rectangle(ShapeBase, IDrawable, IDimensional, ITransformable):
+    width: float
+    height: float
+    top_left: Point
+
+    def __init__(self, width: float, height: float, top_left: Point):
+        super().__init__(ShapeType.RECTANGLE)
+        self.width = width
+        self.height = height
+        self.top_left = top_left
+
+    @override
+    def get_name(self) -> str:
+        return f"Rectangle({self.width}x{self.height})"
+
+    def draw(self) -> str:
+        return f"Drawing rectangle at {self.top_left}"
+
+    def get_area(self) -> float:
+        return self.width * self.height
+
+    def get_perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+    def translate(self, dx: float, dy: float) -> Point:
+        return Point(self.top_left.x + dx, self.top_left.y + dy)
+
+# Triangle implementation (three-point constructor)
+class Triangle(ShapeBase, IDrawable, IDimensional):
+    p1: Point
+    p2: Point
+    p3: Point
+
+    def __init__(self, p1: Point, p2: Point, p3: Point):
+        super().__init__(ShapeType.TRIANGLE)
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+
+    @override
+    def get_name(self) -> str:
+        return f"Triangle({self.p1}, {self.p2}, {self.p3})"
+
+    def draw(self) -> str:
+        return "Drawing triangle with three vertices"
+
+    def get_area(self) -> float:
+        # Using shoelace formula
+        a: float = self.p1.x * (self.p2.y - self.p3.y)
+        b: float = self.p2.x * (self.p3.y - self.p1.y)
+        c: float = self.p3.x * (self.p1.y - self.p2.y)
+        return abs(a + b + c) / 2.0
+
+    def get_perimeter(self) -> float:
+        # Calculate distance between points
+        d1: float = self.distance_sq(self.p1, self.p2) ** 0.5
+        d2: float = self.distance_sq(self.p2, self.p3) ** 0.5
+        d3: float = self.distance_sq(self.p3, self.p1) ** 0.5
+        return d1 + d2 + d3
+
+    def distance_sq(self, p1: Point, p2: Point) -> float:
+        dx: float = p2.x - p1.x
+        dy: float = p2.y - p1.y
+        return dx * dx + dy * dy

@@ -1,0 +1,57 @@
+# Data types module - structs and concrete implementations
+# Has dependencies on types_base
+from types_base import Entity, PRIORITY_HIGH
+
+struct Point2D:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def get_magnitude(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5
+
+class Rectangle(Entity):
+    width: float
+    height: float
+    corner: Point2D
+
+    def __init__(self, id: int, width: float, height: float, corner: Point2D):
+        super().__init__(id)
+        self.width = width
+        self.height = height
+        self.corner = corner
+
+    @override
+    def calculate_value(self) -> float:
+        return self.width * self.height
+
+    @override
+    def get_display_name(self) -> str:
+        return f"Rectangle({self.width}x{self.height})"
+
+    def serialize(self) -> str:
+        return f"Rect:{self.id}:{self.width}:{self.height}"
+
+    def get_area(self) -> float:
+        return self.width * self.height
+
+class Circle(Entity):
+    radius: float
+
+    def __init__(self, id: int, radius: float):
+        super().__init__(id)
+        self.radius = radius
+
+    @override
+    def calculate_value(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def get_display_name(self) -> str:
+        return f"Circle({self.radius})"
+
+    def serialize(self) -> str:
+        return f"Circle:{self.id}:{self.radius}"

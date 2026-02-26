@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T05:52:01.657694",
+  "generated_code": "# Test: Simple import statement with alias\n# Tests: Import statement syntax (using a non-existent module would fail)\n# Note: math module not available in current stdlib, demonstrating basic arithmetic instead\n\ndef main():\n    radius: int = 3\n    result: float = radius * radius\n    print(result)\n# EXPECTED OUTPUT:\n# 9.0",
+  "expected_output": "9.0\n",
+  "actual_output": "9.0",
+  "feature_focus": "import_statement",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 164.72340273857117,
+  "execution_duration": 4.265544652938843,
+  "source_files": null
+}

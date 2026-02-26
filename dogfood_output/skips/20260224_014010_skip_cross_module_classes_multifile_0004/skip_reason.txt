@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0222]: Type 'ShapeCategory' does not support operator '==' with operand of type 'ShapeCategory'
-  --> /tmp/tmpeoelfe6i/main.spy:42:15
-    |
- 42 |     print(str(circle.category == ShapeCategory.BASIC))
-    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-

@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0224]: Function 'int' expects 1 arguments but got 1
+  --> /tmp/tmp10rrycuh/main.spy:47:27
+    |
+ 47 |         types_list.append(int(t))
+    |                           ^^^^^^
+    |
+
+error[SPY0224]: Function 'int' expects 1 arguments but got 1
+  --> /tmp/tmp10rrycuh/main.spy:65:31
+    |
+ 65 |     enum_values: list[int] = [int(ShapeType.CIRCLE), int(ShapeType.RECTANGLE), int(ShapeType.TRIANGLE)]
+    |                               ^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0224]: Function 'int' expects 1 arguments but got 1
+  --> /tmp/tmp10rrycuh/main.spy:65:54
+    |
+ 65 |     enum_values: list[int] = [int(ShapeType.CIRCLE), int(ShapeType.RECTANGLE), int(ShapeType.TRIANGLE)]
+    |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0224]: Function 'int' expects 1 arguments but got 1
+  --> /tmp/tmp10rrycuh/main.spy:65:80
+    |
+ 65 |     enum_values: list[int] = [int(ShapeType.CIRCLE), int(ShapeType.RECTANGLE), int(ShapeType.TRIANGLE)]
+    |                                                                                ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

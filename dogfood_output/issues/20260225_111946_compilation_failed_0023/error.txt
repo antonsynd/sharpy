@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0019]: Operator '*' cannot be applied to operands of type 'int' and 'CoreTypes.Priority'
+  --> /tmp/tmpw2e1pi83/data_structs.spy:29:16
+    |
+ 29 |     print(task.display())
+    |                ^
+    |
+

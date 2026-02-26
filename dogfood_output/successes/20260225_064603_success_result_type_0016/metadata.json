@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T06:44:58.985196",
+  "generated_code": "# Test: Result type chaining with map and map_err operations\n# Tests: Result type (T !E), Ok/Err constructors, unwrap_or, map, map_err\n\nenum ParseError:\n    EMPTY_INPUT = 1\n    INVALID_FORMAT = 2\n\nclass ExpressionEvaluator:\n    x: float\n    y: float\n    \n    def __init__(self, a: float, b: float):\n        self.x = a\n        self.y = b\n    \n    def safe_divide(self, numerator: float, denominator: float) -> float !str:\n        if denominator == 0:\n            return Err(\"division by zero\")\n        return Ok(numerator / denominator)\n    \n    def compute_ratio(self) -> float !str:\n        result: float !str = self.safe_divide(self.x, self.y)\n        return result.map(lambda v: v * 100.0)\n    \n    def compute_inverse(self) -> float !str:\n        result: float !str = self.safe_divide(1.0, self.x)\n        return result.map_err(lambda e: f\"inverse failed: {e}\")\n\ndef main():\n    calc = ExpressionEvaluator(20.0, 4.0)\n    \n    ratio: float !str = calc.compute_ratio()\n    print(ratio.unwrap_or(0.0))\n    \n    inverse: float !str = calc.compute_inverse()\n    print(inverse.unwrap_or(0.0))\n    \n    empty_calc = ExpressionEvaluator(10.0, 0.0)\n    bad_result: float !str = empty_calc.compute_ratio()\n    mapped = bad_result.map(lambda n: n + 1.0)\n    print(mapped.unwrap_or(0.0))\n    \n    safe_val: float !str = Ok(42.0)\n    doubled = safe_val.map(lambda v: v * 2.0)\n    print(doubled.unwrap_or(0.0))\n\n# EXPECTED OUTPUT:\n# 500.0\n# 0.05\n# 0.0\n# 84.0",
+  "expected_output": "500.0\n0.05\n0.0\n84.0\n",
+  "actual_output": "500.0\n0.05\n0.0\n84.0",
+  "feature_focus": "result_type",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 54.70956254005432,
+  "execution_duration": 4.5318684577941895,
+  "source_files": null
+}

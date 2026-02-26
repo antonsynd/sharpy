@@ -1,0 +1,32 @@
+# Main entry point - demonstrates module utility usage
+# Imports and uses functions and classes from math_utils
+
+from math_utils import PI, calculate_circle_area, calculate_rectangle_area, GeometryCalculator
+
+def main():
+    # Test 1: Direct module function call
+    area: float = calculate_circle_area(5.0)
+    print(area)
+
+    # Test 2: Using the constant
+    print(PI)
+
+    # Test 3: Rectangle area calculation
+    rect_area: float = calculate_rectangle_area(10.0, 20.0)
+    print(rect_area)
+
+    # Test 4: Using the utility class
+    calc: GeometryCalculator = GeometryCalculator()
+    circle_area: float = calc.area_of_circle(3.0)
+    print(circle_area)
+
+    # Test 5: Check result counter
+    calc.perimeter_of_circle(3.0)
+    print(calc.get_results_count())
+
+# EXPECTED OUTPUT:
+# 78.53975
+# 3.14159
+# 200.0
+# 28.27431
+# 2

@@ -1,0 +1,5 @@
+Product: Widget
+Stock value: $99.95
+After 10% off: $17.991
+In stock: True
+Low stock alert: only 5 remaining!

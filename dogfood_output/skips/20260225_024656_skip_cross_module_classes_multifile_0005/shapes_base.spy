@@ -1,0 +1,28 @@
+# Base shapes module with interface and abstract class
+# Tests cross-module interface implementation and inheritance
+
+interface IShape:
+    def area(self) -> float: ...
+    def perimeter(self) -> float: ...
+
+@abstract
+class Shape:
+    _id: int
+    _name: str
+
+    def __init__(self, id: int, name: str):
+        self._id = id
+        self._name = name
+
+    @virtual
+    def describe(self) -> str:
+        return f"Shape {self._id}: {self._name}"
+
+    @abstract
+    def area(self) -> float: ...
+
+    @abstract
+    def perimeter(self) -> float: ...
+
+    property get name(self) -> str:
+        return self._name

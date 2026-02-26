@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'Shape' is never used
+  --> /tmp/tmphlc23gfw/main.spy:3:30
+    |
+  3 | from geometry import IShape, Shape
+    |                              ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'describe_all' is never used
+  --> /tmp/tmphlc23gfw/main.spy:4:51
+    |
+  4 | from shapes import Rectangle, Circle, total_area, describe_all
+    |                                                   ^^^^^^^^^^^^
+    |
+

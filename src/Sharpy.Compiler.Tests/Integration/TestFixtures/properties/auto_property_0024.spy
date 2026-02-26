@@ -1,0 +1,36 @@
+# Test: Multiple auto-properties with cumulative updates
+class StatsTracker:
+    # Auto-properties with different types
+    property count: int = 0
+    property name: str = "unknown"
+    property active: bool = True
+
+    def update(self, new_count: int, new_name: str) -> None:
+        self.count = self.count + new_count
+        self.name = new_name
+        self.active = not self.active
+
+def main():
+    tracker = StatsTracker()
+    print(tracker.count)
+    print(tracker.name)
+    print(tracker.active)
+    
+    tracker.update(5, "alpha")
+    print(tracker.count)
+    print(tracker.name)
+    print(tracker.active)
+    
+    tracker.update(3, "beta")
+    print(tracker.count)
+    print(tracker.active)
+    
+    # EXPECTED OUTPUT:
+    # 0
+    # unknown
+    # True
+    # 5
+    # alpha
+    # False
+    # 8
+    # True

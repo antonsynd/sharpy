@@ -1,0 +1,33 @@
+# Main entry point - imports from both modules
+from geometry_base import ShapeBase
+from shapes_impl import Rectangle, Circle, describe_shape
+
+def main():
+    # Create instances
+    rect = Rectangle("Box", 10.0, 20.0)
+    circ = Circle("Disk", 5.0)
+
+    # Print using method calls
+    print(rect.get_area())
+    print(rect.get_name())
+    print(circ.get_area())
+    print(circ.get_name())
+
+    # Test polymorphism through base class type
+    shapes: list[ShapeBase] = [rect, circ]
+    total: float = 0.0
+    for s in shapes:
+        total = total + s.get_area()
+    print(total)
+
+    # Test helper function from shapes_impl
+    desc = describe_shape(rect)
+    print(desc)
+
+# EXPECTED OUTPUT:
+# 200.0
+# Box
+# 78.53975
+# Disk
+# 278.53975
+# Box: 200.00

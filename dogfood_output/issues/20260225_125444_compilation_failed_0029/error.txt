@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS1503]: Argument 1: cannot convert from 'Shapes.Rectangle' to 'Geometry.IShape'
+  --> /tmp/tmphlc23gfw/main.spy:22:23
+    |
+ 22 |     shapes.append(rect)
+    |                       ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'Shapes.Circle' to 'Geometry.IShape'
+  --> /tmp/tmphlc23gfw/main.spy:23:23
+    |
+ 23 |     shapes.append(circle)
+    |                       ^
+    |
+

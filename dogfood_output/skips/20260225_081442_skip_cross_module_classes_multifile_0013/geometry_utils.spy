@@ -1,0 +1,59 @@
+# Geometry utilities module - provides helper functions and operations
+from types import Point, ShapeType
+from shapes import Circle, Rectangle
+
+# Struct for bounding box calculations
+struct BoundingBox:
+    min_x: float
+    min_y: float
+    max_x: float
+    max_y: float
+
+    def __init__(self, min_x: float, min_y: float, max_x: float, max_y: float):
+        self.min_x = min_x
+        self.min_y = min_y
+        self.max_x = max_x
+        self.max_y = max_y
+
+    def get_width(self) -> float:
+        return self.max_x - self.min_x
+
+    def get_height(self) -> float:
+        return self.max_y - self.min_y
+
+    def get_area(self) -> float:
+        return self.get_width() * self.get_height()
+
+    def get_center(self) -> Point:
+        return Point((self.min_x + self.max_x) / 2.0, (self.min_y + self.max_y) / 2.0)
+
+# Create a default bounding box
+def create_default_box() -> BoundingBox:
+    return BoundingBox(0.0, 0.0, 100.0, 100.0)
+
+# Calculate distance between two points
+def distance(p1: Point, p2: Point) -> float:
+    dx: float = p2.x - p1.x
+    dy: float = p2.y - p1.y
+    return (dx * dx + dy * dy) ** 0.5
+
+# Create a unit circle at origin
+def create_unit_circle() -> Circle:
+    return Circle(1.0, Point(0.0, 0.0))
+
+# Create a square rectangle
+def create_square(size: float, position: Point) -> Rectangle:
+    return Rectangle(size, size, position)
+
+# Count shapes by type
+def count_by_type(types: list[ShapeType], target: ShapeType) -> int:
+    count: int = 0
+    for t in types:
+        if t == target:
+            count += 1
+    return count
+
+# Test if point is inside bounding box
+def contains_point(box: BoundingBox, point: Point) -> bool:
+    return (box.min_x <= point.x <= box.max_x and
+            box.min_y <= point.y <= box.max_y)

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T06:53:41.438528",
+  "generated_code": "class BoundingBox:\n    min_x: int\n    min_y: int\n    max_x: int\n    max_y: int\n\n    def __init__(self, x1: int, y1: int, x2: int, y2: int):\n        self.min_x = x1\n        self.min_y = y1\n        self.max_x = x2\n        self.max_y = y2\n\n    def get_min_corner(self) -> tuple[int, int]:\n        return (self.min_x, self.min_y)\n\n    def get_max_corner(self) -> tuple[int, int]:\n        return (self.max_x, self.max_y)\n\n    def get_width(self) -> int:\n        return self.max_x - self.min_x\n\n    def get_height(self) -> int:\n        return self.max_y - self.min_y\n\ndef swap_helper(a: int, b: int) -> tuple[int, int]:\n    return (b, a)\n\ndef main():\n    box = BoundingBox(10, 20, 110, 250)\n\n    x1: int\n    y1: int\n    x2: int\n    y2: int\n    width: int\n    height: int\n\n    corner1 = box.get_min_corner()\n    corner2 = box.get_max_corner()\n\n    x1, y1 = corner1\n    x2, y2 = corner2\n\n    temp_result = swap_helper(x1, y1)\n    x1, y1 = temp_result\n\n    width = box.get_width()\n    height = box.get_height()\n\n    temp_result2 = swap_helper(width, height)\n    width, height = temp_result2\n\n    print(x1)\n    print(y1)\n    print(x2)\n    print(y2)\n    print(width)\n    print(height)\n\n# EXPECTED OUTPUT:\n# 20\n# 10\n# 110\n# 250\n# 230\n# 100",
+  "expected_output": "20\n10\n110\n250\n230\n100\n",
+  "actual_output": "20\n10\n110\n250\n230\n100",
+  "feature_focus": "tuple_unpacking_assignment",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 528.3687252998352,
+  "execution_duration": 4.595191478729248,
+  "source_files": null
+}

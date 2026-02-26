@@ -1,0 +1,40 @@
+# Shape implementations module - imports from geometry_base
+from geometry_base import ShapeBase
+
+class Rectangle(ShapeBase):
+    width: float
+    height: float
+
+    def __init__(self, name: str, w: float, h: float):
+        super().__init__(name)
+        self.width = w
+        self.height = h
+
+    @override
+    def get_area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def get_name(self) -> str:
+        return self._name
+
+class Circle(ShapeBase):
+    radius: float
+
+    def __init__(self, name: str, r: float):
+        super().__init__(name)
+        self.radius = r
+
+    @override
+    def get_area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def get_name(self) -> str:
+        return self._name
+
+def describe_shape(s: ShapeBase) -> str:
+    return f"{s.get_name()}: {format_area(s.get_area())}"
+
+def format_area(area: float) -> str:
+    return f"{area:.2f}"

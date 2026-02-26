@@ -1,0 +1,83 @@
+# Main entry point for complex module utilities test
+
+from geometry_base import IShape, IDrawable, IMovable, Color
+from geometry_types import Point, Rectangle, Circle, ShapeType
+from shape_collection import ShapeCollection
+
+def move_all(items: list[IShape], dx: float, dy: float) -> None:
+    for item in items:
+        if isinstance(item, IMovable):
+            movable_item: IMovable = item as IMovable
+            movable_item.move(dx, dy)
+
+def test_shapes() -> int:
+    red = Color("red", 255, 0, 0)
+    blue = Color("blue", 0, 0, 255)
+    green = Color("green", 0, 255, 0)
+
+    p = Point(10.0, 20.0)
+    r = Rectangle(5.0, 3.0, red)
+    c = Circle(4.0, Point(0.0, 0.0))
+
+    p.move(5.0, 5.0)
+    r.move(1.0, 1.0)
+    c.move(2.0, 3.0)
+
+    total: float = p.area() + r.area() + c.area()
+
+    print(p.area())
+    print(r.area())
+    print(c.area())
+    return int(total)
+
+def test_collection() -> None:
+    red = Color("red", 255, 0, 0)
+    blue = Color("blue", 0, 0, 255)
+
+    collection = ShapeCollection()
+    collection.add(Rectangle(3.0, 4.0, red), ShapeType.RECTANGLE)
+    collection.add(Circle(2.0, Point(1.0, 1.0)), ShapeType.CIRCLE)
+    collection.add(Point(5.0, 5.0), ShapeType.TRIANGLE)
+
+    print(collection.area())
+    print(collection.count())
+
+    types_list: list[int] = []
+    for t in collection.get_types():
+        types_list.append(int(t))
+    sorted_types: list[int] = sorted(types_list)
+    for t in sorted_types:
+        print(t)
+
+def main():
+    result = test_shapes()
+    print(result)
+
+    test_collection()
+
+    p = Point(1.0, 2.0)
+    print(p.draw())
+
+    r = Rectangle(2.0, 3.0, Color("green", 0, 255, 0))
+    drawable: IDrawable = r
+    print(drawable.draw())
+
+    enum_values: list[int] = [int(ShapeType.CIRCLE), int(ShapeType.RECTANGLE), int(ShapeType.TRIANGLE)]
+    for v in enum_values:
+        print(v)
+
+# EXPECTED OUTPUT:
+# 0.0
+# 15.0
+# 50.26544
+# 65.0
+# 65.0
+# 3
+# 1
+# 2
+# 3
+# Point(1.0, 2.0)
+# Rectangle(2.0 x 3.0)
+# 1
+# 2
+# 3

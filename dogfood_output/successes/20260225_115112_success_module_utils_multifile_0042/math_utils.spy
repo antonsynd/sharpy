@@ -1,0 +1,34 @@
+# Math utility functions and classes
+# Provides geometric calculations and a calculator class
+
+PI: float = 3.14159
+
+def calculate_circle_area(radius: float) -> float:
+    """Calculate area of a circle given its radius."""
+    return PI * radius * radius
+
+def calculate_circle_perimeter(radius: float) -> float:
+    """Calculate perimeter (circumference) of a circle."""
+    return 2.0 * PI * radius
+
+def calculate_rectangle_area(width: float, height: float) -> float:
+    """Calculate area of a rectangle."""
+    return width * height
+
+class GeometryCalculator:
+    """Class-based calculator using module functions."""
+    result_count: int
+
+    def __init__(self):
+        self.result_count = 0
+
+    def area_of_circle(self, radius: float) -> float:
+        self.result_count += 1
+        return calculate_circle_area(radius)
+
+    def perimeter_of_circle(self, radius: float) -> float:
+        self.result_count += 1
+        return calculate_circle_perimeter(radius)
+
+    def get_results_count(self) -> int:
+        return self.result_count

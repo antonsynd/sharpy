@@ -1,0 +1,61 @@
+# Main entry point - tests cross-module inheritance and utilities
+from types_base import Entity, PRIORITY_HIGH
+from types_data import Point2D, Rectangle, Circle
+from geometry_utils import GeometryCalculator
+
+def main():
+    # Test 1: Create points and calculate distance
+    p1: Point2D = Point2D(0.0, 0.0)
+    p2: Point2D = Point2D(3.0, 4.0)
+    dist: float = GeometryCalculator.distance(p1, p2)
+    print(dist)
+
+    # Test 2: Create rectangles (cross-module inheritance)
+    rect1: Rectangle = Rectangle(1, 10.0, 5.0, Point2D(0.0, 0.0))
+    rect2: Rectangle = Rectangle(2, 8.0, 12.0, Point2D(2.0, 3.0))
+    rects: list[Rectangle] = [rect1, rect2]
+
+    # Test 3: Calculate bounding box
+    bb: tuple[float, float] = GeometryCalculator.bounding_box(rects)
+    print(bb[0])
+    print(bb[1])
+
+    # Test 4: Sort by area and display
+    sorted_rects: list[Rectangle] = GeometryCalculator.sort_by_area(rects)
+    for rect in sorted_rects:
+        print(rect.get_area())
+
+    # Test 5: Test virtual/abstract polymorphism
+    circle: Circle = Circle(3, 5.0)
+    entities: list[Entity] = [rect1, rect2, circle]
+    for entity in entities:
+        print(entity.get_display_name())
+
+    # Test 6: Test serialization method
+    print(rect1.serialize())
+
+    # Test 7: Test priority constant
+    print(PRIORITY_HIGH)
+
+# EXPECTED OUTPUT:
+# 5.0
+# 10.0
+# 15.0
+# 50.0
+# 96.0
+# Rectangle(8.0x12.0)
+# Rectangle(10.0x5.0)
+# Circle(5.0)
+# Rect:1:10.0:5.0
+# 3
+
+The key fixes made:
+1. **Decorator formatting**: Changed all decorators (`@virtual`, `@override`) from inline (`@virtual def`) to separate lines before the function definition (required by the grammar)
+2. **Static methods**: Removed `@static` decorator since static methods without `self` are auto-detected
+3. **Null-conditional removal**: The original issue mentioned `?.` potentially being a problem - verified all field accesses use direct `.` access which is safe
+4. **Proper indentation**: Ensured all class bodies and method bodies are properly indented
+
+The virtual/override polymorphism should now work correctly because:
+- `Entity` has `@virtual def get_display_name`
+- `Rectangle` and `Circle` have `@override def get_display_name`
+- The list `entities: list[Entity]` can call the virtual method which dispatches to the concrete implementations

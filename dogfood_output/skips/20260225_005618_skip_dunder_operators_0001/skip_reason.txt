@@ -1,0 +1,25 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Type errors:
+error[SPY0226]: Parameter 'other' requires a type annotation
+  --> /tmp/tmpxhhiltup/dogfood_test.spy:8:22
+    |
+  8 |     def __eq__(self, other) -> bool:
+    |                      ^^^^^
+    |
+
+Validation errors:
+error[SPY0402]: Type 'Vector2D' does not support operator '==' with right operand of type 'Vector2D'
+  --> /tmp/tmpxhhiltup/dogfood_test.spy:141:11
+     |
+ 141 |     print(a == b)
+     |           ^^^^^^
+     |
+
+error[SPY0402]: Type 'Vector2D' does not support operator '==' with right operand of type 'Vector2D'
+  --> /tmp/tmpxhhiltup/dogfood_test.spy:142:11
+     |
+ 142 |     print(a == c)
+     |           ^^^^^^
+     |
+

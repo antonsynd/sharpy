@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T05:26:48.749927",
+  "generated_code": "def accumulate_until(threshold: int, values: list[int]) -> int:\n    running: int = 0\n    for value in values:\n        running += value\n        if running > threshold:\n            return  # Early return - stop yielding before exceeding threshold\n        yield running\n\ndef main():\n    data: list[int] = [5, 10, 15, 8, 20]\n    \n    yielded_count: int = 0\n    for partial in accumulate_until(35, data):\n        yielded_count += 1\n        print(partial)\n    \n    print(f\"Yielded: {yielded_count}\")\n    print(f\"Stopped before adding value causing excess\")\n\n# EXPECTED OUTPUT:\n# 5\n# 15\n# 30\n# Yielded: 3",
+  "expected_output": "5\n15\n30\nYielded: 3\nStopped before adding value causing excess\n",
+  "actual_output": "5\n15\n30\nYielded: 3\nStopped before adding value causing excess",
+  "feature_focus": "generator_early_return",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 106.48384213447571,
+  "execution_duration": 4.711745500564575,
+  "source_files": null
+}

@@ -1,0 +1,97 @@
+# Main entry point demonstrating complex multi-file imports
+from item_types import ItemStatus, Condition, ILoanable, Money
+from library_base import LibraryItem
+from library_items import Book, DVD, Magazine
+from library_utils import LibraryStats, calculate_potential_fees
+
+def main():
+    # Create a collection of library items
+    items: list[LibraryItem] = []
+    
+    # Add books
+    book1: Book = Book("The Great Gatsby", 1001, "F. Scott Fitzgerald", 180, "978-0743273565")
+    book2: Book = Book("1984", 1002, "George Orwell", 328, "978-0451524935")
+    
+    # Add DVDs
+    dvd1: DVD = DVD("The Godfather", 2001, "Francis Ford Coppola", 175, "R")
+    dvd2: DVD = DVD("Citizen Kane", 2002, "Orson Welles", 119, "PG")
+    
+    # Add magazines
+    mag1: Magazine = Magazine("National Geographic", 3001, 245, 6, 2024)
+    
+    # Populate list
+    items.append(book1)
+    items.append(book2)
+    items.append(dvd1)
+    items.append(dvd2)
+    items.append(mag1)
+    
+    # Print 1: Total items count
+    print(len(items))
+    
+    # Analyze items with stats utility
+    stats: LibraryStats = LibraryStats()
+    for item in items:
+        stats.analyze_item(item)
+    
+    # Print 2: Stats summary
+    print(stats.total_items)
+    print(stats.loanable_items)
+    
+    # Test interface dispatch with ILoanable
+    loanable_count: int = 0
+    for item in items:
+        if isinstance(item, ILoanable):
+            loanable_count = loanable_count + 1
+    
+    # Print 4: Count of loanable items (should be 4 - 2 books + 2 DVDs)
+    print(loanable_count)
+    
+    # Test loan periods for different item types
+    # Print 5-6: Loan periods for book and DVD
+    print(book1.get_loan_period())
+    print(dvd1.get_loan_period())
+    
+    # Test late fees
+    # Print 7: Potential late fees total
+    total_fees: float = calculate_potential_fees(items)
+    print(total_fees)
+    
+    # Test check out functionality
+    status1: bool = book1.check_out()
+    status2: bool = mag1.check_out()
+    
+    # Print 8-9: Check out results
+    print(status1)  # True - books can be checked out
+    print(status2)  # True - magazines can be checked out
+    
+    # Print 10-11: Status strings
+    print(book1.get_status_string())
+    print(mag1.get_status_string())
+    
+    # Print 12: Description using overridden method
+    print(book1.get_description())
+    
+    # Print 13: Item type for different classes
+    print(dvd1.get_item_type())
+    
+    # Test struct functionality
+    price1: Money = Money(10, 99)
+    # Print 14: Money struct to_dollars
+    print(price1.to_dollars())
+
+# EXPECTED OUTPUT:
+# 5
+# 5
+# 4
+# 4
+# 21
+# 7
+# 2.5
+# True
+# True
+# Checked Out
+# Checked Out
+# The Great Gatsby by F. Scott Fitzgerald
+# DVD
+# 10.99

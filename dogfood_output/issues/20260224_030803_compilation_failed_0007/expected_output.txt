@@ -1,5 +1,0 @@
-Rectangle 4.0 x 5.0
-Circle with radius 3.0
-28.27431
-28.27431
-Rectangle

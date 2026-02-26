@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-02-25T11:48:02.127923",
+  "generated_code": "# Main entry point - imports concrete shapes and tests cross-module inheritance\nfrom shapes_impl import Rectangle, Circle\n\ndef main():\n    # Test Rectangle: 5.0 x 3.0 should have area=15.0, perimeter=16.0\n    rect = Rectangle(\"Rect1\", 5.0, 3.0)\n    print(rect.name)\n    print(rect.area())\n    print(rect.perimeter())\n    \n    # Test Circle: radius=2.0 should have area=12.56636, perimeter=12.56636\n    circ = Circle(\"Circle1\", 2.0)\n    print(circ.area())\n    print(circ.perimeter())\n\n# EXPECTED OUTPUT:\n# Rect1\n# 15.0\n# 16.0\n# 12.56636\n# 12.56636",
+  "expected_output": "Rect1\n15.0\n16.0\n12.56636\n12.56636\n",
+  "actual_output": "Rect1\n15.0\n16.0\n12.56636\n12.56636",
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 109.278724193573,
+  "execution_duration": 4.399969100952148,
+  "source_files": {
+    "base_shapes.spy": "# Base shapes module defining the base class with virtual methods\n\nclass Shape:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    @virtual\n    def area(self) -> float:\n        return 0.0\n    \n    @virtual\n    def perimeter(self) -> float:\n        return 0.0",
+    "shapes_impl.spy": "# Concrete shape implementations that inherit from base_shapes\nfrom base_shapes import Shape\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n\n    def __init__(self, name: str, width: float, height: float):\n        super().__init__(name)\n        self.width = width\n        self.height = height\n\n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    @override\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, name: str, radius: float):\n        super().__init__(name)\n        self.radius = radius\n    \n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n    \n    @override\n    def perimeter(self) -> float:\n        return 2.0 * 3.14159 * self.radius",
+    "main.spy": "# Main entry point - imports concrete shapes and tests cross-module inheritance\nfrom shapes_impl import Rectangle, Circle\n\ndef main():\n    # Test Rectangle: 5.0 x 3.0 should have area=15.0, perimeter=16.0\n    rect = Rectangle(\"Rect1\", 5.0, 3.0)\n    print(rect.name)\n    print(rect.area())\n    print(rect.perimeter())\n    \n    # Test Circle: radius=2.0 should have area=12.56636, perimeter=12.56636\n    circ = Circle(\"Circle1\", 2.0)\n    print(circ.area())\n    print(circ.perimeter())\n\n# EXPECTED OUTPUT:\n# Rect1\n# 15.0\n# 16.0\n# 12.56636\n# 12.56636"
+  }
+}

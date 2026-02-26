@@ -1,0 +1,6 @@
+none
+[core] init
+[HTTP] request
+[unknown] test
+[HTTP] done
+nolog

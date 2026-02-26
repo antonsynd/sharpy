@@ -1,0 +1,37 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0104]: Expected Colon, got LeftParen
+  --> /tmp/tmp1c04ldvn/dogfood_test.spy:12:19
+    |
+ 12 |         case Point() as pt:
+    |                   ^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmp1c04ldvn/dogfood_test.spy:14:9
+    |
+ 14 |         case _:
+    |         ^^^^
+    |
+
+error[SPY0104]: Expected Colon, got LeftParen
+  --> /tmp/tmp1c04ldvn/dogfood_test.spy:19:17
+    |
+ 19 |         case int() as v if v is not None:
+    |                 ^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmp1c04ldvn/dogfood_test.spy:21:9
+    |
+ 21 |         case _:
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Dedent
+  --> /tmp/tmp1c04ldvn/dogfood_test.spy:24:5
+    |
+ 24 |     n: int = 15
+    |     ^
+    |
+

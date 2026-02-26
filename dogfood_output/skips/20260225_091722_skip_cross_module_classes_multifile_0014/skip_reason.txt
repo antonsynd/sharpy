@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Vector2D' has no member 'magnitude'
+  --> /tmp/tmp4v8uy181/main.spy:16:26
+    |
+ 16 |     dist_origin: float = origin.magnitude
+    |                          ^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'ShapeMetrics' has no member 'density'
+  --> /tmp/tmp4v8uy181/main.spy:39:19
+    |
+ 39 |     dens: float = metrics.density
+    |                   ^^^^^^^^^^^^^^^
+    |
+

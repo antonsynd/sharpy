@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot assign type 'float?' to variable of type 'float'
+  --> /tmp/tmp0bakozxt/dogfood_test.spy:14:5
+    |
+ 14 |     v: float = value.numeric_value
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

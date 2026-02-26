@@ -1,0 +1,54 @@
+# Vehicle types and interfaces
+
+interface IDrivable:
+    def start_engine(self) -> str: ...
+    def stop_engine(self) -> str: ...
+
+interface ILocatable:
+    def get_location(self) -> str: ...
+
+class Vehicle:
+    id: int
+    brand: str
+
+    def __init__(self, id: int, brand: str):
+        self.id = id
+        self.brand = brand
+
+    @virtual
+    def get_location(self) -> str:
+        return "Depot"
+
+class ElectricCar(Vehicle, IDrivable, ILocatable):
+    battery_level: int
+
+    def __init__(self, id: int, brand: str, battery: int):
+        super().__init__(id, brand)
+        self.battery_level = battery
+
+    @override
+    def start_engine(self) -> str:
+        return "Electric motor silent start"
+
+    @override
+    def stop_engine(self) -> str:
+        return "Electric motor stopped"
+
+    @override
+    def get_location(self) -> str:
+        return "Charging Station"
+
+class GasCar(Vehicle, IDrivable, ILocatable):
+    fuel_level: int
+
+    def __init__(self, id: int, brand: str, fuel: int):
+        super().__init__(id, brand)
+        self.fuel_level = fuel
+
+    @override
+    def start_engine(self) -> str:
+        return "Gas engine roars"
+
+    @override
+    def stop_engine(self) -> str:
+        return "Gas engine stopped"

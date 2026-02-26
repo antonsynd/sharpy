@@ -1,0 +1,52 @@
+# Module implementing text processing utilities
+
+from data_types import DataSource, BaseData
+
+class TextData(BaseData):
+    def __init__(self, content: str, source: str):
+        super().__init__(content, source)
+
+    @override
+    def process(self) -> str:
+        raw = self.get_raw()
+        return raw.strip()
+
+    def word_count(self) -> int:
+        words: list[str] = self.get_raw().split(" ")
+        count: int = 0
+        for w in words:
+            if len(w) > 0:
+                count = count + 1
+        return count
+
+class FileSource(DataSource):
+    _filename: str
+    _content: str
+
+    def __init__(self, filename: str, content: str):
+        self._filename = filename
+        self._content = content
+
+    property get name: str:
+        return self._filename
+
+    property get size: int:
+        return len(self._content)
+
+    def read(self) -> str:
+        return self._content
+
+    def is_empty(self) -> bool:
+        return len(self._content) == 0
+
+def normalize_text(text: str) -> str:
+    result = text.lower()
+    return result
+
+def count_vowels(text: str) -> int:
+    count: int = 0
+    for i in range(len(text)):
+        ch: str = str(text[i])
+        if ch == "a" or ch == "e" or ch == "i" or ch == "o" or ch == "u":
+            count = count + 1
+    return count

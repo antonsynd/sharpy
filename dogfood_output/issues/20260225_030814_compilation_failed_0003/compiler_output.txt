@@ -1,0 +1,7 @@
+warning[SPY0451]: Local variable 'score' is assigned but never used
+  --> /tmp/tmpp165v4kg/processors.spy:16:2
+    |
+ 16 |     score1: int = score_user(u1)
+    |  ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

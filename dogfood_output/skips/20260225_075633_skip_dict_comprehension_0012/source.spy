@@ -1,0 +1,104 @@
+type SensorReading = tuple[str, int]
+
+enum AlertLevel:
+    LOW = 10
+    HIGH = 50
+
+interface IMonitor:
+    def get_alerts(self) -> int: ...
+
+@abstract
+class BaseProcessor:
+    threshold: int
+
+    def __init__(self, t: int):
+        self.threshold = t
+
+    @abstract
+    def extract(self, data: list[SensorReading]) -> dict[str, int]: ...
+
+class AlertProcessor(BaseProcessor, IMonitor):
+    alert_count: int
+
+    def __init__(self):
+        super().__init__(20)
+        self.alert_count = 0
+
+    def get_alerts(self) -> int:
+        return self.alert_count
+
+    def _count_and_filter(self, data: list[SensorReading]) -> dict[str, int]:
+        result: dict[str, int] = {}
+        for n, v in data:
+            if v > self.threshold:
+                result[n] = v
+                self.alert_count = self.alert_count + 1
+        return result
+
+    @override
+    def extract(self, data: list[SensorReading]) -> dict[str, int]:
+        base: dict[str, int] = self._count_and_filter(data)
+        filtered: dict[str, int] = {}
+        for k, v in base.items():
+            adjusted: int = (v - self.threshold) * 2
+            if adjusted >= AlertLevel.LOW:
+                filtered[k] = adjusted
+        return filtered
+
+class StatsProcessor(BaseProcessor):
+    def __init__(self):
+        super().__init__(5)
+
+    @override
+    def extract(self, data: list[SensorReading]) -> dict[str, int]:
+        temp: dict[int, int] = {}
+        i: int = 0
+        for n, v in data:
+            if v > self.threshold:
+                temp[i] = v + 100
+            i = i + 1
+        result: dict[str, int] = {}
+        for k, v in temp.items():
+            if v > 105:
+                key: str = "slot_" + str(k)
+                result[key] = v
+        return result
+
+def main():
+    readings: list[SensorReading] = [("temp", 45), ("pressure", 15), ("humidity", 80), ("flow", 8)]
+    
+    lookup: dict[str, int] = {}
+    for k, v in readings:
+        lookup[k] = v
+    
+    alert_proc: AlertProcessor = AlertProcessor()
+    alerts: dict[str, int] = alert_proc.extract(readings)
+    
+    stats_proc: StatsProcessor = StatsProcessor()
+    stats: dict[str, int] = stats_proc.extract(readings)
+    
+    indexed: dict[int, str] = {}
+    i: int = 0
+    for n, v in readings:
+        if i < 3 and v > 10:
+            indexed[i] = n
+        i = i + 1
+    
+    print(len(lookup))
+    print(lookup["pressure"])
+    print(alert_proc.get_alerts())
+    print(len(alerts))
+    print(alerts["humidity"])
+    print(len(stats))
+    print(stats["slot_0"])
+    print(len(indexed))
+
+# EXPECTED OUTPUT:
+# 4
+# 15
+# 2
+# 2
+# 120
+# 4
+# 145
+# 3

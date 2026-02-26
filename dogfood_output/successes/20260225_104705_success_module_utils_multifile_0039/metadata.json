@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-02-25T10:42:42.241421",
+  "generated_code": "# Entry point importing number_utils module\nfrom number_utils import is_prime, factorial, NumberStats\n\ndef main():\n    # Test utility functions from module\n    print(is_prime(17))\n    print(factorial(5))\n    \n    # Test NumberStats class from module\n    stats = NumberStats()\n    stats.add(10)\n    stats.add(20)\n    stats.add(30)\n    \n    # Verify statistics\n    print(stats.count)\n    print(stats.total)\n    print(stats.average())\n\n# EXPECTED OUTPUT:\n# True\n# 120\n# 3\n# 60\n# 20.0",
+  "expected_output": "True\n120\n3\n60\n20.0\n",
+  "actual_output": "True\n120\n3\n60\n20.0",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 242.96209573745728,
+  "execution_duration": 4.431573390960693,
+  "source_files": {
+    "number_utils.spy": "# Module providing number utility functions and statistics tracking\n\ndef is_prime(n: int) -> bool:\n    \"\"\"Check if a number is prime.\"\"\"\n    if n < 2:\n        return False\n    if n == 2:\n        return True\n    if n % 2 == 0:\n        return False\n    i: int = 3\n    while i * i <= n:\n        if n % i == 0:\n            return False\n        i += 2\n    return True\n\ndef factorial(n: int) -> int:\n    \"\"\"Calculate factorial of n.\"\"\"\n    if n < 0:\n        return 0\n    if n <= 1:\n        return 1\n    result: int = 1\n    i: int = 2\n    while i <= n:\n        result = result * i\n        i += 1\n    return result\n\nclass NumberStats:\n    # Use regular instance fields instead of properties\n    count: int\n    total: int\n    \n    def __init__(self):\n        self.count = 0\n        self.total = 0\n    \n    def add(self, n: int) -> None:\n        \"\"\"Add a number to the statistics.\"\"\"\n        self.count = self.count + 1\n        self.total = self.total + n\n    \n    def reset(self) -> None:\n        \"\"\"Reset all statistics.\"\"\"\n        self.count = 0\n        self.total = 0\n    \n    # Use regular method instead of property for computed values\n    def average(self) -> float:\n        \"\"\"Calculate average of all added numbers.\"\"\"\n        if self.count == 0:\n            return 0.0\n        return float(self.total) / float(self.count)",
+    "main.spy": "# Entry point importing number_utils module\nfrom number_utils import is_prime, factorial, NumberStats\n\ndef main():\n    # Test utility functions from module\n    print(is_prime(17))\n    print(factorial(5))\n    \n    # Test NumberStats class from module\n    stats = NumberStats()\n    stats.add(10)\n    stats.add(20)\n    stats.add(30)\n    \n    # Verify statistics\n    print(stats.count)\n    print(stats.total)\n    print(stats.average())\n\n# EXPECTED OUTPUT:\n# True\n# 120\n# 3\n# 60\n# 20.0"
+  }
+}

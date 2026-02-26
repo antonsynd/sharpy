@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'Status' is never used
+  --> /tmp/tmpw2e1pi83/main.spy:2:24
+    |
+  2 | from core_types import Status, Priority, IIdentifiable
+    |                        ^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Entity' is never used
+  --> /tmp/tmpw2e1pi83/main.spy:3:22
+    |
+  3 | from entities import Entity, Person, Task
+    |                      ^^^^^^
+    |
+

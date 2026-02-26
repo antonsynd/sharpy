@@ -1,0 +1,64 @@
+# Main entry point - complex multi-module import test
+# Tests cross-module inheritance, structs, enums, and type aliases
+
+from shapes_base import ShapeBase, ColorRGBA, ShapeInterface
+from geometry_types import Point, Rectangle
+from graphics_enums import ShapeType, RenderMode, ColorPair
+
+def main():
+    # Test struct creation
+    origin: Point = Point(0.0, 0.0)
+    corner: Point = Point(10.0, 20.0)
+    print(origin)
+    print(corner)
+
+    # Test struct method (distance)
+    dist: float = origin.distance_to(corner)
+    print(dist)
+
+    # Test cross-module inheritance and static method
+    red: ColorRGBA = ColorRGBA.red()
+    rect: Rectangle = Rectangle(1, red, origin, 5.0, 3.0)
+    print(red)
+    print(rect.describe())
+
+    # Test property
+    print(rect.area)
+
+    # Test enum values
+    mode: RenderMode = RenderMode.SOLID
+    print(mode)
+
+    # Test color blending
+    blue: ColorRGBA = ColorRGBA.blue()
+    blended: ColorRGBA = red.blend(blue)
+    print(blended)
+
+    # Test type alias (named tuple access)
+    pair: ColorPair = (ColorRGBA(100, 100, 100), ColorRGBA(200, 200, 200))
+
+    # Access tuple elements directly
+    first_color: ColorRGBA = pair[0]
+    print(first_color)
+
+    # Test contains method with primitive coordinates
+    print(rect.contains(2.0, 1.0))
+    print(rect.contains(10.0, 10.0))
+
+    # Test static method and enum
+    type_val: ShapeType = ShapeType.RECTANGLE
+    print(type_val)
+
+# EXPECTED OUTPUT:
+# (0.0,0.0)
+# (10.0,20.0)
+# 22.360679774997898
+# rgba(255,0,0,255)
+# Shape #1
+# 15.0
+# Solid
+# rgba(127,0,127,255)
+# rgba(100,100,100,255)
+# True
+# False
+# Rectangle

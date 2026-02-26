@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-25T12:00:52.967651",
+  "generated_code": "# Test: Function call spreading with variadic and fixed parameters\n# Tests: Spread operator (*) in function calls with tuples allowed, list spread forbidden\n\ndef sum_three(a: int, b: int, c: int) -> int:\n    return a + b + c\n\ndef product(a: int, b: int) -> int:\n    return a * b\n\ndef compute(a: int, b: int, c: int, d: int) -> int:\n    return (a + b) * (c + d)\n\ndef main():\n    triple: tuple[int, int, int] = (1, 2, 3)\n    result1 = sum_three(*triple)\n    print(result1)\n\n    pair: tuple[int, int] = (4, 5)\n    result2 = sum_three(10, *pair)\n    print(result2)\n\n    values: list[int] = [2, 3]\n    result3 = product(values[0], values[1])\n    print(result3)\n\n    left: tuple[int, int] = (1, 2)\n    right: tuple[int, int] = (3, 4)\n    result4 = compute(*left, *right)\n    print(result4)\n\n    nums: list[int] = [5, 6]\n    # product(*nums) is forbidden - use element access instead\n    intermediate: tuple[int, int, int] = (sum_three(*triple), product(nums[0], nums[1]), 7)\n    result5 = sum_three(*intermediate)\n    print(result5)\n\n# EXPECTED OUTPUT:\n# 6\n# 19\n# 6\n# 12\n# 43",
+  "expected_output": "6\n19\n6\n12\n43\n",
+  "actual_output": "6\n19\n6\n21\n43",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "spread_call",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 200.7101113796234,
+  "compilation_duration": null,
+  "execution_duration": 4.509861469268799,
+  "source_files": null
+}

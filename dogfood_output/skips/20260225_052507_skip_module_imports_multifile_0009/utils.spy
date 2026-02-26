@@ -1,0 +1,22 @@
+# Utility functions module
+from types import Point, Color, Status
+
+def format_point(p: Point) -> str:
+    return f"({p.x}, {p.y})"
+
+def get_status_name(s: int) -> str:
+    if s == Status.ACTIVE:
+        return "Active"
+    elif s == Status.INACTIVE:
+        return "Inactive"
+    return "Pending"
+
+def create_red() -> Color:
+    return Color(255, 0, 0)
+
+def clamp(value: int, min_val: int, max_val: int) -> int:
+    if value < min_val:
+        return min_val
+    if value > max_val:
+        return max_val
+    return value

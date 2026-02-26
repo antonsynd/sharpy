@@ -1,0 +1,78 @@
+# Main entry point demonstrating cross-module class usage
+from shapes_base import Shape, Color, ShapeType, Point2D, IDrawable, IMeasurable
+from shapes_concrete import Circle, Rectangle
+from geometry_utils import ShapeUtils, BoundingBox
+
+def main():
+    # Create points
+    origin = Point2D(0.0, 0.0)
+    p1 = Point2D(5.0, 5.0)
+
+    # Create shapes
+    circle = Circle(5.0, origin, Color.RED)
+    rect1 = Rectangle(4.0, 6.0, p1, Color.BLUE)
+    rect2 = Rectangle(3.0, 3.0, origin, Color.GREEN)
+
+    # Test 1: Shape descriptions
+    print(circle.get_description())
+    print(rect1.get_description())
+    print(rect2.get_description())
+
+    # Test 2: Area calculations
+    print(circle.get_area())
+    print(rect1.get_area())
+
+    # Test 3: Shape calculations via ShapeUtils
+    shapes: list[Shape] = [circle, rect1, rect2]
+    total_area = ShapeUtils.calculate_total_area(shapes)
+    print(total_area)
+
+    # Test 4: Color names
+    print(circle.get_color_name())
+    print(rect1.get_color_name())
+
+    # Test 5: Rectangle-specific methods
+    print(rect2.is_square())
+    print(rect1.is_square())
+
+    # Test 6: Draw methods (IDrawable interface)
+    print(circle.draw())
+    print(rect2.draw())
+
+    # Test 7: BoundingBox
+    bbox = ShapeUtils.create_bounding_box(circle)
+    print(bbox.area)
+
+    # Test 8: Shape type enums
+    print(circle.shape_type as int)
+    print(rect1.shape_type as int)
+
+    # Test 9: Circle-specific methods
+    print(circle.get_diameter())
+    print(circle.contains_point(Point2D(3.0, 4.0)))
+
+    # Test 10: Rectangle center calculation
+    center = rect2.get_center()
+    print(center.x)
+    print(center.y)
+
+# EXPECTED OUTPUT:
+# Circle of radius 5.0
+# Rectangle 4.0x6.0
+# Rectangle 3.0x3.0
+# 78.53975
+# 24.0
+# 111.53975
+# Red
+# Blue
+# True
+# False
+# Drawing circle with radius 5.0
+# Drawing rectangle 3.0x3.0
+# 100.0
+# 1
+# 2
+# 10.0
+# True
+# 1.5
+# 1.5

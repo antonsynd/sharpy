@@ -1,0 +1,28 @@
+# Data processing module that imports from math_utils
+from math_utils import Calculator, format_number
+
+class DataTransformer:
+    calc: Calculator
+    values: list[int]
+    
+    def __init__(self, values: list[int]):
+        self.calc = Calculator()
+        self.values = values
+    
+    def sum_values(self) -> int:
+        total: int = 0
+        for v in self.values:
+            total = self.calc.add(total, v)
+        return total
+    
+    def scale_values(self, factor: int) -> list[int]:
+        result: list[int] = []
+        for v in self.values:
+            scaled: int = self.calc.multiply(v, factor)
+            result.append(scaled)
+        return result
+
+def process_data(vals: list[int]) -> str:
+    transformer = DataTransformer(vals)
+    total: int = transformer.sum_values()
+    return format_number(total)

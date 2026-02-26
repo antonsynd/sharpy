@@ -1,0 +1,5 @@
+=== Combat Round ===
+Thorin swings Battle Axe at Goblin for 35 damage!
+Thorin executes a mighty shield bash!
+Elara casts Fireball on Orc for 30 damage!
+Elara summons arcane energy!

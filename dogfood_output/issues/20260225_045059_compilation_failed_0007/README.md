@@ -1,0 +1,90 @@
+# Issue Report: compilation_failed
+
+**Timestamp:** 2026-02-25T04:33:58.200936
+**Type:** compilation_failed
+**Feature Focus:** cross_module_classes
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Main entry point - demonstrates cross-module class usage
+
+from types import ShapeCategory, IMeasurable
+from structures import Point, MathUtils
+from shapes import Rectangle, Circle, ShapeCollection
+
+def main():
+    collection = ShapeCollection()
+
+    # Create shapes with different dimensions
+    rect1 = Rectangle(1, 10.0, 5.0, 0.0, 0.0)
+    rect2 = Rectangle(2, 8.0, 4.0, 3.0, 3.0)
+    circle1 = Circle(3, 5.0, 10.0, 10.0)
+
+    # Add to collection
+    collection.add(rect1)
+    collection.add(rect2)
+    collection.add(circle1)
+
+    # Test 1: Print shape descriptions and types
+    print(rect1.describe())
+    print(rect1.get_type_name())
+
+    # Test 2: Print measurements - Rectangle (using methods not properties)
+    print(rect1.get_area())
+    print(rect1.get_perimeter())
+
+    # Test 3: Print measurements - Circle
+    print(circle1.get_area())
+    print(circle1.get_perimeter())
+
+    # Test 4: Collection aggregation
+    print(collection.total_area())
+
+    # Test 5: Shape category counting
+    print(collection.count_by_category(ShapeCategory.TWO_D))
+
+    # Test 6: Static method call
+    print(MathUtils.circle_area(3.0))
+
+    # Test 7: Cross-module Point usage and method call
+    p = Point(10.0, 10.0)
+    print(circle1.contains_point(p))
+
+    # Test 8: Interface type check
+    print(isinstance(rect1, IMeasurable))
+
+    # EXPECTED OUTPUT:
+    # Rectangle 1
+    # Rectangle
+    # 50.0
+    # 30.0
+    # 78.53975
+    # 31.4159
+    # 228.53975
+    # 3
+    # 28.27431
+    # True
+    # True
+```
+
+## Error
+
+```
+Assembly compilation failed:
+
+error[CS0103]: The name 'Cast' does not exist in the current context
+  --> /tmp/tmpd_x_ob2i/shapes.spy:82:37
+
+error[CS0119]: 'Types.IMeasurable' is a type, which is not valid in the given context
+  --> /tmp/tmpd_x_ob2i/shapes.spy:82:70
+
+
+```
+
+## Timing
+
+- Generation: 991.28s
+- Execution: 4.41s

@@ -1,0 +1,31 @@
+# Module defining enums, interfaces, and structs for library items
+
+# Enum for item status
+enum ItemStatus:
+    AVAILABLE = 0
+    CHECKED_OUT = 1
+    RESERVED = 2
+    LOST = 3
+
+# Enum for item condition
+enum Condition:
+    NEW = 0
+    GOOD = 1
+    FAIR = 2
+    POOR = 3
+
+# Interface for loanable items
+interface ILoanable:
+    def get_loan_period(self) -> int: ...
+    def can_renew(self) -> bool: ...
+    property get_late_fee: float
+
+# Struct for representing monetary amounts
+struct Money:
+    cents: int
+    
+    def __init__(self, dollars: int, cents_val: int):
+        self.cents = dollars * 100 + cents_val
+    
+    def to_dollars(self) -> float:
+        return float(self.cents) / 100.0

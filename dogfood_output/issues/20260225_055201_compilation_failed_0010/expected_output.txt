@@ -1,0 +1,9 @@
+5.0
+CIRCLE
+90.53975
+Drawing circle at (0.0, 0.0)
+Drawing rectangle at (10.0, 10.0)
+Circle with radius 5.0
+Rectangle 3.0x4.0
+(1.0, 2.0)
+100.0

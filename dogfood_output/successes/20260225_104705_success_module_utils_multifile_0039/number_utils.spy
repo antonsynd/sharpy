@@ -1,0 +1,55 @@
+# Module providing number utility functions and statistics tracking
+
+def is_prime(n: int) -> bool:
+    """Check if a number is prime."""
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+    i: int = 3
+    while i * i <= n:
+        if n % i == 0:
+            return False
+        i += 2
+    return True
+
+def factorial(n: int) -> int:
+    """Calculate factorial of n."""
+    if n < 0:
+        return 0
+    if n <= 1:
+        return 1
+    result: int = 1
+    i: int = 2
+    while i <= n:
+        result = result * i
+        i += 1
+    return result
+
+class NumberStats:
+    # Use regular instance fields instead of properties
+    count: int
+    total: int
+    
+    def __init__(self):
+        self.count = 0
+        self.total = 0
+    
+    def add(self, n: int) -> None:
+        """Add a number to the statistics."""
+        self.count = self.count + 1
+        self.total = self.total + n
+    
+    def reset(self) -> None:
+        """Reset all statistics."""
+        self.count = 0
+        self.total = 0
+    
+    # Use regular method instead of property for computed values
+    def average(self) -> float:
+        """Calculate average of all added numbers."""
+        if self.count == 0:
+            return 0.0
+        return float(self.total) / float(self.count)

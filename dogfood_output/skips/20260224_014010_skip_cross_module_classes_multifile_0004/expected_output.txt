@@ -1,9 +1,0 @@
-1
-Circle with radius 5.0
-0.0,0.0
-Group 'MyGroup' with 2 shapes
-102.53975
-BoundedCircle: 3.0 (max 10.0)
-True
-5.0
-True

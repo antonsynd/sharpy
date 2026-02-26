@@ -1,0 +1,22 @@
+# Utility functions and classes for geometry calculations
+
+class Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    def distance_to_origin(self) -> float:
+        return pow(self.x * self.x + self.y * self.y, 0.5)
+
+def clamp(value: float, min_val: float, max_val: float) -> float:
+    if value < min_val:
+        return min_val
+    if value > max_val:
+        return max_val
+    return value
+
+def format_number(n: float) -> str:
+    return f"{n:.2f}"

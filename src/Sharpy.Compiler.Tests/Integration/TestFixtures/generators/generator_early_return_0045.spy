@@ -1,0 +1,12 @@
+def early_stop() -> int:
+    yield 2
+    yield 4
+    return  # Early termination
+    yield 8  # Unreachable
+
+def main():
+    for n in early_stop():
+        print(n)
+# EXPECTED OUTPUT:
+# 2
+# 4

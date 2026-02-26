@@ -1,0 +1,29 @@
+# Main entry point - tests cross-module inheritance
+
+from geometry import Shape, scale_value
+from shapes import Circle, Rectangle
+
+def main():
+    circle: Circle = Circle(5.0)
+    rect: Rectangle = Rectangle(4.0, 6.0)
+
+    circle_area: float = circle.area()
+    print(circle_area)
+
+    rect_perim: float = rect.perimeter()
+    print(rect_perim)
+
+    scaled: float = scale_value(10.0, 2.5)
+    print(scaled)
+
+    shapes: list[Shape] = [circle, rect]
+    total_area: float = 0.0
+    for s in shapes:
+        total_area = total_area + s.area()
+    print(total_area)
+
+# EXPECTED OUTPUT:
+# 78.53975
+# 20.0
+# 25.0
+# 102.53975

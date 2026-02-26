@@ -1,0 +1,70 @@
+# Utility functions and classes for geometry operations
+from shapes_base import Shape, IMeasurable
+from shapes_concrete import Circle, Rectangle
+
+# --- Struct representing a bounding box ---
+struct BoundingBox:
+    min_x: float
+    min_y: float
+    max_x: float
+    max_y: float
+
+    def __init__(self, min_x: float, min_y: float, max_x: float, max_y: float):
+        self.min_x = min_x
+        self.min_y = min_y
+        self.max_x = max_x
+        self.max_y = max_y
+
+    property get width(self) -> float:
+        return self.max_x - self.min_x
+
+    property get height(self) -> float:
+        return self.max_y - self.min_y
+
+    property get area(self) -> float:
+        return self.width * self.height
+
+# --- Utility class for shape operations ---
+class ShapeUtils:
+    @static
+    def calculate_total_area(shapes: list[Shape]) -> float:
+        total = 0.0
+        for shape in shapes:
+            total = total + shape.get_area()
+        return total
+
+    @static
+    def count_measurable(shapes: list[Shape]) -> int:
+        count = 0
+        for shape in shapes:
+            # Check if shape implements IMeasurable (they all do via Shape)
+            if isinstance(shape, IMeasurable):
+                count = count + 1
+        return count
+
+    @static
+    def create_bounding_box(circle: Circle) -> BoundingBox:
+        r = circle.radius
+        cx = circle.center.x
+        cy = circle.center.y
+        return BoundingBox(cx - r, cy - r, cx + r, cy + r)
+
+    @static
+    def sort_by_area_descending(shapes: list[Shape]) -> list[Shape]:
+        # Simple bubble sort for demonstration
+        result: list[Shape] = shapes.copy()
+        n = len(result)
+        i = 0
+        while i < n:
+            j = 0
+            while j < n - i - 1:
+                a1 = result[j].get_area()
+                a2 = result[j + 1].get_area()
+                if a1 < a2:
+                    # Swap
+                    temp = result[j]
+                    result[j] = result[j + 1]
+                    result[j + 1] = temp
+                j = j + 1
+            i = i + 1
+        return result

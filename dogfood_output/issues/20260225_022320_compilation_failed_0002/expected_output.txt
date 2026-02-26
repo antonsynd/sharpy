@@ -1,0 +1,7 @@
+Distance: 5.0
+Rectangle 4.0x5.0
+Area: 20.0
+Circle with radius 2.5
+Area: 19.6349375
+Triangle with radius 6.0
+Area: 12.0

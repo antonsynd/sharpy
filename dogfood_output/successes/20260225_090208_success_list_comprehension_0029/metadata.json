@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T08:59:23.518579",
+  "generated_code": "def process_scores(scores: list[int]) -> tuple[list[int], list[int], int]:\n    high_scores: list[int] = [s for s in scores if s >= 80]\n    \n    boosted: list[int] = [s + 10 for s in scores]\n    \n    # Nested: comprehension inside len() with condition\n    final_count: int = len([s for s in boosted if s >= 90])\n    \n    return (high_scores, boosted, final_count)\n\ndef main():\n    grades: list[int] = [75, 92, 68, 85, 88, 72, 95]\n    \n    high: list[int]\n    adjusted: list[int]\n    count: int\n    high, adjusted, count = process_scores(grades)\n    \n    print(high)\n    print(adjusted)\n    print(count)\n    \n    categories: list[str] = [f\"score_{s}\" for s in grades if s > 80]\n    print(categories)\n\n# EXPECTED OUTPUT:\n# [92, 85, 88, 95]\n# [85, 102, 78, 95, 98, 82, 105]\n# 4\n# [score_92, score_85, score_88, score_95]",
+  "expected_output": "[92, 85, 88, 95]\n[85, 102, 78, 95, 98, 82, 105]\n4\n[score_92, score_85, score_88, score_95]\n",
+  "actual_output": "[92, 85, 88, 95]\n[85, 102, 78, 95, 98, 82, 105]\n4\n[score_92, score_85, score_88, score_95]",
+  "feature_focus": "list_comprehension",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 154.35101675987244,
+  "execution_duration": 4.7775256633758545,
+  "source_files": null
+}

@@ -1,0 +1,34 @@
+# Main entry point - imports and uses both modules
+from math_utils import Calculator, format_number
+from data_transformer import DataTransformer, process_data
+
+def main():
+    # Test 1: Direct use of imported class
+    calc = Calculator()
+    sum_result: int = calc.add(10, 20)
+    print(sum_result)
+    
+    # Test 2: Direct use of imported function
+    formatted: str = format_number(sum_result)
+    print(formatted)
+    
+    # Test 3: Use DataTransformer from second module
+    data: list[int] = [1, 2, 3, 4, 5]
+    transformer = DataTransformer(data)
+    total: int = transformer.sum_values()
+    print(total)
+    
+    # Test 4: Chain of module imports (main -> data_transformer -> math_utils)
+    result: str = process_data([10, 20, 30])
+    print(result)
+    
+    # Test 5: Scale values using nested module usage
+    scaled: list[int] = transformer.scale_values(3)
+    print(scaled[0])
+
+# EXPECTED OUTPUT:
+# 30
+# Value: 30
+# 15
+# Value: 60
+# 3

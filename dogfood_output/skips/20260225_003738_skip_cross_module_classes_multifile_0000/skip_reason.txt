@@ -1,0 +1,9 @@
+Repeated identical compiler error (likely compiler bug): Compilation errors:
+
+error[SPY0202]: Base type 'Shape' not found
+  --> /tmp/tmp_h70are3/main.spy:3:1
+    |
+  3 | class Rectangle(Shape):
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-25T06:43:13.540354",
+  "generated_code": "class Counter:\n    _val: int\n    def __init__(self, v: int):\n        self._val = v\n    \n    @virtual\n    def get(self) -> int:\n        return self._val\n\nclass DoublingCounter(Counter):\n    @override\n    def get(self) -> int:\n        return self._val * 2\n\ndef main():\n    c = Counter(7)\n    d = DoublingCounter(7)\n    print(c.get())\n    print(d.get())\n    # EXPECTED OUTPUT:\n    # 7\n    # 14",
+  "expected_output": "7\n14\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS1729]: 'DogfoodTest.DoublingCounter' does not contain a constructor that takes 1 arguments\n  --> /tmp/tmpwp0fo3l8/dogfood_test.spy:17:21\n    |\n 17 |     d = DoublingCounter(7)\n    |                     ^\n    |\n\nerror[CS7036]: There is no argument given that corresponds to the required parameter 'v' of 'DogfoodTest.Counter.Counter(int)'\n  --> /tmp/tmpwp0fo3l8/dogfood_test.spy:8:18\n    |\n  8 |         return self._val\n    |                  ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmpwp0fo3l8/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "inheritance_with_override",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 92.91240978240967,
+  "compilation_duration": null,
+  "execution_duration": 4.050647735595703,
+  "source_files": null
+}

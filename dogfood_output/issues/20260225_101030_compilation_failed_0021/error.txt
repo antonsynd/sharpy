@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0506]: 'Shapes.Rectangle.Draw()': cannot override inherited member 'GeometryBase.Shape.Draw()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmp4syfr4lp/shapes.spy:24:32
+    |
+ 24 |     r_draw: str = rect.draw()
+    |                              ^
+    |
+
+error[CS0506]: 'Shapes.Circle.Draw()': cannot override inherited member 'GeometryBase.Shape.Draw()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmp4syfr4lp/shapes.spy:51:32
+    |
+ 51 | # True
+    |       ^
+    |
+

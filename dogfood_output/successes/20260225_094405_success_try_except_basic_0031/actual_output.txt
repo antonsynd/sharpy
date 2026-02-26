@@ -1,0 +1,6 @@
+10.0
+Error: Validation failed
+0.0
+Error: Invalid number format
+0.0
+25.0

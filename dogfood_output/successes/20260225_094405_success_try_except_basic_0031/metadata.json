@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T09:38:32.849373",
+  "generated_code": "# Test: Multiple exception types with validation and computation\ndef validate_and_compute(a: str, b: str) -> float:\n    try:\n        x: float = float(a)\n        y: float = float(b)\n        if x > 100.0:\n            raise RuntimeError(\"Value exceeds maximum\")\n        return x / y\n    except ValueError:\n        print(\"Error: Invalid number format\")\n        return 0.0\n    except RuntimeError:\n        print(\"Error: Validation failed\")\n        return 0.0\n\ndef main():\n    print(validate_and_compute(\"50\", \"5\"))\n    print(validate_and_compute(\"150\", \"2\"))\n    print(validate_and_compute(\"80\", \"abc\"))\n    result: float = validate_and_compute(\"75\", \"3\")\n    print(result)\n# EXPECTED OUTPUT:\n# 10.0\n# Error: Validation failed\n# 0.0\n# Error: Invalid number format\n# 0.0\n# 25.0",
+  "expected_output": "10.0\nError: Validation failed\n0.0\nError: Invalid number format\n0.0\n25.0\n",
+  "actual_output": "10.0\nError: Validation failed\n0.0\nError: Invalid number format\n0.0\n25.0",
+  "feature_focus": "try_except_basic",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 317.5306484699249,
+  "execution_duration": 4.483910083770752,
+  "source_files": null
+}

@@ -1,0 +1,32 @@
+# Entry point - demonstrates cross-module imports and inheritance
+from utils import Point, clamp, format_number
+from shapes import Rectangle, Circle
+
+def main():
+    # Test Point class from utils
+    p1: Point = Point(3.0, 4.0)
+    print(format_number(p1.distance_to_origin()))
+    
+    # Test clamp function from utils
+    print(format_number(clamp(150.0, 0.0, 100.0)))
+    print(format_number(clamp(-10.0, 0.0, 100.0)))
+    
+    # Test Rectangle from shapes (cross-module with inheritance)
+    rect: Rectangle = Rectangle("Box", 5.0, 3.0)
+    print(format_number(rect.area()))
+    print(rect.describe())
+    
+    # Test Circle from shapes (cross-module using Point from utils)
+    center: Point = Point(6.0, 8.0)
+    circle: Circle = Circle(center, 2.5)
+    print(format_number(circle.area()))
+    print(format_number(circle.distance_from_origin()))
+    
+# EXPECTED OUTPUT:
+# 5.00
+# 100.00
+# 0.00
+# 15.00
+# Rectangle Box: 15.00
+# 19.63
+# 10.00

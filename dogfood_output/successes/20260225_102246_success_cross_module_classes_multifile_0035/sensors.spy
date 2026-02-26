@@ -1,0 +1,25 @@
+# Sensors module - extends Equipment classes from equipment module
+
+from equipment import Equipment, Machine
+
+class TemperatureSensor(Equipment):
+    reading: float
+    
+    def __init__(self, name: str, reading: float):
+        super().__init__(name)
+        self.reading = reading
+    
+    @override
+    def get_status(self) -> str:
+        return f"{self.name}: {self.reading}C"
+
+class IndustrialMachine(Machine):
+    power_level: int
+    
+    def __init__(self, id: int, power: int):
+        super().__init__(id)
+        self.power_level = power
+    
+    @override
+    def operate(self) -> str:
+        return f"Industrial {self.machine_id} at {self.power_level}%"

@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-25T08:14:42.557731",
+  "generated_code": "# Test: Nullable types with null coalescing, conditional access, and type narrowing\n\ndef process_score(raw_input: str?) -> int:\n    value: str = raw_input ?? \"0\"\n    \n    if value == \"\":\n        return 0\n    result: int = 0\n    for c in value:\n        result = result * 10 + (ord(c) - 48)  # Simple digit parsing\n    return result\n\ndef get_display_name(name: str?) -> str:\n    formatted: str? = name?.strip()\n    \n    if formatted is not None:\n        if len(formatted) > 0:\n            return formatted\n    return \"Anonymous\"\n\ndef main():\n    a: int? = Some(42)\n    b: int? = None()\n    \n    result1: int = a ?? 0  # Should be 42\n    result2: int = b ?? 100  # Should be 100 (default)\n    \n    print(result1)\n    print(result2)\n    \n    greeting: str? = Some(\"  hello  \")\n    empty: str? = None()\n    \n    upper1: str? = greeting?.upper()\n    upper2: str? = empty?.upper()\n    \n    # unwrap_or for safe access\n    final1: str = upper1?.strip() ?? \"NO GREETING\"\n    final2: str = upper2 ?? \"NO VALUE\"\n    \n    print(final1)\n    print(final2)\n    \n    print(get_display_name(\"  Alice  \"))\n    print(get_display_name(None()))\n    print(get_display_name(\"\"))\n    \n    print(process_score(Some(\"123\")))\n    print(process_score(None()))\n\n# EXPECTED OUTPUT:\n# 42\n# 100\n# HELLO\n# NO VALUE\n# Alice\n# Anonymous\n# Anonymous\n# 123\n# 0",
+  "expected_output": "42\n100\nHELLO\nNO VALUE\nAlice\nAnonymous\nAnonymous\n123\n0\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0266]: Cannot implicitly convert type 'object' to 'Sharpy.Optional<string>'. An explicit conversion exists (are you missing a cast?)\n  --> /tmp/tmp5pifzsmb/dogfood_test.spy:14:38\n    |\n 14 |     formatted: str? = name?.strip()\n    |                                    ^\n    |\n\nerror[CS0266]: Cannot implicitly convert type 'object' to 'Sharpy.Optional<string>'. An explicit conversion exists (are you missing a cast?)\n  --> /tmp/tmp5pifzsmb/dogfood_test.spy:34:35\n    |\n 34 |     upper1: str? = greeting?.upper()\n    |                                   ^\n    |\n\nerror[CS0266]: Cannot implicitly convert type 'object' to 'Sharpy.Optional<string>'. An explicit conversion exists (are you missing a cast?)\n  --> /tmp/tmp5pifzsmb/dogfood_test.spy:35:35\n    |\n 35 |     upper2: str? = empty?.upper()\n    |                                  ^\n    |\n\nerror[CS0266]: Cannot implicitly convert type 'object' to 'string'. An explicit conversion exists (are you missing a cast?)\n  --> /tmp/tmp5pifzsmb/dogfood_test.spy:38:25\n    |\n 38 |     final1: str = upper1?.strip() ?? \"NO GREETING\"\n    |                         ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmp5pifzsmb/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "nullable_types",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 71.1406409740448,
+  "compilation_duration": null,
+  "execution_duration": 4.3353071212768555,
+  "source_files": null
+}

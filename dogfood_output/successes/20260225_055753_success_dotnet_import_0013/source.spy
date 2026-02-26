@@ -1,0 +1,19 @@
+from System import Math
+
+def main():
+    # Use Math.Abs for absolute value
+    result1: int = Math.Abs(-42)
+    print(result1)
+    
+    # Use Math.Max for finding maximum
+    result2: int = Math.Max(10, 25)
+    print(result2)
+    
+    # Use Math.Min for finding minimum
+    result3: int = Math.Min(7, 3)
+    print(result3)
+
+# EXPECTED OUTPUT:
+# 42
+# 25
+# 3

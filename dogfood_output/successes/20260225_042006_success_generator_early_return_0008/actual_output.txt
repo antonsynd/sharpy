@@ -1,0 +1,12 @@
+Stream with early return at 5:
+0
+1
+2
+3
+4
+Conditional yield with early return at 3:
+0
+2
+4
+Early return not triggered (stop_at > max):
+4

@@ -1,8 +1,0 @@
-False
-basic: inactive
-True
-basic: active
-False
-True
-False
-secure: inactive

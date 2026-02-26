@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T02:15:04.793192",
+  "generated_code": "# Test: f_string_basic with class methods and arithmetic expressions\n\nclass Product:\n    name: str\n    price: float\n    quantity: int\n    \n    def __init__(self, name: str, price: float, quantity: int):\n        self.name = name\n        self.price = price\n        self.quantity = quantity\n    \n    def total_value(self) -> float:\n        return self.price * self.quantity\n    \n    def discount_price(self, percent_off: int) -> float:\n        discount = self.price * percent_off / 100.0\n        return self.price - discount\n\ndef main():\n    item = Product(\"Widget\", 19.99, 5)\n    \n    print(f\"Product: {item.name}\")\n    \n    print(f\"Stock value: ${item.total_value()}\")\n    \n    discounted = item.discount_price(10)\n    print(f\"After 10% off: ${discounted}\")\n    \n    in_stock = item.quantity > 0\n    print(f\"In stock: {in_stock}\")\n    \n    if item.quantity < 10:\n        print(f\"Low stock alert: only {item.quantity} remaining!\")\n    else:\n        print(f\"Well stocked: {item.quantity} units\")\n\n# EXPECTED OUTPUT:\n# Product: Widget\n# After 10% off: $17.991",
+  "expected_output": "Product: Widget\nStock value: $99.95\nAfter 10% off: $17.991\nIn stock: True\nLow stock alert: only 5 remaining!\n",
+  "actual_output": "Product: Widget\nStock value: $99.94999999999999\nAfter 10% off: $17.991\nIn stock: True\nLow stock alert: only 5 remaining!",
+  "feature_focus": "f_string_basic",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 208.95880675315857,
+  "execution_duration": 4.389908313751221,
+  "source_files": null
+}

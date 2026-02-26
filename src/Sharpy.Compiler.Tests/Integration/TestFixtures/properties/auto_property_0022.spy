@@ -1,0 +1,44 @@
+class TemperatureConverter:
+    # Read-write auto-property with default
+    property celsius: float = 0.0
+    
+    # Init-only auto-property - can be set in __init__ but read-only afterwards
+    property init precision: int
+    
+    # Read-only auto-property with computed initial value
+    property get scale_count: int = 3
+    
+    def __init__(self, precision: int):
+        self.precision = precision
+    
+    property get fahrenheit(self) -> float:
+        return (self.celsius * 9.0 / 5.0) + 32.0
+    
+    property get kelvin(self) -> float:
+        return self.celsius + 273.15
+    
+    def set_celsius(self, value: float) -> None:
+        self.celsius = value
+
+def main():
+    tc = TemperatureConverter(2)
+    
+    print(tc.scale_count)
+    
+    tc.set_celsius(25.0)
+    print(tc.celsius)
+    
+    print(tc.fahrenheit)
+    print(tc.kelvin)
+    
+    print(tc.precision)
+    
+    tc.set_celsius(100.0)
+    print(tc.fahrenheit)
+# EXPECTED OUTPUT:
+# 3
+# 25.0
+# 77.0
+# 298.15
+# 2
+# 212.0

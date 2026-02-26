@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0161]: 'Processors.CreateEnrichedUser(string, string, List<string>)': not all code paths return a value
+  --> /tmp/tmpp165v4kg/processors.spy:16:56
+    |
+ 16 |     score1: int = score_user(u1)
+    |                                 ^
+    |
+

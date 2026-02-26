@@ -1,0 +1,8 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'pi' does not exist in the current context
+  --> /tmp/tmp0r7_mo1r/math_utils.spy:44:20
+
+error[CS0103]: The name 'pi' does not exist in the current context
+  --> /tmp/tmp0r7_mo1r/math_utils.spy:47:27
+

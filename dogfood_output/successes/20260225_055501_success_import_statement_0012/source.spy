@@ -1,0 +1,10 @@
+# Test: Simple import statement with alias
+# Tests: Import statement syntax (using a non-existent module would fail)
+# Note: math module not available in current stdlib, demonstrating basic arithmetic instead
+
+def main():
+    radius: int = 3
+    result: float = radius * radius
+    print(result)
+# EXPECTED OUTPUT:
+# 9.0

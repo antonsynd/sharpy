@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-02-25T07:05:14.852198",
+  "generated_code": "# Main entry point - tests cross-module inheritance\n\nfrom geometry import Shape, scale_value\nfrom shapes import Circle, Rectangle\n\ndef main():\n    circle: Circle = Circle(5.0)\n    rect: Rectangle = Rectangle(4.0, 6.0)\n\n    circle_area: float = circle.area()\n    print(circle_area)\n\n    rect_perim: float = rect.perimeter()\n    print(rect_perim)\n\n    scaled: float = scale_value(10.0, 2.5)\n    print(scaled)\n\n    shapes: list[Shape] = [circle, rect]\n    total_area: float = 0.0\n    for s in shapes:\n        total_area = total_area + s.area()\n    print(total_area)\n\n# EXPECTED OUTPUT:\n# 78.53975\n# 20.0\n# 25.0\n# 102.53975",
+  "expected_output": "78.53975\n20.0\n25.0\n102.53975\n",
+  "actual_output": "78.53975\n20.0\n25.0\n102.53975",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 172.6554696559906,
+  "execution_duration": 4.5121259689331055,
+  "source_files": {
+    "geometry.spy": "# Base geometry module with Shape class and utilities\n\nPI: float = 3.14159\n\nclass Shape:\n    def __init__(self):\n        pass\n\n    @virtual\n    def area(self) -> float:\n        return 0.0\n\n    @virtual\n    def perimeter(self) -> float:\n        return 0.0\n\ndef scale_value(value: float, factor: float) -> float:\n    return value * factor",
+    "shapes.spy": "# Concrete shape implementations using geometry base classes\n\nfrom geometry import Shape, PI\n\nclass Circle(Shape):\n    radius: float\n\n    def __init__(self, r: float):\n        super().__init__()\n        self.radius = r\n\n    @override\n    def area(self) -> float:\n        return PI * self.radius * self.radius\n\n    @override\n    def perimeter(self) -> float:\n        return 2.0 * PI * self.radius\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n\n    def __init__(self, w: float, h: float):\n        super().__init__()\n        self.width = w\n        self.height = h\n\n    @override\n    def area(self) -> float:\n        return self.width * self.height\n\n    @override\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)",
+    "main.spy": "# Main entry point - tests cross-module inheritance\n\nfrom geometry import Shape, scale_value\nfrom shapes import Circle, Rectangle\n\ndef main():\n    circle: Circle = Circle(5.0)\n    rect: Rectangle = Rectangle(4.0, 6.0)\n\n    circle_area: float = circle.area()\n    print(circle_area)\n\n    rect_perim: float = rect.perimeter()\n    print(rect_perim)\n\n    scaled: float = scale_value(10.0, 2.5)\n    print(scaled)\n\n    shapes: list[Shape] = [circle, rect]\n    total_area: float = 0.0\n    for s in shapes:\n        total_area = total_area + s.area()\n    print(total_area)\n\n# EXPECTED OUTPUT:\n# 78.53975\n# 20.0\n# 25.0\n# 102.53975"
+  }
+}

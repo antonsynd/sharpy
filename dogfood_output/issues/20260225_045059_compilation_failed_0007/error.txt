@@ -1,0 +1,8 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'Cast' does not exist in the current context
+  --> /tmp/tmpd_x_ob2i/shapes.spy:82:37
+
+error[CS0119]: 'Types.IMeasurable' is a type, which is not valid in the given context
+  --> /tmp/tmpd_x_ob2i/shapes.spy:82:70
+

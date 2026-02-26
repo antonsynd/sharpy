@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0534]: 'ShapesExtended.Circle' does not implement inherited abstract member 'ShapesTypes.Shape.GetType()'
+  --> shapes_extended.cs:14:18
+    |
+ 14 |     # Test 1: Circle area and drawing (Interface method dispatch)
+    |                  ^
+    |
+
+error[CS0534]: 'ShapesExtended.Rectangle' does not implement inherited abstract member 'ShapesTypes.Shape.GetType()'
+  --> /tmp/tmp_0__k3k9/shapes_extended.spy:17:18
+    |
+ 17 |     
+    |     ^
+    |
+

@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-25T01:33:36.141066",
+  "generated_code": "type ConfigValue = str\n\n@abstract\nclass ConfigLoader:\n    @abstract\n    def get_value(self, key: str) -> ConfigValue?: ...\n\nclass IntConfigLoader(ConfigLoader):\n    _fallback: int\n\n    def __init__(self, fallback: int):\n        self._fallback = fallback\n\n    @override\n    def get_value(self, key: str) -> ConfigValue?:\n        if key == \"port\":\n            return Some(\"8080\")\n        return None()\n\nclass DataTransformer:\n    def transform(self, val: str) -> float?:\n        return Some(float(val))\n\ndef main():\n    loader = IntConfigLoader(3000)\n    transformer = DataTransformer()\n\n    raw = loader.get_value(\"port\")\n    if raw is not None:\n        print(f\"raw: {raw}\")\n        parsed = transformer.transform(raw).unwrap_or(0.0)\n        print(f\"parsed: {parsed}\")\n    else:\n        print(\"missing\")\n\n    direct = loader.get_value(\"missing\")\n    default_str = direct.unwrap_or(\"fallback\")\n    print(default_str)\n\n    num_opt: int? = Some(25)\n    doubled = num_opt.map(lambda x: x * 2)\n    print(doubled.unwrap())\n\n# EXPECTED OUTPUT:\n# raw: 8080\n# parsed: 8080.0\n# missing\n# fallback\n# 50",
+  "expected_output": "raw: 8080\nparsed: 8080.0\nmissing\nfallback\n50\n",
+  "actual_output": "raw: 8080\nparsed: 8080\nfallback\n50",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "optional_unwrap",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 754.9119703769684,
+  "compilation_duration": null,
+  "execution_duration": 4.568395614624023,
+  "source_files": null
+}

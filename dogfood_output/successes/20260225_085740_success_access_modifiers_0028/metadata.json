@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T08:41:06.069805",
+  "generated_code": "class Vault:\n    _secret_code: str\n    _combination: int\n\n    def __init__(self, code: str, combo: int):\n        self._secret_code = code\n        self._combination = combo\n\n    def get_secret(self) -> str:\n        return self._secret_code\n\nclass SecureVault(Vault):\n    encryption_key: int\n\n    def __init__(self, code: str, combo: int, key: int):\n        super().__init__(code, combo)\n        self.encryption_key = key\n\n    def read_combination(self) -> int:\n        return self._combination\n\n    def vault_info(self) -> int:\n        return self._combination + self.encryption_key\n\ndef main():\n    vault = SecureVault(\"XJ9K\", 5732, 999)\n    print(vault.get_secret())\n    print(vault.read_combination())\n    print(vault.vault_info())\n    print(vault.encryption_key)\n\n# EXPECTED OUTPUT:\n# XJ9K\n# 5732\n# 6731\n# 999",
+  "expected_output": "XJ9K\n5732\n6731\n999\n",
+  "actual_output": "XJ9K\n5732\n6731\n999",
+  "feature_focus": "access_modifiers",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 975.2231724262238,
+  "execution_duration": 4.255739212036133,
+  "source_files": null
+}

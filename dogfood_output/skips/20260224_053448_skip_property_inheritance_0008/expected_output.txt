@@ -1,6 +1,0 @@
-CoolBrand
-240.0
-moderate
-EcoBrand
-80.0
-efficient

@@ -1,0 +1,15 @@
+=== Polymorphic Descriptions ===
+Shape 1: Circle with radius 5.0
+Shape 2: Rectangle 3.0x4.0
+Square 2.0x2.0 (id=3)
+=== Interface Dispatch ===
+Circle: area=78.53975, perimeter=31.4159
+Rectangle: area=12.0, perimeter=14.0
+Rectangle: area=4.0, perimeter=8.0
+=== Concrete Type Details ===
+Circle
+19.6349375
+20.0
+Rectangle
+Square 3.0x3.0 (id=12)
+94.53975

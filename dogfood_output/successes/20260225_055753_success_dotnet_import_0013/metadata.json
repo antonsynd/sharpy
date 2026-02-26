@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T05:56:02.842339",
+  "generated_code": "from System import Math\n\ndef main():\n    # Use Math.Abs for absolute value\n    result1: int = Math.Abs(-42)\n    print(result1)\n    \n    # Use Math.Max for finding maximum\n    result2: int = Math.Max(10, 25)\n    print(result2)\n    \n    # Use Math.Min for finding minimum\n    result3: int = Math.Min(7, 3)\n    print(result3)\n\n# EXPECTED OUTPUT:\n# 42\n# 25\n# 3",
+  "expected_output": "42\n25\n3\n",
+  "actual_output": "42\n25\n3",
+  "feature_focus": "dotnet_import",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 99.89824032783508,
+  "execution_duration": 4.57547664642334,
+  "source_files": null
+}

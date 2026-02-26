@@ -1,0 +1,46 @@
+# Shape classes module
+from types import Point, Color
+
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float:
+        ...
+
+    @virtual
+    def describe(self) -> str:
+        return "A shape"
+
+class Rectangle(Shape):
+    _width: float
+    _height: float
+    _color: Color
+
+    def __init__(self, width: float, height: float, color: Color):
+        super().__init__()
+        self._width = width
+        self._height = height
+        self._color = color
+
+    def area(self) -> float:
+        return self._width * self._height
+
+    @override
+    def describe(self) -> str:
+        return "A rectangle"
+
+class Circle(Shape):
+    _center: Point
+    _radius: float
+
+    def __init__(self, center: Point, radius: float):
+        super().__init__()
+        self._center = center
+        self._radius = radius
+
+    def area(self) -> float:
+        return 3.14159 * self._radius * self._radius
+
+    @override
+    def describe(self) -> str:
+        return "A circle"

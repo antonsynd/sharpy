@@ -1,0 +1,21 @@
+# Test: Bool variable declarations and logical operations
+def main():
+    is_active: bool = True
+    is_valid: bool = False
+    
+    and_result: bool = is_active and is_valid
+    or_result: bool = is_active or is_valid
+    not_result: bool = not is_active
+    
+    print(and_result)
+    print(or_result)
+    print(not_result)
+    print(is_active)
+    print(is_valid)
+    
+# EXPECTED OUTPUT:
+# False
+# True
+# False
+# True
+# False

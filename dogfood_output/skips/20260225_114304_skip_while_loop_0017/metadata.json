@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T11:19:46.653666",
+  "skip_reason": "Generation timed out after 900.0s",
+  "generated_code": "",
+  "expected_output": null,
+  "feature_focus": "while_loop",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 1392.3557660579681,
+  "source_files": null,
+  "validation_output": null
+}

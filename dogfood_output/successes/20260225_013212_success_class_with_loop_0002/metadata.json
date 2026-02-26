@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T01:30:45.037039",
+  "generated_code": "# Test: Class with loop - Digit analysis using while loops\n# Tests: Class with methods containing while loops, arithmetic operations\n\nclass DigitAnalyzer:\n    value: int\n    \n    def __init__(self, n: int):\n        self.value = n\n    \n    def sum_digits(self) -> int:\n        total: int = 0\n        remaining: int = self.value\n        if remaining < 0:\n            remaining = -remaining\n        while remaining > 0:\n            digit: int = remaining % 10\n            total += digit\n            remaining //= 10\n        return total\n    \n    def product_digits(self) -> int:\n        product: int = 1\n        remaining: int = self.value\n        if remaining < 0:\n            remaining = -remaining\n        if remaining == 0:\n            return 0\n        while remaining > 0:\n            digit: int = remaining % 10\n            product *= digit\n            remaining //= 10\n        return product\n    \n    def count_digits(self) -> int:\n        count: int = 0\n        remaining: int = self.value\n        if remaining < 0:\n            remaining = -remaining\n        if remaining == 0:\n            return 1\n        while remaining > 0:\n            count += 1\n            remaining //= 10\n        return count\n\ndef main():\n    analyzer = DigitAnalyzer(12345)\n    print(analyzer.sum_digits())\n    print(analyzer.product_digits())\n    print(analyzer.count_digits())\n    \n    analyzer2 = DigitAnalyzer(-987)\n    print(analyzer2.sum_digits())\n    \n    analyzer3 = DigitAnalyzer(0)\n    print(analyzer3.count_digits())\n    print(analyzer3.product_digits())\n    \n    # EXPECTED OUTPUT:\n    # 15\n    # 120\n    # 5\n    # 24\n    # 1\n    # 0",
+  "expected_output": "15\n120\n5\n24\n1\n0\n",
+  "actual_output": "15\n120\n5\n24\n1\n0",
+  "feature_focus": "class_with_loop",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 77.6080527305603,
+  "execution_duration": 4.420693874359131,
+  "source_files": null
+}

@@ -1,0 +1,32 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'shapes_base' has no exported symbol 'ShapeInterface' (in main.spy)
+  --> /tmp/tmpf1bclb3b/main.spy:4:47
+    |
+  4 | from shapes_base import ShapeBase, ColorRGBA, ShapeInterface
+    |                                               ^^^^^^^^^^^^^^
+    |
+
+error[SPY0301]: Module 'graphics_enums' has no exported symbol 'ColorPair' (in main.spy)
+  --> /tmp/tmpf1bclb3b/main.spy:6:51
+    |
+  6 | from graphics_enums import ShapeType, RenderMode, ColorPair
+    |                                                   ^^^^^^^^^
+    |
+
+Type errors:
+error[SPY0203]: Type 'Rectangle' has no member 'area'
+  --> /tmp/tmpf1bclb3b/main.spy:26:11
+    |
+ 26 |     print(rect.area)
+    |           ^^^^^^^^^
+    |
+
+error[SPY0202]: Type 'ColorPair' not found
+  --> /tmp/tmpf1bclb3b/main.spy:38:11
+    |
+ 38 |     pair: ColorPair = (ColorRGBA(100, 100, 100), ColorRGBA(200, 200, 200))
+    |           ^^^^^^^^^
+    |
+

@@ -1,0 +1,51 @@
+struct ConfigValue:
+    name: str
+    numeric_value: float?
+    category: str
+    
+    def __init__(self, name: str, numeric_value: float?, category: str):
+        self.name = name
+        self.numeric_value = numeric_value
+        self.category = category
+
+def validate_and_scale(value: ConfigValue) -> float:
+    if value.numeric_value is None:
+        return -1.0
+    v: float = value.numeric_value
+    if v > 1000.0:
+        return v / 1000.0
+    elif v > 0.0:
+        return v
+    else:
+        return 0.0
+
+def categorize(scaled: float) -> str:
+    if scaled >= 10.0:
+        return "large"
+    elif scaled >= 1.0:
+        return "medium"
+    elif scaled >= 0.0:
+        return "small"
+    else:
+        return "invalid"
+
+def process_config(item: ConfigValue) -> str:
+    scaled: float = validate_and_scale(item)
+    size: str = categorize(scaled)
+    return f"{item.name}:{size}:{scaled}"
+
+def main():
+    high: ConfigValue = ConfigValue("throughput", Some(5000.5), "perf")
+    mid: ConfigValue = ConfigValue("latency", Some(150.0), "perf")
+    low: ConfigValue = ConfigValue("accuracy", Some(0.85), "ml")
+    none_val: ConfigValue = ConfigValue("disabled", None(), "debug")
+    print(process_config(high))
+    print(process_config(mid))
+    print(process_config(low))
+    print(process_config(none_val))
+
+# EXPECTED OUTPUT:
+# throughput:medium:5.0005
+# latency:large:150.0
+# accuracy:small:0.85
+# disabled:invalid:-1.0

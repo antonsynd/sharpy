@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'ShapeType' is never used
+  --> /tmp/tmp_0__k3k9/shapes_extended.spy:4:7
+    |
+  4 | from shapes_extended import Circle, Rectangle
+    |       ^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'origin' is assigned but never used
+  --> /tmp/tmp_0__k3k9/main.spy:8:5
+    |
+  8 |     origin: Point = Point(0.0, 0.0)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

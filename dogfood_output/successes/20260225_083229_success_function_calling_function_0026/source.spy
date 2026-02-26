@@ -1,0 +1,34 @@
+def is_even(n: int) -> bool:
+    return n % 2 == 0
+
+def transform(n: int) -> int:
+    if is_even(n):
+        return n // 2
+    else:
+        return 3 * n + 1
+
+def apply_twice(n: int) -> int:
+    return transform(transform(n))
+
+def main():
+    seed: int = 5
+    first = transform(seed)
+    print(first)
+    
+    second = transform(first)
+    print(second)
+    
+    result = apply_twice(seed)
+    print(result)
+    
+    for i in range(3, 6):
+        chained = apply_twice(i)
+        print(chained)
+
+# EXPECTED OUTPUT:
+# 16
+# 8
+# 8
+# 5
+# 1
+# 8

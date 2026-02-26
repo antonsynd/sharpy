@@ -1,0 +1,26 @@
+# Test: Interface implementation with property and method access through interface type
+interface IStats:
+    property count: int
+    def report(self) -> str
+
+class Tracker(IStats):
+    _value: int
+    property count: int
+    
+    def __init__(self, v: int):
+        self._value = v
+        self.count = v
+    
+    def report(self) -> str:
+        return f"Count:{self.count}"
+
+def show_stats(s: IStats) -> None:
+    print(s.count)
+    print(s.report())
+
+def main():
+    t = Tracker(42)
+    show_stats(t)
+    # EXPECTED OUTPUT:
+    # 42
+    # Count:42

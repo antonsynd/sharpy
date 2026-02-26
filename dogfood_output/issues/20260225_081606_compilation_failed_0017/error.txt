@@ -1,0 +1,30 @@
+Assembly compilation failed:
+
+error[CS0266]: Cannot implicitly convert type 'object' to 'Sharpy.Optional<string>'. An explicit conversion exists (are you missing a cast?)
+  --> /tmp/tmp5pifzsmb/dogfood_test.spy:14:38
+    |
+ 14 |     formatted: str? = name?.strip()
+    |                                    ^
+    |
+
+error[CS0266]: Cannot implicitly convert type 'object' to 'Sharpy.Optional<string>'. An explicit conversion exists (are you missing a cast?)
+  --> /tmp/tmp5pifzsmb/dogfood_test.spy:34:35
+    |
+ 34 |     upper1: str? = greeting?.upper()
+    |                                   ^
+    |
+
+error[CS0266]: Cannot implicitly convert type 'object' to 'Sharpy.Optional<string>'. An explicit conversion exists (are you missing a cast?)
+  --> /tmp/tmp5pifzsmb/dogfood_test.spy:35:35
+    |
+ 35 |     upper2: str? = empty?.upper()
+    |                                  ^
+    |
+
+error[CS0266]: Cannot implicitly convert type 'object' to 'string'. An explicit conversion exists (are you missing a cast?)
+  --> /tmp/tmp5pifzsmb/dogfood_test.spy:38:25
+    |
+ 38 |     final1: str = upper1?.strip() ?? "NO GREETING"
+    |                         ^
+    |
+

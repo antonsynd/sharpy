@@ -1,0 +1,5 @@
+Source name: document.txt
+Source size: 15
+Processed: Python is great
+Normalized: hello
+Vowels: 5

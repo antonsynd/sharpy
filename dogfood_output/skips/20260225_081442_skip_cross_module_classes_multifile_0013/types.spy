@@ -1,0 +1,32 @@
+# Shared types module - provides enums, interfaces, and structs for geometry
+
+# Enum representing different shape categories
+enum ShapeType:
+    CIRCLE = 1
+    RECTANGLE = 2
+    TRIANGLE = 3
+
+# Interface for drawable objects
+interface IDrawable:
+    def draw(self) -> str: ...
+
+# Interface for objects with dimensions
+interface IDimensional:
+    def get_area(self) -> float: ...
+    def get_perimeter(self) -> float: ...
+
+# Struct representing a point in 2D space
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return f"Point({self.x}, {self.y})"
+
+# Interface for transformable shapes
+interface ITransformable:
+    def translate(self, dx: float, dy: float) -> Point: ...

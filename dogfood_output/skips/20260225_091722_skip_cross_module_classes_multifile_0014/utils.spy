@@ -1,0 +1,25 @@
+# Utility module with Vector2D struct and helper functions
+
+from geometry import ShapeMetrics
+
+struct Vector2D:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    property get magnitude(self) -> float:
+        sum_sq: float = self.x * self.x + self.y * self.y
+        if sum_sq == 0.0:
+            return 0.0
+        return sum_sq
+
+def distance_between(a: Vector2D, b: Vector2D) -> float:
+    dx: float = a.x - b.x
+    dy: float = a.y - b.y
+    return dx * dx + dy * dy
+
+def shapes_report(metrics: ShapeMetrics) -> str:
+    return "Area: " + str(metrics.area)

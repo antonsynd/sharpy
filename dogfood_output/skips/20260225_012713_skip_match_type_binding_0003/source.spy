@@ -1,0 +1,36 @@
+class Point:
+    x: int
+    y: int
+
+    def __init__(self, x_val: int, y_val: int):
+        self.x = x_val
+        self.y = y_val
+
+def main():
+    p: Point = Point(3, 4)
+    match p:
+        case Point() as pt:
+            print(pt.x + pt.y)
+        case _:
+            print(0)
+    
+    val: int? = None()
+    match val:
+        case int() as v if v is not None:
+            print(v.unwrap())
+        case _:
+            print(42)
+    
+    n: int = 15
+    match n:
+        case int() as x if x > 10:
+            print(x - 5)
+        case int() as x:
+            print(x + 5)
+        case _:
+            print(0)
+
+# EXPECTED OUTPUT:
+# 7
+# 42
+# 10

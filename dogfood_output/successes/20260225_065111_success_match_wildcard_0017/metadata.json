@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T06:47:38.636453",
+  "generated_code": "def classify_value(value: int) -> str:\n    if value == 0:\n        return \"zero\"\n    elif value == 1 or value == 2 or value == 3:\n        return \"small positive\"\n    elif value < 0:\n        return f\"negative: {value}\"\n    elif value > 100:\n        return f\"large: {value}\"\n    else:\n        return f\"medium: {value}\"\n\ndef handle_command(cmd: str) -> str:\n    lower_cmd = cmd.lower()\n    if lower_cmd == \"quit\" or lower_cmd == \"exit\":\n        return \"goodbye\"\n    elif lower_cmd == \"help\":\n        return \"available commands: help, status, quit\"\n    elif lower_cmd == \"status\":\n        return \"system operational\"\n    else:\n        return f\"unknown command '{cmd}'\"\n\ndef main():\n    values: list[int] = [0, -5, 2, 50, 150]\n    commands: list[str] = [\"help\", \"STATUS\", \"quit\", \"unknown\"]\n    for v in values:\n        print(classify_value(v))\n    for c in commands:\n        print(handle_command(c))\n\n# EXPECTED OUTPUT:\n# zero\n# negative: -5\n# small positive\n# medium: 50\n# large: 150\n# available commands: help, status, quit\n# system operational\n# goodbye\n# unknown command 'unknown'",
+  "expected_output": "zero\nnegative: -5\nsmall positive\nmedium: 50\nlarge: 150\navailable commands: help, status, quit\nsystem operational\ngoodbye\nunknown command 'unknown'\n",
+  "actual_output": "zero\nnegative: -5\nsmall positive\nmedium: 50\nlarge: 150\navailable commands: help, status, quit\nsystem operational\ngoodbye\nunknown command 'unknown'",
+  "feature_focus": "match_wildcard",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 197.71145176887512,
+  "execution_duration": 4.536147356033325,
+  "source_files": null
+}

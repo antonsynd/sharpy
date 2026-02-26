@@ -1,4 +1,0 @@
-widget: 20.0 x 30.0
-widget: 50.0 x 50.0
-is_square
-widget

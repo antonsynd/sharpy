@@ -1,8 +1,0 @@
-P1, P3, P2
-cheap:Widget
-premium:Gadget
-5
-3
-P3
-3
-3.14

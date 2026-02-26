@@ -1,0 +1,19 @@
+Circle of radius 5.0
+Rectangle 4.0x6.0
+Rectangle 3.0x3.0
+78.53975
+24.0
+111.53975
+Red
+Blue
+True
+False
+Drawing circle with radius 5.0
+Drawing rectangle 3.0x3.0
+100.0
+1
+2
+10.0
+True
+1.5
+1.5

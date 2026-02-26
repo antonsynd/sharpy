@@ -1,0 +1,21 @@
+# Main entry point - tests cross-module inheritance and imports
+from shapes import Rectangle, Circle
+from geometry import format_number
+
+def main():
+    rect = Rectangle(5.0, 3.0)
+    circle = Circle(2.5)
+
+    print(format_number(rect.area()))
+    print(format_number(rect.perimeter()))
+    print(format_number(circle.area()))
+    print(format_number(circle.perimeter()))
+
+    total_area: float = rect.area() + circle.area()
+    print(format_number(total_area))
+# EXPECTED OUTPUT:
+# 15.00
+# 16.00
+# 19.63
+# 15.71
+# 34.63

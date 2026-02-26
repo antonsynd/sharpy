@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T10:14:00.559401",
+  "generated_code": "class Config:\n    _defaults: dict[str, str]\n    \n    def __init__(self):\n        self._defaults = {\"theme\": \"dark\", \"lang\": \"en\"}\n    \n    def get_value(self, key: str) -> str?:\n        keys = self._defaults.keys()\n        if key in keys:\n            return Some(self._defaults[key])\n        return None()\n\ndef format_display(name: str?, backup: str) -> str:\n    return name ?? backup\n\ndef compute_multiplier(factor: int?) -> int:\n    return factor ?? 1\n\ndef main():\n    cfg = Config()\n    \n    theme: str? = cfg.get_value(\"theme\")\n    missing: str? = cfg.get_value(\"unknown\")\n    \n    print(format_display(theme, \"default\"))\n    print(format_display(missing, \"fallback\"))\n    \n    a: int? = None()\n    b: int? = Some(10)\n    \n    result1 = compute_multiplier(a)\n    result2 = compute_multiplier(b)\n    \n    print(result1)\n    print(result2)\n    \n    chained: str? = None()\n    final: str = chained ?? missing ?? theme ?? \"final\"\n    print(final)\n\n# EXPECTED OUTPUT:\n# dark\n# fallback\n# 1\n# 10\n# dark",
+  "expected_output": "dark\nfallback\n1\n10\ndark\n",
+  "actual_output": "dark\nfallback\n1\n10\ndark",
+  "feature_focus": "null_coalescing",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 113.5923216342926,
+  "execution_duration": 4.537121772766113,
+  "source_files": null
+}

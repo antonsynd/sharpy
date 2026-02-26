@@ -1,0 +1,17 @@
+# Base geometry module providing abstract Shape class and utilities
+
+PI: float = 3.14159
+
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float: ...
+
+    @abstract
+    def perimeter(self) -> float: ...
+
+def format_number(n: float) -> str:
+    return f"{n:.2f}"
+
+def square(x: float) -> float:
+    return x * x

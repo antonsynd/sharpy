@@ -1,0 +1,84 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-02-25T06:44:58.985196
+**Feature Focus:** result_type
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: Result type chaining with map and map_err operations
+# Tests: Result type (T !E), Ok/Err constructors, unwrap_or, map, map_err
+
+enum ParseError:
+    EMPTY_INPUT = 1
+    INVALID_FORMAT = 2
+
+class ExpressionEvaluator:
+    x: float
+    y: float
+    
+    def __init__(self, a: float, b: float):
+        self.x = a
+        self.y = b
+    
+    def safe_divide(self, numerator: float, denominator: float) -> float !str:
+        if denominator == 0:
+            return Err("division by zero")
+        return Ok(numerator / denominator)
+    
+    def compute_ratio(self) -> float !str:
+        result: float !str = self.safe_divide(self.x, self.y)
+        return result.map(lambda v: v * 100.0)
+    
+    def compute_inverse(self) -> float !str:
+        result: float !str = self.safe_divide(1.0, self.x)
+        return result.map_err(lambda e: f"inverse failed: {e}")
+
+def main():
+    calc = ExpressionEvaluator(20.0, 4.0)
+    
+    ratio: float !str = calc.compute_ratio()
+    print(ratio.unwrap_or(0.0))
+    
+    inverse: float !str = calc.compute_inverse()
+    print(inverse.unwrap_or(0.0))
+    
+    empty_calc = ExpressionEvaluator(10.0, 0.0)
+    bad_result: float !str = empty_calc.compute_ratio()
+    mapped = bad_result.map(lambda n: n + 1.0)
+    print(mapped.unwrap_or(0.0))
+    
+    safe_val: float !str = Ok(42.0)
+    doubled = safe_val.map(lambda v: v * 2.0)
+    print(doubled.unwrap_or(0.0))
+
+# EXPECTED OUTPUT:
+# 500.0
+# 0.05
+# 0.0
+# 84.0
+```
+
+## Output
+
+```
+500.0
+0.05
+0.0
+84.0
+```
+
+## Timing
+
+- Generation: 54.71s
+- Execution: 4.53s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

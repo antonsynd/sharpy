@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'pi' does not exist in the current context
+  --> /tmp/tmpb8aoaig_/shapes.spy:29:20
+    |
+ 29 |     # Test method-based color access
+    |                    ^
+    |
+

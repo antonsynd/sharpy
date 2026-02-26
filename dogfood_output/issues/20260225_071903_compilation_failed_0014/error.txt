@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1503]: Argument 1: cannot convert from 'System.Collections.Generic.IEnumerable<int>' to 'System.Collections.Generic.IEnumerable<object>'
+  --> /tmp/tmpxmgtzgjh/dogfood_test.spy:40:60
+    |
+ 40 |     results: list[int] = [t1.apply(v) for v in base_values]
+    |                                                            ^
+    |
+

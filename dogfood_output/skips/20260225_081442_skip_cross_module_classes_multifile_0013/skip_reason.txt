@@ -1,0 +1,32 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'types' has no exported symbol 'ITransformable' (in main.spy)
+  --> /tmp/tmpmoz1mzc_/main.spy:2:62
+    |
+  2 | from types import ShapeType, IDrawable, IDimensional, Point, ITransformable
+    |                                                              ^^^^^^^^^^^^^^
+    |
+
+error[SPY0301]: Module 'types' has no exported symbol 'ITransformable' (in shapes.spy)
+  --> /tmp/tmpmoz1mzc_/shapes.spy:3:11
+    |
+  3 | from shapes import Circle, Rectangle, Triangle, ShapeBase
+    |           ^^^^^^^^^^^^^^
+    |
+
+Type errors:
+error[SPY0220]: Cannot assign type 'list[ShapeBase]' to variable of type 'list[IDrawable]'
+  --> /tmp/tmpmoz1mzc_/main.spy:27:5
+    |
+ 27 |     drawables: list[IDrawable] = [circle, rectangle, triangle]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type 'list[ShapeBase]' to variable of type 'list[IDimensional]'
+  --> /tmp/tmpmoz1mzc_/main.spy:32:5
+    |
+ 32 |     dim_shapes: list[IDimensional] = [circle, rectangle, triangle]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

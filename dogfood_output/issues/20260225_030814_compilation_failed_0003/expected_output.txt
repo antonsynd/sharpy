@@ -1,0 +1,6 @@
+Alice (5 chars)
+Bob (3 chars)
+Alice score: 10
+Bob score: 8
+charlie@company.net
+Diana: 10

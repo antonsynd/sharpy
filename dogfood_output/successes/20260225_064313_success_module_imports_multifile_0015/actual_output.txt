@@ -1,0 +1,9 @@
+Tesla
+Ford
+Electric motor silent start
+Gas engine roars
+2
+Tesla
+102
+Charging Station
+Electric motor stopped

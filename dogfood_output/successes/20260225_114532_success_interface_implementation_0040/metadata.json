@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T11:43:04.327364",
+  "generated_code": "# Test: Interface implementation with property and method access through interface type\ninterface IStats:\n    property count: int\n    def report(self) -> str\n\nclass Tracker(IStats):\n    _value: int\n    property count: int\n    \n    def __init__(self, v: int):\n        self._value = v\n        self.count = v\n    \n    def report(self) -> str:\n        return f\"Count:{self.count}\"\n\ndef show_stats(s: IStats) -> None:\n    print(s.count)\n    print(s.report())\n\ndef main():\n    t = Tracker(42)\n    show_stats(t)\n    # EXPECTED OUTPUT:\n    # 42\n    # Count:42",
+  "expected_output": "42\nCount:42\n",
+  "actual_output": "42\nCount:42",
+  "feature_focus": "interface_implementation",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 134.83832669258118,
+  "execution_duration": 4.936158895492554,
+  "source_files": null
+}

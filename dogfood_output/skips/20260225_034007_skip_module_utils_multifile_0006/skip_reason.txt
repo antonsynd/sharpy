@@ -1,0 +1,79 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0103]: Expected end of statement, got Identifier
+  --> /tmp/tmp0063ud1q/main.spy:52:5
+    |
+ 52 | The key fixes made:
+    |     ^^^
+    |
+
+error[SPY0101]: Expected identifier, got DoubleStar
+  --> /tmp/tmp0063ud1q/main.spy:53:4
+    |
+ 53 | 1. **Decorator formatting**: Changed all decorators (`@virtual`, `@override`) from inline (`@virtual def`) to separate lines before the function definition (required by the grammar)
+    |    ^^
+    |
+
+error[SPY0104]: Expected Import, got LeftParen
+  --> /tmp/tmp0063ud1q/main.spy:53:91
+    |
+ 53 | 1. **Decorator formatting**: Changed all decorators (`@virtual`, `@override`) from inline (`@virtual def`) to separate lines before the function definition (required by the grammar)
+    |                                                                                           ^
+    |
+
+error[SPY0101]: Expected identifier, got DoubleStar
+  --> /tmp/tmp0063ud1q/main.spy:54:4
+    |
+ 54 | 2. **Static methods**: Removed `@static` decorator since static methods without `self` are auto-detected
+    |    ^^
+    |
+
+error[SPY0101]: Expected identifier, got DoubleStar
+  --> /tmp/tmp0063ud1q/main.spy:55:4
+    |
+ 55 | 3. **Null-conditional removal**: The original issue mentioned `?.` potentially being a problem - verified all field accesses use direct `.` access which is safe
+    |    ^^
+    |
+
+error[SPY0101]: Expected identifier, got DoubleStar
+  --> /tmp/tmp0063ud1q/main.spy:56:4
+    |
+ 56 | 4. **Proper indentation**: Ensured all class bodies and method bodies are properly indented
+    |    ^^
+    |
+
+error[SPY0104]: Expected Colon, got And
+  --> /tmp/tmp0063ud1q/main.spy:56:53
+    |
+ 56 | 4. **Proper indentation**: Ensured all class bodies and method bodies are properly indented
+    |                                                     ^^^
+    |
+
+error[SPY0103]: Expected end of statement, got Identifier
+  --> /tmp/tmp0063ud1q/main.spy:58:5
+    |
+ 58 | The virtual/override polymorphism should now work correctly because:
+    |     ^^^^^^^
+    |
+
+error[SPY0103]: Expected end of statement, got Identifier
+  --> /tmp/tmp0063ud1q/main.spy:59:12
+    |
+ 59 | - `Entity` has `@virtual def get_display_name`
+    |            ^^^
+    |
+
+error[SPY0103]: Expected end of statement, got Identifier
+  --> /tmp/tmp0063ud1q/main.spy:60:28
+    |
+ 60 | - `Rectangle` and `Circle` have `@override def get_display_name`
+    |                            ^^^^
+    |
+
+error[SPY0103]: Expected end of statement, got Identifier
+  --> /tmp/tmp0063ud1q/main.spy:61:7
+    |
+ 61 | - The list `entities: list[Entity]` can call the virtual method which dispatches to the concrete implementations
+    |       ^^^^
+    |
+

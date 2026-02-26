@@ -1,0 +1,45 @@
+# Base module defining geometry abstractions
+
+enum ShapeKind:
+    CURVED = 1
+    STRAIGHT = 2
+    BOTH = 3
+
+interface IDrawable:
+    def draw(self) -> str: ...
+
+interface IMeasurable:
+    def area(self) -> float: ...
+    def perimeter(self) -> float: ...
+
+@abstract
+class Shape:
+    _kind: ShapeKind
+    
+    def __init__(self, kind: ShapeKind):
+        self._kind = kind
+    
+    @virtual
+    def area(self) -> float:
+        return 0.0
+    
+    @virtual
+    def perimeter(self) -> float:
+        return 0.0
+    
+    @virtual
+    def get_kind(self) -> ShapeKind:
+        return self._kind
+
+struct ShapeMetrics:
+    area: float
+    perimeter: float
+    
+    def __init__(self, area: float, perimeter: float):
+        self.area = area
+        self.perimeter = perimeter
+    
+    property get density(self) -> float:
+        if self.perimeter > 0.0:
+            return self.area / self.perimeter
+        return 0.0

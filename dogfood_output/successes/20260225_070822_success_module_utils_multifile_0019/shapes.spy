@@ -1,0 +1,35 @@
+# Concrete shape implementations using geometry base classes
+
+from geometry import Shape, PI
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, r: float):
+        super().__init__()
+        self.radius = r
+
+    @override
+    def area(self) -> float:
+        return PI * self.radius * self.radius
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * PI * self.radius
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float):
+        super().__init__()
+        self.width = w
+        self.height = h
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)

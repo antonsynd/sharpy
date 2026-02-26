@@ -1,0 +1,11 @@
+# Types module - enums and abstract base classes
+enum Priority:
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+
+@abstract
+class Renderable:
+    @abstract
+    def render(self) -> str:
+        ...
