@@ -140,6 +140,13 @@ def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
         "For example, --timeout-multiplier 2 doubles all timeouts.",
     )
 
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum number of regeneration attempts per iteration (default: 3)",
+    )
+
 
 def _add_convert_arguments(parser: argparse.ArgumentParser) -> None:
     """Add arguments for the convert command."""
@@ -233,6 +240,7 @@ async def run_dogfood(args: argparse.Namespace) -> int:
         config.successes_dir = args.output_dir / "successes"
 
     config.max_iterations = args.iterations
+    config.max_regeneration_attempts = args.max_retries
     config.generation_timeout = args.generation_timeout
     config.compilation_timeout = args.compilation_timeout
     config.execution_timeout = args.execution_timeout
@@ -266,6 +274,7 @@ async def run_dogfood(args: argparse.Namespace) -> int:
     print(f"Issues dir: {config.issues_dir}", file=sys.stderr)
     print(f"Successes dir: {config.successes_dir}", file=sys.stderr)
     print(f"Iterations: {config.max_iterations}", file=sys.stderr)
+    print(f"Max retries: {config.max_regeneration_attempts}", file=sys.stderr)
     print(
         f"Timeouts: gen={config.generation_timeout}s, compile={config.compilation_timeout}s, exec={config.execution_timeout}s",
         file=sys.stderr,

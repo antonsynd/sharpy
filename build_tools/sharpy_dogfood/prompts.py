@@ -1008,9 +1008,9 @@ Your previous code FAILED validation. You must fix the issue and regenerate.
 
 ## Previous Code That Failed
 
-```python
+<code>
 {previous_code}
-```
+</code>
 
 ## Validation Error
 
@@ -1095,13 +1095,13 @@ def get_multifile_regeneration_prompt(
         for i, snippet in enumerate(example_snippets[:2], 1):
             examples_section += f"### Example {i}\n```python\n{snippet}\n```\n\n"
 
-    # Format previous files with delimiters
+    # Format previous files with XML-like tags (same format as generation output)
     files_section = ""
     if not previous_files:
         files_section = "(no files from previous attempt)\n"
     else:
         for filename, code in previous_files.items():
-            files_section += f"\n=== FILE: {filename} ===\n{code}\n"
+            files_section += f'<code file="{filename}">\n{code}\n</code>\n'
 
     remediation_hint = _get_remediation_hint(validation_error)
 
@@ -1113,9 +1113,7 @@ Your previous multi-file project FAILED validation. You must fix the issue and r
 
 ## Previous Files That Failed
 
-```
 {files_section}
-```
 
 ## Validation Error
 
