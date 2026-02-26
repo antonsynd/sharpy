@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'Rectangle' is never used
+  --> /tmp/tmpmoi3l8di/shape_utils.spy:3:23
+    |
+  3 | from shapes_extended import Rectangle, Circle, Color
+    |                       ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Circle' is never used
+  --> /tmp/tmpmoi3l8di/shape_utils.spy:3:34
+    |
+  3 | from shapes_extended import Rectangle, Circle, Color
+    |                                  ^^^^^^
+    |
+

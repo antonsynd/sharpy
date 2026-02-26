@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T06:36:36.108643",
+  "generated_code": "def safe_divide(a: int, b: int) -> int !str:\n    if b == 0:\n        return Err(\"division by zero\")\n    return Ok(a // b)\n\ndef main():\n    result1: int !str = safe_divide(20, 4)\n    print(result1.unwrap())\n    \n    result2: int !str = safe_divide(10, 0)\n    print(result2.unwrap_or(-1))\n    \n    # Chain operations with map\n    doubled: int !str = result1.map(lambda x: x * 2)\n    print(doubled.unwrap_or(0))",
+  "expected_output": "5\n-1\n10\n",
+  "actual_output": "5\n-1\n10",
+  "feature_focus": "result_type",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 32.47308659553528,
+  "execution_duration": 4.583847522735596,
+  "source_files": null
+}

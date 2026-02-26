@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0113]: A member 'Utils.Point.ToString()' marked as override cannot be marked as new or virtual
+  --> /tmp/tmpcbs4qb0b/utils.spy:26:40
+    |
+ 26 |     drawings = renderer.render_all()
+    |                                     ^
+    |
+
+error[CS0117]: 'Utils.GeometryUtils' does not contain a definition for 'Pi'
+  --> /tmp/tmpcbs4qb0b/utils.spy:35:34
+    |
+ 35 |     red_count: int = renderer.count_by_color(Color.RED)
+    |                                  ^
+    |
+

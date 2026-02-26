@@ -1,0 +1,26 @@
+Stack iteration (LIFO):
+3
+2
+1
+Stack reversed (FIFO):
+1
+2
+3
+Range forward:
+10
+11
+12
+13
+Range reversed:
+13
+12
+11
+10
+Words normal:
+third
+second
+first
+Words reversed:
+first
+second
+third

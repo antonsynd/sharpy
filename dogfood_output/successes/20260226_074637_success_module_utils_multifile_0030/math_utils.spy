@@ -1,0 +1,21 @@
+# Math utilities module providing clamping and interpolation
+
+def clamp(value: float, min_val: float, max_val: float) -> float:
+    if value < min_val:
+        return min_val
+    elif value > max_val:
+        return max_val
+    return value
+
+def lerp(start: float, end: float, t: float) -> float:
+    # Linear interpolation with clamped t
+    clamped_t: float = clamp(t, 0.0, 1.0)
+    return start + (end - start) * clamped_t
+
+def calculate_average(values: list[float]) -> float:
+    if len(values) == 0:
+        return 0.0
+    total: float = 0.0
+    for v in values:
+        total += v
+    return total / float(len(values))

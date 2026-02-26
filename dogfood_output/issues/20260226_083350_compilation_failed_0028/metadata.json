@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-26T08:25:22.773254",
+  "generated_code": "# Complex nested tuple unpacking test\n# Tests: deep nesting, star patterns, named tuples, unpacking in loops\n\ntype Point2D = tuple[x: float, y: float]\ntype Segment = tuple[Point2D, Point2D]\n\n@abstract\nclass Drawable:\n    @abstract\n    def bounds(self) -> tuple[float, float, float, float]: ...\n\nclass Line(Drawable):\n    _start: Point2D\n    _end: Point2D\n\n    def __init__(self, start: Point2D, end: Point2D):\n        self._start = start\n        self._end = end\n\n    @override\n    def bounds(self) -> tuple[float, float, float, float]:\n        (x1, y1), (x2, y2) = (self._start, self._end)\n        return (x1, y1, x2, y2)\n\ndef process_segments(segs: list[Segment]) -> float:\n    total_length: float = 0.0\n    for seg in segs:\n        (x1, y1), (x2, y2) = seg\n        dx: float = x2 - x1\n        dy: float = y2 - y1\n        total_length += (dx ** 2 + dy ** 2) ** 0.5\n    return total_length\n\nclass Counter:\n    _data: tuple[int, int, int]\n\n    def __init__(self, a: int, b: int, c: int):\n        self._data = (a, b, c)\n\n    def get_values(self) -> tuple[int, int, int]:\n        return self._data\n\ndef main():\n    # Nested unpacking with named tuples\n    point_pair: tuple[int, Point2D] = (10, (x=3.0, y=4.0))\n    pid, (xx, yy) = point_pair\n    print(pid)\n    print(xx)\n    print(yy)\n\n    # Star unpacking with rest pattern\n    counts: tuple[int, int, int, int, int] = (1, 2, 3, 4, 5)\n    first, *mid, last2 = counts\n    print(first)\n    print(mid[1])\n    print(last2)\n\n    # Unpack from Counter class\n    c = Counter(100, 200, 300)\n    (v1, v2, v3) = c.get_values()\n    print(v1 + v2 + v3)\n\n    # Test nested tuple unpacking with segments\n    seg1: Segment = ((x=0.0, y=0.0), (x=3.0, y=4.0))\n    seg2: Segment = ((x=0.0, y=0.0), (x=6.0, y=8.0))\n    segs: list[Segment] = [seg1, seg2]\n    total: float = process_segments(segs)\n    print(total)\n\n    # Test Line class bounds\n    line: Line = Line((x=1.0, y=2.0), (x=5.0, y=6.0))\n    b: tuple[float, float, float, float] = line.bounds()\n    print(b[0])\n    print(b[1])\n    print(b[2])\n    print(b[3])",
+  "expected_output": "10\n3.0\n4.0\n1\n3\n5\n600\n15.0\n1.0\n2.0\n5.0\n6.0\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0021]: Cannot apply indexing with [] to an expression of type '(int, int, int, int, int)'\n  --> /tmp/tmp9sa8jrfu/dogfood_test.spy:54:21\n    |\n 54 |     print(first)\n    |                 ^\n    |\n\nerror[CS1061]: '(int, int, int, int, int)' does not contain a definition for 'GetSlice' and no accessible extension method 'GetSlice' accepting a first argument of type '(int, int, int, int, int)' could be found (are you missing a using directive or an assembly reference?)\n  --> /tmp/tmp9sa8jrfu/dogfood_test.spy:55:24\n    |\n 55 |     print(mid[1])\n    |                  ^\n    |\n\nerror[CS0021]: Cannot apply indexing with [] to an expression of type '(int, int, int, int, int)'\n  --> /tmp/tmp9sa8jrfu/dogfood_test.spy:53:21\n    |\n 53 |     first, *mid, last2 = counts\n    |                     ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmp9sa8jrfu/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "tuple_unpacking_nested",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 489.1981906890869,
+  "compilation_duration": null,
+  "execution_duration": 4.375289440155029,
+  "source_files": null
+}

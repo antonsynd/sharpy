@@ -1,0 +1,156 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-02-26T09:23:07.525357
+**Feature Focus:** dotnet_type_usage
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: Complex .NET type usage with inheritance, generics, and pattern matching
+# Features: class hierarchy, properties, pattern matching with constants, generics
+
+# Status constants using a class with const fields (working pattern for match)
+class DocumentStatus:
+    const Draft: int = 0
+    const Review: int = 1
+    const Published: int = 2
+    const Archived: int = 3
+
+# Abstract base document class
+@abstract
+class Document:
+    _title: str
+    _content: str
+
+    def __init__(self, title: str):
+        self._title = title
+        self._content = ""
+
+    property get title(self) -> str:
+        return self._title
+
+    property set title(self, value: str):
+        self._title = value
+
+    property get content(self) -> str:
+        return self._content
+
+    @abstract
+    def status(self) -> int:
+        ...
+
+    @virtual
+    def format_header(self) -> str:
+        return f"[{self.title}]"
+
+# Concrete report implementation
+class Report(Document):
+    sections: list[str]
+
+    def __init__(self, title: str):
+        super().__init__(title)
+        self.sections = []
+
+    def add_section(self, name: str) -> None:
+        self.sections.append(name)
+        self._content = self._content + name + "\n"
+
+    @override
+    def status(self) -> int:
+        if len(self.sections) == 0:
+            return DocumentStatus.Draft
+        elif len(self.sections) < 3:
+            return DocumentStatus.Review
+        else:
+            return DocumentStatus.Published
+
+    @override
+    def format_header(self) -> str:
+        base: str = super().format_header()
+        return f"{base} - {len(self.sections)} sections"
+
+# Generic document repository
+class DocumentStorage[T: Document]:
+    documents: list[T]
+
+    def __init__(self):
+        self.documents = []
+
+    def add(self, doc: T) -> int:
+        self.documents.append(doc)
+        return len(self.documents)
+
+    def find_by_status(self, status: int) -> list[T]:
+        result: list[T] = []
+        for doc in self.documents:
+            if doc.status() == status:
+                result.append(doc)
+        return result
+
+def main():
+    # Create storage
+    storage: DocumentStorage[Report] = DocumentStorage[Report]()
+
+    # Create and populate reports
+    r1: Report = Report("Q1 Analysis")
+    r2: Report = Report("Annual Summary")
+
+    # Add sections and populate storage
+    r1.add_section("Overview")
+    print(r1.format_header())
+    r2.add_section("Part 1")
+    r2.add_section("Part 2")
+    r2.add_section("Part 3")
+    print(r2.format_header())
+    storage.add(r1)
+    storage.add(r2)
+
+    # Pattern match on document status using if/elif (since enum in match has issues)
+    for doc in storage.documents:
+        status: int = doc.status()
+        if status == DocumentStatus.Draft:
+            print("Status: Draft")
+        elif status == DocumentStatus.Review:
+            print("Status: Review")
+        elif status == DocumentStatus.Published:
+            print("Status: Published")
+        else:
+            print("Status: Other")
+
+    # Check content
+    print(r1.content.strip())
+    print(r2.content.strip())
+
+    # Check count of documents
+    count: int = storage.add(r1)
+    print(f"Total: {count}")
+```
+
+## Output
+
+```
+[Q1 Analysis] - 1 sections
+[Annual Summary] - 3 sections
+Status: Review
+Status: Published
+Overview
+Part 1
+Part 2
+Part 3
+Total: 3
+```
+
+## Timing
+
+- Generation: 585.65s
+- Execution: 4.61s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

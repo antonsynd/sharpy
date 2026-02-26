@@ -1,0 +1,35 @@
+# Main entry point - exercises cross-module features
+from shapes import Shape, Point
+from shapes_extended import Rectangle, Circle, Color
+from shape_utils import ShapeCollection, classify_color, compare_shapes
+
+def main():
+    # Create shapes with cross-module inheritance
+    rect = Rectangle("box", 3.0, 4.0, Color.RED)
+    circle = Circle("wheel", 0.0, 0.0, 2.0)
+
+    # Test Point struct (cross-module)
+    p: Point = Point(3.0, 4.0)
+    print(p.magnitude())
+
+    # Test enum cross-module
+    print(classify_color(rect.color))
+    print(rect.color)
+
+    # Test area/perimeter via methods
+    print(rect.compute_area())
+    print(circle.compute_perimeter())
+
+    # Test generic container with cross-module types
+    collection: ShapeCollection[Shape] = ShapeCollection[Shape]()
+    collection.add(rect)
+    collection.add(circle)
+    print(collection.total_area())
+
+    # Test method inheritance/overrides
+    print(rect.describe())
+    print(circle.describe())
+
+    # Test utility function with polymorphic dispatch
+    bigger = "rect" if compare_shapes(rect, circle) else "circle"
+    print(bigger)

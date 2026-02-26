@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'ShapeProcessor' has no member 'processed'
+  --> /tmp/tmpdw3zdouk/main.spy:67:11
+    |
+ 67 |     print(processor.processed)
+    |           ^^^^^^^^^^^^^^^^^^^
+    |
+

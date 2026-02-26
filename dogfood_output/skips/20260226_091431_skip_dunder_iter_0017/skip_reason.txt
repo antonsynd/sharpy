@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0229]: Cannot assign 'None' to 'TreeNode?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpmw82hwwl/dogfood_test.spy:10:22
+    |
+ 10 |         self._left = None
+    |                      ^^^^
+    |
+
+error[SPY0229]: Cannot assign 'None' to 'TreeNode?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpmw82hwwl/dogfood_test.spy:11:23
+    |
+ 11 |         self._right = None
+    |                       ^^^^
+    |
+

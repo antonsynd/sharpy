@@ -1,0 +1,33 @@
+# Implementations module - concrete classes with cross-module inheritance
+from core_types import Entity, Status, IMeasurable
+from data_structures import Point, Dimension
+
+class PhysicalEntity(Entity, IMeasurable):
+    position: Point
+    dim: Dimension
+    _status: Status
+    
+    def __init__(self, id: int, name: str, pos: Point, dim: Dimension):
+        super().__init__(id, name)
+        self.position = pos
+        self.dim = dim
+        self._status = Status.PENDING
+    
+    @override
+    def compute_value(self) -> int:
+        return self.dim.area()
+    
+    def get_size(self) -> int:
+        return self.dim.area()
+
+class MovingEntity(PhysicalEntity):
+    velocity: float
+    
+    def __init__(self, id: int, name: str, pos: Point, dim: Dimension, vel: float):
+        super().__init__(id, name, pos, dim)
+        self.velocity = vel
+    
+    @override
+    def describe(self) -> str:
+        base = super().describe()
+        return f"{base} moving at {self.velocity}"

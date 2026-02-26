@@ -1,0 +1,16 @@
+# Test: Multiple continue conditions in sequence
+# Verifies that multiple continue statements can filter values
+# based on different independent criteria
+
+def main():
+    # Print numbers 1-20 that pass all filters
+    # Skip: multiples of 3, multiples of 5, and numbers > 15
+    for n in range(1, 21):
+        if n % 3 == 0:
+            continue
+        if n % 5 == 0:
+            continue
+        if n > 15:
+            break
+        print(n)
+    print(99)

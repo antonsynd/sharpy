@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-26T08:49:20.475771",
+  "generated_code": "# Class with loop for data analysis operations\nclass DataAnalyzer:\n    def __init__(self):\n        pass\n    \n    def count_in_range(self, data: list[int], min_val: int, max_val: int) -> int:\n        count: int = 0\n        for x in data:\n            if x >= min_val and x <= max_val:\n                count += 1\n        return count\n    \n    def find_max(self, data: list[int]) -> int:\n        if len(data) == 0:\n            return 0\n        max_val: int = data[0]\n        for x in data:\n            if x > max_val:\n                max_val = x\n        return max_val\n\ndef main():\n    analyzer: DataAnalyzer = DataAnalyzer()\n    values: list[int] = [3, 7, 2, 9, 4, 8]\n    \n    in_range: int = analyzer.count_in_range(values, 3, 7)\n    max_value: int = analyzer.find_max(values)\n    \n    print(in_range)\n    print(max_value)\n    print(len(values))",
+  "expected_output": "4\n9\n6\n",
+  "actual_output": "3\n9\n6",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "class_with_loop",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 123.25478649139404,
+  "compilation_duration": null,
+  "execution_duration": 4.42108416557312,
+  "source_files": null
+}

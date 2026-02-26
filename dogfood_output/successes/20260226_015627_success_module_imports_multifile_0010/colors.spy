@@ -1,0 +1,26 @@
+# colors.spy - Color system with enum and struct
+enum ColorChannel:
+    RED = 0
+    GREEN = 1
+    BLUE = 2
+
+struct RGB:
+    r: int
+    g: int
+    b: int
+
+    def __init__(self, r: int, g: int, b: int):
+        self.r = r
+        self.g = g
+        self.b = b
+
+    def to_hex(self) -> str:
+        return f"#{self.r:02X}{self.g:02X}{self.b:02X}"
+
+    def brightness(self) -> int:
+        return (self.r + self.g + self.b) // 3
+
+# Named colors as module-level constants
+RED: RGB = RGB(255, 0, 0)
+GREEN: RGB = RGB(0, 255, 0)
+BLUE: RGB = RGB(0, 0, 255)

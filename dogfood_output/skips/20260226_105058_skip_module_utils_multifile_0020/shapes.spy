@@ -1,0 +1,36 @@
+# Shapes module - classes with interface implementation
+from geometry import Point, Color
+
+class Circle:
+    center: Point
+    radius: float
+    color: Color
+
+    def __init__(self, center: Point, radius: float, color: Color):
+        self.center = center
+        self.radius = radius
+        self.color = color
+
+    def draw(self) -> str:
+        return f"Circle at ({self.center.x}, {self.center.y}) r={self.radius}"
+
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+class Rectangle:
+    top_left: Point
+    width: float
+    height: float
+    fill_color: Color
+
+    def __init__(self, top_left: Point, width: float, height: float, fill_color: Color):
+        self.top_left = top_left
+        self.width = width
+        self.height = height
+        self.fill_color = fill_color
+
+    def draw(self) -> str:
+        return f"Rect at ({self.top_left.x}, {self.top_left.y}) w={self.width} h={self.height}"
+
+    def area(self) -> float:
+        return self.width * self.height

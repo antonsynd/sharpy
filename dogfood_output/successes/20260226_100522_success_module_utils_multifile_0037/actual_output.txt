@@ -1,0 +1,5 @@
+3
+4
+Score
+Score=4
+[Result:10]

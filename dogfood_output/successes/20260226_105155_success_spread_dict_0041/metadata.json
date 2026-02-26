@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T10:50:58.912951",
+  "generated_code": "# Test: Dictionary spreading with configuration overrides\n# Verifies that later spreads override earlier values in dict merging\ndef main():\n    defaults: dict[str, int] = {\"timeout\": 30, \"retries\": 3, \"port\": 8080}\n    overrides: dict[str, int] = {\"port\": 9000, \"retries\": 5}\n    \n    # Later values override earlier ones\n    config: dict[str, int] = {**defaults, **overrides}\n    \n    print(config[\"timeout\"])\n    print(config[\"retries\"])\n    print(config[\"port\"])",
+  "expected_output": "30\n5\n9000\n",
+  "actual_output": "30\n5\n9000",
+  "feature_focus": "spread_dict",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 47.253878355026245,
+  "execution_duration": 4.358080625534058,
+  "source_files": null
+}

@@ -1,0 +1,41 @@
+# Shapes module - implements geometry with inheritance hierarchy
+from geometry import IMeasurable
+
+# Local interface for labelled objects
+interface ILabelled:
+    def label(self) -> str:
+        ...
+
+@abstract
+class Shape(IMeasurable):
+    name: str
+
+    def __init__(self, n: str):
+        self.name = n
+
+    @virtual
+    def describe(self) -> str:
+        return f"Shape: {self.name}"
+
+class Rectangle(Shape, ILabelled):
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float, n: str):
+        super().__init__(n)
+        self.width = w
+        self.height = h
+
+    @override
+    def measure(self) -> float:
+        return self.width * self.height
+
+    @override
+    def label(self) -> str:
+        w_int: int = int(self.width)
+        h_int: int = int(self.height)
+        return f"Rect[{w_int}x{h_int}]"
+
+    @override
+    def describe(self) -> str:
+        return f"{self.name} is a rectangle"

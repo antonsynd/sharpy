@@ -1,0 +1,25 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'types' has no exported symbol 'ShapeType' (in main.spy)
+  --> /tmp/tmp3qhssy7f/main.spy:3:19
+    |
+  3 | from types import ShapeType, IShape
+    |                   ^^^^^^^^^
+    |
+
+error[SPY0301]: Module 'types' has no exported symbol 'ShapeType' (in shapes.spy)
+  --> /tmp/tmp3qhssy7f/shapes.spy:3:13
+    |
+  3 | from types import ShapeType, IShape
+    |             ^^^^^^^^^
+    |
+
+Type errors:
+error[SPY0200]: Undefined identifier 'ShapeType'
+  --> /tmp/tmp3qhssy7f/main.spy:25:38
+    |
+ 25 |     is_rect: bool = r1.shape_type == ShapeType.RECTANGLE
+    |                                      ^^^^^^^^^
+    |
+

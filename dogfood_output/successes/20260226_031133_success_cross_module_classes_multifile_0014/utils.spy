@@ -1,0 +1,13 @@
+from shapes import Shape
+
+def total_area(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for s in shapes:
+        total += s.area()
+    return total
+
+class ShapeAnalyzer:
+    def analyze(self, shape: Shape) -> str:
+        desc: str = shape.description()
+        area_val: float = shape.area()
+        return "Analyzed - " + desc + ", Area: " + str(area_val)

@@ -1,0 +1,28 @@
+# Formatting module that extends utilities
+from utils import CounterBase
+
+class NamedCounter(CounterBase):
+    _name: str
+    
+    def __init__(self, name: str):
+        super().__init__()
+        self._name = name
+    
+    # Using a method instead of property to avoid access issues
+    def get_name(self) -> str:
+        return self._name
+    
+    @override
+    def increment(self) -> None:
+        super().increment()
+        super().increment()
+    
+    @override
+    def get_value(self) -> int:
+        return super().get_value()
+    
+    def get_label(self) -> str:
+        return self._name + "=" + str(self.get_value())
+
+def format_label(label: str, value: int) -> str:
+    return "[" + label + ":" + str(value) + "]"

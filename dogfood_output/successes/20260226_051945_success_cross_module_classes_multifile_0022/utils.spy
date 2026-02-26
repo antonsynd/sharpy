@@ -1,0 +1,27 @@
+# Utility module with structs and helper functions
+
+# Struct for 2D point (value type)
+struct Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    def distance_from_origin(self) -> float:
+        return (self.x ** 2.0 + self.y ** 2.0) ** 0.5
+
+# Enum for shape categories
+enum ShapeCategory:
+    TWO_D = 1
+    THREE_D = 2
+
+# Color is now just a tuple[int, int, int] - no type alias
+# Helper to create a color tuple
+def color(r: int, g: int, b: int) -> tuple[int, int, int]:
+    return (r, g, b)
+
+# Helper function for magnitude calculation
+def magnitude(point: Point) -> float:
+    return point.distance_from_origin()

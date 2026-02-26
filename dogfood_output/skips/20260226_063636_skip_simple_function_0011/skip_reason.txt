@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0200]: Undefined identifier 'multiply'
+  --> /tmp/tmpeao89qeu/dogfood_test.spy:56:12
+    |
+ 56 |     return multiply
+    |            ^^^^^^^^
+    |
+

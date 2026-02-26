@@ -1,0 +1,23 @@
+# utils.spy - Utility functions and classes for shape operations
+from shapes import Shape, IDrawable
+
+def total_area(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for s in shapes:
+        total += s.area()
+    return total
+
+class ShapeRenderer:
+    items: list[IDrawable]
+
+    def __init__(self):
+        self.items = []
+
+    def add(self, item: IDrawable) -> None:
+        self.items.append(item)
+
+    def render_all(self) -> list[str]:
+        result: list[str] = []
+        for item in self.items:
+            result.append(item.draw())
+        return result

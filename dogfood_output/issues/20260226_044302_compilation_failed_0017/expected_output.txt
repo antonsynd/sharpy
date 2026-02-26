@@ -1,0 +1,11 @@
+Drawing circle Sun at (0.0, 0.0)
+Drawing circle Moon at (50.0, 50.0)
+Drawing rectangle Field at (10.0, 10.0)
+Drawing triangle Arrow
+Total area: 8215.0
+Red shapes: 0
+FactoryCircle
+FactoryRect
+Sun with area 314.159
+Rectangle Field: 100.0 x 50.0 = 5000.0
+Arrow with area 50.0

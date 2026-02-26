@@ -1,0 +1,18 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'contracts' has no exported symbol 'ITransformable' (in main.spy)
+  --> /tmp/tmpnhlrgmbv/main.spy:3:46
+    |
+  3 | from contracts import IEntity, IValidatable, ITransformable
+    |                                              ^^^^^^^^^^^^^^
+    |
+
+Type errors:
+error[SPY0202]: Type 'ITransformable' not found
+  --> /tmp/tmpnhlrgmbv/main.spy:41:20
+    |
+ 41 |     transformable: ITransformable = circle
+    |                    ^^^^^^^^^^^^^^
+    |
+

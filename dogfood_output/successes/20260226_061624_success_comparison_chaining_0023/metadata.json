@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T06:10:23.635050",
+  "generated_code": "# Test: Chained comparisons with class-based range validation\n# Tests mixed operators (<=, <) and multi-value chains (a < b < c < d)\n\nclass ScoreValidator:\n    min_score: float\n    max_score: float\n    \n    def __init__(self, min_s: float, max_s: float):\n        self.min_score = min_s\n        self.max_score = max_s\n    \n    def is_valid(self, score: float) -> bool:\n        # Closed range with chained comparison\n        return self.min_score <= score <= self.max_score\n    \n    def get_category(self, score: float) -> int:\n        if not self.is_valid(score):\n            return -1\n        # Mixed operators in chained comparisons\n        if self.min_score <= score < self.min_score + 25.0:\n            return 1\n        elif self.min_score + 25.0 <= score < self.max_score - 25.0:\n            return 2\n        else:\n            return 3\n\ndef check_strict_sequence(a: int, b: int, c: int, d: int) -> bool:\n    # Four-value strict ordering chain\n    return a < b < c < d\n\ndef main():\n    validator: ScoreValidator = ScoreValidator(0.0, 100.0)\n    \n    # Test closed range validation\n    print(validator.is_valid(50.0))\n    print(validator.is_valid(150.0))\n    \n    # Test category classification with chained comparisons\n    scores: list[float] = [10.0, 45.0, 75.0, 99.0]\n    for s in scores:\n        print(validator.get_category(s))\n    \n    # Test strict ordering chains\n    print(check_strict_sequence(1, 2, 3, 4))\n    print(check_strict_sequence(1, 5, 3, 4))",
+  "expected_output": "True\nFalse\n1\n2\n3\n3\nTrue\nFalse\n",
+  "actual_output": "True\nFalse\n1\n2\n3\n3\nTrue\nFalse",
+  "feature_focus": "comparison_chaining",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 350.54783487319946,
+  "execution_duration": 4.604281187057495,
+  "source_files": null
+}

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-02-26T10:01:54.958154",
+  "generated_code": "# Main entry point demonstrating module imports and inheritance\nfrom utils import CounterBase, double_value\nfrom formatters import NamedCounter, format_label\n\ndef main():\n    # Create base counter and increment\n    base: CounterBase = CounterBase()\n    base.increment()\n    base.increment()\n    base.increment()\n    print(base.get_value())\n    \n    # Create named counter with inheritance\n    counter: NamedCounter = NamedCounter(\"Score\")\n    counter.increment()\n    counter.increment()\n    print(counter.get_value())\n    \n    # Access method instead of property for name\n    print(counter.get_name())\n    print(counter.get_label())\n    \n    # Use utility function and formatter\n    doubled: int = double_value(5)\n    formatted: str = format_label(\"Result\", doubled)\n    print(formatted)",
+  "expected_output": "3\n4\nScore\nScore=4\n[Result:10]\n",
+  "actual_output": "3\n4\nScore\nScore=4\n[Result:10]",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 182.9751012325287,
+  "execution_duration": 4.454005718231201,
+  "source_files": {
+    "utils.spy": "# Utility module providing base counter functionality\nclass CounterBase:\n    _count: int\n    \n    def __init__(self):\n        self._count = 0\n    \n    @virtual\n    def increment(self) -> None:\n        self._count = self._count + 1\n    \n    @virtual\n    def get_value(self) -> int:\n        return self._count\n    \n    def __str__(self) -> str:\n        return \"Count: \" + str(self._count)\n\ndef double_value(x: int) -> int:\n    return x * 2",
+    "formatters.spy": "# Formatting module that extends utilities\nfrom utils import CounterBase\n\nclass NamedCounter(CounterBase):\n    _name: str\n    \n    def __init__(self, name: str):\n        super().__init__()\n        self._name = name\n    \n    # Using a method instead of property to avoid access issues\n    def get_name(self) -> str:\n        return self._name\n    \n    @override\n    def increment(self) -> None:\n        super().increment()\n        super().increment()\n    \n    @override\n    def get_value(self) -> int:\n        return super().get_value()\n    \n    def get_label(self) -> str:\n        return self._name + \"=\" + str(self.get_value())\n\ndef format_label(label: str, value: int) -> str:\n    return \"[\" + label + \":\" + str(value) + \"]\"",
+    "main.spy": "# Main entry point demonstrating module imports and inheritance\nfrom utils import CounterBase, double_value\nfrom formatters import NamedCounter, format_label\n\ndef main():\n    # Create base counter and increment\n    base: CounterBase = CounterBase()\n    base.increment()\n    base.increment()\n    base.increment()\n    print(base.get_value())\n    \n    # Create named counter with inheritance\n    counter: NamedCounter = NamedCounter(\"Score\")\n    counter.increment()\n    counter.increment()\n    print(counter.get_value())\n    \n    # Access method instead of property for name\n    print(counter.get_name())\n    print(counter.get_label())\n    \n    # Use utility function and formatter\n    doubled: int = double_value(5)\n    formatted: str = format_label(\"Result\", doubled)\n    print(formatted)"
+  }
+}

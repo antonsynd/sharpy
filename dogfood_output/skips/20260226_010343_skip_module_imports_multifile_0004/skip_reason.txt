@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0283]: Cannot access protected member '_status' of 'PhysicalEntity' from outside the class hierarchy
+  --> /tmp/tmpgztlg2sp/main.spy:26:5
+    |
+ 26 |     physical._status = Status.ACTIVE
+    |     ^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0283]: Cannot access protected member '_status' of 'PhysicalEntity' from outside the class hierarchy
+  --> /tmp/tmpgztlg2sp/main.spy:27:11
+    |
+ 27 |     print(physical._status.value)
+    |           ^^^^^^^^^^^^^^^^
+    |
+

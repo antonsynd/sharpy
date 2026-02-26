@@ -1,0 +1,22 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-26T07:46:37.601250",
+  "generated_code": "# Main entry point for module_utils test\n# Tests cross-module imports, inheritance, and utility functions\n\nfrom math_core import calculate_sum, calculate_mean\nfrom math_stats import Statistics, analyze_dataset\n\ndef main():\n    # Create dataset using Statistics class from math_stats\n    data: Statistics = Statistics([10, 25, 30, 45, 50])\n\n    # Test direct utility functions from math_core\n    total: int = calculate_sum([10, 25, 30, 45, 50])\n    print(total)\n\n    # Test Statistics class methods\n    print(data.average())\n\n    # Test inherited method\n    print(data.count())\n\n    # Test analysis report\n    report: dict[str, float] = analyze_dataset(data)\n    print(report[\"min\"])\n    print(report[\"max\"])",
+  "expected_output": "160\n30.0\n5\n10.0\n50.0\n",
+  "actual_output": "160\n32.0\n5\n10.0\n50.0",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 140.96502304077148,
+  "compilation_duration": null,
+  "execution_duration": 4.576508045196533,
+  "source_files": {
+    "math_core.spy": "# Core math utilities module with base operations\n\nclass DataSource:\n    \"\"\"Base class for data sources providing raw values.\"\"\"\n    _values: list[int]\n\n    def __init__(self, values: list[int]):\n        self._values = values\n\n    @virtual\n    def get_values(self) -> list[int]:\n        return self._values\n\n    @virtual\n    def count(self) -> int:\n        return len(self._values)\n\ndef calculate_sum(values: list[int]) -> int:\n    \"\"\"Sum all values in a list.\"\"\"\n    result: int = 0\n    for v in values:\n        result += v\n    return result\n\ndef calculate_mean(values: list[int]) -> float:\n    \"\"\"Calculate arithmetic mean of values.\"\"\"\n    if len(values) == 0:\n        return 0.0\n    total: int = calculate_sum(values)\n    return float(total) / float(len(values))",
+    "math_stats.spy": "# Statistics module extending math_core\n\nfrom math_core import DataSource, calculate_sum, calculate_mean\n\nclass Statistics(DataSource):\n    \"\"\"Extended data source with statistical operations.\"\"\"\n\n    def __init__(self, values: list[int]):\n        super().__init__(values)\n\n    @override\n    def get_values(self) -> list[int]:\n        return self._values\n\n    def average(self) -> float:\n        return calculate_mean(self._values)\n\n    def min_value(self) -> int:\n        if len(self._values) == 0:\n            return 0\n        min_val: int = self._values[0]\n        for v in self._values:\n            if v < min_val:\n                min_val = v\n        return min_val\n\n    def max_value(self) -> int:\n        if len(self._values) == 0:\n            return 0\n        max_val: int = self._values[0]\n        for v in self._values:\n            if v > max_val:\n                max_val = v\n        return max_val\n\ndef analyze_dataset(data: Statistics) -> dict[str, float]:\n    \"\"\"Create analysis report of a dataset.\"\"\"\n    result: dict[str, float] = {}\n    result[\"sum\"] = float(calculate_sum(data.get_values()))\n    result[\"mean\"] = data.average()\n    result[\"min\"] = float(data.min_value())\n    result[\"max\"] = float(data.max_value())\n    result[\"count\"] = float(data.count())\n    return result",
+    "main.spy": "# Main entry point for module_utils test\n# Tests cross-module imports, inheritance, and utility functions\n\nfrom math_core import calculate_sum, calculate_mean\nfrom math_stats import Statistics, analyze_dataset\n\ndef main():\n    # Create dataset using Statistics class from math_stats\n    data: Statistics = Statistics([10, 25, 30, 45, 50])\n\n    # Test direct utility functions from math_core\n    total: int = calculate_sum([10, 25, 30, 45, 50])\n    print(total)\n\n    # Test Statistics class methods\n    print(data.average())\n\n    # Test inherited method\n    print(data.count())\n\n    # Test analysis report\n    report: dict[str, float] = analyze_dataset(data)\n    print(report[\"min\"])\n    print(report[\"max\"])"
+  }
+}

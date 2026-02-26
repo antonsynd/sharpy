@@ -1,0 +1,20 @@
+from shapes import Shape, Circle, Rectangle
+from utils import total_area, ShapeAnalyzer
+
+def main():
+    c: Circle = Circle("C1", 2.0)
+    r: Rectangle = Rectangle("R1", 4.0, 3.0)
+    
+    shapes: list[Shape] = [c, r]
+    
+    print(c.description())
+    print(r.description())
+    
+    total: float = total_area(shapes)
+    print(total)
+    
+    analyzer: ShapeAnalyzer = ShapeAnalyzer()
+    analysis1: str = analyzer.analyze(c)
+    analysis2: str = analyzer.analyze(r)
+    print(analysis1)
+    print(analysis2)

@@ -1,0 +1,18 @@
+{
+  "issue_type": "generation_failed",
+  "timestamp": "2026-02-26T01:18:04.345324",
+  "generated_code": "",
+  "expected_output": null,
+  "actual_output": null,
+  "error_message": "Failed to parse multi-file response after 1 attempts",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 715.8154816627502,
+  "compilation_duration": null,
+  "execution_duration": null,
+  "source_files": null
+}

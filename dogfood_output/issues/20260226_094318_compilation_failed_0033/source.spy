@@ -1,0 +1,23 @@
+# Main entry point - tests multi-file imports and polymorphism
+
+from shapes import Rectangle, Circle, IMeasurable
+from utils import total_area, is_large_rect, scale_dimensions
+
+def main():
+    rect1: Rectangle = Rectangle(6.0, 5.0)
+    rect2: Rectangle = Rectangle(4.0, 4.0)
+    circle: Circle = Circle(2.0)
+    
+    shapes: list[IMeasurable] = [rect1, rect2, circle]
+    
+    total: float = total_area(shapes)
+    print(total)
+    
+    is_large: bool = is_large_rect(rect1)
+    print(is_large)
+    
+    w: float
+    h: float
+    w, h = scale_dimensions(2.0, 3.0, 1.5)
+    print(w)
+    print(h)

@@ -1,0 +1,88 @@
+# Test: property_with_validation
+# Properties with validation logic in setters, including inheritance patterns
+# and complex validation scenarios (range checks, format validation)
+
+class ValidatedProduct:
+    _name: str
+    _price: float
+    _quantity: int
+    
+    # Read-only property with computed value
+    property get total_value(self) -> float:
+        return self._price * self._quantity
+    
+    # Property with validation in setter
+    property get price(self) -> float:
+        return self._price
+    
+    property set price(self, value: float):
+        if value < 0.0:
+            raise ValueError("Price cannot be negative")
+        self._price = value
+    
+    property get quantity(self) -> int:
+        return self._quantity
+    
+    property set quantity(self, value: int):
+        if value < 0:
+            raise ValueError("Quantity cannot be negative")
+        if value > 10000:
+            raise ValueError("Quantity exceeds maximum")
+        self._quantity = value
+    
+    property get name(self) -> str:
+        return self._name
+    
+    property set name(self, value: str):
+        if len(value) == 0:
+            raise ValueError("Name cannot be empty")
+        if len(value) > 100:
+            raise ValueError("Name too long")
+        self._name = value
+    
+    def __init__(self, name: str, price: float, quantity: int):
+        # Use setters for validation during initialization
+        self.name = name
+        self.price = price
+        self.quantity = quantity
+
+class DiscountedProduct(ValidatedProduct):
+    _discount_percent: float
+    
+    # Override to apply discount to total value calculation
+    property get total_value(self) -> float:
+        discount: float = self._discount_percent / 100.0
+        return self._price * self._quantity * (1.0 - discount)
+    
+    property get discount_percent(self) -> float:
+        return self._discount_percent
+    
+    property set discount_percent(self, value: float):
+        if value < 0.0 or value > 100.0:
+            raise ValueError("Discount must be between 0 and 100")
+        self._discount_percent = value
+    
+    def __init__(self, name: str, price: float, quantity: int, discount: float):
+        super().__init__(name, price, quantity)
+        self.discount_percent = discount
+
+def main():
+    # Test basic property validation
+    product: ValidatedProduct = ValidatedProduct("Widget", 25.50, 10)
+    print(f"Name: {product.name}")
+    print(f"Price: {product.price}")
+    print(f"Quantity: {product.quantity}")
+    print(f"Total: {product.total_value}")
+    
+    # Test modification through validated setters
+    product.price = 30.0
+    product.quantity = 15
+    print(f"Updated total: {product.total_value}")
+    
+    # Test discounted product with overridden property
+    sale_item: DiscountedProduct = DiscountedProduct("Gadget", 100.0, 5, 20.0)
+    print(f"Discounted total: {sale_item.total_value}")
+    
+    # Test updating discount
+    sale_item.discount_percent = 50.0
+    print(f"Half price total: {sale_item.total_value}")

@@ -1,0 +1,53 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'geometry' has no exported symbol 'Color' (in main.spy)
+  --> /tmp/tmpopj6yspw/main.spy:2:29
+    |
+  2 | from geometry import Point, Color
+    |                             ^^^^^
+    |
+
+error[SPY0301]: Module 'geometry' has no exported symbol 'Color' (in shapes.spy)
+  --> /tmp/tmpopj6yspw/shapes.spy:3:32
+    |
+  3 | from shapes import Circle, Rectangle
+    |                                ^^^^^
+    |
+
+error[SPY0301]: Module 'geometry' has no exported symbol 'Color' (in utils.spy)
+  --> /tmp/tmpopj6yspw/utils.spy:2:22
+    |
+  2 | from geometry import Point, Color
+    |                      ^^^^^
+    |
+
+Type errors:
+error[SPY0200]: Undefined identifier 'Color'
+  --> /tmp/tmpopj6yspw/main.spy:41:51
+    |
+ 41 |     circle: Circle = Circle(Point(0.0, 0.0), 5.0, Color.RED)
+    |                                                   ^^^^^
+    |
+
+error[SPY0200]: Undefined identifier 'Color'
+  --> /tmp/tmpopj6yspw/main.spy:42:64
+    |
+ 42 |     rect: Rectangle = Rectangle(Point(10.0, 10.0), 20.0, 30.0, Color.GREEN)
+    |                                                                ^^^^^
+    |
+
+error[SPY0200]: Undefined identifier 'Color'
+  --> /tmp/tmpopj6yspw/main.spy:58:33
+    |
+ 58 |     print(f"Red hex: {hex_color(Color.RED)}")
+    |                                 ^^^^^
+    |
+
+error[SPY0200]: Undefined identifier 'Color'
+  --> /tmp/tmpopj6yspw/main.spy:61:11
+    |
+ 61 |     print(Color.BLUE)
+    |           ^^^^^
+    |
+

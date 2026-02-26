@@ -1,0 +1,11 @@
+# Main entry point - imports from text_processor
+from text_processor import TextProcessor, count_vowels, truncate
+
+def main():
+    processor = TextProcessor("Hello World")
+    print(processor.content)
+    print(processor.word_count())
+    print(processor.reverse())
+    text: str = "The quick brown fox"
+    print(count_vowels(text))
+    print(truncate(text, 9))

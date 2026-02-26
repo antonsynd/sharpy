@@ -1,0 +1,25 @@
+# Test: Set comprehension with filtering and nested iteration
+# Extracts unique vowels from words meeting length criteria
+def extract_vowels(words: list[str]) -> set[str]:
+    # Nested for clauses: outer iterates words, inner iterates characters
+    # Filters: word length > 3, and character is a vowel
+    return {c.lower() for word in words if len(word) > 3 for c in word if c.lower() in "aeiou"}
+
+def count_consonants(words: list[str]) -> int:
+    # Set comprehension for unique consonants across all words
+    consonants: set[str] = {c.lower() for word in words for c in word if c.lower() not in "aeiou" and c.isalpha()}
+    return len(consonants)
+
+def main():
+    words: list[str] = ["Hello", "World", "Programming", "Code", "Test"]
+    
+    vowels: set[str] = extract_vowels(words)
+    consonant_count: int = count_consonants(words)
+    
+    # Sort for deterministic output
+    sorted_vowels: list[str] = sorted(vowels)
+    
+    print(consonant_count)
+    print(len(sorted_vowels))
+    for v in sorted_vowels:
+        print(v)

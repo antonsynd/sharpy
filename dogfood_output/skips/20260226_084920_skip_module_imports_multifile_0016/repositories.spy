@@ -1,0 +1,46 @@
+# Repository module - implements generic repository pattern
+from core_types import StatusCode
+from contracts import IEntity, IRepository
+from geometry_entities import Circle, Polygon
+
+class InMemoryCircleRepository(IRepository[Circle]):
+    _storage: dict[int, Circle]
+
+    def __init__(self):
+        self._storage = {}
+
+    @override
+    def find_by_id(self, id: int) -> Circle?:
+        if id in self._storage:
+            return Some(self._storage[id])
+        return None()
+
+    @override
+    def save(self, item: Circle) -> bool:
+        self._storage[item.get_id()] = item
+        return True
+
+    @override
+    def count(self) -> int:
+        return len(self._storage)
+
+class InMemoryPolygonRepository(IRepository[Polygon]):
+    _storage: dict[int, Polygon]
+
+    def __init__(self):
+        self._storage = {}
+
+    @override
+    def find_by_id(self, id: int) -> Polygon?:
+        if id in self._storage:
+            return Some(self._storage[id])
+        return None()
+
+    @override
+    def save(self, item: Polygon) -> bool:
+        self._storage[item.get_id()] = item
+        return True
+
+    @override
+    def count(self) -> int:
+        return len(self._storage)

@@ -1,0 +1,60 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'shapes' has no exported symbol 'Shape' (in main.spy)
+  --> /tmp/tmplmnccdw2/main.spy:3:39
+    |
+  3 | from shapes import Rectangle, Circle, Shape, ColoredRectangle
+    |                                       ^^^^^
+    |
+
+Type errors:
+error[SPY0203]: Type 'Rectangle' has no member 'calculate_area'
+  --> /tmp/tmplmnccdw2/main.spy:13:11
+    |
+ 13 |     print(rect.calculate_area())
+    |           ^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Circle' has no member 'calculate_area'
+  --> /tmp/tmplmnccdw2/main.spy:17:11
+    |
+ 17 |     print(circle.calculate_area())
+    |           ^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Circle' has no member 'calculate_area'
+  --> /tmp/tmplmnccdw2/main.spy:28:33
+    |
+ 28 |     area_str: str = format_area(circle.calculate_area())
+    |                                 ^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'ColoredRectangle' has no member 'draw'
+  --> /tmp/tmplmnccdw2/main.spy:39:11
+    |
+ 39 |     print(colored_rect.draw())
+    |           ^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'ColoredRectangle' has no member 'calculate_area'
+  --> /tmp/tmplmnccdw2/main.spy:40:11
+    |
+ 40 |     print(colored_rect.calculate_area())
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0202]: Type 'Shape' not found
+  --> /tmp/tmplmnccdw2/main.spy:6:22
+    |
+  6 | def process_shape(s: Shape) -> None:
+    |                      ^^^^^
+    |
+
+error[SPY0202]: Type 'Shape' not found
+  --> /tmp/tmplmnccdw2/main.spy:32:23
+    |
+ 32 |     shapes_list: list[Shape] = [rect, circle]
+    |                       ^^^^^
+    |
+

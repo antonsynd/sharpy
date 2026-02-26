@@ -1,0 +1,37 @@
+# Main entry point - imports and uses utility modules
+from math_utils import clamp, lerp, calculate_average
+from geometry import Point, BoundedPoint, distance
+
+def main():
+    p1: Point = Point(3.0, 4.0)
+    p2: Point = Point(6.0, 8.0)
+
+    # Calculate distance between two points
+    dist: float = distance(p1, p2)
+    print(dist)
+
+    # Calculate distance from origin
+    orig_dist: float = p1.distance_from_origin()
+    print(orig_dist)
+
+    # Create bounded point with clamped coordinates
+    bp: BoundedPoint = BoundedPoint(200.0, 300.0, 100.0)
+    print(bp.x)
+    print(bp.y)
+
+    # Bounded point's distance is clamped to max_bound
+    bounded_dist: float = bp.distance_from_origin()
+    print(bounded_dist)
+
+    # Linear interpolation
+    lerped: float = lerp(0.0, 100.0, 0.42)
+    print(lerped)
+
+    # Average of list values
+    values: list[float] = [10.0, 20.0, 30.0, 40.0, 50.0]
+    avg: float = calculate_average(values)
+    print(avg)
+
+    # Test clamp function directly
+    clamped: float = clamp(50.0, 0.0, 10.0)
+    print(clamped)

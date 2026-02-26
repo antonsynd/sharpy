@@ -1,0 +1,21 @@
+# Types module - enums, structs, constants, and utility functions
+enum Priority:
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+
+struct Dimension:
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float):
+        self.width = w
+        self.height = h
+
+    def area(self) -> float:
+        return self.width * self.height
+
+const SCALE_FACTOR: float = 2.0
+
+def scale_dimension(d: Dimension, factor: float) -> Dimension:
+    return Dimension(d.width * factor, d.height * factor)

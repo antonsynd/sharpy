@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T00:22:54.972556",
+  "generated_code": "# Stateful generators with inheritance - using concrete types instead of generics\ntype ScorePair = tuple[str, int]\n\nclass ScoredPipeline:\n    _buffer: list[ScorePair]\n    _min_score: int\n\n    def __init__(self, threshold: int):\n        self._buffer = []\n        self._min_score = threshold\n\n    def push(self, value: ScorePair) -> None:\n        self._buffer.append(value)\n\n    def stream(self, transform: (ScorePair) -> ScorePair) -> ScorePair:\n        processed: int = 0\n        for item in self._buffer:\n            name: str = item[0]\n            score: int = item[1]\n            if score >= self._min_score:\n                processed += 1\n                yield transform((name, score))\n        yield (\"__count__\", processed)\n\ndef boost_score(item: ScorePair) -> ScorePair:\n    return (item[0], item[1] + 10)\n\ndef round_robin(items: list[str], cycles: int) -> str:\n    i: int = 0\n    c: int = 0\n    while c < cycles:\n        yield items[i]\n        i = (i + 1) % len(items)\n        if i == 0:\n            c += 1\n\ndef main():\n    pipe: ScoredPipeline = ScoredPipeline(60)\n    pipe.push((\"alpha\", 45))\n    pipe.push((\"beta\", 75))\n    pipe.push((\"gamma\", 55))\n    pipe.push((\"delta\", 90))\n    names: list[str] = []\n    for n, s in pipe.stream(boost_score):\n        if n == \"__count__\":\n            print(f\"matched: {s}\")\n        else:\n            names.append(f\"{n}={s}\")\n    for entry in names:\n        print(entry)\n    for letter in round_robin([\"x\", \"y\"], 3):\n        print(letter)",
+  "expected_output": "matched: 2\nbeta=85\ndelta=100\nx\ny\nx\ny\nx\ny\n",
+  "actual_output": "matched: 2\nbeta=85\ndelta=100\nx\ny\nx\ny\nx\ny",
+  "feature_focus": "generator_basic",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 747.5931913852692,
+  "execution_duration": 4.751293420791626,
+  "source_files": null
+}

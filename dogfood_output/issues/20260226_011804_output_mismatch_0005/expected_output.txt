@@ -1,0 +1,5 @@
+First: (5, 10)
+Rest count: 4
+Min: (1, 4)
+Max: (9, 12)
+Dimensions: (8, 8)

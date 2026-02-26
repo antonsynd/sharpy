@@ -1,0 +1,4 @@
+Unhandled exception. System.InvalidOperationException: Called Unwrap on Err: division by zero
+   at Sharpy.Result`2.Unwrap()
+   at DogfoodTest.ComputePipeline(Double a, Double b, Double c) in /tmp/tmpa3wp6yim/dogfood_test.spy:line 24
+   at DogfoodTest.Main() in /tmp/tmpa3wp6yim/dogfood_test.spy:line 35

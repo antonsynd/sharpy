@@ -1,0 +1,38 @@
+# Shapes module - imports from utils and defines geometric classes
+from utils import Entity
+
+class Shape(Entity):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    @virtual
+    def area(self) -> float:
+        return 0.0
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, name: str, width: float, height: float):
+        super().__init__(name)
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def describe(self) -> str:
+        return f"Rectangle({self.name}, {self.width}x{self.height})"
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, name: str, radius: float):
+        super().__init__(name)
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius

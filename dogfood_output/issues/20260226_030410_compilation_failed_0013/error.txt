@@ -1,0 +1,51 @@
+Assembly compilation failed:
+
+error[CS1929]: 'char' does not contain a definition for 'Lower' and the best extension method overload 'StringExtensions.Lower(string)' requires a receiver of type 'string'
+  --> dogfood_test.cs:22:42
+    |
+ 22 |     print(consonant_count)
+    |                           ^
+    |
+
+error[CS1929]: 'char' does not contain a definition for 'Lower' and the best extension method overload 'StringExtensions.Lower(string)' requires a receiver of type 'string'
+  --> dogfood_test.cs:24:38
+    |
+ 24 |     for v in sorted_vowels:
+    |                            ^
+    |
+
+error[CS0029]: Cannot implicitly convert type 'Sharpy.Set<object>' to 'Sharpy.Set<string>'
+  --> /tmp/tmp1j2aiftx/dogfood_test.spy:6:16
+    |
+  6 |     return {c.lower() for word in words if len(word) > 3 for c in word if c.lower() in "aeiou"}
+    |                ^
+    |
+
+error[CS1929]: 'char' does not contain a definition for 'Lower' and the best extension method overload 'StringExtensions.Lower(string)' requires a receiver of type 'string'
+  --> /tmp/tmp1j2aiftx/dogfood_test.spy:18:39
+    |
+ 18 |     
+    |     ^
+    |
+
+error[CS1929]: 'char' does not contain a definition for 'Isalpha' and the best extension method overload 'StringExtensions.Isalpha(string)' requires a receiver of type 'string'
+  --> /tmp/tmp1j2aiftx/dogfood_test.spy:18:53
+    |
+ 18 |     
+    |     ^
+    |
+
+error[CS1929]: 'char' does not contain a definition for 'Lower' and the best extension method overload 'StringExtensions.Lower(string)' requires a receiver of type 'string'
+  --> /tmp/tmp1j2aiftx/dogfood_test.spy:20:34
+    |
+ 20 |     sorted_vowels: list[str] = sorted(vowels)
+    |                                  ^
+    |
+
+error[CS0029]: Cannot implicitly convert type 'Sharpy.Set<object>' to 'Sharpy.Set<string>'
+  --> /tmp/tmp1j2aiftx/dogfood_test.spy:10:41
+    |
+ 10 |     consonants: set[str] = {c.lower() for word in words for c in word if c.lower() not in "aeiou" and c.isalpha()}
+    |                                         ^
+    |
+

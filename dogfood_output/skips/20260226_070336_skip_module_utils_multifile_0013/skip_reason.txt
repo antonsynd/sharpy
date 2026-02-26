@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Shape' has no member 'area'
+  --> /tmp/tmpszq9ha9c/main.spy:21:23
+    |
+ 21 |         total_area += shape.area
+    |                       ^^^^^^^^^^
+    |
+

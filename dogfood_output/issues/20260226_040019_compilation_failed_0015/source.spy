@@ -1,0 +1,24 @@
+# Main entry point - imports from multiple modules and orchestrates
+
+from models import Person
+from services import Repository, PersonFormatter
+
+def main():
+    repo = Repository()
+    
+    p1 = Person(1, "Alice", "Smith")
+    p2 = Person(2, "Bob", "Johnson")
+    
+    repo.add(p1)
+    repo.add(p2)
+    
+    print(PersonFormatter.format_full(p1))
+    print(PersonFormatter.format_with_id(p2))
+    
+    found = repo.find_by_id(1)
+    if found is not None:
+        print(found.unwrap().get_display_name())
+    
+    all_names = repo.get_all_display_names()
+    for name in all_names:
+        print(name)

@@ -1,0 +1,28 @@
+# Main entry point - tests cross-module class interactions
+
+from shapes import Shape, Rectangle, Square, Circle
+from utils import total_perimeter, largest_area
+
+def main():
+    # Create shapes from different modules
+    rect: Rectangle = Rectangle("MyRect", 5.0, 3.0)
+    square: Square = Square("MySquare", 4.0)
+    circle: Circle = Circle("MyCircle", 2.5)
+    
+    # Store in list of base type
+    shapes: list[Shape] = [rect, square, circle]
+    
+    # Print individual shape info
+    print(rect.area())
+    print(circle.area())
+    
+    # Use utility function from other module
+    total: float = total_perimeter(shapes)
+    print(total)
+    
+    # Test polymorphism - find largest
+    biggest: Shape = largest_area(shapes)
+    print(biggest.name)
+    
+    # Test static field access
+    print(Circle.PI)

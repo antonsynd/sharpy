@@ -1,0 +1,14 @@
+def divide(a: int, b: int) -> int !str:
+    if b == 0:
+        return Err("division by zero")
+    return Ok(a // b)
+
+def main():
+    result1: int !str = divide(10, 2)
+    print(result1.unwrap())
+    
+    result2: int !str = divide(7, 3)
+    print(result2.unwrap())
+    
+    result3: int !str = Err("failed")
+    print(result3.unwrap_or(0))

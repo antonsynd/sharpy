@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T01:48:03.388080",
+  "generated_code": "# Multi-layer configuration system with dictionary spread merging\n# Tests: dict spread (**), inheritance with virtual/override, type aliases\n\ntype ConfigDict = dict[str, int]\n\nclass ConfigBase:\n    @virtual\n    def get_defaults(self) -> ConfigDict:\n        return {\"timeout\": 30, \"retries\": 3, \"workers\": 4}\n\nclass ProductionConfig(ConfigBase):\n    @override\n    def get_defaults(self) -> ConfigDict:\n        base = super().get_defaults()\n        prod_overrides: ConfigDict = {\"timeout\": 60, \"logging\": 1}\n        # Spread: merge base with production overrides\n        return {**base, **prod_overrides}\n\nclass DatabaseLayer:\n    property pool_size: int\n    \n    def __init__(self):\n        self.pool_size = 10\n    \n    def get_db_config(self) -> ConfigDict:\n        return {\"pool_size\": self.pool_size, \"timeout\": 10, \"cache\": 1}\n\ndef apply_environment(base: ConfigDict, is_prod: bool) -> ConfigDict:\n    env: ConfigDict = {}\n    if is_prod:\n        env = {\"retries\": 5, \"workers\": 8, \"ssl\": 1}\n    else:\n        env = {\"debug\": 1, \"workers\": 1}\n    \n    # Spread: base config merged with environment overrides\n    # Later values replace earlier ones\n    return {**base, **env}\n\ndef main():\n    prod = ProductionConfig()\n    db = DatabaseLayer()\n    \n    # Step 1: Get production defaults (timeout overridden to 60)\n    defaults: ConfigDict = prod.get_defaults()\n    print(defaults[\"timeout\"])\n    print(defaults[\"retries\"])\n    \n    # Step 2: Merge with DB config (timeout re-overridden to 10)\n    with_db: ConfigDict = {**defaults, **db.get_db_config()}\n    print(with_db[\"timeout\"])\n    print(with_db[\"workers\"])\n    \n    # Step 3: Apply environment (retries becomes 5, workers becomes 8)\n    final: ConfigDict = apply_environment(with_db, True)\n    print(final[\"retries\"])\n    print(final[\"workers\"])\n    \n    # Step 4: Multiple sequential spreads (last value wins)\n    manual: ConfigDict = {**{\"a\": 1}, **{\"b\": 2}, **{\"a\": 99, \"c\": 3}}\n    print(manual[\"a\"])\n    \n    # Step 5: Verify final key count\n    print(len(final))",
+  "expected_output": "60\n3\n10\n4\n5\n8\n99\n7\n",
+  "actual_output": "60\n3\n10\n4\n5\n8\n99\n7",
+  "feature_focus": "spread_dict",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 240.6413791179657,
+  "execution_duration": 4.5914223194122314,
+  "source_files": null
+}

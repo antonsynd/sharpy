@@ -1,0 +1,8 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'pi' does not exist in the current context
+  --> /tmp/tmpf_qcbwuz/geometry.spy:62:20
+
+error[CS0103]: The name 'pi' does not exist in the current context
+  --> /tmp/tmpf_qcbwuz/geometry.spy:65:27
+

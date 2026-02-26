@@ -1,0 +1,15 @@
+def safe_divide(a: int, b: int) -> int !str:
+    if b == 0:
+        return Err("division by zero")
+    return Ok(a // b)
+
+def main():
+    result1: int !str = safe_divide(20, 4)
+    print(result1.unwrap())
+    
+    result2: int !str = safe_divide(10, 0)
+    print(result2.unwrap_or(-1))
+    
+    # Chain operations with map
+    doubled: int !str = result1.map(lambda x: x * 2)
+    print(doubled.unwrap_or(0))

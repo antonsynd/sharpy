@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T22:35:38.257376",
+  "generated_code": "class CircularBuffer:\n    _buffer: list[str]\n    _capacity: int\n    _count: int\n    _write_pos: int\n    \n    def __init__(self, capacity: int):\n        self._buffer = []\n        self._capacity = capacity\n        self._count = 0\n        self._write_pos = 0\n    \n    def add(self, item: str) -> None:\n        if self._count < self._capacity:\n            self._buffer.append(item)\n            self._count += 1\n        else:\n            self._buffer[self._write_pos] = item\n            self._write_pos = (self._write_pos + 1) % self._capacity\n    \n    def __len__(self) -> int:\n        return self._count\n\ndef main():\n    buf: CircularBuffer = CircularBuffer(3)\n    print(len(buf))\n    buf.add(\"A\")\n    buf.add(\"B\")\n    print(len(buf))\n    buf.add(\"C\")\n    buf.add(\"D\")\n    print(len(buf))\n    if len(buf) == 3:\n        print(\"At capacity\")",
+  "expected_output": "0\n2\n3\nAt capacity\n",
+  "actual_output": "0\n2\n3\nAt capacity",
+  "feature_focus": "dunder_len",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 381.7387578487396,
+  "execution_duration": 4.558815240859985,
+  "source_files": null
+}

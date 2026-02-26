@@ -1,0 +1,33 @@
+class HistoryStack:
+    values: list[int]
+    
+    def __init__(self):
+        self.values = []
+    
+    def record(self, value: int) -> None:
+        self.values.append(value)
+    
+    def __reversed__(self) -> int:
+        i = len(self.values) - 1
+        while i >= 0:
+            if self.values[i] > 0:
+                yield self.values[i]
+            i -= 1
+
+def main():
+    hs = HistoryStack()
+    hs.record(10)
+    hs.record(-5)
+    hs.record(20)
+    hs.record(0)
+    hs.record(30)
+    
+    total = 0
+    count = 0
+    for val in reversed(hs):
+        total = total + val
+        count = count + 1
+        print(val)
+    
+    print(count)
+    print(total)

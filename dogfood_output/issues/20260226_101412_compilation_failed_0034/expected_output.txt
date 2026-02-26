@@ -1,0 +1,13 @@
+== START ==
+enter:docs
+file:readme.txt
+file:license.txt
+exit:docs
+-- SEPARATOR --
+enter:src
+file:main.py
+enter:tests
+file:test_main.py
+exit:tests
+exit:src
+== END ==

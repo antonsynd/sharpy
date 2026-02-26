@@ -1,0 +1,13 @@
+Creating entities...
+Derived entity_id (str): TestLabel
+Description: Derived:TestLabel(42)
+Protected counter: 420
+Extra data value: 4200
+Extra data metadata: TestLabel
+Initial module status: inactive
+Updated module status: active
+First derived counter: 420
+Second derived counter: 1000
+Second description: Derived:Second(100)
+Describe on instance 1: Derived:TestLabel(42)
+Describe on instance 2: Derived:Second(100)

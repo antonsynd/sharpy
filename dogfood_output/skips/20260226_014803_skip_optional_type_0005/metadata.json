@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T01:43:54.600855",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0230]: 'Some' must be called as a function, e.g. 'Some(value)'\n  --> /tmp/tmpg8nstyfq/dogfood_test.spy:16:35\n    |\n 16 |                 self.best_score = Some(score)\n    |                                   ^^^^\n    |\n\n",
+  "generated_code": "class ScoreTracker:\n    best_score: int?\n    attempts: int\n    \n    def __init__(self):\n        self.best_score = None()\n        self.attempts = 0\n    \n    def record(self, score: int) -> None:\n        self.attempts += 1\n        if self.best_score is None:\n            self.best_score = Some(score)\n        else:\n            current: int = self.best_score.unwrap()\n            if score > current:\n                self.best_score = Some(score)\n    \n    def get_best(self) -> int:\n        if self.best_score is not None:\n            return self.best_score.unwrap()\n        return 0\n\ndef main():\n    tracker = ScoreTracker()\n    result: int? = tracker.best_score\n    if result is not None:\n        print(result.unwrap())\n    else:\n        print(-1)\n    tracker.record(15)\n    print(tracker.get_best())\n    print(tracker.attempts)\n    tracker.record(25)\n    tracker.record(10)\n    print(tracker.get_best())\n    print(tracker.attempts)",
+  "expected_output": "-1\n15\n1\n25\n3\n",
+  "feature_focus": "optional_type",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 232.97918152809143,
+  "source_files": null,
+  "validation_output": null
+}

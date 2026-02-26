@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-25T23:22:57.084476",
+  "generated_code": "# Test: Try expression with Result chaining for safe parsing\n# Tests: try expression, Result[T !E], map, map_err, unwrap_or\n\nclass SafeParser:\n    def parse_int(self, s: str) -> int !str:\n        # Convert exception to Result using try expression\n        result: int !Exception = try int(s)\n        # Transform error to custom message using map_err\n        return result.map_err(lambda e: f\"invalid integer: '{s}'\")\n\n    def parse_float(self, s: str) -> float !str:\n        result: float !Exception = try float(s)\n        return result.map_err(lambda e: f\"invalid float: '{s}'\")\n\n    def compute_scaled(self, s: str, factor: float) -> float !str:\n        # Chain operations: parse then scale using map\n        parsed: int !str = self.parse_int(s)\n        return parsed.map(lambda n: float(n) * factor)\n\ndef main():\n    parser = SafeParser()\n\n    # Valid integer parsing\n    r1: int !str = parser.parse_int(\"42\")\n    print(r1.unwrap_or(0))\n\n    # Invalid integer - should return error\n    r2: int !str = parser.parse_int(\"abc\")\n    print(r2.unwrap_or(-1))\n\n    # Valid float parsing\n    r3: float !str = parser.parse_float(\"3.14\")\n    print(r3.unwrap_or(0.0))\n\n    # Chained computation\n    r4: float !str = parser.compute_scaled(\"10\", 2.5)\n    print(r4.unwrap_or(0.0))\n\n    # Failed computation chain\n    r5: float !str = parser.compute_scaled(\"xyz\", 2.0)\n    print(r5.unwrap_or(-1.0))",
+  "expected_output": "42\n-1\n3.14\n25.0\n-1.0\n",
+  "actual_output": "42\n-1\n3.14\n25.0\n-1.0",
+  "feature_focus": "result_type",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 179.57622957229614,
+  "execution_duration": 4.539373874664307,
+  "source_files": null
+}

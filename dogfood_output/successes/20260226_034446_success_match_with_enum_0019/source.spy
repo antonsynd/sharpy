@@ -1,0 +1,35 @@
+# Test: Task status processing with enums
+# Covers enum values and control flow with tuple handling
+
+enum TaskStatus:
+    PENDING = 0
+    IN_PROGRESS = 1
+    COMPLETED = 2
+    FAILED = 3
+
+def process_task(status: TaskStatus, attempts: int) -> str:
+    # Use if/elif instead of match with enum patterns
+    if status == TaskStatus.PENDING:
+        return "waiting_to_start"
+    elif status == TaskStatus.IN_PROGRESS:
+        if attempts == 0:
+            return "just_started"
+        else:
+            return "working"
+    elif status == TaskStatus.COMPLETED:
+        return "done"
+    else:
+        return "needs_attention"
+
+def main():
+    # Test various status/attempt combinations
+    result1: str = process_task(TaskStatus.PENDING, 5)
+    print(result1)
+    result2: str = process_task(TaskStatus.IN_PROGRESS, 0)
+    print(result2)
+    result3: str = process_task(TaskStatus.IN_PROGRESS, 3)
+    print(result3)
+    result4: str = process_task(TaskStatus.COMPLETED, 1)
+    print(result4)
+    result5: str = process_task(TaskStatus.FAILED, 10)
+    print(result5)

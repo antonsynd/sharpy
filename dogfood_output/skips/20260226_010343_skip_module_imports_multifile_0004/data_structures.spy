@@ -1,0 +1,22 @@
+# Data structures module - defines value types used across modules
+struct Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    def distance_from_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5
+
+struct Dimension:
+    width: int
+    height: int
+    
+    def __init__(self, width: int, height: int):
+        self.width = width
+        self.height = height
+    
+    def area(self) -> int:
+        return self.width * self.height

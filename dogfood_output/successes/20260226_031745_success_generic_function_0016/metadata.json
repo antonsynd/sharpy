@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T03:14:07.486379",
+  "generated_code": "# Test: Generic function composition and type inference with higher-order functions\n# Tests single-type-parameter generic functions with various concrete types\n# and generic higher-order function passing\n\ndef identity[T](value: T) -> T:\n    return value\n\ndef apply[T](fn: (T) -> T, value: T) -> T:\n    return fn(value)\n\ndef double_int(x: int) -> int:\n    return x * 2\n\ndef append_wow(s: str) -> str:\n    return s + \"wow\"\n\ndef negate(b: bool) -> bool:\n    return not b\n\ndef main():\n    # Generic identity with different types\n    print(identity(55))\n    print(identity(\"hi\"))\n    print(identity(False))\n    \n    # Generic apply with int function\n    print(apply(double_int, 6))\n    \n    # Generic apply with str function  \n    print(apply(append_wow, \"oh\"))\n    \n    # Generic apply with bool function\n    print(apply(negate, True))",
+  "expected_output": "55\nhi\nFalse\n12\nohwow\nFalse\n",
+  "actual_output": "55\nhi\nFalse\n12\nohwow\nFalse",
+  "feature_focus": "generic_function",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 208.15580105781555,
+  "execution_duration": 4.532350301742554,
+  "source_files": null
+}

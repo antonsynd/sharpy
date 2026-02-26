@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T03:18:40.088261",
+  "generated_code": "# Test: List literals used for batch processing with cumulative tracking\n# Demonstrates various list literal patterns: initialization, direct usage in loops,\n# and accumulation across multiple batches in a class\n\nclass CumulativeTracker:\n    running_total: int\n    batch_sizes: list[int]\n    \n    def __init__(self):\n        self.running_total = 0\n        self.batch_sizes = []\n    \n    def process_batch(self, batch: list[int]) -> None:\n        batch_sum: int = 0\n        for value in batch:\n            batch_sum += value\n        self.running_total += batch_sum\n        self.batch_sizes.append(len(batch))\n    \n    def get_total(self) -> int:\n        return self.running_total\n    \n    def get_batch_count(self) -> int:\n        return len(self.batch_sizes)\n\ndef main():\n    # Different list literal patterns\n    numbers_a: list[int] = [10, 20, 30]\n    numbers_b: list[int] = [5, 15, 25, 35]\n    numbers_c: list[int] = [2, 4, 6, 8, 10]\n    \n    tracker = CumulativeTracker()\n    \n    tracker.process_batch(numbers_a)\n    print(tracker.get_total())\n    \n    tracker.process_batch(numbers_b)\n    print(tracker.get_total())\n    \n    tracker.process_batch(numbers_c)\n    print(tracker.get_total())\n    print(tracker.get_batch_count())",
+  "expected_output": "60\n140\n170\n3\n",
+  "actual_output": "60\n140\n170\n3",
+  "feature_focus": "list_literal",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 160.41950345039368,
+  "execution_duration": 4.394350290298462,
+  "source_files": null
+}

@@ -1,0 +1,34 @@
+class CircularBuffer:
+    _buffer: list[str]
+    _capacity: int
+    _count: int
+    _write_pos: int
+    
+    def __init__(self, capacity: int):
+        self._buffer = []
+        self._capacity = capacity
+        self._count = 0
+        self._write_pos = 0
+    
+    def add(self, item: str) -> None:
+        if self._count < self._capacity:
+            self._buffer.append(item)
+            self._count += 1
+        else:
+            self._buffer[self._write_pos] = item
+            self._write_pos = (self._write_pos + 1) % self._capacity
+    
+    def __len__(self) -> int:
+        return self._count
+
+def main():
+    buf: CircularBuffer = CircularBuffer(3)
+    print(len(buf))
+    buf.add("A")
+    buf.add("B")
+    print(len(buf))
+    buf.add("C")
+    buf.add("D")
+    print(len(buf))
+    if len(buf) == 3:
+        print("At capacity")

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T07:07:45.446517",
+  "generated_code": "@abstract\nclass Shape:\n    @abstract\n    def calculate_area(self) -> float:\n        ...\n\n    @virtual\n    def calculate_perimeter(self) -> float:\n        return 0.0\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n\n    def __init__(self, w: float, h: float):\n        self.width = w\n        self.height = h\n\n    @override\n    def calculate_area(self) -> float:\n        return self.width * self.height\n\n    @override\n    def calculate_perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)\n\n\nclass Circle(Shape):\n    radius: float\n\n    def __init__(self, r: float):\n        self.radius = r\n\n    @override\n    def calculate_area(self) -> float:\n        return 3.14159 * self.radius ** 2.0\n\n    @override\n    def calculate_perimeter(self) -> float:\n        return 2.0 * 3.14159 * self.radius\n\n\ndef main():\n    rect: Rectangle = Rectangle(3.0, 4.0)\n    circ: Circle = Circle(5.0)\n\n    shapes: list[Shape] = [rect, circ]\n\n    for shape in shapes:\n        print(shape.calculate_area())\n        print(shape.calculate_perimeter())",
+  "expected_output": "12.0\n14.0\n78.53975\n31.4159\n",
+  "actual_output": "12.0\n14.0\n78.53975\n31.4159",
+  "feature_focus": "class_inheritance",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 280.46543645858765,
+  "execution_duration": 4.388239860534668,
+  "source_files": null
+}

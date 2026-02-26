@@ -1,0 +1,5 @@
+Shape: Rectangle, area=15.00
+Circle with radius 2.5, area=19.63
+Total area: 68.82
+Rectangle count: 2
+PI squared: 9.8696

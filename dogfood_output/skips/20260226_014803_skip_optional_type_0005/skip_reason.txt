@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0230]: 'Some' must be called as a function, e.g. 'Some(value)'
+  --> /tmp/tmpg8nstyfq/dogfood_test.spy:16:35
+    |
+ 16 |                 self.best_score = Some(score)
+    |                                   ^^^^
+    |
+

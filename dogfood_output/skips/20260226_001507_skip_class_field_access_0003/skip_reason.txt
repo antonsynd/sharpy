@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0287]: Cannot access parent fields via super(); only methods are allowed
+  --> /tmp/tmpnzuoyxhf/dogfood_test.spy:45:26
+    |
+ 45 |         parent_id: int = super().entity_id
+    |                          ^^^^^^^^^^^^^^^^^
+    |
+

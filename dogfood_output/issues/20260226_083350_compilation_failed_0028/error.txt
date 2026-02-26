@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS0021]: Cannot apply indexing with [] to an expression of type '(int, int, int, int, int)'
+  --> /tmp/tmp9sa8jrfu/dogfood_test.spy:54:21
+    |
+ 54 |     print(first)
+    |                 ^
+    |
+
+error[CS1061]: '(int, int, int, int, int)' does not contain a definition for 'GetSlice' and no accessible extension method 'GetSlice' accepting a first argument of type '(int, int, int, int, int)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp9sa8jrfu/dogfood_test.spy:55:24
+    |
+ 55 |     print(mid[1])
+    |                  ^
+    |
+
+error[CS0021]: Cannot apply indexing with [] to an expression of type '(int, int, int, int, int)'
+  --> /tmp/tmp9sa8jrfu/dogfood_test.spy:53:21
+    |
+ 53 |     first, *mid, last2 = counts
+    |                     ^
+    |
+

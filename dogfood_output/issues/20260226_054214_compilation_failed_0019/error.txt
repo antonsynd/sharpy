@@ -1,0 +1,137 @@
+Assembly compilation failed:
+
+error[CS0506]: 'ShapesExtended.Rectangle.Area()': cannot override inherited member 'Shapes.Shape.Area()' because it is not marked virtual, abstract, or override
+  --> shapes_extended.cs:24:32
+    |
+ 24 |     # Print 2-3: Calculate areas
+    |                                ^
+    |
+
+error[CS0506]: 'ShapesExtended.Rectangle.Perimeter()': cannot override inherited member 'Shapes.Shape.Perimeter()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmp4qocom_g/shapes_extended.spy:33:32
+    |
+ 33 | 
+    | ^
+    |
+
+error[CS0506]: 'ShapesExtended.Circle.Area()': cannot override inherited member 'Shapes.Shape.Area()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmp4qocom_g/shapes_extended.spy:29:32
+    |
+ 29 | 
+    | ^
+    |
+
+error[CS0506]: 'ShapesExtended.Circle.Perimeter()': cannot override inherited member 'Shapes.Shape.Perimeter()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmp4qocom_g/shapes_extended.spy:62:32
+
+error[CS1061]: 'Utils.Point' does not contain a definition for 'X' and no accessible extension method 'X' accepting a first argument of type 'Utils.Point' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/utils.spy:36:40
+    |
+ 36 |     print(format_color(blended))
+    |                                 ^
+    |
+
+error[CS1061]: 'Utils.Point' does not contain a definition for 'X' and no accessible extension method 'X' accepting a first argument of type 'Utils.Point' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/utils.spy:36:47
+    |
+ 36 |     print(format_color(blended))
+    |                                 ^
+    |
+
+error[CS1061]: 'Utils.Point' does not contain a definition for 'Y' and no accessible extension method 'Y' accepting a first argument of type 'Utils.Point' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/utils.spy:36:62
+    |
+ 36 |     print(format_color(blended))
+    |                                 ^
+    |
+
+error[CS1061]: 'Utils.Point' does not contain a definition for 'Y' and no accessible extension method 'Y' accepting a first argument of type 'Utils.Point' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/utils.spy:36:69
+    |
+ 36 |     print(format_color(blended))
+    |                                 ^
+    |
+
+error[CS1061]: 'Colors.Color' does not contain a definition for 'R' and no accessible extension method 'R' accepting a first argument of type 'Colors.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/colors.spy:34:78
+    |
+ 34 |     # Print 6: Test ShapeUtils with cross-module types (color blending)
+    |                                                                        ^
+    |
+
+error[CS1061]: 'Colors.Color' does not contain a definition for 'R' and no accessible extension method 'R' accepting a first argument of type 'Colors.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/colors.spy:34:85
+    |
+ 34 |     # Print 6: Test ShapeUtils with cross-module types (color blending)
+    |                                                                        ^
+    |
+
+error[CS1061]: 'Colors.Color' does not contain a definition for 'G' and no accessible extension method 'G' accepting a first argument of type 'Colors.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/colors.spy:34:141
+    |
+ 34 |     # Print 6: Test ShapeUtils with cross-module types (color blending)
+    |                                                                        ^
+    |
+
+error[CS1061]: 'Colors.Color' does not contain a definition for 'G' and no accessible extension method 'G' accepting a first argument of type 'Colors.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/colors.spy:34:148
+    |
+ 34 |     # Print 6: Test ShapeUtils with cross-module types (color blending)
+    |                                                                        ^
+    |
+
+error[CS1061]: 'Colors.Color' does not contain a definition for 'B' and no accessible extension method 'B' accepting a first argument of type 'Colors.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/colors.spy:34:204
+    |
+ 34 |     # Print 6: Test ShapeUtils with cross-module types (color blending)
+    |                                                                        ^
+    |
+
+error[CS1061]: 'Colors.Color' does not contain a definition for 'B' and no accessible extension method 'B' accepting a first argument of type 'Colors.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/colors.spy:34:211
+    |
+ 34 |     # Print 6: Test ShapeUtils with cross-module types (color blending)
+    |                                                                        ^
+    |
+
+error[CS1061]: 'Colors.Color' does not contain a definition for 'R' and no accessible extension method 'R' accepting a first argument of type 'Colors.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/colors.spy:38:54
+    |
+ 38 |     # Print 7: Test Circle.contains_point method
+    |                                                 ^
+    |
+
+error[CS1061]: 'Colors.Color' does not contain a definition for 'G' and no accessible extension method 'G' accepting a first argument of type 'Colors.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/colors.spy:38:62
+    |
+ 38 |     # Print 7: Test Circle.contains_point method
+    |                                                 ^
+    |
+
+error[CS1061]: 'Colors.Color' does not contain a definition for 'B' and no accessible extension method 'B' accepting a first argument of type 'Colors.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/colors.spy:38:70
+    |
+ 38 |     # Print 7: Test Circle.contains_point method
+    |                                                 ^
+    |
+
+error[CS1061]: 'Utils.Point' does not contain a definition for 'X' and no accessible extension method 'X' accepting a first argument of type 'Utils.Point' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/utils.spy:24:41
+    |
+ 24 |     # Print 2-3: Calculate areas
+    |                                 ^
+    |
+
+error[CS1061]: 'Utils.Point' does not contain a definition for 'Y' and no accessible extension method 'Y' accepting a first argument of type 'Utils.Point' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4qocom_g/utils.spy:25:41
+    |
+ 25 |     rect_area: float = rect.area()
+    |                                   ^
+    |
+
+error[CS0103]: The name 'pi' does not exist in the current context
+  --> /tmp/tmp4qocom_g/shapes_extended.spy:59:20
+
+error[CS0103]: The name 'pi' does not exist in the current context
+  --> /tmp/tmp4qocom_g/shapes_extended.spy:63:27
+

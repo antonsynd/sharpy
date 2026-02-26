@@ -1,0 +1,49 @@
+# Utils module - utility functions and classes for shape operations
+from types_module import Point, Color
+from shapes_module import Shape, Circle, Rectangle
+
+class ShapeCollection:
+    _shapes: list[Shape]
+
+    def __init__(self):
+        self._shapes = []
+
+    def add(self, shape: Shape):
+        self._shapes.append(shape)
+
+    def get_total_area(self) -> float:
+        total: float = 0.0
+        for shape in self._shapes:
+            total += shape.area
+        return total
+
+    def get_total_perimeter(self) -> float:
+        total: float = 0.0
+        for shape in self._shapes:
+            total += shape.perimeter
+        return total
+
+    def describe_all(self):
+        for shape in self._shapes:
+            print(shape.draw())
+
+def create_random_shapes() -> list[Shape]:
+    shapes: list[Shape] = []
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(1.0, 1.0)
+    p3: Point = Point(2.0, 3.0)
+    shapes.append(Circle(p1, 5.0, Color.RED))
+    shapes.append(Rectangle(p2, 10.0, 20.0, Color.GREEN))
+    shapes.append(Circle(p3, 3.0, Color.BLUE))
+    return shapes
+
+def calculate_statistics(shapes: list[Shape]) -> tuple[float, int, float]:
+    total_a: float = 0.0
+    total_p: float = 0.0
+    count: int = 0
+    for shape in shapes:
+        total_a += shape.area
+        total_p += shape.perimeter
+        count += 1
+    avg_p: float = total_p / float(count) if count > 0 else 0.0
+    return (total_a, count, avg_p)

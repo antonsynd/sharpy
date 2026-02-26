@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T09:14:31.076286",
+  "generated_code": "# Simple if-elif-else with computed score value\ndef main():\n    score: int = 100 - 75  # score = 25\n    result: str = \"\"       # declare result before the if blocks\n    if score >= 50:\n        result = \"pass\"    # assign without redeclaring\n    elif score >= 20:\n        result = \"conditional\"\n    else:\n        result = \"fail\"\n    print(result)",
+  "expected_output": "conditional\n",
+  "actual_output": "conditional",
+  "feature_focus": "if_elif_else",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 185.61054754257202,
+  "execution_duration": 4.393077850341797,
+  "source_files": null
+}

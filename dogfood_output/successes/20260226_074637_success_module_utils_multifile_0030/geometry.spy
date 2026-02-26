@@ -1,0 +1,31 @@
+# Geometry module with points and distances
+from math_utils import clamp
+
+class Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    @virtual
+    def distance_from_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5
+
+def distance(p1: Point, p2: Point) -> float:
+    dx: float = p2.x - p1.x
+    dy: float = p2.y - p1.y
+    return (dx * dx + dy * dy) ** 0.5
+
+class BoundedPoint(Point):
+    max_bound: float
+
+    def __init__(self, x: float, y: float, max_bound: float = 100.0):
+        super().__init__(clamp(x, 0.0, max_bound), clamp(y, 0.0, max_bound))
+        self.max_bound = max_bound
+
+    @override
+    def distance_from_origin(self) -> float:
+        base_dist: float = super().distance_from_origin()
+        return clamp(base_dist, 0.0, self.max_bound)

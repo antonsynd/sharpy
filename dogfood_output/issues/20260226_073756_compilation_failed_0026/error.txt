@@ -1,0 +1,15 @@
+Assembly compilation failed:
+
+error[CS0117]: 'Shapes.Circle' does not contain a definition for 'Pi'
+  --> /tmp/tmpg0ruriv1/shapes.spy:60:27
+
+error[CS0117]: 'Shapes.Circle' does not contain a definition for 'Pi'
+  --> /tmp/tmpg0ruriv1/shapes.spy:64:34
+
+error[CS1061]: 'Shapes.Circle' does not contain a definition for 'Pi' and no accessible extension method 'Pi' accepting a first argument of type 'Shapes.Circle' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpg0ruriv1/main.spy:28:46
+    |
+ 28 |     print(Circle.PI)
+    |                     ^
+    |
+

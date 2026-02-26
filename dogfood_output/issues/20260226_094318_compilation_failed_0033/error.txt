@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS0535]: 'Shapes.Rectangle' does not implement interface member 'Shapes.IMeasurable.Measure()'
+  --> shapes.cs:17:30
+    |
+ 17 |     print(is_large)
+    |                    ^
+    |
+
+error[CS0535]: 'Shapes.Circle' does not implement interface member 'Shapes.IMeasurable.Measure()'
+  --> /tmp/tmpxhddbc87/shapes.spy:16:27
+    |
+ 16 |     is_large: bool = is_large_rect(rect1)
+    |                           ^
+    |
+
+error[CS1061]: 'Shapes.Rectangle' does not contain a definition for 'Measure' and no accessible extension method 'Measure' accepting a first argument of type 'Shapes.Rectangle' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpxhddbc87/utils.spy:12:18
+    |
+ 12 |     
+    |     ^
+    |
+

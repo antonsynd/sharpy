@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-26T02:09:04.848989",
+  "generated_code": "# Complex type alias test covering chained, generic, and function type aliases\n# Simple type aliases (chained)\ntype Scalar = float\ntype Magnitude = Scalar\n\n# Function type alias\ntype BinaryOp = (float, float) -> float\ntype Predicate = (int) -> bool\n\n# Named tuple type alias\ntype Coordinate = tuple[x: float, y: float]\n\n# Generic collection aliases\ntype IntVector = list[int]\ntype FloatDict = dict[str, float]\n\n# Calculator class using function type aliases\nclass Calculator:\n    operation: BinaryOp\n\n    def __init__(self, op: BinaryOp):\n        self.operation = op\n\n    def compute(self, a: float, b: float) -> float:\n        return self.operation(a, b)\n\n# Filter utility using predicate type\nclass NumberFilter:\n    data: IntVector\n\n    def __init__(self, values: IntVector):\n        self.data = values\n\n    def apply_filter(self, pred: Predicate) -> IntVector:\n        result: IntVector = []\n        for v in self.data:\n            if pred(v):\n                result.append(v)\n        return result\n\n# Optional coordinate handling using direct Optional[Coordinate]\nclass PathTracker:\n    current: Optional[Coordinate]\n\n    def __init__(self, coord: Optional[Coordinate] = None()):\n        self.current = coord\n\n    def get_x_safe(self) -> float:\n        if self.current is not None:\n            return self.current.x\n        return 0.0\n\n    def has_coord(self) -> bool:\n        return self.current is not None\n\ndef is_even(n: int) -> bool:\n    return n % 2 == 0\n\ndef main():\n    # Test chained type aliases\n    mag: Magnitude = 5.5\n    print(mag)\n\n    # Test named tuple with type alias\n    coord: Coordinate = (x=3.0, y=4.0)\n    print(coord.x)\n    print(coord.y)\n\n    # Test function type alias in class\n    calc = Calculator(lambda a, b: (a + b) * 2.0)\n    print(calc.compute(2.0, 3.0))\n\n    # Test collection type aliases\n    nums: IntVector = [1, 2, 3, 4, 5, 6]\n    flt: NumberFilter = NumberFilter(nums)\n    evens: IntVector = flt.apply_filter(is_even)\n    print(len(evens))\n    print(evens[0])\n    print(evens[1])\n\n    # Test float dictionary - construct empty first then assign\n    scores: FloatDict = {}\n    scores[\"a\"] = 1.5\n    scores[\"b\"] = 2.5\n    print(scores[\"a\"])\n\n    # Test optional type with named tuple\n    tracker: PathTracker = PathTracker(None())\n    print(tracker.get_x_safe())\n\n    # Set valid coordinate\n    tracker.current = Some(coord)\n    print(tracker.get_x_safe())\n    print(tracker.has_coord())",
+  "expected_output": "5.5\n3.0\n4.0\n10.0\n3\n2\n4\n1.5\n0.0\n3.0\nTrue\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS1736]: Default parameter value for 'coord' must be a compile-time constant\n  --> /tmp/tmpclnitj3e/dogfood_test.spy:57:67\n    |\n 57 |     return n % 2 == 0\n    |                      ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmpclnitj3e/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "type_alias",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 844.8901896476746,
+  "compilation_duration": null,
+  "execution_duration": 4.400300979614258,
+  "source_files": null
+}

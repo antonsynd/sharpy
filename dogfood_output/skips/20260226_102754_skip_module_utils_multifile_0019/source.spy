@@ -1,0 +1,37 @@
+# Main entry point - tests cross-module inheritance, interfaces, and generics
+
+from types import ShapeType, IShape
+from shapes import Rectangle, Square, Dimensions, Point
+from math_ops import analyze_shape, ShapeCollector
+
+def main():
+    # Create shapes
+    r1 = Rectangle(10.0, 5.0, 0.0, 0.0)
+    r2 = Rectangle(3.0, 4.0, 1.0, 1.0)
+    s1 = Square(6.0, 2.0, 2.0)
+    
+    # Test struct property through composition
+    print(r1.dims.aspect_ratio)
+    
+    # Test interface dispatch
+    result: str = analyze_shape(r2)
+    print(result)
+    
+    # Test inheritance and virtual method dispatch
+    print(r1.describe())
+    print(s1.describe())
+    
+    # Test enum comparison
+    is_rect: bool = r1.shape_type == ShapeType.RECTANGLE
+    print(is_rect)
+    
+    # Test Point struct field access
+    p: Point = Point(5.0, 10.0)
+    print(p.x)
+    
+    # Test generic collector with interface constraint
+    collector = ShapeCollector[Rectangle]()
+    collector.add(r1)
+    collector.add(r2)
+    print(collector.total_area())
+    print(collector.count())

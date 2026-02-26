@@ -1,0 +1,15 @@
+User: alice (alice@example.com)
+User: bob (bob@example.com)
+Task: Deploy at (10.0, 20.0)
+ID=101, name=@alice
+ID=102, name=@bob
+pending
+Status: completed
+(0.0, 0.0)
+(3.0, 4.0)
+5.0
+active
+Status: active
+Status: completed
+1
+1

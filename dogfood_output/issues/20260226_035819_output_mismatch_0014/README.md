@@ -1,0 +1,103 @@
+# Issue Report: output_mismatch
+
+**Timestamp:** 2026-02-26T03:45:22.599333
+**Type:** output_mismatch
+**Feature Focus:** star_unpacking
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Complex star unpacking with abstract formatter hierarchy and type aliases
+type IntList = list[int]
+
+@abstract
+class DataFormatter:
+    @abstract
+    def format(self, items: IntList) -> str: ...
+
+class PrefixSuffixFormatter(DataFormatter):
+    @override
+    def format(self, items: IntList) -> str:
+        if len(items) < 2:
+            return f"len={len(items)}"
+        first, *rest = items
+        if len(rest) == 0:
+            return f"single:{first}"
+        *middle, last = rest
+        total: int = first + last
+        for m in middle:
+            total += m
+        return f"total={total}"
+
+class HeadOnlyFormatter(DataFormatter):
+    @override
+    def format(self, items: IntList) -> str:
+        if len(items) == 0:
+            return "empty"
+        head, *_ = items
+        return f"head:{head}"
+
+def merge_with_spread(a: IntList, b: IntList, c: IntList) -> IntList:
+    return [*a, *b, 0, *c]
+
+def extract_triple(data: IntList) -> tuple[int, IntList, int]:
+    first, *rest = data
+    last: int = rest[len(rest) - 1] if len(rest) > 0 else first
+    if len(rest) > 0:
+        rest.pop()
+    return (first, rest, last)
+
+def main():
+    fmt1 = PrefixSuffixFormatter()
+    fmt2 = HeadOnlyFormatter()
+    list1: IntList = [1, 2, 3, 4, 5]
+    list2: IntList = [10, 20]
+    list3: IntList = [100]
+    merged = merge_with_spread(list1, list2, list3)
+    print(len(merged))
+    f, m, l = extract_triple(merged)
+    print(f)
+    print(l)
+    print(len(m))
+    print(fmt1.format(merged))
+    print(fmt2.format(m))
+    print(fmt2.format([99, *m]))
+```
+
+## Error
+
+```
+AI explicitly reported mismatch
+```
+
+## Output Comparison
+
+### Expected
+```
+8
+1
+100
+6
+total=101
+head:20
+head:99
+
+```
+
+### Actual
+```
+9
+1
+100
+7
+total=145
+head:2
+head:99
+```
+
+## Timing
+
+- Generation: 694.51s
+- Execution: 4.56s

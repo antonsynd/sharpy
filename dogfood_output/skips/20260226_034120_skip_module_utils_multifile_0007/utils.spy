@@ -1,0 +1,21 @@
+# Utility functions for shape collections
+
+from types import Point
+from interfaces import IPositionable
+from shapes import Circle
+
+
+def find_largest(c1: Circle, c2: Circle) -> Circle:
+    if c1.get_area() > c2.get_area():
+        return c1
+    return c2
+
+
+def center_of_two(p1: IPositionable, p2: IPositionable) -> Point:
+    pos1: Point = p1.get_position()
+    pos2: Point = p2.get_position()
+    return Point((pos1.x + pos2.x) / 2.0, (pos1.y + pos2.y) / 2.0)
+
+
+def format_area(area: float) -> str:
+    return f"{area:.2f}"

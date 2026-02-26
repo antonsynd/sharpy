@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-02-26T08:14:25.734959",
+  "generated_code": "# Main entry point - imports from text_processor\nfrom text_processor import TextProcessor, count_vowels, truncate\n\ndef main():\n    processor = TextProcessor(\"Hello World\")\n    print(processor.content)\n    print(processor.word_count())\n    print(processor.reverse())\n    text: str = \"The quick brown fox\"\n    print(count_vowels(text))\n    print(truncate(text, 9))",
+  "expected_output": "Hello World\n2\ndlroW olleH\n5\nThe quick...\n",
+  "actual_output": "Hello World\n2\ndlroW olleH\n5\nThe quick...",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 636.902364730835,
+  "execution_duration": 4.6079676151275635,
+  "source_files": {
+    "text_processor.spy": "# Text processing utilities module\n\nclass TextProcessor:\n    content: str\n\n    def __init__(self, content: str):\n        self.content = content\n\n    def word_count(self) -> int:\n        words: list[str] = self.content.split(\" \")\n        return len(words)\n\n    def reverse(self) -> str:\n        result: str = \"\"\n        i: int = len(self.content) - 1\n        while i >= 0:\n            result = result + str(self.content[i])\n            i = i - 1\n        return result\n\ndef count_vowels(text: str) -> int:\n    count: int = 0\n    for c in text:\n        ch: str = str(c)\n        if ch == \"a\" or ch == \"e\" or ch == \"i\" or ch == \"o\" or ch == \"u\":\n            count = count + 1\n        elif ch == \"A\" or ch == \"E\" or ch == \"I\" or ch == \"O\" or ch == \"U\":\n            count = count + 1\n    return count\n\ndef truncate(text: str, max_length: int) -> str:\n    if len(text) <= max_length:\n        return text\n    return text[0:max_length] + \"...\"",
+    "main.spy": "# Main entry point - imports from text_processor\nfrom text_processor import TextProcessor, count_vowels, truncate\n\ndef main():\n    processor = TextProcessor(\"Hello World\")\n    print(processor.content)\n    print(processor.word_count())\n    print(processor.reverse())\n    text: str = \"The quick brown fox\"\n    print(count_vowels(text))\n    print(truncate(text, 9))"
+  }
+}

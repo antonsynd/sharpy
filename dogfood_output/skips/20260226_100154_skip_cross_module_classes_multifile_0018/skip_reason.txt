@@ -1,0 +1,16 @@
+Repeated identical compiler error (likely compiler bug): Compilation errors:
+
+error[SPY0202]: Base type 'Shape' not found
+  --> /tmp/tmpxioeq3mm/main.spy:5:1
+    |
+  5 | class Rectangle(Shape, IDrawable):
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0202]: Base type 'Shape' not found
+  --> /tmp/tmpxioeq3mm/main.spy:26:1
+    |
+ 26 | class Circle(Shape, IDrawable):
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

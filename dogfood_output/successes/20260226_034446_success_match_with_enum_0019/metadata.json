@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T03:41:20.130911",
+  "generated_code": "# Test: Task status processing with enums\n# Covers enum values and control flow with tuple handling\n\nenum TaskStatus:\n    PENDING = 0\n    IN_PROGRESS = 1\n    COMPLETED = 2\n    FAILED = 3\n\ndef process_task(status: TaskStatus, attempts: int) -> str:\n    # Use if/elif instead of match with enum patterns\n    if status == TaskStatus.PENDING:\n        return \"waiting_to_start\"\n    elif status == TaskStatus.IN_PROGRESS:\n        if attempts == 0:\n            return \"just_started\"\n        else:\n            return \"working\"\n    elif status == TaskStatus.COMPLETED:\n        return \"done\"\n    else:\n        return \"needs_attention\"\n\ndef main():\n    # Test various status/attempt combinations\n    result1: str = process_task(TaskStatus.PENDING, 5)\n    print(result1)\n    result2: str = process_task(TaskStatus.IN_PROGRESS, 0)\n    print(result2)\n    result3: str = process_task(TaskStatus.IN_PROGRESS, 3)\n    print(result3)\n    result4: str = process_task(TaskStatus.COMPLETED, 1)\n    print(result4)\n    result5: str = process_task(TaskStatus.FAILED, 10)\n    print(result5)",
+  "expected_output": "waiting_to_start\njust_started\nworking\ndone\nneeds_attention\n",
+  "actual_output": "waiting_to_start\njust_started\nworking\ndone\nneeds_attention",
+  "feature_focus": "match_with_enum",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 190.92498922348022,
+  "execution_duration": 4.515466928482056,
+  "source_files": null
+}

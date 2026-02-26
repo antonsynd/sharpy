@@ -1,0 +1,32 @@
+# Main entry point - orchestrates cross-module class interactions
+# Demonstrates polymorphism with imported types
+
+from animals import Animal, Dog, Cat
+from farms import Farm, Kennel
+
+def main():
+    # Create individual animals (from animals module)
+    dog: Dog = Dog("Buddy", "Golden Retriever")
+    cat: Cat = Cat("Whiskers", "Tabby")
+    
+    # Test individual animal behavior
+    print(dog.speak())
+    print(cat.speak())
+    
+    # Create a farm and add animals (from farms module)
+    farm: Farm = Farm("Sunny Acres")
+    farm.add_animal(dog)
+    farm.add_animal(cat)
+    
+    # Print farm summary
+    print(farm.get_summary())
+    
+    # Demonstrate polymorphic dispatch
+    farm.make_all_speak()
+    
+    # Create a kennel with capacity checking
+    kennel: Kennel = Kennel("City Kennel", 5)
+    kennel.add_animal(Dog("Rex", "German Shepherd"))
+    
+    print(kennel.get_summary())
+    print(kennel.has_space())

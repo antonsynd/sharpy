@@ -1,0 +1,7 @@
+Woof!
+Meow!
+Sunny Acres has 2 animals
+Golden Retriever dog named Buddy says: Woof!
+Tabby cat named Whiskers says: Meow!
+City Kennel has 1 animals (max capacity: 5)
+True

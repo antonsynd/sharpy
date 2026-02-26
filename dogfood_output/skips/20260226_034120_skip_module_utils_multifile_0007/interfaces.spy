@@ -1,0 +1,11 @@
+# Abstract interfaces for geometric shapes
+
+from types import Point
+
+interface ISizable:
+    def get_area(self) -> float
+    def get_perimeter(self) -> float
+
+interface IPositionable:
+    def get_position(self) -> Point
+    def move(self, dx: float, dy: float) -> None

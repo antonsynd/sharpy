@@ -1,0 +1,41 @@
+# Main entry point - exercises cross-module imports and polymorphism
+from core_types import Entity, IMeasurable, Status
+from data_structures import Point, Dimension
+from implementations import PhysicalEntity, MovingEntity
+
+def process_entity(e: Entity) -> str:
+    return e.describe()
+
+def measure_item(m: IMeasurable) -> int:
+    return m.get_size()
+
+def main():
+    # Create value types from data_structures
+    point: Point = Point(3.0, 4.0)
+    dim: Dimension = Dimension(10, 20)
+    
+    # Test struct methods - these should produce output
+    print(point.distance_from_origin())
+    print(dim.area())
+    
+    # Create polymorphic objects with cross-module inheritance
+    physical = PhysicalEntity(1, "Block", point, dim)
+    moving = MovingEntity(2, "Car", Point(0.0, 0.0), Dimension(5, 8), 60.0)
+    
+    # Test enum values across modules
+    physical._status = Status.ACTIVE
+    print(physical._status.value)
+    
+    # Test polymorphic dispatch - virtual method from core_types
+    print(process_entity(physical))
+    print(process_entity(moving))
+    
+    # Test interface implementation across modules
+    print(measure_item(physical))
+    print(measure_item(moving))
+    
+    # Test abstract method implementation
+    print(physical.compute_value())
+    
+    # Ensure we have enough output - print summary
+    print(f"Tests complete: entities {physical.id} and {moving.id}")

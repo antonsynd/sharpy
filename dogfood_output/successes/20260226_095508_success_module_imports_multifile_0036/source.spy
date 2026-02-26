@@ -1,0 +1,30 @@
+# Main entry point - demonstrates cross-module imports and type usage
+from geometry import IMeasurable
+from shapes import Rectangle
+from types import Priority, Dimension, SCALE_FACTOR, scale_dimension
+
+def main():
+    # Test struct methods
+    dim: Dimension = Dimension(5.0, 3.0)
+    print(dim.area())
+
+    # Test enum values
+    pri: Priority = Priority.HIGH
+    print(pri.value)
+
+    # Test function with struct parameter
+    scaled: Dimension = scale_dimension(dim, SCALE_FACTOR)
+    print(scaled.width)
+
+    # Test interface polymorphism via IMeasurable
+    meas: IMeasurable = Rectangle(4.0, 5.0, "Box")
+    print(meas.measure())
+
+    # Test concrete class methods
+    rect: Rectangle = Rectangle(2.0, 6.0, "Tile")
+    print(rect.measure())
+    print(rect.describe())
+
+    # Test inherited field access via base class
+    base: Shape = rect
+    print(base.name)

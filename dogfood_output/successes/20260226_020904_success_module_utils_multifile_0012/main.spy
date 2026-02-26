@@ -1,0 +1,26 @@
+# Main entry point
+# Imports and uses utility modules
+
+from math_utils import square, sum_of_squares, Calculator
+from string_utils import reverse, truncate, TextFormatter
+
+def main():
+    # Test 1: Function from math_utils
+    print(square(7))
+
+    # Test 2: Higher-order function from math_utils
+    nums: list[int] = [1, 2, 3]
+    print(sum_of_squares(nums))
+
+    # Test 3: Class method from math_utils
+    calc = Calculator()
+    calc.add(5, 3)
+    calc.add(10, 20)
+    print(calc.get_history_count())
+
+    # Test 4: Function from string_utils
+    print(reverse("hello"))
+
+    # Test 5: Class from string_utils
+    formatter = TextFormatter("STATUS")
+    print(formatter.format("ready"))

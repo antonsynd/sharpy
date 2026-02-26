@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-26T04:00:19.966998",
+  "generated_code": "# Test: Dictionary spread in configuration merging with feature flag overrides\n# Demonstrates spread for layered config: base + env overrides + feature flags\n\ndef get_base_config() -> dict[str, int]:\n    return {\"timeout\": 30, \"retries\": 3, \"workers\": 4}\n\ndef get_env_overrides() -> dict[str, int]:\n    return {\"timeout\": 60, \"workers\": 8}\n\ndef get_feature_flags() -> dict[str, int]:\n    return {\"workers\": 16}\n\ndef main():\n    # Create merged config using spreads\n    base = get_base_config()\n    env = get_env_overrides()\n    flags = get_feature_flags()\n\n    # Layered spread: base first, then env overrides, then feature flags\n    merged: dict[str, int] = {**base, **env, **flags}\n    print(merged[\"timeout\"])\n    print(merged[\"retries\"])\n    print(merged[\"workers\"])\n\n    # Spread with literal overrides\n    customized: dict[str, int] = {**base, \"retries\": 5}\n    print(customized[\"retries\"])\n\n    # Test spread preserves original dicts\n    print(len(base))\n    print(len(env))",
+  "expected_output": "60\n3\n16\n5\n3\n2\n",
+  "actual_output": "60\n3\n16\n5\n3\n2",
+  "feature_focus": "spread_dict",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 106.77971053123474,
+  "execution_duration": 4.419744253158569,
+  "source_files": null
+}

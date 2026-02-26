@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-02-26T02:29:07.636664",
+  "generated_code": "# Test set literals with deduplication, spread, and set operations\ndef main():\n    # Create sets using literal syntax (note: 1 appears twice)\n    fibonacci: set[int] = {1, 1, 2, 3, 5, 8}\n    squares: set[int] = {1, 4, 9, 16}\n    \n    # Verify deduplication in literal (1 appears twice)\n    print(len(fibonacci))\n    \n    # Check membership in each set\n    print(5 in fibonacci)\n    print(9 in squares)\n    print(7 in fibonacci)\n    \n    # Combine sets using spread operator (union behavior)\n    combined: set[int] = {*fibonacci, *squares}\n    print(len(combined))\n    \n    # Create set from range using set comprehension\n    small: set[int] = {x for x in range(4)}\n    print(len(small))\n    \n    # Modify a spread copy of literal set\n    working: set[int] = {*squares}\n    working.add(25)\n    working.remove(1)\n    print(25 in working)\n    print(1 in working)",
+  "expected_output": "5\nTrue\nTrue\nFalse\n7\n4\nTrue\nFalse\n",
+  "actual_output": "5\nTrue\nTrue\nFalse\n8\n4\nTrue\nFalse",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "set_literal",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 315.4036362171173,
+  "compilation_duration": null,
+  "execution_duration": 4.5547661781311035,
+  "source_files": null
+}

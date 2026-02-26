@@ -1,0 +1,12 @@
+# Test: Dictionary spreading with configuration overrides
+# Verifies that later spreads override earlier values in dict merging
+def main():
+    defaults: dict[str, int] = {"timeout": 30, "retries": 3, "port": 8080}
+    overrides: dict[str, int] = {"port": 9000, "retries": 5}
+    
+    # Later values override earlier ones
+    config: dict[str, int] = {**defaults, **overrides}
+    
+    print(config["timeout"])
+    print(config["retries"])
+    print(config["port"])

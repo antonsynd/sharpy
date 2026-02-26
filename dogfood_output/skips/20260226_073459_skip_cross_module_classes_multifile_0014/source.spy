@@ -1,0 +1,72 @@
+# Main entry point - demonstrates cross-module class usage
+
+from types import ShapeBase, Color, Point, IShape, ScaleFactor
+from shapes import Rectangle, Circle, ColoredCircle
+from utils import ShapeProcessor, get_color_by_name, filtered_by_area
+
+def describe_shape(shape: IShape) -> str:
+    return f"{shape.to_string()} - Area: {shape.area()}, Perimeter: {shape.perimeter()}"
+
+def main():
+    # Create shapes from different modules
+    rect: Rectangle = Rectangle("box1", 5.0, 3.0, Color.BLUE)
+    circ: Circle = Circle("wheel", 2.0, Point(0.0, 0.0))
+    colored_circ: ColoredCircle = ColoredCircle("target", 1.5, Point(1.0, 1.0), Color.RED)
+
+    # Test 1: Cross-module inheritance
+    print("Test 1: Cross-module inheritance")
+    base_ref: ShapeBase = rect
+    print(base_ref.get_info())
+    base_ref = colored_circ
+    print(base_ref.get_info())
+
+    # Test 2: Interface usage across modules
+    print("Test 2: Interface usage")
+    shapes: list[IShape] = []
+    shapes.append(rect)
+    shapes.append(circ)
+    shapes.append(colored_circ)
+    for s in shapes:
+        print(describe_shape(s))
+
+    # Test 3: Enum usage across modules
+    print("Test 3: Enum usage")
+    my_color: Color = get_color_by_name("green")
+    print(my_color)
+
+    # Test 4: Static methods and factory functions
+    print("Test 4: Static helpers")
+    result: float = ScaleFactor.apply_scale(10.0, 0.5)
+    print(result)
+
+    # Test 5: Utility class across modules
+    print("Test 5: Utility class")
+    processor: ShapeProcessor = ShapeProcessor()
+    processor.process_shape(rect)
+    processor.process_shape(circ)
+    print(processor.get_count())
+
+    # Test 6: Scaling (returns IShape from different module)
+    print("Test 6: Scaling")
+    scaled: IShape = rect.scale(2.0)
+    print(scaled.to_string())
+    print(scaled.area())
+
+    # Test 7: Filtered shapes
+    print("Test 7: Filtered collection")
+    all_shapes: list[IShape] = []
+    all_shapes.append(rect)
+    all_shapes.append(circ)
+    all_shapes.append(colored_circ)
+    large_shapes: list[IShape] = filtered_by_area(all_shapes, 10.0)
+    for ls in large_shapes:
+        print(ls.area())
+
+    # Test 8: Cross-module property access
+    print("Test 8: Property access")
+    print(processor.processed)
+
+    # Test 9: Point struct usage
+    print("Test 9: Point struct")
+    p: Point = Point(3.0, 4.0)
+    print(p.distance_to_origin())

@@ -1,0 +1,6 @@
+Total shapes: 2
+Total area: 128.53975
+Total perimeter: 61.4159
+Circle ID: 101
+Rectangle type: circle
+Distance: 5.0

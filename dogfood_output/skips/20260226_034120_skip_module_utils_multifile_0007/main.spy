@@ -1,0 +1,42 @@
+# Main program - demonstrating cross-module features
+
+from types import Point, Color, ShapeType
+from shapes import Circle, Rectangle
+from utils import find_largest, center_of_two, format_area
+
+
+def main():
+    # Create various shapes
+    circle1 = Circle(Point(0.0, 0.0), 5.0, Color.RED)
+    circle2 = Circle(Point(10.0, 10.0), 3.0, Color.GREEN)
+    rect1 = Rectangle(Point(-5.0, -5.0), 4.0, 6.0, Color.BLUE)
+
+    # Test individual shape methods
+    print(circle1.draw())
+    print(rect1.draw())
+
+    # Test areas
+    print(format_area(circle1.get_area()))
+    print(format_area(rect1.get_area()))
+
+    # Calculate total area manually
+    total_area: float = circle1.get_area() + circle2.get_area() + rect1.get_area()
+    print(f"Total area: {format_area(total_area)}")
+
+    # Find largest shape
+    larger = find_largest(circle1, circle2)
+    print(f"Larger circle: {larger.draw()}")
+
+    # Move shapes and recalculate center
+    circle1.move(5.0, 5.0)
+    rect1.move(2.0, 2.0)
+    center: Point = center_of_two(circle1, rect1)
+    print(f"New center: {center}")
+
+    # Test descriptions (polymorphism)
+    print(circle2.describe())
+    print(rect1.describe())
+
+    # Test get_bounding_box
+    bounds = rect1.get_bounding_box()
+    print(f"Bounds: ({bounds.min_x:.1f}, {bounds.min_y:.1f}) to ({bounds.max_x:.1f}, {bounds.max_y:.1f})")

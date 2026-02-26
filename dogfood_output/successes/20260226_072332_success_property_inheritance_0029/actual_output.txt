@@ -1,0 +1,5 @@
+25
+senior
+16
+adult
+False

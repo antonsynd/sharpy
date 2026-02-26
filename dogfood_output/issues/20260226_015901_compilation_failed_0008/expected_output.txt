@@ -1,0 +1,8 @@
+TechCorp
+850.0
+550.0
+Python Guide
+45.0
+Regular Book
+SKU-0001
+5

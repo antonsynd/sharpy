@@ -1,0 +1,27 @@
+# Utility module - helper functions and classes
+
+from types import ShapeType, Point
+
+# Counter class for tracking operations
+class Counter:
+    _count: int = 0
+
+    def increment(self) -> int:
+        self._count += 1
+        return self._count
+
+    def get_count(self) -> int:
+        return self._count
+
+# Classify shapes by their geometric properties
+def classify_shape(t: ShapeType) -> str:
+    if t == ShapeType.CIRCLE:
+        return "round"
+    elif t == ShapeType.RECTANGLE:
+        return "angular"
+    else:
+        return "pointy"
+
+# Factory for creating points
+def create_origin() -> Point:
+    return Point(0, 0)
