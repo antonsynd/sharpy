@@ -73,6 +73,17 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "list[Parent] from the start, and add items individually. "
         "Example: shapes: list[Shape] = [] then shapes.append(Circle(5.0)).",
     ),
+    (
+        r"SPY0414",
+        "Do NOT call dunder methods directly. Use the corresponding builtin function instead: "
+        "len(obj) not obj.__len__(), reversed(obj) not obj.__reversed__(), "
+        "str(obj) not obj.__str__(), bool(obj) not obj.__bool__().",
+    ),
+    (
+        r"SPY0107.*self\.\w+\s*:",
+        "Do NOT put type annotations on self.field assignments in __init__. "
+        "Write 'self.name = name', NOT 'self.name: str = name'.",
+    ),
 ]
 
 
@@ -115,7 +126,12 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Abstract class decorator**: When using `@abstract` methods, the containing class MUST also be decorated with `@abstract`.
 - **Optional usage**: `Some()` and `None()` can only be used where the target type is `T?` (Optional). Cannot pass `None()` where a non-optional type is expected.
 - **Virtual/override required for polymorphism**: Polymorphic dispatch requires `@virtual` on the base class method AND `@override` on each subclass method. Without these decorators, the base class method is called even when the object is a subclass instance.
-- **Custom exception hierarchy**: Classes used with `raise` or `except` MUST extend `Exception` (or a builtin exception type like `ValueError`, `RuntimeError`). A plain class cannot be raised or caught."""
+- **Custom exception hierarchy**: Classes used with `raise` or `except` MUST extend `Exception` (or a builtin exception type like `ValueError`, `RuntimeError`). A plain class cannot be raised or caught.
+- **`__eq__` parameter type**: `__eq__` parameter must be typed as `object`: `def __eq__(self, other: object) -> bool:` — NOT `def __eq__(self, other: MyClass) -> bool:`.
+- **Private field access**: Private fields (prefixed with `_`) cannot be accessed from outside the class — use properties to expose them.
+- **No type annotations on self.field**: In `__init__`, write `self.name = name`, NOT `self.name: str = name`. Type annotations on `self.field` assignments are forbidden (SPY0107).
+- **Enum integer value**: Use `.value` to get the integer value of an enum member: `e.value`, NOT `int(e)`.
+- **Only import what you define**: Only import symbols you actually define in your source files. Do NOT import symbols that don't exist in the module."""
 
 ENTRY_POINT_SECTION = """\
 ## CRITICAL: Program Entry Point Requirement
@@ -293,8 +309,6 @@ ALLOWED_FEATURES_SECTION = """\
 - **Match statement**: `match value:` with `case` clauses
 - **Literal patterns**: `case 42:`, `case "hello":`, `case True:`
 - **Wildcard pattern**: `case _:` (default/catch-all)
-- **Type patterns with binding**: `case int() as n:` — type check and bind
-- **Guard clauses**: `case int() as n if n > 0:` — additional condition
 - **Tuple patterns**: `case (0, 0):`, `case (x, y):`
 - **Or patterns**: `case "a" | "b":` — match multiple values
 - **Match expression**: `result = match value: case 1: "one" case _: "other"` — produces a value
@@ -405,7 +419,10 @@ FORBIDDEN_FEATURES_SECTION = """\
 - **NO spread in non-variadic function calls**: `func(*args)` only works when the function has `*args` parameter or when spreading a tuple that matches exact parameter count
 - **NO `yield` inside `__next__`**: `yield` is only allowed in regular functions, `__iter__`, and `__reversed__`
 - **NO `return value` in generators**: Generators cannot return a value — use bare `return` for early termination
-- **NO mixing generator `__iter__` with `__next__`**: A class cannot have both `yield`-based `__iter__` AND a `__next__` method"""
+- **NO mixing generator `__iter__` with `__next__`**: A class cannot have both `yield`-based `__iter__` AND a `__next__` method
+- **NO type pattern with binding**: `case int() as n:` — not yet implemented
+- **NO guard clauses in match**: `case int() as n if n > 0:` — not yet implemented
+- **NO direct dunder calls**: Use builtin functions instead — `reversed(obj)` not `obj.__reversed__()`, `len(obj)` not `obj.__len__()`, `str(obj)` not `obj.__str__()`"""
 
 NAMING_RULES_SECTION = """\
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
@@ -688,8 +705,8 @@ if (n := len(items)) > 3:
 match value:
     case 0:
         print("zero")
-    case int() as n if n > 0:
-        print(f"positive: {{n}}")
+    case 1 | 2 | 3:
+        print("small positive")
     case _:
         print("other")
 
@@ -742,9 +759,9 @@ class Range:
 
 ## Output Format
 
-Return ONLY valid Sharpy code with expected output in comments:
+Wrap your code in `<code>` tags and expected output in `<expected>` tags:
 
-```python
+<code>
 # Example: Simple class with method
 class Counter:
     value: int
@@ -762,10 +779,10 @@ def main():
     c = Counter(10)
     c.increment()
     print(c.get())
-
-# EXPECTED OUTPUT:
-# 11
-```
+</code>
+<expected>
+11
+</expected>
 
 ### Expected Output Verification (CRITICAL)
 
@@ -779,10 +796,10 @@ After writing the code and expected output:
 IMPORTANT:
 - Use ONLY simple print() calls with ONE argument: print(value)
 - For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
-- Every print() output should appear in EXPECTED OUTPUT
+- Every print() output should appear in `<expected>` tags
 - Float values ALWAYS print with a decimal point: write `100.0` not `100`, `5.0` not `5`
 - Keep the code simple and focused on testing the specified feature
-- Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
+- ALWAYS close your `<code>` and `<expected>` tags"""
 
 
 def get_multifile_generation_prompt(
@@ -896,10 +913,9 @@ Complexity level: **{complexity}**
 
 ## Output Format
 
-Return multiple files, each clearly marked with its filename. Use this EXACT format:
+Wrap each file in `<code file="filename.spy">` tags and expected output in `<expected>` tags:
 
-```
-=== FILE: module_name.spy ===
+<code file="module_name.spy">
 # Module providing utility functions
 
 def helper_function(x: int) -> int:
@@ -910,8 +926,8 @@ class UtilityClass:
 
     def __init__(self, v: int):
         self.value = v
-
-=== FILE: main.spy ===
+</code>
+<code file="main.spy">
 # Main entry point - imports from module_name
 from module_name import helper_function, UtilityClass
 
@@ -921,11 +937,11 @@ def main():
 
     obj = UtilityClass(10)
     print(obj.value)
-
-# EXPECTED OUTPUT:
-# 10
-# 10
-```
+</code>
+<expected>
+10
+10
+</expected>
 
 ### Expected Output Verification (CRITICAL)
 
@@ -937,15 +953,15 @@ After writing the code and expected output:
 5. **Verify every line of expected output matches your trace.** If it doesn't, fix the expected output.
 
 CRITICAL RULES:
-1. Each file starts with `=== FILE: filename.spy ===`
+1. Each file is wrapped in `<code file="filename.spy">` ... `</code>` tags
 2. One file MUST be named `main.spy` - this is the entry point
-3. EXPECTED OUTPUT comment goes in main.spy ONLY
+3. Expected output goes in `<expected>` tags (NOT in comments)
 4. Use ONLY `from module import items` syntax (NOT `import module`)
 5. Module names match filenames exactly (without .spy)
 6. All print() calls must be in main.spy
 7. NO circular imports between modules
 8. Float values ALWAYS print with a decimal point: write `100.0` not `100`, `5.0` not `5`
-9. Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
+9. ALWAYS close your `<code>` and `<expected>` tags"""
 
 
 def get_regeneration_prompt(
@@ -1027,21 +1043,22 @@ Fix the validation error above. Generate VALID code that does NOT use any forbid
 
 ## Output Format
 
-Return ONLY valid Sharpy code with expected output in comments:
+Wrap your code in `<code>` tags and expected output in `<expected>` tags:
 
-```python
+<code>
 # Your fixed code here
 ...
-# EXPECTED OUTPUT:
-# <expected output lines>
-```
+</code>
+<expected>
+expected output lines
+</expected>
 
 IMPORTANT:
 - Use ONLY simple print() calls with ONE argument
 - For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
-- Every print() output should appear in EXPECTED OUTPUT
+- Every print() output should appear in `<expected>` tags
 - Float values ALWAYS print with a decimal point: write `100.0` not `100`, `5.0` not `5`
-- Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
+- ALWAYS close your `<code>` and `<expected>` tags"""
 
 
 def get_multifile_regeneration_prompt(
@@ -1135,25 +1152,24 @@ Fix the validation error above. Generate VALID code that does NOT use any forbid
 
 ## Output Format
 
-Return multiple files, each clearly marked with its filename. Use this EXACT format:
+Wrap each file in `<code file="filename.spy">` tags and expected output in `<expected>` tags:
 
-```
-=== FILE: module_name.spy ===
+<code file="module_name.spy">
 # Fixed module code here
 ...
-
-=== FILE: main.spy ===
+</code>
+<code file="main.spy">
 # Fixed main code here
 ...
-
-# EXPECTED OUTPUT:
-# <expected output lines>
-```
+</code>
+<expected>
+expected output lines
+</expected>
 
 CRITICAL RULES:
-1. Each file starts with `=== FILE: filename.spy ===`
+1. Each file is wrapped in `<code file="filename.spy">` ... `</code>` tags
 2. One file MUST be named `main.spy` - this is the entry point
-3. EXPECTED OUTPUT comment goes in main.spy ONLY
+3. Expected output goes in `<expected>` tags (NOT in comments)
 4. Use ONLY `from module import items` syntax (NOT `import module`)
 5. Module names match filenames exactly (without .spy)
 6. All print() calls must be in main.spy
@@ -1161,7 +1177,7 @@ CRITICAL RULES:
 8. Use ONLY simple print() calls with ONE argument
 9. For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
 10. Float values ALWAYS print with a decimal point: write `100.0` not `100`, `5.0` not `5`
-11. Output ONLY raw Sharpy code — NEVER include markdown code fences (```) in your output"""
+11. ALWAYS close your `<code>` and `<expected>` tags"""
 
 
 def get_output_verification_prompt(
@@ -1387,8 +1403,85 @@ def _extract_raw_code_block(response: str) -> Optional[str]:
     return None
 
 
+def extract_code_from_xml(response: str) -> Optional[str]:
+    """Extract code from XML-style <code>...</code> tags.
+
+    Handles single-file responses with a bare <code> tag (no file attribute).
+    Returns the code content, or None if no valid <code> tag is found.
+    """
+    # Match <code> (no file attr) ... </code>
+    pattern = r"<code\s*>\s*\n?(.*?)</code>"
+    match = re.search(pattern, response, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def extract_expected_from_xml(response: str) -> Optional[str]:
+    """Extract expected output from XML-style <expected>...</expected> tags.
+
+    Returns the expected output string (with trailing newline), or None.
+    """
+    pattern = r"<expected>\s*\n?(.*?)</expected>"
+    match = re.search(pattern, response, re.DOTALL)
+    if match:
+        result = match.group(1).strip()
+        return result + "\n" if result else None
+    return None
+
+
+def extract_multifile_from_xml(response: str) -> Optional[dict[str, str]]:
+    """Extract multiple files from XML-style <code file="name.spy">...</code> tags.
+
+    Returns a dictionary mapping filename to code content, or None if
+    no valid multi-file XML structure is found.
+    """
+    # Match <code file="filename.spy"> ... </code>
+    pattern = r'<code\s+file="([a-zA-Z_][a-zA-Z0-9_]*\.spy)"\s*>\s*\n?(.*?)</code>'
+    matches = re.findall(pattern, response, re.DOTALL)
+
+    if not matches:
+        return None
+
+    files: dict[str, str] = {}
+    for filename, code in matches:
+        filename = filename.lower()  # Normalize to lowercase
+        code = code.strip()
+        if code:
+            files[filename] = code
+
+    # Validate: must have at least 2 files and one must be main.spy
+    if len(files) < 2:
+        return None
+    if "main.spy" not in files:
+        return None
+
+    return files
+
+
+def has_unclosed_code_tags(response: str) -> bool:
+    """Check if the response has unclosed <code> tags.
+
+    Returns True if there are more opening <code> tags than closing </code> tags,
+    indicating malformed XML that should trigger a retry.
+    """
+    open_count = len(re.findall(r"<code(?:\s[^>]*)?>", response))
+    close_count = len(re.findall(r"</code>", response))
+    return open_count > close_count
+
+
 def extract_code_block(response: str) -> Optional[str]:
-    """Extract code from a response that might have markdown formatting."""
+    """Extract code from a response, trying XML tags first, then markdown.
+
+    Attempts XML-style <code>...</code> extraction first. Falls back to
+    markdown code block extraction for backward compatibility.
+    """
+    # Try XML extraction first
+    xml_code = extract_code_from_xml(response)
+    if xml_code is not None:
+        return xml_code
+
+    # Fall back to markdown extraction
     raw = _extract_raw_code_block(response)
     if raw is not None:
         return _strip_markdown_lines(raw)
@@ -1396,16 +1489,10 @@ def extract_code_block(response: str) -> Optional[str]:
 
 
 def extract_multifile_code(response: str) -> Optional[dict[str, str]]:
-    """Extract multiple files from a response with file markers.
+    """Extract multiple files from a response, trying XML tags first, then markers.
 
-    Parses responses in the format:
-    ```
-    === FILE: module_name.spy ===
-    <code>
-
-    === FILE: main.spy ===
-    <code>
-    ```
+    Attempts XML-style <code file="name.spy">...</code> extraction first.
+    Falls back to === FILE: name.spy === marker extraction for backward compatibility.
 
     Args:
         response: The AI response potentially containing multiple files.
@@ -1414,6 +1501,12 @@ def extract_multifile_code(response: str) -> Optional[dict[str, str]]:
         Dictionary mapping filename to code content, or None if parsing fails.
         Returns None if no valid multi-file structure is found.
     """
+    # Try XML extraction first
+    xml_files = extract_multifile_from_xml(response)
+    if xml_files is not None:
+        return xml_files
+
+    # Fall back to === FILE: ... === marker extraction
     import re
 
     # First, try to extract from code blocks
@@ -1482,13 +1575,17 @@ def extract_expected_output_from_multifile(files: dict[str, str]) -> Optional[st
 
 
 def extract_expected_output_from_response(response: str) -> Optional[str]:
-    """Extract expected output from the raw AI response before markdown stripping.
+    """Extract expected output from the raw AI response.
 
-    This works on the raw response text, extracting the code block without
-    stripping markdown-like comment lines (which can remove # EXPECTED OUTPUT
-    blocks). Use this instead of extract_expected_output(code) when code has
-    already been through extract_code_block/_strip_markdown_lines.
+    Tries XML-style <expected>...</expected> tags first, then falls back to
+    comment-based extraction from code blocks.
     """
+    # Try XML extraction first
+    xml_expected = extract_expected_from_xml(response)
+    if xml_expected is not None:
+        return xml_expected
+
+    # Fall back to comment-based extraction
     raw = _extract_raw_code_block(response)
     if raw is not None:
         return extract_expected_output(raw)
