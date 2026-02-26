@@ -1,4 +1,0 @@
-throughput:medium:5.0005
-latency:large:150.0
-accuracy:small:0.85
-disabled:invalid:-1.0

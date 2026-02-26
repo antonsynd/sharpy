@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0173]: Type of conditional expression cannot be determined because there is no implicit conversion between 'Sharpy.Optional<DogfoodTest.Logger>' and 'Sharpy.Optional<string>'
-  --> /tmp/tmpi5ekcdb_/dogfood_test.spy:22:17
-    |
- 22 |     return mod?.logger?.format(message) ?? f"[{mod?.name ?? 'unknown'}] {message}"
-    |                 ^
-    |
-

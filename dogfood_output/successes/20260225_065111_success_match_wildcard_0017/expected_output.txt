@@ -1,9 +1,0 @@
-zero
-negative: -5
-small positive
-medium: 50
-large: 150
-available commands: help, status, quit
-system operational
-goodbye
-unknown command 'unknown'

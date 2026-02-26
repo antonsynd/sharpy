@@ -1,8 +1,0 @@
-True
-False
-contains
-contained
-overlapping
-True
-True
-True

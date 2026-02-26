@@ -1,9 +1,0 @@
-5.0
-High
-Player
-Transform(Player)
-2.0
-Sprite(enemy.png)
-High
-10.0
-Transform(Player)

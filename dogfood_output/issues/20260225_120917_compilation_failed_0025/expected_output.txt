@@ -1,4 +1,0 @@
-INFO Rectangle area: 15.0
-Cube of clamped value: 1000.0
-Reversed and truncated: dlroW...
-Created 3 shapes

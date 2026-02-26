@@ -1,5 +1,0 @@
-5
-15
-30
-Yielded: 3
-Stopped before adding value causing excess

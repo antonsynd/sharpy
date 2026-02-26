@@ -1,5 +1,0 @@
-Sensor-A: 25.5C
-Industrial 100 at 75%
-Sensor-A: 25.5C
-Industrial 100 at 75%
-Base-Unit: standby

@@ -1,5 +1,0 @@
-[PASS] Valid
-True
-False
-  100
-Value: 42
