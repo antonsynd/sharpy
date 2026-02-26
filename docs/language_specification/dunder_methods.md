@@ -189,10 +189,10 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | `__contains__(self, item: T) -> bool` | `bool Contains(T item)` method | Membership test (`in` operator) |
 | `__hash__(self) -> int` | `int GetHashCode()` override | Hash code. `@override` is optional (implicit override of `System.Object.GetHashCode`). |
 | `__getitem__(self, key: K) -> V` | `this[K key] { get; }` indexer | Index access |
-| `__iter__(self) -> Iterator[T]` | `IEnumerator<T> IEnumerable<T>.GetEnumerator()` | Iteration. Note that `Iterator<T>` is an interface that inherits from `IEnumerable<T>` |
+| `__iter__(self) -> T` | `IEnumerator<T> IEnumerable<T>.GetEnumerator()` | Iteration (generator: annotate with element type T; compiler wraps to `IEnumerator<T>`) |
 | `__len__(self) -> int` | `int Count` property | Length/count |
 | `__next__(self) -> T` | `void IEnumerator<T>.MoveNext()` + `T Current` | Iterator protocol |
-| `__reversed__(self) -> Iterator[T]` | Custom method `IEnumerator<T> GetReverseEnumerator()` | Reverse iteration |
+| `__reversed__(self) -> T` | Custom method `IEnumerator<T> GetReverseEnumerator()` | Reverse iteration (generator: annotate with element type T; compiler wraps to `IEnumerator<T>`) |
 | `__setitem__(self, key: K, value: V) -> None` | `this[K key] { set; }` indexer | Index assignment |
 
 ## Unsupported Dunders

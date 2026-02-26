@@ -34,6 +34,7 @@ from .prompts import (
     extract_code_block,
     extract_multifile_code,
     extract_expected_output_from_multifile,
+    has_unclosed_code_tags,
     load_test_fixtures,
     format_fixtures_for_prompt,
 )
@@ -1247,6 +1248,31 @@ class DogfoodOrchestrator:
                     attempts=attempt,
                 )
 
+            # Step 1.3: Check for malformed XML (unclosed <code> tags)
+            if has_unclosed_code_tags(gen_result.output):
+                print(
+                    "  Malformed response: unclosed <code> tag detected",
+                    file=sys.stderr,
+                )
+                last_error = (
+                    "Malformed response: you have an unclosed <code> tag. "
+                    "Make sure every <code> tag has a matching </code>."
+                )
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return GenerationResult(
+                        success=False,
+                        skip_reason=f"Malformed XML after {attempt} attempts: unclosed <code> tag",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
             code = extract_code_block(gen_result.output) or gen_result.output
 
             # Step 1.4: Validate that the response looks like actual code
@@ -1564,6 +1590,31 @@ class DogfoodOrchestrator:
                     attempts=attempt,
                 )
 
+            # Step 1.3: Check for malformed XML (unclosed <code> tags)
+            if has_unclosed_code_tags(gen_result.output):
+                print(
+                    "  Malformed response: unclosed <code> tag detected",
+                    file=sys.stderr,
+                )
+                last_error = (
+                    "Malformed response: you have an unclosed <code> tag. "
+                    "Make sure every <code> or <code file=\"name.spy\"> tag has a matching </code>."
+                )
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return MultifileGenerationResult(
+                        success=False,
+                        skip_reason=f"Malformed XML after {attempt} attempts: unclosed <code> tag",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
             # Step 1.4: Validate that the response looks like actual code
             is_valid_code, invalid_reason = _is_valid_code_response(gen_result.output)
             if not is_valid_code:
@@ -1590,7 +1641,7 @@ class DogfoodOrchestrator:
             files = extract_multifile_code(gen_result.output)
             if not files:
                 print("  Failed to parse multi-file response", file=sys.stderr)
-                last_error = "Failed to parse multi-file response. Ensure each file starts with '=== FILE: filename.spy ===' and includes a main.spy file."
+                last_error = "Failed to parse multi-file response. Use <code file=\"name.spy\">...</code> tags for each file, and include a main.spy file."
                 # Keep last_files from previous attempt if available
                 # Only retry if we have previous files to include in feedback
                 if attempt < max_attempts and last_files is not None:
@@ -1721,7 +1772,11 @@ class DogfoodOrchestrator:
                     )
 
             # All validation passed
-            expected_output = extract_expected_output_from_multifile(files)
+            # Try XML <expected> tags from raw response first, fall back to comment-based
+            expected_output = (
+                extract_expected_output_from_response(gen_result.output)
+                or extract_expected_output_from_multifile(files)
+            )
             print("  All files validated successfully (compiler)", file=sys.stderr)
             return MultifileGenerationResult(
                 success=True,
