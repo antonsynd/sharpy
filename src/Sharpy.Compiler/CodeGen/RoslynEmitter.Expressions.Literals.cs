@@ -619,9 +619,17 @@ internal partial class RoslynEmitter
         // element type is generic, causing compilation errors on member access.
         if (iterType is GenericType gt && gt.TypeArguments.Count > 0)
         {
-            // For list[T], set[T]: element type is first type arg
-            // For dict[K,V]: iteration yields keys, so element type is also first type arg
-            var elemType = gt.TypeArguments[0];
+            SemanticType? elemType = gt.Name switch
+            {
+                // DictItemsView[K,V] yields (K, V) tuples
+                BuiltinNames.DictItemsView when gt.TypeArguments.Count == 2
+                    => new Semantic.TupleType { ElementTypes = gt.TypeArguments.ToList() },
+                // DictValuesView[K,V] yields V (second type arg)
+                BuiltinNames.DictValuesView when gt.TypeArguments.Count == 2
+                    => gt.TypeArguments[1],
+                // list[T], set[T], dict[K,V] (keys), DictKeyView[K,V]: first type arg
+                _ => gt.TypeArguments[0],
+            };
             if (elemType is not UnknownType)
             {
                 param = param.WithType(_typeMapper.MapSemanticType(elemType));

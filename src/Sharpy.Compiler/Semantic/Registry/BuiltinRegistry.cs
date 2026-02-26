@@ -122,27 +122,6 @@ internal class BuiltinRegistry
         }
     }
 
-    /// <summary>
-    /// Register a generic builtin function placeholder. The actual type resolution
-    /// is handled by TypeChecker special cases; this just makes the function discoverable.
-    /// </summary>
-    private void RegisterGenericBuiltin(string name, int minParams)
-    {
-        if (!_functions.ContainsKey(name))
-            _functions[name] = new List<FunctionSymbol>();
-
-        _functions[name].Add(new FunctionSymbol
-        {
-            Name = name,
-            Kind = SymbolKind.Function,
-            ReturnType = SemanticType.Unknown,
-            Parameters = Enumerable.Range(0, minParams)
-                .Select(i => new ParameterSymbol { Name = $"arg{i}", Type = SemanticType.Unknown })
-                .ToList(),
-            TypeParameters = new List<TypeParameterDef> { new() { Name = "T" } },
-        });
-    }
-
     private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0)
     {
         var typeSymbol = new TypeSymbol
