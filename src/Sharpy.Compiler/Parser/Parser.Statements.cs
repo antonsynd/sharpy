@@ -1051,6 +1051,38 @@ public partial class Parser
 
     private Pattern ParsePattern()
     {
+        var first = ParseSinglePattern();
+
+        if (Current.Type != TokenType.Pipe)
+            return first;
+
+        var alternatives = new List<Pattern> { first };
+
+        while (Current.Type == TokenType.Pipe)
+        {
+            Advance(); // consume '|'
+            alternatives.Add(ParseSinglePattern());
+        }
+
+        var lastAlt = alternatives[^1];
+        Text.TextSpan? span = null;
+        if (first.Span.HasValue && lastAlt.Span.HasValue)
+        {
+            span = new Text.TextSpan(first.Span.Value.Start, lastAlt.Span.Value.End - first.Span.Value.Start);
+        }
+        return new OrPattern
+        {
+            Alternatives = alternatives.ToImmutableArray(),
+            LineStart = first.LineStart,
+            ColumnStart = first.ColumnStart,
+            LineEnd = lastAlt.LineEnd,
+            ColumnEnd = lastAlt.ColumnEnd,
+            Span = span
+        };
+    }
+
+    private Pattern ParseSinglePattern()
+    {
         switch (Current.Type)
         {
             case TokenType.LeftParen:
