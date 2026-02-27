@@ -329,6 +329,32 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Resolves the return type of a dict method call at the call expression site,
+    /// where argument count is known. Handles overloaded methods like get() where
+    /// the return type depends on arity:
+    ///   get(key) -> OptionalType(V)
+    ///   get(key, default) -> V
+    /// Returns null for methods not handled here (fall through to CLR discovery).
+    /// </summary>
+    private static SemanticType? ResolveDictMethodCall(
+        GenericType dictType, string methodName, int argCount)
+    {
+        var valueType = dictType.TypeArguments[1];
+
+        if (methodName == BuiltinNames.DictMethodGet)
+        {
+            return argCount switch
+            {
+                1 => new OptionalType { UnderlyingType = valueType },
+                2 => valueType,
+                _ => null
+            };
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Finds a field by name in the type's hierarchy (including parent classes and interfaces).
     /// </summary>
     private (VariableSymbol? Field, TypeSymbol? Owner) FindFieldInHierarchy(TypeSymbol type, string fieldName)
@@ -895,6 +921,19 @@ internal partial class TypeChecker
                     isNullConditionalCall, isOptionalNullConditional);
                 if (overloadResult != null)
                     return overloadResult;
+            }
+
+            // Resolve dict method calls where return type depends on arity (e.g., get).
+            // ResolveDictMethodType (member-access level) can't handle these because
+            // it doesn't know the argument count.
+            var objectType = _semanticInfo.GetExpressionType(memberAccessCall.Object);
+            if (objectType is GenericType { Name: BuiltinNames.Dict } dictCallType
+                && dictCallType.TypeArguments.Count == 2)
+            {
+                var dictResult = ResolveDictMethodCall(
+                    dictCallType, memberAccessCall.Member, totalArgCount);
+                if (dictResult != null)
+                    return dictResult;
             }
         }
 

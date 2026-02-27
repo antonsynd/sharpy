@@ -67,6 +67,7 @@ internal static class BuiltinNames
     public const string DictMethodItems = "items";
     public const string DictMethodKeys = "keys";
     public const string DictMethodValues = "values";
+    public const string DictMethodGet = "get";
 
     // ---- Dict view types (returned by dict.items(), .keys(), .values()) ----
     public const string DictItemsView = "DictItemsView";

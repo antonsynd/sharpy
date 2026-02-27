@@ -1,0 +1,12 @@
+# Test: dict.get() 1-arg form type resolution
+def main():
+    d: dict[str, int] = {"a": 1, "b": 2}
+
+    # 2-arg form: returns V (should still work)
+    print(d.get("a", 0))
+    print(d.get("c", -1))
+
+    # 1-arg form: returns V? (OptionalType)
+    result = d.get("a")
+    print(result)
+    print(d.get("missing"))
