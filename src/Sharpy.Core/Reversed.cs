@@ -34,6 +34,20 @@ namespace Sharpy
             // Fallback: materialize and reverse using LINQ
             return new EnumeratorIterator<T>(sequence.Reverse().GetEnumerator());
         }
+
+        /// <summary>
+        /// Return a reverse iterator for types that implement <see cref="IReverseEnumerable{T}"/>
+        /// but not <see cref="IEnumerable{T}"/> (i.e., types with __reversed__ but no __iter__).
+        /// </summary>
+        public static Iterator<T> Reversed<T>(IReverseEnumerable<T> reversible)
+        {
+            if (reversible is null)
+            {
+                throw TypeError.ArgNone("reversed", "sequence");
+            }
+
+            return new EnumeratorIterator<T>(reversible.GetReverseEnumerator());
+        }
     }
 
     /// <summary>

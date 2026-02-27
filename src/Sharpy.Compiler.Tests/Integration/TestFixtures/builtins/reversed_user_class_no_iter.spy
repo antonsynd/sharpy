@@ -1,0 +1,15 @@
+# Test: reversed() on user class with __reversed__ but no __iter__
+class HistoryStack:
+    items: list[int]
+    def __init__(self):
+        self.items = [10, 20, 30]
+    def __reversed__(self) -> int:
+        i: int = len(self.items) - 1
+        while i >= 0:
+            yield self.items[i]
+            i -= 1
+
+def main():
+    h = HistoryStack()
+    for x in reversed(h):
+        print(x)

@@ -414,6 +414,26 @@ internal partial class RoslynEmitter
                 typeArg = _typeMapper.MapSemanticType(elemType);
         }
 
+        // For reversed(): if the argument type has __reversed__, cast to IReverseEnumerable<T>
+        // to disambiguate C# overload resolution between Reversed<T>(IEnumerable<T>) and
+        // Reversed<T>(IReverseEnumerable<T>).
+        if (name == BuiltinNames.Reversed && typeArg != null && call.Arguments.Length > 0)
+        {
+            var argType2 = GetExpressionSemanticType(call.Arguments[0]);
+            if (argType2 is UserDefinedType udt && udt.Symbol is TypeSymbol argTypeSymbol
+                && argTypeSymbol.ProtocolMethods.ContainsKey("__reversed__"))
+            {
+                // Cast argument to IReverseEnumerable<T> to select the correct overload
+                var iReverseType = QualifiedName(
+                    AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                        IdentifierName("Sharpy")),
+                    GenericName("IReverseEnumerable")
+                        .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(typeArg))));
+                var castExpr = CastExpression(iReverseType, allArgs[0].Expression);
+                allArgs[0] = Argument(castExpr);
+            }
+        }
+
         // Build: global::Sharpy.Builtins.Reversed<T>(args)
         var qualifiedBase = MakeGlobalQualifiedName("Sharpy", "Builtins");
         SimpleNameSyntax methodName = typeArg != null

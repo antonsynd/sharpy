@@ -1,0 +1,25 @@
+# Test: reversed() on user class with both __iter__ and __reversed__
+# Verifies no C# overload ambiguity with the IReverseEnumerable<T> overload
+class Countdown:
+    limit: int
+    def __init__(self, limit: int):
+        self.limit = limit
+    def __iter__(self) -> int:
+        i: int = 1
+        while i <= self.limit:
+            yield i
+            i += 1
+    def __reversed__(self) -> int:
+        i: int = self.limit
+        while i >= 1:
+            yield i
+            i -= 1
+
+def main():
+    c = Countdown(4)
+    # Forward iteration
+    for x in c:
+        print(x)
+    # Reversed iteration
+    for x in reversed(c):
+        print(x)
