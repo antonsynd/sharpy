@@ -569,6 +569,25 @@ internal partial class RoslynEmitter
             }
         }
 
+        // Rewrite self.static_field as ClassName.StaticField (C# disallows instance access to static members)
+        if (memberAccess.Object is Identifier { Name: "self" }
+            && _currentTypeSymbol != null)
+        {
+            var staticField = _currentTypeSymbol.Fields.FirstOrDefault(f =>
+                f.Name == memberAccess.Member && f.IsStatic);
+            if (staticField != null)
+            {
+                var csharpTypeName = NameMangler.ToPascalCase(_currentTypeSymbol.Name);
+                var codeGenInfo = GetCodeGenInfo(staticField);
+                var fieldName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(memberAccess.Member);
+
+                return MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(csharpTypeName),
+                    IdentifierName(fieldName));
+            }
+        }
+
         var obj = GenerateExpression(memberAccess.Object);
 
         // Handle special .value and .name properties for enum instances

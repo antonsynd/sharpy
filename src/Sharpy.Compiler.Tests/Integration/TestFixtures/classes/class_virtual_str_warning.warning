@@ -1,0 +1,1 @@
+@virtual is redundant on '__str__'

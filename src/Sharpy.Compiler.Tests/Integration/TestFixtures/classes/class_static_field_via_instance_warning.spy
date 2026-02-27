@@ -1,0 +1,13 @@
+class Counter:
+    @static
+    count: int = 0
+
+    def __init__(self):
+        Counter.count = Counter.count + 1
+
+    def get_count(self) -> int:
+        return self.count
+
+def main():
+    c = Counter()
+    print(c.get_count())

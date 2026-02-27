@@ -1,0 +1,13 @@
+class Greeter:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @virtual
+    def __str__(self) -> str:
+        return "Hello, " + self.name
+
+def main():
+    g = Greeter("World")
+    print(str(g))

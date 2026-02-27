@@ -164,6 +164,21 @@ internal partial class TypeChecker
 
                 var fieldType = GetVariableType(field);
 
+                // Warn when accessing a static field via instance (e.g., self.FIELD)
+                if (field.IsStatic
+                    && memberAccess.Object is Identifier selfId
+                    && selfId.Name == PythonNames.Self
+                    && _currentClass != null)
+                {
+                    _diagnostics.AddWarning(
+                        $"Accessing static field '{memberAccess.Member}' via instance. " +
+                        $"Prefer '{_currentClass.Name}.{memberAccess.Member}'.",
+                        memberAccess.LineStart, memberAccess.ColumnStart,
+                        _currentFilePath,
+                        code: DiagnosticCodes.Validation.StaticFieldViaInstance,
+                        phase: CompilerPhase.TypeChecking);
+                }
+
                 // Wrap result in optional/nullable for null conditional access
                 if (memberAccess.IsNullConditional && fieldType is not NullableType and not OptionalType)
                 {

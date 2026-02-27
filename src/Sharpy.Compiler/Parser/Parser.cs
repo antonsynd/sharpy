@@ -481,7 +481,7 @@ public partial class Parser
             StructDef str => str with { Decorators = decorators.ToImmutableArray() },
             PropertyDef prop => prop with { Decorators = decorators.ToImmutableArray() },
             VariableDeclaration varDecl => varDecl with { Decorators = decorators.ToImmutableArray() },
-            _ => throw ReportError("Unexpected decorated statement type", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
+            _ => throw ReportError("Decorators can only be applied to functions, classes, structs, properties, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span)
         };
     }
 

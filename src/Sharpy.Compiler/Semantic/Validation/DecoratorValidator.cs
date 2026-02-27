@@ -223,7 +223,9 @@ internal class DecoratorValidator : SemanticValidatorBase
 
         if (csharpName != null)
         {
-            var virtualDecorator = method.Decorators.First(d => d.Name == DecoratorNames.Virtual);
+            var virtualDecorator = method.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.Virtual);
+            if (virtualDecorator == null)
+                return;
             AddWarning(_context,
                 $"@virtual is redundant on '{method.Name}' in '{typeName}' — " +
                 $"it always overrides {csharpName}. The @virtual decorator will be ignored.",

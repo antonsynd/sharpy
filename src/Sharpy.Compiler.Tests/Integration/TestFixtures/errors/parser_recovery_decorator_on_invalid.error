@@ -1,1 +1,1 @@
-Unexpected decorated statement type
+Decorators can only be applied to functions, classes, structs, properties, or field declarations

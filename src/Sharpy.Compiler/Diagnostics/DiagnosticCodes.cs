@@ -157,6 +157,7 @@ public static class DiagnosticCodes
         public const string DuplicateClass = "SPY0286";
         public const string InvalidSuperUsage = "SPY0287";
         public const string CircularInheritance = "SPY0288";
+        // SPY0289 reserved for future use
         public const string InstanceFieldViaTypeName = "SPY0290";
 
         // Import errors (SPY0300-SPY0319)
@@ -229,6 +230,7 @@ public static class DiagnosticCodes
         public const string HashWithoutEqObject = "SPY0456";
         public const string UnsupportedDunderReversed = "SPY0457";
         public const string VirtualOnObjectOverride = "SPY0458";
+        public const string StaticFieldViaInstance = "SPY0459";
 
         // Dunder invocation rules (SPY0460-SPY0469)
         public const string DunderDirectInvocation = "SPY0460";

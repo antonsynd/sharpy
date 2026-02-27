@@ -994,6 +994,15 @@ public static class DiagnosticExplanations
             "class Foo:\n    @virtual\n    def __str__(self) -> str:\n        return \"foo\"",
             "Remove the @virtual decorator — the method is already an override:\nclass Foo:\n    def __str__(self) -> str:\n        return \"foo\"");
 
+        Add(dict, DiagnosticCodes.Validation.StaticFieldViaInstance,
+            "Static field accessed via instance",
+            "Validation",
+            "A static field (marked with @static) is being accessed via 'self' instead of the class name. " +
+            "While this works, it is misleading because static fields are shared across all instances. " +
+            "Prefer accessing them via the class name for clarity.",
+            "class Counter:\n    @static\n    count: int = 0\n    def get(self) -> int:\n        return self.count  # warning: static field via instance",
+            "Access the field via the class name:\nclass Counter:\n    @static\n    count: int = 0\n    def get(self) -> int:\n        return Counter.count");
+
         // ── Validation errors: Dunder invocation rules (SPY0460-SPY0469)
 
         Add(dict, DiagnosticCodes.Validation.DunderDirectInvocation,
