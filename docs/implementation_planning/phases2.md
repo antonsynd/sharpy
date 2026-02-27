@@ -118,7 +118,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 | # | Feature | Complexity | Notes |
 |---|---------|-----------|-------|
-| 10.1 | `async def` functions | L | Parser recognizes `async` prefix on `def`; semantic marks function as async; return type wrapped in `Task<T>`. **Groundwork:** `TokenType.Async` and `TokenType.Await` already defined in `Token.cs`; `async` reserved as keyword. `FunctionDef` needs `IsAsync` property. |
+| ~~10.1~~ | ~~`async def` functions~~ | ~~L~~ | ~~Completed.~~ `ParseAsyncFunctionDef()` in `Parser.Definitions.cs`; `FunctionDef.IsAsync` property; TypeChecker wraps return in `TaskType`; RoslynEmitter adds `async` modifier + `WrapInTask()`. Integration tests: `async_basic`, `async_class_method`, `async_void`. Error tests: `async_generator_error`, `async_init_error`. |
 | 10.2 | `await` expressions | L | `AwaitExpression` AST already exists in `Expression.Future.cs` (placeholder); wire parser + semantic (operand must be `Task<T>`, result is `T`) + codegen (C# `await`). **Groundwork:** `BasicBlock.ContainsAwait`, `AsyncStateRegion`, `IdentifyAsyncRegions()` exist in control flow analysis. |
 | 10.3 | `async for` loops | M | `async for item in aiter:` → C# `await foreach`; operand must be `IAsyncEnumerable<T>` |
 | 10.4 | `async with` statements | M | `async with resource() as r:` → C# `await using`; operand must be `IAsyncDisposable` |
@@ -127,7 +127,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 **Key files:** `Expression.Future.cs` (AwaitExpression), `Parser.Definitions.cs`, `Parser.Statements.cs`, `TypeChecker.cs`, `RoslynEmitter.Statements.cs`, `RoslynEmitter.Expressions.cs`
 
-**Dependencies:** 10.1+10.2 are the foundation. 10.3–10.4 build on them. 10.5 requires Phase 9 (generators).
+**Dependencies:** ~~10.1~~ complete. 10.2 is the next foundation piece. 10.3–10.4 build on 10.1+10.2. 10.5 requires Phase 9 (generators, complete).
 
 ---
 
@@ -175,11 +175,11 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | **7** | v0.2.1 | Destructuring & Spread | ~~5~~ ✅ Complete | Complex unpacking, `*rest`, spread in literals/calls |
 | **8** | v0.2.2 | Pattern Matching & Tagged Unions | 8 | Match expressions, all patterns, `union` keyword, exhaustiveness |
 | **9** | v0.2.3 | Generators & Iterators | ~~3~~ ✅ Complete | `yield`/`yield from`, generator inference, 4 new diagnostics (SPY0265–SPY0269) |
-| **10** | v0.2.4 | Async/Await | 6 | `async def`, `await`, `async for/with`, async generators |
+| **10** | v0.2.4 | Async/Await | ~~1~~ + 5 remaining | ~~`async def`~~, `await`, `async for/with`, async generators |
 | **11** | v0.2.5 | Advanced Functions | 5 | Pos-only/kw-only, `@kwargs`, partial application |
 | **12** | v0.2.6 | Type System & Polish | 5 | Variance, delegates, events, custom decorators, spec audit |
 
-**Total: 24 remaining items across 4 phases (v0.2.2–v0.2.6)** — Phases 6, 7, 9 complete (13 items delivered)
+**Total: 23 remaining items across 4 phases (v0.2.2–v0.2.6)** — Phases 6, 7, 9 complete; 10.1 complete (14 items delivered)
 
 ---
 
@@ -193,7 +193,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 - ✅ Phases 6, 7, 9 complete
 - **Phase 8 is unblocked** — depends on Phase 7 (complete); all items are NOT STARTED
-- **Phase 10 is unblocked** — depends on Phase 9 (complete); groundwork exists (async tokens, AwaitExpression placeholder, control flow infrastructure)
+- **Phase 10 is in progress** — 10.1 (`async def`) complete; 10.2 (`await`) is next; groundwork exists (AwaitExpression placeholder, control flow infrastructure)
 - Phases 8 and 10 can proceed in parallel (independent tracks)
 - Phases 11–12 can begin once 10 is done (or in parallel with 10 if capacity allows)
 
@@ -205,7 +205,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 2. ~~**Phase 7 before 8** — spread/unpacking is foundational; tagged union destruction uses similar patterns~~ ✅ Done
 3. **Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy. **Next priority.** All 8 items are NOT STARTED; AST placeholders exist for MatchExpression, UnionDef, OrPattern, TypePattern, UnionCasePattern.
 4. ~~**Phase 9 before 10** — generators are prerequisite for async generators~~ ✅ Done
-5. **Phase 10 completes the async story** — last major syntax feature. Can proceed in parallel with Phase 8. Groundwork exists: `TokenType.Async`/`Await` reserved, `AwaitExpression` AST placeholder, `AsyncStateRegion`/`IdentifyAsyncRegions()` in control flow.
+5. **Phase 10 completes the async story** — last major syntax feature. Can proceed in parallel with Phase 8. 10.1 (`async def`) complete. Groundwork for 10.2+: `AwaitExpression` AST placeholder, `AsyncStateRegion`/`IdentifyAsyncRegions()` in control flow.
 6. **Phases 11–12 are polish** — advanced function params, type system, and gap-filling
 
 ---
@@ -296,7 +296,7 @@ Intentional language design decisions:
 
 **Phase 8 audit** — all 8 items confirmed NOT STARTED. AST placeholder nodes exist (`MatchExpression`, `UnionDef`, `OrPattern`, `TypePattern`, `UnionCasePattern`) but none are wired into parser, semantic analysis, or codegen. Match statements work only with 5 basic patterns + guard clauses: Literal, Wildcard, Binding, Tuple, MemberAccess. Note: `TypePattern` (`case int() as n:`) is **not implemented** despite being previously listed as ✅ in match_statement.md — the AST record exists but `ParsePattern()`, `CheckPattern()`, and `GenerateMatchPattern()` have no code path for it.
 
-**Phase 10 audit** — all 6 items confirmed NOT STARTED. `TokenType.Async`/`Await` exist as reserved keywords. `AwaitExpression` is a Future.cs placeholder. Control flow infrastructure (`AsyncStateRegion`, `IdentifyAsyncRegions()`, `BasicBlock.ContainsAwait`) provides groundwork but is not connected to any pipeline stage. `FunctionDef` AST lacks `IsAsync` property.
+**Phase 10 audit** — 10.1 (`async def`) confirmed NOT STARTED as of 2026-02-23. *(Updated 2026-02-27: 10.1 now COMPLETE — `ParseAsyncFunctionDef()`, `FunctionDef.IsAsync`, TypeChecker `TaskType` wrapping, RoslynEmitter `async` modifier all implemented with passing integration tests.)* 10.2–10.6 remain NOT STARTED. `AwaitExpression` is a Future.cs placeholder. Control flow infrastructure (`AsyncStateRegion`, `IdentifyAsyncRegions()`, `BasicBlock.ContainsAwait`) provides groundwork but is not connected to any pipeline stage.
 
 **Phase 11 audit** — all 5 items confirmed NOT STARTED. No positional-only/keyword-only parameter parsing, no `@kwargs`/`@dynamic_kwargs` decorator handling, no `PlaceholderExpression` AST node.
 
