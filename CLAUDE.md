@@ -269,26 +269,28 @@ The emitter implicitly adds these interfaces to a class's base list when the cor
 Available in `.claude/skills/`:
 
 ### Build & Test (Smart Truncation)
-All commands below log full output to `.claude/tmp/*.log` for investigation while showing truncated summaries.
+All commands below log full output to `.claude/tmp/*.log` for investigation while showing truncated summaries. Test skills auto-build before running.
 
 | Command | Purpose |
 |---------|---------|
-| `/run-tests [filter]` | Run tests; shows last 80 lines on failure (log: `last-test-run.log`) |
+| `/run-tests [filter]` | Build + run tests; shows last 80 lines on failure (log: `last-test-run.log`) |
 | `/build` | Build solution; shows last 100 lines on failure (log: `last-build.log`) |
 | `/build-verbose` | Build with diagnostic verbosity for debugging (log: `last-build-verbose.log`) |
 | `/format` | Format whitespace (required before commits) |
-| `/test-fixture <name>` | Run specific file-based test (log: `last-test-fixture.log`) |
-| `/regenerate-snapshots` | Update `.expected.cs` files after codegen changes |
+| `/test-fixture <name>` | Build + run specific file-based test (log: `last-test-fixture.log`) |
+| `/regenerate-snapshots` | Build + update `.expected.cs` files after codegen changes |
 
 ### Debug & Development
 
 | Command | Purpose |
 |---------|---------|
-| `/spy-emit-csharp <file.spy>` | View generated C# code (log: `last-spy-emit.log`) |
-| `/spy-emit-ast <file.spy>` | View parsed AST (log: `last-spy-emit.log`) |
-| `/spy-emit-tokens <file.spy>` | View lexer tokens (log: `last-spy-emit.log`) |
+| `/spy-emit-csharp <file.spy>` | View generated C# code (log: `last-spy-emit-csharp.log`) |
+| `/spy-emit-ast <file.spy>` | View parsed AST (log: `last-spy-emit-ast.log`) |
+| `/spy-emit-tokens <file.spy>` | View lexer tokens (log: `last-spy-emit-tokens.log`) |
 | `/spy-run <file.spy>` | Compile and execute a .spy file (log: `last-spy-run.log`) |
+| `/spy-project <.spyproj>` | Compile and run a multi-file project (log: `last-spy-project.log`) |
 | `/verify-python <expr>` | Run Python 3 to verify behavior before implementing |
+| `/clean-dotnet` | Kill zombie dotnet processes that cause hangs |
 
 ### Git Workflow
 

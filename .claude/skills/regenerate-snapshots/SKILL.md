@@ -27,8 +27,9 @@ Regenerate the `.expected.cs` snapshot files for file-based integration tests. U
 
 1. Run `mkdir -p .claude/tmp` to ensure log directory exists
 2. Clear the old log with `rm -f .claude/tmp/last-snapshot-regen.log`
-3. Run: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests" --no-build > .claude/tmp/last-snapshot-regen.log 2>&1`
-4. Check exit code:
+3. Build first: `dotnet build sharpy.sln --nologo -v q >> .claude/tmp/last-snapshot-regen.log 2>&1`. If build fails, print "=== BUILD FAILED — cannot regenerate snapshots ===" then `tail -30 .claude/tmp/last-snapshot-regen.log` and stop.
+4. Run: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests" --no-build >> .claude/tmp/last-snapshot-regen.log 2>&1`
+5. Check exit code:
    - Exit 0: Print "=== SNAPSHOT REGENERATION COMPLETE ===" then `tail -30 .claude/tmp/last-snapshot-regen.log`
    - Exit non-zero: Print "=== REGENERATION FAILED (last 80 lines) ===" then `tail -80 .claude/tmp/last-snapshot-regen.log`, then echo "=== Full log: .claude/tmp/last-snapshot-regen.log ==="
-5. Return the actual exit code
+6. Return the actual exit code
