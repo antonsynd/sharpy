@@ -84,6 +84,31 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "Do NOT put type annotations on self.field assignments in __init__. "
         "Write 'self.name = name', NOT 'self.name: str = name'.",
     ),
+    (
+        r"does not contain a definition for 'Unwrap'",
+        "After `if x is not None:`, the variable is narrowed to its unwrapped type. "
+        "Do NOT call `.unwrap()` — use the variable directly. "
+        "`.unwrap()` is only available on Optional (T?) types before narrowing.",
+    ),
+    (
+        r"does not contain a definition for '(Lower|Upper|Strip|Split|Replace|Find|Count|Title|Capitalize|Isdigit|Isalpha)'",
+        "Iterating over `str` yields `char`, not `str`. "
+        "String methods like `.lower()`, `.upper()` are not available on `char`. "
+        "Use `str(c)` to convert a char back to a string if you need string methods.",
+    ),
+    (
+        r"Cannot apply indexing.*tuple",
+        "Star unpacking (`*mid`) works with `list` but NOT `tuple`. "
+        "Tuples are fixed-size value types. "
+        "Access tuple elements by index: `t[0]`, `t[1]`, etc. "
+        "Or convert to list first if you need star unpacking.",
+    ),
+    (
+        r"return type must be.*to match overridden member",
+        "Generator methods (with `yield`) have `IEnumerable<T>` return type in C#. "
+        "They cannot override non-generator abstract methods. "
+        "Either mark the base method as a generator too, or don't use `yield` in the override.",
+    ),
 ]
 
 
@@ -120,7 +145,7 @@ BEHAVIORAL_RULES_SECTION = """\
 - **With statement CLR limitation**: The `with` statement works with `IDisposable` types, but CLR type discovery currently cannot resolve inherited methods. Avoid using `StringWriter.WriteLine()` (inherited from `TextWriter`). Stick to types whose methods are defined directly on the type, not inherited.
 - **Named tuple field names**: All fields must be named, or none. Cannot mix named and unnamed fields in a named tuple type definition.
 - **Match exhaustiveness**: Match statements on enums or bools must cover all possible values OR include a `case _:` wildcard.
-- **Instance fields not static**: Class fields with default values are INSTANCE fields, not static. There are no class-level mutable variables. Use module-level variables for shared state.
+- **Instance fields not static by default**: Class fields are INSTANCE fields by default. To make a class-level static field, use the `@static` decorator: `@static` then `FIELD_NAME: type = value`. Access via `ClassName.FIELD_NAME`.
 - **Struct inheritance forbidden**: Classes CANNOT inherit from structs. Structs are sealed value types.
 - **Generic invariance**: Generic collections are INVARIANT. `list[Child]` cannot be assigned to `list[Parent]`. Declare the collection with the base/interface type.
 - **Abstract class decorator**: When using `@abstract` methods, the containing class MUST also be decorated with `@abstract`.
@@ -131,7 +156,11 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Private field access**: Private fields (prefixed with `_`) cannot be accessed from outside the class — use properties to expose them.
 - **No type annotations on self.field**: In `__init__`, write `self.name = name`, NOT `self.name: str = name`. Type annotations on `self.field` assignments are forbidden (SPY0107).
 - **Enum integer value**: Use `.value` to get the integer value of an enum member: `e.value`, NOT `int(e)`.
-- **Only import what you define**: Only import symbols you actually define in your source files. Do NOT import symbols that don't exist in the module."""
+- **Only import what you define**: Only import symbols you actually define in your source files. Do NOT import symbols that don't exist in the module.
+- **Type narrowing and .unwrap()**: After `if x is not None:`, `x` is automatically narrowed to its unwrapped type. Do NOT call `.unwrap()` after narrowing — just use `x` directly. `.unwrap()` is only valid on `T?` before narrowing.
+- **Char vs str in iteration**: `for c in some_string:` yields `char` values, not `str`. `char` has different methods than `str` — no `.lower()`, `.upper()`, etc. Use `str(c)` to convert a char back to a string if needed.
+- **Static fields**: Use `@static` decorator on class-level fields that should be shared across instances. Use `const` for compile-time constants (integers, floats, strings, bools). Access static/const fields via `ClassName.FIELD_NAME`.
+- **Tuples are fixed-size**: `tuple[int, int, int]` always has exactly 3 elements. Star unpacking (`*mid`) only works with `list`, not `tuple`. Access tuple elements by index: `t[0]`, `t[1]`, etc."""
 
 ENTRY_POINT_SECTION = """\
 ## CRITICAL: Program Entry Point Requirement
@@ -787,11 +816,13 @@ def main():
 ### Expected Output Verification (CRITICAL)
 
 After writing the code and expected output:
-1. **Mentally trace `main()` line by line** — compute each print() argument by hand.
-2. **Verify arithmetic** — especially modular arithmetic (%), floating-point (*), and hash computations.
-3. **Count carefully** — for collections, count unique elements by listing them explicitly.
-4. **Check method dispatch** — if a method is NOT @virtual, the BASE class version runs regardless of the actual type.
-5. **Verify every line of expected output matches your trace.** If it doesn't, fix the expected output.
+1. **Mentally trace `main()` line by line** — show each variable's value at each line.
+2. **For loops, show each iteration's state explicitly** — track the loop variable and any accumulators.
+3. **Verify arithmetic** — especially modular arithmetic (%), floating-point (*), and hash computations. Verify sums, products, and averages by hand.
+4. **Count carefully** — for set operations, list out all elements to count correctly.
+5. **Check method dispatch** — if a method is NOT @virtual, the BASE class version runs regardless of the actual type.
+6. **Verify every line of expected output matches your trace.** If it doesn't, fix the expected output.
+7. **Keep programs simple enough that you can trace the output with confidence.**
 
 IMPORTANT:
 - Use ONLY simple print() calls with ONE argument: print(value)
@@ -946,11 +977,13 @@ def main():
 ### Expected Output Verification (CRITICAL)
 
 After writing the code and expected output:
-1. **Mentally trace `main()` line by line** — compute each print() argument by hand.
-2. **Verify arithmetic** — especially modular arithmetic (%), floating-point (*), and hash computations.
-3. **Count carefully** — for collections, count unique elements by listing them explicitly.
-4. **Check method dispatch** — if a method is NOT @virtual, the BASE class version runs regardless of the actual type.
-5. **Verify every line of expected output matches your trace.** If it doesn't, fix the expected output.
+1. **Mentally trace `main()` line by line** — show each variable's value at each line.
+2. **For loops, show each iteration's state explicitly** — track the loop variable and any accumulators.
+3. **Verify arithmetic** — especially modular arithmetic (%), floating-point (*), and hash computations. Verify sums, products, and averages by hand.
+4. **Count carefully** — for set operations, list out all elements to count correctly.
+5. **Check method dispatch** — if a method is NOT @virtual, the BASE class version runs regardless of the actual type.
+6. **Verify every line of expected output matches your trace.** If it doesn't, fix the expected output.
+7. **Keep programs simple enough that you can trace the output with confidence.**
 
 CRITICAL RULES:
 1. Each file is wrapped in `<code file="filename.spy">` ... `</code>` tags
