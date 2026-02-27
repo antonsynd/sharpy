@@ -463,9 +463,6 @@ internal partial class RoslynEmitter
             // If this is an enum type, handle member access specially
             if (symbol is TypeSymbol enumSymbol && enumSymbol.TypeKind == Semantic.TypeKind.Enum)
             {
-                // Enum member access: Color.RED -> Color.Red
-                var enumTypeName = NameMangler.ToPascalCase(enumTypeIdentifier.Name);
-
                 // Qualify enum type to avoid method name shadowing (e.g., vehicle_type() -> VehicleType()
                 // collides with VehicleType enum). Cross-file types are already qualified by
                 // GetFullyQualifiedTypeName; same-file types inside a class need module class qualification.
