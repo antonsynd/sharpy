@@ -1,0 +1,34 @@
+# Test that Some() works inside narrowed contexts (after if x is not None:)
+# Regression test for SPY0230 false positive on Some() in narrowed branches
+
+class ScoreTracker:
+    best_score: int?
+    attempts: int
+
+    def __init__(self):
+        self.best_score = None()
+        self.attempts = 0
+
+    def record(self, score: int) -> None:
+        self.attempts += 1
+        if self.best_score is None:
+            self.best_score = Some(score)
+        else:
+            current: int = self.best_score
+            if score > current:
+                self.best_score = Some(score)
+
+    def get_best(self) -> int:
+        if self.best_score is not None:
+            return self.best_score
+        return 0
+
+def main():
+    tracker = ScoreTracker()
+    print(tracker.get_best())
+    tracker.record(15)
+    print(tracker.get_best())
+    tracker.record(25)
+    tracker.record(10)
+    print(tracker.get_best())
+    print(tracker.attempts)

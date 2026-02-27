@@ -137,9 +137,27 @@ internal partial class TypeChecker
 
         // Check target and value types
         var targetType = CheckExpression(assignment.Target);
+        // For assignments to self.field, use the DECLARED field type rather than the
+        // narrowed type. When a field like `x: int?` is narrowed to `int` inside
+        // `if x is not None:`, we still need `Some(v)` to resolve as `int?` and the
+        // assignment `self.x = Some(v)` to be valid (assigning int? to the int? field).
+        var assignmentTargetType = targetType;
+        if (assignment.Target is MemberAccess { Object: Identifier selfAccess } targetMa
+            && selfAccess.Name == PythonNames.Self
+            && _currentClass != null)
+        {
+            var fieldSymbol = _currentClass.Fields
+                .FirstOrDefault(f => f.Name == targetMa.Member);
+            if (fieldSymbol != null)
+            {
+                var declaredType = fieldSymbol.Type;
+                if (declaredType is OptionalType || declaredType is ResultType)
+                    assignmentTargetType = declaredType;
+            }
+        }
         // Set expected type for constructor inference (Some/None()/Ok/Err)
         var previousExpectedType = _expectedType;
-        _expectedType = targetType is UnknownType ? null : targetType;
+        _expectedType = assignmentTargetType is UnknownType ? null : assignmentTargetType;
         var valueType = CheckExpression(assignment.Value);
         _expectedType = previousExpectedType;
 
@@ -180,24 +198,25 @@ internal partial class TypeChecker
         }
 
         // Otherwise, check as a regular simple assignment
-        if (!IsAssignable(valueType, targetType))
+        // Use assignmentTargetType (declared type) for fields where narrowing may differ
+        if (!IsAssignable(valueType, assignmentTargetType))
         {
             // Special case: Provide helpful error messages for None misuse
-            if (valueType is VoidType && targetType is OptionalType)
+            if (valueType is VoidType && assignmentTargetType is OptionalType)
             {
-                AddError($"Cannot assign 'None' to '{targetType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
+                AddError($"Cannot assign 'None' to '{assignmentTargetType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
                     span: assignment.Value.Span);
             }
-            else if (valueType is VoidType && targetType is not NullableType)
+            else if (valueType is VoidType && assignmentTargetType is not NullableType)
             {
-                AddError($"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'",
+                AddError($"Cannot assign 'None' to non-nullable type '{assignmentTargetType.GetDisplayName()}'",
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
                     span: assignment.Value.Span);
             }
             else
             {
-                AddError($"Cannot assign type '{valueType.GetDisplayName()}' to '{targetType.GetDisplayName()}'",
+                AddError($"Cannot assign type '{valueType.GetDisplayName()}' to '{assignmentTargetType.GetDisplayName()}'",
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                     span: assignment.Span);
             }

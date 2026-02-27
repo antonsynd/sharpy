@@ -356,6 +356,16 @@ internal partial class RoslynEmitter
         // Handle member assignment: obj.field = value
         if (assign.Target is MemberAccess memberAccess)
         {
+            // For simple assignments, clear narrowing on the target field so we emit
+            // the raw field (e.g., this.BestScore) not the unwrapped version
+            // (e.g., this.BestScore.Unwrap()). Narrowing only applies to reads.
+            if (assign.Operator == AssignmentOperator.Assign)
+            {
+                var path = TryBuildDottedPath(memberAccess);
+                if (path != null)
+                    ClearNarrowing(path);
+            }
+
             var target = GenerateMemberAccess(memberAccess);
 
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
