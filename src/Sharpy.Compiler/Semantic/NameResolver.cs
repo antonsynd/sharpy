@@ -687,7 +687,7 @@ internal class NameResolver
 
         var accessLevel = DetermineAccessLevel(field.Name);
 
-        bool isStatic = field.Decorators.Any(d => d.Name == Shared.DecoratorNames.Static);
+        bool isStatic = field.Decorators.Any(d => d.Name == DecoratorNames.Static);
 
         var varSymbol = new VariableSymbol
         {

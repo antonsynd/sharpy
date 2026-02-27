@@ -157,7 +157,7 @@ public static class DiagnosticCodes
         public const string DuplicateClass = "SPY0286";
         public const string InvalidSuperUsage = "SPY0287";
         public const string CircularInheritance = "SPY0288";
-        // SPY0289 reserved for future use
+        // TODO(#237): SPY0289 reserved for future use
         public const string InstanceFieldViaTypeName = "SPY0290";
 
         // Import errors (SPY0300-SPY0319)
