@@ -851,6 +851,26 @@ internal partial class TypeChecker
                     break;
                 }
 
+            case OrPattern orPattern:
+                {
+                    foreach (var alt in orPattern.Alternatives)
+                    {
+                        if (alt is BindingPattern)
+                        {
+                            AddError(
+                                "Binding patterns are not allowed inside or-patterns",
+                                alt.LineStart, alt.ColumnStart,
+                                code: DiagnosticCodes.Semantic.BindingInOrPattern,
+                                span: alt.Span);
+                        }
+                        else
+                        {
+                            CheckPattern(alt, scrutineeType);
+                        }
+                    }
+                    break;
+                }
+
             case MemberAccessPattern memberAccess:
                 {
                     // Resolve the dotted path as a member access (e.g., Color.RED).

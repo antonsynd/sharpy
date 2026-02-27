@@ -190,6 +190,11 @@ public static class DiagnosticCodes
         public const string MultipleStarExpressions = "SPY0356";
         public const string SpreadIntoNonVariadic = "SPY0357";
         public const string UnsupportedFeature = "SPY0358";
+        public const string BindingInOrPattern = "SPY0359";
+        public const string RelationalPatternTypeMismatch = "SPY0360";
+        public const string TypePatternIncompatible = "SPY0361";
+        public const string PropertyPatternUnknownField = "SPY0362";
+        public const string PositionalPatternCountMismatch = "SPY0363";
     }
 
     /// <summary>
