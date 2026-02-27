@@ -46,6 +46,43 @@ internal partial class TypeChecker
                 {
                     return new UserDefinedType { Name = enumTypeSym.Name, Symbol = enumTypeSym };
                 }
+
+                // Check for static/const field access via type name: MyClass.FIELD
+                if (sym is TypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct } classTypeSym)
+                {
+                    var field = classTypeSym.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
+                    if (field != null && (field.IsConstant || field.IsStatic))
+                    {
+                        var fieldType = GetVariableType(field);
+                        _semanticInfo.SetExpressionType(memberAccess, fieldType);
+                        return fieldType;
+                    }
+
+                    // Instance field via type name — error
+                    if (field != null)
+                    {
+                        AddError(
+                            $"Cannot access instance field '{memberAccess.Member}' via type name '{enumId.Name}'. " +
+                            "Mark it as @static or use an instance.",
+                            memberAccess.LineStart, memberAccess.ColumnStart,
+                            code: DiagnosticCodes.Semantic.InstanceFieldViaTypeName,
+                            span: memberAccess.Span);
+                        return SemanticType.Unknown;
+                    }
+
+                    // Check for static method access
+                    var method = classTypeSym.Methods.FirstOrDefault(m =>
+                        m.Name == memberAccess.Member && m.IsStatic);
+                    if (method != null)
+                    {
+                        var paramTypes = method.Parameters.Select(p => p.Type).ToList();
+                        return new FunctionType
+                        {
+                            ParameterTypes = paramTypes,
+                            ReturnType = method.ReturnType
+                        };
+                    }
+                }
             }
             return SemanticType.Unknown;
         }

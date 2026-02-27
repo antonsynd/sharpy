@@ -523,6 +523,52 @@ internal partial class RoslynEmitter
             }
         }
 
+        // Check for static/const field access via type name (e.g., MathHelper.PI -> MathHelper.PI)
+        if (memberAccess.Object is Identifier typeIdentifier)
+        {
+            var typeSym = _context.LookupSymbol(typeIdentifier.Name);
+            if (typeSym is TypeSymbol classSymbol
+                && classSymbol.TypeKind is Semantic.TypeKind.Class or Semantic.TypeKind.Struct)
+            {
+                var fieldSymbol = classSymbol.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
+                if (fieldSymbol != null && (fieldSymbol.IsConstant || fieldSymbol.IsStatic))
+                {
+                    var csharpTypeName = NameMangler.ToPascalCase(typeIdentifier.Name);
+                    var fqn = GetFullyQualifiedTypeName(classSymbol, typeIdentifier.Name);
+
+                    ExpressionSyntax typeExpr;
+                    if (fqn.Contains('.'))
+                    {
+                        var parts = fqn.Split('.');
+                        typeExpr = parts.Skip(1).Aggregate(
+                            (ExpressionSyntax)IdentifierName(parts[0]),
+                            (left, part) => MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName(part)));
+                    }
+                    else if (_currentTypeSymbol != null)
+                    {
+                        var moduleClassName = GetModuleClassName();
+                        typeExpr = MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(moduleClassName),
+                            IdentifierName(csharpTypeName));
+                    }
+                    else
+                    {
+                        typeExpr = IdentifierName(csharpTypeName);
+                    }
+
+                    var codeGenInfo = GetCodeGenInfo(fieldSymbol);
+                    var fieldName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(memberAccess.Member);
+
+                    return MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        typeExpr,
+                        IdentifierName(fieldName));
+                }
+            }
+        }
+
         var obj = GenerateExpression(memberAccess.Object);
 
         // Handle special .value and .name properties for enum instances

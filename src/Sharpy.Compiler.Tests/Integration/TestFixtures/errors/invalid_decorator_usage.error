@@ -1,1 +1,1 @@
-Decorators can only be applied to
+Decorators cannot be applied to module-level variable declarations

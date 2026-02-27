@@ -72,6 +72,12 @@ internal class DecoratorValidator : SemanticValidatorBase
             case PropertyDef propDef:
                 ValidateDecorators(propDef.Decorators, propDef.Name);
                 break;
+
+            case VariableDeclaration varDecl when varDecl.Decorators.Length > 0:
+                // Decorated variables at module level are not allowed —
+                // @static only makes sense on class/struct fields
+                ValidateModuleLevelFieldDecorators(varDecl);
+                break;
         }
     }
 
@@ -85,6 +91,10 @@ internal class DecoratorValidator : SemanticValidatorBase
                 ValidateFinalRequiresOverride(method, classDef.Name);
                 ValidateVirtualOnObjectOverride(method, classDef.Name);
             }
+            else if (member is VariableDeclaration varDecl)
+            {
+                ValidateFieldDecorators(varDecl, classDef.Name);
+            }
         }
     }
 
@@ -97,6 +107,10 @@ internal class DecoratorValidator : SemanticValidatorBase
                 ValidateDecorators(method.Decorators, $"{structDef.Name}.{method.Name}");
                 ValidateFinalRequiresOverride(method, structDef.Name);
                 ValidateVirtualOnStruct(method, structDef.Name);
+            }
+            else if (member is VariableDeclaration varDecl)
+            {
+                ValidateFieldDecorators(varDecl, structDef.Name);
             }
         }
     }
@@ -120,6 +134,44 @@ internal class DecoratorValidator : SemanticValidatorBase
             {
                 _logger.LogDebug($"Found unsupported decorator '@{decorator.Name}' on '{definitionName}'");
                 AddError(_context, errorMessage, decorator.LineStart, decorator.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                    span: decorator.Span);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates that module-level variable declarations cannot have decorators.
+    /// Decorators like @static only make sense on class/struct fields.
+    /// </summary>
+    private void ValidateModuleLevelFieldDecorators(VariableDeclaration varDecl)
+    {
+        foreach (var decorator in varDecl.Decorators)
+        {
+            AddError(_context,
+                $"Decorators cannot be applied to module-level variable declarations. " +
+                $"'@{decorator.Name}' on '{varDecl.Name}' is only valid inside a class or struct body.",
+                decorator.LineStart,
+                decorator.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                span: decorator.Span);
+        }
+    }
+
+    /// <summary>
+    /// Validates decorators on field declarations. Only @static is allowed.
+    /// </summary>
+    private void ValidateFieldDecorators(VariableDeclaration varDecl, string typeName)
+    {
+        foreach (var decorator in varDecl.Decorators)
+        {
+            if (decorator.Name != DecoratorNames.Static)
+            {
+                AddError(_context,
+                    $"Decorator '@{decorator.Name}' is not valid on field '{varDecl.Name}' in '{typeName}'. " +
+                    "Only @static is allowed on field declarations.",
+                    decorator.LineStart,
+                    decorator.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
                     span: decorator.Span);
             }
         }

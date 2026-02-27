@@ -1,0 +1,7 @@
+# Test: static field accessed via ClassName
+class MathHelper:
+    @static
+    PI: float = 3.14159
+
+def main():
+    print(MathHelper.PI)

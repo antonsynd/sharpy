@@ -666,6 +666,15 @@ public static class DiagnosticExplanations
             "class A(B):\n    pass\n\nclass B(A):\n    pass",
             "Break the cycle by removing one of the inheritance relationships or restructuring the type hierarchy.");
 
+        Add(dict, DiagnosticCodes.Semantic.InstanceFieldViaTypeName,
+            "Instance field accessed via type name",
+            "Semantic",
+            "An instance field is being accessed through the type name (e.g., ClassName.field) rather than " +
+            "through an instance. Only static and const fields can be accessed via the type name.",
+            "class Config:\n    timeout: int = 30\n\ndef main():\n    t = Config.timeout  # error: timeout is an instance field",
+            "Mark the field as @static if it should be shared across instances:\nclass Config:\n    @static\n    timeout: int = 30\n\n" +
+            "Or use an instance:\ndef main():\n    c = Config()\n    t = c.timeout");
+
         // ── Semantic errors: Import (SPY0300-SPY0319) ───────────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleNotFound, "Module not found", "Semantic",

@@ -1,0 +1,7 @@
+# Test: accessing instance field via type name should error
+class Config:
+    timeout: int = 30
+
+def main():
+    t = Config.timeout
+    print(t)

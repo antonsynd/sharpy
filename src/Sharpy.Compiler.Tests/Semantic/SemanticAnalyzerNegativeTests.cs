@@ -994,11 +994,17 @@ def decorator(f):
     return f
 
 @decorator
-x: int = 5  # cannot decorate non-function
+x: int = 5  # cannot decorate non-function at module level
 ";
-        // This is caught at parse time, not semantic analysis
-        var errors = ParseExpectingError(source);
-        errors.Should().Contain("Decorators can only be applied");
+        // Decorated variables at module level are caught by DecoratorValidator
+        var (module, symbolTable, semanticInfo, nameResolver, _) = CompileAndCheck(source);
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo);
+        var context = new Sharpy.Compiler.Semantic.Validation.SemanticContext(symbolTable, semanticInfo, typeResolver);
+        var validator = new Sharpy.Compiler.Semantic.Validation.DecoratorValidator();
+        validator.Validate(module, context);
+
+        context.Diagnostics.GetErrors().Should().Contain(e =>
+            e.Message.Contains("Decorators cannot be applied to module-level variable declarations"));
     }
 
     [Fact]

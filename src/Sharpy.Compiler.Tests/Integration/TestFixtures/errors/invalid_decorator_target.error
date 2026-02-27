@@ -1,1 +1,1 @@
-Decorators can only be applied to functions, classes, structs, or properties
+Decorators cannot be applied to module-level variable declarations

@@ -463,7 +463,9 @@ public partial class Parser
                 TokenType.Class => ParseClassDef(),
                 TokenType.Struct => ParseStructDef(),
                 TokenType.Property => ParsePropertyDef(),
-                _ => throw ReportError("Decorators can only be applied to functions, classes, structs, or properties", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan)
+                // Allow decorators on variable declarations (e.g., @static field in class body)
+                TokenType.Identifier => ParseSimpleStatement(),
+                _ => throw ReportError("Decorators can only be applied to functions, classes, structs, properties, or field declarations", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan)
             };
         }
         finally
@@ -478,6 +480,7 @@ public partial class Parser
             ClassDef cls => cls with { Decorators = decorators.ToImmutableArray() },
             StructDef str => str with { Decorators = decorators.ToImmutableArray() },
             PropertyDef prop => prop with { Decorators = decorators.ToImmutableArray() },
+            VariableDeclaration varDecl => varDecl with { Decorators = decorators.ToImmutableArray() },
             _ => throw ReportError("Unexpected decorated statement type", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
         };
     }

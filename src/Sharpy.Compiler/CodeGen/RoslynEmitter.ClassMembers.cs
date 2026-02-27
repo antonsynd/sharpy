@@ -1305,6 +1305,10 @@ internal partial class RoslynEmitter
         {
             modifiers = modifiers.Add(Token(SyntaxKind.ConstKeyword));
         }
+        else if (varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
+        }
 
         return FieldDeclaration(declaration)
             .WithModifiers(modifiers);

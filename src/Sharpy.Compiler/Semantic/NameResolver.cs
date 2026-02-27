@@ -687,12 +687,15 @@ internal class NameResolver
 
         var accessLevel = DetermineAccessLevel(field.Name);
 
+        bool isStatic = field.Decorators.Any(d => d.Name == Shared.DecoratorNames.Static);
+
         var varSymbol = new VariableSymbol
         {
             Name = field.Name,
             Kind = SymbolKind.Variable,
             AccessLevel = accessLevel,
             IsConstant = field.IsConst,
+            IsStatic = isStatic,
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = field.Span,
             DeclarationLine = field.LineStart,

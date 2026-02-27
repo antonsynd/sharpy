@@ -83,6 +83,7 @@ public record VariableDeclaration : Statement
     public TypeAnnotation? Type { get; init; }
     public Expression? InitialValue { get; init; }
     public bool IsConst { get; init; }
+    public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
 
     /// <inheritdoc/>
     public override void ValidateInvariants()

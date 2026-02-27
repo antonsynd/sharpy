@@ -88,6 +88,7 @@ public record VariableSymbol : Symbol
     public SemanticType Type { get; internal set; } = SemanticType.Unknown;
     public bool IsParameter { get; init; }
     public bool IsConstant { get; init; }
+    public bool IsStatic { get; init; }
     public bool HasDefaultValue { get; init; }
 
     public virtual bool Equals(VariableSymbol? other) => ReferenceEquals(this, other);

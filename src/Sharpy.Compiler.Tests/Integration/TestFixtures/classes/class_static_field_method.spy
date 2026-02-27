@@ -1,0 +1,16 @@
+# Test: static field accessed from static method
+class Counter:
+    @static
+    count: int = 0
+
+    def increment():
+        Counter.count += 1
+
+    def get_count() -> int:
+        return Counter.count
+
+def main():
+    print(Counter.count)
+    Counter.increment()
+    Counter.increment()
+    print(Counter.get_count())
