@@ -469,32 +469,7 @@ internal partial class RoslynEmitter
                 // Qualify enum type to avoid method name shadowing (e.g., vehicle_type() -> VehicleType()
                 // collides with VehicleType enum). Cross-file types are already qualified by
                 // GetFullyQualifiedTypeName; same-file types inside a class need module class qualification.
-                ExpressionSyntax enumType;
-                var fqn = GetFullyQualifiedTypeName(enumSymbol, enumTypeIdentifier.Name);
-                if (fqn.Contains('.'))
-                {
-                    // Cross-module: already qualified (e.g., "Types.VehicleType")
-                    // Build via SyntaxFactory to avoid ParseExpression (string templating).
-                    var parts = fqn.Split('.');
-                    enumType = parts.Skip(1).Aggregate(
-                        (ExpressionSyntax)IdentifierName(parts[0]),
-                        (left, part) => MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName(part)));
-                }
-                else if (_currentTypeSymbol != null)
-                {
-                    // Same-file but inside a class — qualify with module class to prevent
-                    // method name shadowing (e.g., vehicle_type() -> VehicleType())
-                    var moduleClassName = GetModuleClassName();
-                    enumType = MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(moduleClassName),
-                        IdentifierName(enumTypeName));
-                }
-                else
-                {
-                    enumType = IdentifierName(enumTypeName);
-                }
+                ExpressionSyntax enumType = BuildQualifiedTypeAccess(enumSymbol, enumTypeIdentifier.Name);
 
                 // Check if this is a string enum (string enums are generated as classes, not C# enums)
                 if (IsStringEnumSymbol(enumSymbol))
@@ -1306,6 +1281,38 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Builds a qualified type access expression from a TypeSymbol.
+    /// Handles three cases: cross-module FQN (dot-separated), same-file inside
+    /// a class (module class qualification), and top-level (bare identifier).
+    /// </summary>
+    private ExpressionSyntax BuildQualifiedTypeAccess(
+        Semantic.TypeSymbol typeSymbol, string originalName)
+    {
+        var csharpTypeName = NameMangler.ToPascalCase(originalName);
+        var fqn = GetFullyQualifiedTypeName(typeSymbol, originalName);
+
+        if (fqn.Contains('.'))
+        {
+            var parts = fqn.Split('.');
+            return parts.Skip(1).Aggregate(
+                (ExpressionSyntax)IdentifierName(parts[0]),
+                (left, part) => MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName(part)));
+        }
+
+        if (_currentTypeSymbol != null)
+        {
+            var moduleClassName = GetModuleClassName();
+            return MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(moduleClassName),
+                IdentifierName(csharpTypeName));
+        }
+
+        return IdentifierName(csharpTypeName);
+    }
+
+    /// <summary>
     /// Generates a static/const field access expression: TypeName.FieldName.
     /// Handles cross-module FQN, same-file module class qualification, and simple name.
     /// </summary>
@@ -1313,30 +1320,7 @@ internal partial class RoslynEmitter
         Semantic.TypeSymbol classSymbol, string originalName,
         Semantic.VariableSymbol fieldSymbol, string memberName)
     {
-        var csharpTypeName = NameMangler.ToPascalCase(originalName);
-        var fqn = GetFullyQualifiedTypeName(classSymbol, originalName);
-
-        ExpressionSyntax typeExpr;
-        if (fqn.Contains('.'))
-        {
-            var parts = fqn.Split('.');
-            typeExpr = parts.Skip(1).Aggregate(
-                (ExpressionSyntax)IdentifierName(parts[0]),
-                (left, part) => MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName(part)));
-        }
-        else if (_currentTypeSymbol != null)
-        {
-            var moduleClassName = GetModuleClassName();
-            typeExpr = MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName(moduleClassName),
-                IdentifierName(csharpTypeName));
-        }
-        else
-        {
-            typeExpr = IdentifierName(csharpTypeName);
-        }
+        ExpressionSyntax typeExpr = BuildQualifiedTypeAccess(classSymbol, originalName);
 
         var codeGenInfo = GetCodeGenInfo(fieldSymbol);
         var fieldName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(memberName);
