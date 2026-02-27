@@ -290,10 +290,18 @@ All commands below log full output to `.claude/tmp/*.log` for investigation whil
 | `/spy-run <file.spy>` | Compile and execute a .spy file (log: `last-spy-run.log`) |
 | `/verify-python <expr>` | Run Python 3 to verify behavior before implementing |
 
+### Git Workflow
+
+| Command | Purpose |
+|---------|---------|
+| `/commit [message]` | Stage and commit changes with auto-generated message |
+| `/push [--close-issues N,N]` | Push current branch; optionally close GitHub issues |
+
 ### Analysis & Planning
 
 | Command | Purpose |
 |---------|---------|
+| `/create-plan <issues or desc>` | Create implementation plan from GitHub issues or description |
 | `/compiler-audit [focus]` | Run a comprehensive compiler health audit |
 | `/dogfood-analyze [dir]` | Analyze dogfood results and classify failures |
 | `/dogfood-run` | Run dogfooding iterations to test the compiler |
