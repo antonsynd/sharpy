@@ -609,11 +609,7 @@ internal partial class RoslynEmitter
         if (shouldAddOverride && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
         {
             modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
-            // Strip virtual — can't coexist with override (CS0113)
-            if (modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword)))
-            {
-                modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.VirtualKeyword)));
-            }
+            // virtual+override conflict is resolved by ResolveModifierConflicts() below
         }
 
         // In C#, you cannot use 'override' for interface methods (default or abstract).

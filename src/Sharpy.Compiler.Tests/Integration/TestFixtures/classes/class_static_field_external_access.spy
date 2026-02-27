@@ -1,0 +1,13 @@
+class Counter:
+    @static
+    count: int = 0
+
+    def __init__(self):
+        Counter.count = Counter.count + 1
+
+def main():
+    a = Counter()
+    b = Counter()
+    # External instance access to static field — should work (with warning)
+    print(a.count)
+    print(Counter.count)

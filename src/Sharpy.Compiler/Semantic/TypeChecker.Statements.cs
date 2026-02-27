@@ -141,7 +141,7 @@ internal partial class TypeChecker
         // narrowed type. When a field like `x: int?` is narrowed to `int` inside
         // `if x is not None:`, we still need `Some(v)` to resolve as `int?` and the
         // assignment `self.x = Some(v)` to be valid (assigning int? to the int? field).
-        // Note: currently only handles OptionalType and ResultType. If narrowing is
+        // TODO(#236): currently only handles OptionalType and ResultType. If narrowing is
         // extended to NullableType (.NET nullable references), this site must be updated.
         var assignmentTargetType = targetType;
         if (assignment.Target is MemberAccess { Object: Identifier selfAccess } targetMa

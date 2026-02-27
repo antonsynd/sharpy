@@ -523,26 +523,17 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Check for static/const field or static method access via type name (e.g., MathHelper.PI)
-        // Uses resolution stored by TypeChecker in SemanticInfo to avoid re-resolving symbols.
+        // Check for static/const field access via type name (ClassName.FIELD) or via instance
+        // (self.field, obj.field). The TypeChecker stores the resolved symbol in SemanticInfo
+        // so the emitter doesn't re-resolve. For static fields accessed via instance, codegen
+        // must rewrite to ClassName.Field because C# disallows instance access (CS0176).
         var resolution = _context.SemanticInfo?.GetMemberAccessResolution(memberAccess);
         if (resolution is { } res && res.Member is VariableSymbol resolvedField)
         {
             var classSymbol = res.Owner;
-            var originalName = (memberAccess.Object as Identifier)?.Name ?? classSymbol.Name;
-            return GenerateStaticFieldAccess(classSymbol, originalName, resolvedField, memberAccess.Member);
-        }
-
-        // Rewrite self.static_field as ClassName.StaticField (C# disallows instance access to static members)
-        if (memberAccess.Object is Identifier { Name: "self" }
-            && _currentTypeSymbol != null)
-        {
-            var staticField = _currentTypeSymbol.Fields.FirstOrDefault(f =>
-                f.Name == memberAccess.Member && f.IsStatic);
-            if (staticField != null)
-            {
-                return GenerateStaticFieldAccess(_currentTypeSymbol, _currentTypeSymbol.Name, staticField, memberAccess.Member);
-            }
+            // Use the owner type's name — not the object identifier, which could be
+            // a variable name (e.g., `a.count` → owner is Counter, not `a`)
+            return GenerateStaticFieldAccess(classSymbol, classSymbol.Name, resolvedField, memberAccess.Member);
         }
 
         var obj = GenerateExpression(memberAccess.Object);

@@ -166,19 +166,20 @@ internal partial class TypeChecker
 
                 var fieldType = GetVariableType(field);
 
-                // Warn when accessing a static field via instance (e.g., self.FIELD)
-                if (field.IsStatic
-                    && memberAccess.Object is Identifier selfId
-                    && selfId.Name == PythonNames.Self
-                    && _currentClass != null)
+                // Warn and record resolution when accessing a static field via instance.
+                // C# disallows instance access to static members (CS0176), so codegen
+                // must rewrite `obj.field` → `ClassName.Field` for any instance access.
+                if (field.IsStatic)
                 {
+                    var ownerName = fieldOwner.Name;
                     _diagnostics.AddWarning(
                         $"Accessing static field '{memberAccess.Member}' via instance. " +
-                        $"Prefer '{_currentClass.Name}.{memberAccess.Member}'.",
+                        $"Prefer '{ownerName}.{memberAccess.Member}'.",
                         memberAccess.LineStart, memberAccess.ColumnStart,
                         _currentFilePath,
                         code: DiagnosticCodes.Validation.StaticFieldViaInstance,
                         phase: CompilerPhase.TypeChecking);
+                    _semanticInfo.SetMemberAccessResolution(memberAccess, fieldOwner, field);
                 }
 
                 // Wrap result in optional/nullable for null conditional access
