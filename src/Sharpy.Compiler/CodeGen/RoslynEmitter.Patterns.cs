@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
@@ -122,6 +123,54 @@ internal partial class RoslynEmitter
                     return RecursivePattern()
                         .WithPositionalPatternClause(
                             PositionalPatternClause(SeparatedList(subPatterns)));
+                }
+
+            case OrPattern orPattern:
+                {
+                    // Check if any alternative is a MemberAccessPattern (needs guard-based approach)
+                    bool hasMemberAccess = orPattern.Alternatives.Any(a => a is MemberAccessPattern);
+
+                    if (hasMemberAccess)
+                    {
+                        // Use var binding + combined when guard with ||
+                        var tempVarName = $"__match{matchVarCounter++}";
+                        ExpressionSyntax? orGuard = null;
+                        foreach (var alt in orPattern.Alternatives)
+                        {
+                            ExpressionSyntax comparison;
+                            if (alt is MemberAccessPattern ma)
+                            {
+                                comparison = BinaryExpression(
+                                    SyntaxKind.EqualsExpression,
+                                    IdentifierName(tempVarName),
+                                    GenerateMemberAccessValue(ma));
+                            }
+                            else
+                            {
+                                // For literals in mixed or-patterns, generate equality comparison
+                                var altExpr = GenerateExpression(((LiteralPattern)alt).Literal);
+                                comparison = BinaryExpression(
+                                    SyntaxKind.EqualsExpression,
+                                    IdentifierName(tempVarName),
+                                    altExpr);
+                            }
+                            orGuard = orGuard == null
+                                ? comparison
+                                : BinaryExpression(SyntaxKind.LogicalOrExpression, orGuard, comparison);
+                        }
+                        if (orGuard != null)
+                            memberGuards.Add(orGuard);
+                        return VarPattern(SingleVariableDesignation(Identifier(tempVarName)));
+                    }
+
+                    // Simple or-pattern: use C# `or` pattern syntax
+                    PatternSyntax result = GenerateMatchPattern(orPattern.Alternatives[0], memberGuards, ref matchVarCounter);
+                    for (int i = 1; i < orPattern.Alternatives.Length; i++)
+                    {
+                        var right = GenerateMatchPattern(orPattern.Alternatives[i], memberGuards, ref matchVarCounter);
+                        result = BinaryPattern(SyntaxKind.OrPattern, result, right);
+                    }
+                    return result;
                 }
 
             case MemberAccessPattern memberAccess:
