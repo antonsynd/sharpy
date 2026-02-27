@@ -1,3 +1,6 @@
+<!-- Verified by /verify-plan on 2026-02-27 (re-verified x2) -->
+<!-- Verification result: PASS WITH CORRECTIONS -->
+
 # Phase 10.2: `await` Expressions — Implementation Plan
 
 ## Overview
@@ -32,7 +35,7 @@ ParseUnary → ParseAwaitExpression → ParsePower → ParsePostfix → ParsePri
            var startColumn = Current.Column;
            var awaitToken = Current;
            Advance();  // consume 'await'
-           var operand = ParseAwaitExpression();  // right-recursive for chained await
+           var operand = ParsePower();  // operand is power (matches Python: 'await' primary)
 
            return new AwaitExpression
            {
@@ -63,7 +66,7 @@ ParseUnary → ParseAwaitExpression → ParsePower → ParsePostfix → ParsePri
    - Add field `private bool _currentFunctionIsAsync = false;`
 
 2. **`src/Sharpy.Compiler/Semantic/TypeChecker.Definitions.cs`**
-   - In `CheckFunctionDef`, save/set/restore `_currentFunctionIsAsync`:
+   - In `CheckFunction`, save/set/restore `_currentFunctionIsAsync`: [CORRECTED: method is `CheckFunction`, not `CheckFunctionDef`]
    ```csharp
    var previousIsAsync = _currentFunctionIsAsync;
    _currentFunctionIsAsync = functionDef.IsAsync;
@@ -132,7 +135,7 @@ ParseUnary → ParseAwaitExpression → ParsePower → ParsePostfix → ParsePri
 
 Update `async_basic.spy`, `async_class_method.spy`, `async_void.spy` to use `await` instead of `.Result`/`.Wait()`. Entry point `main()` becomes `async def main()` where needed (C# supports `async Task Main()`).
 
-Update corresponding `.expected.cs` snapshots.
+No `.expected.cs` snapshots exist for these fixtures — only `.expected` (runtime output) files need updating. [CORRECTED: async fixtures have no `.expected.cs` snapshot files]
 
 **Verify:** All file-based integration tests pass.
 
@@ -181,4 +184,36 @@ New files in `src/Sharpy.Compiler.Tests/Integration/TestFixtures/async/`:
 
 1. **`async def main()` as entry point** — C# supports `async Task Main()` since 7.1. Verify existing async_void tests pass with async main.
 2. **`await` in comprehensions** — Spec says NOT supported. C# compiler will reject, providing safety net. Defer explicit validation.
-3. **`await` in lambda** — `_currentFunctionIsAsync` will be `false` in lambda bodies, naturally producing SPY0273.
+3. **`await` in lambda** — `CheckLambda()` does NOT save/restore `_currentFunctionIsAsync`, so it inherits the enclosing function's value. `await` inside a lambda within an `async def` would be silently accepted, NOT rejected. To match Python semantics (where `await` in lambda is always a SyntaxError), either (a) save/restore `_currentFunctionIsAsync = false` in `CheckLambda`, or (b) add an explicit check in `CheckAwaitExpression`. Consider adding an `await_in_lambda_error` test fixture. [CORRECTED: `_currentFunctionIsAsync` is inherited, not reset to `false` in lambdas]
+
+---
+
+## Verification Summary
+
+**Result:** PASS WITH CORRECTIONS
+**Verified on:** 2026-02-27 (re-verified x2)
+**Plan file:** `docs/plans/phase-10.2-await.md`
+
+### Corrections Made
+
+1. **Commit 4 — `.expected.cs` snapshots**: Plan originally said "Update corresponding `.expected.cs` snapshots" but no async fixtures have `.expected.cs` files. Corrected to note only `.expected` runtime output files need updating. (Note: `async_basic.cs` and `async_class_method.cs` exist as compiled C# files in the directory — these are NOT `.expected.cs` snapshot files and appear to be leftover from an older convention.)
+
+2. **Risk #3 — `await` in lambda**: Plan claimed `_currentFunctionIsAsync` would be `false` in lambda bodies, naturally rejecting `await`. This is incorrect — `CheckLambda()` (TypeChecker.Expressions.Access.cs:1628) does NOT save/restore ANY context flags (`_currentFunctionIsGenerator`, `_currentMethodIsOverride`, `_currentMethodIsDunder`, etc.), so the async flag would be inherited from the enclosing function. Corrected with mitigation options. Python `compile()` confirms: `await` in lambda produces `SyntaxError: 'await' outside async function`.
+
+3. **Commit 1 — `ParseAwaitExpression` operand**: Plan originally used `ParseAwaitExpression()` (right-recursive) for the operand, which would allow `await await x`. Python rejects this as a syntax error (`await primary`, not `await await_primary`). [CORRECTED: changed operand to `ParsePower()` to match Python semantics. If C#-style `await await task_of_task` is needed later, it can be added with an explicit parenthesized form `await (await x)`.]
+
+4. **Commit 2 — method name**: Plan referenced `CheckFunctionDef` but the actual method is `CheckFunction` (TypeChecker.Definitions.cs:15). Corrected inline.
+
+### Warnings
+
+1. **Commit 2 — save/restore placement**: `CheckFunction` (TypeChecker.Definitions.cs:15-472) [CORRECTED: method is `CheckFunction`, not `CheckFunctionDef`] already has significant async validation: async generator rejection (line 373), async constructor rejection (line 383), and async return type wrapping (lines 438-457). The `_currentFunctionIsAsync` save/set must be placed alongside `_currentFunctionIsGenerator` at lines 368-370 (BEFORE the body-checking loop at line 393) and the restore must go in the existing restore block at lines 463-468 where `_currentFunctionIsGenerator` and 5 other context fields are already restored.
+
+2. **Diagnostic code range**: SPY0273/SPY0274 fall within the "Return and control flow (SPY0260-SPY0279)" sub-range. `AwaitOutsideAsync` fits well there, but `InvalidAwaitOperand` is more of a type checking concern (SPY0220-SPY0259). Keeping both await codes together is reasonable but worth noting.
+
+### Missing Steps Added
+
+1. **Lambda await rejection**: Add save/restore of `_currentFunctionIsAsync = false` in `CheckLambda()` (TypeChecker.Expressions.Access.cs:1628), or add explicit lambda context check in `CheckAwaitExpression()`. Add test fixture `await_in_lambda_error.spy` + `.error`.
+
+### Unchecked Claims
+
+- None. All file paths, method names, diagnostic codes, AST nodes, Roslyn API usage, spec references, and Python semantics claims were verified against the codebase (including Python `await` behavior via `python3`).

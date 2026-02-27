@@ -1,3 +1,6 @@
+<!-- Verified by /verify-plan on 2026-02-27 (rev 3) -->
+<!-- Verification result: PASS WITH CORRECTIONS -->
+
 # Phase 8.1–8.5: Completing Pattern Matching — Implementation Plan
 
 ## Overview
@@ -49,8 +52,8 @@ File: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Patterns.cs`
 
 **Commit 8.2d: Tests**
 
-- Remove `match_or_wildcard_exhaustive_0001.skip`
-- Update/convert `match_or_pattern_unsupported_0001` from error to success test
+- Rewrite `match_or_wildcard_exhaustive_0001.spy` to remove the binding pattern `x` from the or-pattern (it currently uses `case x | _:` which violates the binding-in-or-pattern restriction from 8.2b), then remove the `.skip` file [CORRECTED: simply removing `.skip` would fail because the test uses a binding in an or-pattern, which this plan designates as an error]
+- Update/convert `match_or_pattern_unsupported_0001` from error to success test (`.spy` content may need adjustment to form a valid program; replace `.error` with `.expected`)
 - New: `match_or_literal_0001.spy`, `match_or_member_access_0001.spy`, `match_or_binding_error_0001.spy` + `.error`
 
 ---
@@ -89,12 +92,12 @@ File: `src/Sharpy.Compiler/Semantic/TypeChecker.Statements.cs`
 
 File: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Patterns.cs`
 
-1. Map operators to C# relational pattern syntax kinds:
-   - `">"` → `GreaterThanRelationalPattern`
-   - `">="` → `GreaterThanOrEqualRelationalPattern`
-   - `"<"` → `LessThanRelationalPattern`
-   - `"<="` → `LessThanOrEqualRelationalPattern`
-2. `SyntaxFactory.RelationalPattern(Token(syntaxKind), expr)`
+1. Map operators to C# operator token kinds (there is a single `SyntaxKind.RelationalPattern` node kind — the operator is encoded via the token): [CORRECTED: original names `GreaterThanRelationalPattern` etc. do not exist in Roslyn `SyntaxKind`]
+   - `">"` → `Token(SyntaxKind.GreaterThanToken)`
+   - `">="` → `Token(SyntaxKind.GreaterThanEqualsToken)`
+   - `"<"` → `Token(SyntaxKind.LessThanToken)`
+   - `"<="` → `Token(SyntaxKind.LessThanEqualsToken)`
+2. `SyntaxFactory.RelationalPattern(operatorToken, expr)`
 
 **Commit 8.4d: Tests**
 
@@ -125,15 +128,7 @@ File: `src/Sharpy.Compiler/Parser/Parser.Statements.cs`
    - `Expect(LeftParen)`, `Expect(RightParen)` (empty parens = pure type check)
    - Check for `as` keyword → parse binding name
    - Return `TypePattern { Type, BindingName }`
-3. **Handle builtin type keywords:** `int`, `str`, etc. may be keyword tokens. Add cases in `ParseSinglePattern()`:
-   ```
-   case TokenType.Int:
-   case TokenType.Str:
-   case TokenType.Float:
-   case TokenType.Bool:
-       if (Peek().Type == TokenType.LeftParen)
-           return ParseTypePattern(Current);
-   ```
+3. **Handle builtin type names:** `int`, `str`, `float`, `bool` are lexed as `Identifier` tokens (not separate keyword tokens). They already flow through the `TokenType.Identifier` → `ParseIdentifierOrMemberAccessPattern()` path. The `(` check in step 1 handles them automatically — no additional cases needed. [CORRECTED: `TokenType.Int`, `TokenType.Str`, `TokenType.Float`, `TokenType.Bool` do not exist in the `TokenType` enum. Type names are regular identifiers.]
 
 **Commit 8.3b: Semantic support**
 
@@ -207,7 +202,7 @@ File: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Patterns.cs`
    // C#:    case Point { X: 0, Y: 1 }:
    ```
 2. `RecursivePattern().WithType(type).WithPropertyPatternClause(...)`
-3. Property names mangled via `NameMangler.Transform(name, NameContext.Property)`
+3. Property names mangled via `NameMangler.Transform(name, NameContext.Field)` [CORRECTED: `NameContext.Property` does not exist; `NameContext.Field` maps to PascalCase which is the correct casing for C# properties]
 
 **Commit 8.5e: CodeGen — positional patterns**
 
@@ -320,7 +315,58 @@ Each commit must build and pass all existing tests.
 ## Risks
 
 1. **Or-patterns + MemberAccess guards** — combine with `||` in `when` clause
-2. **Builtin type keywords in patterns** — `int`, `str` may be keyword tokens, handle both
+2. **Builtin type names in patterns** — `int`, `str`, `float`, `bool` are `Identifier` tokens (not keywords), already handled by the identifier path
 3. **Match expression disambiguation** — statement dispatch catches first; expression only in `ParsePrimary()`
 4. **Property vs. positional** — require `name=pattern` for property; plain values = positional
 5. **C# 9.0 compatibility** — relational, or, recursive patterns are all C# 9.0, safe for generated code
+
+---
+
+## Verification Summary
+
+**Result:** PASS WITH CORRECTIONS
+**Verified on:** 2026-02-27 (rev 3)
+**Plan file:** `docs/plans/phase-8.1-8.5-patterns.md`
+
+### Rev 3 (2026-02-27)
+- Re-verified all 42 claims against current codebase. No new issues found. All rev 1 and rev 2 corrections remain accurate. Roslyn v5.0.0 confirmed.
+
+### Corrections Made (rev 2)
+- **Section 8.3a step 3**: Removed references to `TokenType.Int`, `TokenType.Str`, `TokenType.Float`, `TokenType.Bool` — these do not exist in the `TokenType` enum. Type names like `int`, `str`, `float`, `bool` are lexed as `Identifier` tokens and already handled by `ParseIdentifierOrMemberAccessPattern()`.
+- **Section 8.4c**: Replaced incorrect SyntaxKind names `GreaterThanRelationalPattern`, `GreaterThanOrEqualRelationalPattern`, `LessThanRelationalPattern`, `LessThanOrEqualRelationalPattern` with correct operator token kinds `SyntaxKind.GreaterThanToken`, `SyntaxKind.GreaterThanEqualsToken`, `SyntaxKind.LessThanToken`, `SyntaxKind.LessThanEqualsToken`. Verified against installed Roslyn NuGet XML docs (v4.14.0).
+- **Section 8.2d**: Added note that `match_or_wildcard_exhaustive_0001.spy` must be rewritten (not just un-skipped) because it uses `case x | _:` — a binding pattern in an or-pattern, which 8.2b designates as an error.
+
+### Corrections Made (rev 1)
+- **Section 8.5d line 210**: `NameMangler.Transform(name, NameContext.Property)` → `NameMangler.Transform(name, NameContext.Field)`. The `NameContext` enum has no `Property` value. `NameContext.Field` maps to `ToPascalCase()` which is the correct casing for C# properties.
+
+### Warnings
+- **Missing pattern types**: The AST defines `ListPattern`, `UnionCasePattern`, `AndPattern`, and `GuardPattern` (all in `Pattern.cs`) which are not covered by this plan. This is acceptable if intentionally deferred to a later phase, but should be documented.
+- **Exhaustiveness checking**: The language spec (`docs/language_specification/match_statement.md`, line 239) mentions an `ExhaustivenessValidator` as planned for Phase 8 but this plan does not include it. Consider whether it belongs in a separate plan or should be noted as out-of-scope.
+- **New diagnostic codes**: Section "Files Summary" mentions `DiagnosticCodes.cs` changes "if needed" but doesn't specify which codes. Binding-in-or-pattern errors (8.2b), relational type errors (8.4b), unknown property field errors (8.5b), and positional count mismatch errors (8.5c) will each need dedicated diagnostic codes. Plan ahead for which `SPY0xxx` codes to allocate.
+- **Section 8.3c no-binding case**: Plan suggests `DeclarationPattern(type, DiscardDesignation())` for type patterns without binding. Consider using the simpler `TypePattern(type)` Roslyn API instead (verified to exist: `SyntaxFactory.TypePattern(TypeSyntax)`).
+
+### Missing Steps Added
+- (none required — plan covers all pipeline phases for each feature)
+
+### Verified Roslyn API Calls (rev 2 — confirmed against NuGet XML docs v4.14.0)
+- `BinaryPattern(SyntaxKind.OrPattern, left, right)` — correct (3-arg overload exists)
+- `SyntaxFactory.RelationalPattern(operatorToken, expr)` — correct signature
+- `RecursivePattern().WithPositionalPatternClause(...)` — already used in codebase (TuplePattern at line 122)
+- `SwitchExpression(governingExpression, arms)` — correct (parameter named `governingExpression`)
+- `SwitchExpressionArm(pattern, whenClause, resultExpr)` — exists in Roslyn API
+- **C# `or` pattern nesting**: Left-associative nesting (`(a or b) or c`) is the natural result of the proposed loop and is valid C#
+
+### Verified Claims (all correct)
+- All 10 AST node references (names, line numbers, properties) — verified against `Pattern.cs` and `Expression.Future.cs`
+- All 4 test fixture references (`match_or_pattern_unsupported_0001`, `match_or_wildcard_exhaustive_0001.skip`, `match_relational_pattern_unsupported_0001`, `match_type_pattern_unsupported_0001`) — all exist in `src/Sharpy.Compiler.Tests/Integration/TestFixtures/pattern_matching/`
+- Parser structure: `ParsePattern()` at line 1052, `ParseIdentifierOrMemberAccessPattern()` at line 1097, `ParseUnary()` exists, `ParsePrimary()` in `Parser.Primaries.cs`
+- TypeChecker: `CheckPattern()` at line 785 of `TypeChecker.Statements.cs`, handles 5 current patterns (WildcardPattern, BindingPattern, LiteralPattern, TuplePattern, MemberAccessPattern)
+- CodeGen: `GenerateMatchPattern()` at line 95 of `RoslynEmitter.Patterns.cs`, handles 5 current patterns
+- Token types: `Pipe`, `Greater`, `Less`, `GreaterEqual`, `LessEqual`, `Match` — all exist in `Token.cs`
+- `_typeResolver` field exists at line 16 of `TypeChecker.cs`, `ResolveTypeAnnotation()` method at line 34 of `TypeResolver.cs`
+- `NameMangler.Transform(string, NameContext)` — method exists; `NameContext.Field` confirmed
+- Match statement dispatch: `Parser.cs:416` dispatches `TokenType.Match` → `ParseMatchStatement()`
+- Language spec alignment: plan matches `docs/language_specification/match_statement.md` pattern status table (line 157-169)
+- `TuplePatternLengthMismatch` diagnostic code exists as `SPY0257`
+- `ValidationPipelineFactory` exists at `Semantic/Validation/ValidationPipelineFactory.cs`
+- Existing test fixtures `match_type_binding_0004` and `match_type_binding_0016` use binding/narrowing patterns, NOT `TypePattern` AST — no overlap with this plan
