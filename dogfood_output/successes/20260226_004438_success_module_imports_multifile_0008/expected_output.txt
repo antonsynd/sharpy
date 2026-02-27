@@ -1,5 +1,0 @@
-42
-Value is 42
-Rectangle(MyRect, 5.0x3.0)
-15.0
-12.56636

@@ -1,8 +1,0 @@
-5
-True
-True
-False
-8
-4
-True
-False

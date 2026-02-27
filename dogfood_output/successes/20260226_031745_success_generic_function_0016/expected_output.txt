@@ -1,6 +1,0 @@
-55
-hi
-False
-12
-ohwow
-False

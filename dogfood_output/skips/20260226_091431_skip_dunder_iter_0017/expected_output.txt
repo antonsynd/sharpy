@@ -1,8 +1,0 @@
-Tree:
-200
-Forward:
-15
-Reverse:
-35
-Slice:
-bc

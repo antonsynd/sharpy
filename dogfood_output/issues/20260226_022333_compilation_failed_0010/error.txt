@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS1736]: Default parameter value for 'coord' must be a compile-time constant
-  --> /tmp/tmpclnitj3e/dogfood_test.spy:57:67
-    |
- 57 |     return n % 2 == 0
-    |                      ^
-    |
-

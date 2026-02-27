@@ -1,7 +1,0 @@
-green
-unknown
-12.0
-78.53975
-5.0
-A green rectangle 3.0x4.0, area=12.00, diagonal=5.00
-A unknown circle with radius 5.0, area=78.54

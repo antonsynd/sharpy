@@ -1,7 +1,0 @@
-Name: Widget
-Price: 25.5
-Quantity: 10
-Total: 255.0
-Updated total: 450.0
-Discounted total: 400.0
-Half price total: 250.0

@@ -1,9 +1,0 @@
-Width: 10.0
-Height: 20.0
-Min X: 0.0
-Min Y: 0.0
-Min Z: 0.0
-Max X: 10.0
-Max Y: 20.0
-Max Z: 5.0
-Center sum: 17.5

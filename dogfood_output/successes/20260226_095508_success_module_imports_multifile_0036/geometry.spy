@@ -1,4 +1,0 @@
-# Geometry module - defines core interface for measurable objects
-interface IMeasurable:
-    def measure(self) -> float:
-        ...

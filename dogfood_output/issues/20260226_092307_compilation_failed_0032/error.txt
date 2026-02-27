@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0506]: 'Farms.Kennel.GetSummary()': cannot override inherited member 'Farms.Farm.GetSummary()' because it is not marked virtual, abstract, or override
-  --> /tmp/tmpxywooir2/farms.spy:21:32
-    |
- 21 |     # Print farm summary
-    |                         ^
-    |
-

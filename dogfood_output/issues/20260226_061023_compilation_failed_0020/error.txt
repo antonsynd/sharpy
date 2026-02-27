@@ -1,8 +1,0 @@
-Assembly compilation failed:
-
-error[CS1061]: 'Shapes.Circle' does not contain a definition for 'Pi' and no accessible extension method 'Pi' accepting a first argument of type 'Shapes.Circle' could be found (are you missing a using directive or an assembly reference?)
-  --> /tmp/tmp0fsu1zag/shapes.spy:49:25
-
-error[CS1061]: 'Shapes.Circle' does not contain a definition for 'Pi' and no accessible extension method 'Pi' accepting a first argument of type 'Shapes.Circle' could be found (are you missing a using directive or an assembly reference?)
-  --> /tmp/tmp0fsu1zag/shapes.spy:53:32
-

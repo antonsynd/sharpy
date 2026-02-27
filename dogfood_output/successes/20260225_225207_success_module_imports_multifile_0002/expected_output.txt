@@ -1,8 +1,0 @@
-5.0
-1
-2
-TestRect (4x6, area 24)
-24.0
-angular
-TestCircle (radius 2.5)
-19.6349375

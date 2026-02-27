@@ -1,6 +1,0 @@
-Empty: False
-No items
-With items: True
-Stack has content
-Emptied: False
-Stack is empty

@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0103]: Expected end of statement, got Identifier
-  --> /tmp/tmpw9am9kao/dogfood_test.spy:51:5
-    |
- 51 |     total_area = 0.0
-    |     ^^^^^^^^^^
-    |
-
