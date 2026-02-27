@@ -147,6 +147,12 @@ public record TypeSymbol : Symbol
     public bool IsAbstract { get; init; }
 
     /// <summary>
+    /// Whether this generic type is covariant in its type parameters.
+    /// For built-in types, set by BuiltinMethodDefinitions during registration.
+    /// </summary>
+    public bool IsCovariant { get; init; }
+
+    /// <summary>
     /// The module path that defines this type (e.g., "animal" for a type imported from animal.spy).
     /// Null for types defined in the current module.
     /// </summary>

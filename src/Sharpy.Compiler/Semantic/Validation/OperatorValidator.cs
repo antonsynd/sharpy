@@ -414,20 +414,29 @@ internal class OperatorValidator : SemanticValidatorBase
             };
         }
 
-        // Generic types (list, dict, set, tuple)
+        // Generic types — check TypeSymbol metadata (populated by BuiltinMethodDefinitions)
         if (type is GenericType generic)
         {
-            return generic.Name switch
+            var typeSymbol = _context.SymbolTable.BuiltinRegistry.GetType(generic.Name);
+            if (typeSymbol != null)
             {
-                BuiltinNames.List => dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne,
-                BuiltinNames.Tuple => dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne,
-                BuiltinNames.Set => dunderName is DunderNames.Or or DunderNames.And or DunderNames.Sub or DunderNames.Xor or DunderNames.Eq or DunderNames.Ne,
-                BuiltinNames.Dict => dunderName is DunderNames.Or or DunderNames.Eq or DunderNames.Ne,
-                _ => generic.GenericDefinition != null && (
-                    generic.GenericDefinition.OperatorMethods.ContainsKey(dunderName) ||
+                if (typeSymbol.OperatorMethods.ContainsKey(dunderName))
+                    return true;
+                // __ne__ auto-synthesized from __eq__ (and vice versa)
+                if (dunderName == DunderNames.Ne && typeSymbol.OperatorMethods.ContainsKey(DunderNames.Eq))
+                    return true;
+                if (dunderName == DunderNames.Eq && typeSymbol.OperatorMethods.ContainsKey(DunderNames.Ne))
+                    return true;
+                return false;
+            }
+            // Fallback for user-defined generic types with GenericDefinition
+            if (generic.GenericDefinition != null)
+            {
+                return generic.GenericDefinition.OperatorMethods.ContainsKey(dunderName) ||
                     (dunderName == DunderNames.Ne && generic.GenericDefinition.OperatorMethods.ContainsKey(DunderNames.Eq)) ||
-                    (dunderName == DunderNames.Eq && generic.GenericDefinition.OperatorMethods.ContainsKey(DunderNames.Ne)))
-            };
+                    (dunderName == DunderNames.Eq && generic.GenericDefinition.OperatorMethods.ContainsKey(DunderNames.Ne));
+            }
+            return false;
         }
 
         // User-defined types

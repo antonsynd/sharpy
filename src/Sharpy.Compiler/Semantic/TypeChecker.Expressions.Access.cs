@@ -266,13 +266,32 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // Resolve dict method types at semantic time for tuple unpacking support
-        // (e.g., `for k, v in d.items()` needs the element type to validate unpacking)
-        if (memberLookupType is GenericType { Name: BuiltinNames.Dict } dictType && dictType.TypeArguments.Count == 2)
+        // Resolve builtin type method types at semantic time via TypeSymbol metadata.
+        // This handles dict.items(), list.append(), set.add(), etc.
+        if (memberLookupType is GenericType genericType)
         {
-            var dictMethodType = ResolveDictMethodType(dictType, memberAccess.Member);
-            if (dictMethodType != null)
-                return dictMethodType;
+            var builtinTypeSymbol = _symbolTable.BuiltinRegistry.GetType(genericType.Name);
+            if (builtinTypeSymbol != null)
+            {
+                var methodSymbol = builtinTypeSymbol.Methods
+                    .FirstOrDefault(m => m.Name == memberAccess.Member);
+                if (methodSymbol != null)
+                {
+                    var resolvedReturnType = SubstituteTypeParameters(
+                        methodSymbol.ReturnType,
+                        builtinTypeSymbol.TypeParameters,
+                        genericType.TypeArguments);
+                    var resolvedParams = methodSymbol.Parameters
+                        .Select(p => SubstituteTypeParameters(
+                            p.Type, builtinTypeSymbol.TypeParameters, genericType.TypeArguments))
+                        .ToList();
+                    return new FunctionType
+                    {
+                        ParameterTypes = resolvedParams,
+                        ReturnType = resolvedReturnType
+                    };
+                }
+            }
         }
 
         // Intentional Unknown without error for non-UserDefinedType member access:
@@ -281,77 +300,6 @@ internal partial class TypeChecker
         // type checker. Mark as error recovery to suppress SPY0907 false positives.
         MarkExpressionAsErrorRecovery(memberAccess);
         return SemanticType.Unknown;
-    }
-
-    /// <summary>
-    /// Resolves the return type of dict methods at semantic time.
-    /// This is needed because dict methods like items(), keys(), values() return
-    /// view types whose element types are needed for tuple unpacking in for-loops.
-    /// Returns a FunctionType for known methods, or null for unknown methods
-    /// (which fall through to CLR discovery at codegen time).
-    /// </summary>
-    private static SemanticType? ResolveDictMethodType(GenericType dictType, string methodName)
-    {
-        var keyType = dictType.TypeArguments[0];
-        var valueType = dictType.TypeArguments[1];
-
-        return methodName switch
-        {
-            BuiltinNames.DictMethodItems => new FunctionType
-            {
-                ParameterTypes = new List<SemanticType>(),
-                ReturnType = new GenericType
-                {
-                    Name = BuiltinNames.DictItemsView,
-                    TypeArguments = new List<SemanticType> { keyType, valueType }
-                }
-            },
-            BuiltinNames.DictMethodKeys => new FunctionType
-            {
-                ParameterTypes = new List<SemanticType>(),
-                ReturnType = new GenericType
-                {
-                    Name = BuiltinNames.DictKeyView,
-                    TypeArguments = new List<SemanticType> { keyType, valueType }
-                }
-            },
-            BuiltinNames.DictMethodValues => new FunctionType
-            {
-                ParameterTypes = new List<SemanticType>(),
-                ReturnType = new GenericType
-                {
-                    Name = BuiltinNames.DictValuesView,
-                    TypeArguments = new List<SemanticType> { keyType, valueType }
-                }
-            },
-            _ => null  // Fall through to Unknown for other methods (e.g., get, update, pop)
-        };
-    }
-
-    /// <summary>
-    /// Resolves the return type of a dict method call at the call expression site,
-    /// where argument count is known. Handles overloaded methods like get() where
-    /// the return type depends on arity:
-    ///   get(key) -> OptionalType(V)
-    ///   get(key, default) -> V
-    /// Returns null for methods not handled here (fall through to CLR discovery).
-    /// </summary>
-    private static SemanticType? ResolveDictMethodCall(
-        GenericType dictType, string methodName, int argCount)
-    {
-        var valueType = dictType.TypeArguments[1];
-
-        if (methodName == BuiltinNames.DictMethodGet)
-        {
-            return argCount switch
-            {
-                1 => new OptionalType { UnderlyingType = valueType },
-                2 => valueType,
-                _ => null
-            };
-        }
-
-        return null;
     }
 
     /// <summary>
@@ -724,54 +672,11 @@ internal partial class TypeChecker
 
         if (call.Function is Identifier id)
         {
-            // Special handling for builtin len() - validate that argument supports __len__ protocol
-            if (id.Name == BuiltinNames.Len && argTypes.Count == 1)
-            {
-                // Use TypeInferenceService for type inference (errors reported by validator in pipeline)
-                var lenType = _typeInference.InferLenType(argTypes[0]);
-
-                // TypeInferenceService always returns Int for len() - return Unknown only if completely unsupported
-                return lenType ?? SemanticType.Unknown;
-            }
-
-            // Special handling for builtin hash() - every object supports GetHashCode()
-            if (id.Name == BuiltinNames.Hash && argTypes.Count == 1)
-            {
-                var hashType = _typeInference.InferHashType(argTypes[0]);
-                return hashType ?? SemanticType.Unknown;
-            }
-
-            // reversed(iterable) -> Iterator<T>
-            if (id.Name == BuiltinNames.Reversed && argTypes.Count == 1)
-            {
-                var elementType = _typeInference.InferReversedElementType(argTypes[0]);
-                if (elementType != null)
-                    return new GenericType { Name = BuiltinNames.Iterator, TypeArguments = new List<SemanticType> { elementType } };
-            }
-
-            // sorted(iterable, ...) -> list<T>
-            if (id.Name == BuiltinNames.Sorted && argTypes.Count >= 1)
-            {
-                var elementType = _typeInference.InferIterableElementType(argTypes[0]);
-                if (elementType != null)
-                    return new GenericType { Name = BuiltinNames.List, TypeArguments = new List<SemanticType> { elementType } };
-            }
-
-            // min(iterable) -> T
-            if (id.Name == BuiltinNames.Min && argTypes.Count == 1)
-            {
-                var elementType = _typeInference.InferIterableElementType(argTypes[0]);
-                if (elementType != null)
-                    return elementType;
-            }
-
-            // max(iterable) -> T
-            if (id.Name == BuiltinNames.Max && argTypes.Count == 1)
-            {
-                var elementType = _typeInference.InferIterableElementType(argTypes[0]);
-                if (elementType != null)
-                    return elementType;
-            }
+            // Data-driven builtin function return type inference (len, hash, reversed, sorted, min, max)
+            var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
+                id.Name, argTypes, _typeInference);
+            if (builtinReturn != null)
+                return builtinReturn;
 
             var symbol = _symbolTable.Lookup(id.Name);
 
@@ -923,18 +828,8 @@ internal partial class TypeChecker
                     return overloadResult;
             }
 
-            // Resolve dict method calls where return type depends on arity (e.g., get).
-            // ResolveDictMethodType (member-access level) can't handle these because
-            // it doesn't know the argument count.
-            var objectType = _semanticInfo.GetExpressionType(memberAccessCall.Object);
-            if (objectType is GenericType { Name: BuiltinNames.Dict } dictCallType
-                && dictCallType.TypeArguments.Count == 2)
-            {
-                var dictResult = ResolveDictMethodCall(
-                    dictCallType, memberAccessCall.Member, totalArgCount);
-                if (dictResult != null)
-                    return dictResult;
-            }
+            // Builtin method overloads (dict.get, list.pop) are now handled by
+            // ResolveUserMethodOverload above via BuiltinMethodDefinitions metadata.
         }
 
         // If we have a FunctionSymbol, use it for validation (supports default parameters)
@@ -1127,16 +1022,30 @@ internal partial class TypeChecker
     // TODO(#205): Add language spec for method overloading (docs/language_specification/method_overloading.md)
     // TODO(#207): Add test fixtures for ambiguous overloads and overloads with default parameters
     /// <summary>
-    /// Resolves a user-defined method overload from a member access call (e.g., obj.method(args)).
+    /// Resolves a method overload from a member access call (e.g., obj.method(args)).
+    /// Handles both user-defined types and built-in generic types (dict, list, set).
     /// Returns the resolved return type when the method has multiple overloads, null if not applicable.
-    /// Handles the complete call validation including argument type checking.
     /// </summary>
     private SemanticType? ResolveUserMethodOverload(
         MemberAccess memberAccess, List<SemanticType> argTypes, int totalArgCount, FunctionCall call,
         bool isNullConditionalCall, bool isOptionalNullConditional)
     {
         var objectType = _semanticInfo.GetExpressionType(memberAccess.Object);
-        if (objectType is not UserDefinedType { Symbol: { } typeSymbol })
+
+        TypeSymbol? typeSymbol = null;
+        List<SemanticType>? typeArgs = null;
+
+        if (objectType is UserDefinedType { Symbol: { } udt })
+        {
+            typeSymbol = udt;
+        }
+        else if (objectType is GenericType gt)
+        {
+            typeSymbol = _symbolTable.BuiltinRegistry.GetType(gt.Name);
+            typeArgs = gt.TypeArguments;
+        }
+
+        if (typeSymbol == null)
             return null;
 
         // Walk the hierarchy looking for overloads
@@ -1207,8 +1116,13 @@ internal partial class TypeChecker
                     break;
                 }
 
-                if (expectedType is not UnknownType && argTypes[i] is not UnknownType
-                    && !IsAssignable(argTypes[i], expectedType))
+                // Substitute type parameters for builtin generic types before comparison
+                var resolvedExpected = typeArgs != null && typeSymbol.TypeParameters.Count > 0
+                    ? SubstituteTypeParameters(expectedType, typeSymbol.TypeParameters, typeArgs)
+                    : expectedType;
+
+                if (resolvedExpected is not UnknownType && argTypes[i] is not UnknownType
+                    && !IsAssignable(argTypes[i], resolvedExpected))
                 {
                     typesMatch = false;
                     break;
@@ -1248,6 +1162,13 @@ internal partial class TypeChecker
         }
 
         var returnType = matchingOverload.ReturnType;
+
+        // Substitute type parameters for builtin generic types (e.g., T0 -> int for dict[str, int])
+        if (typeArgs != null && typeSymbol.TypeParameters.Count > 0)
+        {
+            returnType = SubstituteTypeParameters(returnType, typeSymbol.TypeParameters, typeArgs);
+        }
+
         if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
         {
             if (isOptionalNullConditional)

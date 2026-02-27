@@ -184,10 +184,10 @@ internal partial class TypeChecker
             if (sourceGeneric.Name == targetGeneric.Name &&
                 sourceGeneric.TypeArguments.Count == targetGeneric.TypeArguments.Count)
             {
-                // For list and set, allow covariant assignment (e.g., list[Dog] to list[Animal])
-                if (sourceGeneric.Name == "list" || sourceGeneric.Name == "set")
+                // Check TypeSymbol metadata for covariance
+                var sourceTypeSymbol = _symbolTable.BuiltinRegistry.GetType(sourceGeneric.Name);
+                if (sourceTypeSymbol?.IsCovariant == true)
                 {
-                    // Check if element type is assignable
                     return IsAssignable(sourceGeneric.TypeArguments[0], targetGeneric.TypeArguments[0]);
                 }
             }
@@ -317,12 +317,12 @@ internal partial class TypeChecker
         if (iterType is GenericType generic)
         {
             // list[T], set[T] -> T
-            if ((generic.Name == "list" || generic.Name == "set") && generic.TypeArguments.Count > 0)
+            if ((generic.Name == BuiltinNames.List || generic.Name == BuiltinNames.Set) && generic.TypeArguments.Count > 0)
             {
                 return generic.TypeArguments[0];
             }
             // dict[K, V] -> K (when iterating, we get keys by default)
-            if (generic.Name == "dict" && generic.TypeArguments.Count > 0)
+            if (generic.Name == BuiltinNames.Dict && generic.TypeArguments.Count > 0)
             {
                 return generic.TypeArguments[0];
             }

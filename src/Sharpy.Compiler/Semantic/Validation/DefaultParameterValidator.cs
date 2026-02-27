@@ -151,13 +151,13 @@ internal class DefaultParameterValidator : SemanticValidatorBase
             SetLiteral => true,
 
             // Function call to set() - set constructor
-            FunctionCall call when call.Function is Identifier id && id.Name == "set" => true,
+            FunctionCall call when call.Function is Identifier id && id.Name == BuiltinNames.Set => true,
 
             // Function call to list() - list constructor
-            FunctionCall call when call.Function is Identifier id && id.Name == "list" => true,
+            FunctionCall call when call.Function is Identifier id && id.Name == BuiltinNames.List => true,
 
             // Function call to dict() - dict constructor
-            FunctionCall call when call.Function is Identifier id && id.Name == "dict" => true,
+            FunctionCall call when call.Function is Identifier id && id.Name == BuiltinNames.Dict => true,
 
             // Parenthesized expression - check inner expression
             Parenthesized paren => IsMutableDefault(paren.Expression),

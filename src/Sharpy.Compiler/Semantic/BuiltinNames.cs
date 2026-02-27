@@ -63,12 +63,6 @@ internal static class BuiltinNames
     public const string None = "None";
     public const string Object = "object";
 
-    // ---- Dict method names ----
-    public const string DictMethodItems = "items";
-    public const string DictMethodKeys = "keys";
-    public const string DictMethodValues = "values";
-    public const string DictMethodGet = "get";
-
     // ---- Dict view types (returned by dict.items(), .keys(), .values()) ----
     public const string DictItemsView = "DictItemsView";
     public const string DictKeyView = "DictKeyView";

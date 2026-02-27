@@ -59,6 +59,20 @@ internal class BuiltinRegistry
         RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
         RegisterType("set", typeof(SharpyRT::Sharpy.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
 
+        // Tuple (generic type used by OperatorValidator/ProtocolValidator)
+        RegisterType("tuple", typeof(System.ValueTuple), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
+
+        // Dict view types (returned by dict.items(), .keys(), .values())
+        // These use Sharpy.Core types but are registered here for protocol validation
+        RegisterType(BuiltinNames.DictItemsView, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        RegisterType(BuiltinNames.DictKeyView, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        RegisterType(BuiltinNames.DictValuesView, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+
+        // Iterator/iterable types (used by generators and reversed())
+        RegisterType(BuiltinNames.Iterator, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        RegisterType("IEnumerable", typeof(System.Collections.IEnumerable), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
+        RegisterType("IEnumerator", typeof(System.Collections.IEnumerator), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
+
         // Special
         RegisterType("object", typeof(object), TypeKind.Class);
         RegisterType("None", typeof(void), TypeKind.Struct); // void for return type
@@ -124,18 +138,25 @@ internal class BuiltinRegistry
 
     private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0)
     {
+        var typeParams = isGeneric
+            ? Enumerable.Range(0, typeParamCount).Select(i => new TypeParameterDef { Name = $"T{i}" }).ToList()
+            : new List<TypeParameterDef>();
+
         var typeSymbol = new TypeSymbol
         {
             Name = sharpyName,
             Kind = SymbolKind.Type,
             TypeKind = kind,
             ClrType = clrType,
-            TypeParameters = isGeneric
-                ? Enumerable.Range(0, typeParamCount).Select(i => new TypeParameterDef { Name = $"T{i}" }).ToList()
-                : new List<TypeParameterDef>(),
-            AccessLevel = AccessLevel.Public
+            TypeParameters = typeParams,
+            AccessLevel = AccessLevel.Public,
+            IsCovariant = BuiltinMethodDefinitions.IsCovariant(sharpyName),
+            Methods = BuiltinMethodDefinitions.GetMethods(sharpyName, typeParams),
+            OperatorMethods = BuiltinMethodDefinitions.GetOperatorMethods(sharpyName, typeParams),
+            ProtocolMethods = BuiltinMethodDefinitions.GetProtocolMethods(sharpyName, typeParams),
         };
 
+        BuiltinMethodDefinitions.PopulateMethodOverloads(typeSymbol);
         _types[sharpyName] = typeSymbol;
     }
 

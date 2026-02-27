@@ -319,22 +319,13 @@ internal class ProtocolValidator : SemanticValidatorBase
             return dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.GetItem;
         }
 
-        // Check generic container types
+        // Check generic container types — use TypeSymbol metadata (populated by BuiltinMethodDefinitions)
         if (type is GenericType generic)
         {
-            return generic.Name switch
-            {
-                BuiltinNames.List => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem or DunderNames.SetItem,
-                BuiltinNames.Dict => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem or DunderNames.SetItem,
-                BuiltinNames.Set => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains,
-                BuiltinNames.Tuple => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.GetItem,
-                // Generator functions return IEnumerable<T> at the semantic level;
-                // Iterator<T> is returned by reversed() and other iterator builtins
-                "IEnumerable" or "IEnumerator" or BuiltinNames.Iterator => dunderName is DunderNames.Iter,
-                // Dict view types are iterable (returned by dict.items(), .keys(), .values())
-                BuiltinNames.DictItemsView or BuiltinNames.DictKeyView or BuiltinNames.DictValuesView => dunderName is DunderNames.Iter or DunderNames.Len,
-                _ => false
-            };
+            var typeSymbol = _context.SymbolTable.BuiltinRegistry.GetType(generic.Name);
+            if (typeSymbol != null)
+                return typeSymbol.ProtocolMethods.ContainsKey(dunderName);
+            // Fall through for user-defined generic types not in the registry
         }
 
         // Enum types support __iter__ (via Enum.GetValues<T>())

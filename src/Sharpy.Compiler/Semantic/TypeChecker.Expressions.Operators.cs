@@ -510,7 +510,7 @@ internal partial class TypeChecker
     /// </summary>
     private static bool IsStringType(SemanticType type)
     {
-        return type is BuiltinType builtin && (builtin.Name == "str" || builtin.Name == "string");
+        return type is BuiltinType builtin && (builtin.Name == BuiltinNames.Str || builtin.Name == "string");
     }
 
     /// <summary>
