@@ -216,6 +216,7 @@ public static class DiagnosticCodes
 
         // Dunder validation (SPY0414-SPY0419)
         public const string UnknownDunderMethod = "SPY0414";
+        public const string VirtualOnStructMethod = "SPY0415";
 
         // Warnings (SPY0450-SPY0499)
         public const string UnreachableCodeWarning = "SPY0450";
@@ -226,6 +227,7 @@ public static class DiagnosticCodes
         public const string EqObjectWithoutHash = "SPY0455";
         public const string HashWithoutEqObject = "SPY0456";
         public const string UnsupportedDunderReversed = "SPY0457";
+        public const string VirtualOnObjectOverride = "SPY0458";
 
         // Dunder invocation rules (SPY0460-SPY0469)
         public const string DunderDirectInvocation = "SPY0460";

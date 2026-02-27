@@ -83,6 +83,7 @@ internal class DecoratorValidator : SemanticValidatorBase
             {
                 ValidateDecorators(method.Decorators, $"{classDef.Name}.{method.Name}");
                 ValidateFinalRequiresOverride(method, classDef.Name);
+                ValidateVirtualOnObjectOverride(method, classDef.Name);
             }
         }
     }
@@ -95,6 +96,7 @@ internal class DecoratorValidator : SemanticValidatorBase
             {
                 ValidateDecorators(method.Decorators, $"{structDef.Name}.{method.Name}");
                 ValidateFinalRequiresOverride(method, structDef.Name);
+                ValidateVirtualOnStruct(method, structDef.Name);
             }
         }
     }
@@ -120,6 +122,63 @@ internal class DecoratorValidator : SemanticValidatorBase
                 AddError(_context, errorMessage, decorator.LineStart, decorator.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
                     span: decorator.Span);
             }
+        }
+    }
+
+    /// <summary>
+    /// Validates that @virtual is not used on struct methods (structs are sealed in C#).
+    /// </summary>
+    private void ValidateVirtualOnStruct(FunctionDef method, string typeName)
+    {
+        var virtualDecorator = method.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.Virtual);
+        if (virtualDecorator != null)
+        {
+            AddError(_context,
+                $"Struct method '{method.Name}' in '{typeName}' cannot be @virtual. " +
+                "Struct methods cannot be virtual because structs are implicitly sealed.",
+                virtualDecorator.LineStart,
+                virtualDecorator.ColumnStart,
+                code: DiagnosticCodes.Validation.VirtualOnStructMethod,
+                span: virtualDecorator.Span);
+        }
+    }
+
+    /// <summary>
+    /// Warns when @virtual is used on dunder methods that always generate 'override'
+    /// (e.g., __str__ → ToString(), __hash__ → GetHashCode()).
+    /// </summary>
+    private void ValidateVirtualOnObjectOverride(FunctionDef method, string typeName)
+    {
+        if (!method.Decorators.Any(d => d.Name == DecoratorNames.Virtual))
+            return;
+
+        // These dunders always generate 'override' on Object methods
+        string? csharpName = method.Name switch
+        {
+            DunderNames.Str => "Object.ToString()",
+            DunderNames.Hash => "Object.GetHashCode()",
+            _ => null
+        };
+
+        // __eq__ with object parameter also overrides Object.Equals
+        if (csharpName == null && method.Name == DunderNames.Eq
+            && method.Parameters.Any(p =>
+                p.Name != PythonNames.Self
+                && p.Type?.Name == "object"))
+        {
+            csharpName = "Object.Equals()";
+        }
+
+        if (csharpName != null)
+        {
+            var virtualDecorator = method.Decorators.First(d => d.Name == DecoratorNames.Virtual);
+            AddWarning(_context,
+                $"@virtual is redundant on '{method.Name}' in '{typeName}' — " +
+                $"it always overrides {csharpName}. The @virtual decorator will be ignored.",
+                virtualDecorator.LineStart,
+                virtualDecorator.ColumnStart,
+                code: DiagnosticCodes.Validation.VirtualOnObjectOverride,
+                span: virtualDecorator.Span);
         }
     }
 

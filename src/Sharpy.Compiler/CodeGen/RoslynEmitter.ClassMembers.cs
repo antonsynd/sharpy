@@ -609,6 +609,11 @@ internal partial class RoslynEmitter
         if (shouldAddOverride && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
         {
             modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
+            // Strip virtual — can't coexist with override (CS0113)
+            if (modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword)))
+            {
+                modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.VirtualKeyword)));
+            }
         }
 
         // In C#, you cannot use 'override' for interface methods (default or abstract).
@@ -676,6 +681,9 @@ internal partial class RoslynEmitter
         {
             modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
         }
+
+        // Final modifier conflict resolution — ensure no illegal C# combinations
+        modifiers = ResolveModifierConflicts(modifiers);
 
         // Generate method declaration
         var method = MethodDeclaration(returnType, mangledName)
@@ -1180,6 +1188,36 @@ internal partial class RoslynEmitter
         }
 
         return TokenList(tokens);
+    }
+
+    /// <summary>
+    /// Resolves illegal C# modifier combinations that can arise when user decorators
+    /// interact with auto-generated modifiers (e.g., @virtual on __str__ which auto-adds override).
+    /// </summary>
+    private static SyntaxTokenList ResolveModifierConflicts(SyntaxTokenList modifiers)
+    {
+        bool hasVirtual = modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword));
+        bool hasOverride = modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword));
+        bool hasAbstract = modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword));
+        bool hasStatic = modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword));
+
+        // virtual + override → strip virtual (override implies virtual in C#)
+        // virtual + abstract → strip virtual (abstract implies virtual in C#)
+        if (hasVirtual && (hasOverride || hasAbstract))
+        {
+            modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.VirtualKeyword)));
+        }
+
+        // static + virtual/override/abstract → strip virtual/override/abstract
+        if (hasStatic && (hasVirtual || hasOverride || hasAbstract))
+        {
+            modifiers = TokenList(modifiers.Where(m =>
+                !m.IsKind(SyntaxKind.VirtualKeyword)
+                && !m.IsKind(SyntaxKind.OverrideKeyword)
+                && !m.IsKind(SyntaxKind.AbstractKeyword)));
+        }
+
+        return modifiers;
     }
 
     /// <summary>

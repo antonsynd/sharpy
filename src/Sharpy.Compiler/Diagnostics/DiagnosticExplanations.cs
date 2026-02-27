@@ -906,6 +906,14 @@ public static class DiagnosticExplanations
             "class Foo:\n    def __custom__(self) -> int:\n        return 42",
             "Use a regular method name instead:\nclass Foo:\n    def custom(self) -> int:\n        return 42");
 
+        Add(dict, DiagnosticCodes.Validation.VirtualOnStructMethod,
+            "@virtual on struct method",
+            "Validation",
+            "Struct methods cannot be marked @virtual because structs are implicitly sealed in C# — " +
+            "they cannot be inherited from. The @virtual decorator only makes sense on class methods.",
+            "struct Point:\n    x: int\n    @virtual\n    def __str__(self) -> str:\n        return \"point\"",
+            "Remove the @virtual decorator:\nstruct Point:\n    x: int\n    def __str__(self) -> str:\n        return \"point\"");
+
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
         Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",
@@ -967,6 +975,15 @@ public static class DiagnosticExplanations
             "returning 'IEnumerator<T>' to satisfy 'IReverseEnumerable<T>'.",
             "class Countdown:\n    start: int\n    def __init__(self, start: int):\n        self.start = start\n    def __reversed__(self) -> int:\n        i = self.start\n        while i > 0:\n            yield i\n            i = i - 1",
             "Use 'yield' in '__reversed__' to produce elements in reverse order.");
+
+        Add(dict, DiagnosticCodes.Validation.VirtualOnObjectOverride,
+            "@virtual is redundant on Object override method",
+            "Validation",
+            "The @virtual decorator is redundant on __str__, __hash__, and __eq__(self, other: object) because " +
+            "these always generate 'override' for the corresponding Object methods (ToString, GetHashCode, Equals). " +
+            "The @virtual decorator will be ignored.",
+            "class Foo:\n    @virtual\n    def __str__(self) -> str:\n        return \"foo\"",
+            "Remove the @virtual decorator — the method is already an override:\nclass Foo:\n    def __str__(self) -> str:\n        return \"foo\"");
 
         // ── Validation errors: Dunder invocation rules (SPY0460-SPY0469)
 
