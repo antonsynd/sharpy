@@ -63,6 +63,16 @@ _NON_CODE_ERROR_PATTERNS = [
 _MIN_CODE_LENGTH = 20
 
 
+def _normalize_source(content: str) -> str:
+    """Normalize whitespace in generated source files."""
+    # Replace tabs with 4 spaces
+    content = content.replace("\t", "    ")
+    # Ensure file ends with newline
+    if not content.endswith("\n"):
+        content += "\n"
+    return content
+
+
 def _is_valid_code_response(text: str) -> tuple[bool, str]:
     """Check whether extracted text looks like valid code, not an error message.
 
@@ -1274,6 +1284,7 @@ class DogfoodOrchestrator:
                     )
 
             code = extract_code_block(gen_result.output) or gen_result.output
+            code = _normalize_source(code)
 
             # Step 1.4: Validate that the response looks like actual code
             is_valid_code, invalid_reason = _is_valid_code_response(code)
@@ -1642,9 +1653,7 @@ class DogfoodOrchestrator:
             if not files:
                 print("  Failed to parse multi-file response", file=sys.stderr)
                 last_error = 'Failed to parse multi-file response. Use <code file="name.spy">...</code> tags for each file, and include a main.spy file.'
-                # Keep last_files from previous attempt if available
-                # Only retry if we have previous files to include in feedback
-                if attempt < max_attempts and last_files is not None:
+                if attempt < max_attempts:
                     print(
                         f"  Will retry with feedback ({attempt}/{max_attempts})...",
                         file=sys.stderr,
@@ -1659,6 +1668,8 @@ class DogfoodOrchestrator:
                         attempts=attempt,
                     )
 
+            # Normalize whitespace in extracted source files
+            files = {name: _normalize_source(code) for name, code in files.items()}
             last_files = files
             print(f"  Generated {len(files)} files:", file=sys.stderr)
             for filename in files:

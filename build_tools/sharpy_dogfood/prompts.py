@@ -29,11 +29,13 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "Use an empty list and .append() each value individually.",
     ),
     (
-        r"SPY0301.*no exported symbol",
-        "Check that the imported symbol name matches exactly "
-        "(case-sensitive) and that the symbol is defined at the module's top level. "
+        r"SPY0301.*Module '(\w+)' has no exported symbol '(\w+)'",
+        "The module does not define the imported symbol. You must add the definition "
+        "of the missing symbol to the corresponding .spy file. Check that ALL symbols "
+        "imported in main.spy and other files actually exist in their source modules. "
+        "Symbol names are case-sensitive and must be defined at the module's top level. "
         "If the symbol is an @abstract class, try simplifying: remove the @abstract decorator "
-        "or move the class to the importing file. Abstract class cross-module imports can be unreliable. "
+        "or move the class to the importing file. "
         "IMPORTANT: Do NOT reference symbols that you did not define in the source file.",
     ),
     (
@@ -882,6 +884,25 @@ Generate a COMPLEX multi-file project:
 
     return f"""You are generating a MULTI-FILE Sharpy project for compiler testing (dogfooding).
 
+## CRITICAL: Response Format
+
+Your response MUST use this exact XML format for each file:
+
+<code file="module_name.spy">
+# code here
+</code>
+
+<code file="main.spy">
+# main entry point
+</code>
+
+<expected>
+expected output line 1
+expected output line 2
+</expected>
+
+Do NOT use markdown code blocks. Do NOT use any other file delimiter format.
+
 ## CRITICAL: Program Entry Point Requirement
 
 The `main.spy` file MUST have a `main()` function as its entry point:
@@ -1139,6 +1160,24 @@ def get_multifile_regeneration_prompt(
     remediation_hint = _get_remediation_hint(validation_error)
 
     return f"""You are regenerating a MULTI-FILE Sharpy project for compiler testing (dogfooding).
+
+## CRITICAL: Response Format
+
+Your response MUST use this exact XML format for each file:
+
+<code file="module_name.spy">
+# code here
+</code>
+
+<code file="main.spy">
+# main entry point
+</code>
+
+<expected>
+expected output
+</expected>
+
+Do NOT use markdown code blocks. Do NOT use any other file delimiter format.
 
 ## REGENERATION ATTEMPT {attempt}/{max_attempts}
 
