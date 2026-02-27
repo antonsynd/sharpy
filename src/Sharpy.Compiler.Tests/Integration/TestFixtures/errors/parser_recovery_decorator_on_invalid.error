@@ -1,1 +1,1 @@
-Decorators can only be applied to functions, classes, structs, properties, or field declarations
+Decorators cannot be applied to assignments
