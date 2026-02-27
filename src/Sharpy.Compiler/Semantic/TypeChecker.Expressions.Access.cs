@@ -55,6 +55,7 @@ internal partial class TypeChecker
                     {
                         var fieldType = GetVariableType(field);
                         _semanticInfo.SetExpressionType(memberAccess, fieldType);
+                        _semanticInfo.SetMemberAccessResolution(memberAccess, classTypeSym, field);
                         return fieldType;
                     }
 
@@ -75,6 +76,7 @@ internal partial class TypeChecker
                         m.Name == memberAccess.Member && m.IsStatic);
                     if (method != null)
                     {
+                        _semanticInfo.SetMemberAccessResolution(memberAccess, classTypeSym, method);
                         var paramTypes = method.Parameters.Select(p => p.Type).ToList();
                         return new FunctionType
                         {

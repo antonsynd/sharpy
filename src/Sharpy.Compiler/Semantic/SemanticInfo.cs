@@ -53,6 +53,12 @@ public class SemanticInfo : ISemanticQuery
     private readonly Dictionary<FunctionCall, List<SemanticType>> _inferredTypeArguments =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map member access expressions to their resolved symbols (type owner + member).
+    // Used to communicate TypeChecker's resolution to codegen so it doesn't re-resolve.
+    // Covers: ClassName.FIELD (static/const), ClassName.method (static), self.static_field.
+    private readonly Dictionary<MemberAccess, (TypeSymbol Owner, Symbol Member)> _memberAccessResolutions =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track functions that contain yield statements (generators)
     private readonly HashSet<FunctionDef> _generatorFunctions = new(ReferenceEqualityComparer.Instance);
 
@@ -148,6 +154,26 @@ public class SemanticInfo : ISemanticQuery
     public List<SemanticType>? GetInferredTypeArguments(FunctionCall call)
     {
         return _inferredTypeArguments.TryGetValue(call, out var types) ? types : null;
+    }
+
+    /// <summary>
+    /// Records that a MemberAccess was resolved to a specific member symbol owned by a type.
+    /// Used for static/const field access via type name (ClassName.FIELD) and
+    /// static method access via type name (ClassName.method).
+    /// Allows codegen to skip re-resolving the symbol table lookup.
+    /// </summary>
+    public void SetMemberAccessResolution(MemberAccess memberAccess, TypeSymbol owner, Symbol member)
+    {
+        _memberAccessResolutions[memberAccess] = (owner, member);
+    }
+
+    /// <summary>
+    /// Gets the resolved member access symbol, if the TypeChecker recorded one.
+    /// Returns null if this MemberAccess was not resolved via type name access.
+    /// </summary>
+    public (TypeSymbol Owner, Symbol Member)? GetMemberAccessResolution(MemberAccess memberAccess)
+    {
+        return _memberAccessResolutions.TryGetValue(memberAccess, out var resolution) ? resolution : null;
     }
 
     /// <summary>

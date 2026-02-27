@@ -523,50 +523,14 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Check for static/const field access via type name (e.g., MathHelper.PI -> MathHelper.PI)
-        if (memberAccess.Object is Identifier typeIdentifier)
+        // Check for static/const field or static method access via type name (e.g., MathHelper.PI)
+        // Uses resolution stored by TypeChecker in SemanticInfo to avoid re-resolving symbols.
+        var resolution = _context.SemanticInfo?.GetMemberAccessResolution(memberAccess);
+        if (resolution is { } res && res.Member is VariableSymbol resolvedField)
         {
-            var typeSym = _context.LookupSymbol(typeIdentifier.Name);
-            if (typeSym is TypeSymbol classSymbol
-                && classSymbol.TypeKind is Semantic.TypeKind.Class or Semantic.TypeKind.Struct)
-            {
-                var fieldSymbol = classSymbol.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
-                if (fieldSymbol != null && (fieldSymbol.IsConstant || fieldSymbol.IsStatic))
-                {
-                    var csharpTypeName = NameMangler.ToPascalCase(typeIdentifier.Name);
-                    var fqn = GetFullyQualifiedTypeName(classSymbol, typeIdentifier.Name);
-
-                    ExpressionSyntax typeExpr;
-                    if (fqn.Contains('.'))
-                    {
-                        var parts = fqn.Split('.');
-                        typeExpr = parts.Skip(1).Aggregate(
-                            (ExpressionSyntax)IdentifierName(parts[0]),
-                            (left, part) => MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName(part)));
-                    }
-                    else if (_currentTypeSymbol != null)
-                    {
-                        var moduleClassName = GetModuleClassName();
-                        typeExpr = MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName(moduleClassName),
-                            IdentifierName(csharpTypeName));
-                    }
-                    else
-                    {
-                        typeExpr = IdentifierName(csharpTypeName);
-                    }
-
-                    var codeGenInfo = GetCodeGenInfo(fieldSymbol);
-                    var fieldName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(memberAccess.Member);
-
-                    return MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        typeExpr,
-                        IdentifierName(fieldName));
-                }
-            }
+            var classSymbol = res.Owner;
+            var originalName = (memberAccess.Object as Identifier)?.Name ?? classSymbol.Name;
+            return GenerateStaticFieldAccess(classSymbol, originalName, resolvedField, memberAccess.Member);
         }
 
         // Rewrite self.static_field as ClassName.StaticField (C# disallows instance access to static members)
@@ -577,14 +541,7 @@ internal partial class RoslynEmitter
                 f.Name == memberAccess.Member && f.IsStatic);
             if (staticField != null)
             {
-                var csharpTypeName = NameMangler.ToPascalCase(_currentTypeSymbol.Name);
-                var codeGenInfo = GetCodeGenInfo(staticField);
-                var fieldName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(memberAccess.Member);
-
-                return MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(csharpTypeName),
-                    IdentifierName(fieldName));
+                return GenerateStaticFieldAccess(_currentTypeSymbol, _currentTypeSymbol.Name, staticField, memberAccess.Member);
             }
         }
 
@@ -1355,5 +1312,47 @@ internal partial class RoslynEmitter
                 yield return Argument(GenerateExpression(arg));
             }
         }
+    }
+
+    /// <summary>
+    /// Generates a static/const field access expression: TypeName.FieldName.
+    /// Handles cross-module FQN, same-file module class qualification, and simple name.
+    /// </summary>
+    private ExpressionSyntax GenerateStaticFieldAccess(
+        Semantic.TypeSymbol classSymbol, string originalName,
+        Semantic.VariableSymbol fieldSymbol, string memberName)
+    {
+        var csharpTypeName = NameMangler.ToPascalCase(originalName);
+        var fqn = GetFullyQualifiedTypeName(classSymbol, originalName);
+
+        ExpressionSyntax typeExpr;
+        if (fqn.Contains('.'))
+        {
+            var parts = fqn.Split('.');
+            typeExpr = parts.Skip(1).Aggregate(
+                (ExpressionSyntax)IdentifierName(parts[0]),
+                (left, part) => MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName(part)));
+        }
+        else if (_currentTypeSymbol != null)
+        {
+            var moduleClassName = GetModuleClassName();
+            typeExpr = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(moduleClassName),
+                IdentifierName(csharpTypeName));
+        }
+        else
+        {
+            typeExpr = IdentifierName(csharpTypeName);
+        }
+
+        var codeGenInfo = GetCodeGenInfo(fieldSymbol);
+        var fieldName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(memberName);
+
+        return MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            typeExpr,
+            IdentifierName(fieldName));
     }
 }
