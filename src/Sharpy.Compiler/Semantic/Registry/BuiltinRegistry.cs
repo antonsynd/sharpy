@@ -59,19 +59,23 @@ internal class BuiltinRegistry
         RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
         RegisterType("set", typeof(SharpyRT::Sharpy.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
 
-        // Tuple (generic type used by OperatorValidator/ProtocolValidator)
-        RegisterType("tuple", typeof(System.ValueTuple), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
+        // Tuple: registered for OperatorValidator/ProtocolValidator metadata lookup.
+        // typeParamCount=1 is nominal — real tuple arity is tracked by TupleType.ElementTypes,
+        // not by this TypeSymbol's TypeParameters. CLR type is System.ValueTuple (non-generic sentinel).
+        RegisterType(BuiltinNames.Tuple, typeof(System.ValueTuple), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
 
         // Dict view types (returned by dict.items(), .keys(), .values())
-        // These use Sharpy.Core types but are registered here for protocol validation
+        // ClrType is typeof(object) as a placeholder — codegen resolves actual Sharpy.Core types
+        // via CSharpTypeNames. Registered here for protocol validation metadata only.
         RegisterType(BuiltinNames.DictItemsView, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 2);
         RegisterType(BuiltinNames.DictKeyView, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 2);
         RegisterType(BuiltinNames.DictValuesView, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 2);
 
         // Iterator/iterable types (used by generators and reversed())
+        // ClrType is typeof(object) as a placeholder — codegen resolves via CSharpTypeNames.
         RegisterType(BuiltinNames.Iterator, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 1);
-        RegisterType("IEnumerable", typeof(System.Collections.IEnumerable), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
-        RegisterType("IEnumerator", typeof(System.Collections.IEnumerator), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
+        RegisterType(BuiltinNames.IEnumerable, typeof(System.Collections.IEnumerable), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
+        RegisterType(BuiltinNames.IEnumerator, typeof(System.Collections.IEnumerator), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
 
         // Special
         RegisterType("object", typeof(object), TypeKind.Class);

@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
+using static Sharpy.Compiler.Semantic.BuiltinNames;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -13,9 +14,9 @@ public class BuiltinReturnTypeInferenceTests
     {
         var argTypes = new List<SemanticType>
         {
-            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { SemanticType.Int } }
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Int } }
         };
-        var result = BuiltinReturnTypeInference.InferReturnType("len", argTypes, _typeInference);
+        var result = BuiltinReturnTypeInference.InferReturnType(Len, argTypes, _typeInference);
         Assert.NotNull(result);
         Assert.Equal(SemanticType.Int, result);
     }
@@ -24,7 +25,7 @@ public class BuiltinReturnTypeInferenceTests
     public void Hash_Returns_Int()
     {
         var argTypes = new List<SemanticType> { SemanticType.Int };
-        var result = BuiltinReturnTypeInference.InferReturnType("hash", argTypes, _typeInference);
+        var result = BuiltinReturnTypeInference.InferReturnType(Hash, argTypes, _typeInference);
         Assert.NotNull(result);
         Assert.Equal(SemanticType.Int, result);
     }
@@ -34,13 +35,13 @@ public class BuiltinReturnTypeInferenceTests
     {
         var argTypes = new List<SemanticType>
         {
-            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { SemanticType.Str } }
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Str } }
         };
-        var result = BuiltinReturnTypeInference.InferReturnType("reversed", argTypes, _typeInference);
+        var result = BuiltinReturnTypeInference.InferReturnType(Reversed, argTypes, _typeInference);
         Assert.NotNull(result);
         Assert.IsType<GenericType>(result);
         var gt = (GenericType)result!;
-        Assert.Equal("Iterator", gt.Name);
+        Assert.Equal(Iterator, gt.Name);
         Assert.Single(gt.TypeArguments);
         Assert.Equal(SemanticType.Str, gt.TypeArguments[0]);
     }
@@ -50,13 +51,13 @@ public class BuiltinReturnTypeInferenceTests
     {
         var argTypes = new List<SemanticType>
         {
-            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { SemanticType.Int } }
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Int } }
         };
-        var result = BuiltinReturnTypeInference.InferReturnType("sorted", argTypes, _typeInference);
+        var result = BuiltinReturnTypeInference.InferReturnType(Sorted, argTypes, _typeInference);
         Assert.NotNull(result);
         Assert.IsType<GenericType>(result);
         var gt = (GenericType)result!;
-        Assert.Equal("list", gt.Name);
+        Assert.Equal(List, gt.Name);
         Assert.Single(gt.TypeArguments);
         Assert.Equal(SemanticType.Int, gt.TypeArguments[0]);
     }
@@ -66,9 +67,9 @@ public class BuiltinReturnTypeInferenceTests
     {
         var argTypes = new List<SemanticType>
         {
-            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { SemanticType.Int } }
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Int } }
         };
-        var result = BuiltinReturnTypeInference.InferReturnType("min", argTypes, _typeInference);
+        var result = BuiltinReturnTypeInference.InferReturnType(Min, argTypes, _typeInference);
         Assert.NotNull(result);
         Assert.Equal(SemanticType.Int, result);
     }
@@ -78,9 +79,9 @@ public class BuiltinReturnTypeInferenceTests
     {
         var argTypes = new List<SemanticType>
         {
-            new GenericType { Name = "set", TypeArguments = new List<SemanticType> { SemanticType.Str } }
+            new GenericType { Name = Set, TypeArguments = new List<SemanticType> { SemanticType.Str } }
         };
-        var result = BuiltinReturnTypeInference.InferReturnType("max", argTypes, _typeInference);
+        var result = BuiltinReturnTypeInference.InferReturnType(Max, argTypes, _typeInference);
         Assert.NotNull(result);
         Assert.Equal(SemanticType.Str, result);
     }
@@ -97,7 +98,7 @@ public class BuiltinReturnTypeInferenceTests
     public void Len_With_Wrong_ArgCount_Returns_Null()
     {
         var argTypes = new List<SemanticType> { SemanticType.Int, SemanticType.Int };
-        var result = BuiltinReturnTypeInference.InferReturnType("len", argTypes, _typeInference);
+        var result = BuiltinReturnTypeInference.InferReturnType(Len, argTypes, _typeInference);
         Assert.Null(result);
     }
 }

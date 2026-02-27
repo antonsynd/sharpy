@@ -65,8 +65,8 @@ internal static class BuiltinMethodDefinitions
             BuiltinNames.DictKeyView => GetViewProtocols(),
             BuiltinNames.DictValuesView => GetViewProtocols(),
             BuiltinNames.Iterator => GetIteratorProtocols(),
-            "IEnumerable" => GetIteratorProtocols(),
-            "IEnumerator" => GetIteratorProtocols(),
+            BuiltinNames.IEnumerable => GetIteratorProtocols(),
+            BuiltinNames.IEnumerator => GetIteratorProtocols(),
             _ => new Dictionary<string, List<FunctionSymbol>>()
         };
     }
@@ -255,6 +255,20 @@ internal static class BuiltinMethodDefinitions
     /// only check for key presence, not the actual method signatures.
     /// </summary>
     private static Dictionary<string, List<FunctionSymbol>> MakeOperatorDict(params string[] dunderNames)
+        => MakeDunderDict(dunderNames);
+
+    /// <summary>
+    /// Creates a dictionary of protocol dunder names, each with a single placeholder FunctionSymbol.
+    /// Semantically distinct from operators but structurally identical.
+    /// </summary>
+    private static Dictionary<string, List<FunctionSymbol>> MakeProtocolDict(params string[] dunderNames)
+        => MakeDunderDict(dunderNames);
+
+    /// <summary>
+    /// Shared implementation for creating a dunder name → placeholder FunctionSymbol dictionary.
+    /// Used by both MakeOperatorDict and MakeProtocolDict.
+    /// </summary>
+    private static Dictionary<string, List<FunctionSymbol>> MakeDunderDict(string[] dunderNames)
     {
         var dict = new Dictionary<string, List<FunctionSymbol>>();
         foreach (var name in dunderNames)
@@ -270,14 +284,6 @@ internal static class BuiltinMethodDefinitions
             };
         }
         return dict;
-    }
-
-    /// <summary>
-    /// Creates a dictionary of protocol dunder names, each with a single placeholder FunctionSymbol.
-    /// </summary>
-    private static Dictionary<string, List<FunctionSymbol>> MakeProtocolDict(params string[] dunderNames)
-    {
-        return MakeOperatorDict(dunderNames); // Same structure
     }
 
     /// <summary>
