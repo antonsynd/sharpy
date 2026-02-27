@@ -1,0 +1,31 @@
+# Test: dict method type resolution through BuiltinMethodDefinitions
+# Exercises items(), keys(), values(), get() via the registry-based member access path
+def main():
+    d: dict[str, int] = {"x": 10, "y": 20, "z": 30}
+
+    # items() - iterates key-value pairs
+    for k, v in d.items():
+        print(k)
+        print(v)
+
+    # keys() - iterates keys
+    key_count: int = 0
+    for k in d.keys():
+        key_count += 1
+    print(key_count)
+
+    # values() - iterates values
+    total: int = 0
+    for v in d.values():
+        total += v
+    print(total)
+
+    # get(key, default) - 2-arg form returns V
+    val: int = d.get("x", 0)
+    print(val)
+    print(d.get("missing", -1))
+
+    # get(key) - 1-arg form returns V? (Optional)
+    result = d.get("y")
+    print(result)
+    print(d.get("nope"))

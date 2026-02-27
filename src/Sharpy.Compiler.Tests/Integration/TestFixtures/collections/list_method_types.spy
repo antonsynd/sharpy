@@ -1,0 +1,52 @@
+# Test: list method type resolution through BuiltinMethodDefinitions
+# Exercises append, insert, pop, remove, count, sort, reverse, copy, clear
+def main():
+    nums: list[int] = [3, 1, 2]
+
+    # append - returns void, mutates list
+    nums.append(4)
+    print(len(nums))
+    print(nums[3])
+
+    # insert - returns void, inserts at index
+    nums.insert(0, 0)
+    print(nums[0])
+    print(len(nums))
+
+    # pop() - no args, returns T
+    last: int = nums.pop()
+    print(last)
+    print(len(nums))
+
+    # pop(index) - returns T
+    first: int = nums.pop(0)
+    print(first)
+
+    # remove - removes first occurrence
+    nums.append(1)
+    print(len(nums))
+    nums.remove(1)
+    print(len(nums))
+
+    # count
+    nums.append(2)
+    print(nums.count(2))
+
+    # sort
+    nums.sort()
+    print(nums[0])
+    print(nums[1])
+    print(nums[2])
+
+    # reverse
+    nums.reverse()
+    print(nums[0])
+
+    # copy - returns list[T]
+    copied: list[int] = nums.copy()
+    print(len(copied))
+
+    # clear
+    nums.clear()
+    print(len(nums))
+    print(len(copied))
