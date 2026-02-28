@@ -1254,7 +1254,8 @@ public partial class Parser
             while (Current.Type == TokenType.Dot)
             {
                 Advance(); // consume '.'
-                if (Current.Type != TokenType.Identifier)
+                // Allow keyword tokens that can be union case names (e.g., Option.None)
+                if (Current.Type != TokenType.Identifier && Current.Type != TokenType.None)
                 {
                     throw ReportError($"Expected identifier after '.' in pattern, got '{Current.Value}'",
                         Current.Line, Current.Column,

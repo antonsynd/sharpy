@@ -873,11 +873,21 @@ internal partial class TypeChecker
                     var resolvedType = _typeResolver.ResolveTypeAnnotation(typePattern.Type);
                     if (resolvedType is UnknownType)
                     {
-                        AddError(
-                            $"Unknown type '{typePattern.Type.Name}' in type pattern",
-                            typePattern.LineStart, typePattern.ColumnStart,
-                            code: DiagnosticCodes.Semantic.UndefinedType,
-                            span: typePattern.Span);
+                        // Try to resolve as a union case (e.g., case Point(): when matching Shape)
+                        var unionCaseSymbol = TryResolveUnionCaseFromPattern(
+                            typePattern.Type.Name, scrutineeType);
+                        if (unionCaseSymbol != null)
+                        {
+                            _semanticInfo.SetPatternUnionCase(typePattern, unionCaseSymbol);
+                        }
+                        else
+                        {
+                            AddError(
+                                $"Unknown type '{typePattern.Type.Name}' in type pattern",
+                                typePattern.LineStart, typePattern.ColumnStart,
+                                code: DiagnosticCodes.Semantic.UndefinedType,
+                                span: typePattern.Span);
+                        }
                     }
                     else if (scrutineeType is not UnknownType
                         && !IsAssignable(resolvedType, scrutineeType)

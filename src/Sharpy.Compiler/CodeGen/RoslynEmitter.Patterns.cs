@@ -125,6 +125,19 @@ internal partial class RoslynEmitter
 
             case TypePattern typePattern:
                 {
+                    // Check if this is a union case pattern (e.g., case Point(): matching Shape)
+                    var unionCase = _context.SemanticInfo?.GetPatternUnionCase(typePattern);
+                    if (unionCase != null)
+                    {
+                        var caseTypeSyntax = BuildUnionCaseTypeSyntax(unionCase, scrutineeType);
+                        if (typePattern.BindingName != null)
+                        {
+                            var varName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true);
+                            return DeclarationPattern(caseTypeSyntax, SingleVariableDesignation(Identifier(varName)));
+                        }
+                        return DeclarationPattern(caseTypeSyntax, DiscardDesignation());
+                    }
+
                     var typeSyntax = _typeMapper.MapType(typePattern.Type);
                     if (typePattern.BindingName != null)
                     {
