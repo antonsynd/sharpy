@@ -862,6 +862,16 @@ internal partial class TypeChecker
                             code: DiagnosticCodes.Semantic.UndefinedType,
                             span: typePattern.Span);
                     }
+                    else if (scrutineeType is not UnknownType
+                        && !IsAssignable(resolvedType, scrutineeType)
+                        && !IsAssignable(scrutineeType, resolvedType))
+                    {
+                        AddError(
+                            $"Type pattern '{resolvedType.GetDisplayName()}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                            typePattern.LineStart, typePattern.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypePatternIncompatible,
+                            span: typePattern.Span);
+                    }
                     if (typePattern.BindingName != null)
                     {
                         var newSymbol = new VariableSymbol

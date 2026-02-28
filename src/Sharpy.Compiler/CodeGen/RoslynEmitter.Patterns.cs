@@ -141,11 +141,12 @@ internal partial class RoslynEmitter
                 {
                     var operatorToken = relational.Operator switch
                     {
-                        ">" => Token(SyntaxKind.GreaterThanToken),
-                        ">=" => Token(SyntaxKind.GreaterThanEqualsToken),
-                        "<" => Token(SyntaxKind.LessThanToken),
-                        "<=" => Token(SyntaxKind.LessThanEqualsToken),
-                        _ => Token(SyntaxKind.GreaterThanToken)
+                        RelationalOperator.GreaterThan => Token(SyntaxKind.GreaterThanToken),
+                        RelationalOperator.GreaterThanOrEqual => Token(SyntaxKind.GreaterThanEqualsToken),
+                        RelationalOperator.LessThan => Token(SyntaxKind.LessThanToken),
+                        RelationalOperator.LessThanOrEqual => Token(SyntaxKind.LessThanEqualsToken),
+                        _ => throw new System.InvalidOperationException(
+                            $"Unexpected relational operator: {relational.Operator}")
                     };
                     var valueExpr = GenerateExpression(relational.Value);
                     return RelationalPattern(operatorToken, valueExpr);

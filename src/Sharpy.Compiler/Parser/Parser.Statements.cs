@@ -1193,7 +1193,16 @@ public partial class Parser
     private RelationalPattern ParseRelationalPattern()
     {
         var startToken = Current;
-        var op = Current.Value;
+        var op = Current.Type switch
+        {
+            TokenType.Greater => RelationalOperator.GreaterThan,
+            TokenType.GreaterEqual => RelationalOperator.GreaterThanOrEqual,
+            TokenType.Less => RelationalOperator.LessThan,
+            TokenType.LessEqual => RelationalOperator.LessThanOrEqual,
+            _ => throw ReportError($"Expected relational operator, got '{Current.Value}'",
+                Current.Line, Current.Column,
+                DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan)
+        };
         Advance(); // consume operator
 
         var value = ParseUnary();

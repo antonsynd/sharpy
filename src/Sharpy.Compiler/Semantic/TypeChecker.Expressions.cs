@@ -265,10 +265,10 @@ internal partial class TypeChecker
             if (arm.Guard != null)
             {
                 var guardType = CheckExpression(arm.Guard);
-                if (guardType is not UnknownType && !IsAssignable(guardType, SemanticType.Bool))
+                if (!IsTruthTestable(guardType))
                 {
                     AddError(
-                        $"Guard expression must be a boolean, got '{guardType.GetDisplayName()}'",
+                        "Guard condition must be a boolean expression",
                         arm.Guard.LineStart, arm.Guard.ColumnStart,
                         code: DiagnosticCodes.Semantic.ConditionNotBoolean,
                         span: arm.Guard.Span);

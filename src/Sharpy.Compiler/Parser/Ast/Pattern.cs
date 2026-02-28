@@ -201,6 +201,17 @@ public record TuplePattern : Pattern
 }
 
 /// <summary>
+/// Relational operator for relational patterns.
+/// </summary>
+public enum RelationalOperator
+{
+    GreaterThan,
+    GreaterThanOrEqual,
+    LessThan,
+    LessThanOrEqual
+}
+
+/// <summary>
 /// Relational pattern (e.g., case > 0, case >= 10) - matches by comparison.
 /// </summary>
 /// <example>
@@ -211,9 +222,9 @@ public record TuplePattern : Pattern
 public record RelationalPattern : Pattern
 {
     /// <summary>
-    /// The comparison operator ("&gt;", "&gt;=", "&lt;", "&lt;=").
+    /// The comparison operator.
     /// </summary>
-    public string Operator { get; init; } = "";
+    public RelationalOperator Operator { get; init; }
 
     /// <summary>
     /// The value to compare against.
@@ -224,7 +235,6 @@ public record RelationalPattern : Pattern
     public override void ValidateInvariants()
     {
         base.ValidateInvariants();
-        Debug.Assert(!string.IsNullOrEmpty(Operator), "RelationalPattern.Operator cannot be null or empty");
         Debug.Assert(Value != null, "RelationalPattern.Value cannot be null");
     }
 
