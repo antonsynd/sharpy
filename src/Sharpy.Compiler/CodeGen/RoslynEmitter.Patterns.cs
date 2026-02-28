@@ -20,6 +20,7 @@ internal partial class RoslynEmitter
     private StatementSyntax GenerateMatch(MatchStatement matchStmt)
     {
         var scrutineeExpr = GenerateExpression(matchStmt.Scrutinee);
+        var scrutineeType = _context.SemanticInfo?.GetExpressionType(matchStmt.Scrutinee);
         var sections = new List<SwitchSectionSyntax>();
 
         foreach (var matchCase in matchStmt.Cases)
@@ -40,7 +41,7 @@ internal partial class RoslynEmitter
             // scope in C#, so __spy_pm_0, __spy_pm_1 etc. can safely repeat across arms.
             var memberGuards = new List<ExpressionSyntax>();
             int matchVarCounter = 0;
-            var pattern = GenerateMatchPattern(matchCase.Pattern, memberGuards, ref matchVarCounter);
+            var pattern = GenerateMatchPattern(matchCase.Pattern, memberGuards, ref matchVarCounter, scrutineeType);
             SwitchLabelSyntax caseLabel;
 
             var combinedGuard = CombineGuards(memberGuards, matchCase.Guard);
@@ -86,7 +87,11 @@ internal partial class RoslynEmitter
         return expr;
     }
 
-    private PatternSyntax GenerateMatchPattern(Pattern pattern, List<ExpressionSyntax> memberGuards, ref int matchVarCounter)
+    private PatternSyntax GenerateMatchPattern(
+        Pattern pattern,
+        List<ExpressionSyntax> memberGuards,
+        ref int matchVarCounter,
+        SemanticType? scrutineeType = null)
     {
         switch (pattern)
         {
@@ -146,10 +151,12 @@ internal partial class RoslynEmitter
 
             case OrPattern orPattern:
                 {
-                    // Check if any alternative is a MemberAccessPattern (needs guard-based approach)
-                    bool hasMemberAccess = orPattern.Alternatives.Any(a => a is MemberAccessPattern);
+                    // Check if any alternative is a non-union MemberAccessPattern (needs guard-based approach)
+                    bool hasNonUnionMemberAccess = orPattern.Alternatives.Any(a =>
+                        a is MemberAccessPattern ma
+                        && _context.SemanticInfo?.GetPatternUnionCase(ma) == null);
 
-                    if (hasMemberAccess)
+                    if (hasNonUnionMemberAccess)
                     {
                         // Use var binding + combined when guard with ||
                         var tempVarName = $"{PatternMatchTempPrefix}{matchVarCounter++}";
@@ -196,11 +203,13 @@ internal partial class RoslynEmitter
                         return VarPattern(SingleVariableDesignation(Identifier(tempVarName)));
                     }
 
-                    // Simple or-pattern: use C# `or` pattern syntax
-                    PatternSyntax result = GenerateMatchPattern(orPattern.Alternatives[0], memberGuards, ref matchVarCounter);
+                    // Simple or-pattern (including union case or-patterns): use C# `or` pattern syntax
+                    PatternSyntax result = GenerateMatchPattern(
+                        orPattern.Alternatives[0], memberGuards, ref matchVarCounter, scrutineeType);
                     for (int i = 1; i < orPattern.Alternatives.Length; i++)
                     {
-                        var right = GenerateMatchPattern(orPattern.Alternatives[i], memberGuards, ref matchVarCounter);
+                        var right = GenerateMatchPattern(
+                            orPattern.Alternatives[i], memberGuards, ref matchVarCounter, scrutineeType);
                         result = BinaryPattern(SyntaxKind.OrPattern, result, right);
                     }
                     return result;
@@ -208,6 +217,14 @@ internal partial class RoslynEmitter
 
             case MemberAccessPattern memberAccess:
                 {
+                    // Check if this is a union case pattern (e.g., Option.None)
+                    var unionCase = _context.SemanticInfo?.GetPatternUnionCase(memberAccess);
+                    if (unionCase != null)
+                    {
+                        var caseTypeSyntax = BuildUnionCaseTypeSyntax(unionCase, scrutineeType);
+                        return DeclarationPattern(caseTypeSyntax, DiscardDesignation());
+                    }
+
                     // Bind to a named variable and add a when-clause guard for equality.
                     // This handles both top-level and nested (e.g., inside TuplePattern) cases.
                     var tempVarName = $"{PatternMatchTempPrefix}{matchVarCounter++}";
@@ -241,6 +258,14 @@ internal partial class RoslynEmitter
 
             case PositionalPattern positionalPattern:
                 {
+                    // Check if this is a union case pattern
+                    var unionCase = _context.SemanticInfo?.GetPatternUnionCase(positionalPattern);
+                    if (unionCase != null)
+                    {
+                        return GenerateUnionCasePositionalPattern(
+                            positionalPattern, unionCase, scrutineeType, memberGuards, ref matchVarCounter);
+                    }
+
                     var typeSyntax = positionalPattern.Type != null
                         ? _typeMapper.MapType(positionalPattern.Type) : null;
 
@@ -303,6 +328,71 @@ internal partial class RoslynEmitter
         }
     }
 
+    /// <summary>
+    /// Generates a C# positional pattern for a union case with fields.
+    /// Emits: UnionName{TypeArgs}.CaseName(var field1, var field2)
+    /// Uses the Deconstruct method generated on the union case class.
+    /// </summary>
+    private PatternSyntax GenerateUnionCasePositionalPattern(
+        PositionalPattern positionalPattern,
+        TypeSymbol unionCaseSymbol,
+        SemanticType? scrutineeType,
+        List<ExpressionSyntax> memberGuards,
+        ref int matchVarCounter)
+    {
+        var caseTypeSyntax = BuildUnionCaseTypeSyntax(unionCaseSymbol, scrutineeType);
+
+        // Generate positional subpatterns using Deconstruct
+        var subPatterns = new SubpatternSyntax[positionalPattern.Elements.Length];
+        for (int i = 0; i < positionalPattern.Elements.Length; i++)
+        {
+            subPatterns[i] = Subpattern(GenerateMatchPattern(
+                positionalPattern.Elements[i], memberGuards, ref matchVarCounter));
+        }
+
+        return RecursivePattern()
+            .WithType(caseTypeSyntax)
+            .WithPositionalPatternClause(
+                PositionalPatternClause(SeparatedList(subPatterns)));
+    }
+
+    /// <summary>
+    /// Builds the C# type syntax for a union case nested class.
+    /// For non-generic unions: UnionName.CaseName
+    /// For generic unions: UnionName{T1, T2}.CaseName
+    /// Type arguments are substituted from the scrutinee type.
+    /// </summary>
+    private TypeSyntax BuildUnionCaseTypeSyntax(TypeSymbol unionCaseSymbol, SemanticType? scrutineeType)
+    {
+        var caseCSharpName = NameMangler.Transform(unionCaseSymbol.Name, NameContext.Type);
+        var unionParent = unionCaseSymbol.BaseType;
+
+        if (unionParent == null)
+        {
+            return IdentifierName(caseCSharpName);
+        }
+
+        var unionCSharpName = NameMangler.Transform(unionParent.Name, NameContext.Type);
+
+        // Build the union base type, with type arguments if generic
+        NameSyntax unionNameSyntax;
+        if (unionParent.IsGeneric && scrutineeType is GenericType gt
+            && gt.TypeArguments.Count > 0)
+        {
+            var typeArgsSyntax = gt.TypeArguments
+                .Select(t => _typeMapper.MapSemanticType(t))
+                .ToArray();
+            unionNameSyntax = GenericName(Identifier(unionCSharpName))
+                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+        }
+        else
+        {
+            unionNameSyntax = IdentifierName(unionCSharpName);
+        }
+
+        return QualifiedName(unionNameSyntax, IdentifierName(caseCSharpName));
+    }
+
     private ExpressionSyntax? CombineGuards(List<ExpressionSyntax> memberGuards, Expression? userGuardExpr)
     {
         ExpressionSyntax? combined = null;
@@ -327,13 +417,14 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateMatchExpression(MatchExpression matchExpr)
     {
         var scrutineeExpr = GenerateExpression(matchExpr.Scrutinee);
+        var scrutineeType = _context.SemanticInfo?.GetExpressionType(matchExpr.Scrutinee);
         var arms = new List<SwitchExpressionArmSyntax>();
 
         foreach (var arm in matchExpr.Arms)
         {
             var memberGuards = new List<ExpressionSyntax>();
             int matchVarCounter = 0;
-            var pattern = GenerateMatchPattern(arm.Pattern, memberGuards, ref matchVarCounter);
+            var pattern = GenerateMatchPattern(arm.Pattern, memberGuards, ref matchVarCounter, scrutineeType);
 
             var combinedGuard = CombineGuards(memberGuards, arm.Guard);
 
