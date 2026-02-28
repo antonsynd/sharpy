@@ -241,6 +241,7 @@ compound_stmt   ::= if_stmt
                   | struct_def
                   | interface_def
                   | enum_def
+                  | union_def
                   | decorated_def
 
 # -----------------------------------------------------------------------------
@@ -560,12 +561,19 @@ tagged_union_case
 case_fields     ::= case_field { ',' case_field } [ ',' ]
 case_field      ::= identifier ':' type_expr
 
+(* Union declarations (tagged unions / algebraic data types) *)
+union_def       ::= 'union' identifier [ type_params ] ':' NEWLINE union_body
+
+union_body      ::= INDENT union_case { union_case } DEDENT
+
+union_case      ::= 'case' identifier [ '(' case_fields ')' ] NEWLINE
+
 # -----------------------------------------------------------------------------
 # 2.16 Decorators
 # -----------------------------------------------------------------------------
 
 decorated_def   ::= decorator { decorator } ( func_def | async_func_def | class_def
-                                            | property_decl )
+                                            | struct_def | union_def | property_decl )
 
 decorator       ::= '@' qualified_name NEWLINE
                   (* Note: No parameterized decorators in current spec *)

@@ -3,6 +3,7 @@
 <!-- Phase 6+7 marked complete on 2026-02-20 (closes #209) -->
 <!-- Phase 9 marked complete on 2026-02-23 (generators fully implemented) -->
 <!-- Phase 8.1-8.5 marked complete on 2026-02-28 (all non-union patterns implemented) -->
+<!-- Phase 8.6 marked complete on 2026-02-28 (tagged union declarations implemented) -->
 <!-- Phase 10.2 marked complete on 2026-02-28 (await expressions implemented) -->
 
 # Sharpy Language Feature Completeness — Phased Roadmap
@@ -90,7 +91,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | ~~8.3~~ | ~~Type patterns with binding~~ | ~~M~~ | ~~Completed.~~ `case int() as n:` via `ParseTypePatternOrStructural()`; SPY0202/SPY0203 diagnostics; `DeclarationPattern` codegen. Tests: `match_type_basic_0001`, `match_type_binding_0004`, `match_type_binding_0016` |
 | ~~8.4~~ | ~~Relational patterns~~ | ~~M~~ | ~~Completed.~~ `case > 0:` via `ParseRelationalPattern()`; `RelationalPattern` AST + `RelationalOperator` enum; SPY0204 type mismatch diagnostic; C# relational pattern codegen. Tests: `match_relational_basic_0001`, `match_relational_combined_0001`, etc. |
 | ~~8.5~~ | ~~Property/positional patterns~~ | ~~M~~ | ~~Completed.~~ `case Point(x=0):` via `ParsePropertyPattern()`, `case Point(0, y):` via `ParsePositionalPattern()`; SPY0207/SPY0209 diagnostics; `RecursivePattern` with `PropertyPatternClause` codegen. Tests: `match_property_basic_0001`, `match_positional_basic_0001`, etc. |
-| 8.6 | Tagged union declarations (`union`) | XL | `UnionDef` AST exists in Future.cs; full parser + semantic + codegen needed. Lower to abstract base class + sealed nested case classes with `Deconstruct` methods |
+| ~~8.6~~ | ~~Tagged union declarations (`union`)~~ | ~~XL~~ | ~~Completed.~~ `union` keyword token + `TypeKind.Union`; `ParseUnionDef()` parser; `ResolveUnionDeclaration()` name resolution with case symbols; `CheckUnion()` type checking with field type resolution; `GenerateUnionDeclaration()` codegen lowering to abstract base + sealed nested classes with `Deconstruct` methods; generic union support with type parameter substitution; `SPY0124` (empty union), `SPY0365` (duplicate case) diagnostics. Tests: `union_basic`, `union_generic`, `union_field_types`, `union_single_case`, `union_no_fields`, `union_mixed_fields`, `union_duplicate_case`, `union_empty`. |
 | 8.7 | Union case patterns in match | M | `case Ok(value):` — `UnionCasePattern` AST exists but entirely unwired through parser/semantic/codegen. Depends on 8.6 |
 | 8.8 | Exhaustiveness checking | L | Only `WildcardPattern` recognized as exhaustive in control flow; no validator or diagnostic for non-exhaustive matches over enums/bool/unions |
 
@@ -196,7 +197,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 ```
 
 - ✅ Phases 6, 7, 9 complete
-- **Phase 8 is 5/8 complete** — 8.1–8.5 (all pattern types) done; 8.6 (tagged unions), 8.7 (union case patterns), 8.8 (exhaustiveness) remain
+- **Phase 8 is 6/8 complete** — 8.1–8.6 (all pattern types + tagged unions) done; 8.7 (union case patterns), 8.8 (exhaustiveness) remain
 - **Phase 10 is 2/6 complete** — 10.1 (`async def`) and 10.2 (`await`) done; 10.3 (`async for`) is next
 - Phases 8 and 10 can proceed in parallel (independent tracks)
 - Phases 11–12 can begin once 10 is done (or in parallel with 10 if capacity allows)
@@ -207,7 +208,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 1. ~~**Phase 6 first** — fixes correctness issues in shipped features; no new syntax risk~~ ✅ Done
 2. ~~**Phase 7 before 8** — spread/unpacking is foundational; tagged union destruction uses similar patterns~~ ✅ Done
-3. **Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy. **8.1–8.5 complete** (match expressions + all non-union patterns). Remaining: 8.6 tagged unions (XL), 8.7 union case patterns (M), 8.8 exhaustiveness (L).
+3. **Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy. **8.1–8.6 complete** (match expressions + all non-union patterns + tagged union declarations). Remaining: 8.7 union case patterns (M), 8.8 exhaustiveness (L).
 4. ~~**Phase 9 before 10** — generators are prerequisite for async generators~~ ✅ Done
 5. **Phase 10 completes the async story** — last major syntax feature. Can proceed in parallel with Phase 8. 10.1 (`async def`) and 10.2 (`await`) complete. 10.3 (`async for`) and 10.4 (`async with`) are next — straightforward `await foreach`/`await using` mappings. 10.5 (async generators) deliberately blocked with SPY error pending implementation.
 6. **Phases 11–12 are polish** — advanced function params, type system, and gap-filling
