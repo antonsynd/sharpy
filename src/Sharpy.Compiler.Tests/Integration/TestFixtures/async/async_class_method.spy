@@ -7,7 +7,7 @@ class Greeter:
     async def greet(self) -> str:
         return "hello " + self.name
 
-def main():
+async def main():
     g: Greeter = Greeter("world")
-    result: str = g.greet().Result
+    result: str = await g.greet()
     print(result)
