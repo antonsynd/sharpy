@@ -1298,7 +1298,15 @@ public partial class Parser
 
     private Pattern ParseTypePatternOrStructural(Token typeToken)
     {
-        var typeAnnotation = new Ast.TypeAnnotation { Name = typeToken.Value };
+        var typeAnnotation = new Ast.TypeAnnotation
+        {
+            Name = typeToken.Value,
+            LineStart = typeToken.Line,
+            ColumnStart = typeToken.Column,
+            LineEnd = typeToken.Line,
+            ColumnEnd = typeToken.Column + typeToken.Value.Length,
+            Span = GetSpanFromToken(typeToken)
+        };
         Expect(TokenType.LeftParen);
 
         // Check what's inside the parentheses

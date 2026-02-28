@@ -260,6 +260,7 @@ internal partial class TypeChecker
         foreach (var arm in matchExpr.Arms)
         {
             _symbolTable.EnterScope("match-arm");
+            _controlFlowDepth++;
             CheckPattern(arm.Pattern, scrutineeType);
 
             if (arm.Guard != null)
@@ -298,6 +299,7 @@ internal partial class TypeChecker
                 }
             }
 
+            _controlFlowDepth--;
             _symbolTable.ExitScope();
         }
 

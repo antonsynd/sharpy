@@ -168,14 +168,22 @@ internal partial class RoslynEmitter
                                 orGuard = null;
                                 break;
                             }
-                            else
+                            else if (alt is LiteralPattern litPat)
                             {
                                 // For literals in mixed or-patterns, generate equality comparison
-                                var altExpr = GenerateExpression(((LiteralPattern)alt).Literal);
+                                var altExpr = GenerateExpression(litPat.Literal);
                                 comparison = BinaryExpression(
                                     SyntaxKind.EqualsExpression,
                                     IdentifierName(tempVarName),
                                     altExpr);
+                            }
+                            else
+                            {
+                                _context.AddError(
+                                    $"Unsupported pattern type '{alt.GetType().Name}' in mixed or-pattern",
+                                    DiagnosticCodes.CodeGen.UnsupportedFeature,
+                                    alt.LineStart, alt.ColumnStart);
+                                continue;
                             }
                             orGuard = orGuard == null
                                 ? comparison

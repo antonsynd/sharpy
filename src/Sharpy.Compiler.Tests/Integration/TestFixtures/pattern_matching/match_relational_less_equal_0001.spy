@@ -1,0 +1,18 @@
+def classify(n: int) -> str:
+    match n:
+        case <= 0:
+            return "non-positive"
+        case <= 50:
+            return "low"
+        case <= 100:
+            return "high"
+        case _:
+            return "very high"
+
+def main():
+    print(classify(-10))
+    print(classify(0))
+    print(classify(25))
+    print(classify(50))
+    print(classify(75))
+    print(classify(101))

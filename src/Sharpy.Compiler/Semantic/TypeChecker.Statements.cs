@@ -978,7 +978,7 @@ internal partial class TypeChecker
                             }
                             else
                             {
-                                CheckPattern(field.Pattern, fieldSymbol.Type ?? scrutineeType);
+                                CheckPattern(field.Pattern, fieldSymbol.Type);
                             }
                         }
                         else
@@ -1021,7 +1021,7 @@ internal partial class TypeChecker
                     {
                         for (int i = 0; i < positionalPattern.Elements.Length; i++)
                         {
-                            var fieldType = typeSymbol.Fields[i].Type ?? scrutineeType;
+                            var fieldType = typeSymbol.Fields[i].Type;
                             CheckPattern(positionalPattern.Elements[i], fieldType);
                         }
                     }

@@ -1,0 +1,17 @@
+def classify(n: int) -> str:
+    match n:
+        case < 0:
+            return "negative"
+        case < 10:
+            return "single digit"
+        case < 100:
+            return "double digit"
+        case _:
+            return "large"
+
+def main():
+    print(classify(-5))
+    print(classify(0))
+    print(classify(7))
+    print(classify(42))
+    print(classify(100))
