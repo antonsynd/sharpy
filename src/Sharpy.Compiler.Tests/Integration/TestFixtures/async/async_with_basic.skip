@@ -1,1 +1,1 @@
-Requires IAsyncDisposable support. __enter__/__exit__ maps to IDisposable, not IAsyncDisposable. Needs __aenter__/__aexit__ or async context manager protocol.
+Requires IAsyncDisposable support. __enter__/__exit__ maps to IDisposable, not IAsyncDisposable. Needs __aenter__/__aexit__ or async context manager protocol. See #248.

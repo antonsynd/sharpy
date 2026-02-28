@@ -1,0 +1,1 @@
+Enum member access patterns not yet supported in match statements. See #247.
