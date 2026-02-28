@@ -1,0 +1,15 @@
+union Data:
+    case IntVal(value: int)
+    case StrVal(value: str)
+    case FloatVal(value: float)
+    case BoolVal(value: bool)
+
+def main():
+    a: Data = Data.IntVal(42)
+    b: Data = Data.StrVal("hello")
+    c: Data = Data.FloatVal(3.14)
+    d: Data = Data.BoolVal(True)
+    print(isinstance(a, Data))
+    print(isinstance(b, Data))
+    print(isinstance(c, Data))
+    print(isinstance(d, Data))

@@ -1,0 +1,12 @@
+union Color:
+    case Red()
+    case Green()
+    case Blue()
+
+def main():
+    r: Color = Color.Red()
+    g: Color = Color.Green()
+    b: Color = Color.Blue()
+    print(isinstance(r, Color))
+    print(isinstance(g, Color))
+    print(isinstance(b, Color))

@@ -1,0 +1,12 @@
+union Message:
+    case Text(content: str)
+    case Image(url: str, width: int, height: int)
+    case Ping()
+
+def main():
+    t: Message = Message.Text("hello")
+    i: Message = Message.Image("pic.png", 800, 600)
+    p: Message = Message.Ping()
+    print(isinstance(t, Message))
+    print(isinstance(i, Message))
+    print(isinstance(p, Message))

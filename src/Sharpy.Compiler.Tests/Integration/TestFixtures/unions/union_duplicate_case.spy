@@ -1,0 +1,6 @@
+union Shape:
+    case Circle(radius: float)
+    case Circle(diameter: float)
+
+def main():
+    pass

@@ -1,0 +1,6 @@
+union Wrapper:
+    case Value(data: int)
+
+def main():
+    w: Wrapper = Wrapper.Value(100)
+    print(isinstance(w, Wrapper))

@@ -1,0 +1,5 @@
+union Empty:
+    pass
+
+def main():
+    pass
