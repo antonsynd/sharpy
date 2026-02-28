@@ -1,0 +1,13 @@
+class Resource:
+    def __init__(self):
+        pass
+
+    def __enter__(self) -> Resource:
+        return self
+
+    def __exit__(self):
+        pass
+
+def main():
+    async with Resource() as r:
+        print(r)

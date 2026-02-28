@@ -1,0 +1,1 @@
+Requires IAsyncEnumerable support (async generators, Phase 10.5). list[T] does not implement IAsyncEnumerable<T>.

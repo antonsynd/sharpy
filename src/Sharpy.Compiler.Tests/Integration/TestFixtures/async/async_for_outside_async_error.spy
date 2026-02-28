@@ -1,0 +1,6 @@
+async def get_items() -> list[int]:
+    return [1, 2, 3]
+
+def main():
+    async for item in get_items():
+        print(item)
