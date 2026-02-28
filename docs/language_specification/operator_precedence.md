@@ -6,24 +6,25 @@ Operators listed from highest to lowest precedence:
 |------------|-----------|-------------|---------------|
 | 1 | `()`, `[]`, `.`, `?.` | Grouping, indexing, member access | Left-to-right |
 | 2 | `**` | Exponentiation | **Right-to-left** |
-| 3 | `+x`, `-x`, `~x` | Unary operators | Right-to-left (unary) |
-| 4 | `*`, `/`, `//`, `%` | Multiplicative | Left-to-right |
-| 5 | `+`, `-` | Additive | Left-to-right |
-| 6 | `<<`, `>>` | Bitwise shifts | Left-to-right |
-| 7 | `&` | Bitwise AND | Left-to-right |
-| 8 | `^` | Bitwise XOR | Left-to-right |
-| 9 | `\|` | Bitwise OR | Left-to-right |
-| 10 | `\|>` | Pipe operator | Left-to-right |
-| 11 | `as`, `to` | Type cast, type coercion | Left-to-right |
-| 12 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons | **Chained** (see below) |
-| 13 | `not` | Logical NOT | Right-to-left (unary) |
-| 14 | `and` | Logical AND | Left-to-right |
-| 15 | `or` | Logical OR | Left-to-right |
-| 16 | `??` | Null coalescing | Left-to-right |
-| 17 | `try`, `maybe` | Result/Optional wrapping expressions | Right-to-left (prefix) |
-| 18 | `x if c else y` | Conditional expression | Right-to-left |
-| 19 | `lambda` | Lambda expression | Right-to-left |
-| 20 | `:=` | Walrus (assignment expression) | Right-to-left |
+| 3 | `await x` | Await expression | Right-to-left (prefix) |
+| 4 | `+x`, `-x`, `~x` | Unary operators | Right-to-left (unary) |
+| 5 | `*`, `/`, `//`, `%` | Multiplicative | Left-to-right |
+| 6 | `+`, `-` | Additive | Left-to-right |
+| 7 | `<<`, `>>` | Bitwise shifts | Left-to-right |
+| 8 | `&` | Bitwise AND | Left-to-right |
+| 9 | `^` | Bitwise XOR | Left-to-right |
+| 10 | `\|` | Bitwise OR | Left-to-right |
+| 11 | `\|>` | Pipe operator | Left-to-right |
+| 12 | `as`, `to` | Type cast, type coercion | Left-to-right |
+| 13 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons | **Chained** (see below) |
+| 14 | `not` | Logical NOT | Right-to-left (unary) |
+| 15 | `and` | Logical AND | Left-to-right |
+| 16 | `or` | Logical OR | Left-to-right |
+| 17 | `??` | Null coalescing | Left-to-right |
+| 18 | `try`, `maybe` | Result/Optional wrapping expressions | Right-to-left (prefix) |
+| 19 | `x if c else y` | Conditional expression | Right-to-left |
+| 20 | `lambda` | Lambda expression | Right-to-left |
+| 21 | `:=` | Walrus (assignment expression) | Right-to-left |
 
 ## Associativity Details
 

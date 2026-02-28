@@ -374,6 +374,10 @@ closed_pattern  ::= literal_pattern
                   | class_pattern
                   | tuple_pattern
                   | mapping_pattern
+                  | relational_pattern
+
+relational_pattern
+                ::= ( '<' | '<=' | '>' | '>=' ) expression
 
 literal_pattern ::= INT_LITERAL | FLOAT_LITERAL | STRING_LITERAL
                   | BOOL_LITERAL | NONE_LITERAL
@@ -389,7 +393,7 @@ mapping_pattern_item
                 ::= literal_pattern ':' pattern
                   | identifier '=' pattern      (* property pattern *)
 
-class_pattern   ::= qualified_name '(' [ pattern_args ] ')'
+class_pattern   ::= qualified_name '(' [ pattern_args ] ')' [ 'as' identifier ]
 
 pattern_args    ::= positional_patterns [ ',' keyword_patterns ]
                   | keyword_patterns
@@ -959,24 +963,25 @@ Resolution: The [] suffix is only valid in type annotation context
 (*
  1. () [] . ?.                   Grouping, subscript, attribute, null-conditional
  2. **                           Exponentiation (right-associative)
- 3. +x -x ~x                     Unary plus, minus, bitwise NOT
- 4. * / // %                     Multiplicative
- 5. + -                          Additive
- 6. << >>                        Shifts
- 7. to                           Type coercion
- 8. &                            Bitwise AND
- 9. ^                            Bitwise XOR
-10. |                            Bitwise OR
-11. == != < <= > >= is in        Comparisons (chainable)
-12. not                          Logical NOT
-13. and                          Logical AND
-14. or                           Logical OR
-15. ??                           Null coalescing
-16. |>                           Pipe (left-to-right chaining)
-17. try maybe                    Result/Optional wrapping
-18. :=                           Walrus operator (named expression)
-19. x if c else y                Conditional
-20. lambda                       Lambda
+ 3. await                        Await expression (prefix, async only)
+ 4. +x -x ~x                    Unary plus, minus, bitwise NOT
+ 5. * / // %                     Multiplicative
+ 6. + -                          Additive
+ 7. << >>                        Shifts
+ 8. to                           Type coercion
+ 9. &                            Bitwise AND
+10. ^                            Bitwise XOR
+11. |                            Bitwise OR
+12. == != < <= > >= is in        Comparisons (chainable)
+13. not                          Logical NOT
+14. and                          Logical AND
+15. or                           Logical OR
+16. ??                           Null coalescing
+17. |>                           Pipe (left-to-right chaining)
+18. try maybe                    Result/Optional wrapping
+19. :=                           Walrus operator (named expression)
+20. x if c else y                Conditional
+21. lambda                       Lambda
 *)
 
 # =============================================================================

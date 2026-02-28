@@ -3,7 +3,6 @@
 ## Match Statement
 
 ```python
-# Currently implemented patterns
 match value:
     case 0:
         print("zero")
@@ -13,26 +12,24 @@ match value:
         print(f"tuple: ({x}, {y})")
     case Color.RED:
         print("red")
-    case n if n > 0:
+    case "a" | "b":
+        print("a or b")
+    case > 100:
+        print("large")
+    case int() as n if n > 0:
         print(f"positive: {n}")
+    case str() as s:
+        print(f"string: {s}")
     case _:
         print("other")
-
-# Type patterns with binding (Phase 8 — not yet implemented)
-# match value:
-#     case int() as n if n > 0:
-#         return "positive integer"
-#     case str() as s:
-#         return f"string: {s}"
 ```
 
 *Implementation*
-- *✅ Match statement maps to C# `switch` statement. Currently supports 5 pattern types + guard clauses (see [Supported Patterns](#supported-patterns) below).*
+- *✅ Match statement maps to C# `switch` statement. Supports literal, wildcard, binding, tuple, member access, or-pattern, relational, type, property, and positional patterns + guard clauses (see [Supported Patterns](#supported-patterns) below).*
 
 ## Match Statement vs Match Expression
 
-> **Implementation status:** The match **expression** form is not yet implemented (planned for Phase 8, v0.2.2).
-> Only the match **statement** form is currently available.
+> **Implementation status:** Both match **statement** and match **expression** forms are implemented.
 
 Sharpy supports both statement and expression forms of `match`, corresponding to C#'s switch statement and switch expression:
 
@@ -150,7 +147,7 @@ if condition:
 
 *Implementation*
 - *Statement form: ✅ Implemented — C# `switch` statement*
-- *Expression form: ❌ Not yet implemented — will map to C# `switch` expression (Phase 8)*
+- *Expression form: ✅ Implemented — C# `switch` expression*
 
 ## Supported Patterns
 
@@ -162,15 +159,17 @@ if condition:
 | Tuple | `case (0, 0):` | Direct support | ✅ Implemented |
 | Member access | `case Color.RED:` | `case Color.RED:` | ✅ Implemented |
 | Guard clause | `case x if x > 0:` | `when` clause | ✅ Implemented |
-| Type with binding | `case int() as n:` | `case int n:` | ❌ Not yet implemented (Phase 8) |
-| Or | `case "a" \| "b":` | `case "a" or "b":` | ❌ Not yet implemented (Phase 8) |
-| Property | `case Point(x=0):` | `case Point { X: 0 }:` | ❌ Not yet implemented (Phase 8) |
-| Positional | `case Point(0, y):` | Positional pattern | ❌ Not yet implemented (Phase 8) |
-| Relational | `case > 0:` | Direct support (C# 9) | ❌ Not yet implemented (Phase 8) |
+| Type with binding | `case int() as n:` | `case int n:` | ✅ Implemented |
+| Or | `case "a" \| "b":` | `case "a" or "b":` | ✅ Implemented |
+| Property | `case Point(x=0):` | `case Point { X: 0 }:` | ✅ Implemented |
+| Positional | `case Point(0, y):` | `case Point { X: 0 }:` (mapped via fields) | ✅ Implemented |
+| Relational | `case > 0:` | Direct support (C# 9) | ✅ Implemented |
 
 *Implementation*
-- *Implemented patterns (Literal, Wildcard, Binding, Tuple, MemberAccess) map to C# 9.0 pattern matching. Guard clauses (`if expr`) are supported on any implemented pattern via C# `when` clauses.*
-- *Remaining patterns (Type+binding, Or, Property, Positional, Relational) are planned for Phase 8 (v0.2.2). AST nodes exist as placeholders but are not yet wired into the parser or codegen.*
+- *All pattern types map to C# 9.0 pattern matching. Guard clauses (`if expr`) are supported on any pattern via C# `when` clauses.*
+- *Or-patterns use C# `or` pattern (`BinaryPattern`). Binding patterns inside or-patterns are rejected (SPY0359) — use wildcard `_` instead.*
+- *Relational patterns use C# `RelationalPattern` and require numeric scrutinee types.*
+- *Positional patterns are mapped to property patterns using field declaration order (no `Deconstruct` required).*
 
 ## Tuple Patterns
 
@@ -188,8 +187,6 @@ match point:
 
 ## Property Patterns
 
-> **Not yet implemented** — planned for Phase 8 (v0.2.2).
-
 ```python
 match shape:
     case Point(x=0, y=0):
@@ -198,14 +195,13 @@ match shape:
         print(f"On X-axis at {x}")
 ```
 
+*Implementation: ✅ Implemented — maps to C# recursive pattern with property clause (`case Point { X: 0, Y: 0 }`). Property names are mangled to PascalCase.*
+
 ## Positional Patterns
 
-> **Not yet implemented** — planned for Phase 8 (v0.2.2).
-
-For types with a `Deconstruct` method (like records or types with explicit deconstruction), positional patterns extract values in order:
+Positional patterns match fields by declaration order (no `Deconstruct` method required):
 
 ```python
-# Assuming Point has Deconstruct(out float x, out float y)
 match point:
     case Point(0, 0):              # Positional - matches x=0, y=0
         print("Origin")
@@ -215,24 +211,31 @@ match point:
         print(f"On Y-axis at {y}")
     case Point(x, y):              # Positional with both bound
         print(f"Point at ({x}, {y})")
+```
 
-# Type pattern with binding (no Deconstruct needed)
+*Implementation: ✅ Implemented — positional patterns are mapped to C# property patterns using field declaration order. The element count must match the number of fields on the type (SPY0363).*
+
+## Type Patterns with Binding
+
+```python
 match value:
     case int() as n:               # Type check and bind
         print(f"Integer: {n}")
     case str() as s if len(s) > 0: # Type, bind, and guard
         print(f"Non-empty string: {s}")
+    case int():                    # Type check only (no binding)
+        print("Some integer")
 ```
 
-> **Note:** All three pattern forms above (Property, Positional, Type with binding) are **not yet implemented** — planned for Phase 8 (v0.2.2).
+*Implementation: ✅ Implemented — maps to C# declaration pattern (`case int n:`) with binding, or type pattern with discard designation when no binding is needed.*
 
 **Pattern Forms:**
 
 | Pattern | Syntax | Use Case | Status |
 |---------|--------|----------|--------|
-| Property | `Point(x=0, y=y)` | Extract by property name | ❌ Phase 8 |
-| Positional | `Point(0, y)` | Extract by position (requires `Deconstruct`) | ❌ Phase 8 |
-| Type with binding | `int() as n` | Check type and bind entire value | ❌ Phase 8 |
+| Property | `Point(x=0, y=y)` | Extract by property name | ✅ Implemented |
+| Positional | `Point(0, y)` | Extract by position (field order) | ✅ Implemented |
+| Type with binding | `int() as n` | Check type and bind entire value | ✅ Implemented |
 
 ## Exhaustiveness Checking
 
