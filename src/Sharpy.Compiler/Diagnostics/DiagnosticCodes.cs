@@ -197,6 +197,7 @@ public static class DiagnosticCodes
         public const string TypePatternIncompatible = "SPY0361";
         public const string PropertyPatternUnknownField = "SPY0362";
         public const string PositionalPatternCountMismatch = "SPY0363";
+        public const string UnsupportedPatternInMemberAccessOr = "SPY0364";
     }
 
     /// <summary>

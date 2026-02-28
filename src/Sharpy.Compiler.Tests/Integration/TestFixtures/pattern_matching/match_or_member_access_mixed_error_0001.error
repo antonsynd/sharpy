@@ -1,0 +1,1 @@
+Only literal, member access, and wildcard patterns can be combined with member access patterns in or-patterns

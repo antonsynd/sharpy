@@ -41,22 +41,7 @@ internal partial class RoslynEmitter
             var pattern = GenerateMatchPattern(matchCase.Pattern, memberGuards, ref matchVarCounter);
             SwitchLabelSyntax caseLabel;
 
-            // Combine all member access guards into a single expression
-            ExpressionSyntax? combinedGuard = null;
-            foreach (var guard in memberGuards)
-            {
-                combinedGuard = combinedGuard == null
-                    ? guard
-                    : BinaryExpression(SyntaxKind.LogicalAndExpression, combinedGuard, guard);
-            }
-
-            if (matchCase.Guard != null)
-            {
-                var userGuard = GenerateExpression(matchCase.Guard);
-                combinedGuard = combinedGuard == null
-                    ? userGuard
-                    : BinaryExpression(SyntaxKind.LogicalAndExpression, combinedGuard, userGuard);
-            }
+            var combinedGuard = CombineGuards(memberGuards, matchCase.Guard);
 
             // WildcardPattern without guard → idiomatic `default:` label
             if (matchCase.Pattern is WildcardPattern && combinedGuard == null)
@@ -301,6 +286,27 @@ internal partial class RoslynEmitter
         }
     }
 
+    private ExpressionSyntax? CombineGuards(List<ExpressionSyntax> memberGuards, Expression? userGuardExpr)
+    {
+        ExpressionSyntax? combined = null;
+        foreach (var guard in memberGuards)
+        {
+            combined = combined == null
+                ? guard
+                : BinaryExpression(SyntaxKind.LogicalAndExpression, combined, guard);
+        }
+
+        if (userGuardExpr != null)
+        {
+            var userGuard = GenerateExpression(userGuardExpr);
+            combined = combined == null
+                ? userGuard
+                : BinaryExpression(SyntaxKind.LogicalAndExpression, combined, userGuard);
+        }
+
+        return combined;
+    }
+
     private ExpressionSyntax GenerateMatchExpression(MatchExpression matchExpr)
     {
         var scrutineeExpr = GenerateExpression(matchExpr.Scrutinee);
@@ -312,22 +318,7 @@ internal partial class RoslynEmitter
             int matchVarCounter = 0;
             var pattern = GenerateMatchPattern(arm.Pattern, memberGuards, ref matchVarCounter);
 
-            // Combine member access guards
-            ExpressionSyntax? combinedGuard = null;
-            foreach (var guard in memberGuards)
-            {
-                combinedGuard = combinedGuard == null
-                    ? guard
-                    : BinaryExpression(SyntaxKind.LogicalAndExpression, combinedGuard, guard);
-            }
-
-            if (arm.Guard != null)
-            {
-                var userGuard = GenerateExpression(arm.Guard);
-                combinedGuard = combinedGuard == null
-                    ? userGuard
-                    : BinaryExpression(SyntaxKind.LogicalAndExpression, combinedGuard, userGuard);
-            }
+            var combinedGuard = CombineGuards(memberGuards, arm.Guard);
 
             var resultExpr = GenerateExpression(arm.Result);
 

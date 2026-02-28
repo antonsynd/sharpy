@@ -1,0 +1,12 @@
+class Color:
+    RED: int = 1
+    BLUE: int = 2
+
+def classify(x: int) -> str:
+    match x:
+        case int() | Color.RED:
+            return "mixed"
+        case _:
+            return "other"
+
+print(classify(1))

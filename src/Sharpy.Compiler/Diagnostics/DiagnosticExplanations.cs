@@ -846,6 +846,11 @@ public static class DiagnosticExplanations
             "class Point:\n    x: int\n    y: int\nmatch p:\n    case Point(1, 2, 3):  # Point has 2 fields, got 3\n        ...",
             "Provide the correct number of positional elements matching the type's fields.");
 
+        Add(dict, DiagnosticCodes.Semantic.UnsupportedPatternInMemberAccessOr, "Unsupported pattern mixed with member access in or-pattern", "Semantic",
+            "An or-pattern that contains a member access pattern also contains a pattern type that cannot be combined with it. Only literal, member access, and wildcard patterns can be mixed with member access patterns in or-patterns.",
+            "match x:\n    case int() | Color.RED:  # type pattern cannot mix with member access\n        ...",
+            "Use only literal values, member access, or wildcard patterns alongside member access patterns:\nmatch x:\n    case 1 | Color.RED:\n        ...");
+
 
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 

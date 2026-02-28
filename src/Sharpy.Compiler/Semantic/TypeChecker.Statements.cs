@@ -916,6 +916,7 @@ internal partial class TypeChecker
 
             case OrPattern orPattern:
                 {
+                    bool hasMemberAccess = orPattern.Alternatives.Any(a => a is MemberAccessPattern);
                     foreach (var alt in orPattern.Alternatives)
                     {
                         if (alt is BindingPattern)
@@ -924,6 +925,14 @@ internal partial class TypeChecker
                                 "Binding patterns are not allowed inside or-patterns",
                                 alt.LineStart, alt.ColumnStart,
                                 code: DiagnosticCodes.Semantic.BindingInOrPattern,
+                                span: alt.Span);
+                        }
+                        else if (hasMemberAccess && alt is not MemberAccessPattern && alt is not LiteralPattern && alt is not WildcardPattern)
+                        {
+                            AddError(
+                                "Only literal, member access, and wildcard patterns can be combined with member access patterns in or-patterns",
+                                alt.LineStart, alt.ColumnStart,
+                                code: DiagnosticCodes.Semantic.UnsupportedPatternInMemberAccessOr,
                                 span: alt.Span);
                         }
                         else
