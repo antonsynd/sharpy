@@ -577,16 +577,15 @@ internal partial class RoslynEmitter
             };
         }
 
-        // For non-dunder generator methods, wrap return type T in IEnumerable<T>
+        // For non-dunder generator methods, wrap return type T in IEnumerable<T> or IAsyncEnumerable<T>
+        bool isAsync = func.IsAsync;
         if (_isCurrentMethodGenerator && !DunderMapping.IsDunderMethod(func.Name))
         {
-            returnType = WrapInIEnumerable(returnType);
+            returnType = isAsync ? WrapInIAsyncEnumerable(returnType) : WrapInIEnumerable(returnType);
         }
-
-        // For async methods, wrap return type in Task<T> or Task
-        bool isAsync = func.IsAsync;
-        if (isAsync)
+        else if (isAsync)
         {
+            // For non-generator async methods, wrap return type in Task<T> or Task
             if (func.ReturnType != null)
             {
                 returnType = WrapInTask(returnType);

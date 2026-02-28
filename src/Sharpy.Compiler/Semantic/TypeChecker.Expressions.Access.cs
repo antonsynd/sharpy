@@ -1395,14 +1395,24 @@ internal partial class TypeChecker
             }
         }
 
-        // Count required parameters (those without defaults)
-        var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
+        // Count required parameters (those without defaults and not variadic)
+        var hasVariadicParam = funcSymbol.Parameters.Any(p => p.IsVariadic);
+        var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
         var totalParamCount = funcSymbol.Parameters.Count;
 
-        // Validate argument count considering defaults (include both positional and keyword args)
-        if (totalArgCount < requiredParamCount || totalArgCount > totalParamCount)
+        // Validate argument count considering defaults and variadic params
+        // Variadic functions have no upper bound on argument count
+        var tooFew = totalArgCount < requiredParamCount;
+        var tooMany = !hasVariadicParam && totalArgCount > totalParamCount;
+        if (tooFew || tooMany)
         {
-            if (requiredParamCount == totalParamCount)
+            if (hasVariadicParam)
+            {
+                AddError($"Function expects at least {requiredParamCount} arguments but got {totalArgCount}",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+            }
+            else if (requiredParamCount == totalParamCount)
             {
                 AddError($"Function expects {totalParamCount} arguments but got {totalArgCount}",
                     call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
@@ -1418,11 +1428,28 @@ internal partial class TypeChecker
         else
         {
             // Validate positional argument types
+            // For variadic functions, extra arguments are validated against the variadic param's type
+            var variadicParamIndex = funcSymbol.Parameters.ToList().FindIndex(p => p.IsVariadic);
             for (int i = 0; i < argTypes.Count; i++)
             {
-                if (!IsAssignable(argTypes[i], funcSymbol.Parameters[i].Type))
+                ParameterSymbol param;
+                if (i < funcSymbol.Parameters.Count)
                 {
-                    AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{funcSymbol.Parameters[i].Type.GetDisplayName()}'",
+                    param = funcSymbol.Parameters[i];
+                }
+                else if (variadicParamIndex >= 0)
+                {
+                    // Extra args go to the variadic parameter
+                    param = funcSymbol.Parameters[variadicParamIndex];
+                }
+                else
+                {
+                    break; // Should not happen — argument count already validated
+                }
+
+                if (!IsAssignable(argTypes[i], param.Type))
+                {
+                    AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{param.Type.GetDisplayName()}'",
                         call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: call.Arguments[i].Span);
                 }

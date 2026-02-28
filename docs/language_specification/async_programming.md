@@ -3,9 +3,8 @@
 > **Implementation status:** `async def` declarations are **partially implemented** (v0.2.x).
 > - `async def` is parsed and emits C# `async` methods returning `Task` or `Task<T>`.
 > - `await` expressions are **implemented** — `await` can be used inside `async def` functions to unwrap `Task<T>` results.
-> - Async generators (`async def` with `yield`) are rejected at compile time (SPY0358).
+> - Async generators (`async def` with `yield`) emit `IAsyncEnumerable<T>` return type.
 > - Async constructors (`async def __init__`) are rejected at compile time (SPY0358).
-> - `async for`, `async with`, and `asyncio` are not yet implemented.
 >
 > See [generators.md](generators.md) for synchronous generator support (`yield`/`yield from`).
 

@@ -1,0 +1,11 @@
+import asyncio
+
+async def task_a() -> str:
+    return "a"
+
+async def task_b() -> str:
+    return "b"
+
+async def main():
+    await asyncio.gather(task_a(), task_b())
+    print("gathered")

@@ -203,6 +203,10 @@ internal partial class RoslynEmitter
     {
         foreach (var alias in import.Names)
         {
+            // Synthetic modules (asyncio) have no C# namespace — skip using directives
+            if (IsSyntheticModule(alias.Name))
+                continue;
+
             // Convert Python module name to C# namespace/class path
             var namespaceName = ConvertModuleNameToNamespace(alias.Name);
             var isNetFramework = IsNetFrameworkNamespace(alias.Name);
@@ -268,6 +272,10 @@ internal partial class RoslynEmitter
 
     private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)
     {
+        // Synthetic modules (asyncio) have no C# namespace — skip using directives
+        if (IsSyntheticModule(fromImport.Module))
+            yield break;
+
         var isNetFramework = IsNetFrameworkNamespace(fromImport.Module);
 
         if (isNetFramework)
@@ -346,6 +354,16 @@ internal partial class RoslynEmitter
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Determines if a module name refers to a synthetic (compiler-provided) module.
+    /// Synthetic modules (e.g., asyncio) map to special codegen patterns, not real namespaces.
+    /// No using directive should be emitted for them.
+    /// </summary>
+    private static bool IsSyntheticModule(string moduleName)
+    {
+        return moduleName == "asyncio";
     }
 
     /// <summary>

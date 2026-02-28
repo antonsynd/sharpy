@@ -374,16 +374,6 @@ internal partial class TypeChecker
         var isGenerator = ContainsYield(functionDef.Body);
         _currentFunctionIsGenerator = isGenerator;
 
-        // Async generators are not yet supported
-        if (functionDef.IsAsync && isGenerator)
-        {
-            AddError(
-                "Async generators (async def with yield) are not yet supported",
-                functionDef.LineStart, functionDef.ColumnStart,
-                code: DiagnosticCodes.Semantic.UnsupportedFeature,
-                span: functionDef.Span);
-        }
-
         // Async constructors are not supported (C# constructors cannot be async)
         if (functionDef.IsAsync && functionDef.Name == DunderNames.Init)
         {
@@ -420,16 +410,17 @@ internal partial class TypeChecker
                     currentSymbol.IsGenerator = true;
 
                     // For non-dunder generators (standalone functions and regular class methods),
-                    // wrap the return type so callers see IEnumerable<T> instead of T.
+                    // wrap the return type so callers see IEnumerable<T>/IAsyncEnumerable<T> instead of T.
                     // Dunder methods (__iter__, __reversed__) keep their element type as ReturnType
                     // because SynthesisAnalyzer reads it to determine interface type arguments,
                     // and codegen handles the wrapping independently via AST annotations.
                     var isDunder = DunderDetector.IsDunderMethod(functionDef.Name);
                     if (!isDunder && currentSymbol.ReturnType is not (VoidType or UnknownType))
                     {
+                        var enumerableName = functionDef.IsAsync ? "IAsyncEnumerable" : "IEnumerable";
                         currentSymbol.ReturnType = new GenericType
                         {
-                            Name = "IEnumerable",
+                            Name = enumerableName,
                             TypeArguments = new List<SemanticType> { currentSymbol.ReturnType }
                         };
                     }
@@ -438,10 +429,11 @@ internal partial class TypeChecker
         }
 
         // Mark async metadata and wrap return type in TaskType.
-        // Skip if async was used in an invalid context (async __init__, async generator)
-        // to avoid emitting broken C# (e.g., async constructor, async + yield).
-        var asyncHasError = functionDef.IsAsync &&
-            (isGenerator || functionDef.Name == DunderNames.Init);
+        // Skip if async was used in an invalid context (async __init__)
+        // to avoid emitting broken C# (e.g., async constructor).
+        // Async generators get IsAsync but NOT TaskType wrapping — their return type
+        // is already IAsyncEnumerable<T> from the generator section above.
+        var asyncHasError = functionDef.IsAsync && functionDef.Name == DunderNames.Init;
         if (functionDef.IsAsync && !asyncHasError)
         {
             var asyncSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
@@ -450,13 +442,17 @@ internal partial class TypeChecker
             {
                 asyncSymbol.IsAsync = true;
 
-                if (asyncSymbol.ReturnType is VoidType or UnknownType)
+                // Async generators already have IAsyncEnumerable<T> return type — skip Task wrapping
+                if (!isGenerator)
                 {
-                    asyncSymbol.ReturnType = new TaskType { ResultType = null };
-                }
-                else
-                {
-                    asyncSymbol.ReturnType = new TaskType { ResultType = asyncSymbol.ReturnType };
+                    if (asyncSymbol.ReturnType is VoidType or UnknownType)
+                    {
+                        asyncSymbol.ReturnType = new TaskType { ResultType = null };
+                    }
+                    else
+                    {
+                        asyncSymbol.ReturnType = new TaskType { ResultType = asyncSymbol.ReturnType };
+                    }
                 }
             }
         }

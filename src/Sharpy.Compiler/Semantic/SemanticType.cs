@@ -816,6 +816,23 @@ public sealed record TaskType : SemanticType
         return $"Task[{ResultType.GetDisplayName()}]";
     }
 
+    /// <summary>
+    /// Task&lt;T&gt; is assignable to Task (mirrors C# where Task&lt;T&gt; inherits Task).
+    /// </summary>
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        if (other is TaskType otherTask)
+        {
+            // Task<T> → Task (non-generic) is always valid (C# inheritance)
+            if (otherTask.ResultType == null)
+                return true;
+            // Task<T> → Task<U> requires T assignable to U
+            if (ResultType != null)
+                return ResultType.IsAssignableTo(otherTask.ResultType);
+        }
+        return base.IsAssignableTo(other);
+    }
+
     public override Type? ClrType =>
         ResultType == null
             ? typeof(System.Threading.Tasks.Task)

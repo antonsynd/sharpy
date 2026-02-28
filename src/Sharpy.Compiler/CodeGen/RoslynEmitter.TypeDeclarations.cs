@@ -42,16 +42,15 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapType(func.ReturnType)
             : PredefinedType(Token(SyntaxKind.VoidKeyword));
 
-        // For generators, wrap the annotated return type T in IEnumerable<T>
+        // For generators, wrap the annotated return type T in IEnumerable<T> or IAsyncEnumerable<T>
+        bool isAsync = func.IsAsync;
         if (_isCurrentMethodGenerator)
         {
-            returnType = WrapInIEnumerable(returnType);
+            returnType = isAsync ? WrapInIAsyncEnumerable(returnType) : WrapInIEnumerable(returnType);
         }
-
-        // For async functions, wrap return type in Task<T> or Task
-        bool isAsync = func.IsAsync;
-        if (isAsync)
+        else if (isAsync)
         {
+            // For non-generator async functions, wrap return type in Task<T> or Task
             if (func.ReturnType != null)
             {
                 returnType = WrapInTask(returnType);

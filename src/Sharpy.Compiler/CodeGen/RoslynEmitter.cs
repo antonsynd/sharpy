@@ -297,6 +297,20 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Wraps a type T in System.Collections.Generic.IAsyncEnumerable&lt;T&gt;.
+    /// Used for async generator functions (async def with yield).
+    /// </summary>
+    private static NameSyntax WrapInIAsyncEnumerable(TypeSyntax elementType)
+    {
+        return QualifiedName(
+            QualifiedName(
+                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                IdentifierName("Generic")),
+            GenericName("IAsyncEnumerable")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(elementType))));
+    }
+
+    /// <summary>
     /// Wraps a type T in System.Collections.Generic.IEnumerator&lt;T&gt;.
     /// Used for generator __iter__ (GetEnumerator) and __reversed__ (GetReverseEnumerator).
     /// </summary>
