@@ -1,1 +1,1 @@
-Skipped: requires IAsyncDisposable support (Phase 10.4 runtime)
+Requires IAsyncDisposable support. __enter__/__exit__ maps to IDisposable, not IAsyncDisposable. Needs __aenter__/__aexit__ or async context manager protocol.
