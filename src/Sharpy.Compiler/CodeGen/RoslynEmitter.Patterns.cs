@@ -162,6 +162,12 @@ internal partial class RoslynEmitter
                                     IdentifierName(tempVarName),
                                     GenerateMemberAccessValue(ma));
                             }
+                            else if (alt is WildcardPattern)
+                            {
+                                // Wildcard in mixed or-pattern makes it match anything — skip guard
+                                orGuard = null;
+                                break;
+                            }
                             else
                             {
                                 // For literals in mixed or-patterns, generate equality comparison

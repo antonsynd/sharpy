@@ -4,26 +4,17 @@ using System.Diagnostics;
 namespace Sharpy.Compiler.Parser.Ast;
 
 // =============================================================================
-// FUTURE STATEMENT NODES (v0.2.x+)
-// These are placeholder definitions that follow the immutable pattern.
-// Implementation will be completed when these features are developed.
-//
-// WARNING: These types are defined for forward compatibility but have NO parser,
-// semantic analysis, or code generation support. Do not reference them in
-// production code paths. Unrecognized AST nodes will trigger diagnostics
-// in TypeChecker and RoslynEmitter (see items 1.1 and 1.2).
+// FUTURE AND RECENTLY-IMPLEMENTED STATEMENT NODES
+// Some types below are fully implemented (MatchStatement, MatchCase);
+// others remain placeholders for forward compatibility.
 // =============================================================================
 
-#region Pattern Matching (v0.2.x)
+#region Pattern Matching
 
 /// <summary>
 /// Match statement (match expr: case1: ..., case2: ...).
 /// Executes code based on pattern matching (statement form, unlike MatchExpression).
 /// </summary>
-/// <remarks>
-/// PLACEHOLDER: Parser support not yet implemented.
-/// Target version: v0.2.x
-/// </remarks>
 public record MatchStatement : Statement
 {
     /// <summary>

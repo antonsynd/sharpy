@@ -4,14 +4,8 @@ using System.Diagnostics;
 namespace Sharpy.Compiler.Parser.Ast;
 
 // =============================================================================
-// FUTURE EXPRESSION NODES (v0.2.x+)
-// These are placeholder definitions that follow the immutable pattern.
-// Implementation will be completed when these features are developed.
-//
-// WARNING: These types are defined for forward compatibility but have NO parser,
-// semantic analysis, or code generation support. Do not reference them in
-// production code paths. Unrecognized AST nodes will trigger diagnostics
-// in TypeChecker and RoslynEmitter (see items 1.1 and 1.2).
+// FUTURE AND RECENTLY-IMPLEMENTED EXPRESSION NODES
+// AwaitExpression and MatchExpression/MatchArm are fully implemented.
 // =============================================================================
 
 #region Async/Await
@@ -43,7 +37,7 @@ public record AwaitExpression : Expression
 
 #endregion
 
-#region Pattern Matching (v0.2.x)
+#region Pattern Matching
 
 /// <summary>
 /// Match expression (match expr { case1 => result1, case2 => result2 }).
