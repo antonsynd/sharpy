@@ -1,0 +1,16 @@
+union Response[T, E]:
+    case Success(value: T)
+    case Failure(error: E)
+
+def process(r: Response[str, int]) -> str:
+    match r:
+        case Success(s):
+            return "success: " + s
+        case Failure(code):
+            return "error code: " + str(code)
+        case _:
+            return "unknown"
+
+def main():
+    print(process(Response.Success("done")))
+    print(process(Response.Failure(404)))

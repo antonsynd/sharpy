@@ -1,0 +1,11 @@
+union Shape:
+    case Circle(radius: float)
+    case Rectangle(width: float, height: float)
+
+def main():
+    s: Shape = Shape.Circle(5.0)
+    match s:
+        case Circle(r, extra):
+            print("circle")
+        case _:
+            print("other")

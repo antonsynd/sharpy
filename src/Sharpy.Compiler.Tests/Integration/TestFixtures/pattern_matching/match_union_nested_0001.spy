@@ -1,0 +1,23 @@
+union Inner:
+    case Val(x: int)
+    case Blank()
+
+union Outer:
+    case Wrap(inner: Inner)
+    case Direct(value: int)
+
+def describe(o: Outer) -> str:
+    match o:
+        case Wrap(Val(x)):
+            return "wrapped: " + str(x)
+        case Wrap(Inner.Blank):
+            return "wrapped blank"
+        case Direct(n):
+            return "direct: " + str(n)
+        case _:
+            return "unknown"
+
+def main():
+    print(describe(Outer.Wrap(Inner.Val(7))))
+    print(describe(Outer.Wrap(Inner.Blank())))
+    print(describe(Outer.Direct(42)))

@@ -1,0 +1,16 @@
+union Response[T, E]:
+    case Success(value: T)
+    case Failure(error: E)
+
+def handle(r: Response[int, str]) -> str:
+    match r:
+        case Success(v):
+            return "ok: " + str(v)
+        case Failure(e):
+            return "err: " + e
+        case _:
+            return "unknown"
+
+def main():
+    print(handle(Response.Success(42)))
+    print(handle(Response.Failure("not found")))

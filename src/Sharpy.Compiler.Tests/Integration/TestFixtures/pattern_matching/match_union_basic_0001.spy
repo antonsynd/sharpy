@@ -1,0 +1,20 @@
+union Shape:
+    case Circle(radius: float)
+    case Rectangle(width: float, height: float)
+    case Point()
+
+def describe(s: Shape) -> str:
+    match s:
+        case Circle(r):
+            return "circle with radius " + str(r)
+        case Rectangle(w, h):
+            return "rect " + str(w) + "x" + str(h)
+        case Shape.Point:
+            return "point"
+        case _:
+            return "unknown"
+
+def main():
+    print(describe(Shape.Circle(5.0)))
+    print(describe(Shape.Rectangle(3.0, 4.0)))
+    print(describe(Shape.Point()))

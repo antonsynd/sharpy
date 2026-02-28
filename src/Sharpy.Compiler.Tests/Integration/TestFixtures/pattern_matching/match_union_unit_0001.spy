@@ -1,0 +1,16 @@
+union Option[T]:
+    case Some(value: T)
+    case Empty()
+
+def show(o: Option[int]) -> str:
+    match o:
+        case Some(v):
+            return "some: " + str(v)
+        case Option.Empty:
+            return "empty"
+        case _:
+            return "unknown"
+
+def main():
+    print(show(Option.Some(10)))
+    print(show(Option.Empty()))

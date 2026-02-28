@@ -1,0 +1,12 @@
+union Color:
+    case Red()
+    case Green()
+    case Blue()
+
+def main():
+    c: Color = Color.Red()
+    match c:
+        case Color.Yellow:
+            print("yellow")
+        case _:
+            print("other")

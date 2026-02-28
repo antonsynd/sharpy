@@ -1,0 +1,16 @@
+union Shape:
+    case Circle(radius: float)
+    case Rectangle(width: float, height: float)
+    case Point()
+
+def is_circle(s: Shape) -> bool:
+    match s:
+        case Circle(_):
+            return True
+        case _:
+            return False
+
+def main():
+    print(is_circle(Shape.Circle(5.0)))
+    print(is_circle(Shape.Rectangle(3.0, 4.0)))
+    print(is_circle(Shape.Point()))
