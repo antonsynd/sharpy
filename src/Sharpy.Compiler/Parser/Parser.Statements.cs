@@ -1239,8 +1239,8 @@ public partial class Parser
         var token = Current;
         Advance();
 
-        // Check for type pattern: identifier followed by '('
-        if (Current.Type == TokenType.LeftParen)
+        // Check for type pattern: identifier followed by '(' or '[' (generic type in pattern)
+        if (Current.Type == TokenType.LeftParen || Current.Type == TokenType.LeftBracket)
         {
             return ParseTypePatternOrStructural(token);
         }
@@ -1308,6 +1308,78 @@ public partial class Parser
             ColumnEnd = typeToken.Column + typeToken.Value.Length,
             Span = GetSpanFromToken(typeToken)
         };
+
+        // Check for generic type arguments in patterns (e.g., Box[int]() in a case)
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            var bracketToken = Current;
+            _diagnostics.AddError(
+                "Generic type arguments are not supported in patterns. Use a wildcard or binding pattern instead.",
+                GetSpanFromToken(bracketToken),
+                bracketToken.Line,
+                bracketToken.Column,
+                code: DiagnosticCodes.Parser.GenericTypeInPattern,
+                phase: CompilerPhase.Parser);
+
+            // Skip tokens until matching ']' to recover
+            var depth = 1;
+            Advance(); // consume '['
+            while (depth > 0 && Current.Type != TokenType.Eof)
+            {
+                Advance();
+                if (Previous.Type == TokenType.LeftBracket) depth++;
+                else if (Previous.Type == TokenType.RightBracket) depth--;
+            }
+
+            // If '(' follows, consume through matching ')' so we don't produce cascading errors
+            if (Current.Type == TokenType.LeftParen)
+            {
+                var parenDepth = 1;
+                Advance(); // consume '('
+                while (parenDepth > 0 && Current.Type != TokenType.Eof)
+                {
+                    Advance();
+                    if (Previous.Type == TokenType.LeftParen) parenDepth++;
+                    else if (Previous.Type == TokenType.RightParen) parenDepth--;
+                }
+            }
+
+            // Check for 'as' binding after the consumed pattern
+            Ast.Identifier? recoveryBindingName = null;
+            Token endToken = Previous;
+            if (Current.Type == TokenType.As)
+            {
+                Advance(); // consume 'as'
+                if (Current.Type == TokenType.Identifier)
+                {
+                    var nameToken = Current;
+                    Advance();
+                    endToken = nameToken;
+                    recoveryBindingName = new Ast.Identifier
+                    {
+                        Name = nameToken.Value,
+                        LineStart = nameToken.Line,
+                        ColumnStart = nameToken.Column,
+                        LineEnd = nameToken.Line,
+                        ColumnEnd = nameToken.Column + nameToken.Value.Length,
+                        Span = GetSpanFromToken(nameToken)
+                    };
+                }
+            }
+
+            // Return a TypePattern for error recovery (without generic args)
+            return new TypePattern
+            {
+                Type = typeAnnotation,
+                BindingName = recoveryBindingName,
+                LineStart = typeToken.Line,
+                ColumnStart = typeToken.Column,
+                LineEnd = endToken.Line,
+                ColumnEnd = endToken.Column + endToken.Value.Length,
+                Span = GetSpanFromTokens(typeToken, endToken)
+            };
+        }
+
         Expect(TokenType.LeftParen);
 
         // Check what's inside the parentheses

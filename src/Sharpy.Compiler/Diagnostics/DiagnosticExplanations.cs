@@ -289,6 +289,11 @@ public static class DiagnosticExplanations
             "union Shape:\n    pass",
             "Add at least one union case:\nunion Shape:\n    case Circle(radius: float)\n    case Rectangle(width: float, height: float)");
 
+        Add(dict, DiagnosticCodes.Parser.GenericTypeInPattern, "Generic type in pattern", "Parser",
+            "Generic type arguments (e.g., Box[int]) are not supported in match case patterns. The compiler matches by the base type name; type arguments are not needed for pattern matching.",
+            "match value:\n    case Box[int]() as x:\n        ...",
+            "Remove the type arguments from the pattern:\nmatch value:\n    case Box() as x:\n        ...");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",

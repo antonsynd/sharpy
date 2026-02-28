@@ -72,6 +72,7 @@ public static class DiagnosticCodes
         public const string RaiseFromNotSupported = "SPY0122";
         public const string DictSpreadCallNotSupported = "SPY0123";
         public const string EmptyUnion = "SPY0124";
+        public const string GenericTypeInPattern = "SPY0125";
     }
 
     /// <summary>
