@@ -1,0 +1,6 @@
+async def get_value() -> int:
+    return 10
+
+async def main():
+    result: int = await get_value() + 1
+    print(result)

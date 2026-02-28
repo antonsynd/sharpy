@@ -1,0 +1,6 @@
+async def do_something():
+    x: int = 42
+
+async def main():
+    await do_something()
+    print("completed")

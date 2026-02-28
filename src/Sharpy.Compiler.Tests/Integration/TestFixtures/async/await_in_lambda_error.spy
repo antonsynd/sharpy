@@ -1,0 +1,5 @@
+async def get_value() -> int:
+    return 42
+
+async def main():
+    f = lambda: await get_value()

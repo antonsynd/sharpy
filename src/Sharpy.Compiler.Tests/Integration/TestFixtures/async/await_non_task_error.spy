@@ -1,0 +1,2 @@
+async def main():
+    x: int = await 42
