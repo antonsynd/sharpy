@@ -14,16 +14,12 @@ namespace Sharpy.Compiler.Parser.Ast;
 // in TypeChecker and RoslynEmitter (see items 1.1 and 1.2).
 // =============================================================================
 
-#region Async/Await (v0.2.x+)
+#region Async/Await
 
 /// <summary>
 /// Await expression (await expr).
 /// Suspends execution until the awaited task completes.
 /// </summary>
-/// <remarks>
-/// PLACEHOLDER: Parser support not yet implemented.
-/// Target version: v0.2.x+
-/// </remarks>
 public record AwaitExpression : Expression
 {
     /// <summary>

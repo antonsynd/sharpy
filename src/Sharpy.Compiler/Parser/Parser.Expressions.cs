@@ -657,6 +657,29 @@ public partial class Parser
             };
         }
 
+        return ParseAwaitExpression();
+    }
+
+    private Expression ParseAwaitExpression()
+    {
+        if (Current.Type == TokenType.Await)
+        {
+            var startLine = Current.Line;
+            var startColumn = Current.Column;
+            var awaitToken = Current;
+            Advance();  // consume 'await'
+            var operand = ParsePower();  // matches Python: 'await' primary
+
+            return new AwaitExpression
+            {
+                Operand = operand,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = operand.LineEnd,
+                ColumnEnd = operand.ColumnEnd,
+                Span = CombineSpans(GetSpanFromToken(awaitToken), operand.Span)
+            };
+        }
         return ParsePower();
     }
 
