@@ -856,6 +856,11 @@ public static class DiagnosticExplanations
             "match x:\n    case int() | Color.RED:  # type pattern cannot mix with member access\n        ...",
             "Use only literal values, member access, or wildcard patterns alongside member access patterns:\nmatch x:\n    case 1 | Color.RED:\n        ...");
 
+        Add(dict, DiagnosticCodes.Semantic.DuplicateUnionCase, "Duplicate union case", "Semantic",
+            "A union type has two or more cases with the same name. Each union case must have a unique name.",
+            "union Shape:\n    case Circle(radius: float)\n    case Circle(diameter: float)",
+            "Give each union case a unique name:\nunion Shape:\n    case Circle(radius: float)\n    case Square(side: float)");
+
 
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 

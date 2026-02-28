@@ -318,6 +318,10 @@ internal partial class TypeChecker
                 CheckEnum(enumDef);
                 break;
 
+            case UnionDef unionDef:
+                CheckUnion(unionDef);
+                break;
+
             case Assignment assignment:
                 CheckAssignment(assignment);
                 break;
