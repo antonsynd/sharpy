@@ -481,7 +481,7 @@ After all tasks, the following should work end-to-end:
 ### Warnings
 
 - **Grammar discrepancy:** The existing grammar puts `tagged_union_case` inside `enum_body` (lines 548-562), but this plan uses a separate `union` keyword (matching the `UnionDef` AST in `Statement.Future.cs` and spec files). The grammar's `enum_body` rule should be updated when `union_def` is added. This is a deliberate design choice, not an error.
-- **`UnionCaseField.Name` is nullable (`string?`)** — designed for positional fields. The parser implementation should always set field names (Sharpy requires named fields per spec), but the AST allows null for future extensibility.
+- **`UnionCaseField.Name` is non-nullable (`string`)** with default `""`. Positional fields are not yet supported; Sharpy requires named fields per spec.
 - **C# 9.0 compliance verified** — `{ get; }` auto-properties, `Deconstruct` with `out` parameters, and abstract+sealed pattern are all valid C# 9.0. Generated code will compile against `netstandard2.1`.
 - **No existing `Deconstruct` generation in codebase** — This will be new codegen. No conflicts expected.
 
