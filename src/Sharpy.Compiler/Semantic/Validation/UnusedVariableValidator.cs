@@ -262,12 +262,67 @@ internal class UnusedVariableValidator : SemanticValidatorBase
                 CollectReadsFromNestedFunction(nestedFunc, read);
                 break;
 
+            case MatchStatement matchStmt:
+                CollectReadsFromExpression(matchStmt.Scrutinee, read);
+                foreach (var matchCase in matchStmt.Cases)
+                {
+                    CollectDefinitionsFromPattern(matchCase.Pattern, defined, parameters);
+                    if (matchCase.Guard != null)
+                        CollectReadsFromExpression(matchCase.Guard, read);
+                    foreach (var s in matchCase.Body)
+                        CollectFromStatement(s, defined, read, parameters);
+                }
+                break;
+
             case ClassDef:
             case StructDef:
             case InterfaceDef:
             case EnumDef:
             case PropertyDef:
                 // These define their own scope and are validated at the top level
+                break;
+        }
+    }
+
+    private void CollectDefinitionsFromPattern(Pattern pattern,
+        Dictionary<string, VariableInfo> defined, HashSet<string> parameters)
+    {
+        switch (pattern)
+        {
+            case BindingPattern binding:
+                if (!parameters.Contains(binding.Name.Name))
+                {
+                    defined[binding.Name.Name] = new VariableInfo(
+                        binding.LineStart, binding.ColumnStart, binding.Span, false);
+                }
+                break;
+
+            case TypePattern typePattern:
+                if (typePattern.BindingName != null && !parameters.Contains(typePattern.BindingName.Name))
+                {
+                    defined[typePattern.BindingName.Name] = new VariableInfo(
+                        typePattern.LineStart, typePattern.ColumnStart, typePattern.Span, false);
+                }
+                break;
+
+            case OrPattern orPattern:
+                foreach (var alt in orPattern.Alternatives)
+                    CollectDefinitionsFromPattern(alt, defined, parameters);
+                break;
+
+            case TuplePattern tuplePattern:
+                foreach (var elem in tuplePattern.Elements)
+                    CollectDefinitionsFromPattern(elem, defined, parameters);
+                break;
+
+            case PropertyPattern propertyPattern:
+                foreach (var field in propertyPattern.Fields)
+                    CollectDefinitionsFromPattern(field.Pattern, defined, parameters);
+                break;
+
+            case PositionalPattern positionalPattern:
+                foreach (var elem in positionalPattern.Elements)
+                    CollectDefinitionsFromPattern(elem, defined, parameters);
                 break;
         }
     }
@@ -402,6 +457,17 @@ internal class UnusedVariableValidator : SemanticValidatorBase
                 CollectReadsFromExpression(assertStmt.Test, read);
                 if (assertStmt.Message != null)
                     CollectReadsFromExpression(assertStmt.Message, read);
+                break;
+
+            case MatchStatement matchStmt:
+                CollectReadsFromExpression(matchStmt.Scrutinee, read);
+                foreach (var matchCase in matchStmt.Cases)
+                {
+                    if (matchCase.Guard != null)
+                        CollectReadsFromExpression(matchCase.Guard, read);
+                    foreach (var s in matchCase.Body)
+                        CollectReadsFromStatement(s, read);
+                }
                 break;
 
             case FunctionDef nestedFunc:
@@ -544,6 +610,16 @@ internal class UnusedVariableValidator : SemanticValidatorBase
 
             case MaybeExpression maybeExpr:
                 CollectReadsFromExpression(maybeExpr.Operand, read);
+                break;
+
+            case MatchExpression matchExpr:
+                CollectReadsFromExpression(matchExpr.Scrutinee, read);
+                foreach (var arm in matchExpr.Arms)
+                {
+                    if (arm.Guard != null)
+                        CollectReadsFromExpression(arm.Guard, read);
+                    CollectReadsFromExpression(arm.Result, read);
+                }
                 break;
 
             case WalrusExpression walrus:

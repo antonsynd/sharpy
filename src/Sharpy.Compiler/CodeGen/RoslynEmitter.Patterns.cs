@@ -15,6 +15,8 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
+    private const string PatternMatchTempPrefix = "__spy_pm_";
+
     private StatementSyntax GenerateMatch(MatchStatement matchStmt)
     {
         var scrutineeExpr = GenerateExpression(matchStmt.Scrutinee);
@@ -150,7 +152,7 @@ internal partial class RoslynEmitter
                     if (hasMemberAccess)
                     {
                         // Use var binding + combined when guard with ||
-                        var tempVarName = $"__spy_pm_{matchVarCounter++}";
+                        var tempVarName = $"{PatternMatchTempPrefix}{matchVarCounter++}";
                         ExpressionSyntax? orGuard = null;
                         foreach (var alt in orPattern.Alternatives)
                         {
@@ -208,7 +210,7 @@ internal partial class RoslynEmitter
                 {
                     // Bind to a named variable and add a when-clause guard for equality.
                     // This handles both top-level and nested (e.g., inside TuplePattern) cases.
-                    var tempVarName = $"__spy_pm_{matchVarCounter++}";
+                    var tempVarName = $"{PatternMatchTempPrefix}{matchVarCounter++}";
                     var memberValue = GenerateMemberAccessValue(memberAccess);
                     memberGuards.Add(BinaryExpression(
                         SyntaxKind.EqualsExpression,
@@ -295,7 +297,8 @@ internal partial class RoslynEmitter
                     DiagnosticCodes.CodeGen.UnsupportedFeature,
                     pattern.LineStart,
                     pattern.ColumnStart);
-                // Return a discard pattern as fallback so compilation can continue
+                // Return a discard pattern (matches everything) as fallback — acceptable
+                // since an error was already reported above.
                 return DiscardPattern();
         }
     }

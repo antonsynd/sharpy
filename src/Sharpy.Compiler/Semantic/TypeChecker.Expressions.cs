@@ -259,48 +259,51 @@ internal partial class TypeChecker
 
         foreach (var arm in matchExpr.Arms)
         {
-            _symbolTable.EnterScope("match-arm");
-            _controlFlowDepth++;
-            CheckPattern(arm.Pattern, scrutineeType);
-
-            if (arm.Guard != null)
+            using (_narrowingContext.EnterScope())
             {
-                var guardType = CheckExpression(arm.Guard);
-                if (!IsTruthTestable(guardType))
-                {
-                    AddError(
-                        "Guard condition must be a boolean expression",
-                        arm.Guard.LineStart, arm.Guard.ColumnStart,
-                        code: DiagnosticCodes.Semantic.ConditionNotBoolean,
-                        span: arm.Guard.Span);
-                }
-            }
+                _symbolTable.EnterScope("match-arm");
+                _controlFlowDepth++;
+                CheckPattern(arm.Pattern, scrutineeType);
 
-            var armType = CheckExpression(arm.Result);
-
-            if (resultType == null)
-            {
-                resultType = armType;
-            }
-            else if (!IsAssignable(armType, resultType) && armType is not UnknownType)
-            {
-                // Try the reverse direction
-                if (IsAssignable(resultType, armType))
+                if (arm.Guard != null)
                 {
-                    resultType = armType; // widen
+                    var guardType = CheckExpression(arm.Guard);
+                    if (!IsTruthTestable(guardType))
+                    {
+                        AddError(
+                            "Guard condition must be a boolean expression",
+                            arm.Guard.LineStart, arm.Guard.ColumnStart,
+                            code: DiagnosticCodes.Semantic.ConditionNotBoolean,
+                            span: arm.Guard.Span);
+                    }
                 }
-                else
-                {
-                    AddError(
-                        $"Match expression arm type '{armType.GetDisplayName()}' is incompatible with previous arm type '{resultType.GetDisplayName()}'",
-                        arm.Result.LineStart, arm.Result.ColumnStart,
-                        code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: arm.Result.Span);
-                }
-            }
 
-            _controlFlowDepth--;
-            _symbolTable.ExitScope();
+                var armType = CheckExpression(arm.Result);
+
+                if (resultType == null)
+                {
+                    resultType = armType;
+                }
+                else if (!IsAssignable(armType, resultType) && armType is not UnknownType)
+                {
+                    // Try the reverse direction
+                    if (IsAssignable(resultType, armType))
+                    {
+                        resultType = armType; // widen
+                    }
+                    else
+                    {
+                        AddError(
+                            $"Match expression arm type '{armType.GetDisplayName()}' is incompatible with previous arm type '{resultType.GetDisplayName()}'",
+                            arm.Result.LineStart, arm.Result.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: arm.Result.Span);
+                    }
+                }
+
+                _controlFlowDepth--;
+                _symbolTable.ExitScope();
+            }
         }
 
         return resultType ?? SemanticType.Void;

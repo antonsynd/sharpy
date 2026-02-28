@@ -757,28 +757,31 @@ internal partial class TypeChecker
 
         foreach (var matchCase in matchStmt.Cases)
         {
-            _symbolTable.EnterScope("match-case");
-            _controlFlowDepth++;
-
-            CheckPattern(matchCase.Pattern, scrutineeType);
-
-            if (matchCase.Guard != null)
+            using (_narrowingContext.EnterScope())
             {
-                var guardType = CheckExpression(matchCase.Guard);
-                if (!IsTruthTestable(guardType))
+                _symbolTable.EnterScope("match-case");
+                _controlFlowDepth++;
+
+                CheckPattern(matchCase.Pattern, scrutineeType);
+
+                if (matchCase.Guard != null)
                 {
-                    AddError("Guard condition must be a boolean expression",
-                        matchCase.Guard.LineStart, matchCase.Guard.ColumnStart,
-                        code: DiagnosticCodes.Semantic.ConditionNotBoolean,
-                        span: matchCase.Guard.Span);
+                    var guardType = CheckExpression(matchCase.Guard);
+                    if (!IsTruthTestable(guardType))
+                    {
+                        AddError("Guard condition must be a boolean expression",
+                            matchCase.Guard.LineStart, matchCase.Guard.ColumnStart,
+                            code: DiagnosticCodes.Semantic.ConditionNotBoolean,
+                            span: matchCase.Guard.Span);
+                    }
                 }
+
+                foreach (var stmt in matchCase.Body)
+                    CheckStatement(stmt);
+
+                _controlFlowDepth--;
+                _symbolTable.ExitScope();
             }
-
-            foreach (var stmt in matchCase.Body)
-                CheckStatement(stmt);
-
-            _controlFlowDepth--;
-            _symbolTable.ExitScope();
         }
     }
 
