@@ -8,11 +8,11 @@ namespace Sharpy.Compiler.Parser.Ast;
 // Pattern matching for match expressions/statements.
 //
 // Implemented patterns (parser + semantic + codegen): WildcardPattern,
-// BindingPattern, LiteralPattern, MemberAccessPattern, TuplePattern.
+// BindingPattern, LiteralPattern, MemberAccessPattern, TuplePattern,
+// OrPattern, RelationalPattern, TypePattern, PropertyPattern, PositionalPattern.
 //
-// Forward-declared patterns (no pipeline support yet): TypePattern,
-// UnionCasePattern, ListPattern, OrPattern, AndPattern, GuardPattern,
-// RelationalPattern, PropertyPattern, PositionalPattern.
+// Forward-declared patterns (no pipeline support yet):
+// UnionCasePattern, ListPattern, AndPattern, GuardPattern.
 // =============================================================================
 
 /// <summary>

@@ -924,6 +924,98 @@ internal partial class TypeChecker
                     break;
                 }
 
+            case PropertyPattern propertyPattern:
+                {
+                    TypeSymbol? typeSymbol = null;
+                    if (propertyPattern.Type != null)
+                    {
+                        var resolvedType = _typeResolver.ResolveTypeAnnotation(propertyPattern.Type);
+                        if (resolvedType is UnknownType)
+                        {
+                            AddError(
+                                $"Unknown type '{propertyPattern.Type.Name}' in property pattern",
+                                propertyPattern.LineStart, propertyPattern.ColumnStart,
+                                code: DiagnosticCodes.Semantic.UndefinedType,
+                                span: propertyPattern.Span);
+                        }
+                        else if (resolvedType is UserDefinedType udt)
+                        {
+                            typeSymbol = udt.Symbol;
+                        }
+                    }
+
+                    foreach (var field in propertyPattern.Fields)
+                    {
+                        if (typeSymbol != null)
+                        {
+                            var fieldSymbol = typeSymbol.Fields.FirstOrDefault(f => f.Name == field.Name);
+                            if (fieldSymbol == null)
+                            {
+                                AddError(
+                                    $"Type '{typeSymbol.Name}' has no field '{field.Name}'",
+                                    field.LineStart, field.ColumnStart,
+                                    code: DiagnosticCodes.Semantic.PropertyPatternUnknownField,
+                                    span: field.Span);
+                            }
+                            else
+                            {
+                                CheckPattern(field.Pattern, fieldSymbol.Type ?? scrutineeType);
+                            }
+                        }
+                        else
+                        {
+                            CheckPattern(field.Pattern, scrutineeType);
+                        }
+                    }
+                    break;
+                }
+
+            case PositionalPattern positionalPattern:
+                {
+                    TypeSymbol? typeSymbol = null;
+                    if (positionalPattern.Type != null)
+                    {
+                        var resolvedType = _typeResolver.ResolveTypeAnnotation(positionalPattern.Type);
+                        if (resolvedType is UnknownType)
+                        {
+                            AddError(
+                                $"Unknown type '{positionalPattern.Type.Name}' in positional pattern",
+                                positionalPattern.LineStart, positionalPattern.ColumnStart,
+                                code: DiagnosticCodes.Semantic.UndefinedType,
+                                span: positionalPattern.Span);
+                        }
+                        else if (resolvedType is UserDefinedType udt)
+                        {
+                            typeSymbol = udt.Symbol;
+                        }
+                    }
+
+                    if (typeSymbol != null && positionalPattern.Elements.Length != typeSymbol.Fields.Count)
+                    {
+                        AddError(
+                            $"Positional pattern has {positionalPattern.Elements.Length} elements but type '{typeSymbol.Name}' has {typeSymbol.Fields.Count} fields",
+                            positionalPattern.LineStart, positionalPattern.ColumnStart,
+                            code: DiagnosticCodes.Semantic.PositionalPatternCountMismatch,
+                            span: positionalPattern.Span);
+                    }
+                    else if (typeSymbol != null)
+                    {
+                        for (int i = 0; i < positionalPattern.Elements.Length; i++)
+                        {
+                            var fieldType = typeSymbol.Fields[i].Type ?? scrutineeType;
+                            CheckPattern(positionalPattern.Elements[i], fieldType);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var element in positionalPattern.Elements)
+                        {
+                            CheckPattern(element, scrutineeType);
+                        }
+                    }
+                    break;
+                }
+
             case MemberAccessPattern memberAccess:
                 {
                     // Resolve the dotted path as a member access (e.g., Color.RED).

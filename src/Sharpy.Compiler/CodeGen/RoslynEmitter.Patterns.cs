@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -209,6 +210,78 @@ internal partial class RoslynEmitter
                         IdentifierName(tempVarName),
                         memberValue));
                     return VarPattern(SingleVariableDesignation(Identifier(tempVarName)));
+                }
+
+            case PropertyPattern propertyPattern:
+                {
+                    var typeSyntax = propertyPattern.Type != null
+                        ? _typeMapper.MapType(propertyPattern.Type) : null;
+                    var subPatterns = new List<SubpatternSyntax>();
+                    foreach (var field in propertyPattern.Fields)
+                    {
+                        var fieldName = NameMangler.Transform(field.Name, NameContext.Field);
+                        var subPattern = GenerateMatchPattern(field.Pattern, memberGuards, ref matchVarCounter);
+                        subPatterns.Add(Subpattern(subPattern)
+                            .WithNameColon(NameColon(IdentifierName(fieldName))));
+                    }
+                    var recursivePattern = RecursivePattern()
+                        .WithPropertyPatternClause(
+                            PropertyPatternClause(SeparatedList(subPatterns)));
+                    if (typeSyntax != null)
+                        recursivePattern = recursivePattern.WithType(typeSyntax);
+                    return recursivePattern;
+                }
+
+            case PositionalPattern positionalPattern:
+                {
+                    var typeSyntax = positionalPattern.Type != null
+                        ? _typeMapper.MapType(positionalPattern.Type) : null;
+
+                    // Look up the type symbol to get field names for positional-to-property mapping
+                    TypeSymbol? typeSymbol = null;
+                    if (positionalPattern.Type != null)
+                    {
+                        var symbol = _context.SymbolTable.Lookup(positionalPattern.Type.Name);
+                        if (symbol is TypeSymbol ts)
+                            typeSymbol = ts;
+                    }
+
+                    if (typeSymbol != null && typeSymbol.Fields.Count == positionalPattern.Elements.Length)
+                    {
+                        // Emit as property pattern using field names (no Deconstruct needed)
+                        var subPatterns = new List<SubpatternSyntax>();
+                        for (int i = 0; i < positionalPattern.Elements.Length; i++)
+                        {
+                            var fieldName = NameMangler.Transform(
+                                typeSymbol.Fields[i].Name, NameContext.Field);
+                            var subPattern = GenerateMatchPattern(
+                                positionalPattern.Elements[i], memberGuards, ref matchVarCounter);
+                            subPatterns.Add(Subpattern(subPattern)
+                                .WithNameColon(NameColon(IdentifierName(fieldName))));
+                        }
+                        var recursivePattern = RecursivePattern()
+                            .WithPropertyPatternClause(
+                                PropertyPatternClause(SeparatedList(subPatterns)));
+                        if (typeSyntax != null)
+                            recursivePattern = recursivePattern.WithType(typeSyntax);
+                        return recursivePattern;
+                    }
+                    else
+                    {
+                        // Fallback: emit as positional pattern (requires Deconstruct)
+                        var subPatterns = new SubpatternSyntax[positionalPattern.Elements.Length];
+                        for (int i = 0; i < positionalPattern.Elements.Length; i++)
+                        {
+                            subPatterns[i] = Subpattern(GenerateMatchPattern(
+                                positionalPattern.Elements[i], memberGuards, ref matchVarCounter));
+                        }
+                        var recursivePattern = RecursivePattern()
+                            .WithPositionalPatternClause(
+                                PositionalPatternClause(SeparatedList(subPatterns)));
+                        if (typeSyntax != null)
+                            recursivePattern = recursivePattern.WithType(typeSyntax);
+                        return recursivePattern;
+                    }
                 }
 
             default:

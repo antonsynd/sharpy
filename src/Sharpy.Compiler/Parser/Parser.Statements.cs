@@ -1162,7 +1162,7 @@ public partial class Parser
         // Check for type pattern: identifier followed by '('
         if (Current.Type == TokenType.LeftParen)
         {
-            return ParseTypePattern(token);
+            return ParseTypePatternOrStructural(token);
         }
 
         if (Current.Type == TokenType.Dot)
@@ -1216,46 +1216,149 @@ public partial class Parser
     }
 
 
-    private TypePattern ParseTypePattern(Token typeToken)
+    private Pattern ParseTypePatternOrStructural(Token typeToken)
     {
         var typeAnnotation = new Ast.TypeAnnotation { Name = typeToken.Value };
         Expect(TokenType.LeftParen);
-        Expect(TokenType.RightParen);
 
-        Ast.Identifier? bindingName = null;
-        Token endToken;
-
-        if (Current.Type == TokenType.As)
+        // Check what's inside the parentheses
+        if (Current.Type == TokenType.RightParen)
         {
-            Advance(); // consume 'as'
-            if (Current.Type != TokenType.Identifier)
+            // Type() or Type() as name — pure type pattern
+            Advance(); // consume ')'
+
+            Ast.Identifier? bindingName = null;
+            Token endToken;
+
+            if (Current.Type == TokenType.As)
             {
-                throw ReportError($"Expected identifier after 'as' in type pattern, got '{Current.Value}'",
-                    Current.Line, Current.Column,
-                    DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
+                Advance(); // consume 'as'
+                if (Current.Type != TokenType.Identifier)
+                {
+                    throw ReportError($"Expected identifier after 'as' in type pattern, got '{Current.Value}'",
+                        Current.Line, Current.Column,
+                        DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
+                }
+                var nameToken = Current;
+                Advance();
+                endToken = nameToken;
+                bindingName = new Ast.Identifier
+                {
+                    Name = nameToken.Value,
+                    LineStart = nameToken.Line,
+                    ColumnStart = nameToken.Column,
+                    LineEnd = nameToken.Line,
+                    ColumnEnd = nameToken.Column + nameToken.Value.Length,
+                    Span = GetSpanFromToken(nameToken)
+                };
             }
-            var nameToken = Current;
-            Advance();
-            endToken = nameToken;
-            bindingName = new Ast.Identifier
+            else
             {
-                Name = nameToken.Value,
-                LineStart = nameToken.Line,
-                ColumnStart = nameToken.Column,
-                LineEnd = nameToken.Line,
-                ColumnEnd = nameToken.Column + nameToken.Value.Length,
-                Span = GetSpanFromToken(nameToken)
+                endToken = Previous; // the ')'
+            }
+
+            return new TypePattern
+            {
+                Type = typeAnnotation,
+                BindingName = bindingName,
+                LineStart = typeToken.Line,
+                ColumnStart = typeToken.Column,
+                LineEnd = endToken.Line,
+                ColumnEnd = endToken.Column + endToken.Value.Length,
+                Span = GetSpanFromTokens(typeToken, endToken)
             };
         }
-        else
+
+        // Check if this is a property pattern: identifier followed by '='
+        if (Current.Type == TokenType.Identifier && Peek(1).Type == TokenType.Assign)
         {
-            endToken = Previous; // the ')'
+            return ParsePropertyPattern(typeToken, typeAnnotation);
         }
 
-        return new TypePattern
+        // Otherwise, positional pattern: comma-separated sub-patterns
+        return ParsePositionalPattern(typeToken, typeAnnotation);
+    }
+
+    private PropertyPattern ParsePropertyPattern(Token typeToken, Ast.TypeAnnotation typeAnnotation)
+    {
+        var fields = new List<PropertyPatternField>();
+
+        while (Current.Type != TokenType.RightParen && Current.Type != TokenType.Eof)
+        {
+            if (!CheckLoopProgress())
+                break;
+
+            if (Current.Type != TokenType.Identifier)
+            {
+                throw ReportError($"Expected field name in property pattern, got '{Current.Value}'",
+                    Current.Line, Current.Column,
+                    DiagnosticCodes.Parser.ExpectedIdentifier, span: CurrentSpan);
+            }
+            var fieldNameToken = Current;
+            Advance(); // consume field name
+            Expect(TokenType.Assign); // consume '='
+            var fieldPattern = ParsePattern();
+
+            fields.Add(new PropertyPatternField
+            {
+                Name = fieldNameToken.Value,
+                Pattern = fieldPattern,
+                LineStart = fieldNameToken.Line,
+                ColumnStart = fieldNameToken.Column,
+                LineEnd = Previous.Line,
+                ColumnEnd = Previous.Column + Previous.Value.Length,
+                Span = GetSpanFromTokens(fieldNameToken, Previous)
+            });
+
+            if (Current.Type == TokenType.Comma)
+            {
+                Advance();
+                if (Current.Type == TokenType.RightParen)
+                    break; // trailing comma
+            }
+        }
+
+        var endToken = Current; // the ')'
+        Expect(TokenType.RightParen);
+
+        return new PropertyPattern
         {
             Type = typeAnnotation,
-            BindingName = bindingName,
+            Fields = fields.ToImmutableArray(),
+            LineStart = typeToken.Line,
+            ColumnStart = typeToken.Column,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(typeToken, endToken)
+        };
+    }
+
+    private PositionalPattern ParsePositionalPattern(Token typeToken, Ast.TypeAnnotation typeAnnotation)
+    {
+        var elements = new List<Pattern>();
+
+        while (Current.Type != TokenType.RightParen && Current.Type != TokenType.Eof)
+        {
+            if (!CheckLoopProgress())
+                break;
+
+            elements.Add(ParsePattern());
+
+            if (Current.Type == TokenType.Comma)
+            {
+                Advance();
+                if (Current.Type == TokenType.RightParen)
+                    break; // trailing comma
+            }
+        }
+
+        var endToken = Current; // the ')'
+        Expect(TokenType.RightParen);
+
+        return new PositionalPattern
+        {
+            Type = typeAnnotation,
+            Elements = elements.ToImmutableArray(),
             LineStart = typeToken.Line,
             ColumnStart = typeToken.Column,
             LineEnd = endToken.Line,
