@@ -119,7 +119,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | # | Feature | Complexity | Notes |
 |---|---------|-----------|-------|
 | ~~10.1~~ | ~~`async def` functions~~ | ~~L~~ | ~~Completed.~~ `ParseAsyncFunctionDef()` in `Parser.Definitions.cs`; `FunctionDef.IsAsync` property; TypeChecker wraps return in `TaskType`; RoslynEmitter adds `async` modifier + `WrapInTask()`. Integration tests: `async_basic`, `async_class_method`, `async_void`. Error tests: `async_generator_error`, `async_init_error`. |
-| 10.2 | `await` expressions | L | `AwaitExpression` AST already exists in `Expression.Future.cs` (placeholder); wire parser + semantic (operand must be `Task<T>`, result is `T`) + codegen (C# `await`). **Groundwork:** `BasicBlock.ContainsAwait`, `AsyncStateRegion`, `IdentifyAsyncRegions()` exist in control flow analysis. |
+| ~~10.2~~ | ~~`await` expressions~~ | ~~L~~ | ~~COMPLETE — `ParseAwaitExpression()` in parser, `CheckAwaitExpression()` in TypeChecker (SPY0273/SPY0274), `GenerateAwaitExpression()` via `SyntaxFactory.AwaitExpression()`. Lambda await rejected.~~ |
 | 10.3 | `async for` loops | M | `async for item in aiter:` → C# `await foreach`; operand must be `IAsyncEnumerable<T>` |
 | 10.4 | `async with` statements | M | `async with resource() as r:` → C# `await using`; operand must be `IAsyncDisposable` |
 | 10.5 | Async generators | L | `async def` + `yield` → `AsyncIterator[T]` → `IAsyncEnumerable<T>` (depends on Phase 9) |
@@ -127,7 +127,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 **Key files:** `Expression.Future.cs` (AwaitExpression), `Parser.Definitions.cs`, `Parser.Statements.cs`, `TypeChecker.cs`, `RoslynEmitter.Statements.cs`, `RoslynEmitter.Expressions.cs`
 
-**Dependencies:** ~~10.1~~ complete. 10.2 is the next foundation piece. 10.3–10.4 build on 10.1+10.2. 10.5 requires Phase 9 (generators, complete).
+**Dependencies:** ~~10.1~~ complete. ~~10.2~~ complete. 10.3–10.4 build on 10.1+10.2. 10.5 requires Phase 9 (generators, complete).
 
 ---
 
@@ -175,7 +175,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | **7** | v0.2.1 | Destructuring & Spread | ~~5~~ ✅ Complete | Complex unpacking, `*rest`, spread in literals/calls |
 | **8** | v0.2.2 | Pattern Matching & Tagged Unions | 8 | Match expressions, all patterns, `union` keyword, exhaustiveness |
 | **9** | v0.2.3 | Generators & Iterators | ~~3~~ ✅ Complete | `yield`/`yield from`, generator inference, 4 new diagnostics (SPY0265–SPY0269) |
-| **10** | v0.2.4 | Async/Await | ~~1~~ + 5 remaining | ~~`async def`~~, `await`, `async for/with`, async generators |
+| **10** | v0.2.4 | Async/Await | ~~1~~ ~~2~~ + 4 remaining | ~~`async def`~~, ~~`await`~~, `async for/with`, async generators |
 | **11** | v0.2.5 | Advanced Functions | 5 | Pos-only/kw-only, `@kwargs`, partial application |
 | **12** | v0.2.6 | Type System & Polish | 5 | Variance, delegates, events, custom decorators, spec audit |
 
@@ -193,7 +193,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 - ✅ Phases 6, 7, 9 complete
 - **Phase 8 is unblocked** — depends on Phase 7 (complete); all items are NOT STARTED
-- **Phase 10 is in progress** — 10.1 (`async def`) complete; 10.2 (`await`) is next; groundwork exists (AwaitExpression placeholder, control flow infrastructure)
+- **Phase 10 is in progress** — 10.1 (`async def`) and 10.2 (`await`) complete; 10.3 (`async for`) is next
 - Phases 8 and 10 can proceed in parallel (independent tracks)
 - Phases 11–12 can begin once 10 is done (or in parallel with 10 if capacity allows)
 

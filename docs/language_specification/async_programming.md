@@ -2,7 +2,7 @@
 
 > **Implementation status:** `async def` declarations are **partially implemented** (v0.2.x).
 > - `async def` is parsed and emits C# `async` methods returning `Task` or `Task<T>`.
-> - `await` expressions are **not yet implemented** — the `await` keyword is reserved but not parsed.
+> - `await` expressions are **implemented** — `await` can be used inside `async def` functions to unwrap `Task<T>` results.
 > - Async generators (`async def` with `yield`) are rejected at compile time (SPY0358).
 > - Async constructors (`async def __init__`) are rejected at compile time (SPY0358).
 > - `async for`, `async with`, and `asyncio` are not yet implemented.
@@ -21,7 +21,7 @@ async def main():
     print(result)
 ```
 
-*Implementation: ⚠️ Partially implemented — `async def` is parsed and emits C# `async Task<T>` methods. `await` expressions are not yet parsed (planned for Phase 10, v0.2.4). Without `await`, async functions can be called with `.Result` or `.Wait()` from synchronous code.*
+*Implementation: ✅ Implemented — `async def` is parsed and emits C# `async Task<T>` methods. `await` expressions unwrap `Task<T>` to `T`. Using `await` outside `async def` or on non-Task types produces compile errors (SPY0273, SPY0274).*
 
 ## Concurrent Execution
 

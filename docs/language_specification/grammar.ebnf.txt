@@ -651,6 +651,10 @@ multiplicative_expr
 
 (* Unary *)
 unary_expr      ::= ( '+' | '-' | '~' ) unary_expr
+                  | await_expr
+
+(* Await *)
+await_expr      ::= 'await' power_expr
                   | power_expr
 
 (* Power - right associative *)
