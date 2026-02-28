@@ -286,8 +286,8 @@ internal class NameResolver
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = typeSymbol,
                 Constraints = typeParam.Constraints,
-                DeclarationLine = classDef.LineStart,
-                DeclarationColumn = classDef.ColumnStart
+                DeclarationLine = typeParam.LineStart,
+                DeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -352,8 +352,8 @@ internal class NameResolver
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = typeSymbol,
                 Constraints = typeParam.Constraints,
-                DeclarationLine = structDef.LineStart,
-                DeclarationColumn = structDef.ColumnStart
+                DeclarationLine = typeParam.LineStart,
+                DeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -418,8 +418,8 @@ internal class NameResolver
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = typeSymbol,
                 Constraints = typeParam.Constraints,
-                DeclarationLine = interfaceDef.LineStart,
-                DeclarationColumn = interfaceDef.ColumnStart
+                DeclarationLine = typeParam.LineStart,
+                DeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }

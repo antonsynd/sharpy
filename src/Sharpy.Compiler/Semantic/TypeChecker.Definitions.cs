@@ -60,8 +60,8 @@ internal partial class TypeChecker
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = null,  // No declaring type for standalone generic functions
                 Constraints = typeParam.Constraints,
-                DeclarationLine = functionDef.LineStart,
-                DeclarationColumn = functionDef.ColumnStart
+                DeclarationLine = typeParam.LineStart,
+                DeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -498,8 +498,8 @@ internal partial class TypeChecker
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = classSymbol,
                 Constraints = typeParam.Constraints,
-                DeclarationLine = classDef.LineStart,
-                DeclarationColumn = classDef.ColumnStart
+                DeclarationLine = typeParam.LineStart,
+                DeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -578,8 +578,8 @@ internal partial class TypeChecker
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = structSymbol,
                 Constraints = typeParam.Constraints,
-                DeclarationLine = structDef.LineStart,
-                DeclarationColumn = structDef.ColumnStart
+                DeclarationLine = typeParam.LineStart,
+                DeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -655,8 +655,8 @@ internal partial class TypeChecker
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = interfaceSymbol,
                 Constraints = typeParam.Constraints,
-                DeclarationLine = interfaceDef.LineStart,
-                DeclarationColumn = interfaceDef.ColumnStart
+                DeclarationLine = typeParam.LineStart,
+                DeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -775,8 +775,8 @@ internal partial class TypeChecker
                     Kind = SymbolKind.TypeParameter,
                     DeclaringType = unionSymbol,
                     Constraints = typeParam.Constraints,
-                    DeclarationLine = unionDef.LineStart,
-                    DeclarationColumn = unionDef.ColumnStart
+                    DeclarationLine = typeParam.LineStart,
+                    DeclarationColumn = typeParam.ColumnStart
                 };
                 _symbolTable.Define(typeParamSymbol);
             }

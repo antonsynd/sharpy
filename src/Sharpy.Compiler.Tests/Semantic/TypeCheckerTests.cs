@@ -2088,4 +2088,34 @@ def process() -> int:
     }
 
     #endregion
+
+    #region TypeParameterSymbol Declaration Location
+
+    [Fact]
+    public void TypeParameterDef_Location_PointsToTypeParameterToken_NotEnclosingClass()
+    {
+        // Verify that TypeParameterDef from the parser has its own location,
+        // distinct from the enclosing class location. This is what
+        // TypeParameterSymbol uses for DeclarationLine/DeclarationColumn (#246).
+        var source = "class Box[T]:\n    value: T\n";
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
+        var module = parser.ParseModule();
+
+        var classDef = module.Body.OfType<ClassDef>().Single();
+        classDef.TypeParameters.Should().HaveCount(1);
+
+        var typeParamDef = classDef.TypeParameters[0];
+        typeParamDef.Name.Should().Be("T");
+
+        // The class "Box" and type parameter "T" are both on line 1,
+        // but "T" is at a different column (inside the brackets).
+        // This verifies the parser records distinct locations for the type parameter.
+        typeParamDef.LineStart.Should().Be(classDef.LineStart);
+        typeParamDef.ColumnStart.Should().NotBe(classDef.ColumnStart,
+            "TypeParameterDef should have its own column, not the enclosing class column");
+    }
+
+    #endregion
 }
