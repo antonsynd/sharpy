@@ -31,6 +31,7 @@ public enum TokenType
     Struct,
     Interface,
     Enum,
+    Union,
     If,
     Else,
     Elif,

@@ -80,6 +80,7 @@ public partial class Lexer
         { "struct", TokenType.Struct },
         { "interface", TokenType.Interface },
         { "enum", TokenType.Enum },
+        { "union", TokenType.Union },
         { "if", TokenType.If },
         { "else", TokenType.Else },
         { "elif", TokenType.Elif },
