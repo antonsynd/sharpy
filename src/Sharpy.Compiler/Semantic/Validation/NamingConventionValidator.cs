@@ -135,7 +135,7 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
 
             foreach (var field in caseDef.Fields)
             {
-                if (field.Name != null)
+                if (!string.IsNullOrEmpty(field.Name))
                 {
                     CheckName(field.Name, field.LineStart, field.ColumnStart, field.Span);
                 }

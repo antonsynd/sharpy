@@ -176,9 +176,9 @@ public record UnionCaseDef
 public record UnionCaseField
 {
     /// <summary>
-    /// The field name (null for positional fields).
+    /// The field name. Positional fields are not yet supported.
     /// </summary>
-    public string? Name { get; init; }
+    public string Name { get; init; } = "";
 
     /// <summary>
     /// The field type.

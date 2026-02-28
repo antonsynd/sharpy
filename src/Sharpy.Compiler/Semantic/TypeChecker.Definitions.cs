@@ -817,7 +817,7 @@ internal partial class TypeChecker
                     var resolvedType = _typeResolver.ResolveTypeAnnotation(field.Type);
                     caseSymbol.Fields.Add(new VariableSymbol
                     {
-                        Name = field.Name ?? "",
+                        Name = field.Name,
                         Kind = SymbolKind.Variable,
                         Type = resolvedType,
                         DeclarationLine = field.LineStart,
