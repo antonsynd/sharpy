@@ -389,9 +389,12 @@ public partial class Parser
         if (Current.Type == TokenType.Maybe)
             return ParseSimpleStatement();
 
+        // Handle async keyword: peek ahead to determine if it's async def, async for, or async with
+        if (Current.Type == TokenType.Async)
+            return ParseAsyncStatement();
+
         return Current.Type switch
         {
-            TokenType.Async => ParseAsyncFunctionDef(),
             TokenType.Def => ParseFunctionDef(),
             TokenType.Class => ParseClassDef(),
             TokenType.Struct => ParseStructDef(),
@@ -459,7 +462,7 @@ public partial class Parser
             // Parse the decorated definition
             stmt = Current.Type switch
             {
-                TokenType.Async => ParseAsyncFunctionDef(),
+                TokenType.Async => ParseAsyncStatement(),
                 TokenType.Def => ParseFunctionDef(),
                 TokenType.Class => ParseClassDef(),
                 TokenType.Struct => ParseStructDef(),
@@ -487,6 +490,51 @@ public partial class Parser
             Assignment => throw ReportError("Decorators cannot be applied to assignments — only functions, classes, structs, properties, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span),
             _ => throw ReportError("Decorators can only be applied to functions, classes, structs, properties, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span)
         };
+    }
+
+    /// <summary>
+    /// Dispatches async statements: async def, async for, async with.
+    /// Peeks at the token after 'async' to determine which form to parse.
+    /// </summary>
+    private Statement ParseAsyncStatement()
+    {
+        var nextType = Peek().Type;
+
+        if (nextType == TokenType.Def)
+            return ParseAsyncFunctionDef();
+
+        if (nextType == TokenType.For)
+        {
+            var asyncToken = Current;
+            Advance(); // consume 'async'
+            var forStmt = ParseForStatement();
+            return forStmt with
+            {
+                IsAsync = true,
+                LineStart = asyncToken.Line,
+                ColumnStart = asyncToken.Column,
+                Span = CombineSpans(GetSpanFromToken(asyncToken), forStmt.Span)
+                    ?? GetSpanFromToken(asyncToken)
+            };
+        }
+
+        if (nextType == TokenType.With)
+        {
+            var asyncToken = Current;
+            Advance(); // consume 'async'
+            var withStmt = ParseWithStatement();
+            return withStmt with
+            {
+                IsAsync = true,
+                LineStart = asyncToken.Line,
+                ColumnStart = asyncToken.Column,
+                Span = CombineSpans(GetSpanFromToken(asyncToken), withStmt.Span)
+                    ?? GetSpanFromToken(asyncToken)
+            };
+        }
+
+        throw ReportError("'async' must be followed by 'def', 'for', or 'with'",
+            Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
     }
 
 }

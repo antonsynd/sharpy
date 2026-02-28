@@ -301,6 +301,7 @@ public record ForStatement : Statement
     public Expression Iterator { get; init; } = null!;
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
+    public bool IsAsync { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
@@ -387,6 +388,7 @@ public record WithStatement : Statement
 {
     public ImmutableArray<WithItem> Items { get; init; } = ImmutableArray<WithItem>.Empty;
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public bool IsAsync { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
