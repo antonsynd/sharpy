@@ -1,7 +1,8 @@
-async def generate_items() -> list[int]:
-    return [1, 2, 3]
+async def generate_items() -> int:
+    yield 1
+    yield 2
+    yield 3
 
 async def main():
-    items: list[int] = await generate_items()
-    async for item in items:
+    async for item in generate_items():
         print(item)
