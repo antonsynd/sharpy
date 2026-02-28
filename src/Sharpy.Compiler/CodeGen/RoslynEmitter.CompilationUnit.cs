@@ -363,7 +363,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private static bool IsSyntheticModule(string moduleName)
     {
-        return moduleName == "asyncio";
+        return moduleName == Shared.SyntheticModuleNames.Asyncio;
     }
 
     /// <summary>

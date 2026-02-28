@@ -802,7 +802,7 @@ internal partial class TypeChecker
                 {
                     AddError($"Union case '{caseDef.Name}' cannot have the same name as its enclosing union '{unionDef.Name}'",
                         caseDef.LineStart, caseDef.ColumnStart,
-                        code: DiagnosticCodes.Semantic.DuplicateUnionCase, span: caseDef.Span);
+                        code: DiagnosticCodes.Semantic.UnionCaseNameConflict, span: caseDef.Span);
                     continue;
                 }
 

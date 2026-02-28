@@ -810,7 +810,7 @@ internal class ImportResolver
     /// </summary>
     private ModuleInfo? TryResolveSyntheticModule(string moduleName)
     {
-        if (moduleName != "asyncio")
+        if (moduleName != Shared.SyntheticModuleNames.Asyncio)
             return null;
 
         var cacheKey = $"synthetic:{moduleName}";

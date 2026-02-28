@@ -202,6 +202,7 @@ public static class DiagnosticCodes
         public const string DuplicateUnionCase = "SPY0365";
         public const string UnionCaseNotFound = "SPY0366";
         public const string UnionCaseFieldMismatch = "SPY0367";
+        public const string UnionCaseNameConflict = "SPY0368";
     }
 
     /// <summary>

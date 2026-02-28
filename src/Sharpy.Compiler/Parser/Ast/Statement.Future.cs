@@ -94,7 +94,7 @@ public record MatchCase
 /// <remarks>
 /// Fully implemented in Phase 8.6: parser, semantic analysis, and code generation.
 /// Lowers to abstract base class + sealed nested case classes in C#.
-/// Pattern matching on union cases is planned for Phase 8.7.
+/// Pattern matching on union cases is implemented in Phase 8.7.
 /// </remarks>
 public record UnionDef : Statement
 {

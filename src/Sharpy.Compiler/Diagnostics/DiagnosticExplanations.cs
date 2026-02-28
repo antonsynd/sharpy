@@ -861,6 +861,11 @@ public static class DiagnosticExplanations
             "union Shape:\n    case Circle(radius: float)\n    case Circle(diameter: float)",
             "Give each union case a unique name:\nunion Shape:\n    case Circle(radius: float)\n    case Square(side: float)");
 
+        Add(dict, DiagnosticCodes.Semantic.UnionCaseNameConflict, "Union case name conflicts with union type", "Semantic",
+            "A union case has the same name as its enclosing union type. This would produce a C# nested class with the same name as its parent, which is invalid.",
+            "union Shape:\n    case Shape(radius: float)  # case name collides with union name",
+            "Give the union case a different name:\nunion Shape:\n    case Circle(radius: float)");
+
         Add(dict, DiagnosticCodes.Semantic.UnionCaseNotFound, "Unknown union case in pattern", "Semantic",
             "A pattern references a case name that does not exist on the union type being matched.",
             "union Result:\n    case Ok(value: int)\n    case Err(msg: str)\nmatch r:\n    case Unknown(v):  # no case 'Unknown' on Result\n        ...",

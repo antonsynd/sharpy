@@ -76,7 +76,7 @@ internal partial class RoslynEmitter
                 isBuiltinFunc = false;
 
             // Handle direct calls to asyncio functions (from asyncio import gather, sleep)
-            if (symbol is FunctionSymbol { OriginalModule: "asyncio" })
+            if (symbol is FunctionSymbol { OriginalModule: Shared.SyntheticModuleNames.Asyncio })
             {
                 return GenerateAsyncioCall(funcName.Name, call);
             }
@@ -188,7 +188,7 @@ internal partial class RoslynEmitter
         if (call.Function is MemberAccess memberAccess)
         {
             // Check for asyncio module calls: asyncio.gather() → Task.WhenAll(), asyncio.sleep() → Task.Delay()
-            if (memberAccess.Object is Identifier asyncioId && asyncioId.Name == "asyncio")
+            if (memberAccess.Object is Identifier asyncioId && asyncioId.Name == Shared.SyntheticModuleNames.Asyncio)
             {
                 var asyncioSym = _context.LookupSymbol(asyncioId.Name);
                 if (asyncioSym is ModuleSymbol)

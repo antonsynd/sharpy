@@ -512,7 +512,7 @@ internal class NameResolver
                 DeclarationColumn = caseDef.ColumnStart
             };
 
-            // Fields will be resolved in type checking (Task 4)
+            // Fields resolved during type checking phase
             unionSymbol.UnionCases.Add(caseSymbol);
         }
 
