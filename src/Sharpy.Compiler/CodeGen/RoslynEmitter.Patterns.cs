@@ -35,7 +35,7 @@ internal partial class RoslynEmitter
 
             // Collect all MemberAccessPattern guards (including nested in tuples).
             // matchVarCounter resets per case arm — each switch section is an independent
-            // scope in C#, so __match0, __match1 etc. can safely repeat across arms.
+            // scope in C#, so __spy_pm_0, __spy_pm_1 etc. can safely repeat across arms.
             var memberGuards = new List<ExpressionSyntax>();
             int matchVarCounter = 0;
             var pattern = GenerateMatchPattern(matchCase.Pattern, memberGuards, ref matchVarCounter);
@@ -58,7 +58,12 @@ internal partial class RoslynEmitter
                     : BinaryExpression(SyntaxKind.LogicalAndExpression, combinedGuard, userGuard);
             }
 
-            if (combinedGuard != null)
+            // WildcardPattern without guard → idiomatic `default:` label
+            if (matchCase.Pattern is WildcardPattern && combinedGuard == null)
+            {
+                caseLabel = DefaultSwitchLabel();
+            }
+            else if (combinedGuard != null)
             {
                 caseLabel = CasePatternSwitchLabel(pattern, WhenClause(combinedGuard), Token(SyntaxKind.ColonToken));
             }
@@ -160,7 +165,7 @@ internal partial class RoslynEmitter
                     if (hasMemberAccess)
                     {
                         // Use var binding + combined when guard with ||
-                        var tempVarName = $"__match{matchVarCounter++}";
+                        var tempVarName = $"__spy_pm_{matchVarCounter++}";
                         ExpressionSyntax? orGuard = null;
                         foreach (var alt in orPattern.Alternatives)
                         {
@@ -204,7 +209,7 @@ internal partial class RoslynEmitter
                 {
                     // Bind to a named variable and add a when-clause guard for equality.
                     // This handles both top-level and nested (e.g., inside TuplePattern) cases.
-                    var tempVarName = $"__match{matchVarCounter++}";
+                    var tempVarName = $"__spy_pm_{matchVarCounter++}";
                     var memberValue = GenerateMemberAccessValue(memberAccess);
                     memberGuards.Add(BinaryExpression(
                         SyntaxKind.EqualsExpression,

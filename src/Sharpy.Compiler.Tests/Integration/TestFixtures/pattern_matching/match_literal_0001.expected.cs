@@ -23,7 +23,7 @@ public static partial class MatchLiteral0001
 #line 7 "match_literal_0001.spy"
                 global::Sharpy.Builtins.Print("forty-two");
                 break;
-            case var _:
+            default:
 #line 9 "match_literal_0001.spy"
                 global::Sharpy.Builtins.Print("other");
                 break;
