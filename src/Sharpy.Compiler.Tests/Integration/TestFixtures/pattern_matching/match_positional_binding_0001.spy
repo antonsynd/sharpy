@@ -1,0 +1,21 @@
+class Pair:
+    first: int
+    second: int
+
+    def __init__(self, first: int, second: int):
+        self.first = first
+        self.second = second
+
+def describe(p: Pair) -> str:
+    match p:
+        case Pair(0, y):
+            return "first is zero, second is " + str(y)
+        case Pair(x, 0):
+            return "first is " + str(x) + ", second is zero"
+        case _:
+            return "other"
+
+def main():
+    print(describe(Pair(0, 42)))
+    print(describe(Pair(7, 0)))
+    print(describe(Pair(3, 4)))

@@ -1,0 +1,18 @@
+class Rectangle:
+    width: int
+    height: int
+
+    def __init__(self, width: int, height: int):
+        self.width = width
+        self.height = height
+
+def describe(r: Rectangle) -> str:
+    match r:
+        case Rectangle(width=w, height=h) if w == h:
+            return "square " + str(w)
+        case _:
+            return "rectangle"
+
+def main():
+    print(describe(Rectangle(5, 5)))
+    print(describe(Rectangle(3, 4)))

@@ -1,0 +1,19 @@
+class Color:
+    const RED: int = 1
+    const GREEN: int = 2
+    const BLUE: int = 3
+
+def describe(c: int) -> str:
+    match c:
+        case Color.RED | Color.BLUE:
+            return "primary"
+        case Color.GREEN:
+            return "green"
+        case _:
+            return "unknown"
+
+def main():
+    print(describe(1))
+    print(describe(3))
+    print(describe(2))
+    print(describe(99))

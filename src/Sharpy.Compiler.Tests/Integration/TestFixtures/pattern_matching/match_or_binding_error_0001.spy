@@ -1,0 +1,7 @@
+def main():
+    x: int = 1
+    match x:
+        case y | 2:
+            print("matched")
+        case _:
+            print("other")

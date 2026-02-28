@@ -1,0 +1,16 @@
+def grade(score: int) -> str:
+    match score:
+        case >= 90:
+            return "A"
+        case >= 80:
+            return "B"
+        case >= 70:
+            return "C"
+        case _:
+            return "F"
+
+def main():
+    print(grade(95))
+    print(grade(85))
+    print(grade(75))
+    print(grade(60))

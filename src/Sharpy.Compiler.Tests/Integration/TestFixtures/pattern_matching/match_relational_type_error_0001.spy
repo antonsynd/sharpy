@@ -1,0 +1,7 @@
+def main():
+    x: str = "hello"
+    match x:
+        case > 0:
+            print("positive")
+        case _:
+            print("other")

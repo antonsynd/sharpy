@@ -851,6 +851,171 @@ internal partial class TypeChecker
                     break;
                 }
 
+            case TypePattern typePattern:
+                {
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(typePattern.Type);
+                    if (resolvedType is UnknownType)
+                    {
+                        AddError(
+                            $"Unknown type '{typePattern.Type.Name}' in type pattern",
+                            typePattern.LineStart, typePattern.ColumnStart,
+                            code: DiagnosticCodes.Semantic.UndefinedType,
+                            span: typePattern.Span);
+                    }
+                    if (typePattern.BindingName != null)
+                    {
+                        var newSymbol = new VariableSymbol
+                        {
+                            Name = typePattern.BindingName.Name,
+                            Kind = SymbolKind.Variable,
+                            Type = resolvedType,
+                            IsConstant = false,
+                            DeclarationLine = typePattern.BindingName.LineStart,
+                            DeclarationColumn = typePattern.BindingName.ColumnStart,
+                            AccessLevel = AccessLevel.Public
+                        };
+                        _symbolTable.Define(newSymbol);
+                        SemanticBinding.SetVariableType(newSymbol, resolvedType);
+                        _semanticInfo.SetIdentifierSymbol(typePattern.BindingName, newSymbol);
+                    }
+                    break;
+                }
+
+            case RelationalPattern relational:
+                {
+                    var valueType = CheckExpression(relational.Value);
+                    if (!IsNumericType(scrutineeType) && scrutineeType is not UnknownType)
+                    {
+                        AddError(
+                            $"Relational patterns require a numeric scrutinee type, got '{scrutineeType.GetDisplayName()}'",
+                            relational.LineStart, relational.ColumnStart,
+                            code: DiagnosticCodes.Semantic.RelationalPatternTypeMismatch,
+                            span: relational.Span);
+                    }
+                    if (!IsAssignable(valueType, scrutineeType) && !IsAssignable(scrutineeType, valueType)
+                        && valueType is not UnknownType)
+                    {
+                        AddError(
+                            $"Pattern value type '{valueType.GetDisplayName()}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                            relational.LineStart, relational.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: relational.Span);
+                    }
+                    break;
+                }
+
+            case OrPattern orPattern:
+                {
+                    foreach (var alt in orPattern.Alternatives)
+                    {
+                        if (alt is BindingPattern)
+                        {
+                            AddError(
+                                "Binding patterns are not allowed inside or-patterns",
+                                alt.LineStart, alt.ColumnStart,
+                                code: DiagnosticCodes.Semantic.BindingInOrPattern,
+                                span: alt.Span);
+                        }
+                        else
+                        {
+                            CheckPattern(alt, scrutineeType);
+                        }
+                    }
+                    break;
+                }
+
+            case PropertyPattern propertyPattern:
+                {
+                    TypeSymbol? typeSymbol = null;
+                    if (propertyPattern.Type != null)
+                    {
+                        var resolvedType = _typeResolver.ResolveTypeAnnotation(propertyPattern.Type);
+                        if (resolvedType is UnknownType)
+                        {
+                            AddError(
+                                $"Unknown type '{propertyPattern.Type.Name}' in property pattern",
+                                propertyPattern.LineStart, propertyPattern.ColumnStart,
+                                code: DiagnosticCodes.Semantic.UndefinedType,
+                                span: propertyPattern.Span);
+                        }
+                        else if (resolvedType is UserDefinedType udt)
+                        {
+                            typeSymbol = udt.Symbol;
+                        }
+                    }
+
+                    foreach (var field in propertyPattern.Fields)
+                    {
+                        if (typeSymbol != null)
+                        {
+                            var fieldSymbol = typeSymbol.Fields.FirstOrDefault(f => f.Name == field.Name);
+                            if (fieldSymbol == null)
+                            {
+                                AddError(
+                                    $"Type '{typeSymbol.Name}' has no field '{field.Name}'",
+                                    field.LineStart, field.ColumnStart,
+                                    code: DiagnosticCodes.Semantic.PropertyPatternUnknownField,
+                                    span: field.Span);
+                            }
+                            else
+                            {
+                                CheckPattern(field.Pattern, fieldSymbol.Type ?? scrutineeType);
+                            }
+                        }
+                        else
+                        {
+                            CheckPattern(field.Pattern, scrutineeType);
+                        }
+                    }
+                    break;
+                }
+
+            case PositionalPattern positionalPattern:
+                {
+                    TypeSymbol? typeSymbol = null;
+                    if (positionalPattern.Type != null)
+                    {
+                        var resolvedType = _typeResolver.ResolveTypeAnnotation(positionalPattern.Type);
+                        if (resolvedType is UnknownType)
+                        {
+                            AddError(
+                                $"Unknown type '{positionalPattern.Type.Name}' in positional pattern",
+                                positionalPattern.LineStart, positionalPattern.ColumnStart,
+                                code: DiagnosticCodes.Semantic.UndefinedType,
+                                span: positionalPattern.Span);
+                        }
+                        else if (resolvedType is UserDefinedType udt)
+                        {
+                            typeSymbol = udt.Symbol;
+                        }
+                    }
+
+                    if (typeSymbol != null && positionalPattern.Elements.Length != typeSymbol.Fields.Count)
+                    {
+                        AddError(
+                            $"Positional pattern has {positionalPattern.Elements.Length} elements but type '{typeSymbol.Name}' has {typeSymbol.Fields.Count} fields",
+                            positionalPattern.LineStart, positionalPattern.ColumnStart,
+                            code: DiagnosticCodes.Semantic.PositionalPatternCountMismatch,
+                            span: positionalPattern.Span);
+                    }
+                    else if (typeSymbol != null)
+                    {
+                        for (int i = 0; i < positionalPattern.Elements.Length; i++)
+                        {
+                            var fieldType = typeSymbol.Fields[i].Type ?? scrutineeType;
+                            CheckPattern(positionalPattern.Elements[i], fieldType);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var element in positionalPattern.Elements)
+                        {
+                            CheckPattern(element, scrutineeType);
+                        }
+                    }
+                    break;
+                }
+
             case MemberAccessPattern memberAccess:
                 {
                     // Resolve the dotted path as a member access (e.g., Color.RED).

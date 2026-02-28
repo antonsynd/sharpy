@@ -62,6 +62,7 @@ internal partial class TypeChecker
             AwaitExpression awaitExpr => CheckAwaitExpression(awaitExpr),
             SpreadElement spread => CheckExpression(spread.Value),
             StarExpression star => CheckExpression(star.Operand),
+            MatchExpression matchExpr => CheckMatchExpression(matchExpr),
             _ => HandleUnrecognizedExpression(expr)
         };
 
@@ -249,5 +250,57 @@ internal partial class TypeChecker
 
         // The walrus expression both assigns and returns the value
         return valueType;
+    }
+
+    private SemanticType CheckMatchExpression(MatchExpression matchExpr)
+    {
+        var scrutineeType = CheckExpression(matchExpr.Scrutinee);
+        SemanticType? resultType = null;
+
+        foreach (var arm in matchExpr.Arms)
+        {
+            _symbolTable.EnterScope("match-arm");
+            CheckPattern(arm.Pattern, scrutineeType);
+
+            if (arm.Guard != null)
+            {
+                var guardType = CheckExpression(arm.Guard);
+                if (guardType is not UnknownType && !IsAssignable(guardType, SemanticType.Bool))
+                {
+                    AddError(
+                        $"Guard expression must be a boolean, got '{guardType.GetDisplayName()}'",
+                        arm.Guard.LineStart, arm.Guard.ColumnStart,
+                        code: DiagnosticCodes.Semantic.ConditionNotBoolean,
+                        span: arm.Guard.Span);
+                }
+            }
+
+            var armType = CheckExpression(arm.Result);
+
+            if (resultType == null)
+            {
+                resultType = armType;
+            }
+            else if (!IsAssignable(armType, resultType) && armType is not UnknownType)
+            {
+                // Try the reverse direction
+                if (IsAssignable(resultType, armType))
+                {
+                    resultType = armType; // widen
+                }
+                else
+                {
+                    AddError(
+                        $"Match expression arm type '{armType.GetDisplayName()}' is incompatible with previous arm type '{resultType.GetDisplayName()}'",
+                        arm.Result.LineStart, arm.Result.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: arm.Result.Span);
+                }
+            }
+
+            _symbolTable.ExitScope();
+        }
+
+        return resultType ?? SemanticType.Void;
     }
 }

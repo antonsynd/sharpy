@@ -49,10 +49,6 @@ public record AwaitExpression : Expression
 /// Match expression (match expr { case1 => result1, case2 => result2 }).
 /// Returns a value based on pattern matching.
 /// </summary>
-/// <remarks>
-/// PLACEHOLDER: Parser support not yet implemented.
-/// Target version: v0.2.x
-/// </remarks>
 public record MatchExpression : Expression
 {
     /// <summary>

@@ -1,0 +1,12 @@
+def to_word(n: int) -> str:
+    return match n:
+        case 0: "zero"
+        case 1: "one"
+        case 2: "two"
+        case _: "many"
+
+def main():
+    print(to_word(0))
+    print(to_word(1))
+    print(to_word(2))
+    print(to_word(100))

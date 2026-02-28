@@ -560,6 +560,9 @@ public partial class Parser
                     };
                 }
 
+            case TokenType.Match:
+                return ParseMatchExpression();
+
             default:
                 throw ReportError($"Unexpected token: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
         }
