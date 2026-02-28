@@ -82,6 +82,9 @@ internal partial class RoslynEmitter
             // Walrus operator
             WalrusExpression walrus => GenerateWalrusExpression(walrus),
 
+            // Match expression
+            MatchExpression matchExpr => GenerateMatchExpression(matchExpr),
+
             // Spread/star — normally handled by collection literal and assignment codegen.
             // If reached here, emit a diagnostic — this is an unsupported context.
             SpreadElement spread => EmitNotImplementedExpression(

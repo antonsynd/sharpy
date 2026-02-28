@@ -555,9 +555,10 @@ public partial class Parser
         // 1. Newline (normal case)
         // 2. Dedent (last statement in a block)
         // 3. EOF (last statement in file)
+        // 4. Previous token was Dedent (block-consuming expression like match ended)
         if (Current.Type == TokenType.Newline)
             Advance();
-        else if (Current.Type != TokenType.Dedent && !IsAtEnd)
+        else if (Current.Type != TokenType.Dedent && !IsAtEnd && Previous.Type != TokenType.Dedent)
             throw ReportError($"Expected end of statement, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedEndOfStatement, span: CurrentSpan);
     }
 

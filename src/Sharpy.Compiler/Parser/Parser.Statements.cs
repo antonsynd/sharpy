@@ -1013,6 +1013,77 @@ public partial class Parser
         };
     }
 
+    private MatchExpression ParseMatchExpression()
+    {
+        var startToken = Current;
+        Expect(TokenType.Match);
+
+        var scrutinee = ParseExpression();
+        Expect(TokenType.Colon);
+        ExpectNewline();
+        Expect(TokenType.Indent);
+
+        var arms = new List<MatchArm>();
+        _lastLoopPosition = -1;
+        while (Current.Type == TokenType.Case)
+        {
+            if (!CheckLoopProgress())
+                break;
+            arms.Add(ParseMatchArm());
+        }
+
+        if (arms.Count == 0)
+            throw ReportError("Expected at least one 'case' clause in match expression",
+                Current.Line, Current.Column,
+                DiagnosticCodes.Parser.ExpectedCase, span: CurrentSpan);
+
+        Expect(TokenType.Dedent);
+        var endToken = Previous;
+
+        return new MatchExpression
+        {
+            Scrutinee = scrutinee,
+            Arms = arms.ToImmutableArray(),
+            LineStart = startToken.Line,
+            ColumnStart = startToken.Column,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
+    private MatchArm ParseMatchArm()
+    {
+        var startToken = Current;
+        Expect(TokenType.Case);
+
+        var pattern = ParsePattern();
+
+        Expression? guard = null;
+        if (Current.Type == TokenType.If)
+        {
+            Advance(); // skip 'if'
+            guard = ParseExpression();
+        }
+
+        Expect(TokenType.Colon);
+        var result = ParseExpression();
+        ExpectNewline();
+        var endToken = Previous;
+
+        return new MatchArm
+        {
+            Pattern = pattern,
+            Guard = guard,
+            Result = result,
+            LineStart = startToken.Line,
+            ColumnStart = startToken.Column,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
     private MatchCase ParseMatchCase()
     {
         var startLine = Current.Line;

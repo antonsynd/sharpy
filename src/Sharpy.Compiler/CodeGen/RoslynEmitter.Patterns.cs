@@ -294,4 +294,45 @@ internal partial class RoslynEmitter
                 return DiscardPattern();
         }
     }
+
+    private ExpressionSyntax GenerateMatchExpression(MatchExpression matchExpr)
+    {
+        var scrutineeExpr = GenerateExpression(matchExpr.Scrutinee);
+        var arms = new List<SwitchExpressionArmSyntax>();
+
+        foreach (var arm in matchExpr.Arms)
+        {
+            var memberGuards = new List<ExpressionSyntax>();
+            int matchVarCounter = 0;
+            var pattern = GenerateMatchPattern(arm.Pattern, memberGuards, ref matchVarCounter);
+
+            // Combine member access guards
+            ExpressionSyntax? combinedGuard = null;
+            foreach (var guard in memberGuards)
+            {
+                combinedGuard = combinedGuard == null
+                    ? guard
+                    : BinaryExpression(SyntaxKind.LogicalAndExpression, combinedGuard, guard);
+            }
+
+            if (arm.Guard != null)
+            {
+                var userGuard = GenerateExpression(arm.Guard);
+                combinedGuard = combinedGuard == null
+                    ? userGuard
+                    : BinaryExpression(SyntaxKind.LogicalAndExpression, combinedGuard, userGuard);
+            }
+
+            var resultExpr = GenerateExpression(arm.Result);
+
+            var switchArm = SwitchExpressionArm(pattern, resultExpr);
+            if (combinedGuard != null)
+            {
+                switchArm = switchArm.WithWhenClause(WhenClause(combinedGuard));
+            }
+            arms.Add(switchArm);
+        }
+
+        return SwitchExpression(scrutineeExpr, SeparatedList(arms));
+    }
 }
