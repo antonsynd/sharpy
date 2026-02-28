@@ -47,6 +47,26 @@ internal partial class TypeChecker
                     return new UserDefinedType { Name = enumTypeSym.Name, Symbol = enumTypeSym };
                 }
 
+                // Check for union case access: Shape.Circle -> UserDefinedType(Circle)
+                if (sym is TypeSymbol { TypeKind: TypeKind.Union } unionTypeSym)
+                {
+                    var caseSymbol = unionTypeSym.UnionCases.FirstOrDefault(c => c.Name == memberAccess.Member);
+                    if (caseSymbol != null)
+                    {
+                        var caseType = new UserDefinedType { Name = caseSymbol.Name, Symbol = caseSymbol };
+                        _semanticInfo.SetExpressionType(memberAccess, caseType);
+                        _semanticInfo.SetMemberAccessResolution(memberAccess, unionTypeSym, caseSymbol);
+                        return caseType;
+                    }
+
+                    AddError(
+                        $"Union '{unionTypeSym.Name}' has no case '{memberAccess.Member}'",
+                        memberAccess.LineStart, memberAccess.ColumnStart,
+                        code: DiagnosticCodes.Semantic.UndefinedMember,
+                        span: memberAccess.Span);
+                    return SemanticType.Unknown;
+                }
+
                 // Check for static/const field access via type name: MyClass.FIELD
                 if (sym is TypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct } classTypeSym)
                 {
@@ -811,6 +831,39 @@ internal partial class TypeChecker
             var overloadResult = ResolveBuiltinOverload(id, argTypes, totalArgCount, call);
             if (overloadResult != null)
                 return overloadResult;
+        }
+        // Handle union case construction: Shape.Circle(5.0) → new Shape.Circle(5.0)
+        // The calleeType is a UserDefinedType for the case class whose BaseType is the union.
+        else if (call.Function is MemberAccess unionCaseAccess
+            && calleeType is UserDefinedType caseUdt
+            && caseUdt.Symbol?.BaseType is { TypeKind: TypeKind.Union })
+        {
+            // Validate argument count against case fields
+            var caseFields = caseUdt.Symbol.Fields;
+            if (argTypes.Count != caseFields.Count)
+            {
+                AddError($"Union case '{caseUdt.Symbol.BaseType.Name}.{caseUdt.Name}' expects {caseFields.Count} argument(s) but got {argTypes.Count}",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+            }
+            else
+            {
+                // Validate argument types
+                for (int i = 0; i < caseFields.Count; i++)
+                {
+                    if (!IsAssignable(argTypes[i], caseFields[i].Type))
+                    {
+                        AddError($"Argument {i + 1} has type '{argTypes[i].GetDisplayName()}' but field '{caseFields[i].Name}' expects '{caseFields[i].Type.GetDisplayName()}'",
+                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: call.Arguments[i].Span);
+                    }
+                }
+            }
+
+            // Union case construction returns the case type (which is assignable to the union base type)
+            return caseUdt;
         }
         // Handle member access function calls (e.g., module.function() or obj.method())
         // Skip super() calls - they're already validated by ValidateSuperMemberAccess

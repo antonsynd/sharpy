@@ -1,0 +1,12 @@
+union Shape:
+    case Circle(radius: float)
+    case Rectangle(width: float, height: float)
+    case Point()
+
+def main():
+    c: Shape = Shape.Circle(5.0)
+    r: Shape = Shape.Rectangle(3.0, 4.0)
+    p: Shape = Shape.Point()
+    print(isinstance(c, Shape))
+    print(isinstance(r, Shape))
+    print(isinstance(p, Shape))

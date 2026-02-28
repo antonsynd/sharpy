@@ -181,6 +181,27 @@ internal partial class RoslynEmitter
         // Handle method calls on objects: obj.method() or ClassName.static_method()
         if (call.Function is MemberAccess memberAccess)
         {
+            // Check for union case construction: Shape.Circle(5.0) → new Shape.Circle(5.0)
+            if (memberAccess.Object is Identifier unionId)
+            {
+                var unionSym = _context.LookupSymbol(unionId.Name);
+                if (unionSym is TypeSymbol { TypeKind: Semantic.TypeKind.Union } unionTypeSym)
+                {
+                    var unionCSharpName = NameMangler.Transform(unionId.Name, NameContext.Type);
+                    var caseCSharpName = NameMangler.Transform(memberAccess.Member, NameContext.Type);
+                    var qualifiedCaseName = QualifiedName(IdentifierName(unionCSharpName), IdentifierName(caseCSharpName));
+
+                    var casePositionalArgs = GeneratePositionalArguments(call.Arguments);
+                    var caseKeywordArgs = call.KeywordArguments.Select(kwarg =>
+                        Argument(GenerateExpression(kwarg.Value))
+                            .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
+                    var caseAllArgs = casePositionalArgs.Concat(caseKeywordArgs).ToArray();
+
+                    return ObjectCreationExpression(qualifiedCaseName)
+                        .WithArgumentList(ArgumentList(SeparatedList(caseAllArgs)));
+                }
+            }
+
             var obj = GenerateExpression(memberAccess.Object);
 
             // Cross-dunder calls: transform operator dunders to C# operator expressions.
