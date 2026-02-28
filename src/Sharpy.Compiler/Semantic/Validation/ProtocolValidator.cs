@@ -118,7 +118,9 @@ internal class ProtocolValidator : SemanticValidatorBase
         if (iterableType == null || iterableType is UnknownType)
             return;
 
-        if (!HasProtocol(iterableType, DunderNames.Iter))
+        // Async for loops use IAsyncEnumerable<T> protocol, not __iter__.
+        // Skip the __iter__ check and trust the C# compiler to validate.
+        if (!forStmt.IsAsync && !HasProtocol(iterableType, DunderNames.Iter))
         {
             AddError(_context,
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +

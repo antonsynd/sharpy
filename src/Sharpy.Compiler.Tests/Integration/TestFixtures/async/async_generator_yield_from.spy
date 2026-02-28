@@ -1,0 +1,12 @@
+def sync_items() -> int:
+    yield 10
+    yield 20
+
+async def async_gen() -> int:
+    yield 1
+    yield from sync_items()
+    yield 2
+
+async def main():
+    async for x in async_gen():
+        print(x)
