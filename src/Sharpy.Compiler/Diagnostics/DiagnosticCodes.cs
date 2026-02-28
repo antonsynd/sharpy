@@ -146,6 +146,8 @@ public static class DiagnosticCodes
         public const string YieldInTryExcept = "SPY0270";
         public const string YieldInCatchHandler = "SPY0271";
         public const string YieldInFinallyBlock = "SPY0272";
+        public const string AwaitOutsideAsync = "SPY0273";
+        public const string InvalidAwaitOperand = "SPY0274";
 
         // Class and inheritance (SPY0280-SPY0299)
         public const string AbstractInstantiation = "SPY0280";

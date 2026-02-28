@@ -59,6 +59,7 @@ internal partial class TypeChecker
             EllipsisLiteral => SemanticType.Void,
             SliceAccess sliceAccess => CheckSliceAccess(sliceAccess),
             WalrusExpression walrus => CheckWalrusExpression(walrus),
+            AwaitExpression awaitExpr => CheckAwaitExpression(awaitExpr),
             SpreadElement spread => CheckExpression(spread.Value),
             StarExpression star => CheckExpression(star.Operand),
             _ => HandleUnrecognizedExpression(expr)
@@ -88,6 +89,30 @@ internal partial class TypeChecker
             expr.ColumnStart,
             DiagnosticCodes.Semantic.UnrecognizedExpressionType,
             expr.Span);
+        return SemanticType.Unknown;
+    }
+
+    private SemanticType CheckAwaitExpression(AwaitExpression awaitExpr)
+    {
+        if (!_currentFunctionIsAsync)
+        {
+            AddError("'await' can only be used inside 'async def' functions",
+                awaitExpr.LineStart, awaitExpr.ColumnStart,
+                code: DiagnosticCodes.Semantic.AwaitOutsideAsync, span: awaitExpr.Span);
+            return SemanticType.Unknown;
+        }
+
+        var operandType = CheckExpression(awaitExpr.Operand);
+
+        if (operandType is TaskType taskType)
+            return taskType.ResultType ?? SemanticType.Void;
+
+        if (operandType is UnknownType)
+            return SemanticType.Unknown;
+
+        AddError($"Cannot await non-Task type '{operandType.GetDisplayName()}'",
+            awaitExpr.LineStart, awaitExpr.ColumnStart,
+            code: DiagnosticCodes.Semantic.InvalidAwaitOperand, span: awaitExpr.Span);
         return SemanticType.Unknown;
     }
 

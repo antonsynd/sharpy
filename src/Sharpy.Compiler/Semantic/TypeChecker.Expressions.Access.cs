@@ -1660,6 +1660,11 @@ internal partial class TypeChecker
         // This is the same logic as for nested function definitions (task 1.7).
         using var _ = _narrowingContext.EnterIsolatedScope();
 
+        // Lambdas cannot be async, so await inside a lambda is invalid
+        // (matches Python: await in lambda produces SyntaxError).
+        var previousIsAsync = _currentFunctionIsAsync;
+        _currentFunctionIsAsync = false;
+
         for (int i = 0; i < lambda.Parameters.Length; i++)
         {
             var paramSymbol = new VariableSymbol
@@ -1674,6 +1679,7 @@ internal partial class TypeChecker
 
         var bodyType = CheckExpression(lambda.Body);
 
+        _currentFunctionIsAsync = previousIsAsync;
         _symbolTable.ExitScope();
 
         return new FunctionType

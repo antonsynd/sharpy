@@ -363,6 +363,11 @@ internal partial class TypeChecker
             }
         }
 
+        // Save and set async flag before body checking so CheckAwaitExpression
+        // can validate that await is used inside async functions.
+        var previousIsAsync = _currentFunctionIsAsync;
+        _currentFunctionIsAsync = functionDef.IsAsync;
+
         // Detect generators early: set flag before body checking so CheckReturn
         // knows bare return is valid (it becomes yield break).
         var previousIsGenerator = _currentFunctionIsGenerator;
@@ -464,6 +469,7 @@ internal partial class TypeChecker
         _currentMethodIsOverride = previousMethodIsOverride;
         _currentMethodIsDunder = previousMethodIsDunder;
         _currentFunctionIsGenerator = previousIsGenerator;
+        _currentFunctionIsAsync = previousIsAsync;
         _controlFlowDepth = previousControlFlowDepth;
         _superInitCalled = previousSuperInitCalled;
 
