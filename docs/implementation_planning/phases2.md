@@ -2,6 +2,8 @@
 <!-- Verification result: PASS WITH CORRECTIONS -->
 <!-- Phase 6+7 marked complete on 2026-02-20 (closes #209) -->
 <!-- Phase 9 marked complete on 2026-02-23 (generators fully implemented) -->
+<!-- Phase 8.1-8.5 marked complete on 2026-02-28 (all non-union patterns implemented) -->
+<!-- Phase 10.2 marked complete on 2026-02-28 (await expressions implemented) -->
 
 # Sharpy Language Feature Completeness — Phased Roadmap
 
@@ -32,6 +34,8 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 - **Phase 6 (v0.2.0):** Constructor chaining, enum `.name`/iteration, generic type aliases, method overloading
 - **Phase 7 (v0.2.1):** Complex tuple unpacking, rest patterns, tuple unpacking in comprehensions, spread in collection literals, spread in function calls
 - **Phase 9 (v0.2.3):** `yield` statement, `yield from` delegation, generator return type inference
+- **Phase 8 (v0.2.2, partial):** Match expressions, or-patterns, type patterns with binding, relational patterns, property/positional patterns
+- **Phase 10 (v0.2.4, partial):** `async def` functions, `await` expressions
 
 ### Missing (grouped by phase below)
 
@@ -81,18 +85,18 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 | # | Feature | Complexity | Notes |
 |---|---------|-----------|-------|
-| 8.1 | Match expression (expression form) | M | `result = match x: case ...: expr` → C# switch expression. `MatchExpression` AST already in Future.cs |
-| 8.2 | Or-patterns | S | `case "a" \| "b":` — `OrPattern` AST exists; wire through parser + codegen |
-| 8.3 | Type patterns with binding | M | `case int() as n:` — `TypePattern` + `BindingPattern` AST exists; wire parser + codegen |
-| 8.4 | Relational patterns | M | `case > 0:` — new `RelationalPattern` AST node; parser + codegen → C# relational pattern |
-| 8.5 | Property/positional patterns | M | `case Point(x=0):` and `case Point(0, y):` — match on type properties; requires `Deconstruct` awareness |
-| 8.6 | Tagged union declarations (`union`) | XL | `UnionDef` AST exists in Future.cs; full parser + semantic + codegen. Lower to abstract base class + sealed nested case classes with `Deconstruct` methods |
-| 8.7 | Union case patterns in match | M | `case Ok(value):` — destructure union cases; infer short constructor names from match subject type |
-| 8.8 | Exhaustiveness checking | L | New `ExhaustivenessValidator` for enums, `bool`, tagged unions; wildcard `_` satisfies remainder |
+| ~~8.1~~ | ~~Match expression (expression form)~~ | ~~M~~ | ~~Completed.~~ `ParseMatchExpression()` in parser; `CheckMatchExpression()` in TypeChecker; `GenerateMatchExpression()` → C# switch expression in `RoslynEmitter.Patterns.cs`. Tests: `match_expr_basic_0001`, `match_expr_guard_0001`, `match_expr_nested_0001`, `match_expr_return_0001` |
+| ~~8.2~~ | ~~Or-patterns~~ | ~~S~~ | ~~Completed.~~ `case "a" \| "b":` parsed via pipe detection in `ParsePattern()`; SPY0320 rejects bindings in or-patterns; codegen emits C# `or` patterns or when-guards. Tests: `match_or_literal_0001`, `match_or_member_access_0001`, etc. |
+| ~~8.3~~ | ~~Type patterns with binding~~ | ~~M~~ | ~~Completed.~~ `case int() as n:` via `ParseTypePatternOrStructural()`; SPY0202/SPY0203 diagnostics; `DeclarationPattern` codegen. Tests: `match_type_basic_0001`, `match_type_binding_0004`, `match_type_binding_0016` |
+| ~~8.4~~ | ~~Relational patterns~~ | ~~M~~ | ~~Completed.~~ `case > 0:` via `ParseRelationalPattern()`; `RelationalPattern` AST + `RelationalOperator` enum; SPY0204 type mismatch diagnostic; C# relational pattern codegen. Tests: `match_relational_basic_0001`, `match_relational_combined_0001`, etc. |
+| ~~8.5~~ | ~~Property/positional patterns~~ | ~~M~~ | ~~Completed.~~ `case Point(x=0):` via `ParsePropertyPattern()`, `case Point(0, y):` via `ParsePositionalPattern()`; SPY0207/SPY0209 diagnostics; `RecursivePattern` with `PropertyPatternClause` codegen. Tests: `match_property_basic_0001`, `match_positional_basic_0001`, etc. |
+| 8.6 | Tagged union declarations (`union`) | XL | `UnionDef` AST exists in Future.cs; full parser + semantic + codegen needed. Lower to abstract base class + sealed nested case classes with `Deconstruct` methods |
+| 8.7 | Union case patterns in match | M | `case Ok(value):` — `UnionCasePattern` AST exists but entirely unwired through parser/semantic/codegen. Depends on 8.6 |
+| 8.8 | Exhaustiveness checking | L | Only `WildcardPattern` recognized as exhaustive in control flow; no validator or diagnostic for non-exhaustive matches over enums/bool/unions |
 
-**Key files:** `Parser.Statements.cs`, `Parser.Expressions.cs`, `Pattern.cs`, `Statement.Future.cs`, `TypeChecker.Statements.cs`, `RoslynEmitter.Statements.cs`, `RoslynEmitter.TypeDeclarations.cs`
+**Key files:** `Parser.Statements.cs`, `Parser.Expressions.cs`, `Pattern.cs`, `Statement.Future.cs`, `TypeChecker.Statements.cs`, `RoslynEmitter.Patterns.cs`, `RoslynEmitter.TypeDeclarations.cs`
 
-**Dependencies:** 8.1–8.5 are independent pattern completions. 8.6 (tagged unions) must precede 8.7 (union case patterns). 8.8 depends on all patterns being parseable.
+**Dependencies:** ~~8.1–8.5 complete.~~ 8.6 (tagged unions) must precede 8.7 (union case patterns). 8.8 depends on all patterns being parseable.
 
 ---
 
@@ -173,13 +177,13 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 |-------|---------|-------|-------|-----------------|
 | **6** | v0.2.0 | Correctness & Completion | ~~5~~ ✅ Complete | Constructor chaining, enum polish, generic type aliases, method overloading (6.2 `raise from` intentionally skipped) |
 | **7** | v0.2.1 | Destructuring & Spread | ~~5~~ ✅ Complete | Complex unpacking, `*rest`, spread in literals/calls |
-| **8** | v0.2.2 | Pattern Matching & Tagged Unions | 8 | Match expressions, all patterns, `union` keyword, exhaustiveness |
+| **8** | v0.2.2 | Pattern Matching & Tagged Unions | ~~5~~ + 3 remaining | ~~Match expressions, or/type/relational/property/positional patterns~~; `union` keyword, union case patterns, exhaustiveness |
 | **9** | v0.2.3 | Generators & Iterators | ~~3~~ ✅ Complete | `yield`/`yield from`, generator inference, 4 new diagnostics (SPY0265–SPY0269) |
 | **10** | v0.2.4 | Async/Await | ~~1~~ ~~2~~ + 4 remaining | ~~`async def`~~, ~~`await`~~, `async for/with`, async generators |
 | **11** | v0.2.5 | Advanced Functions | 5 | Pos-only/kw-only, `@kwargs`, partial application |
 | **12** | v0.2.6 | Type System & Polish | 5 | Variance, delegates, events, custom decorators, spec audit |
 
-**Total: 23 remaining items across 4 phases (v0.2.2–v0.2.6)** — Phases 6, 7, 9 complete; 10.1 complete (14 items delivered)
+**Total: 16 remaining items across 4 phases (v0.2.2–v0.2.6)** — Phases 6, 7, 9 complete; 8.1–8.5, 10.1–10.2 complete (21 items delivered)
 
 ---
 
@@ -192,8 +196,8 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 ```
 
 - ✅ Phases 6, 7, 9 complete
-- **Phase 8 is unblocked** — depends on Phase 7 (complete); all items are NOT STARTED
-- **Phase 10 is in progress** — 10.1 (`async def`) and 10.2 (`await`) complete; 10.3 (`async for`) is next
+- **Phase 8 is 5/8 complete** — 8.1–8.5 (all pattern types) done; 8.6 (tagged unions), 8.7 (union case patterns), 8.8 (exhaustiveness) remain
+- **Phase 10 is 2/6 complete** — 10.1 (`async def`) and 10.2 (`await`) done; 10.3 (`async for`) is next
 - Phases 8 and 10 can proceed in parallel (independent tracks)
 - Phases 11–12 can begin once 10 is done (or in parallel with 10 if capacity allows)
 
@@ -203,9 +207,9 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 1. ~~**Phase 6 first** — fixes correctness issues in shipped features; no new syntax risk~~ ✅ Done
 2. ~~**Phase 7 before 8** — spread/unpacking is foundational; tagged union destruction uses similar patterns~~ ✅ Done
-3. **Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy. **Next priority.** All 8 items are NOT STARTED; AST placeholders exist for MatchExpression, UnionDef, OrPattern, TypePattern, UnionCasePattern.
+3. **Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy. **8.1–8.5 complete** (match expressions + all non-union patterns). Remaining: 8.6 tagged unions (XL), 8.7 union case patterns (M), 8.8 exhaustiveness (L).
 4. ~~**Phase 9 before 10** — generators are prerequisite for async generators~~ ✅ Done
-5. **Phase 10 completes the async story** — last major syntax feature. Can proceed in parallel with Phase 8. 10.1 (`async def`) complete. Groundwork for 10.2+: `AwaitExpression` AST placeholder, `AsyncStateRegion`/`IdentifyAsyncRegions()` in control flow.
+5. **Phase 10 completes the async story** — last major syntax feature. Can proceed in parallel with Phase 8. 10.1 (`async def`) and 10.2 (`await`) complete. 10.3 (`async for`) and 10.4 (`async with`) are next — straightforward `await foreach`/`await using` mappings. 10.5 (async generators) deliberately blocked with SPY error pending implementation.
 6. **Phases 11–12 are polish** — advanced function params, type system, and gap-filling
 
 ---
@@ -294,9 +298,9 @@ Intentional language design decisions:
 
 **Phase 9 verified COMPLETE** — all 3 items (yield, yield from, generator return type inference) fully implemented across parser, semantic, validation, and codegen.
 
-**Phase 8 audit** — all 8 items confirmed NOT STARTED. AST placeholder nodes exist (`MatchExpression`, `UnionDef`, `OrPattern`, `TypePattern`, `UnionCasePattern`) but none are wired into parser, semantic analysis, or codegen. Match statements work only with 5 basic patterns + guard clauses: Literal, Wildcard, Binding, Tuple, MemberAccess. Note: `TypePattern` (`case int() as n:`) is **not implemented** despite being previously listed as ✅ in match_statement.md — the AST record exists but `ParsePattern()`, `CheckPattern()`, and `GenerateMatchPattern()` have no code path for it.
+**Phase 8 audit (2026-02-28)** — 8.1–8.5 confirmed COMPLETE with full parser → semantic → codegen pipelines and passing integration tests. Match expressions (`ParseMatchExpression()` → `GenerateMatchExpression()`), or-patterns (SPY0320 for binding rejection), type patterns with binding (`ParseTypePatternOrStructural()`, SPY0202/SPY0203), relational patterns (`ParseRelationalPattern()`, `RelationalOperator` enum, SPY0204), property patterns (`ParsePropertyPattern()`, SPY0207), and positional patterns (`ParsePositionalPattern()`, SPY0209) are all production-ready. Items 8.6 (tagged unions), 8.7 (union case patterns), and 8.8 (exhaustiveness checking) remain NOT STARTED — `UnionDef` is still a Future.cs placeholder with no parser/semantic/codegen paths.
 
-**Phase 10 audit** — 10.1 (`async def`) confirmed NOT STARTED as of 2026-02-23. *(Updated 2026-02-27: 10.1 now COMPLETE — `ParseAsyncFunctionDef()`, `FunctionDef.IsAsync`, TypeChecker `TaskType` wrapping, RoslynEmitter `async` modifier all implemented with passing integration tests.)* 10.2–10.6 remain NOT STARTED. `AwaitExpression` is a Future.cs placeholder. Control flow infrastructure (`AsyncStateRegion`, `IdentifyAsyncRegions()`, `BasicBlock.ContainsAwait`) provides groundwork but is not connected to any pipeline stage.
+**Phase 10 audit (2026-02-28)** — 10.1 (`async def`) and 10.2 (`await`) confirmed COMPLETE. `ParseAsyncFunctionDef()` + `FunctionDef.IsAsync`; `ParseAwaitExpression()` + `CheckAwaitExpression()` (SPY0273/SPY0274); `GenerateAwaitExpression()` via `SyntaxFactory.AwaitExpression()`. 13 integration tests across both features. 10.3–10.6 remain NOT STARTED. 10.5 is deliberately blocked with an explicit error in TypeChecker ("Async generators not yet supported").
 
 **Phase 11 audit** — all 5 items confirmed NOT STARTED. No positional-only/keyword-only parameter parsing, no `@kwargs`/`@dynamic_kwargs` decorator handling, no `PlaceholderExpression` AST node.
 
