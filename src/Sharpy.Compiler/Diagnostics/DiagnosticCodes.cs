@@ -228,9 +228,12 @@ public static class DiagnosticCodes
         // Interface validation (SPY0413)
         public const string DunderInUserInterface = "SPY0413";
 
-        // Dunder validation (SPY0414-SPY0419)
+        // Dunder validation (SPY0414-SPY0415)
         public const string UnknownDunderMethod = "SPY0414";
         public const string VirtualOnStructMethod = "SPY0415";
+
+        // Exhaustiveness validation (SPY0416)
+        public const string NonExhaustiveMatchExpression = "SPY0416";
 
         // Warnings (SPY0450-SPY0499)
         public const string UnreachableCodeWarning = "SPY0450";
@@ -248,6 +251,9 @@ public static class DiagnosticCodes
         public const string DunderDirectInvocation = "SPY0460";
         public const string DunderWrongReceiver = "SPY0461";
         public const string DunderCapture = "SPY0462";
+
+        // Exhaustiveness warnings (SPY0463)
+        public const string NonExhaustiveMatch = "SPY0463";
     }
 
     /// <summary>
