@@ -225,7 +225,7 @@ def optional_to_nullable(opt: T?) -> T | None:
 See [Maybe Expressions](maybe_expressions.md) for details on the `maybe` keyword.
 
 *Implementation*
-- *🔄 Lowered - Struct-based tagged union (no heap allocation). See [Tagged Unions](tagged_unions.md) for implementation details.*
+- *Phase 8.6: `union` declarations implemented (parser, semantic, codegen). Unions lower to abstract base class + sealed nested case classes. Optional[T] as struct-based tagged union is planned for a later phase.*
 
 ## Implementation Details
 

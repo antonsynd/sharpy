@@ -126,8 +126,12 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Pre-scan for union declarations and register them in the symbol table
-        // This ensures union case construction (e.g., Shape.Circle(5.0)) works correctly
+        // Pre-scan for union declarations and register them in the codegen symbol table.
+        // This creates a minimal TypeSymbol shell (TypeKind.Union, IsAbstract) for type-kind
+        // discrimination only — UnionCases is intentionally not populated here because case
+        // name validation is already performed by the semantic phase (TypeChecker.Expressions.Access).
+        // The codegen phase only needs to know that a name refers to a union type so it can emit
+        // the correct ObjectCreationExpression for union case construction.
         foreach (var stmt in statements)
         {
             if (stmt is UnionDef unionDef)
@@ -166,7 +170,7 @@ internal partial class RoslynEmitter
 
             // After generating class/struct/function declarations, clear local scope tracking
             // so that parameter names from their methods don't leak into module-level code
-            if (stmt is ClassDef or StructDef or FunctionDef or InterfaceDef or EnumDef)
+            if (stmt is ClassDef or StructDef or FunctionDef or InterfaceDef or EnumDef or UnionDef)
             {
                 _declaredVariables.Clear();
                 _variableVersions.Clear();

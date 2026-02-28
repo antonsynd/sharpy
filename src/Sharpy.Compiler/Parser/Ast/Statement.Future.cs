@@ -92,8 +92,9 @@ public record MatchCase
 ///     case Err(error: E)
 /// </example>
 /// <remarks>
-/// PLACEHOLDER: Parser support not yet implemented.
-/// Target version: v0.2.x
+/// Fully implemented in Phase 8.6: parser, semantic analysis, and code generation.
+/// Lowers to abstract base class + sealed nested case classes in C#.
+/// Pattern matching on union cases is planned for Phase 8.7.
 /// </remarks>
 public record UnionDef : Statement
 {

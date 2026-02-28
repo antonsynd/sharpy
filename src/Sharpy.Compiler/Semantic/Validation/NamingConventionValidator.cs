@@ -128,6 +128,19 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
     private void ValidateUnion(UnionDef unionDef)
     {
         CheckName(unionDef.Name, unionDef.LineStart, unionDef.ColumnStart, unionDef.Span);
+
+        foreach (var caseDef in unionDef.Cases)
+        {
+            CheckName(caseDef.Name, caseDef.LineStart, caseDef.ColumnStart, caseDef.Span);
+
+            foreach (var field in caseDef.Fields)
+            {
+                if (field.Name != null)
+                {
+                    CheckName(field.Name, field.LineStart, field.ColumnStart, field.Span);
+                }
+            }
+        }
     }
 
     private void ValidateParameters(System.Collections.Immutable.ImmutableArray<Parameter> parameters)

@@ -768,57 +768,72 @@ internal partial class TypeChecker
         // Enter a scope for type parameter resolution
         _symbolTable.EnterScope($"union:{unionDef.Name}");
 
-        // Register type parameters in the scope
-        foreach (var typeParam in unionDef.TypeParameters)
+        try
         {
-            var typeParamSymbol = new TypeParameterSymbol
+            // Register type parameters in the scope
+            foreach (var typeParam in unionDef.TypeParameters)
             {
-                Name = typeParam.Name,
-                Kind = SymbolKind.TypeParameter,
-                DeclaringType = unionSymbol,
-                Constraints = typeParam.Constraints,
-                DeclarationLine = unionDef.LineStart,
-                DeclarationColumn = unionDef.ColumnStart
-            };
-            _symbolTable.Define(typeParamSymbol);
-        }
-
-        // Check for duplicate case names and resolve field types
-        var seenCaseNames = new HashSet<string>();
-
-        for (int i = 0; i < unionDef.Cases.Length; i++)
-        {
-            var caseDef = unionDef.Cases[i];
-
-            if (!seenCaseNames.Add(caseDef.Name))
-            {
-                AddError($"Union case '{caseDef.Name}' is already defined in union '{unionDef.Name}'",
-                    caseDef.LineStart, caseDef.ColumnStart,
-                    code: DiagnosticCodes.Semantic.DuplicateUnionCase, span: caseDef.Span);
-                continue;
-            }
-
-            // Get the corresponding case symbol
-            var caseSymbol = unionSymbol.UnionCases.FirstOrDefault(c => c.Name == caseDef.Name);
-            if (caseSymbol == null)
-                continue;
-
-            // Resolve field types
-            foreach (var field in caseDef.Fields)
-            {
-                var resolvedType = _typeResolver.ResolveTypeAnnotation(field.Type);
-                caseSymbol.Fields.Add(new VariableSymbol
+                var typeParamSymbol = new TypeParameterSymbol
                 {
-                    Name = field.Name ?? "",
-                    Kind = SymbolKind.Variable,
-                    Type = resolvedType,
-                    DeclarationLine = field.LineStart,
-                    DeclarationColumn = field.ColumnStart
-                });
+                    Name = typeParam.Name,
+                    Kind = SymbolKind.TypeParameter,
+                    DeclaringType = unionSymbol,
+                    Constraints = typeParam.Constraints,
+                    DeclarationLine = unionDef.LineStart,
+                    DeclarationColumn = unionDef.ColumnStart
+                };
+                _symbolTable.Define(typeParamSymbol);
+            }
+
+            // Check for duplicate case names and resolve field types
+            var seenCaseNames = new HashSet<string>();
+
+            for (int i = 0; i < unionDef.Cases.Length; i++)
+            {
+                var caseDef = unionDef.Cases[i];
+
+                if (!seenCaseNames.Add(caseDef.Name))
+                {
+                    AddError($"Union case '{caseDef.Name}' is already defined in union '{unionDef.Name}'",
+                        caseDef.LineStart, caseDef.ColumnStart,
+                        code: DiagnosticCodes.Semantic.DuplicateUnionCase, span: caseDef.Span);
+                    continue;
+                }
+
+                // Reject case names that collide with the union type name itself,
+                // which would produce a C# nested class with the same name as its enclosing class
+                if (caseDef.Name == unionDef.Name)
+                {
+                    AddError($"Union case '{caseDef.Name}' cannot have the same name as its enclosing union '{unionDef.Name}'",
+                        caseDef.LineStart, caseDef.ColumnStart,
+                        code: DiagnosticCodes.Semantic.DuplicateUnionCase, span: caseDef.Span);
+                    continue;
+                }
+
+                // Get the corresponding case symbol
+                var caseSymbol = unionSymbol.UnionCases.FirstOrDefault(c => c.Name == caseDef.Name);
+                if (caseSymbol == null)
+                    continue;
+
+                // Resolve field types
+                foreach (var field in caseDef.Fields)
+                {
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(field.Type);
+                    caseSymbol.Fields.Add(new VariableSymbol
+                    {
+                        Name = field.Name ?? "",
+                        Kind = SymbolKind.Variable,
+                        Type = resolvedType,
+                        DeclarationLine = field.LineStart,
+                        DeclarationColumn = field.ColumnStart
+                    });
+                }
             }
         }
-
-        _symbolTable.ExitScope();
+        finally
+        {
+            _symbolTable.ExitScope();
+        }
     }
 
     /// <summary>
