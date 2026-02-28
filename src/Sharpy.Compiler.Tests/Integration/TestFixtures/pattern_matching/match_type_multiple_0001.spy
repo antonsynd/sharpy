@@ -1,0 +1,19 @@
+def classify(x: object) -> str:
+    match x:
+        case int() as n:
+            return "int: " + str(n)
+        case str() as s:
+            return "str: " + s
+        case float() as f:
+            return "float: " + str(f)
+        case bool() as b:
+            return "bool: " + str(b)
+        case _:
+            return "unknown"
+
+def main():
+    print(classify(42))
+    print(classify("hello"))
+    print(classify(3.14))
+    print(classify(True))
+    print(classify(None))

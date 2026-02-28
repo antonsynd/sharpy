@@ -1,0 +1,19 @@
+def describe(n: int) -> str:
+    return match n:
+        case 1: "one"
+        case 2: "two"
+        case _: "other"
+
+def wrap(n: int) -> str:
+    result: str = match n:
+        case x if x > 0: "positive: " + describe(x)
+        case 0: "zero: " + describe(0)
+        case _: "negative"
+    return result
+
+def main():
+    print(wrap(1))
+    print(wrap(2))
+    print(wrap(0))
+    print(wrap(99))
+    print(wrap(-1))

@@ -1,0 +1,9 @@
+def check(x: int) -> str:
+    match x:
+        case str() as s:
+            return s
+        case _:
+            return "other"
+
+def main():
+    print(check(42))

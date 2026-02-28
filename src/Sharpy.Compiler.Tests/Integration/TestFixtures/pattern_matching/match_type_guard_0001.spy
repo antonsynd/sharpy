@@ -1,0 +1,17 @@
+def check(x: object) -> str:
+    match x:
+        case int() as n if n > 0:
+            return "positive int: " + str(n)
+        case int():
+            return "non-positive int"
+        case str() as s if len(s) > 3:
+            return "long str: " + s
+        case _:
+            return "other"
+
+def main():
+    print(check(42))
+    print(check(-5))
+    print(check("hello"))
+    print(check("hi"))
+    print(check(3.14))
