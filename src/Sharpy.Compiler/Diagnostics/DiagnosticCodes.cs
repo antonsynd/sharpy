@@ -200,6 +200,8 @@ public static class DiagnosticCodes
         public const string PositionalPatternCountMismatch = "SPY0363";
         public const string UnsupportedPatternInMemberAccessOr = "SPY0364";
         public const string DuplicateUnionCase = "SPY0365";
+        public const string UnionCaseNotFound = "SPY0366";
+        public const string UnionCaseFieldMismatch = "SPY0367";
     }
 
     /// <summary>

@@ -1087,6 +1087,27 @@ internal partial class TypeChecker
                         break;
                     }
 
+                    // Check if this is a union case pattern (e.g., Option.None, Result.Ok)
+                    if (typeSymbol.TypeKind == TypeKind.Union && memberAccess.Parts.Length == 2)
+                    {
+                        var caseName = memberAccess.Parts[1];
+                        var caseSymbol = typeSymbol.UnionCases.FirstOrDefault(c => c.Name == caseName);
+                        if (caseSymbol != null)
+                        {
+                            _semanticInfo.SetPatternUnionCase(memberAccess, caseSymbol);
+                            break;
+                        }
+                        else
+                        {
+                            AddError(
+                                $"Union '{typeSymbol.Name}' has no case '{caseName}'",
+                                memberAccess.LineStart, memberAccess.ColumnStart,
+                                code: DiagnosticCodes.Semantic.UnionCaseNotFound,
+                                span: memberAccess.Span);
+                            break;
+                        }
+                    }
+
                     // Resolve remaining parts as field or property access
                     SemanticType? resolvedType = null;
                     for (int i = 1; i < memberAccess.Parts.Length; i++)
@@ -1134,6 +1155,84 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.UnsupportedFeature);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Tries to resolve a pattern type name as a union case of the scrutinee type.
+    /// Supports both short form (e.g., "Ok" when scrutinee is Result) and
+    /// long form (e.g., "Result.Ok" via dotted name in TypeAnnotation).
+    /// Returns the union case TypeSymbol if found, or null otherwise.
+    /// </summary>
+    private TypeSymbol? TryResolveUnionCaseFromPattern(string typeName, SemanticType scrutineeType)
+    {
+        var (unionSymbol, _) = GetUnionSymbolAndTypeArgs(scrutineeType);
+        if (unionSymbol == null)
+            return null;
+
+        // Short form: name matches a union case directly (e.g., "Ok" for Result union)
+        var caseSymbol = unionSymbol.UnionCases.FirstOrDefault(c => c.Name == typeName);
+        if (caseSymbol != null)
+            return caseSymbol;
+
+        // Long form: "UnionName.CaseName" — the TypeAnnotation name includes the dot
+        if (typeName.Contains('.'))
+        {
+            var parts = typeName.Split('.');
+            if (parts.Length == 2 && parts[0] == unionSymbol.Name)
+            {
+                return unionSymbol.UnionCases.FirstOrDefault(c => c.Name == parts[1]);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the field types for a type symbol, applying generic type substitution
+    /// when the type is a union case with a generic parent union.
+    /// </summary>
+    private List<SemanticType> GetUnionCaseFieldTypes(TypeSymbol typeSymbol, SemanticType scrutineeType)
+    {
+        var fieldTypes = typeSymbol.Fields.Select(f => f.Type).ToList();
+
+        // If this is a union case, substitute type parameters from the scrutinee
+        if (typeSymbol.BaseType is { TypeKind: TypeKind.Union } unionParent
+            && unionParent.TypeParameters.Count > 0)
+        {
+            var (_, typeArgs) = GetUnionSymbolAndTypeArgs(scrutineeType);
+            if (typeArgs != null && typeArgs.Count == unionParent.TypeParameters.Count)
+            {
+                for (int i = 0; i < fieldTypes.Count; i++)
+                {
+                    fieldTypes[i] = SubstituteTypeParameters(
+                        fieldTypes[i], unionParent.TypeParameters, typeArgs);
+                }
+            }
+        }
+
+        return fieldTypes;
+    }
+
+    /// <summary>
+    /// Extracts the union TypeSymbol and type arguments from a scrutinee type.
+    /// Handles both UserDefinedType (non-generic unions) and GenericType (generic unions).
+    /// </summary>
+    private (TypeSymbol? UnionSymbol, List<SemanticType>? TypeArgs) GetUnionSymbolAndTypeArgs(
+        SemanticType scrutineeType)
+    {
+        if (scrutineeType is UserDefinedType udt
+            && udt.Symbol?.TypeKind == TypeKind.Union)
+        {
+            return (udt.Symbol, null);
+        }
+
+        if (scrutineeType is GenericType gt
+            && gt.GenericDefinition?.TypeKind == TypeKind.Union)
+        {
+            return (gt.GenericDefinition, gt.TypeArguments);
+        }
+
+        return (null, null);
     }
 
     /// <summary>

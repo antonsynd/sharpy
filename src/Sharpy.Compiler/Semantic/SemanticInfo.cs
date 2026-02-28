@@ -62,6 +62,11 @@ public class SemanticInfo : ISemanticQuery
     // Track functions that contain yield statements (generators)
     private readonly HashSet<FunctionDef> _generatorFunctions = new(ReferenceEqualityComparer.Instance);
 
+    // Map patterns to their resolved union case type symbols
+    // Used when a PositionalPattern or MemberAccessPattern matches a union case
+    private readonly Dictionary<Pattern, TypeSymbol> _patternUnionCases =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track expressions whose type was set to UnknownType due to a user error
     // (i.e., a diagnostic was already emitted for the node). This distinguishes
     // expected error-recovery Unknown types from unexpected ones (compiler bugs).
@@ -174,6 +179,24 @@ public class SemanticInfo : ISemanticQuery
     public (TypeSymbol Owner, Symbol Member)? GetMemberAccessResolution(MemberAccess memberAccess)
     {
         return _memberAccessResolutions.TryGetValue(memberAccess, out var resolution) ? resolution : null;
+    }
+
+    /// <summary>
+    /// Records that a pattern was resolved to a specific union case type symbol.
+    /// Used for PositionalPattern and MemberAccessPattern matching union cases.
+    /// </summary>
+    public void SetPatternUnionCase(Pattern pattern, TypeSymbol caseSymbol)
+    {
+        _patternUnionCases[pattern] = caseSymbol;
+    }
+
+    /// <summary>
+    /// Gets the resolved union case symbol for a pattern, if one was recorded.
+    /// Returns null if the pattern was not resolved as a union case.
+    /// </summary>
+    public TypeSymbol? GetPatternUnionCase(Pattern pattern)
+    {
+        return _patternUnionCases.TryGetValue(pattern, out var symbol) ? symbol : null;
     }
 
     /// <summary>
