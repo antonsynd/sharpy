@@ -126,6 +126,27 @@ internal partial class RoslynEmitter
             }
         }
 
+        // Pre-scan for union declarations and register them in the symbol table
+        // This ensures union case construction (e.g., Shape.Circle(5.0)) works correctly
+        foreach (var stmt in statements)
+        {
+            if (stmt is UnionDef unionDef)
+            {
+                var unionSymbol = new TypeSymbol
+                {
+                    Name = unionDef.Name,
+                    ClrType = null,
+                    TypeKind = Semantic.TypeKind.Union,
+                    IsAbstract = true
+                };
+                // Only add if not already present
+                if (_context.LookupSymbol(unionDef.Name) == null)
+                {
+                    _context.SymbolTable.Define(unionSymbol);
+                }
+            }
+        }
+
         // All declarations go into the module class (types are nested, not namespace siblings)
         var moduleDeclarations = new List<MemberDeclarationSyntax>();
         var executableStatements = new List<Statement>();
@@ -521,6 +542,7 @@ internal partial class RoslynEmitter
             StructDef structDef => GenerateStructDeclaration(structDef),
             InterfaceDef interfaceDef => GenerateInterfaceDeclaration(interfaceDef),
             EnumDef enumDef => GenerateEnumDeclaration(enumDef),
+            UnionDef unionDef => GenerateUnionDeclaration(unionDef),
             VariableDeclaration varDecl => GenerateModuleLevelField(varDecl),
             TypeAlias => null,  // Type aliases are compile-time only, no C# output
             ReturnStatement ret => GenerateReturn(ret),

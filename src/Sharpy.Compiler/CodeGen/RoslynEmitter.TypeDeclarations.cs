@@ -993,4 +993,176 @@ internal partial class RoslynEmitter
     }
 
     #endregion
+
+    #region Union Declarations
+
+    private SyntaxNode GenerateUnionDeclaration(UnionDef unionDef)
+    {
+        _cancellationToken.ThrowIfCancellationRequested();
+
+        var unionName = NameMangler.Transform(unionDef.Name, NameContext.Type);
+
+        // Look up the union symbol for field type information
+        var unionSymbol = _context.LookupSymbol(unionDef.Name) as TypeSymbol;
+
+        // Create abstract base class with public modifier
+        var classDecl = ClassDeclaration(unionName)
+            .WithModifiers(TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.AbstractKeyword)));
+
+        // Add type parameters if generic
+        if (unionDef.TypeParameters.Length > 0)
+        {
+            var typeParams = unionDef.TypeParameters
+                .Select(tp => TypeParameter(tp.Name))
+                .ToArray();
+            classDecl = classDecl
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)));
+        }
+
+        // Generate members: private constructor + sealed case classes
+        var members = new List<MemberDeclarationSyntax>();
+
+        // Private parameterless constructor to prevent external subclassing
+        var privateCtor = ConstructorDeclaration(Identifier(unionName))
+            .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)))
+            .WithParameterList(ParameterList())
+            .WithBody(Block());
+        members.Add(privateCtor);
+
+        // Generate sealed case classes
+        for (int i = 0; i < unionDef.Cases.Length; i++)
+        {
+            var caseDef = unionDef.Cases[i];
+            var caseSymbol = unionSymbol?.UnionCases.FirstOrDefault(c => c.Name == caseDef.Name);
+            members.Add(GenerateUnionCaseClass(caseDef, caseSymbol, unionName, unionDef.TypeParameters));
+        }
+
+        classDecl = classDecl.WithMembers(List(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(unionDef.DocString))
+        {
+            classDecl = classDecl.WithLeadingTrivia(GenerateXmlDocComment(unionDef.DocString));
+        }
+
+        return classDecl;
+    }
+
+    private ClassDeclarationSyntax GenerateUnionCaseClass(
+        UnionCaseDef caseDef,
+        TypeSymbol? caseSymbol,
+        string baseClassName,
+        ImmutableArray<TypeParameterDef> typeParams)
+    {
+        var caseName = NameMangler.Transform(caseDef.Name, NameContext.Type);
+
+        // public sealed class CaseName : BaseClass
+        var caseDecl = ClassDeclaration(caseName)
+            .WithModifiers(TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.SealedKeyword)));
+
+        // Base type: union base class (with type arguments if generic)
+        TypeSyntax baseType;
+        if (typeParams.Length > 0)
+        {
+            var typeArgs = typeParams
+                .Select(tp => (TypeSyntax)IdentifierName(tp.Name))
+                .ToArray();
+            baseType = GenericName(Identifier(baseClassName))
+                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
+        }
+        else
+        {
+            baseType = IdentifierName(baseClassName);
+        }
+        caseDecl = caseDecl.WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(SimpleBaseType(baseType))));
+
+        var caseMembers = new List<MemberDeclarationSyntax>();
+        var fields = caseSymbol?.Fields ?? new List<VariableSymbol>();
+
+        // Generate read-only auto-properties for each field
+        foreach (var field in fields)
+        {
+            var propName = NameMangler.ToPascalCase(field.Name);
+            var propType = _typeMapper.MapSemanticType(field.Type);
+
+            var prop = PropertyDeclaration(propType, Identifier(propName))
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithAccessorList(AccessorList(SingletonList(
+                    AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)))));
+            caseMembers.Add(prop);
+        }
+
+        // Generate constructor
+        if (fields.Count > 0)
+        {
+            var ctorParams = fields.Select(f =>
+                Parameter(Identifier(NameMangler.ToCamelCase(f.Name)))
+                    .WithType(_typeMapper.MapSemanticType(f.Type)))
+                .ToArray();
+
+            var ctorBody = fields.Select(f =>
+            {
+                var propName = NameMangler.ToPascalCase(f.Name);
+                var paramName = NameMangler.ToCamelCase(f.Name);
+                return (StatementSyntax)ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(propName),
+                        IdentifierName(paramName)));
+            }).ToArray();
+
+            var ctor = ConstructorDeclaration(Identifier(caseName))
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithParameterList(ParameterList(SeparatedList(ctorParams)))
+                .WithBody(Block(ctorBody));
+            caseMembers.Add(ctor);
+
+            // Generate Deconstruct method
+            caseMembers.Add(GenerateDeconstructMethod(fields));
+        }
+        else
+        {
+            // Parameterless constructor for cases with no fields
+            var ctor = ConstructorDeclaration(Identifier(caseName))
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithParameterList(ParameterList())
+                .WithBody(Block());
+            caseMembers.Add(ctor);
+        }
+
+        caseDecl = caseDecl.WithMembers(List(caseMembers));
+        return caseDecl;
+    }
+
+    private MethodDeclarationSyntax GenerateDeconstructMethod(List<VariableSymbol> fields)
+    {
+        var outParams = fields.Select(f =>
+            Parameter(Identifier(NameMangler.ToCamelCase(f.Name)))
+                .WithType(_typeMapper.MapSemanticType(f.Type))
+                .WithModifiers(TokenList(Token(SyntaxKind.OutKeyword))))
+            .ToArray();
+
+        var body = fields.Select(f =>
+        {
+            var paramName = NameMangler.ToCamelCase(f.Name);
+            var propName = NameMangler.ToPascalCase(f.Name);
+            return (StatementSyntax)ExpressionStatement(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName(paramName),
+                    IdentifierName(propName)));
+        }).ToArray();
+
+        return MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), "Deconstruct")
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(outParams)))
+            .WithBody(Block(body));
+    }
+
+    #endregion
 }

@@ -45,6 +45,7 @@ internal class ModuleLevelValidator : SemanticValidatorBase
                 case StructDef:
                 case InterfaceDef:
                 case EnumDef:
+                case UnionDef:
                 case PropertyDef:
                 case TypeAlias:
                 case ImportStatement:

@@ -46,6 +46,9 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
             case EnumDef enumDef:
                 ValidateEnum(enumDef);
                 break;
+            case UnionDef unionDef:
+                ValidateUnion(unionDef);
+                break;
             case VariableDeclaration varDecl:
                 CheckName(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart, varDecl.Span);
                 break;
@@ -120,6 +123,11 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
         {
             CheckName(member.Name, member.LineStart, member.ColumnStart, member.Span);
         }
+    }
+
+    private void ValidateUnion(UnionDef unionDef)
+    {
+        CheckName(unionDef.Name, unionDef.LineStart, unionDef.ColumnStart, unionDef.Span);
     }
 
     private void ValidateParameters(System.Collections.Immutable.ImmutableArray<Parameter> parameters)
