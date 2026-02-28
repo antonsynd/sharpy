@@ -189,7 +189,32 @@ internal partial class RoslynEmitter
                 {
                     var unionCSharpName = NameMangler.Transform(unionId.Name, NameContext.Type);
                     var caseCSharpName = NameMangler.Transform(memberAccess.Member, NameContext.Type);
-                    var qualifiedCaseName = QualifiedName(IdentifierName(unionCSharpName), IdentifierName(caseCSharpName));
+
+                    // For generic unions, include type arguments: Option<int>.Some(42)
+                    NameSyntax unionNameSyntax;
+                    if (unionTypeSym.IsGeneric)
+                    {
+                        var exprType = _context.SemanticInfo?.GetExpressionType(call);
+                        if (exprType is GenericType resolvedGeneric && resolvedGeneric.TypeArguments.Count > 0
+                            && resolvedGeneric.TypeArguments.All(t => t is not UnknownType))
+                        {
+                            var typeArgsSyntax = resolvedGeneric.TypeArguments
+                                .Select(t => _typeMapper.MapSemanticType(t))
+                                .ToArray();
+                            unionNameSyntax = GenericName(Identifier(unionCSharpName))
+                                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+                        }
+                        else
+                        {
+                            unionNameSyntax = IdentifierName(unionCSharpName);
+                        }
+                    }
+                    else
+                    {
+                        unionNameSyntax = IdentifierName(unionCSharpName);
+                    }
+
+                    var qualifiedCaseName = QualifiedName(unionNameSyntax, IdentifierName(caseCSharpName));
 
                     var casePositionalArgs = GeneratePositionalArguments(call.Arguments);
                     var caseKeywordArgs = call.KeywordArguments.Select(kwarg =>

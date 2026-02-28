@@ -1,0 +1,8 @@
+union Option[T]:
+    case Some(value: T)
+    case Empty()
+
+def main():
+    s: Option[int] = Option.Some(42)
+    e: Option[int] = Option.Empty()
+    print("constructed")

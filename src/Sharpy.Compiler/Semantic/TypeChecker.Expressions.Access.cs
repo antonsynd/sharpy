@@ -836,25 +836,42 @@ internal partial class TypeChecker
         // The calleeType is a UserDefinedType for the case class whose BaseType is the union.
         else if (call.Function is MemberAccess unionCaseAccess
             && calleeType is UserDefinedType caseUdt
-            && caseUdt.Symbol?.BaseType is { TypeKind: TypeKind.Union })
+            && caseUdt.Symbol?.BaseType is { TypeKind: TypeKind.Union } unionBaseSymbol)
         {
-            // Validate argument count against case fields
             var caseFields = caseUdt.Symbol.Fields;
+
+            // For generic unions, substitute type parameters using the expected type
+            var typeParams = unionBaseSymbol.TypeParameters;
+            List<SemanticType>? typeArgs = null;
+            if (typeParams.Count > 0 && _expectedType is GenericType expectedGenericType
+                && expectedGenericType.Name == unionBaseSymbol.Name
+                && expectedGenericType.TypeArguments.Count == typeParams.Count)
+            {
+                typeArgs = expectedGenericType.TypeArguments;
+            }
+
+            // Validate argument count
             if (argTypes.Count != caseFields.Count)
             {
-                AddError($"Union case '{caseUdt.Symbol.BaseType.Name}.{caseUdt.Name}' expects {caseFields.Count} argument(s) but got {argTypes.Count}",
+                AddError($"Union case '{unionBaseSymbol.Name}.{caseUdt.Name}' expects {caseFields.Count} argument(s) but got {argTypes.Count}",
                     call.LineStart, call.ColumnStart,
                     code: DiagnosticCodes.Semantic.WrongArgumentCount,
                     span: call.Span);
             }
             else
             {
-                // Validate argument types
+                // Validate argument types (with type parameter substitution for generics)
                 for (int i = 0; i < caseFields.Count; i++)
                 {
-                    if (!IsAssignable(argTypes[i], caseFields[i].Type))
+                    var expectedFieldType = caseFields[i].Type;
+                    if (typeArgs != null)
                     {
-                        AddError($"Argument {i + 1} has type '{argTypes[i].GetDisplayName()}' but field '{caseFields[i].Name}' expects '{caseFields[i].Type.GetDisplayName()}'",
+                        expectedFieldType = SubstituteTypeParameters(expectedFieldType, typeParams, typeArgs);
+                    }
+
+                    if (!IsAssignable(argTypes[i], expectedFieldType))
+                    {
+                        AddError($"Argument {i + 1} has type '{argTypes[i].GetDisplayName()}' but field '{caseFields[i].Name}' expects '{expectedFieldType.GetDisplayName()}'",
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
                             code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
@@ -862,8 +879,19 @@ internal partial class TypeChecker
                 }
             }
 
-            // Union case construction returns the case type (which is assignable to the union base type)
-            return caseUdt;
+            // For generic unions, return a GenericType matching the expected type
+            if (typeArgs != null)
+            {
+                return new GenericType
+                {
+                    Name = unionBaseSymbol.Name,
+                    TypeArguments = typeArgs,
+                    GenericDefinition = unionBaseSymbol
+                };
+            }
+
+            // For non-generic unions, return the union base type
+            return new UserDefinedType { Name = unionBaseSymbol.Name, Symbol = unionBaseSymbol };
         }
         // Handle member access function calls (e.g., module.function() or obj.method())
         // Skip super() calls - they're already validated by ValidateSuperMemberAccess
