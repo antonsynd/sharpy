@@ -1,0 +1,10 @@
+def describe(b: bool) -> str:
+    match b:
+        case True:
+            return "yes"
+        case _:
+            return "other"
+
+def main():
+    print(describe(True))
+    print(describe(False))
