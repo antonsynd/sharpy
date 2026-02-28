@@ -1105,11 +1105,39 @@ public partial class Parser
             case TokenType.Identifier:
                 return ParseIdentifierOrMemberAccessPattern();
 
+            case TokenType.Greater:
+            case TokenType.Less:
+            case TokenType.GreaterEqual:
+            case TokenType.LessEqual:
+                return ParseRelationalPattern();
+
             default:
                 throw ReportError($"Expected a pattern, got '{Current.Value}'",
                     Current.Line, Current.Column,
                     DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
         }
+    }
+
+
+    private RelationalPattern ParseRelationalPattern()
+    {
+        var startToken = Current;
+        var op = Current.Value;
+        Advance(); // consume operator
+
+        var value = ParseUnary();
+        var endToken = Previous;
+
+        return new RelationalPattern
+        {
+            Operator = op,
+            Value = value,
+            LineStart = startToken.Line,
+            ColumnStart = startToken.Column,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
     }
 
     private WildcardPattern ParseWildcardPattern()

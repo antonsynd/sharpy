@@ -125,6 +125,20 @@ internal partial class RoslynEmitter
                             PositionalPatternClause(SeparatedList(subPatterns)));
                 }
 
+            case RelationalPattern relational:
+                {
+                    var operatorToken = relational.Operator switch
+                    {
+                        ">" => Token(SyntaxKind.GreaterThanToken),
+                        ">=" => Token(SyntaxKind.GreaterThanEqualsToken),
+                        "<" => Token(SyntaxKind.LessThanToken),
+                        "<=" => Token(SyntaxKind.LessThanEqualsToken),
+                        _ => Token(SyntaxKind.GreaterThanToken)
+                    };
+                    var valueExpr = GenerateExpression(relational.Value);
+                    return RelationalPattern(operatorToken, valueExpr);
+                }
+
             case OrPattern orPattern:
                 {
                     // Check if any alternative is a MemberAccessPattern (needs guard-based approach)

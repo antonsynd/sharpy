@@ -851,6 +851,29 @@ internal partial class TypeChecker
                     break;
                 }
 
+            case RelationalPattern relational:
+                {
+                    var valueType = CheckExpression(relational.Value);
+                    if (!IsNumericType(scrutineeType) && scrutineeType is not UnknownType)
+                    {
+                        AddError(
+                            $"Relational patterns require a numeric scrutinee type, got '{scrutineeType.GetDisplayName()}'",
+                            relational.LineStart, relational.ColumnStart,
+                            code: DiagnosticCodes.Semantic.RelationalPatternTypeMismatch,
+                            span: relational.Span);
+                    }
+                    if (!IsAssignable(valueType, scrutineeType) && !IsAssignable(scrutineeType, valueType)
+                        && valueType is not UnknownType)
+                    {
+                        AddError(
+                            $"Pattern value type '{valueType.GetDisplayName()}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                            relational.LineStart, relational.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: relational.Span);
+                    }
+                    break;
+                }
+
             case OrPattern orPattern:
                 {
                     foreach (var alt in orPattern.Alternatives)
