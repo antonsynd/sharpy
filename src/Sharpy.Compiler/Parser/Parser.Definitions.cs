@@ -833,6 +833,160 @@ public partial class Parser
         };
     }
 
+    private UnionDef ParseUnionDef()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        var startToken = Current;
+
+        Expect(TokenType.Union);
+        var name = ExpectIdentifier();
+
+        // Optional type parameters: union Result[T, E]:
+        var typeParams = ImmutableArray<TypeParameterDef>.Empty;
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            typeParams = ParseTypeParameterList().ToImmutableArray();
+        }
+
+        Expect(TokenType.Colon);
+        ExpectNewline();
+
+        string? docString = null;
+        Expect(TokenType.Indent);
+
+        // Check for docstring
+        if (Current.Type == TokenType.String)
+        {
+            docString = Current.Value;
+            Advance();
+            SkipNewlines();
+        }
+
+        var cases = new List<UnionCaseDef>();
+
+        _lastLoopPosition = -1;
+        while (Current.Type != TokenType.Dedent && !IsAtEnd)
+        {
+            if (!CheckLoopProgress())
+                break;
+
+            SkipNewlines();
+            if (Current.Type == TokenType.Dedent || IsAtEnd)
+                break;
+
+            try
+            {
+                // Handle pass statement in empty union body
+                if (Current.Type == TokenType.Pass)
+                {
+                    Advance();
+                    ExpectNewline();
+                    SkipNewlines();
+                    continue;
+                }
+
+                var caseStartLine = Current.Line;
+                var caseStartColumn = Current.Column;
+                var caseStartToken = Current;
+
+                Expect(TokenType.Case);
+                var caseName = ExpectIdentifier();
+
+                var fields = new List<UnionCaseField>();
+
+                // Optional field list: case Circle(radius: float)
+                if (Current.Type == TokenType.LeftParen)
+                {
+                    Advance(); // consume '('
+
+                    if (Current.Type != TokenType.RightParen)
+                    {
+                        _lastLoopPosition = -1;
+                        do
+                        {
+                            if (!CheckLoopProgress())
+                                break;
+
+                            var fieldStartLine = Current.Line;
+                            var fieldStartColumn = Current.Column;
+                            var fieldStartToken = Current;
+
+                            var fieldName = ExpectIdentifier();
+                            Expect(TokenType.Colon);
+                            var fieldType = ParseTypeAnnotation();
+
+                            var fieldEndToken = Previous;
+
+                            fields.Add(new UnionCaseField
+                            {
+                                Name = fieldName,
+                                Type = fieldType,
+                                LineStart = fieldStartLine,
+                                ColumnStart = fieldStartColumn,
+                                LineEnd = fieldEndToken.Line,
+                                ColumnEnd = fieldEndToken.Column + fieldEndToken.Value.Length,
+                                Span = GetSpanFromTokens(fieldStartToken, fieldEndToken)
+                            });
+
+                            if (Current.Type == TokenType.Comma)
+                                Advance();
+                            else
+                                break;
+                        } while (true);
+                    }
+
+                    Expect(TokenType.RightParen);
+                }
+
+                var caseEndToken = Previous;
+
+                cases.Add(new UnionCaseDef
+                {
+                    Name = caseName,
+                    Fields = fields.ToImmutableArray(),
+                    LineStart = caseStartLine,
+                    ColumnStart = caseStartColumn,
+                    LineEnd = caseEndToken.Line,
+                    ColumnEnd = caseEndToken.Column + caseEndToken.Value.Length,
+                    Span = GetSpanFromTokens(caseStartToken, caseEndToken)
+                });
+
+                ExpectNewline();
+            }
+            catch (ParserAbortException)
+            {
+                // Error already recorded. Skip to the next line within the union body.
+                if (_diagnostics.ErrorCount >= _maxErrors)
+                    break;
+                Synchronize();
+            }
+            SkipNewlines();
+        }
+
+        Expect(TokenType.Dedent);
+        var endToken = Previous;
+
+        // Validate union has at least one case
+        if (cases.Count == 0)
+        {
+            throw ReportError($"Union '{name}' must have at least one case", startLine, startColumn, DiagnosticCodes.Parser.EmptyUnion, span: CurrentSpan);
+        }
+
+        return new UnionDef
+        {
+            Name = name,
+            TypeParameters = typeParams,
+            Cases = cases.ToImmutableArray(),
+            DocString = docString,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
     private TypeAlias ParseTypeAlias()
     {
         var startLine = Current.Line;

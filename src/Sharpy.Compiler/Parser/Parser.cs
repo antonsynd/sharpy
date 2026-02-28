@@ -397,6 +397,7 @@ public partial class Parser
             TokenType.Struct => ParseStructDef(),
             TokenType.Interface => ParseInterfaceDef(),
             TokenType.Enum => ParseEnumDef(),
+            TokenType.Union => ParseUnionDef(),
             TokenType.Property => ParsePropertyDef(),
             TokenType.Type => ParseTypeAlias(),
             TokenType.If => ParseIfStatement(),
@@ -462,6 +463,7 @@ public partial class Parser
                 TokenType.Def => ParseFunctionDef(),
                 TokenType.Class => ParseClassDef(),
                 TokenType.Struct => ParseStructDef(),
+                TokenType.Union => ParseUnionDef(),
                 TokenType.Property => ParsePropertyDef(),
                 // Allow decorators on variable declarations (e.g., @static field in class body)
                 TokenType.Identifier => ParseSimpleStatement(),
@@ -479,6 +481,7 @@ public partial class Parser
             FunctionDef func => func with { Decorators = decorators.ToImmutableArray() },
             ClassDef cls => cls with { Decorators = decorators.ToImmutableArray() },
             StructDef str => str with { Decorators = decorators.ToImmutableArray() },
+            UnionDef union => union with { Decorators = decorators.ToImmutableArray() },
             PropertyDef prop => prop with { Decorators = decorators.ToImmutableArray() },
             VariableDeclaration varDecl => varDecl with { Decorators = decorators.ToImmutableArray() },
             Assignment => throw ReportError("Decorators cannot be applied to assignments — only functions, classes, structs, properties, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span),

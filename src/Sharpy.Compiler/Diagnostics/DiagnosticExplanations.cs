@@ -284,6 +284,11 @@ public static class DiagnosticExplanations
             "f(**kwargs)",
             "Pass keyword arguments explicitly:\nf(key1=value1, key2=value2)");
 
+        Add(dict, DiagnosticCodes.Parser.EmptyUnion, "Empty union", "Parser",
+            "A union declaration has no cases. Unions must have at least one case.",
+            "union Shape:\n    pass",
+            "Add at least one union case:\nunion Shape:\n    case Circle(radius: float)\n    case Rectangle(width: float, height: float)");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",

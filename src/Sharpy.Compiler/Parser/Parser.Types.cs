@@ -513,7 +513,7 @@ public partial class Parser
         {
             // Control flow keywords
             TokenType.Def or TokenType.Class or TokenType.Struct or TokenType.Interface or
-            TokenType.Enum or TokenType.If or TokenType.Else or TokenType.Elif or
+            TokenType.Enum or TokenType.Union or TokenType.If or TokenType.Else or TokenType.Elif or
             TokenType.While or TokenType.For or TokenType.In or TokenType.Return or
             TokenType.Break or TokenType.Continue or TokenType.Pass or TokenType.Try or
             TokenType.Except or TokenType.Finally or TokenType.Raise or TokenType.Assert or
