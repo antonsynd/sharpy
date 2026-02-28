@@ -1,3 +1,6 @@
+<!-- Verified by /verify-plan on 2026-02-28 -->
+<!-- Verification result: PASS WITH CORRECTIONS -->
+
 # Phase 8.6: Tagged Union Declarations — Implementation Plan
 
 ## Overview
@@ -102,8 +105,8 @@ The enum implementation is the closest analog. Key dispatch points:
 
 | Stage | File | Pattern |
 |-------|------|---------|
-| Lexer keyword | `Lexer.cs:113` | `{ "enum", TokenType.Enum }` |
-| Parser dispatch | `Parser.cs:397` | `TokenType.Enum => ParseEnumDef()` |
+| Lexer keyword | `Lexer.cs:82` | `{ "enum", TokenType.Enum }` |
+| Parser dispatch | `Parser.cs:399` | `TokenType.Enum => ParseEnumDef()` |
 | Name resolution | `NameResolver.cs:212` | `case EnumDef: ResolveEnumDeclaration()` |
 | Type checking | `TypeChecker.cs:317` | `case EnumDef: CheckEnum()` |
 | CodeGen dispatch | `RoslynEmitter.ModuleClass.cs:523` | `EnumDef enumDef => GenerateEnumDeclaration(enumDef)` |
@@ -119,7 +122,7 @@ The enum implementation is the closest analog. Key dispatch points:
 
 **Files to modify:**
 1. `src/Sharpy.Compiler/Lexer/Token.cs` — Add `Union` to `TokenType` enum (near `Enum`)
-2. `src/Sharpy.Compiler/Lexer/Lexer.cs` — Add `{ "union", TokenType.Union }` to keyword dictionary (line ~113)
+2. `src/Sharpy.Compiler/Lexer/Lexer.cs` — Add `{ "union", TokenType.Union }` to keyword dictionary (line ~82) [CORRECTED: keyword dict starts at line 62, not 113]
 3. `src/Sharpy.Compiler/Semantic/Symbol.cs` — Add `Union` to `TypeKind` enum (line ~321)
 
 **Verification:**
@@ -135,12 +138,12 @@ The enum implementation is the closest analog. Key dispatch points:
 **Goal:** Parse `union Name: case Case1(...) case Case2(...)` into `UnionDef` AST.
 
 **Files to modify:**
-1. `src/Sharpy.Compiler/Parser/Parser.cs` — Add `TokenType.Union => ParseUnionDef()` to the `ParseStatement()` switch (line ~397, near `TokenType.Enum`)
+1. `src/Sharpy.Compiler/Parser/Parser.cs` — Add `TokenType.Union => ParseUnionDef()` to the `ParseStatement()` switch (line ~399, near `TokenType.Enum`)
 2. `src/Sharpy.Compiler/Parser/Parser.Definitions.cs` — Implement `ParseUnionDef()` method
 
 **ParseUnionDef() implementation notes:**
 - Follow the `ParseEnumDef()` pattern (lines 731-834 of Parser.Definitions.cs)
-- Consume `TokenType.Union`, then identifier (name), then optional type parameters via `ParseTypeParameters()` (already exists — used by `ParseClassDef`), then `TokenType.Colon`, then `TokenType.Newline`
+- Consume `TokenType.Union`, then identifier (name), then optional type parameters via `ParseTypeParameterList()` (already exists at line 630 — used by `ParseClassDef`, `ParseStructDef`, `ParseInterfaceDef`, `ParseTypeAlias`), then `TokenType.Colon`, then `TokenType.Newline` [CORRECTED: method is `ParseTypeParameterList()` not `ParseTypeParameters()`]
 - Consume `TokenType.Indent`
 - Optional docstring (same pattern as enums)
 - Loop: expect `TokenType.Case`, then identifier (case name), then optional `(` field_list `)`, then newline
@@ -149,11 +152,12 @@ The enum implementation is the closest analog. Key dispatch points:
 - Validate at least one case
 - Return `UnionDef` record (already defined in `Statement.Future.cs`)
 - Handle `pass` statement for empty body (emit error: unions must have at least one case)
-- Handle generic type parameters: `union Result[T, E]:` — reuse `ParseTypeParameters()` from class parsing
+- Handle generic type parameters: `union Result[T, E]:` — reuse `ParseTypeParameterList()` from class parsing (line 630 of Parser.Definitions.cs)
 
 **Also handle in Parser.cs:**
 - Add `TokenType.Union` to `IsCompoundStatement()` or equivalent check if one exists
-- Add `TokenType.Union` to `Parser.Types.cs` line ~526 where `TokenType.Enum` appears in the "not a type expression" set
+- Add `TokenType.Union` to `Parser.Types.cs` line ~516 where `TokenType.Enum` appears in the "not a type expression" set [CORRECTED: line 516, not 526]
+- Add `TokenType.Union` to the decorated definitions dispatch (~line 461 in Parser.cs) so `@final union Foo:` works
 
 **Verification:**
 - `/build` passes
@@ -196,7 +200,7 @@ The enum implementation is the closest analog. Key dispatch points:
 **Verification:**
 - `/build` passes
 - A simple union definition compiles without "undefined" errors
-- Duplicate union name produces `SPY0200` (DuplicateDefinition)
+- Duplicate union name produces `SPY0204` (DuplicateDefinition) [CORRECTED: SPY0200 is UndefinedVariable; DuplicateDefinition is SPY0204]
 
 **Commit:** `feat: add union name resolution and case symbol registration`
 
@@ -214,8 +218,8 @@ The enum implementation is the closest analog. Key dispatch points:
 - Look up the TypeSymbol from the symbol table
 - Create a `UnionType` semantic type and record it in `SemanticInfo`
 - For each case:
-  - Check for duplicate case names (new diagnostic: `SPY0280` or similar — check `DiagnosticCodes.cs` for next available code in the semantic range)
-  - Resolve each field's type annotation via `ResolveTypeAnnotation()`
+  - Check for duplicate case names (new diagnostic: next available in semantic range is `SPY0365` — highest used is SPY0364) [CORRECTED: SPY0280 is already taken; use SPY0365+]
+  - Resolve each field's type annotation via `_typeResolver.ResolveTypeAnnotation()` (method is on `TypeResolver`, not `TypeChecker` — see `TypeResolver.cs:34`) [CORRECTED: method lives in TypeResolver, accessed via `_typeResolver` field]
   - Store resolved field types on the case TypeSymbol
   - Create a `UserDefinedType` for each case and record in SemanticInfo
 - For generic unions: resolve type parameters, ensure they're used in at least one case field
@@ -259,7 +263,7 @@ Method: GenerateUnionDeclaration(UnionDef unionDef) -> MemberDeclarationSyntax
    - Base type: the union base class (with type arguments if generic)
    - For each field:
      - Read-only auto-property: `public T FieldName { get; }` using `NameMangler.ToPascalCase(field.Name)`
-     - Map field type via `_typeMapper.MapType()`
+     - Map field type via `_typeMapper.MapSemanticType()` for resolved SemanticTypes, or `_typeMapper.MapType()` for TypeAnnotations [CORRECTED: primary method for SemanticType is `MapSemanticType()` at TypeMapper.cs:48]
    - Constructor: takes all fields as parameters, assigns to properties
    - `Deconstruct` method (only if case has fields): `public void Deconstruct(out T1 field1, out T2 field2, ...)`
 
@@ -317,16 +321,17 @@ Method: GenerateUnionDeclaration(UnionDef unionDef) -> MemberDeclarationSyntax
       c: Shape = Shape.Circle(5.0)
       r: Shape = Shape.Rectangle(3.0, 4.0)
       p: Shape = Shape.Point()
-      print(type(c).__name__)
-      print(type(r).__name__)
-      print(type(p).__name__)
+      print(isinstance(c, Shape))
+      print(isinstance(r, Shape))
+      print(isinstance(p, Shape))
   ```
   Expected output:
   ```
-  Circle
-  Rectangle
-  Point
+  True
+  True
+  True
   ```
+  [CORRECTED: `type(c).__name__` is not a tested pattern in Sharpy; `isinstance()` is the established test pattern (see `TestFixtures/type_system/isinstance_*.spy`)]
 
 **Commit:** `feat: support union case construction via UnionName.CaseName(args)`
 
@@ -406,12 +411,14 @@ compound_stmt   ::= ... | union_def
 
 union_def       ::= 'union' identifier [ type_params ] ':' NEWLINE union_body
 
-union_body      ::= NEWLINE INDENT union_case { union_case } DEDENT
+union_body      ::= INDENT union_case { union_case } DEDENT
 
 union_case      ::= 'case' identifier [ '(' case_fields ')' ] NEWLINE
 case_fields     ::= case_field { ',' case_field } [ ',' ]
 case_field      ::= identifier ':' type_expr
 ```
+
+**Note:** The existing grammar embeds `tagged_union_case` within `enum_body` (grammar lines 548-562). This plan uses a separate `union` keyword (matching the `UnionDef` AST record in `Statement.Future.cs` and the spec files `tagged_unions_optional.md`/`tagged_unions_result.md`). The grammar's `enum_body` `tagged_union_case` rule should be removed or deprecated when `union_def` is added. [CORRECTED: added grammar alignment note]
 
 **Commit:** `docs: update grammar and spec for union declarations`
 
@@ -447,3 +454,59 @@ After all tasks, the following should work end-to-end:
 - [ ] Deconstruct methods are emitted for cases with fields
 - [ ] Duplicate case names produce diagnostics
 - [ ] All existing tests still pass (no regressions)
+
+---
+
+## Verification Summary
+
+**Result:** PASS WITH CORRECTIONS
+**Verified on:** 2026-02-28
+**Plan file:** `docs/implementation_planning/phase8_6_tagged_unions.md`
+
+### Corrections Made
+
+| # | Claim | Correction |
+|---|-------|-----------|
+| 1 | `Lexer.cs:113` for keyword dict | **Line 82**, not 113. Keyword dictionary starts at line 62. |
+| 2 | `Parser.cs:397` for enum dispatch | **Line 399**. Minor line shift. |
+| 3 | `ParseTypeParameters()` method | **Does not exist.** Correct method is `ParseTypeParameterList()` at `Parser.Definitions.cs:630`. |
+| 4 | `SPY0200` = DuplicateDefinition | **SPY0200 is UndefinedVariable.** DuplicateDefinition is `SPY0204`. |
+| 5 | `SPY0280` suggested for new diag | **SPY0280 is already taken.** Next available in semantic range is `SPY0365` (highest used: SPY0364). |
+| 6 | `ResolveTypeAnnotation()` on TypeChecker | **Method is on `TypeResolver`** (TypeResolver.cs:34), accessed via `_typeResolver` field in TypeChecker. |
+| 7 | `_typeMapper.MapType()` for SemanticType | **Primary method is `MapSemanticType()`** (TypeMapper.cs:48). `MapType()` exists but takes `TypeAnnotation`. |
+| 8 | Test uses `type(c).__name__` | **Not a tested pattern in Sharpy.** Replaced with `isinstance()` which is the established test pattern. |
+| 9 | `Parser.Types.cs` line ~526 | **Line 516**, not 526. |
+| 10 | Grammar `union_body` had redundant `NEWLINE INDENT` | Fixed to `INDENT ... DEDENT` (NEWLINE is consumed by `union_def` before `union_body`). |
+
+### Warnings
+
+- **Grammar discrepancy:** The existing grammar puts `tagged_union_case` inside `enum_body` (lines 548-562), but this plan uses a separate `union` keyword (matching the `UnionDef` AST in `Statement.Future.cs` and spec files). The grammar's `enum_body` rule should be updated when `union_def` is added. This is a deliberate design choice, not an error.
+- **`UnionCaseField.Name` is nullable (`string?`)** — designed for positional fields. The parser implementation should always set field names (Sharpy requires named fields per spec), but the AST allows null for future extensibility.
+- **C# 9.0 compliance verified** — `{ get; }` auto-properties, `Deconstruct` with `out` parameters, and abstract+sealed pattern are all valid C# 9.0. Generated code will compile against `netstandard2.1`.
+- **No existing `Deconstruct` generation in codebase** — This will be new codegen. No conflicts expected.
+
+### Verified Claims (Correct)
+
+| Dimension | Items Checked | Result |
+|-----------|--------------|--------|
+| **File paths** | All 12 source files referenced | All exist |
+| **AST records** | UnionDef, UnionCaseDef, UnionCaseField, UnionCasePattern | All confirmed in Statement.Future.cs and Pattern.cs with exact property names |
+| **SemanticType** | UnionType with Name, Symbol, CaseTypes | Confirmed at SemanticType.cs:770-790 |
+| **Enum pipeline pattern** | Lexer → Parser → NameResolver → TypeChecker → RoslynEmitter dispatch points | All 5 dispatch points confirmed at stated lines |
+| **TypeKind enum** | `{ Class, Struct, Interface, Enum }` at Symbol.cs:315-321 | Confirmed; no existing `Union` value |
+| **ParseEnumDef span** | Lines 731-834 of Parser.Definitions.cs | Confirmed |
+| **ResolveEnumDeclaration span** | Lines 440-465 of NameResolver.cs | Confirmed |
+| **Enum pre-scan** | Lines 109-127 of RoslynEmitter.ModuleClass.cs | Confirmed |
+| **NameMangler** | `Transform()` with `NameContext.Type`, `ToPascalCase()` | Both confirmed in NameMangler.cs |
+| **C# 9.0 lowering** | Abstract class + sealed nested + Deconstruct | All valid C# 9.0 |
+
+### Missing Steps
+
+- **Task 2 should also handle decorated unions**: The parser should support `@final` or other decorators before `union` keyword, similar to how `ParseClassDef` handles decorated definitions. The `Parser.cs` dispatch for `TokenType.Union` should also be added in the decorated definitions section (~line 461).
+- **Task 3 should consider `MaterializeInheritance()`**: After name resolution, union case types with BaseType pointing to the union type may need to participate in inheritance materialization (see `NameResolver.ResolveInheritance()`).
+- **Task 5 should generate `ToString()` override**: Consider generating `ToString()` on case classes for debugging (e.g., `Circle(radius=5.0)`). Not critical but improves usability.
+
+### Unchecked Claims
+
+- **Task 6 member access resolution**: Did not trace the exact code path in `TypeChecker.Expressions.Access.cs` for how member access on type symbols works. The approach (looking up union cases via member name) is architecturally sound but the exact integration point needs investigation during implementation.
+- **Task 7 generic construction syntax**: Did not verify how generic class construction (`ClassName[T](args)`) is currently parsed/emitted. The implementer should check existing generic class instantiation patterns before implementing generic union construction.
