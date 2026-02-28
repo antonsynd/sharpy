@@ -540,6 +540,13 @@ internal partial class TypeChecker
 
     private void CheckFor(ForStatement forStmt)
     {
+        if (forStmt.IsAsync && !_currentFunctionIsAsync)
+        {
+            AddError("'async for' can only be used inside 'async def' functions",
+                forStmt.LineStart, forStmt.ColumnStart,
+                code: DiagnosticCodes.Semantic.AwaitOutsideAsync, span: forStmt.Span);
+        }
+
         var iterType = CheckExpression(forStmt.Iterator);
 
         // Enum type used as iterable: `for c in Color:` — CheckIdentifier returns Unknown
@@ -699,6 +706,13 @@ internal partial class TypeChecker
 
     private void CheckWith(WithStatement withStmt)
     {
+        if (withStmt.IsAsync && !_currentFunctionIsAsync)
+        {
+            AddError("'async with' can only be used inside 'async def' functions",
+                withStmt.LineStart, withStmt.ColumnStart,
+                code: DiagnosticCodes.Semantic.AwaitOutsideAsync, span: withStmt.Span);
+        }
+
         _symbolTable.EnterScope("with");
         _controlFlowDepth++;
 
@@ -997,35 +1011,54 @@ internal partial class TypeChecker
                     TypeSymbol? typeSymbol = null;
                     if (positionalPattern.Type != null)
                     {
-                        var resolvedType = _typeResolver.ResolveTypeAnnotation(positionalPattern.Type);
-                        if (resolvedType is UnknownType)
+                        // Try to resolve as a union case first when scrutinee is a union type
+                        var unionCaseSymbol = TryResolveUnionCaseFromPattern(
+                            positionalPattern.Type.Name, scrutineeType);
+
+                        if (unionCaseSymbol != null)
                         {
-                            AddError(
-                                $"Unknown type '{positionalPattern.Type.Name}' in positional pattern",
-                                positionalPattern.LineStart, positionalPattern.ColumnStart,
-                                code: DiagnosticCodes.Semantic.UndefinedType,
-                                span: positionalPattern.Span);
+                            typeSymbol = unionCaseSymbol;
+                            _semanticInfo.SetPatternUnionCase(positionalPattern, unionCaseSymbol);
                         }
-                        else if (resolvedType is UserDefinedType udt)
+                        else
                         {
-                            typeSymbol = udt.Symbol;
+                            var resolvedType = _typeResolver.ResolveTypeAnnotation(positionalPattern.Type);
+                            if (resolvedType is UnknownType)
+                            {
+                                AddError(
+                                    $"Unknown type '{positionalPattern.Type.Name}' in positional pattern",
+                                    positionalPattern.LineStart, positionalPattern.ColumnStart,
+                                    code: DiagnosticCodes.Semantic.UndefinedType,
+                                    span: positionalPattern.Span);
+                            }
+                            else if (resolvedType is UserDefinedType udt)
+                            {
+                                typeSymbol = udt.Symbol;
+                            }
                         }
                     }
 
-                    if (typeSymbol != null && positionalPattern.Elements.Length != typeSymbol.Fields.Count)
+                    if (typeSymbol != null)
                     {
-                        AddError(
-                            $"Positional pattern has {positionalPattern.Elements.Length} elements but type '{typeSymbol.Name}' has {typeSymbol.Fields.Count} fields",
-                            positionalPattern.LineStart, positionalPattern.ColumnStart,
-                            code: DiagnosticCodes.Semantic.PositionalPatternCountMismatch,
-                            span: positionalPattern.Span);
-                    }
-                    else if (typeSymbol != null)
-                    {
-                        for (int i = 0; i < positionalPattern.Elements.Length; i++)
+                        // Get field types, substituting type parameters for generic unions
+                        var fieldTypes = GetUnionCaseFieldTypes(typeSymbol, scrutineeType);
+
+                        if (positionalPattern.Elements.Length != fieldTypes.Count)
                         {
-                            var fieldType = typeSymbol.Fields[i].Type;
-                            CheckPattern(positionalPattern.Elements[i], fieldType);
+                            AddError(
+                                $"Positional pattern has {positionalPattern.Elements.Length} elements but type '{typeSymbol.Name}' has {fieldTypes.Count} fields",
+                                positionalPattern.LineStart, positionalPattern.ColumnStart,
+                                code: typeSymbol.BaseType is { TypeKind: TypeKind.Union }
+                                    ? DiagnosticCodes.Semantic.UnionCaseFieldMismatch
+                                    : DiagnosticCodes.Semantic.PositionalPatternCountMismatch,
+                                span: positionalPattern.Span);
+                        }
+                        else
+                        {
+                            for (int i = 0; i < positionalPattern.Elements.Length; i++)
+                            {
+                                CheckPattern(positionalPattern.Elements[i], fieldTypes[i]);
+                            }
                         }
                     }
                     else
