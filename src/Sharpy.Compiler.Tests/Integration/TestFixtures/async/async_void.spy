@@ -1,6 +1,6 @@
 async def do_work():
     x: int = 1 + 2
 
-def main():
-    do_work().Wait()
+async def main():
+    await do_work()
     print("done")
