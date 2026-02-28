@@ -5,21 +5,18 @@
 
 **A modern, statically-typed Pythonic language for .NET**
 
-Sharpy combines Python's elegant syntax with .NET's type safety and performance. Write Python-like code that compiles to efficient C# and runs on the .NET runtime.
-
-```
-.spy source → Lexer → Parser → Semantic Analysis → Roslyn C# → .NET IL
-```
+Sharpy combines Python's elegant syntax with .NET's type safety and performance. Write Python-like code that compiles to CIL and runs on the .NET runtime.
 
 ### Key Features
 
 | | |
 |---|---|
 | **Pythonic Syntax** | Python-style classes, functions, decorators, comprehensions, f-strings |
-| **Static Typing** | Full type inference, generics, type narrowing, `Optional[T]`, `Result[T, E]` |
-| **Null Safety** | Nullable types (`T \| None`), optional types (`T?`), null-conditional (`?.`), null-coalescing (`??`) |
+| **Static Typing** | Full type inference, generics, type narrowing, |
+| **Null Safety** | Nullable types (`T \| None`), null-conditional (`?.`), null-coalescing (`??`) |
+| **Tagged Unions** | True optional type (`T?`), result type (`T !Exception`) |
 | **.NET Interop** | Import and use .NET types directly; `snake_case` auto-maps to `PascalCase` |
-| **Zero Runtime Overhead** | Compiles to idiomatic C# via Roslyn — no interpreter, no reflection |
+| **Zero Runtime Overhead** | Compiles to idiomatic C# via Roslyn - no interpreter, no reflection |
 
 ## Quick Example
 
@@ -63,9 +60,8 @@ class Shape:
     def __init__(self, name: str):
         self.name = name
 
-    @virtual
-    def area(self) -> float:
-        return 0.0
+    @abstract
+    def area(self) -> float: ...
 
 class Circle(Shape):
     radius: float
@@ -116,7 +112,7 @@ class Cell[T]:
     def get(self) -> T:
         return self.value
 
-    def set(self, new_value: T) -> None:
+    def set(self, new_value: T):
         self.value = new_value
 
 def identity[T](x: T) -> T:
@@ -125,7 +121,7 @@ def identity[T](x: T) -> T:
 def main():
     c = Cell[int](10)
     print(c.get())         # 10
-    print(identity[str]("hello"))  # hello
+    print(identity("hello"))  # hello
 ```
 
 ### Collections and Comprehensions
@@ -156,12 +152,14 @@ def main():
 def find_user(name: str) -> str?:
     if name == "Alice":
         return Some("alice@example.com")
+
     return None()
 
 # Result type - Rust-style error handling
 def safe_divide(a: int, b: int) -> int !str:
     if b == 0:
         return Err("division by zero")
+
     return Ok(a / b)
 
 def main():
@@ -174,6 +172,8 @@ def main():
 
 ### Null Safety and Type Narrowing
 
+Works with optional types too.
+
 ```python
 def process_value(calc: Calculator?, a: int, b: int) -> int:
     result: int? = calc?.add(a, b)  # Null-conditional
@@ -181,7 +181,7 @@ def process_value(calc: Calculator?, a: int, b: int) -> int:
 
 def check_value(x: int?) -> None:
     if x is not None:
-        print(x + 10)  # Narrowed to int — no unwrap needed
+        print(x + 10)  # Narrowed to int - no unwrap needed
 ```
 
 ### Pattern Matching
@@ -192,7 +192,7 @@ enum Color:
     GREEN = 1
     BLUE = 2
 
-def describe(value: int) -> None:
+def describe(value: int):
     match value:
         case 1:
             print("one")
@@ -234,9 +234,9 @@ struct Point:
 
 def main():
     p1 = Point(10, 20)
-    p2 = p1              # Copy — value semantics
+    p2 = p1              # Copy - value semantics
     p2.x = 99
-    print(p1.x)          # 10 — original unchanged
+    print(p1.x)          # 10 - original unchanged
 ```
 
 ### Enums
@@ -311,7 +311,7 @@ def main():
 ### .NET Interop
 
 ```python
-from System.IO import StringWriter
+from system.io import StringWriter
 
 def main():
     with StringWriter() as writer:
@@ -322,7 +322,7 @@ def main():
 ### Async
 
 ```python
-from System.Threading.Tasks import Task
+from system.threading.tasks import Task
 
 async def compute() -> int:
     return 42
@@ -362,23 +362,6 @@ def main():
     print(c)        # (4, 6)
     print(len(a))   # 2
 ```
-
-## Builtin Functions
-
-| Function | Description | Function | Description |
-|----------|-------------|----------|-------------|
-| `print(x)` | Print to stdout | `len(x)` | Length / count |
-| `input(prompt)` | Read from stdin | `range(...)` | Number sequence |
-| `int(x)` | Convert to int | `enumerate(iter)` | Index + value pairs |
-| `float(x)` | Convert to float | `zip(a, b)` | Combine iterables |
-| `str(x)` | Convert to string | `sorted(iter)` | Sort collection |
-| `bool(x)` | Convert to bool | `reversed(iter)` | Reverse iterable |
-| `isinstance(x, T)` | Type check | `min(iter)` / `max(iter)` | Min / max |
-| `type(x)` | Get runtime type | `sum(iter)` | Sum elements |
-| `abs(x)` | Absolute value | `filter(fn, iter)` | Filter elements |
-| `pow(x, y)` | Power | `map(fn, iter)` | Transform elements |
-| `round(x, n)` | Round | `all(iter)` / `any(iter)` | Logical quantifiers |
-| `chr(n)` / `ord(c)` | Char ↔ codepoint | `hash(x)` / `id(x)` | Identity / hash |
 
 ## Getting Started
 
@@ -423,8 +406,8 @@ Sharpy follows three axioms in strict priority order:
 
 ## Documentation
 
-- [Language Specification](docs/language_specification/) — Complete language reference
-- [Contributing Guide](CONTRIBUTING.md) — How to contribute
+- [Language Specification](docs/language_specification/) - Complete language reference
+- [Contributing Guide](CONTRIBUTING.md) - How to contribute
 
 ## Project Structure
 
@@ -442,6 +425,6 @@ sharpy/
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
 **Links:** [GitHub](https://github.com/antonsynd/sharpy) · [Documentation](docs/) · [Issues](https://github.com/antonsynd/sharpy/issues)
