@@ -1314,7 +1314,7 @@ internal partial class RoslynEmitter
         // If there's no else clause, generate simple foreach loop
         if (forStmt.ElseBody.IsEmpty)
         {
-            return GenerateForEachCore(forStmt.Target, iterator, forStmt.Body, iteratorType);
+            return GenerateForEachCore(forStmt.Target, iterator, forStmt.Body, iteratorType, forStmt.IsAsync);
         }
 
         // Loop with else clause: use boolean flag pattern
@@ -1332,7 +1332,7 @@ internal partial class RoslynEmitter
         var transformedBody = TransformLoopBodyForElse(forStmt.Body, flagName);
 
         // foreach (...) { transformedBody }
-        statements.Add(GenerateForEachCore(forStmt.Target, iterator, transformedBody, iteratorType));
+        statements.Add(GenerateForEachCore(forStmt.Target, iterator, transformedBody, iteratorType, forStmt.IsAsync));
 
         // if (_loopCompleted) { elseBody }
         var elseBodyBlock = Block(forStmt.ElseBody.SelectMany(GenerateBodyStatements));
@@ -1351,7 +1351,7 @@ internal partial class RoslynEmitter
     ///   foreach (var __loopVar in items) { var i = __loopVar; ... }
     /// This allows the user to modify 'i' inside the loop body.
     /// </summary>
-    private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements, SemanticType? iteratorType = null)
+    private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements, SemanticType? iteratorType = null, bool isAsync = false)
     {
         // Save scope so that loop variables and body-declared variables are
         // removed from scope after the loop (Sharpy: loop vars are block-scoped).
@@ -1359,7 +1359,7 @@ internal partial class RoslynEmitter
 
         try
         {
-            return GenerateForEachCoreInner(target, iterator, bodyStatements, iteratorType);
+            return GenerateForEachCoreInner(target, iterator, bodyStatements, iteratorType, isAsync);
         }
         finally
         {
@@ -1367,7 +1367,7 @@ internal partial class RoslynEmitter
         }
     }
 
-    private StatementSyntax GenerateForEachCoreInner(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements, SemanticType? iteratorType = null)
+    private StatementSyntax GenerateForEachCoreInner(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements, SemanticType? iteratorType = null, bool isAsync = false)
     {
         if (target is Identifier varName)
         {
@@ -1426,11 +1426,14 @@ internal partial class RoslynEmitter
             newBodyStatements.AddRange(body.Statements);
             var newBody = Block(newBodyStatements);
 
-            return ForEachStatement(
+            var foreachStmt = ForEachStatement(
                 IdentifierName("var"),
                 Identifier(tempLoopVar),
                 iterator,
                 newBody);
+            return isAsync
+                ? foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
+                : foreachStmt;
         }
 
         // Handle tuple unpacking in for loops: for x, y in items
@@ -1470,10 +1473,13 @@ internal partial class RoslynEmitter
                     IdentifierName("var"),
                     tuplePattern);
 
-                return ForEachVariableStatement(
+                var foreachVarStmt = ForEachVariableStatement(
                     declExpr,
                     iterator,
                     body);
+                return isAsync
+                    ? foreachVarStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
+                    : foreachVarStmt;
             }
 
             // Complex tuple unpacking in for loop: for (a, b), c in items:
@@ -1490,11 +1496,14 @@ internal partial class RoslynEmitter
             var combinedStatements = new List<StatementSyntax>(unpackStatements);
             combinedStatements.AddRange(loopBody.Statements);
 
-            return ForEachStatement(
+            var complexForeachStmt = ForEachStatement(
                 IdentifierName("var"),
                 Identifier(tempLoopVar),
                 iterator,
                 Block(combinedStatements));
+            return isAsync
+                ? complexForeachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
+                : complexForeachStmt;
         }
 
         return EmitNotImplementedStatement(
@@ -1519,6 +1528,7 @@ internal partial class RoslynEmitter
             if (item.Name != null)
             {
                 // with expr as name: -> using (var name = expr) { ... }
+                // async with expr as name: -> await using (var name = expr) { ... }
                 var varName = GetMangledVariableName(item.Name, isNewDeclaration: true);
                 _declaredVariables.Add(varName);
 
@@ -1527,12 +1537,19 @@ internal partial class RoslynEmitter
                         VariableDeclarator(Identifier(varName))
                             .WithInitializer(EqualsValueClause(contextExpr))));
 
-                innermost = UsingStatement(declaration, null, innermost is BlockSyntax block ? block : Block(innermost));
+                var usingStmt = UsingStatement(declaration, null, innermost is BlockSyntax block ? block : Block(innermost));
+                innermost = withStmt.IsAsync
+                    ? usingStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
+                    : usingStmt;
             }
             else
             {
                 // with expr: -> using (expr) { ... }
-                innermost = UsingStatement(null, contextExpr, innermost is BlockSyntax block ? block : Block(innermost));
+                // async with expr: -> await using (expr) { ... }
+                var usingStmt = UsingStatement(null, contextExpr, innermost is BlockSyntax block ? block : Block(innermost));
+                innermost = withStmt.IsAsync
+                    ? usingStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
+                    : usingStmt;
             }
         }
 
