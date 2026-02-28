@@ -213,6 +213,10 @@ internal class NameResolver
                 ResolveEnumDeclaration(enumDef);
                 break;
 
+            case UnionDef unionDef:
+                ResolveUnionDeclaration(unionDef);
+                break;
+
             case FunctionDef functionDef:
                 ResolveFunctionDeclaration(functionDef);
                 break;
@@ -462,6 +466,57 @@ internal class NameResolver
         };
 
         _symbolTable.Define(typeSymbol);
+    }
+
+    private void ResolveUnionDeclaration(UnionDef unionDef)
+    {
+        _logger.LogDebug($"Resolving union declaration: {unionDef.Name}");
+
+        if (_symbolTable.Lookup(unionDef.Name, searchParents: false) != null)
+        {
+            AddError($"Union '{unionDef.Name}' is already defined",
+                unionDef.LineStart, unionDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: unionDef.Span);
+            return;
+        }
+
+        var unionSymbol = new TypeSymbol
+        {
+            Name = unionDef.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Union,
+            AccessLevel = AccessLevel.Public,
+            IsAbstract = true,
+            TypeParameters = unionDef.TypeParameters.ToList(),
+            DefiningFilePath = _currentFilePath,
+            DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = unionDef.Span,
+            DeclarationLine = unionDef.LineStart,
+            DeclarationColumn = unionDef.ColumnStart
+        };
+
+        // Create case type symbols as nested types
+        foreach (var caseDef in unionDef.Cases)
+        {
+            var caseSymbol = new TypeSymbol
+            {
+                Name = caseDef.Name,
+                Kind = SymbolKind.Type,
+                TypeKind = TypeKind.Class,
+                AccessLevel = AccessLevel.Public,
+                BaseType = unionSymbol,
+                TypeParameters = unionDef.TypeParameters.ToList(),
+                DefiningFilePath = _currentFilePath,
+                DeclaringFilePath = _currentFilePath,
+                DeclarationSpan = caseDef.Span,
+                DeclarationLine = caseDef.LineStart,
+                DeclarationColumn = caseDef.ColumnStart
+            };
+
+            // Fields will be resolved in type checking (Task 4)
+            unionSymbol.UnionCases.Add(caseSymbol);
+        }
+
+        _symbolTable.Define(unionSymbol);
     }
 
     private void ResolveFunctionDeclaration(FunctionDef functionDef)

@@ -192,6 +192,9 @@ public record TypeSymbol : Symbol
     // multiple __init__ methods that map to C# constructor overloads
     public List<FunctionSymbol> Constructors { get; init; } = new();
 
+    // Union cases (only populated for TypeKind.Union)
+    public List<TypeSymbol> UnionCases { get; init; } = new();
+
     // Inheritance
     /// <summary>
     /// The base type (parent class) of this type symbol.
