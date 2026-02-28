@@ -75,6 +75,12 @@ internal partial class RoslynEmitter
             if (isBuiltinFunc && symbol is FunctionSymbol { CodeGenInfo: not null })
                 isBuiltinFunc = false;
 
+            // Handle direct calls to asyncio functions (from asyncio import gather, sleep)
+            if (symbol is FunctionSymbol { OriginalModule: "asyncio" })
+            {
+                return GenerateAsyncioCall(funcName.Name, call);
+            }
+
             // isinstance(expr, Type) → expr is Type
             // Must intercept BEFORE argument evaluation because the second argument
             // is a type identifier, not a value expression.
@@ -181,6 +187,16 @@ internal partial class RoslynEmitter
         // Handle method calls on objects: obj.method() or ClassName.static_method()
         if (call.Function is MemberAccess memberAccess)
         {
+            // Check for asyncio module calls: asyncio.gather() → Task.WhenAll(), asyncio.sleep() → Task.Delay()
+            if (memberAccess.Object is Identifier asyncioId && asyncioId.Name == "asyncio")
+            {
+                var asyncioSym = _context.LookupSymbol(asyncioId.Name);
+                if (asyncioSym is ModuleSymbol)
+                {
+                    return GenerateAsyncioCall(memberAccess.Member, call);
+                }
+            }
+
             // Check for union case construction: Shape.Circle(5.0) → new Shape.Circle(5.0)
             if (memberAccess.Object is Identifier unionId)
             {
@@ -1264,6 +1280,67 @@ internal partial class RoslynEmitter
     private static bool HasDefaultMethod(TypeSymbol interfaceSymbol, string methodName)
     {
         return interfaceSymbol.Methods.Any(m => m.Name == methodName && !m.IsAbstract);
+    }
+
+    /// <summary>
+    /// Emits C# code for asyncio module function calls.
+    /// asyncio.gather(t1, t2, ...) → Task.WhenAll(t1, t2, ...)
+    /// asyncio.gather(*tasks)      → Task.WhenAll(tasks)
+    /// asyncio.sleep(n)            → Task.Delay(TimeSpan.FromSeconds(n))
+    /// </summary>
+    private ExpressionSyntax GenerateAsyncioCall(string functionName, FunctionCall call)
+    {
+        // global::System.Threading.Tasks.Task
+        var taskTypeName = MakeGlobalQualifiedName("System", "Threading", "Tasks", "Task");
+
+        if (functionName == "gather")
+        {
+            // Task.WhenAll(...)
+            var whenAllAccess = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                taskTypeName,
+                IdentifierName("WhenAll"));
+
+            // Handle spread arguments: asyncio.gather(*tasks) → Task.WhenAll(tasks)
+            // Handle individual arguments: asyncio.gather(t1, t2) → Task.WhenAll(t1, t2)
+            var args = GeneratePositionalArguments(call.Arguments).ToArray();
+
+            return InvocationExpression(whenAllAccess)
+                .WithArgumentList(ArgumentList(SeparatedList(args)));
+        }
+
+        if (functionName == "sleep")
+        {
+            // Task.Delay(TimeSpan.FromSeconds(seconds))
+            var delayAccess = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                taskTypeName,
+                IdentifierName("Delay"));
+
+            // Build TimeSpan.FromSeconds(seconds)
+            var timeSpanTypeName = MakeGlobalQualifiedName("System", "TimeSpan");
+            var fromSecondsAccess = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                timeSpanTypeName,
+                IdentifierName("FromSeconds"));
+
+            var secondsArg = call.Arguments.Length > 0
+                ? GenerateExpression(call.Arguments[0])
+                : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0.0));
+
+            var timeSpanExpr = InvocationExpression(fromSecondsAccess)
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(secondsArg))));
+
+            return InvocationExpression(delayAccess)
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(timeSpanExpr))));
+        }
+
+        // Unknown asyncio function — fall through to regular member access emission
+        return EmitNotImplementedExpression(
+            $"asyncio.{functionName} is not supported",
+            DiagnosticCodes.CodeGen.UnsupportedFeature, call.LineStart, call.ColumnStart);
     }
 
     /// <summary>

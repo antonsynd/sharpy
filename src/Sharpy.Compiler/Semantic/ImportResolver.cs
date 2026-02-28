@@ -232,6 +232,9 @@ internal class ImportResolver
             // First, try to resolve as .NET assembly module through ModuleRegistry
             var moduleInfo = TryResolveNetModule(importAlias.Name, importAlias.LineStart, importAlias.ColumnStart);
 
+            // Try synthetic modules (e.g., asyncio)
+            moduleInfo ??= TryResolveSyntheticModule(importAlias.Name);
+
             // If not found in .NET assemblies, try .spy file
             if (moduleInfo == null)
             {
@@ -291,7 +294,10 @@ internal class ImportResolver
         // First, try to resolve as .NET assembly module
         var moduleInfo = TryResolveNetModule(fromImport.Module, fromImport.LineStart, fromImport.ColumnStart);
 
-        // If not found in .NET assemblies, try .spy file
+        // Try synthetic modules (e.g., asyncio)
+        moduleInfo ??= TryResolveSyntheticModule(fromImport.Module);
+
+        // If not found in .NET assemblies or synthetic modules, try .spy file
         if (moduleInfo == null)
         {
             var resolution = ResolveModuleWithResult(fromImport.Module, searchPath);
@@ -794,6 +800,79 @@ internal class ImportResolver
         }
 
         return _moduleResolver.Resolve(moduleName);
+    }
+
+    /// <summary>
+    /// Try to resolve a synthetic (compiler-provided) module by name.
+    /// Synthetic modules don't correspond to .spy files or .NET assemblies — they are
+    /// built-in modules whose functions map to special codegen patterns.
+    /// Currently supports: asyncio (gather → Task.WhenAll, sleep → Task.Delay).
+    /// </summary>
+    private ModuleInfo? TryResolveSyntheticModule(string moduleName)
+    {
+        if (moduleName != "asyncio")
+            return null;
+
+        var cacheKey = $"synthetic:{moduleName}";
+        var cached = _moduleLoader.GetCachedModule(cacheKey);
+        if (cached != null)
+            return cached;
+
+        _logger.LogDebug($"Resolving synthetic module: {moduleName}");
+
+        var exports = new Dictionary<string, Symbol>();
+
+        // asyncio.gather(*tasks) -> Task.WhenAll(tasks)
+        // Variadic, accepts Task arguments, returns Task (void result since WhenAll returns Task)
+        exports["gather"] = new FunctionSymbol
+        {
+            Name = "gather",
+            Kind = SymbolKind.Function,
+            ReturnType = new TaskType { ResultType = null },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "tasks",
+                    Type = new TaskType { ResultType = null },
+                    IsVariadic = true
+                }
+            },
+            AccessLevel = AccessLevel.Public,
+            IsStatic = true
+        };
+
+        // asyncio.sleep(seconds) -> Task.Delay(TimeSpan.FromSeconds(seconds))
+        // Accepts float (double), returns Task (void)
+        exports["sleep"] = new FunctionSymbol
+        {
+            Name = "sleep",
+            Kind = SymbolKind.Function,
+            ReturnType = new TaskType { ResultType = null },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "seconds",
+                    Type = SemanticType.Float
+                }
+            },
+            AccessLevel = AccessLevel.Public,
+            IsStatic = true
+        };
+
+        var moduleInfo = new ModuleInfo
+        {
+            Path = $"synthetic:{moduleName}",
+            Module = null!,
+            ExportedSymbols = exports,
+            IsNetModule = true // Treat as non-file module for import resolution
+        };
+
+        _moduleLoader.CacheModule(cacheKey, moduleInfo);
+        _logger.LogInfo($"Loaded synthetic module '{moduleName}' with {exports.Count} functions");
+
+        return moduleInfo;
     }
 
     /// <summary>
