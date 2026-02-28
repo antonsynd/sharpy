@@ -861,6 +861,15 @@ public static class DiagnosticExplanations
             "union Shape:\n    case Circle(radius: float)\n    case Circle(diameter: float)",
             "Give each union case a unique name:\nunion Shape:\n    case Circle(radius: float)\n    case Square(side: float)");
 
+        Add(dict, DiagnosticCodes.Semantic.UnionCaseNotFound, "Unknown union case in pattern", "Semantic",
+            "A pattern references a case name that does not exist on the union type being matched.",
+            "union Result:\n    case Ok(value: int)\n    case Err(msg: str)\nmatch r:\n    case Unknown(v):  # no case 'Unknown' on Result\n        ...",
+            "Use a case name that exists on the union type:\nmatch r:\n    case Ok(v):\n        print(v)");
+
+        Add(dict, DiagnosticCodes.Semantic.UnionCaseFieldMismatch, "Wrong number of fields in union case pattern", "Semantic",
+            "A union case pattern has a different number of field bindings than the union case declares.",
+            "union Result:\n    case Ok(value: int)\nmatch r:\n    case Ok(a, b):  # Ok has 1 field, got 2\n        ...",
+            "Provide the correct number of field bindings matching the union case definition:\nmatch r:\n    case Ok(v):\n        print(v)");
 
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
@@ -977,6 +986,13 @@ public static class DiagnosticExplanations
             "struct Point:\n    x: int\n    @virtual\n    def __str__(self) -> str:\n        return \"point\"",
             "Remove the @virtual decorator:\nstruct Point:\n    x: int\n    def __str__(self) -> str:\n        return \"point\"");
 
+        Add(dict, DiagnosticCodes.Validation.NonExhaustiveMatchExpression, "Non-exhaustive match expression", "Validation",
+            "A match expression does not cover all possible values of the scrutinee type. Match expressions must be exhaustive because they produce a value. " +
+            "For enums, all members must be covered. For bools, both True and False must be covered. For tagged unions, all cases must be covered. " +
+            "A wildcard pattern (_) or binding pattern covers all remaining cases. Guard clauses do not count toward exhaustiveness.",
+            "union Option:\n    case Some(value: int)\n    case None_\nx: int = match opt:\n    case Some(v): v  # missing None_ case",
+            "Cover all cases or add a wildcard:\nx: int = match opt:\n    case Some(v): v\n    case _: 0");
+
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
         Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",
@@ -1056,6 +1072,15 @@ public static class DiagnosticExplanations
             "Prefer accessing them via the class name for clarity.",
             "class Counter:\n    @static\n    count: int = 0\n    def get(self) -> int:\n        return self.count  # warning: static field via instance",
             "Access the field via the class name:\nclass Counter:\n    @static\n    count: int = 0\n    def get(self) -> int:\n        return Counter.count");
+
+        // ── Validation warnings: Exhaustiveness (SPY0463) ─────────────
+
+        Add(dict, DiagnosticCodes.Validation.NonExhaustiveMatch, "Non-exhaustive match statement", "Validation",
+            "A match statement does not cover all possible values of the scrutinee type. " +
+            "For enums, all members should be covered. For bools, both True and False should be covered. For tagged unions, all cases should be covered. " +
+            "A wildcard pattern (_) or binding pattern covers all remaining cases. Guard clauses do not count toward exhaustiveness.",
+            "union Shape:\n    case Circle(r: float)\n    case Square(s: float)\nmatch shape:\n    case Circle(r):  # missing Square case\n        print(r)",
+            "Cover all cases or add a wildcard:\nmatch shape:\n    case Circle(r):\n        print(r)\n    case _:\n        pass");
 
         // ── Validation errors: Dunder invocation rules (SPY0460-SPY0469)
 
