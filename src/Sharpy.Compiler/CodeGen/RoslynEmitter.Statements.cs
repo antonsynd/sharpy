@@ -198,8 +198,8 @@ internal partial class RoslynEmitter
             // Method calls are valid statements
             FunctionCall => true,
 
-            // Await expressions are valid (if we had them in AST)
-            // AwaitExpression => true,
+            // Await expressions are valid C# statement expressions
+            Parser.Ast.AwaitExpression => true,
 
             // All other expressions need a discard
             _ => false

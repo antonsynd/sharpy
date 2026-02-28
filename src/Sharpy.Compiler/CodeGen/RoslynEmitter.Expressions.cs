@@ -79,6 +79,9 @@ internal partial class RoslynEmitter
             TryExpression tryExpr => GenerateTryExpression(tryExpr),
             MaybeExpression maybeExpr => GenerateMaybeExpression(maybeExpr),
 
+            // Await expression
+            Parser.Ast.AwaitExpression awaitExpr => GenerateAwaitExpression(awaitExpr),
+
             // Walrus operator
             WalrusExpression walrus => GenerateWalrusExpression(walrus),
 
@@ -238,5 +241,11 @@ internal partial class RoslynEmitter
 
         var exprType = GetExpressionSemanticType(call);
         return exprType is OptionalType or ResultType;
+    }
+
+    private ExpressionSyntax GenerateAwaitExpression(Parser.Ast.AwaitExpression awaitExpr)
+    {
+        var operand = GenerateExpression(awaitExpr.Operand);
+        return SyntaxFactory.AwaitExpression(operand);
     }
 }
