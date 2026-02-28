@@ -127,8 +127,7 @@ internal partial class RoslynEmitter
 
             case TypePattern typePattern:
                 {
-                    var typeSyntax = MapSemanticTypeToSyntax(
-                        _context.SemanticInfo.GetExpressionType(typePattern) ?? _context.TypeResolver.ResolveTypeAnnotation(typePattern.Type));
+                    var typeSyntax = _typeMapper.MapType(typePattern.Type);
                     if (typePattern.BindingName != null)
                     {
                         var varName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true);
