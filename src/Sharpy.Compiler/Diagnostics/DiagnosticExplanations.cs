@@ -807,6 +807,31 @@ public static class DiagnosticExplanations
             "A language feature was used that is recognized by the parser but not yet supported in semantic analysis or code generation.",
             "match x:\n    case [1, 2, 3]:  # list patterns not yet supported\n        print(x)",
             "Use a supported pattern type such as literal patterns, binding patterns, wildcard patterns, tuple patterns, or member access patterns.");
+        Add(dict, DiagnosticCodes.Semantic.BindingInOrPattern, "Binding pattern in or-pattern", "Semantic",
+            "A binding pattern was used inside an or-pattern (|). C# does not allow variable bindings in or-patterns because the variable would only be assigned in one branch.",
+            "match x:\n    case y | 2:  # binding 'y' not allowed in or-pattern\n        print(y)",
+            "Use literal patterns, wildcard patterns, or member access patterns inside or-patterns:\nmatch x:\n    case 1 | 2:\n        print(\"one or two\")");
+
+        Add(dict, DiagnosticCodes.Semantic.RelationalPatternTypeMismatch, "Relational pattern type mismatch", "Semantic",
+            "A relational pattern (>, <, >=, <=) was used with a non-numeric scrutinee type. Relational patterns require a numeric type.",
+            "match name:\n    case > 0:  # name is str, not numeric\n        print(name)",
+            "Use relational patterns only with numeric types (int, float, etc.).");
+
+        Add(dict, DiagnosticCodes.Semantic.TypePatternIncompatible, "Incompatible type pattern", "Semantic",
+            "A type pattern was used with a type that is incompatible with the scrutinee type.",
+            "x: int = 42\nmatch x:\n    case str() as s:  # int cannot be str\n        print(s)",
+            "Use a type pattern that is compatible with the scrutinee type.");
+
+        Add(dict, DiagnosticCodes.Semantic.PropertyPatternUnknownField, "Unknown field in property pattern", "Semantic",
+            "A property pattern referenced a field that does not exist on the matched type.",
+            "class Point:\n    x: int\n    y: int\nmatch p:\n    case Point(z=0):  # Point has no field 'z'\n        ...",
+            "Use field names that exist on the type being matched.");
+
+        Add(dict, DiagnosticCodes.Semantic.PositionalPatternCountMismatch, "Positional pattern count mismatch", "Semantic",
+            "A positional pattern has a different number of elements than the fields of the matched type.",
+            "class Point:\n    x: int\n    y: int\nmatch p:\n    case Point(1, 2, 3):  # Point has 2 fields, got 3\n        ...",
+            "Provide the correct number of positional elements matching the type's fields.");
+
 
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 

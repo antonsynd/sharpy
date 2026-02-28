@@ -2,7 +2,7 @@ def describe(n: int) -> str:
     match n:
         case 1:
             return "one"
-        case x | _:
+        case 2 | _:
             return "other"
 
 def main():
