@@ -1159,6 +1159,12 @@ public partial class Parser
         var token = Current;
         Advance();
 
+        // Check for type pattern: identifier followed by '('
+        if (Current.Type == TokenType.LeftParen)
+        {
+            return ParseTypePattern(token);
+        }
+
         if (Current.Type == TokenType.Dot)
         {
             // Parse dotted member access pattern (e.g., Color.RED)
@@ -1206,6 +1212,55 @@ public partial class Parser
             LineEnd = token.Line,
             ColumnEnd = token.Column + token.Value.Length,
             Span = GetSpanFromToken(token)
+        };
+    }
+
+
+    private TypePattern ParseTypePattern(Token typeToken)
+    {
+        var typeAnnotation = new Ast.TypeAnnotation { Name = typeToken.Value };
+        Expect(TokenType.LeftParen);
+        Expect(TokenType.RightParen);
+
+        Ast.Identifier? bindingName = null;
+        Token endToken;
+
+        if (Current.Type == TokenType.As)
+        {
+            Advance(); // consume 'as'
+            if (Current.Type != TokenType.Identifier)
+            {
+                throw ReportError($"Expected identifier after 'as' in type pattern, got '{Current.Value}'",
+                    Current.Line, Current.Column,
+                    DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
+            }
+            var nameToken = Current;
+            Advance();
+            endToken = nameToken;
+            bindingName = new Ast.Identifier
+            {
+                Name = nameToken.Value,
+                LineStart = nameToken.Line,
+                ColumnStart = nameToken.Column,
+                LineEnd = nameToken.Line,
+                ColumnEnd = nameToken.Column + nameToken.Value.Length,
+                Span = GetSpanFromToken(nameToken)
+            };
+        }
+        else
+        {
+            endToken = Previous; // the ')'
+        }
+
+        return new TypePattern
+        {
+            Type = typeAnnotation,
+            BindingName = bindingName,
+            LineStart = typeToken.Line,
+            ColumnStart = typeToken.Column,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(typeToken, endToken)
         };
     }
 

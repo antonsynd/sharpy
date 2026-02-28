@@ -1,0 +1,13 @@
+def check(x: object) -> str:
+    match x:
+        case int() as n:
+            return "int: " + str(n)
+        case str() as s:
+            return "str: " + s
+        case _:
+            return "other"
+
+def main():
+    print(check(42))
+    print(check("hello"))
+    print(check(3.14))

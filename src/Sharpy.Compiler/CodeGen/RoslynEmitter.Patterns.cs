@@ -125,6 +125,18 @@ internal partial class RoslynEmitter
                             PositionalPatternClause(SeparatedList(subPatterns)));
                 }
 
+            case TypePattern typePattern:
+                {
+                    var typeSyntax = MapSemanticTypeToSyntax(
+                        _context.SemanticInfo.GetExpressionType(typePattern) ?? _context.TypeResolver.ResolveTypeAnnotation(typePattern.Type));
+                    if (typePattern.BindingName != null)
+                    {
+                        var varName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true);
+                        return DeclarationPattern(typeSyntax, SingleVariableDesignation(Identifier(varName)));
+                    }
+                    return DeclarationPattern(typeSyntax, DiscardDesignation());
+                }
+
             case RelationalPattern relational:
                 {
                     var operatorToken = relational.Operator switch

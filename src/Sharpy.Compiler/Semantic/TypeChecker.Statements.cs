@@ -851,6 +851,36 @@ internal partial class TypeChecker
                     break;
                 }
 
+            case TypePattern typePattern:
+                {
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(typePattern.Type);
+                    if (resolvedType is UnknownType)
+                    {
+                        AddError(
+                            $"Unknown type '{typePattern.Type.Name}' in type pattern",
+                            typePattern.LineStart, typePattern.ColumnStart,
+                            code: DiagnosticCodes.Semantic.UndefinedType,
+                            span: typePattern.Span);
+                    }
+                    if (typePattern.BindingName != null)
+                    {
+                        var newSymbol = new VariableSymbol
+                        {
+                            Name = typePattern.BindingName.Name,
+                            Kind = SymbolKind.Variable,
+                            Type = resolvedType,
+                            IsConstant = false,
+                            DeclarationLine = typePattern.BindingName.LineStart,
+                            DeclarationColumn = typePattern.BindingName.ColumnStart,
+                            AccessLevel = AccessLevel.Public
+                        };
+                        _symbolTable.Define(newSymbol);
+                        SemanticBinding.SetVariableType(newSymbol, resolvedType);
+                        _semanticInfo.SetIdentifierSymbol(typePattern.BindingName, newSymbol);
+                    }
+                    break;
+                }
+
             case RelationalPattern relational:
                 {
                     var valueType = CheckExpression(relational.Value);
