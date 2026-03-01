@@ -1,0 +1,11 @@
+# Test: with statement requires both __enter__ and __exit__
+class IncompleteManager:
+    def __init__(self):
+        pass
+
+    def __enter__(self) -> IncompleteManager:
+        return self
+
+def main() -> None:
+    with IncompleteManager() as m:
+        print("inside")

@@ -1,0 +1,14 @@
+# Test: async with requires __aenter__/__aexit__, not __enter__/__exit__
+class SyncOnlyManager:
+    def __init__(self):
+        pass
+
+    def __enter__(self) -> SyncOnlyManager:
+        return self
+
+    def __exit__(self):
+        pass
+
+async def main() -> None:
+    async with SyncOnlyManager() as m:
+        print("inside")

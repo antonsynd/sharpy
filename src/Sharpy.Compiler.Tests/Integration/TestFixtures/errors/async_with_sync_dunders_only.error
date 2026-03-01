@@ -1,0 +1,1 @@
+does not implement __aenter__/__aexit__ or IAsyncDisposable

@@ -13,6 +13,7 @@ internal static class CSharpTypeNames
     internal const string SharpySet = "Sharpy.Set";
     internal const string SharpyOptional = "Sharpy.Optional";
     internal const string SharpyResult = "Sharpy.Result";
+    internal const string IAsyncEnumerable = "IAsyncEnumerable";
 
     /// <summary>
     /// Maps a Sharpy builtin collection type name to its fully-qualified C# type name.

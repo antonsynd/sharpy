@@ -259,7 +259,7 @@ internal partial class RoslynEmitter
     private bool IsAsyncEnumerableType(Parser.Ast.Expression expr)
     {
         var type = GetExpressionSemanticType(expr);
-        return type is GenericType { Name: "IAsyncEnumerable" };
+        return type is GenericType { Name: Shared.CSharpTypeNames.IAsyncEnumerable };
     }
 
     private StatementSyntax GenerateAssignment(Assignment assign)
