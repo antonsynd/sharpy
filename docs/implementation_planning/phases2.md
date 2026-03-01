@@ -4,7 +4,9 @@
 <!-- Phase 9 marked complete on 2026-02-23 (generators fully implemented) -->
 <!-- Phase 8.1-8.5 marked complete on 2026-02-28 (all non-union patterns implemented) -->
 <!-- Phase 8.6 marked complete on 2026-02-28 (tagged union declarations implemented) -->
+<!-- Phase 8.7-8.8 marked complete on 2026-02-28 (union case patterns + exhaustiveness checking) -->
 <!-- Phase 10.2 marked complete on 2026-02-28 (await expressions implemented) -->
+<!-- Phase 10.3-10.6 marked complete on 2026-02-28 (async for/with, async generators, asyncio.gather) -->
 
 # Sharpy Language Feature Completeness — Phased Roadmap
 
@@ -35,8 +37,8 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 - **Phase 6 (v0.2.0):** Constructor chaining, enum `.name`/iteration, generic type aliases, method overloading
 - **Phase 7 (v0.2.1):** Complex tuple unpacking, rest patterns, tuple unpacking in comprehensions, spread in collection literals, spread in function calls
 - **Phase 9 (v0.2.3):** `yield` statement, `yield from` delegation, generator return type inference
-- **Phase 8 (v0.2.2, partial):** Match expressions, or-patterns, type patterns with binding, relational patterns, property/positional patterns
-- **Phase 10 (v0.2.4, partial):** `async def` functions, `await` expressions
+- **Phase 8 (v0.2.2):** Match expressions, or-patterns, type patterns with binding, relational patterns, property/positional patterns, tagged union declarations, union case patterns in match, exhaustiveness checking (bool/enum/union/non-finite types)
+- **Phase 10 (v0.2.4):** `async def` functions, `await` expressions, `async for` loops, `async with` statements (IDisposable + dunder protocol), async generators (`yield`/`yield from` in async), `asyncio.gather` → `Task.WhenAll`
 
 ### Missing (grouped by phase below)
 
@@ -92,12 +94,12 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | ~~8.4~~ | ~~Relational patterns~~ | ~~M~~ | ~~Completed.~~ `case > 0:` via `ParseRelationalPattern()`; `RelationalPattern` AST + `RelationalOperator` enum; SPY0204 type mismatch diagnostic; C# relational pattern codegen. Tests: `match_relational_basic_0001`, `match_relational_combined_0001`, etc. |
 | ~~8.5~~ | ~~Property/positional patterns~~ | ~~M~~ | ~~Completed.~~ `case Point(x=0):` via `ParsePropertyPattern()`, `case Point(0, y):` via `ParsePositionalPattern()`; SPY0207/SPY0209 diagnostics; `RecursivePattern` with `PropertyPatternClause` codegen. Tests: `match_property_basic_0001`, `match_positional_basic_0001`, etc. |
 | ~~8.6~~ | ~~Tagged union declarations (`union`)~~ | ~~XL~~ | ~~Completed.~~ `union` keyword token + `TypeKind.Union`; `ParseUnionDef()` parser; `ResolveUnionDeclaration()` name resolution with case symbols; `CheckUnion()` type checking with field type resolution; `GenerateUnionDeclaration()` codegen lowering to abstract base + sealed nested classes with `Deconstruct` methods; generic union support with type parameter substitution; `SPY0124` (empty union), `SPY0365` (duplicate case) diagnostics. Tests: `union_basic`, `union_generic`, `union_field_types`, `union_single_case`, `union_no_fields`, `union_mixed_fields`, `union_duplicate_case`, `union_empty`. |
-| 8.7 | Union case patterns in match | M | `case Ok(value):` — `UnionCasePattern` AST exists but entirely unwired through parser/semantic/codegen. Depends on 8.6 |
-| 8.8 | Exhaustiveness checking | L | Only `WildcardPattern` recognized as exhaustive in control flow; no validator or diagnostic for non-exhaustive matches over enums/bool/unions |
+| ~~8.7~~ | ~~Union case patterns in match~~ | ~~M~~ | ~~Completed.~~ `UnionCasePattern` fully wired: `TryResolveUnionCaseFromPattern()` in TypeChecker; `GenerateUnionCasePositionalPattern()` in RoslynEmitter.Patterns.cs; generic union support with type parameter substitution. Tests: `match_union_basic_0001`, `match_union_generic_0001`, `match_union_nested_0001`, `match_union_short_form_0001`, `match_union_unit_0001`, `match_union_wildcard_0001` |
+| ~~8.8~~ | ~~Exhaustiveness checking~~ | ~~L~~ | ~~Completed.~~ `ExhaustivenessValidator` (Order 405) checks bool, enum, union exhaustiveness. SPY0416 error for non-exhaustive match expressions; SPY0463 warning for non-exhaustive match statements. Non-finite types require wildcard/binding arm in expressions. Tests: `match_exhaustive_bool_*`, `match_exhaustive_enum_*`, `match_exhaustive_union_*`, `match_expr_non_exhaustive_error`, `match_stmt_non_exhaustive_warning` |
 
 **Key files:** `Parser.Statements.cs`, `Parser.Expressions.cs`, `Pattern.cs`, `Statement.Future.cs`, `TypeChecker.Statements.cs`, `RoslynEmitter.Patterns.cs`, `RoslynEmitter.TypeDeclarations.cs`
 
-**Dependencies:** ~~8.1–8.5 complete.~~ 8.6 (tagged unions) must precede 8.7 (union case patterns). 8.8 depends on all patterns being parseable.
+**Dependencies:** ~~8.1–8.8 all complete.~~ Full pipeline: tagged union declarations → union case patterns → exhaustiveness checking.
 
 ---
 
@@ -125,14 +127,14 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 |---|---------|-----------|-------|
 | ~~10.1~~ | ~~`async def` functions~~ | ~~L~~ | ~~Completed.~~ `ParseAsyncFunctionDef()` in `Parser.Definitions.cs`; `FunctionDef.IsAsync` property; TypeChecker wraps return in `TaskType`; RoslynEmitter adds `async` modifier + `WrapInTask()`. Integration tests: `async_basic`, `async_class_method`, `async_void`. Error tests: `async_generator_error`, `async_init_error`. |
 | ~~10.2~~ | ~~`await` expressions~~ | ~~L~~ | ~~COMPLETE — `ParseAwaitExpression()` in parser, `CheckAwaitExpression()` in TypeChecker (SPY0273/SPY0274), `GenerateAwaitExpression()` via `SyntaxFactory.AwaitExpression()`. Lambda await rejected.~~ |
-| 10.3 | `async for` loops | M | `async for item in aiter:` → C# `await foreach`; operand must be `IAsyncEnumerable<T>` |
-| 10.4 | `async with` statements | M | `async with resource() as r:` → C# `await using`; operand must be `IAsyncDisposable` |
-| 10.5 | Async generators | L | `async def` + `yield` → `AsyncIterator[T]` → `IAsyncEnumerable<T>` (depends on Phase 9) |
-| 10.6 | `Task.WhenAll` mapping | M | Map `asyncio.gather(*tasks)` or equivalent to `Task.WhenAll()`; concurrent task execution |
+| ~~10.3~~ | ~~`async for` loops~~ | ~~M~~ | ~~Completed.~~ `ForStatement.IsAsync` flag; TypeChecker validates `IAsyncEnumerable<T>` operand + async context (SPY0360); codegen emits `await foreach`. Tests: `async_for_basic`, `async_for_outside_async_error` |
+| ~~10.4~~ | ~~`async with` statements~~ | ~~M~~ | ~~Completed.~~ Dual protocol support: (1) `IDisposable`/`IAsyncDisposable` → `using`/`await using`, (2) `__enter__`/`__exit__` and `__aenter__`/`__aexit__` dunders → try/finally with explicit method calls. `ContextManagerKind` enum in SemanticInfo selects codegen path. Tests: `async_with_basic`, `with_context_manager`, `async_with_sync_dunders_only` (error), `with_enter_without_exit` (error) |
+| ~~10.5~~ | ~~Async generators~~ | ~~L~~ | ~~Completed.~~ `async def` + `yield` → `IAsyncEnumerable<T>` return type via `WrapInIAsyncEnumerable()`. `yield from` in async generators supported as Sharpy extension (deviation from Python). `AsyncScope` in emitter tracks async context for `await foreach` emission. Tests: `async_generator_basic`, `async_generator_yield_from`, `async_generator_compiles` |
+| ~~10.6~~ | ~~`Task.WhenAll` mapping~~ | ~~M~~ | ~~Completed.~~ Synthetic `asyncio` module (`SyntheticModuleNames.Asyncio`); `asyncio.gather()` → `Task.WhenAll()`, `asyncio.sleep(n)` → `Task.Delay(TimeSpan.FromSeconds(n))`. ImportResolver recognizes synthetic modules. Tests: `async_gather_basic`, `async_sleep_basic` |
 
 **Key files:** `Expression.Future.cs` (AwaitExpression), `Parser.Definitions.cs`, `Parser.Statements.cs`, `TypeChecker.cs`, `RoslynEmitter.Statements.cs`, `RoslynEmitter.Expressions.cs`
 
-**Dependencies:** ~~10.1~~ complete. ~~10.2~~ complete. 10.3–10.4 build on 10.1+10.2. 10.5 requires Phase 9 (generators, complete).
+**Dependencies:** ~~10.1–10.6 all complete.~~ Full async pipeline implemented.
 
 ---
 
@@ -178,29 +180,28 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 |-------|---------|-------|-------|-----------------|
 | **6** | v0.2.0 | Correctness & Completion | ~~5~~ ✅ Complete | Constructor chaining, enum polish, generic type aliases, method overloading (6.2 `raise from` intentionally skipped) |
 | **7** | v0.2.1 | Destructuring & Spread | ~~5~~ ✅ Complete | Complex unpacking, `*rest`, spread in literals/calls |
-| **8** | v0.2.2 | Pattern Matching & Tagged Unions | ~~5~~ + 3 remaining | ~~Match expressions, or/type/relational/property/positional patterns~~; `union` keyword, union case patterns, exhaustiveness |
+| **8** | v0.2.2 | Pattern Matching & Tagged Unions | ~~8~~ ✅ Complete | Match expressions, or/type/relational/property/positional patterns, tagged unions, union case patterns, exhaustiveness checking |
 | **9** | v0.2.3 | Generators & Iterators | ~~3~~ ✅ Complete | `yield`/`yield from`, generator inference, 4 new diagnostics (SPY0265–SPY0269) |
-| **10** | v0.2.4 | Async/Await | ~~1~~ ~~2~~ + 4 remaining | ~~`async def`~~, ~~`await`~~, `async for/with`, async generators |
+| **10** | v0.2.4 | Async/Await | ~~6~~ ✅ Complete | `async def`, `await`, `async for`, `async with` (dual protocol), async generators, `asyncio.gather` |
 | **11** | v0.2.5 | Advanced Functions | 5 | Pos-only/kw-only, `@kwargs`, partial application |
 | **12** | v0.2.6 | Type System & Polish | 5 | Variance, delegates, events, custom decorators, spec audit |
 
-**Total: 16 remaining items across 4 phases (v0.2.2–v0.2.6)** — Phases 6, 7, 9 complete; 8.1–8.5, 10.1–10.2 complete (21 items delivered)
+**Total: 10 remaining items across 2 phases (v0.2.5–v0.2.6)** — Phases 6, 7, 8, 9, 10 all complete (28 items delivered)
 
 ---
 
 ## Critical Path
 
 ```
-✅ Phase 6 (v0.2.0) ──→ ✅ Phase 7 (v0.2.1) ──→ Phase 8 (v0.2.2)  ──→ ┐
-                                                                          ├──→ Phase 12 (v0.2.6)
-✅ Phase 9 (v0.2.3) ──→    Phase 10 (v0.2.4)  ──→ Phase 11 (v0.2.5) ──→ ┘
+✅ Phase 6 (v0.2.0) ──→ ✅ Phase 7 (v0.2.1) ──→ ✅ Phase 8 (v0.2.2)  ──→ ┐
+                                                                             ├──→ Phase 12 (v0.2.6)
+✅ Phase 9 (v0.2.3) ──→ ✅ Phase 10 (v0.2.4)  ──→    Phase 11 (v0.2.5) ──→ ┘
 ```
 
-- ✅ Phases 6, 7, 9 complete
-- **Phase 8 is 6/8 complete** — 8.1–8.6 (all pattern types + tagged unions) done; 8.7 (union case patterns), 8.8 (exhaustiveness) remain
-- **Phase 10 is 2/6 complete** — 10.1 (`async def`) and 10.2 (`await`) done; 10.3 (`async for`) is next
-- Phases 8 and 10 can proceed in parallel (independent tracks)
-- Phases 11–12 can begin once 10 is done (or in parallel with 10 if capacity allows)
+- ✅ Phases 6, 7, 8, 9, 10 all complete
+- **Phase 11 is next** — 5 items: positional-only params, keyword-only params, `@kwargs`, `@dynamic_kwargs`, partial application
+- **Phase 12 follows** — 5 items: delegates, generic variance, events, custom decorator args, spec audit
+- Phases 11 and 12 can proceed in parallel (independent tracks)
 
 ---
 
@@ -208,10 +209,10 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 1. ~~**Phase 6 first** — fixes correctness issues in shipped features; no new syntax risk~~ ✅ Done
 2. ~~**Phase 7 before 8** — spread/unpacking is foundational; tagged union destruction uses similar patterns~~ ✅ Done
-3. **Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy. **8.1–8.6 complete** (match expressions + all non-union patterns + tagged union declarations). Remaining: 8.7 union case patterns (M), 8.8 exhaustiveness (L).
+3. ~~**Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy~~ ✅ Complete (8.1–8.8 all done: match expressions, all pattern types, tagged unions, union case patterns, exhaustiveness checking)
 4. ~~**Phase 9 before 10** — generators are prerequisite for async generators~~ ✅ Done
-5. **Phase 10 completes the async story** — last major syntax feature. Can proceed in parallel with Phase 8. 10.1 (`async def`) and 10.2 (`await`) complete. 10.3 (`async for`) and 10.4 (`async with`) are next — straightforward `await foreach`/`await using` mappings. 10.5 (async generators) deliberately blocked with SPY error pending implementation.
-6. **Phases 11–12 are polish** — advanced function params, type system, and gap-filling
+5. ~~**Phase 10 completes the async story** — last major syntax feature~~ ✅ Complete (10.1–10.6 all done: async def, await, async for/with, async generators with yield from, asyncio.gather mapping)
+6. **Phases 11–12 are next** — advanced function params (positional-only, keyword-only, kwargs, partial application), type system advances (delegates, variance, events), and gap-filling
 
 ---
 
@@ -299,9 +300,9 @@ Intentional language design decisions:
 
 **Phase 9 verified COMPLETE** — all 3 items (yield, yield from, generator return type inference) fully implemented across parser, semantic, validation, and codegen.
 
-**Phase 8 audit (2026-02-28)** — 8.1–8.5 confirmed COMPLETE with full parser → semantic → codegen pipelines and passing integration tests. Match expressions (`ParseMatchExpression()` → `GenerateMatchExpression()`), or-patterns (SPY0320 for binding rejection), type patterns with binding (`ParseTypePatternOrStructural()`, SPY0202/SPY0203), relational patterns (`ParseRelationalPattern()`, `RelationalOperator` enum, SPY0204), property patterns (`ParsePropertyPattern()`, SPY0207), and positional patterns (`ParsePositionalPattern()`, SPY0209) are all production-ready. Items 8.6 (tagged unions), 8.7 (union case patterns), and 8.8 (exhaustiveness checking) remain NOT STARTED — `UnionDef` is still a Future.cs placeholder with no parser/semantic/codegen paths.
+**Phase 8 audit (2026-02-28)** — All 8 items confirmed COMPLETE. 8.1–8.5: Match expressions, or-patterns (SPY0320), type patterns with binding (SPY0202/SPY0203), relational patterns (SPY0204), property/positional patterns (SPY0207/SPY0209). 8.6: Tagged union declarations with `union` keyword, `ParseUnionDef()`, codegen lowering to abstract base + sealed nested classes. 8.7: Union case patterns wired through `TryResolveUnionCaseFromPattern()` → `GenerateUnionCasePositionalPattern()` with generic support. 8.8: `ExhaustivenessValidator` (Order 405) covers bool/enum/union finite types + non-finite type wildcard requirement. SPY0416/SPY0463. 20+ union pattern test fixtures, 10+ exhaustiveness test fixtures.
 
-**Phase 10 audit (2026-02-28)** — 10.1 (`async def`) and 10.2 (`await`) confirmed COMPLETE. `ParseAsyncFunctionDef()` + `FunctionDef.IsAsync`; `ParseAwaitExpression()` + `CheckAwaitExpression()` (SPY0273/SPY0274); `GenerateAwaitExpression()` via `SyntaxFactory.AwaitExpression()`. 13 integration tests across both features. 10.3–10.6 remain NOT STARTED. 10.5 is deliberately blocked with an explicit error in TypeChecker ("Async generators not yet supported").
+**Phase 10 audit (2026-02-28)** — All 6 items confirmed COMPLETE. 10.1: `async def` with `FunctionDef.IsAsync`. 10.2: `await` with SPY0273/SPY0274. 10.3: `async for` → `await foreach` with `IAsyncEnumerable<T>` validation (SPY0360). 10.4: `async with` dual protocol — `IAsyncDisposable` → `await using` + `__aenter__`/`__aexit__` → try/finally with `ContextManagerKind` enum in SemanticInfo. 10.5: Async generators → `IAsyncEnumerable<T>` return type, `yield from` in async generators as Sharpy extension. 10.6: Synthetic `asyncio` module with `gather` → `Task.WhenAll`, `sleep` → `Task.Delay`. 42 async test fixtures total.
 
 **Phase 11 audit** — all 5 items confirmed NOT STARTED. No positional-only/keyword-only parameter parsing, no `@kwargs`/`@dynamic_kwargs` decorator handling, no `PlaceholderExpression` AST node.
 
