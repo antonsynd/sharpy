@@ -42,6 +42,14 @@ internal class CodeGenContext
     }
 
     /// <summary>
+    /// Add a warning during code generation
+    /// </summary>
+    public void AddWarning(string message, string? code = null, int? line = null, int? column = null)
+    {
+        _diagnostics.AddWarning(message, line, column, SourceFilePath, code, CompilerPhase.CodeGeneration);
+    }
+
+    /// <summary>
     /// Add an informational diagnostic during code generation
     /// </summary>
     public void AddInfo(string message, string? code = null, int? line = null, int? column = null)
