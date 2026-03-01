@@ -134,6 +134,68 @@ When `__iter__` contains `yield`, the compiler synthesizes `IEnumerable<T>` on
 the class (reported via SPY1001 info diagnostic). When `__reversed__` contains
 `yield`, `IReverseEnumerable<T>` is synthesized.
 
+## Async Generators
+
+An `async def` function containing `yield` is an async generator. It produces
+an `IAsyncEnumerable<T>` instead of `IEnumerable<T>` and can be consumed with
+`async for`.
+
+```python
+async def async_count(n: int) -> int:
+    for i in range(n):
+        yield i
+
+async def main():
+    async for x in async_count(3):
+        print(x)  # 0, 1, 2
+```
+
+### `yield from` in Async Generators
+
+Sharpy extends Python by supporting `yield from` inside `async def` functions.
+Python does not allow `yield from` in async generators — it requires
+`async for item in iterable: yield item` instead. Sharpy lifts this restriction
+for convenience.
+
+When `yield from` delegates to a **synchronous** iterable, the compiler emits
+a plain `foreach` loop:
+
+```python
+def sync_items() -> int:
+    yield 10
+    yield 20
+
+async def combined() -> int:
+    yield 1
+    yield from sync_items()  # foreach + yield return
+    yield 2
+# Produces: 1, 10, 20, 2
+```
+
+When `yield from` delegates to an **async** iterable (`IAsyncEnumerable<T>`),
+the compiler emits `await foreach`:
+
+```python
+async def async_source() -> int:
+    yield 100
+    yield 200
+
+async def combined_async() -> int:
+    yield from async_source()  # await foreach + yield return
+    yield 300
+# Produces: 100, 200, 300
+```
+
+> **Python deviation:** Python 3 forbids `yield from` in `async def` functions
+> (SyntaxError). Sharpy allows it as a convenience — the compiler automatically
+> selects `foreach` or `await foreach` depending on the iterable type.
+
+### Async Generator Return Types
+
+| Context | Annotation | Emitted C# return type |
+|---------|-----------|------------------------|
+| `async def` with `yield` | `-> T` | `IAsyncEnumerable<T>` |
+
 ## Restrictions
 
 ### No `yield` inside `__next__`

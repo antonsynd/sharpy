@@ -4,9 +4,10 @@
 > - `async def` is parsed and emits C# `async` methods returning `Task` or `Task<T>`.
 > - `await` expressions are **implemented** — `await` can be used inside `async def` functions to unwrap `Task<T>` results.
 > - Async generators (`async def` with `yield`) emit `IAsyncEnumerable<T>` return type.
+> - `yield from` in async generators is **implemented** (Sharpy extension beyond Python).
 > - Async constructors (`async def __init__`) are rejected at compile time (SPY0358).
 >
-> See [generators.md](generators.md) for synchronous generator support (`yield`/`yield from`).
+> See [generators.md](generators.md) for synchronous and async generator documentation.
 
 ## Async Functions
 
@@ -36,9 +37,8 @@ async def fetch_all(urls: list[str]) -> list[str]:
 ## Async Iteration
 
 ```python
-async def count_up(n: int) -> AsyncIterator[int]:
+async def count_up(n: int) -> int:
     for i in range(n):
-        await asyncio.sleep(0.1)
         yield i
 
 async def process():
@@ -46,7 +46,7 @@ async def process():
         print(f"Number: {num}")
 ```
 
-*Implementation: ❌ Not yet implemented — requires `async def`, `await`, and `async for`. Will map to `IAsyncEnumerable<T>` (C# 8+).*
+*Implementation: ✅ Implemented — `async def` with `yield` emits `IAsyncEnumerable<T>`. `async for` maps to `await foreach`. `yield from` in async generators auto-detects sync vs async iterables (Sharpy extension beyond Python).*
 
 **No Async Comprehensions:**
 
@@ -111,22 +111,28 @@ Functions using `yield` have special return type annotations:
 | Pattern | Return Type | Implementation Status |
 |---------|-------------|----------------------|
 | `yield` in function | `-> T` (compiler infers `IEnumerable<T>`) | ✅ Implemented |
-| `yield` in `async def` | `AsyncIterator[T]` → `IAsyncEnumerable<T>` | ❌ Not yet implemented |
-| `yield from` | Same as yielded iterator | ✅ Implemented |
+| `yield` in `async def` | `-> T` (compiler infers `IAsyncEnumerable<T>`) | ✅ Implemented |
+| `yield from` in function | Same as yielded iterator | ✅ Implemented |
+| `yield from` in `async def` | Auto-selects `foreach` or `await foreach` | ✅ Implemented (Sharpy extension) |
 
 ```python
-# ✅ Synchronous generator (implemented)
+# ✅ Synchronous generator
 def fibonacci(n: int) -> int:
     a, b = 0, 1
     for _ in range(n):
         yield a
         a, b = b, a + b
 
-# ❌ Async generator (not yet implemented)
-async def stream_data(url: str) -> AsyncIterator[bytes]:
-    async with http_client.stream(url) as response:
-        async for chunk in response:
-            yield chunk
+# ✅ Async generator
+async def async_count(n: int) -> int:
+    for i in range(n):
+        yield i
+
+# ✅ yield from in async generator (Sharpy extension — not valid Python)
+async def combined() -> int:
+    yield 1
+    yield from sync_items()  # sync iterable → foreach
+    yield 2
 ```
 
 See [generators.md](generators.md) for complete synchronous generator documentation.
