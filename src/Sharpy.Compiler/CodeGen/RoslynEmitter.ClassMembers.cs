@@ -282,8 +282,11 @@ internal partial class RoslynEmitter
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
 
         // Generate parameters with type annotations, skipping 'self' parameter
-        var parameters = func.Parameters
-            .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+        // Reorder for C# compliance (required before optional, params last)
+        var filteredParams = func.Parameters
+            .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
+        var orderedParams = ReorderParametersForCSharp(filteredParams);
+        var parameters = orderedParams
             .Select(GenerateParameter)
             .ToArray();
 
@@ -483,8 +486,11 @@ internal partial class RoslynEmitter
                     if (nonSelfParams.Count == 0)
                         continue;
 
+                    // Reorder for C# compliance (required before optional, params last)
+                    var orderedNonSelfParams = ReorderParameterSymbolsForCSharp(nonSelfParams);
+
                     // Generate parameter list from semantic ParameterSymbol data
-                    var parameters = nonSelfParams.Select(p =>
+                    var parameters = orderedNonSelfParams.Select(p =>
                     {
                         var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
                         var paramType = p.Type is not null and not UnknownType
@@ -516,8 +522,8 @@ internal partial class RoslynEmitter
                         return paramSyntax;
                     }).ToArray();
 
-                    // Generate base constructor call arguments
-                    var baseArgs = nonSelfParams.Select(p =>
+                    // Generate base constructor call arguments (same reordered order)
+                    var baseArgs = orderedNonSelfParams.Select(p =>
                     {
                         var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
                         return Argument(IdentifierName(paramName));
@@ -644,10 +650,13 @@ internal partial class RoslynEmitter
         }
 
         // Generate parameters with type annotations, skipping 'self' and 'cls' parameters
-        var parameters = func.Parameters
+        // Reorder for C# compliance (required before optional, params last)
+        var filteredMethodParams = func.Parameters
             .Where(p =>
                 !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(p.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))
+                !string.Equals(p.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase));
+        var orderedMethodParams = ReorderParametersForCSharp(filteredMethodParams);
+        var parameters = orderedMethodParams
             .Select(GenerateParameter)
             .ToArray();
 
@@ -1366,8 +1375,11 @@ internal partial class RoslynEmitter
             : PredefinedType(Token(SyntaxKind.VoidKeyword));
 
         // Interface methods skip 'self' parameter
-        var parameters = func.Parameters
-            .Where(p => p.Name != PythonNames.Self)
+        // Reorder for C# compliance (required before optional, params last)
+        var filteredInterfaceParams = func.Parameters
+            .Where(p => p.Name != PythonNames.Self);
+        var orderedInterfaceParams = ReorderParametersForCSharp(filteredInterfaceParams);
+        var parameters = orderedInterfaceParams
             .Select(GenerateParameter)
             .ToArray();
 

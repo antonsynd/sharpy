@@ -65,8 +65,11 @@ internal partial class RoslynEmitter
         // Process decorators to determine modifiers
         var modifiers = GenerateModifiersFromDecorators(func.Decorators);
 
+        // Reorder parameters for C# compliance (required before optional, params last)
+        var orderedParams = ReorderParametersForCSharp(func.Parameters);
+
         // Generate parameters with type annotations
-        var parameters = func.Parameters
+        var parameters = orderedParams
             .Select(GenerateParameter)
             .ToArray();
 
@@ -597,8 +600,11 @@ internal partial class RoslynEmitter
             : _typeMapper.MapSemanticType(method.ReturnType);
 
         // Generate parameters from ParameterSymbol (skip 'self')
-        var parameters = method.Parameters
-            .Where(p => p.Name != PythonNames.Self)
+        // Reorder for C# compliance (required before optional, params last)
+        var filteredStubParams = method.Parameters
+            .Where(p => p.Name != PythonNames.Self);
+        var orderedStubParams = ReorderParameterSymbolsForCSharp(filteredStubParams);
+        var parameters = orderedStubParams
             .Select(p =>
             {
                 var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
