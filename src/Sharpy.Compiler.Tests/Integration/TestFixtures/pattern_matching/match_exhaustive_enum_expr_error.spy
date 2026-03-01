@@ -1,0 +1,12 @@
+enum Color:
+    RED = 0
+    GREEN = 1
+    BLUE = 2
+
+def describe(c: Color) -> str:
+    return match c:
+        case Color.RED: "red"
+        case Color.GREEN: "green"
+
+def main():
+    print(describe(Color.RED))

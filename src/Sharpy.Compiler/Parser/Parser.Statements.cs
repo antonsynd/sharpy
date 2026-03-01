@@ -1327,8 +1327,10 @@ public partial class Parser
             while (depth > 0 && Current.Type != TokenType.Eof)
             {
                 Advance();
-                if (Previous.Type == TokenType.LeftBracket) depth++;
-                else if (Previous.Type == TokenType.RightBracket) depth--;
+                if (Previous.Type == TokenType.LeftBracket)
+                    depth++;
+                else if (Previous.Type == TokenType.RightBracket)
+                    depth--;
             }
 
             // If '(' follows, consume through matching ')' so we don't produce cascading errors
@@ -1339,8 +1341,10 @@ public partial class Parser
                 while (parenDepth > 0 && Current.Type != TokenType.Eof)
                 {
                     Advance();
-                    if (Previous.Type == TokenType.LeftParen) parenDepth++;
-                    else if (Previous.Type == TokenType.RightParen) parenDepth--;
+                    if (Previous.Type == TokenType.LeftParen)
+                        parenDepth++;
+                    else if (Previous.Type == TokenType.RightParen)
+                        parenDepth--;
                 }
             }
 
