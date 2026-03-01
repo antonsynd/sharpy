@@ -1,0 +1,47 @@
+# Test keyword-only required params after optional normal params
+# C# requires required params before optional (CS1737)
+# The compiler reorders: required normal, required kw-only, optional normal, optional kw-only
+
+# Function: required keyword-only after optional normal
+def greet(name: str, greeting: str = "Hello", *, suffix: str) -> str:
+    return f"{greeting} {name}{suffix}"
+
+# Multiple keyword-only params, some required, some optional
+def format_msg(text: str, width: int = 80, *, prefix: str, end: str = "\n") -> str:
+    return f"{prefix}{text}{end}"
+
+# Class with constructor using keyword-only params
+class Formatter:
+    fmt: str
+    separator: str
+
+    def __init__(self, fmt: str = "default", *, separator: str):
+        self.fmt = fmt
+        self.separator = separator
+
+    def format(self, value: str, padding: int = 0, *, uppercase: bool) -> str:
+        if uppercase:
+            return value.upper()
+        return value
+
+def main():
+    # Function calls — required kw-only after optional normal
+    print(greet("World", suffix="!"))
+    print(greet("World", "Hi", suffix="!"))
+    print(greet("World", greeting="Hey", suffix="..."))
+
+    # Mixed required + optional keyword-only
+    print(format_msg("hello", prefix=">> "))
+    print(format_msg("hello", prefix=">> ", end="."))
+
+    # Constructor calls
+    f: Formatter = Formatter(separator="-")
+    print(f.separator)
+
+    f2: Formatter = Formatter("custom", separator=":")
+    print(f2.fmt)
+    print(f2.separator)
+
+    # Method calls — provide all positional args to avoid arg-count issue
+    print(f.format("hello", 0, uppercase=True))
+    print(f.format("hello", 5, uppercase=False))
