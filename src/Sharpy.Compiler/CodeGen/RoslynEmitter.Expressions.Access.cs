@@ -34,12 +34,9 @@ internal partial class RoslynEmitter
                     ?? NameMangler.ToPascalCase(genericName.Name);
                 var genericTypeSyntax = TypeMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
 
-                // Generate arguments
-                var positionalArgs = GeneratePositionalArguments(call.Arguments);
-                var keywordArgs = call.KeywordArguments.Select(kwarg =>
-                    Argument(GenerateExpression(kwarg.Value))
-                        .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
-                var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
+                // Generate arguments (reorder for C# compliance if needed)
+                var genericTypeCallTarget = _context.SemanticInfo?.GetCallTarget(call);
+                var allArgs = GenerateReorderedCallArguments(call, genericTypeCallTarget);
 
                 return ObjectCreationExpression(genericTypeSyntax)
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
@@ -51,12 +48,8 @@ internal partial class RoslynEmitter
                 var genericFuncSyntax = GenericName(NameMangler.ToPascalCase(genericName.Name))
                     .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
-                // Generate arguments
-                var positionalArgs = GeneratePositionalArguments(call.Arguments);
-                var keywordArgs = call.KeywordArguments.Select(kwarg =>
-                    Argument(GenerateExpression(kwarg.Value))
-                        .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
-                var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
+                // Generate arguments (reorder for C# compliance if needed)
+                var allArgs = GenerateReorderedCallArguments(call, genericFuncSymbol);
 
                 return InvocationExpression(genericFuncSyntax)
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
@@ -105,16 +98,10 @@ internal partial class RoslynEmitter
                                       (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
                                        typeSymbol.TypeKind == Semantic.TypeKind.Struct);
 
-            // Generate positional arguments
-            var positionalArgs = GeneratePositionalArguments(call.Arguments);
-
-            // Generate keyword arguments with named syntax
-            var keywordArgs = call.KeywordArguments.Select(kwarg =>
-                Argument(GenerateExpression(kwarg.Value))
-                    .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
-
-            // Combine positional and keyword arguments
-            var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
+            // Generate arguments (reorder for C# compliance if needed)
+            var directCallTarget = _context.SemanticInfo?.GetCallTarget(call)
+                ?? symbol as FunctionSymbol;
+            var allArgs = GenerateReorderedCallArguments(call, directCallTarget);
 
             if (isBuiltinFunc)
             {
@@ -232,11 +219,8 @@ internal partial class RoslynEmitter
 
                     var qualifiedCaseName = QualifiedName(unionNameSyntax, IdentifierName(caseCSharpName));
 
-                    var casePositionalArgs = GeneratePositionalArguments(call.Arguments);
-                    var caseKeywordArgs = call.KeywordArguments.Select(kwarg =>
-                        Argument(GenerateExpression(kwarg.Value))
-                            .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
-                    var caseAllArgs = casePositionalArgs.Concat(caseKeywordArgs).ToArray();
+                    var caseCallTarget = _context.SemanticInfo?.GetCallTarget(call);
+                    var caseAllArgs = GenerateReorderedCallArguments(call, caseCallTarget);
 
                     return ObjectCreationExpression(qualifiedCaseName)
                         .WithArgumentList(ArgumentList(SeparatedList(caseAllArgs)));
@@ -298,16 +282,9 @@ internal partial class RoslynEmitter
                 }
             }
 
-            // Generate positional arguments
-            var positionalArgs = GeneratePositionalArguments(call.Arguments);
-
-            // Generate keyword arguments with named syntax
-            var keywordArgs = call.KeywordArguments.Select(kwarg =>
-                Argument(GenerateExpression(kwarg.Value))
-                    .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
-
-            // Combine positional and keyword arguments
-            var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
+            // Generate arguments (reorder for C# compliance if needed)
+            var methodCallTarget = _context.SemanticInfo?.GetCallTarget(call);
+            var allArgs = GenerateReorderedCallArguments(call, methodCallTarget);
 
             // Handle null conditional method calls: obj?.Method(args)
             if (memberAccess.IsNullConditional)
@@ -430,11 +407,8 @@ internal partial class RoslynEmitter
             }
         }
 
-        var fallbackPositionalArgs = GeneratePositionalArguments(call.Arguments);
-        var fallbackKeywordArgs = call.KeywordArguments.Select(kwarg =>
-            Argument(GenerateExpression(kwarg.Value))
-                .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
-        var fallbackAllArgs = fallbackPositionalArgs.Concat(fallbackKeywordArgs).ToArray();
+        var fallbackCallTarget = _context.SemanticInfo?.GetCallTarget(call);
+        var fallbackAllArgs = GenerateReorderedCallArguments(call, fallbackCallTarget);
 
         return InvocationExpression(callTarget)
             .WithArgumentList(ArgumentList(SeparatedList(fallbackAllArgs)));
@@ -1341,6 +1315,149 @@ internal partial class RoslynEmitter
         return EmitNotImplementedExpression(
             $"asyncio.{functionName} is not supported",
             DiagnosticCodes.CodeGen.UnsupportedFeature, call.LineStart, call.ColumnStart);
+    }
+
+    // ============================================================
+    // Call-site argument reordering helpers
+    //
+    // When C# parameter order differs from Sharpy declaration order
+    // (due to ReorderParametersForCSharp in Phase 2), positional
+    // arguments at call sites can misalign. These helpers detect
+    // when reordering was applied and emit named arguments so C#
+    // binds by name instead of by position.
+    // ============================================================
+
+    /// <summary>
+    /// Returns true if the function's C# signature has been reordered relative
+    /// to its Sharpy declaration order (i.e., keyword-only or variadic params
+    /// required ReorderParametersForCSharp to intervene).
+    /// </summary>
+    private static bool NeedsParameterReordering(FunctionSymbol? funcSymbol)
+    {
+        if (funcSymbol == null)
+            return false;
+
+        var parameters = funcSymbol.Parameters;
+        bool hasVariadic = false;
+        bool hasKeywordOnly = false;
+        foreach (var p in parameters)
+        {
+            if (p.Name == PythonNames.Self || p.Name == PythonNames.Cls)
+                continue;
+            if (p.IsVariadic) hasVariadic = true;
+            if (p.IsKeywordOnly) hasKeywordOnly = true;
+        }
+
+        // No variadic and no keyword-only → no reordering was applied
+        if (!hasVariadic && !hasKeywordOnly)
+            return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Generates call arguments in the correct order for a potentially-reordered C# signature.
+    /// When reordering is needed, all non-variadic arguments are emitted as named arguments
+    /// so C# binds by name regardless of parameter position. Variadic arguments remain
+    /// positional (trailing). When not needed, falls back to positional + keyword concat.
+    /// </summary>
+    private ArgumentSyntax[] GenerateReorderedCallArguments(FunctionCall call, FunctionSymbol? funcSymbol)
+    {
+        if (!NeedsParameterReordering(funcSymbol))
+        {
+            // No reordering — use the existing positional + keyword pattern
+            var positionalArgs = GeneratePositionalArguments(call.Arguments);
+            var keywordArgs = call.KeywordArguments.Select(kwarg =>
+                Argument(GenerateExpression(kwarg.Value))
+                    .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
+            return positionalArgs.Concat(keywordArgs).ToArray();
+        }
+
+        // Build the non-self/cls parameter list in Sharpy declaration order
+        var paramList = funcSymbol!.Parameters
+            .Where(p => p.Name != PythonNames.Self && p.Name != PythonNames.Cls)
+            .ToList();
+
+        var result = new List<ArgumentSyntax>();
+        var keywordArgsByName = call.KeywordArguments
+            .ToDictionary(k => k.Name, k => k);
+
+        // Match positional args to their corresponding parameter names
+        int positionalIndex = 0;
+        foreach (var param in paramList)
+        {
+            if (param.IsVariadic)
+                continue; // handled separately below
+
+            string csharpParamName = NameMangler.ToCamelCase(param.Name);
+
+            if (keywordArgsByName.TryGetValue(param.Name, out var kwarg))
+            {
+                // This parameter was passed as a keyword argument
+                result.Add(
+                    Argument(GenerateExpression(kwarg.Value))
+                        .WithNameColon(NameColon(IdentifierName(csharpParamName))));
+                keywordArgsByName.Remove(param.Name);
+            }
+            else if (positionalIndex < call.Arguments.Length)
+            {
+                // This parameter was passed positionally — emit as named
+                var argExpr = call.Arguments[positionalIndex];
+                if (argExpr is SpreadElement)
+                {
+                    // Spread elements can't be named — fall back to positional for safety
+                    foreach (var spreadArg in GeneratePositionalArguments(call.Arguments))
+                    {
+                        result.Add(spreadArg);
+                    }
+                    // Add remaining keyword args
+                    foreach (var remaining in keywordArgsByName.Values)
+                    {
+                        result.Add(
+                            Argument(GenerateExpression(remaining.Value))
+                                .WithNameColon(NameColon(IdentifierName(
+                                    NameMangler.ToCamelCase(remaining.Name)))));
+                    }
+                    return result.ToArray();
+                }
+                result.Add(
+                    Argument(GenerateExpression(argExpr))
+                        .WithNameColon(NameColon(IdentifierName(csharpParamName))));
+                positionalIndex++;
+            }
+            // else: parameter has a default value and was not provided — skip
+        }
+
+        // Add any remaining keyword args not matched to declared params
+        // (safety net for dynamic dispatch or unresolved symbols)
+        foreach (var remaining in keywordArgsByName.Values)
+        {
+            result.Add(
+                Argument(GenerateExpression(remaining.Value))
+                    .WithNameColon(NameColon(IdentifierName(
+                        NameMangler.ToCamelCase(remaining.Name)))));
+        }
+
+        // Variadic arguments: remaining positional args go to the params array (trailing, unnamed)
+        while (positionalIndex < call.Arguments.Length)
+        {
+            var argExpr = call.Arguments[positionalIndex];
+            if (argExpr is SpreadElement spread)
+            {
+                foreach (var spreadArg in GeneratePositionalArguments(
+                    System.Collections.Immutable.ImmutableArray.Create(argExpr)))
+                {
+                    result.Add(spreadArg);
+                }
+            }
+            else
+            {
+                result.Add(Argument(GenerateExpression(argExpr)));
+            }
+            positionalIndex++;
+        }
+
+        return result.ToArray();
     }
 
     /// <summary>
