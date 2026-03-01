@@ -1,0 +1,13 @@
+def classify(n: int) -> str:
+    result: str = "other"
+    match n:
+        case 1:
+            result = "one"
+        case 2:
+            result = "two"
+    return result
+
+def main():
+    print(classify(1))
+    print(classify(2))
+    print(classify(3))

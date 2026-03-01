@@ -43,9 +43,21 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
         if (scrutineeType == null || scrutineeType is UnknownType)
             return;
 
-        var missingCases = GetMissingCases(scrutineeType, matchStmt.Cases.Select(c => (c.Pattern, c.Guard)));
+        var casePairs = matchStmt.Cases.Select(c => (c.Pattern, c.Guard)).ToList();
+        var missingCases = GetMissingCases(scrutineeType, casePairs);
         if (missingCases == null)
-            return; // Not a finite type or already exhaustive
+        {
+            // Non-finite type: warn if no arm is unconditionally exhaustive
+            if (!HasUnconditionallyExhaustiveArm(casePairs))
+            {
+                AddWarning(_context,
+                    $"Match statement on non-finite type '{scrutineeType.GetDisplayName()}' has no wildcard or binding pattern to ensure exhaustiveness",
+                    matchStmt.LineStart, matchStmt.ColumnStart,
+                    code: DiagnosticCodes.Validation.NonExhaustiveMatch,
+                    span: matchStmt.Span);
+            }
+            return;
+        }
 
         if (missingCases.Count > 0)
         {
@@ -64,9 +76,21 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
         if (scrutineeType == null || scrutineeType is UnknownType)
             return;
 
-        var missingCases = GetMissingCases(scrutineeType, matchExpr.Arms.Select(a => (a.Pattern, a.Guard)));
+        var armPairs = matchExpr.Arms.Select(a => (a.Pattern, a.Guard)).ToList();
+        var missingCases = GetMissingCases(scrutineeType, armPairs);
         if (missingCases == null)
-            return; // Not a finite type or already exhaustive
+        {
+            // Non-finite type: error if no arm is unconditionally exhaustive
+            if (!HasUnconditionallyExhaustiveArm(armPairs))
+            {
+                AddError(_context,
+                    $"Match expression on non-finite type '{scrutineeType.GetDisplayName()}' must have a wildcard or binding pattern to ensure exhaustiveness",
+                    matchExpr.LineStart, matchExpr.ColumnStart,
+                    code: DiagnosticCodes.Validation.NonExhaustiveMatchExpression,
+                    span: matchExpr.Span);
+            }
+            return;
+        }
 
         if (missingCases.Count > 0)
         {
@@ -234,6 +258,16 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
                 }
                 break;
         }
+    }
+
+    /// <summary>
+    /// Returns true if at least one arm has an unconditionally exhaustive pattern
+    /// (wildcard or binding) without a guard condition.
+    /// </summary>
+    private bool HasUnconditionallyExhaustiveArm(
+        IEnumerable<(Pattern Pattern, Expression? Guard)> arms)
+    {
+        return arms.Any(a => a.Guard == null && PatternCoversAll(a.Pattern));
     }
 
     /// <summary>

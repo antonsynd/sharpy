@@ -1,0 +1,10 @@
+def categorize(n: int) -> str:
+    return match n:
+        case 1: "one"
+        case 2: "two"
+        case _: "other"
+
+def main():
+    print(categorize(1))
+    print(categorize(2))
+    print(categorize(3))
