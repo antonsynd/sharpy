@@ -2117,5 +2117,32 @@ def process() -> int:
             "TypeParameterDef should have its own column, not the enclosing class column");
     }
 
+    [Fact]
+    public void TypeParameterDef_ExactColumn_MatchesTokenPosition()
+    {
+        // Verify the exact column of TypeParameterDef, which is the source data
+        // for TypeParameterSymbol.DeclarationLine/DeclarationColumn (#246).
+        // Both NameResolver and TypeChecker copy these values:
+        //   DeclarationLine = typeParam.LineStart
+        //   DeclarationColumn = typeParam.ColumnStart
+        // "class Box[T]:\n" — T is at column 10 (0-indexed)
+        var source = "class Box[T]:\n    value: T\n";
+        var (module, symbolTable, _, _) = CompileAndCheck(source);
+
+        var classDef = module.Body.OfType<ClassDef>().Single();
+        var typeParamDef = classDef.TypeParameters[0];
+
+        // Class starts at column 1 (1-indexed), T starts at column 11
+        classDef.ColumnStart.Should().Be(1);
+        typeParamDef.ColumnStart.Should().Be(11,
+            "TypeParameterDef 'T' should be at column 11 in 'class Box[T]:' (1-indexed)");
+
+        // Also verify the TypeSymbol in the symbol table has column 1 (the class location)
+        var boxSymbol = symbolTable.Lookup("Box") as TypeSymbol;
+        boxSymbol.Should().NotBeNull();
+        boxSymbol!.DeclarationColumn.Should().Be(1,
+            "TypeSymbol should point to the class keyword, not the type parameter");
+    }
+
     #endregion
 }
