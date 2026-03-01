@@ -1,1 +1,1 @@
-does not implement IDisposable
+does not implement __enter__/__exit__ or IDisposable
