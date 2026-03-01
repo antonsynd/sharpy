@@ -1,0 +1,21 @@
+# Test *args as implicit keyword-only separator
+# Parameters after *args are keyword-only
+
+def log(level: str, *messages: str, separator: str) -> str:
+    return level
+
+def tag(name: str, *values: int, prefix: str) -> str:
+    return prefix
+
+def main():
+    # *args with keyword-only after
+    print(log("INFO", "hello", "world", separator=", "))
+
+    # Single variadic arg with keyword-only
+    print(log("DEBUG", "test", separator="-"))
+
+    # No variadic args, just keyword-only
+    print(log("WARN", separator=":"))
+
+    # Different function with variadic + keyword-only
+    print(tag("div", 1, 2, 3, prefix="html"))

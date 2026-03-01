@@ -1,0 +1,42 @@
+# Test combined positional-only (/) and keyword-only (*) parameters
+# Parameters before / are positional-only, after * are keyword-only
+
+def configure(x: int, y: int, /, mode: str, *, verbose: bool) -> int:
+    if verbose:
+        print(mode)
+    return x + y
+
+def create_range(start: int, /, stop: int, *, step: int) -> int:
+    return (stop - start) // step
+
+class Point:
+    x: int
+    y: int
+    label: str
+
+    def __init__(self, x: int, y: int, /, *, label: str):
+        self.x = x
+        self.y = y
+        self.label = label
+
+    def describe(self) -> str:
+        return self.label
+
+def main():
+    # Mixed: positional-only + normal + keyword-only
+    result: int = configure(1, 2, "fast", verbose=True)
+    print(result)
+
+    # Also valid: normal param by keyword
+    result2: int = configure(5, 10, mode="slow", verbose=False)
+    print(result2)
+
+    # Positional-only + normal + keyword-only
+    steps: int = create_range(0, 10, step=2)
+    print(steps)
+
+    # Constructor with mixed markers
+    p: Point = Point(3, 4, label="origin")
+    print(p.describe())
+    print(p.x)
+    print(p.y)

@@ -1,0 +1,29 @@
+# Test keyword-only parameters (*)
+# Parameters after * must be passed by keyword
+
+def connect(*, host: str, port: int) -> str:
+    return host
+
+def log_message(*, level: str, message: str) -> str:
+    return level
+
+class Server:
+    host: str
+    port: int
+
+    def __init__(self, *, host: str, port: int):
+        self.host = host
+        self.port = port
+
+    def info(self) -> str:
+        return self.host
+
+def main():
+    # Basic keyword-only
+    print(connect(host="localhost", port=8080))
+    print(log_message(level="INFO", message="started"))
+
+    # Constructor with keyword-only
+    srv: Server = Server(host="0.0.0.0", port=3000)
+    print(srv.info())
+    print(srv.port)

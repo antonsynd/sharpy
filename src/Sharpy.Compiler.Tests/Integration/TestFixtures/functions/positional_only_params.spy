@@ -1,0 +1,28 @@
+# Test positional-only parameters (/)
+# Parameters before / must be passed positionally
+
+def add(a: int, b: int, /) -> int:
+    return a + b
+
+def greet(name: str, /) -> str:
+    return name
+
+class Calculator:
+    value: int
+
+    def __init__(self, initial: int, /):
+        self.value = initial
+
+    def increment(self, amount: int, /) -> int:
+        self.value = self.value + amount
+        return self.value
+
+def main():
+    # Basic positional-only
+    print(add(3, 4))
+    print(greet("hello"))
+
+    # Method with positional-only
+    calc: Calculator = Calculator(10)
+    print(calc.increment(5))
+    print(calc.increment(3))

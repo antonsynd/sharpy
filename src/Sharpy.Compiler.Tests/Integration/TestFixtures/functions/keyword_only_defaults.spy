@@ -1,0 +1,42 @@
+# Test keyword-only parameters with defaults
+# All keyword-only params with defaults, and mixing with normal defaults
+
+def fetch(url: str, *, timeout: int = 30, retries: int = 3) -> int:
+    return timeout + retries
+
+def configure(mode: str, *, verbose: bool = False, level: int = 1) -> int:
+    if verbose:
+        print(mode)
+    return level
+
+class Config:
+    debug: bool
+    level: int
+
+    def __init__(self, *, debug: bool = False, level: int = 1):
+        self.debug = debug
+        self.level = level
+
+def main():
+    # All keyword-only defaults used
+    print(fetch("http://example.com"))
+
+    # Override one keyword-only default
+    print(fetch("http://example.com", timeout=60))
+
+    # Override both keyword-only defaults
+    print(fetch("http://example.com", timeout=10, retries=5))
+
+    # Normal + keyword-only with defaults
+    print(configure("fast"))
+    print(configure("debug", verbose=True, level=3))
+
+    # Constructor with all defaults
+    c1: Config = Config()
+    print(c1.debug)
+    print(c1.level)
+
+    # Constructor overriding defaults
+    c2: Config = Config(debug=True, level=5)
+    print(c2.debug)
+    print(c2.level)
