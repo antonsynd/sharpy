@@ -239,18 +239,24 @@ match value:
 
 ## Exhaustiveness Checking
 
-> **Not yet implemented** — planned for Phase 8 (v0.2.2). Will require an `ExhaustivenessValidator` in the validation pipeline.
+The `ExhaustivenessValidator` checks that `match` statements and expressions cover all possible cases.
 
-The compiler will check that `match` statements cover all possible cases for certain types:
+**Checked Types (Finite):**
 
-**Checked Types:**
+| Type | Requirement | Diagnostic |
+|------|-------------|------------|
+| `bool` | Must cover `True` and `False` | SPY0463 (warning) |
+| Tagged unions | All cases must be covered | SPY0463 (warning) |
+| Enums | All enum values must be covered | SPY0463 (warning) |
 
-| Type | Requirement |
-|------|-------------|
-| Enums | All enum values must be covered |
-| `bool` | Must cover `True` and `False` |
-| Tagged unions | All cases must be covered |
-| Other types | Wildcard `_` or explicit default required |
+**Non-Finite Types (int, str, etc.):**
+
+| Form | Requirement | Diagnostic |
+|------|-------------|------------|
+| Match expression | Must have at least one unconditionally exhaustive arm (wildcard `_` or binding pattern without guard) | SPY0416 (error) |
+| Match statement | Should have a wildcard or binding arm for safety | SPY0463 (warning) |
+
+> **Note:** Match expressions produce SPY0416 errors (not warnings) because a missing arm results in a runtime `SwitchExpressionException`. Match statements produce SPY0463 warnings since the code simply falls through.
 
 ```python
 enum Color:
