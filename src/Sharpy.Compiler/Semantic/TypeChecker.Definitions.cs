@@ -417,7 +417,9 @@ internal partial class TypeChecker
                     var isDunder = DunderDetector.IsDunderMethod(functionDef.Name);
                     if (!isDunder && currentSymbol.ReturnType is not (VoidType or UnknownType))
                     {
-                        var enumerableName = functionDef.IsAsync ? "IAsyncEnumerable" : "IEnumerable";
+                        var enumerableName = functionDef.IsAsync
+                            ? Shared.CSharpTypeNames.IAsyncEnumerable
+                            : Shared.CSharpTypeNames.IEnumerable;
                         currentSymbol.ReturnType = new GenericType
                         {
                             Name = enumerableName,

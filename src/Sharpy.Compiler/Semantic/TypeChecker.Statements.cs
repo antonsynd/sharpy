@@ -975,6 +975,7 @@ internal partial class TypeChecker
                         if (unionCaseSymbol != null)
                         {
                             _semanticInfo.SetPatternUnionCase(typePattern, unionCaseSymbol);
+                            resolvedType = new UserDefinedType { Name = unionCaseSymbol.Name, Symbol = unionCaseSymbol };
                         }
                         else
                         {
