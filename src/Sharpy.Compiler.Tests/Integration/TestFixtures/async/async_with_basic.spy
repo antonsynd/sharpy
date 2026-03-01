@@ -2,11 +2,11 @@ class AsyncResource:
     def __init__(self):
         pass
 
-    def __enter__(self) -> AsyncResource:
+    async def __aenter__(self) -> AsyncResource:
         print("entering")
         return self
 
-    def __exit__(self):
+    async def __aexit__(self):
         print("exiting")
 
 async def main():
