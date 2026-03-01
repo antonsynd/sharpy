@@ -140,11 +140,25 @@ See [generators.md](generators.md) for complete synchronous generator documentat
 ## Async Context Managers
 
 ```python
-async def use_resource():
+class AsyncResource:
+    async def __aenter__(self) -> AsyncResource:
+        print("entering")
+        return self
+
+    async def __aexit__(self):
+        print("exiting")
+
+async def main():
     async with AsyncResource() as resource:
-        await resource.process()
+        print("using resource")
 ```
 
-*Implementation: ❌ Not yet implemented — requires `async with`. Will map to `await using (var r = resource) { ... }`.*
+`async with` supports two protocols:
+- **Async dunder protocol**: Classes with `__aenter__`/`__aexit__` → try/finally with `await AenterAsync()`/`await AexitAsync()`
+- **`IAsyncDisposable`**: .NET types → `await using`
+
+See [context_managers.md](context_managers.md) for full details on both sync and async context manager protocols.
+
+*Implementation: ✅ Implemented — async dunder protocol emits try/finally; IAsyncDisposable emits `await using`.*
 
 ---
