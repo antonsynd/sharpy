@@ -1,0 +1,23 @@
+# Tests pipe operator (|>) with bare-* keyword-only parameters.
+# The piped value becomes the first positional argument; call-site
+# reordering must emit it as a named argument when the callee's
+# C# signature has been reordered due to keyword-only params.
+
+def process(value: int, *, multiplier: int) -> int:
+    return value * multiplier
+
+def transform(text: str, *, prefix: str, suffix: str = "!") -> str:
+    return prefix + text + suffix
+
+def main():
+    # Bare * — piped value as named first arg
+    result1: int = 5 |> process(multiplier=3)
+    print(result1)
+
+    # Bare * with required + optional keyword-only
+    result2: str = "world" |> transform(prefix="Hello, ")
+    print(result2)
+
+    # Bare * with all keyword-only args provided
+    result3: str = "world" |> transform(prefix="[", suffix="]")
+    print(result3)
