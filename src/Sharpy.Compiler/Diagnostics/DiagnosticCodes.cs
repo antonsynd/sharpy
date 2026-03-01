@@ -204,6 +204,7 @@ public static class DiagnosticCodes
         public const string UnionCaseNotFound = "SPY0366";
         public const string UnionCaseFieldMismatch = "SPY0367";
         public const string UnionCaseNameConflict = "SPY0368";
+        public const string PositionalPatternNoDeconstruct = "SPY0369";
     }
 
     /// <summary>
@@ -271,6 +272,7 @@ public static class DiagnosticCodes
         public const string AbstractMethodWithBody = "SPY0505";
         public const string NonAbstractMethodWithoutBody = "SPY0506";
         public const string VarWithoutInitializer = "SPY0507";
+        public const string PositionalPatternFallback = "SPY0508";
         public const string UnrecognizedStatementType = "SPY0510";
         public const string UnsupportedExpressionType = "SPY0518";
         public const string UnsupportedOperator = "SPY0519";

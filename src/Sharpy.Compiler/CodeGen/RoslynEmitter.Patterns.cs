@@ -313,7 +313,14 @@ internal partial class RoslynEmitter
                     }
                     else
                     {
-                        // Fallback: emit as positional pattern (requires Deconstruct)
+                        // Fallback: emit as positional pattern (requires Deconstruct).
+                        // This path should only be reached if the type has a Deconstruct method.
+                        // If not, the semantic layer should have caught it (SPY0369).
+                        _context.AddWarning(
+                            $"Emitting positional pattern for type '{positionalPattern.Type?.Name ?? "unknown"}' as Deconstruct fallback. If Deconstruct is missing, this will fail at C# compilation.",
+                            DiagnosticCodes.CodeGen.PositionalPatternFallback,
+                            positionalPattern.LineStart,
+                            positionalPattern.ColumnStart);
                         var subPatterns = new SubpatternSyntax[positionalPattern.Elements.Length];
                         for (int i = 0; i < positionalPattern.Elements.Length; i++)
                         {

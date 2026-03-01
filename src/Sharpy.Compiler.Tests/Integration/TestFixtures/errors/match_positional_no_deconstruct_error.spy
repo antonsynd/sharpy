@@ -1,0 +1,19 @@
+class Point:
+    x: int
+    y: int
+    z: int
+
+    def __init__(self, x: int, y: int, z: int):
+        self.x = x
+        self.y = y
+        self.z = z
+
+def describe(p: Point) -> str:
+    match p:
+        case Point(a, b):
+            return str(a)
+        case _:
+            return "other"
+
+def main():
+    print(describe(Point(1, 2, 3)))

@@ -881,6 +881,11 @@ public static class DiagnosticExplanations
             "union Result:\n    case Ok(value: int)\nmatch r:\n    case Ok(a, b):  # Ok has 1 field, got 2\n        ...",
             "Provide the correct number of field bindings matching the union case definition:\nmatch r:\n    case Ok(v):\n        print(v)");
 
+        Add(dict, DiagnosticCodes.Semantic.PositionalPatternNoDeconstruct, "Positional pattern without Deconstruct", "Semantic",
+            "A positional pattern was used on a type that does not support it. The type has no Deconstruct method and the number of pattern elements does not match the type's field count.",
+            "class Point:\n    x: int\n    y: int\nmatch p:\n    case Point(a, b, c):  # Point has 2 fields, not 3\n        ...",
+            "Use the correct number of positional elements matching the type's fields, or use a property pattern:\nmatch p:\n    case Point(a, b):\n        print(a, b)");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",
@@ -1163,6 +1168,12 @@ public static class DiagnosticExplanations
             "The code generator encountered a variable declaration without an initializer. All variables should have initializers by this point in the compilation pipeline.",
             null,
             "This is an internal compiler error. Report it at https://github.com/antonsynd/sharpy/issues.");
+
+        Add(dict, DiagnosticCodes.CodeGen.PositionalPatternFallback, "Positional pattern Deconstruct fallback", "CodeGen",
+            "The code generator is emitting a positional pattern as a Deconstruct call. " +
+            "This is a defensive warning — the semantic layer should have caught types without Deconstruct (SPY0369).",
+            null,
+            "This is an internal compiler warning. If Deconstruct is missing, check that type checking caught it.");
 
         Add(dict, DiagnosticCodes.CodeGen.UnrecognizedStatementType, "Unrecognized statement type not emitted", "CodeGen",
             "The code generator encountered a statement type that it does not know how to emit. " +

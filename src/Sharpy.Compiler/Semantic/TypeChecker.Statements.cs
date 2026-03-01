@@ -1044,6 +1044,22 @@ internal partial class TypeChecker
                             else if (resolvedType is UserDefinedType udt)
                             {
                                 typeSymbol = udt.Symbol;
+                                // For non-union types, check if positional deconstruction is supported
+                                if (typeSymbol != null
+                                    && typeSymbol.BaseType?.TypeKind != TypeKind.Union
+                                    && typeSymbol.TypeKind != TypeKind.Union)
+                                {
+                                    bool hasDeconstruct = typeSymbol.Methods.Any(m => m.Name == "Deconstruct");
+                                    bool hasMatchingFields = typeSymbol.Fields.Count == positionalPattern.Elements.Length;
+                                    if (!hasDeconstruct && !hasMatchingFields)
+                                    {
+                                        AddError(
+                                            $"Type '{typeSymbol.Name}' does not support positional deconstruction (no Deconstruct method and field count {typeSymbol.Fields.Count} does not match pattern element count {positionalPattern.Elements.Length})",
+                                            positionalPattern.LineStart, positionalPattern.ColumnStart,
+                                            code: DiagnosticCodes.Semantic.PositionalPatternNoDeconstruct,
+                                            span: positionalPattern.Span);
+                                    }
+                                }
                             }
                         }
                     }
