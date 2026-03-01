@@ -1,1 +1,0 @@
-yield from in async generator emits foreach instead of await foreach for IAsyncEnumerable. Codegen needs to detect async context for yield from. See #249.
