@@ -1345,12 +1345,22 @@ internal partial class RoslynEmitter
                 .Where(p => p.Name != PythonNames.Self && p.Name != PythonNames.Cls)
                 .ToList();
 
-            // Check if argument count is in the valid range
-            // (required params count <= totalArgs <= total params count)
+            // Check if argument count is in the valid range:
+            // - For variadic ctors: totalArgs >= requiredCount (no upper bound)
+            // - For non-variadic ctors: requiredCount <= totalArgs <= totalParamCount
             var requiredCount = nonSelfParams.Count(p => !p.HasDefault && !p.IsVariadic);
-            var totalParamCount = nonSelfParams.Count(p => !p.IsVariadic);
-            if (totalArgs >= requiredCount && totalArgs <= totalParamCount + (nonSelfParams.Any(p => p.IsVariadic) ? totalArgs : 0))
-                return ctor;
+            var hasVariadic = nonSelfParams.Any(p => p.IsVariadic);
+            if (hasVariadic)
+            {
+                if (totalArgs >= requiredCount)
+                    return ctor;
+            }
+            else
+            {
+                var totalParamCount = nonSelfParams.Count;
+                if (totalArgs >= requiredCount && totalArgs <= totalParamCount)
+                    return ctor;
+            }
         }
         return typeSymbol.Constructors.Count == 1 ? typeSymbol.Constructors[0] : null;
     }
@@ -1369,18 +1379,21 @@ internal partial class RoslynEmitter
             GenericType gt => _context.LookupSymbol(gt.Name) as TypeSymbol,
             _ => null
         };
-        if (typeSymbol == null)
-            return null;
 
-        // Search in methods list
-        foreach (var method in typeSymbol.Methods)
+        // Traverse the type hierarchy (like HasMethodDefined) so inherited
+        // methods with keyword-only/variadic params also get call-site reordering.
+        var current = typeSymbol;
+        while (current != null)
         {
-            if (string.Equals(method.Name, methodName, StringComparison.Ordinal))
-                return method;
+            foreach (var method in current.Methods)
+            {
+                if (string.Equals(method.Name, methodName, StringComparison.Ordinal))
+                    return method;
+            }
+            if (current.MethodOverloads.TryGetValue(methodName, out var overloads) && overloads.Count > 0)
+                return overloads[0];
+            current = current.BaseType;
         }
-        // Search in method overloads
-        if (typeSymbol.MethodOverloads.TryGetValue(methodName, out var overloads) && overloads.Count > 0)
-            return overloads[0];
         return null;
     }
 
