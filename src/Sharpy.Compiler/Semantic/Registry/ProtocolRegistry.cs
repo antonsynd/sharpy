@@ -197,7 +197,7 @@ public static class ProtocolRegistry
             SharpyCoreInterface: null,
             InterfaceMethodName: null,
             ClrMethodName: "Dispose",
-            ExpectedParamCount: 1,  // Just self
+            ExpectedParamCount: 1,  // Sharpy: self-only (Python takes self, exc_type, exc_val, exc_tb)
             ExpectedReturnType: "None"
         ));
 
