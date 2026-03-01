@@ -1401,8 +1401,10 @@ internal partial class RoslynEmitter
         {
             if (p.Name == PythonNames.Self || p.Name == PythonNames.Cls)
                 continue;
-            if (p.IsVariadic) hasVariadic = true;
-            if (p.IsKeywordOnly) hasKeywordOnly = true;
+            if (p.IsVariadic)
+                hasVariadic = true;
+            if (p.IsKeywordOnly)
+                hasKeywordOnly = true;
         }
 
         // No variadic and no keyword-only → no reordering was applied

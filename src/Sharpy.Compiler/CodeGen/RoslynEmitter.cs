@@ -941,8 +941,10 @@ internal partial class RoslynEmitter
         bool hasKeywordOnly = false;
         foreach (var p in paramList)
         {
-            if (p.IsVariadic) hasVariadic = true;
-            if (p.Kind == ParameterKind.KeywordOnly) hasKeywordOnly = true;
+            if (p.IsVariadic)
+                hasVariadic = true;
+            if (p.Kind == ParameterKind.KeywordOnly)
+                hasKeywordOnly = true;
         }
 
         if (!hasVariadic && !hasKeywordOnly)
@@ -981,11 +983,16 @@ internal partial class RoslynEmitter
                      + (variadic != null ? 1 : 0);
         var result = new Parameter[capacity];
         int i = 0;
-        foreach (var p in normalRequired) result[i++] = p;
-        foreach (var p in keywordOnlyRequired) result[i++] = p;
-        foreach (var p in normalOptional) result[i++] = p;
-        foreach (var p in keywordOnlyOptional) result[i++] = p;
-        if (variadic != null) result[i++] = variadic;
+        foreach (var p in normalRequired)
+            result[i++] = p;
+        foreach (var p in keywordOnlyRequired)
+            result[i++] = p;
+        foreach (var p in normalOptional)
+            result[i++] = p;
+        foreach (var p in keywordOnlyOptional)
+            result[i++] = p;
+        if (variadic != null)
+            result[i++] = variadic;
         return result;
     }
 
@@ -1005,8 +1012,10 @@ internal partial class RoslynEmitter
         bool hasKeywordOnly = false;
         foreach (var p in paramList)
         {
-            if (p.IsVariadic) hasVariadic = true;
-            if (p.IsKeywordOnly) hasKeywordOnly = true;
+            if (p.IsVariadic)
+                hasVariadic = true;
+            if (p.IsKeywordOnly)
+                hasKeywordOnly = true;
         }
 
         if (!hasVariadic && !hasKeywordOnly)
@@ -1045,11 +1054,16 @@ internal partial class RoslynEmitter
                      + (variadic != null ? 1 : 0);
         var result = new ParameterSymbol[capacity];
         int i = 0;
-        foreach (var p in normalRequired) result[i++] = p;
-        foreach (var p in keywordOnlyRequired) result[i++] = p;
-        foreach (var p in normalOptional) result[i++] = p;
-        foreach (var p in keywordOnlyOptional) result[i++] = p;
-        if (variadic != null) result[i++] = variadic;
+        foreach (var p in normalRequired)
+            result[i++] = p;
+        foreach (var p in keywordOnlyRequired)
+            result[i++] = p;
+        foreach (var p in normalOptional)
+            result[i++] = p;
+        foreach (var p in keywordOnlyOptional)
+            result[i++] = p;
+        if (variadic != null)
+            result[i++] = variadic;
         return result;
     }
 

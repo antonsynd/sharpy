@@ -375,7 +375,8 @@ internal partial class RoslynEmitter
                 int posIdx = 0;
                 foreach (var param in remainingParams)
                 {
-                    if (param.IsVariadic) continue;
+                    if (param.IsVariadic)
+                        continue;
                     string csharpName = NameMangler.ToCamelCase(param.Name);
                     if (kwArgsByName.TryGetValue(param.Name, out var kw))
                     {
