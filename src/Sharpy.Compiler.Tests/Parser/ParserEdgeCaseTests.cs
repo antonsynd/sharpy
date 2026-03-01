@@ -446,43 +446,47 @@ def foo(*args: int = []):
     }
 
     [Fact]
-    public void ParseVarArgsNotLastThrows()
+    public void ParseVarArgsFollowedByKeywordOnlyParam()
     {
+        // Parameters after *args are keyword-only (not an error)
         var source = @"
 def foo(*args: int, suffix: str):
     pass
 ";
-        var errors = ParseExpectingError(source);
-        errors.Should().Contain("Variadic parameter");
-        errors.Should().Contain("must be the last");
+        var module = Parse(source);
+        var funcDef = module.Body.OfType<FunctionDef>().First();
+        funcDef.Parameters.Should().HaveCount(2);
+        funcDef.Parameters[0].Name.Should().Be("args");
+        funcDef.Parameters[0].IsVariadic.Should().BeTrue();
+        funcDef.Parameters[1].Name.Should().Be("suffix");
+        funcDef.Parameters[1].Kind.Should().Be(ParameterKind.KeywordOnly);
     }
 
     [Fact]
     public void ParseMultipleVarArgsThrows()
     {
-        // First variadic parameter followed by comma triggers "must be last" error
+        // Second variadic parameter triggers "only one" error
         var source = @"
 def foo(*args: int, *more: str):
     pass
 ";
         var errors = ParseExpectingError(source);
-        errors.Should().Contain("Variadic parameter");
-        errors.Should().Contain("must be the last");
+        errors.Should().Contain("Only one variadic parameter");
     }
 
     [Fact]
-    public void ParseMultipleVarArgsAtEndThrows()
+    public void ParseVarArgsWithTrailingComma()
     {
-        // If we somehow got past the first variadic (e.g., trailing comma allowed),
-        // then second variadic triggers "only one" error
+        // Trailing comma after variadic is valid
         var source = @"
 def foo(*args: int,):
     pass
 ";
-        // Trailing comma after variadic should report "must be last"
-        var errors = ParseExpectingError(source);
-        errors.Should().Contain("Variadic parameter");
-        errors.Should().Contain("must be the last");
+        var module = Parse(source);
+        var funcDef = module.Body.OfType<FunctionDef>().First();
+        funcDef.Parameters.Should().HaveCount(1);
+        funcDef.Parameters[0].Name.Should().Be("args");
+        funcDef.Parameters[0].IsVariadic.Should().BeTrue();
     }
 
     [Fact(Skip = "See: #171 (kwargs not yet supported)")]

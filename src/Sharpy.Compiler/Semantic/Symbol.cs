@@ -256,6 +256,8 @@ public record ParameterSymbol
     /// The Type property contains the element type of the params array.
     /// </summary>
     public bool IsVariadic { get; init; }
+    public bool IsPositionalOnly { get; init; }
+    public bool IsKeywordOnly { get; init; }
 }
 
 /// <summary>

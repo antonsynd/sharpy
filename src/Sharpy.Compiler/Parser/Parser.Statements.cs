@@ -896,6 +896,8 @@ public partial class Parser
     {
         var parameters = new List<Parameter>();
         var hasVariadic = false;
+        var seenSlash = false;
+        var seenStar = false;
 
         if (Current.Type == TokenType.RightParen)
             return parameters;
@@ -905,6 +907,58 @@ public partial class Parser
         {
             if (!CheckLoopProgress())
                 break;
+
+            // Handle '/' positional-only marker
+            if (Current.Type == TokenType.Slash)
+            {
+                if (parameters.Count == 0)
+                    throw ReportError("'/' must have at least one parameter before it", Current.Line, Current.Column, DiagnosticCodes.Parser.SlashAtStart, span: CurrentSpan);
+                if (seenSlash)
+                    throw ReportError("'/' may only appear once in a parameter list", Current.Line, Current.Column, DiagnosticCodes.Parser.DuplicateSlashMarker, span: CurrentSpan);
+                if (seenStar)
+                    throw ReportError("'/' must appear before '*' in a parameter list", Current.Line, Current.Column, DiagnosticCodes.Parser.SlashAfterStar, span: CurrentSpan);
+
+                seenSlash = true;
+                Advance(); // Skip '/'
+
+                // Mark all preceding parameters as positional-only
+                for (var i = 0; i < parameters.Count; i++)
+                    parameters[i] = parameters[i] with { Kind = ParameterKind.PositionalOnly };
+
+                // Expect ',' or ')' after '/'
+                if (Current.Type == TokenType.Comma)
+                {
+                    Advance();
+                    if (Current.Type == TokenType.RightParen)
+                        break;
+                }
+                else
+                    break;
+
+                continue;
+            }
+
+            // Handle bare '*' keyword-only marker (no identifier follows)
+            if (Current.Type == TokenType.Star && Peek(1).Type != TokenType.Identifier)
+            {
+                if (seenStar)
+                    throw ReportError("'*' may only appear once in a parameter list", Current.Line, Current.Column, DiagnosticCodes.Parser.DuplicateStarMarker, span: CurrentSpan);
+
+                seenStar = true;
+                Advance(); // Skip '*'
+
+                // Expect ',' after bare '*' (at least one keyword-only param must follow)
+                if (Current.Type == TokenType.Comma)
+                {
+                    Advance();
+                    if (Current.Type == TokenType.RightParen)
+                        break;
+                }
+                else
+                    break;
+
+                continue;
+            }
 
             var startLine = Current.Line;
             var startColumn = Current.Column;
@@ -918,6 +972,7 @@ public partial class Parser
                     throw ReportError("Only one variadic parameter (*args) is allowed per function", Current.Line, Current.Column, DiagnosticCodes.Parser.MultipleVariadic, span: CurrentSpan);
                 isVariadic = true;
                 hasVariadic = true;
+                seenStar = true; // *args implicitly starts keyword-only section
                 Advance();  // Skip *
             }
 
@@ -943,12 +998,18 @@ public partial class Parser
             var endLine = endToken.Line;
             var endColumn = endToken.Column + endToken.Value.Length;
 
+            // Determine parameter kind based on slash/star markers
+            var kind = ParameterKind.Normal;
+            if (!isVariadic && seenStar)
+                kind = ParameterKind.KeywordOnly;
+
             parameters.Add(new Parameter
             {
                 Name = name,
                 Type = type,
                 DefaultValue = defaultValue,
                 IsVariadic = isVariadic,
+                Kind = kind,
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = endLine,
@@ -958,8 +1019,6 @@ public partial class Parser
 
             if (Current.Type == TokenType.Comma)
             {
-                if (isVariadic)
-                    throw ReportError("Variadic parameter (*args) must be the last parameter", Current.Line, Current.Column, DiagnosticCodes.Parser.VariadicNotLast, span: CurrentSpan);
                 Advance();
                 // Allow trailing comma: def foo(a, b, c,):
                 if (Current.Type == TokenType.RightParen)
