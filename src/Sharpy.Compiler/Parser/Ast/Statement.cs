@@ -708,6 +708,19 @@ public record Decorator
 /// <summary>
 /// Function/method parameter
 /// </summary>
+/// <summary>
+/// Specifies how a parameter must be passed at call sites.
+/// </summary>
+public enum ParameterKind
+{
+    /// <summary>Normal parameter — can be passed positionally or by keyword.</summary>
+    Normal,
+    /// <summary>Positional-only parameter — must be passed positionally (before /).</summary>
+    PositionalOnly,
+    /// <summary>Keyword-only parameter — must be passed by keyword (after * or *args).</summary>
+    KeywordOnly
+}
+
 public record Parameter
 {
     public string Name { get; init; } = "";
@@ -717,6 +730,11 @@ public record Parameter
     /// True if this parameter is variadic (*args). Maps to C# params T[].
     /// </summary>
     public bool IsVariadic { get; init; }
+    /// <summary>
+    /// Whether this parameter is normal, positional-only, or keyword-only.
+    /// Set by the parser based on / and * markers in the parameter list.
+    /// </summary>
+    public ParameterKind Kind { get; init; } = ParameterKind.Normal;
 
     // Source location
     public int LineStart { get; init; }

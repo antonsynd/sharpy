@@ -73,6 +73,10 @@ public static class DiagnosticCodes
         public const string DictSpreadCallNotSupported = "SPY0123";
         public const string EmptyUnion = "SPY0124";
         public const string GenericTypeInPattern = "SPY0125";
+        public const string SlashAfterStar = "SPY0126";
+        public const string DuplicateSlashMarker = "SPY0127";
+        public const string DuplicateStarMarker = "SPY0128";
+        public const string SlashAtStart = "SPY0129";
     }
 
     /// <summary>
@@ -205,6 +209,8 @@ public static class DiagnosticCodes
         public const string UnionCaseFieldMismatch = "SPY0367";
         public const string UnionCaseNameConflict = "SPY0368";
         public const string PositionalPatternNoDeconstruct = "SPY0369";
+        public const string PositionalOnlyPassedByKeyword = "SPY0370";
+        public const string KeywordOnlyPassedPositionally = "SPY0371";
     }
 
     /// <summary>
