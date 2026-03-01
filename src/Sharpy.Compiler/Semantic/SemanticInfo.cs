@@ -73,6 +73,11 @@ public class SemanticInfo : ISemanticQuery
     private readonly HashSet<Expression> _errorRecoveryNodes =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map with-item context expressions to their context manager kind
+    // (Disposable, DunderProtocol, or AsyncDisposable/AsyncDunderProtocol)
+    private readonly Dictionary<Expression, ContextManagerKind> _contextManagerKinds =
+        new(ReferenceEqualityComparer.Instance);
+
     public void SetExpressionType(Expression expr, SemanticType type)
     {
         _expressionTypes[expr] = type;
@@ -260,4 +265,41 @@ public class SemanticInfo : ISemanticQuery
     /// Returns the total number of identifier-to-symbol mappings.
     /// </summary>
     public int IdentifierSymbolCount => _identifierSymbols.Count;
+
+    /// <summary>
+    /// Records how a with-item's context expression should be handled at codegen time.
+    /// Keyed on the context expression (each with-item has a unique expression reference).
+    /// </summary>
+    public void SetContextManagerKind(Expression contextExpr, ContextManagerKind kind)
+    {
+        _contextManagerKinds[contextExpr] = kind;
+    }
+
+    /// <summary>
+    /// Gets the context manager kind for a with-item's context expression.
+    /// Returns null if not recorded (defaults to Disposable in codegen).
+    /// </summary>
+    public ContextManagerKind? GetContextManagerKind(Expression contextExpr)
+    {
+        return _contextManagerKinds.TryGetValue(contextExpr, out var kind) ? kind : null;
+    }
+}
+
+/// <summary>
+/// Describes how a with-item's context expression implements the context manager protocol.
+/// Used by codegen to decide between C# using statements and explicit Enter/Exit calls.
+/// </summary>
+public enum ContextManagerKind
+{
+    /// <summary>Implements IDisposable — use C# using statement.</summary>
+    Disposable,
+
+    /// <summary>Implements __enter__/__exit__ dunder protocol — emit Enter()/Exit() calls.</summary>
+    DunderProtocol,
+
+    /// <summary>Implements IAsyncDisposable — use C# await using statement.</summary>
+    AsyncDisposable,
+
+    /// <summary>Implements __aenter__/__aexit__ async dunder protocol — emit AenterAsync()/AexitAsync() calls.</summary>
+    AsyncDunderProtocol
 }

@@ -721,15 +721,33 @@ internal partial class TypeChecker
         {
             var exprType = CheckExpression(item.ContextExpression);
 
-            // Validate that the expression type implements IDisposable
-            if (!IsDisposableType(exprType))
+            // Determine context manager kind: IDisposable, IAsyncDisposable, or dunder protocol
+            var cmKind = ResolveContextManagerKind(exprType, withStmt.IsAsync);
+            if (cmKind == null)
             {
+                var protocolDesc = withStmt.IsAsync
+                    ? "__aenter__/__aexit__ or IAsyncDisposable"
+                    : "__enter__/__exit__ or IDisposable";
                 AddError(
-                    $"Type '{exprType.GetDisplayName()}' does not implement IDisposable and cannot be used in a with statement",
+                    $"Type '{exprType.GetDisplayName()}' does not implement {protocolDesc} and cannot be used in a {(withStmt.IsAsync ? "async " : "")}with statement",
                     item.ContextExpression.LineStart,
                     item.ContextExpression.ColumnStart,
                     code: DiagnosticCodes.Semantic.WithNotDisposable,
                     span: item.ContextExpression.Span);
+            }
+            else
+            {
+                _semanticInfo.SetContextManagerKind(item.ContextExpression, cmKind.Value);
+            }
+
+            // Determine the type for the 'as' variable
+            var asVarType = exprType;
+            if (cmKind is ContextManagerKind.DunderProtocol or ContextManagerKind.AsyncDunderProtocol)
+            {
+                // The 'as' variable gets the return type of __enter__/__aenter__
+                var enterType = GetDunderEnterReturnType(exprType, withStmt.IsAsync);
+                if (enterType != null)
+                    asVarType = enterType;
             }
 
             if (item.Name != null)
@@ -738,14 +756,14 @@ internal partial class TypeChecker
                 {
                     Name = item.Name,
                     Kind = SymbolKind.Variable,
-                    Type = exprType,
+                    Type = asVarType,
                     AccessLevel = AccessLevel.Public,
                     DeclarationLine = item.LineStart,
                     DeclarationColumn = item.ColumnStart
                 };
 
                 _symbolTable.Define(varSymbol);
-                SemanticBinding.SetVariableType(varSymbol, exprType);
+                SemanticBinding.SetVariableType(varSymbol, asVarType);
             }
         }
 
@@ -754,6 +772,84 @@ internal partial class TypeChecker
 
         _controlFlowDepth--;
         _symbolTable.ExitScope();
+    }
+
+    /// <summary>
+    /// Resolves the context manager kind for a type used in a with statement.
+    /// Returns null if the type cannot be used as a context manager.
+    /// </summary>
+    private ContextManagerKind? ResolveContextManagerKind(SemanticType type, bool isAsync)
+    {
+        if (isAsync)
+        {
+            // Async with: check async dunder protocol first, then IAsyncDisposable
+            if (HasContextManagerProtocol(type, isAsync: true))
+                return ContextManagerKind.AsyncDunderProtocol;
+            if (IsAsyncDisposableType(type))
+                return ContextManagerKind.AsyncDisposable;
+            return null;
+        }
+
+        // Sync with: check dunder protocol first, then IDisposable
+        if (HasContextManagerProtocol(type, isAsync: false))
+            return ContextManagerKind.DunderProtocol;
+        if (IsDisposableType(type))
+            return ContextManagerKind.Disposable;
+        return null;
+    }
+
+    /// <summary>
+    /// Checks whether a user-defined type has the context manager dunder protocol.
+    /// For sync: requires both __enter__ and __exit__.
+    /// For async: requires both __aenter__ and __aexit__.
+    /// </summary>
+    private bool HasContextManagerProtocol(SemanticType type, bool isAsync)
+    {
+        var typeSymbol = GetTypeSymbolFromSemanticType(type);
+        if (typeSymbol == null)
+            return false;
+
+        var enterName = isAsync ? DunderNames.Aenter : DunderNames.Enter;
+        var exitName = isAsync ? DunderNames.Aexit : DunderNames.Exit;
+
+        bool hasEnter = typeSymbol.Methods.Any(m => m.Name == enterName);
+        bool hasExit = typeSymbol.Methods.Any(m => m.Name == exitName);
+        return hasEnter && hasExit;
+    }
+
+    /// <summary>
+    /// Gets the return type of __enter__ or __aenter__ for the 'as' variable binding.
+    /// Returns null if the method is not found or has no return type.
+    /// </summary>
+    private SemanticType? GetDunderEnterReturnType(SemanticType type, bool isAsync)
+    {
+        var typeSymbol = GetTypeSymbolFromSemanticType(type);
+        if (typeSymbol == null)
+            return null;
+
+        var enterName = isAsync ? DunderNames.Aenter : DunderNames.Enter;
+        var enterMethod = typeSymbol.Methods.FirstOrDefault(m => m.Name == enterName);
+        if (enterMethod?.ReturnType != null && enterMethod.ReturnType is not VoidType)
+            return enterMethod.ReturnType;
+
+        // Default: return self type (common pattern for __enter__)
+        return type;
+    }
+
+    /// <summary>
+    /// Extracts the TypeSymbol from a SemanticType, handling UserDefinedType,
+    /// NullableType, OptionalType, and GenericType wrappers.
+    /// </summary>
+    private TypeSymbol? GetTypeSymbolFromSemanticType(SemanticType type)
+    {
+        return type switch
+        {
+            UserDefinedType udt => udt.Symbol,
+            NullableType nullable => GetTypeSymbolFromSemanticType(nullable.UnderlyingType),
+            OptionalType optional => GetTypeSymbolFromSemanticType(optional.UnderlyingType),
+            GenericType gt => _symbolTable.Lookup(gt.Name) as TypeSymbol,
+            _ => null
+        };
     }
 
     private void CheckAssert(AssertStatement assertStmt)
@@ -1340,6 +1436,47 @@ internal partial class TypeChecker
         }
 
         // All other types (builtins, functions, tuples, etc.) are not disposable
+        return false;
+    }
+
+    /// <summary>
+    /// Checks whether a type implements IAsyncDisposable (required for 'async with' / C# 'await using').
+    /// </summary>
+    private bool IsAsyncDisposableType(SemanticType type)
+    {
+        if (type is UnknownType)
+            return true;
+
+        if (type is NullableType nullable)
+            return IsAsyncDisposableType(nullable.UnderlyingType);
+        if (type is OptionalType optional)
+            return IsAsyncDisposableType(optional.UnderlyingType);
+
+        if (type is UserDefinedType udt && udt.Symbol != null)
+        {
+            if (udt.Symbol.ClrType != null)
+                return typeof(System.IAsyncDisposable).IsAssignableFrom(udt.Symbol.ClrType);
+
+            var allInterfaces = CollectAllInterfaces(udt.Symbol);
+            foreach (var iface in allInterfaces)
+            {
+                if (iface.Name == "IAsyncDisposable")
+                    return true;
+                if (iface.ClrType != null && typeof(System.IAsyncDisposable).IsAssignableFrom(iface.ClrType))
+                    return true;
+            }
+
+            return false;
+        }
+
+        if (type is GenericType gt)
+        {
+            var sym = _symbolTable.Lookup(gt.Name) as TypeSymbol;
+            if (sym?.ClrType != null)
+                return typeof(System.IAsyncDisposable).IsAssignableFrom(sym.ClrType);
+            return false;
+        }
+
         return false;
     }
 
