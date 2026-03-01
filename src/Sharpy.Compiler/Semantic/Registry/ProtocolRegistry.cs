@@ -12,7 +12,8 @@ public enum ProtocolKind
     Iterator,       // __iter__, __next__
     Representation, // __str__, __format__
     Hashing,        // __hash__
-    Conversion      // __bool__, __int__, __float__, __complex__
+    Conversion,     // __bool__, __int__, __float__, __complex__
+    ContextManager  // __enter__, __exit__, __aenter__, __aexit__
 }
 
 /// <summary>
@@ -177,6 +178,47 @@ public static class ProtocolRegistry
             ClrMethodName: "GetReverseEnumerator",
             ExpectedParamCount: 1,    // Just self
             ExpectedReturnType: null  // Returns Iterator<T> (generic, like __iter__)
+        ));
+
+        // 2.2.8 Context manager protocols
+        Register(protocols, new ProtocolInfo(
+            DunderName: DunderNames.Enter,
+            Kind: ProtocolKind.ContextManager,
+            SharpyCoreInterface: null,
+            InterfaceMethodName: null,
+            ClrMethodName: null,  // No single CLR method; returns self or other resource
+            ExpectedParamCount: 1,  // Just self
+            ExpectedReturnType: null  // Returns self or other (generic)
+        ));
+
+        Register(protocols, new ProtocolInfo(
+            DunderName: DunderNames.Exit,
+            Kind: ProtocolKind.ContextManager,
+            SharpyCoreInterface: null,
+            InterfaceMethodName: null,
+            ClrMethodName: "Dispose",
+            ExpectedParamCount: 1,  // Just self
+            ExpectedReturnType: "None"
+        ));
+
+        Register(protocols, new ProtocolInfo(
+            DunderName: DunderNames.Aenter,
+            Kind: ProtocolKind.ContextManager,
+            SharpyCoreInterface: null,
+            InterfaceMethodName: null,
+            ClrMethodName: null,  // No single CLR method; returns self or other resource
+            ExpectedParamCount: 1,  // Just self
+            ExpectedReturnType: null  // Returns self or other (generic)
+        ));
+
+        Register(protocols, new ProtocolInfo(
+            DunderName: DunderNames.Aexit,
+            Kind: ProtocolKind.ContextManager,
+            SharpyCoreInterface: null,
+            InterfaceMethodName: null,
+            ClrMethodName: "DisposeAsync",
+            ExpectedParamCount: 1,  // Just self
+            ExpectedReturnType: "None"
         ));
 
         // Note: __eq__ and __ne__ are handled by OperatorRegistry as they

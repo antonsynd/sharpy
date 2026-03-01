@@ -225,8 +225,9 @@ public class ProtocolRegistryTests
         var protocols = ProtocolRegistry.GetAllProtocols().ToList();
         // Protocols (dunders) registered:
         // __init__, __len__, __contains__, __getitem__, __setitem__,
-        // __iter__, __next__, __str__, __hash__, __bool__
-        protocols.Should().HaveCount(11, "exactly 11 protocols are registered");
+        // __iter__, __next__, __str__, __hash__, __bool__, __reversed__,
+        // __enter__, __exit__, __aenter__, __aexit__
+        protocols.Should().HaveCount(15, "exactly 15 protocols are registered");
 
         // Verify we have at least one of each kind (except Comparison which is handled by operators)
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Lifecycle);
@@ -235,6 +236,7 @@ public class ProtocolRegistryTests
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Representation);
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Hashing);
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Conversion);
+        protocols.Should().Contain(p => p.Kind == ProtocolKind.ContextManager);
     }
 
     [Fact]
@@ -303,7 +305,7 @@ public class ProtocolRegistryTests
     [Fact]
     public void Count_ReturnsNumberOfRegisteredProtocols()
     {
-        ProtocolRegistry.Count.Should().Be(11, "exactly 11 protocols are registered");
+        ProtocolRegistry.Count.Should().Be(15, "exactly 15 protocols are registered");
     }
 
     // ==================== Test Consistency with OperatorRegistry ====================

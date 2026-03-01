@@ -53,4 +53,10 @@ internal static class DunderNames
     public const string LShift = "__lshift__";
     public const string RShift = "__rshift__";
 
+    // ---- Context manager methods ----
+    public const string Enter = "__enter__";
+    public const string Exit = "__exit__";
+    public const string Aenter = "__aenter__";
+    public const string Aexit = "__aexit__";
+
 }
