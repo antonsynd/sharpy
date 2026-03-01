@@ -224,30 +224,26 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
 
             case PositionalPattern positionalPattern:
                 // For union cases: Ok(v) -> "Ok"
+                // Only use semantically resolved union case — if resolution failed,
+                // a semantic error was already emitted and we should not guess from strings
                 var posUnionCase = _context.SemanticInfo.GetPatternUnionCase(positionalPattern);
                 if (posUnionCase != null)
                 {
                     covered.Add(posUnionCase.Name);
                 }
-                else if (positionalPattern.Type != null)
-                {
-                    // Try to resolve as union case from type name
-                    var typeName = positionalPattern.Type.Name;
-                    if (typeName.Contains('.'))
-                    {
-                        var parts = typeName.Split('.');
-                        covered.Add(parts[^1]);
-                    }
-                    else
-                    {
-                        covered.Add(typeName);
-                    }
-                }
                 break;
 
             case TypePattern typePattern:
-                // Type patterns can match union cases
-                covered.Add(typePattern.Type.Name);
+                // Type patterns can match union cases — prefer resolved union case
+                var typeUnionCase = _context.SemanticInfo.GetPatternUnionCase(typePattern);
+                if (typeUnionCase != null)
+                {
+                    covered.Add(typeUnionCase.Name);
+                }
+                else
+                {
+                    covered.Add(typePattern.Type.Name);
+                }
                 break;
 
             case OrPattern orPattern:

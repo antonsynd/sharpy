@@ -766,12 +766,13 @@ public static class DiagnosticExplanations
             "so that both classes use the same type argument for the interface.");
 
         Add(dict, DiagnosticCodes.Semantic.WithNotDisposable,
-            "Type not disposable in with statement",
+            "Type not usable in with statement",
             "Semantic",
-            "The expression used in a 'with' statement must implement IDisposable. " +
-            "The 'with' statement compiles to a C# 'using' statement, which requires the resource to be disposable.",
+            "The expression used in a 'with' statement must either implement IDisposable (for .NET types) " +
+            "or define __enter__/__exit__ methods (for Sharpy context manager protocol). " +
+            "For 'async with', the type must implement IAsyncDisposable or define __aenter__/__aexit__ methods.",
             "class Foo:\n    pass\n\ndef main():\n    with Foo() as f:\n        print(f)",
-            "Implement IDisposable on the class or use a type that supports resource management.");
+            "Either implement IDisposable on the class, or add __enter__ and __exit__ methods for the context manager protocol.");
 
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
