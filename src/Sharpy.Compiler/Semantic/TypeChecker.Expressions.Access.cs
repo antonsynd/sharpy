@@ -686,7 +686,7 @@ internal partial class TypeChecker
         FunctionSymbol? funcSymbol = null;
 
         // Handle generic type/function instantiation: Box[int](42) or identity[int](42)
-        var genericResult = CheckGenericInstantiation(call, calleeType);
+        var genericResult = CheckGenericInstantiation(call, calleeType, argTypes, kwargTypes, totalArgCount);
         if (genericResult != null)
             return genericResult;
 
@@ -714,11 +714,28 @@ internal partial class TypeChecker
                 }
                 else
                 {
-                    // SPY0357: Check for iterable spread into non-variadic constructor
-                    var initMethod = typeSymbol.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
-                    if (initMethod != null)
+                    // Validate constructor arguments against __init__ parameters (skip 'self').
+                    // Only validate when there's a single __init__ (no overloads) — overloaded
+                    // constructors have complex resolution that the C# compiler handles.
+                    var initMethods = typeSymbol.Methods.Where(m => m.Name == DunderNames.Init).ToList();
+                    if (initMethods.Count == 1)
                     {
-                        var initParams = initMethod.Parameters.Skip(1).ToList(); // skip 'self'
+                        var initParams = initMethods[0].Parameters.Skip(1).ToList(); // skip 'self'
+
+                        // SPY0357: Check for iterable spread into non-variadic constructor
+                        if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
+                            return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+
+                        // Validate argument count and positional-only/keyword-only constraints.
+                        // Skip type checking — the C# compiler handles type validation, and there
+                        // are edge cases (None to nullable, enum conversions) it handles correctly.
+                        ValidateCallArgumentsCountAndKinds(call, initParams, argTypes, kwargTypes, totalArgCount);
+                    }
+                    else if (initMethods.Count > 1)
+                    {
+                        // Multiple __init__ overloads — only check spread into non-variadic
+                        var firstInit = initMethods[0];
+                        var initParams = firstInit.Parameters.Skip(1).ToList();
                         if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
                             return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
                     }
@@ -945,7 +962,8 @@ internal partial class TypeChecker
     /// Handles generic type instantiation (Box[int](42)) and generic function calls (identity[int](42)).
     /// Returns null if the call is not a generic instantiation.
     /// </summary>
-    private SemanticType? CheckGenericInstantiation(FunctionCall call, SemanticType calleeType)
+    private SemanticType? CheckGenericInstantiation(FunctionCall call, SemanticType calleeType,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
     {
         // Special handling for generic type instantiation: Box[int](42) or Pair[int, str](1, "a")
         // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int or TupleLiteral), Arguments: [...])
@@ -958,11 +976,27 @@ internal partial class TypeChecker
             var typeArgs = TryResolveTypeArguments(indexAccess.Index);
             if (typeArgs != null)
             {
-                // SPY0357: Check for iterable spread into non-variadic generic constructor
-                var initMethod = genericTypeSymbol.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
-                if (initMethod != null)
+                // Validate constructor arguments against __init__ parameters (skip 'self').
+                // Only validate when there's a single __init__ (no overloads).
+                var initMethods = genericTypeSymbol.Methods.Where(m => m.Name == DunderNames.Init).ToList();
+                if (initMethods.Count == 1)
                 {
-                    var initParams = initMethod.Parameters.Skip(1).ToList();
+                    var initParams = initMethods[0].Parameters.Skip(1).ToList();
+
+                    // SPY0357: Check for iterable spread into non-variadic generic constructor
+                    if (CheckSpreadIntoNonVariadic(call, genericTypeSymbol.Name, initParams))
+                        return new GenericType
+                        {
+                            Name = genericTypeSymbol.Name,
+                            TypeArguments = typeArgs,
+                            GenericDefinition = genericTypeSymbol
+                        };
+
+                    ValidateCallArgumentsCountAndKinds(call, initParams, argTypes, kwargTypes, totalArgCount);
+                }
+                else if (initMethods.Count > 1)
+                {
+                    var initParams = initMethods[0].Parameters.Skip(1).ToList();
                     if (CheckSpreadIntoNonVariadic(call, genericTypeSymbol.Name, initParams))
                         return new GenericType
                         {
@@ -1395,119 +1429,7 @@ internal partial class TypeChecker
             }
         }
 
-        // Count required parameters (those without defaults and not variadic)
-        var hasVariadicParam = funcSymbol.Parameters.Any(p => p.IsVariadic);
-        var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
-        var totalParamCount = funcSymbol.Parameters.Count;
-
-        // Count parameters eligible for positional arguments (not keyword-only)
-        var positionalParamCount = funcSymbol.Parameters.Count(p => !p.IsKeywordOnly);
-
-        // Validate argument count considering defaults and variadic params
-        // Variadic functions have no upper bound on argument count
-        var tooFew = totalArgCount < requiredParamCount;
-        // Too many positional: positional args exceed non-keyword-only param slots
-        var tooManyPositional = !hasVariadicParam && argTypes.Count > positionalParamCount;
-        var tooMany = !hasVariadicParam && totalArgCount > totalParamCount;
-        if (tooFew || tooMany || tooManyPositional)
-        {
-            if (hasVariadicParam)
-            {
-                AddError($"Function expects at least {requiredParamCount} arguments but got {totalArgCount}",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                    span: call.Span);
-            }
-            else if (requiredParamCount == totalParamCount)
-            {
-                AddError($"Function expects {totalParamCount} arguments but got {totalArgCount}",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                    span: call.Span);
-            }
-            else
-            {
-                AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {totalArgCount}",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                    span: call.Span);
-            }
-        }
-        else
-        {
-            // Validate positional argument types
-            // For variadic functions, extra arguments are validated against the variadic param's type
-            var variadicParamIndex = funcSymbol.Parameters.ToList().FindIndex(p => p.IsVariadic);
-            for (int i = 0; i < argTypes.Count; i++)
-            {
-                ParameterSymbol param;
-                if (variadicParamIndex >= 0 && i >= variadicParamIndex)
-                {
-                    // At or past the variadic param: all extra positional args go to variadic
-                    param = funcSymbol.Parameters[variadicParamIndex];
-                }
-                else if (i < funcSymbol.Parameters.Count)
-                {
-                    param = funcSymbol.Parameters[i];
-                }
-                else
-                {
-                    break; // Should not happen — argument count already validated
-                }
-
-                // Check if positional arg is being passed to a keyword-only parameter
-                if (param.IsKeywordOnly)
-                {
-                    AddError($"'{param.Name}' is keyword-only and must be passed as a keyword argument",
-                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
-                        code: DiagnosticCodes.Semantic.KeywordOnlyPassedPositionally,
-                        span: call.Arguments[i].Span);
-                    continue;
-                }
-
-                if (!IsAssignable(argTypes[i], param.Type))
-                {
-                    AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{param.Type.GetDisplayName()}'",
-                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: call.Arguments[i].Span);
-                }
-            }
-
-            // Validate keyword arguments
-            foreach (var kwarg in call.KeywordArguments)
-            {
-                var param = funcSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
-                if (param == null)
-                {
-                    AddError($"Unknown keyword argument '{kwarg.Name}'",
-                        kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
-                        span: kwarg.Value.Span);
-                }
-                else if (param.IsPositionalOnly)
-                {
-                    // Positional-only parameters cannot be passed by keyword
-                    AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
-                        kwarg.LineStart, kwarg.ColumnStart,
-                        code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
-                        span: kwarg.Value.Span);
-                }
-                else
-                {
-                    // Check if this parameter was already provided positionally
-                    // Keyword-only params can never be provided positionally, so skip this check for them
-                    var paramIndex = funcSymbol.Parameters.ToList().IndexOf(param);
-                    if (!param.IsKeywordOnly && paramIndex < argTypes.Count)
-                    {
-                        AddError($"Argument '{kwarg.Name}' was already provided positionally",
-                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
-                            span: kwarg.Value.Span);
-                    }
-                    else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
-                    {
-                        AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
-                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: kwarg.Value.Span);
-                    }
-                }
-            }
-        }
+        ValidateCallArguments(call, funcSymbol.Parameters, argTypes, kwargTypes, totalArgCount);
 
         var returnType = funcSymbol.ReturnType;
 
@@ -1564,6 +1486,214 @@ internal partial class TypeChecker
             return new NullableType { UnderlyingType = returnType };
         }
         return returnType;
+    }
+
+    /// <summary>
+    /// Validates call arguments against a parameter list: argument count, types,
+    /// and positional-only/keyword-only constraints. Used by both regular function
+    /// calls and constructor calls (with __init__ params minus self).
+    /// </summary>
+    private void ValidateCallArguments(
+        FunctionCall call, IReadOnlyList<ParameterSymbol> parameters,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
+        int totalArgCount)
+    {
+        var hasVariadicParam = parameters.Any(p => p.IsVariadic);
+        var requiredParamCount = parameters.Count(p => !p.HasDefault && !p.IsVariadic);
+        var totalParamCount = parameters.Count;
+
+        // Count parameters eligible for positional arguments (not keyword-only)
+        var positionalParamCount = parameters.Count(p => !p.IsKeywordOnly);
+
+        // Validate argument count considering defaults and variadic params
+        var tooFew = totalArgCount < requiredParamCount;
+        var tooManyPositional = !hasVariadicParam && argTypes.Count > positionalParamCount;
+        var tooMany = !hasVariadicParam && totalArgCount > totalParamCount;
+        if (tooFew || tooMany || tooManyPositional)
+        {
+            if (hasVariadicParam)
+            {
+                AddError($"Function expects at least {requiredParamCount} arguments but got {totalArgCount}",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+            }
+            else if (requiredParamCount == totalParamCount)
+            {
+                AddError($"Function expects {totalParamCount} arguments but got {totalArgCount}",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+            }
+            else
+            {
+                AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {totalArgCount}",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+            }
+        }
+        else
+        {
+            // Validate positional argument types
+            var variadicParamIndex = parameters.ToList().FindIndex(p => p.IsVariadic);
+            for (int i = 0; i < argTypes.Count; i++)
+            {
+                ParameterSymbol param;
+                if (variadicParamIndex >= 0 && i >= variadicParamIndex)
+                {
+                    param = parameters[variadicParamIndex];
+                }
+                else if (i < parameters.Count)
+                {
+                    param = parameters[i];
+                }
+                else
+                {
+                    break;
+                }
+
+                if (param.IsKeywordOnly)
+                {
+                    AddError($"'{param.Name}' is keyword-only and must be passed as a keyword argument",
+                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
+                        code: DiagnosticCodes.Semantic.KeywordOnlyPassedPositionally,
+                        span: call.Arguments[i].Span);
+                    continue;
+                }
+
+                if (!IsAssignable(argTypes[i], param.Type))
+                {
+                    AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{param.Type.GetDisplayName()}'",
+                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: call.Arguments[i].Span);
+                }
+            }
+
+            // Validate keyword arguments
+            foreach (var kwarg in call.KeywordArguments)
+            {
+                var param = parameters.FirstOrDefault(p => p.Name == kwarg.Name);
+                if (param == null)
+                {
+                    AddError($"Unknown keyword argument '{kwarg.Name}'",
+                        kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                        span: kwarg.Value.Span);
+                }
+                else if (param.IsPositionalOnly)
+                {
+                    AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
+                        kwarg.LineStart, kwarg.ColumnStart,
+                        code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
+                        span: kwarg.Value.Span);
+                }
+                else
+                {
+                    var paramIndex = parameters.ToList().IndexOf(param);
+                    if (!param.IsKeywordOnly && paramIndex < argTypes.Count)
+                    {
+                        AddError($"Argument '{kwarg.Name}' was already provided positionally",
+                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
+                            span: kwarg.Value.Span);
+                    }
+                    else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
+                    {
+                        AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
+                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: kwarg.Value.Span);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates only argument count and positional-only/keyword-only constraints,
+    /// without type checking. Used for generic constructors without explicit type args
+    /// where __init__ parameters contain unsubstituted type parameters.
+    /// </summary>
+    private void ValidateCallArgumentsCountAndKinds(
+        FunctionCall call, IReadOnlyList<ParameterSymbol> parameters,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
+        int totalArgCount)
+    {
+        var hasVariadicParam = parameters.Any(p => p.IsVariadic);
+        var requiredParamCount = parameters.Count(p => !p.HasDefault && !p.IsVariadic);
+        var totalParamCount = parameters.Count;
+        var positionalParamCount = parameters.Count(p => !p.IsKeywordOnly);
+
+        var tooFew = totalArgCount < requiredParamCount;
+        var tooManyPositional = !hasVariadicParam && argTypes.Count > positionalParamCount;
+        var tooMany = !hasVariadicParam && totalArgCount > totalParamCount;
+        if (tooFew || tooMany || tooManyPositional)
+        {
+            if (hasVariadicParam)
+            {
+                AddError($"Function expects at least {requiredParamCount} arguments but got {totalArgCount}",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+            }
+            else if (requiredParamCount == totalParamCount)
+            {
+                AddError($"Function expects {totalParamCount} arguments but got {totalArgCount}",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+            }
+            else
+            {
+                AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {totalArgCount}",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+            }
+        }
+        else
+        {
+            // Check positional-only/keyword-only constraints (skip type checks)
+            var variadicParamIndex = parameters.ToList().FindIndex(p => p.IsVariadic);
+            for (int i = 0; i < argTypes.Count; i++)
+            {
+                ParameterSymbol param;
+                if (variadicParamIndex >= 0 && i >= variadicParamIndex)
+                    param = parameters[variadicParamIndex];
+                else if (i < parameters.Count)
+                    param = parameters[i];
+                else
+                    break;
+
+                if (param.IsKeywordOnly)
+                {
+                    AddError($"'{param.Name}' is keyword-only and must be passed as a keyword argument",
+                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
+                        code: DiagnosticCodes.Semantic.KeywordOnlyPassedPositionally,
+                        span: call.Arguments[i].Span);
+                }
+            }
+
+            foreach (var kwarg in call.KeywordArguments)
+            {
+                var param = parameters.FirstOrDefault(p => p.Name == kwarg.Name);
+                if (param == null)
+                {
+                    AddError($"Unknown keyword argument '{kwarg.Name}'",
+                        kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                        span: kwarg.Value.Span);
+                }
+                else if (param.IsPositionalOnly)
+                {
+                    AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
+                        kwarg.LineStart, kwarg.ColumnStart,
+                        code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
+                        span: kwarg.Value.Span);
+                }
+                else
+                {
+                    var paramIndex = parameters.ToList().IndexOf(param);
+                    if (!param.IsKeywordOnly && paramIndex < argTypes.Count)
+                    {
+                        AddError($"Argument '{kwarg.Name}' was already provided positionally",
+                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
+                            span: kwarg.Value.Span);
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>

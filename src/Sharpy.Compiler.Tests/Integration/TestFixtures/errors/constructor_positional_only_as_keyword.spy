@@ -1,0 +1,10 @@
+# Error: passing a positional-only constructor param as keyword arg
+
+class Counter:
+    value: int
+
+    def __init__(self, initial: int, /):
+        self.value = initial
+
+def main():
+    c: Counter = Counter(initial=10)

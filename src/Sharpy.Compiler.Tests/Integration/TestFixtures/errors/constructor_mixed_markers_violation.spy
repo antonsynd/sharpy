@@ -1,0 +1,14 @@
+# Error: mixed positional-only/keyword-only violation in constructor
+
+class Config:
+    x: int
+    y: int
+    label: str
+
+    def __init__(self, x: int, y: int, /, *, label: str):
+        self.x = x
+        self.y = y
+        self.label = label
+
+def main():
+    c: Config = Config(1, 2, "test")
