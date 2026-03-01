@@ -1535,44 +1535,128 @@ internal partial class RoslynEmitter
         // Generate the body block
         var bodyStatements = withStmt.Body.SelectMany(GenerateBodyStatements).ToList();
 
-        // Build using statements from inside out (last item wraps the body,
+        // Build using/try-finally statements from inside out (last item wraps the body,
         // first item wraps everything)
         StatementSyntax innermost = Block(bodyStatements);
 
         for (int i = withStmt.Items.Length - 1; i >= 0; i--)
         {
             var item = withStmt.Items[i];
-            var contextExpr = GenerateExpression(item.ContextExpression);
+            var cmKind = _context.SemanticInfo?.GetContextManagerKind(item.ContextExpression);
 
-            if (item.Name != null)
+            if (cmKind is ContextManagerKind.DunderProtocol or ContextManagerKind.AsyncDunderProtocol)
             {
-                // with expr as name: -> using (var name = expr) { ... }
-                // async with expr as name: -> await using (var name = expr) { ... }
-                var varName = GetMangledVariableName(item.Name, isNewDeclaration: true);
-                _declaredVariables.Add(varName);
-
-                var declaration = VariableDeclaration(IdentifierName("var"))
-                    .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(varName))
-                            .WithInitializer(EqualsValueClause(contextExpr))));
-
-                var usingStmt = UsingStatement(declaration, null, innermost is BlockSyntax block ? block : Block(innermost));
-                innermost = withStmt.IsAsync
-                    ? usingStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
-                    : usingStmt;
+                innermost = GenerateWithDunderProtocol(item, innermost, cmKind.Value);
             }
             else
             {
-                // with expr: -> using (expr) { ... }
-                // async with expr: -> await using (expr) { ... }
-                var usingStmt = UsingStatement(null, contextExpr, innermost is BlockSyntax block ? block : Block(innermost));
-                innermost = withStmt.IsAsync
-                    ? usingStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
-                    : usingStmt;
+                innermost = GenerateWithDisposable(item, innermost, withStmt.IsAsync);
             }
         }
 
         return innermost;
+    }
+
+    /// <summary>
+    /// Generates a C# using statement for IDisposable/IAsyncDisposable context managers.
+    /// </summary>
+    private StatementSyntax GenerateWithDisposable(WithItem item, StatementSyntax innermost, bool isAsync)
+    {
+        var contextExpr = GenerateExpression(item.ContextExpression);
+
+        if (item.Name != null)
+        {
+            // with expr as name: -> using (var name = expr) { ... }
+            // async with expr as name: -> await using (var name = expr) { ... }
+            var varName = GetMangledVariableName(item.Name, isNewDeclaration: true);
+            _declaredVariables.Add(varName);
+
+            var declaration = VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(varName))
+                        .WithInitializer(EqualsValueClause(contextExpr))));
+
+            var usingStmt = UsingStatement(declaration, null, innermost is BlockSyntax block ? block : Block(innermost));
+            return isAsync
+                ? usingStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
+                : usingStmt;
+        }
+        else
+        {
+            // with expr: -> using (expr) { ... }
+            // async with expr: -> await using (expr) { ... }
+            var usingStmt = UsingStatement(null, contextExpr, innermost is BlockSyntax block ? block : Block(innermost));
+            return isAsync
+                ? usingStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
+                : usingStmt;
+        }
+    }
+
+    /// <summary>
+    /// Generates try/finally with explicit Enter()/Exit() calls for dunder-protocol context managers.
+    /// Sync:  var __ctx_N = expr; var asVar = __ctx_N.Enter(); try { body } finally { __ctx_N.Exit(); }
+    /// Async: var __ctx_N = expr; var asVar = await __ctx_N.AenterAsync(); try { body } finally { await __ctx_N.AexitAsync(); }
+    /// </summary>
+    private StatementSyntax GenerateWithDunderProtocol(WithItem item, StatementSyntax innermost, ContextManagerKind cmKind)
+    {
+        bool isAsync = cmKind == ContextManagerKind.AsyncDunderProtocol;
+        var enterMethod = isAsync ? "AenterAsync" : "Enter";
+        var exitMethod = isAsync ? "AexitAsync" : "Exit";
+
+        var contextExpr = GenerateExpression(item.ContextExpression);
+        var ctxVarName = GenerateTempVarName("ctx");
+        var statements = new List<StatementSyntax>();
+
+        // var __ctx_N = expr;
+        statements.Add(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(ctxVarName))
+                        .WithInitializer(EqualsValueClause(contextExpr))))));
+
+        // Build the Enter() / AenterAsync() call
+        ExpressionSyntax enterCall = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(ctxVarName),
+                IdentifierName(enterMethod)));
+        if (isAsync)
+            enterCall = AwaitExpression(enterCall);
+
+        if (item.Name != null)
+        {
+            // var asVar = __ctx_N.Enter();  (or await __ctx_N.AenterAsync())
+            var varName = GetMangledVariableName(item.Name, isNewDeclaration: true);
+            _declaredVariables.Add(varName);
+            statements.Add(LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(varName))
+                            .WithInitializer(EqualsValueClause(enterCall))))));
+        }
+        else
+        {
+            // Still call Enter() for side effects
+            statements.Add(ExpressionStatement(enterCall));
+        }
+
+        // Build the Exit() / AexitAsync() call
+        ExpressionSyntax exitCall = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(ctxVarName),
+                IdentifierName(exitMethod)));
+        if (isAsync)
+            exitCall = AwaitExpression(exitCall);
+
+        // try { body } finally { __ctx_N.Exit(); }
+        var tryStmt = TryStatement(
+            innermost is BlockSyntax blk ? blk : Block(innermost),
+            List<CatchClauseSyntax>(),
+            FinallyClause(Block(ExpressionStatement(exitCall))));
+        statements.Add(tryStmt);
+
+        return Block(statements);
     }
 
     private StatementSyntax GenerateTry(TryStatement tryStmt)
