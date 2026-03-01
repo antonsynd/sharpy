@@ -908,6 +908,151 @@ internal partial class RoslynEmitter
         return symbols != null && symbols.Count > 0;
     }
 
+    // ============================================================
+    // Parameter reordering helpers
+    //
+    // C# requires: required params before optional, params array last.
+    // These methods reorder Sharpy parameters (which may have keyword-only
+    // params with defaults before non-keyword-only required params) into
+    // C#-compliant order while preserving relative declaration order within
+    // each group.
+    //
+    // Order:
+    //   1. Non-variadic, non-keyword-only, required (no default)
+    //   2. Keyword-only, required (no default)
+    //   3. Non-variadic, non-keyword-only, with default
+    //   4. Keyword-only, with default
+    //   5. Variadic (params) — always last
+    // ============================================================
+
+    /// <summary>
+    /// Reorders AST <see cref="Parameter"/> nodes into C#-compliant order.
+    /// Required parameters come before optional, and the variadic (params) parameter is last.
+    /// Declaration order within each group is preserved.
+    /// </summary>
+    /// <param name="parameters">AST parameters, already filtered to exclude self/cls.</param>
+    /// <returns>Parameters in C#-compliant order.</returns>
+    private static Parameter[] ReorderParametersForCSharp(IEnumerable<Parameter> parameters)
+    {
+        var paramList = parameters as IList<Parameter> ?? parameters.ToList();
+
+        // Fast path: if no variadic and no keyword-only params, no reordering needed
+        bool hasVariadic = false;
+        bool hasKeywordOnly = false;
+        foreach (var p in paramList)
+        {
+            if (p.IsVariadic) hasVariadic = true;
+            if (p.Kind == ParameterKind.KeywordOnly) hasKeywordOnly = true;
+        }
+
+        if (!hasVariadic && !hasKeywordOnly)
+            return paramList as Parameter[] ?? paramList.ToArray();
+
+        var normalRequired = new List<Parameter>();
+        var keywordOnlyRequired = new List<Parameter>();
+        var normalOptional = new List<Parameter>();
+        var keywordOnlyOptional = new List<Parameter>();
+        Parameter? variadic = null;
+
+        foreach (var p in paramList)
+        {
+            if (p.IsVariadic)
+            {
+                variadic = p;
+            }
+            else if (p.Kind == ParameterKind.KeywordOnly)
+            {
+                if (p.DefaultValue != null)
+                    keywordOnlyOptional.Add(p);
+                else
+                    keywordOnlyRequired.Add(p);
+            }
+            else
+            {
+                if (p.DefaultValue != null)
+                    normalOptional.Add(p);
+                else
+                    normalRequired.Add(p);
+            }
+        }
+
+        var capacity = normalRequired.Count + keywordOnlyRequired.Count
+                     + normalOptional.Count + keywordOnlyOptional.Count
+                     + (variadic != null ? 1 : 0);
+        var result = new Parameter[capacity];
+        int i = 0;
+        foreach (var p in normalRequired) result[i++] = p;
+        foreach (var p in keywordOnlyRequired) result[i++] = p;
+        foreach (var p in normalOptional) result[i++] = p;
+        foreach (var p in keywordOnlyOptional) result[i++] = p;
+        if (variadic != null) result[i++] = variadic;
+        return result;
+    }
+
+    /// <summary>
+    /// Reorders <see cref="ParameterSymbol"/> instances into C#-compliant order.
+    /// Same logic as <see cref="ReorderParametersForCSharp(IEnumerable{Parameter})"/>
+    /// but operates on semantic symbols (used by forwarding constructors and abstract stubs).
+    /// </summary>
+    /// <param name="parameters">Parameter symbols, already filtered to exclude self/cls.</param>
+    /// <returns>Parameter symbols in C#-compliant order.</returns>
+    private static ParameterSymbol[] ReorderParameterSymbolsForCSharp(IEnumerable<ParameterSymbol> parameters)
+    {
+        var paramList = parameters as IList<ParameterSymbol> ?? parameters.ToList();
+
+        // Fast path: if no variadic and no keyword-only params, no reordering needed
+        bool hasVariadic = false;
+        bool hasKeywordOnly = false;
+        foreach (var p in paramList)
+        {
+            if (p.IsVariadic) hasVariadic = true;
+            if (p.IsKeywordOnly) hasKeywordOnly = true;
+        }
+
+        if (!hasVariadic && !hasKeywordOnly)
+            return paramList as ParameterSymbol[] ?? paramList.ToArray();
+
+        var normalRequired = new List<ParameterSymbol>();
+        var keywordOnlyRequired = new List<ParameterSymbol>();
+        var normalOptional = new List<ParameterSymbol>();
+        var keywordOnlyOptional = new List<ParameterSymbol>();
+        ParameterSymbol? variadic = null;
+
+        foreach (var p in paramList)
+        {
+            if (p.IsVariadic)
+            {
+                variadic = p;
+            }
+            else if (p.IsKeywordOnly)
+            {
+                if (p.HasDefault)
+                    keywordOnlyOptional.Add(p);
+                else
+                    keywordOnlyRequired.Add(p);
+            }
+            else
+            {
+                if (p.HasDefault)
+                    normalOptional.Add(p);
+                else
+                    normalRequired.Add(p);
+            }
+        }
+
+        var capacity = normalRequired.Count + keywordOnlyRequired.Count
+                     + normalOptional.Count + keywordOnlyOptional.Count
+                     + (variadic != null ? 1 : 0);
+        var result = new ParameterSymbol[capacity];
+        int i = 0;
+        foreach (var p in normalRequired) result[i++] = p;
+        foreach (var p in keywordOnlyRequired) result[i++] = p;
+        foreach (var p in normalOptional) result[i++] = p;
+        foreach (var p in keywordOnlyOptional) result[i++] = p;
+        if (variadic != null) result[i++] = variadic;
+        return result;
+    }
+
     /// <summary>
     /// Emits a diagnostic for an unrecognized statement type in code generation.
     /// Returns null so it can be used in switch expressions.
