@@ -26,6 +26,10 @@ internal static class DunderNameMapping
         { DunderNames.Iter, "GetEnumerator" },    // For IEnumerable
         { DunderNames.Reversed, "GetReverseEnumerator" }, // For reverse iteration
         // __bool__ is handled as special codegen (operator true/false), not a simple name mapping
+        { DunderNames.Enter, "Enter" },                // For context manager __enter__
+        { DunderNames.Exit, "Exit" },                  // For context manager __exit__ (maps to Dispose)
+        { DunderNames.Aenter, "AenterAsync" },         // For async context manager __aenter__
+        { DunderNames.Aexit, "AexitAsync" },           // For async context manager __aexit__ (maps to DisposeAsync)
     };
 
 #if DEBUG
