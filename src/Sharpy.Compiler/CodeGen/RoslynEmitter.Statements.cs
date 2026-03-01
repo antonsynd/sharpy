@@ -230,17 +230,36 @@ internal partial class RoslynEmitter
         }
 
         // yield from expr → foreach (var __yieldItem_N in expr) { yield return __yieldItem_N; }
+        // In async generators, if the iterable is IAsyncEnumerable<T>, emit await foreach.
         var iterableExpr = GenerateExpression(yieldStmt.Value);
         var itemName = GenerateTempVarName("yieldItem");
         var itemIdentifier = Identifier(itemName);
         var yieldReturn = YieldStatement(
             SyntaxKind.YieldReturnStatement,
             IdentifierName(itemName));
-        return ForEachStatement(
+        var foreachStmt = ForEachStatement(
             IdentifierName("var"),
             itemIdentifier,
             iterableExpr,
             Block(yieldReturn));
+
+        // Check if we need await foreach: async context + async iterable type
+        if (_isCurrentMethodAsync && IsAsyncEnumerableType(yieldStmt.Value))
+        {
+            return foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
+        }
+
+        return foreachStmt;
+    }
+
+    /// <summary>
+    /// Checks if an expression's semantic type is IAsyncEnumerable&lt;T&gt;.
+    /// Used to determine whether yield from should emit await foreach.
+    /// </summary>
+    private bool IsAsyncEnumerableType(Parser.Ast.Expression expr)
+    {
+        var type = GetExpressionSemanticType(expr);
+        return type is GenericType { Name: "IAsyncEnumerable" };
     }
 
     private StatementSyntax GenerateAssignment(Assignment assign)

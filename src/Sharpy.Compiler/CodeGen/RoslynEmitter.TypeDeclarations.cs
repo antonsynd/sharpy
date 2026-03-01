@@ -34,8 +34,9 @@ internal partial class RoslynEmitter
             ? "MainFunc"  // Rename to avoid C# entry point conflict in non-entry files
             : NameMangler.Transform(func.Name, NameContext.Method);
 
-        // Check if this function is a generator
+        // Check if this function is a generator and/or async
         using var _ = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
+        using var _async = SetAsyncScope(func.IsAsync);
 
         // Determine return type from annotation or infer void
         TypeSyntax returnType = func.ReturnType != null

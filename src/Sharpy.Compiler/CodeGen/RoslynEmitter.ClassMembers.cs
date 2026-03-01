@@ -149,6 +149,7 @@ internal partial class RoslynEmitter
                     else if (funcDef.Name == DunderNames.Reversed)
                     {
                         using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(funcDef) == true);
+                        using var _asyncRev = SetAsyncScope(funcDef.IsAsync);
                         members.Add(GenerateReverseEnumeratorMethod(funcDef));
                     }
                     // Check if this is a dunder method that needs operator synthesis
@@ -545,8 +546,9 @@ internal partial class RoslynEmitter
         // Clear declared variables and version tracking for new method scope
         ResetMethodScope();
 
-        // Check if this method is a generator
+        // Check if this method is a generator and/or async
         using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
+        using var _async = SetAsyncScope(func.IsAsync);
 
         // Pre-scan the method body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
@@ -1049,8 +1051,9 @@ internal partial class RoslynEmitter
             _variableVersions[baseName] = 0;
         }
 
-        // Set generator flag so yield statements and bare returns emit correctly
+        // Set generator and async flags so yield statements and bare returns emit correctly
         using var _gen = SetGeneratorScope(true);
+        using var _asyncIter = SetAsyncScope(funcDef.IsAsync);
 
         var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
 

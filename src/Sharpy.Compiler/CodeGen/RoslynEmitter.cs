@@ -119,6 +119,10 @@ internal partial class RoslynEmitter
     // return type is wrapped in IEnumerable<T> or IEnumerator<T>.
     private bool _isCurrentMethodGenerator;
 
+    // Track if the current method being generated is async.
+    // When true, GenerateYield emits 'await foreach' for async iterables in yield from.
+    private bool _isCurrentMethodAsync;
+
     // Track the current TypeSymbol being generated (for IEquatable virtual detection, etc.)
     private TypeSymbol? _currentTypeSymbol;
 
@@ -280,6 +284,30 @@ internal partial class RoslynEmitter
         }
 
         public void Dispose() => _emitter._isCurrentMethodGenerator = _previous;
+    }
+
+    /// <summary>
+    /// Sets the async scope flag and returns a disposable that restores the previous value.
+    /// </summary>
+    private AsyncScope SetAsyncScope(bool isAsync)
+    {
+        var previous = _isCurrentMethodAsync;
+        _isCurrentMethodAsync = isAsync;
+        return new AsyncScope(this, previous);
+    }
+
+    private readonly struct AsyncScope : IDisposable
+    {
+        private readonly RoslynEmitter _emitter;
+        private readonly bool _previous;
+
+        public AsyncScope(RoslynEmitter emitter, bool previous)
+        {
+            _emitter = emitter;
+            _previous = previous;
+        }
+
+        public void Dispose() => _emitter._isCurrentMethodAsync = _previous;
     }
 
     /// <summary>
