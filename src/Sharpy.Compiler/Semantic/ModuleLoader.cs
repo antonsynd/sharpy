@@ -257,6 +257,21 @@ internal class ModuleLoader
                     DeclarationColumn = enumDef.ColumnStart,
                     DefiningModule = moduleInfo.CanonicalModuleName ?? moduleInfo.Path
                 };
+                // Register enum members as static fields for pattern matching resolution
+                foreach (var member in enumDef.Members)
+                {
+                    enumSymbol.Fields.Add(new VariableSymbol
+                    {
+                        Name = member.Name,
+                        Kind = SymbolKind.Variable,
+                        IsStatic = true,
+                        IsConstant = true,
+                        AccessLevel = AccessLevel.Public,
+                        DeclarationLine = member.LineStart,
+                        DeclarationColumn = member.ColumnStart,
+                        DeclarationSpan = member.Span
+                    });
+                }
                 moduleInfo.ExportedSymbols[enumDef.Name] = enumSymbol;
                 break;
 

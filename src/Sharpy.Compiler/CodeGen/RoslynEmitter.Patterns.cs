@@ -70,10 +70,16 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateMemberAccessValue(MemberAccessPattern memberAccess)
     {
-        // Build member access expression: Color.RED -> Color.RED
-        // Type name is preserved as-is (ToTypeName), field names use ToPascalCase
+        // Build member access expression: Color.RED -> Color.Red
+        // Type name is preserved as-is (ToTypeName), member names use context-appropriate casing
         ExpressionSyntax expr = IdentifierName(
             NameMangler.Transform(memberAccess.Parts[0], NameContext.Type));
+
+        // Determine if the first part is an enum type to use correct name mangling
+        var typeSymbol = _context.SymbolTable?.Lookup(memberAccess.Parts[0]) as TypeSymbol;
+        var memberContext = typeSymbol?.TypeKind == TypeKind.Enum
+            ? NameContext.EnumMember
+            : NameContext.Field;
 
         for (int i = 1; i < memberAccess.Parts.Length; i++)
         {
@@ -81,7 +87,7 @@ internal partial class RoslynEmitter
                 SyntaxKind.SimpleMemberAccessExpression,
                 expr,
                 IdentifierName(NameMangler.Transform(
-                    memberAccess.Parts[i], NameContext.Field)));
+                    memberAccess.Parts[i], memberContext)));
         }
 
         return expr;

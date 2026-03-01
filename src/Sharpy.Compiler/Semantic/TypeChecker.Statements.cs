@@ -1134,6 +1134,40 @@ internal partial class TypeChecker
                         }
                     }
 
+                    // Check if this is an enum member pattern (e.g., Color.RED)
+                    if (typeSymbol.TypeKind == TypeKind.Enum && memberAccess.Parts.Length == 2)
+                    {
+                        var memberName = memberAccess.Parts[1];
+                        var enumField = typeSymbol.Fields.FirstOrDefault(f => f.Name == memberName);
+                        if (enumField != null)
+                        {
+                            // Verify the enum type matches the scrutinee type
+                            if (scrutineeType is UserDefinedType udt && udt.Symbol == typeSymbol)
+                            {
+                                // Valid enum member pattern matching the scrutinee
+                                break;
+                            }
+                            else
+                            {
+                                AddError(
+                                    $"Enum member '{typeName}.{memberName}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                                    memberAccess.LineStart, memberAccess.ColumnStart,
+                                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                                    span: memberAccess.Span);
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            AddError(
+                                $"Enum '{typeSymbol.Name}' has no member '{memberName}'",
+                                memberAccess.LineStart, memberAccess.ColumnStart,
+                                code: DiagnosticCodes.Semantic.UndefinedMember,
+                                span: memberAccess.Span);
+                            break;
+                        }
+                    }
+
                     // Resolve remaining parts as field or property access
                     SemanticType? resolvedType = null;
                     for (int i = 1; i < memberAccess.Parts.Length; i++)

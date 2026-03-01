@@ -465,6 +465,24 @@ internal class NameResolver
             DeclarationColumn = enumDef.ColumnStart
         };
 
+        // Register enum members as static fields so pattern matching and
+        // exhaustiveness checking can resolve them via TypeSymbol.Fields.
+        // Type is left as Unknown here; it will be set during type checking.
+        foreach (var member in enumDef.Members)
+        {
+            typeSymbol.Fields.Add(new VariableSymbol
+            {
+                Name = member.Name,
+                Kind = SymbolKind.Variable,
+                IsStatic = true,
+                IsConstant = true,
+                AccessLevel = AccessLevel.Public,
+                DeclarationLine = member.LineStart,
+                DeclarationColumn = member.ColumnStart,
+                DeclarationSpan = member.Span
+            });
+        }
+
         _symbolTable.Define(typeSymbol);
     }
 
