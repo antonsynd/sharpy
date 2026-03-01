@@ -383,7 +383,7 @@ internal partial class RoslynEmitter
                             .WithNameColon(NameColon(IdentifierName(csharpName))));
                         kwArgsByName.Remove(param.Name);
                     }
-                    else if (posIdx < funcCall.Arguments.Length)
+                    else if (!param.IsKeywordOnly && posIdx < funcCall.Arguments.Length)
                     {
                         result.Add(Argument(GenerateExpression(funcCall.Arguments[posIdx]))
                             .WithNameColon(NameColon(IdentifierName(csharpName))));
