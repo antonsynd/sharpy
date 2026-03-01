@@ -1,0 +1,41 @@
+# Test variadic + mixed keyword-only params (CS0231 + CS1737)
+# Covers: required kw-only, optional kw-only, variadic, all together
+
+# Optional keyword-only before variadic end
+def f(a: int, *args: int, key1: str, key2: int = 5) -> str:
+    return f"{a} {key1} {key2}"
+
+# All categories: normal req, normal opt, variadic, req kw-only, opt kw-only
+def g(a: int, b: int = 10, *args: int, required_kw: str, optional_kw: int = 99) -> str:
+    return f"{a} {b} {required_kw} {optional_kw}"
+
+# Class constructor with variadic + keyword-only
+class Builder:
+    label: str
+    count: int
+
+    def __init__(self, label: str, *items: str, count: int):
+        self.label = label
+        self.count = count
+
+    def build(self, *parts: str, joiner: str = "-") -> str:
+        return joiner
+
+def main():
+    # f: variadic with required + optional keyword-only
+    print(f(1, key1="hello"))
+    print(f(1, 2, 3, key1="hello"))
+    print(f(1, 2, 3, key1="hello", key2=42))
+
+    # g: all categories
+    print(g(1, required_kw="abc"))
+    print(g(1, 20, required_kw="abc"))
+    print(g(1, 20, 30, 40, required_kw="abc", optional_kw=7))
+
+    # Constructor with variadic + keyword-only
+    b: Builder = Builder("test", "a", "b", count=2)
+    print(b.label)
+    print(b.count)
+
+    # Method with variadic + optional keyword-only
+    print(b.build("x", joiner="/"))
