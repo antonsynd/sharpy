@@ -563,7 +563,9 @@ internal class NameResolver
             Type = SemanticType.Unknown,  // Will be resolved during type checking
             HasDefault = p.DefaultValue != null,
             DefaultValue = p.DefaultValue,
-            IsVariadic = p.IsVariadic
+            IsVariadic = p.IsVariadic,
+            IsPositionalOnly = p.Kind == ParameterKind.PositionalOnly,
+            IsKeywordOnly = p.Kind == ParameterKind.KeywordOnly
         }).ToList();
 
         var funcSymbol = new FunctionSymbol
@@ -623,7 +625,9 @@ internal class NameResolver
             Type = SemanticType.Unknown,  // Will be resolved during type checking
             HasDefault = p.DefaultValue != null,
             DefaultValue = p.DefaultValue,
-            IsVariadic = p.IsVariadic
+            IsVariadic = p.IsVariadic,
+            IsPositionalOnly = p.Kind == ParameterKind.PositionalOnly,
+            IsKeywordOnly = p.Kind == ParameterKind.KeywordOnly
         }).ToList();
 
         var funcSymbol = new FunctionSymbol

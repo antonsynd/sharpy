@@ -212,7 +212,9 @@ internal class ModuleLoader
                     Type = ConvertTypeAnnotationToSemanticType(p.Type),
                     HasDefault = p.DefaultValue != null,
                     DefaultValue = p.DefaultValue,
-                    IsVariadic = p.IsVariadic
+                    IsVariadic = p.IsVariadic,
+                    IsPositionalOnly = p.Kind == Parser.Ast.ParameterKind.PositionalOnly,
+                    IsKeywordOnly = p.Kind == Parser.Ast.ParameterKind.KeywordOnly
                 }).ToList();
 
                 var funcSymbol = new FunctionSymbol
@@ -481,7 +483,9 @@ internal class ModuleLoader
             Type = ConvertTypeAnnotationToSemanticType(p.Type),
             HasDefault = p.DefaultValue != null,
             DefaultValue = p.DefaultValue,
-            IsVariadic = p.IsVariadic
+            IsVariadic = p.IsVariadic,
+            IsPositionalOnly = p.Kind == Parser.Ast.ParameterKind.PositionalOnly,
+            IsKeywordOnly = p.Kind == Parser.Ast.ParameterKind.KeywordOnly
         }).ToList();
 
         return new FunctionSymbol

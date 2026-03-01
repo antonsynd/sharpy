@@ -1400,11 +1400,16 @@ internal partial class TypeChecker
         var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
         var totalParamCount = funcSymbol.Parameters.Count;
 
+        // Count parameters eligible for positional arguments (not keyword-only)
+        var positionalParamCount = funcSymbol.Parameters.Count(p => !p.IsKeywordOnly);
+
         // Validate argument count considering defaults and variadic params
         // Variadic functions have no upper bound on argument count
         var tooFew = totalArgCount < requiredParamCount;
+        // Too many positional: positional args exceed non-keyword-only param slots
+        var tooManyPositional = !hasVariadicParam && argTypes.Count > positionalParamCount;
         var tooMany = !hasVariadicParam && totalArgCount > totalParamCount;
-        if (tooFew || tooMany)
+        if (tooFew || tooMany || tooManyPositional)
         {
             if (hasVariadicParam)
             {
@@ -1433,18 +1438,28 @@ internal partial class TypeChecker
             for (int i = 0; i < argTypes.Count; i++)
             {
                 ParameterSymbol param;
-                if (i < funcSymbol.Parameters.Count)
+                if (variadicParamIndex >= 0 && i >= variadicParamIndex)
+                {
+                    // At or past the variadic param: all extra positional args go to variadic
+                    param = funcSymbol.Parameters[variadicParamIndex];
+                }
+                else if (i < funcSymbol.Parameters.Count)
                 {
                     param = funcSymbol.Parameters[i];
-                }
-                else if (variadicParamIndex >= 0)
-                {
-                    // Extra args go to the variadic parameter
-                    param = funcSymbol.Parameters[variadicParamIndex];
                 }
                 else
                 {
                     break; // Should not happen — argument count already validated
+                }
+
+                // Check if positional arg is being passed to a keyword-only parameter
+                if (param.IsKeywordOnly)
+                {
+                    AddError($"'{param.Name}' is keyword-only and must be passed as a keyword argument",
+                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
+                        code: DiagnosticCodes.Semantic.KeywordOnlyPassedPositionally,
+                        span: call.Arguments[i].Span);
+                    continue;
                 }
 
                 if (!IsAssignable(argTypes[i], param.Type))
@@ -1465,11 +1480,20 @@ internal partial class TypeChecker
                         kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
                         span: kwarg.Value.Span);
                 }
+                else if (param.IsPositionalOnly)
+                {
+                    // Positional-only parameters cannot be passed by keyword
+                    AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
+                        kwarg.LineStart, kwarg.ColumnStart,
+                        code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
+                        span: kwarg.Value.Span);
+                }
                 else
                 {
                     // Check if this parameter was already provided positionally
+                    // Keyword-only params can never be provided positionally, so skip this check for them
                     var paramIndex = funcSymbol.Parameters.ToList().IndexOf(param);
-                    if (paramIndex < argTypes.Count)
+                    if (!param.IsKeywordOnly && paramIndex < argTypes.Count)
                     {
                         AddError($"Argument '{kwarg.Name}' was already provided positionally",
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,

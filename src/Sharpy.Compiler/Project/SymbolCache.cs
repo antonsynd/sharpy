@@ -193,6 +193,16 @@ internal record CachedParameter
     /// Whether the parameter is variadic (params)
     /// </summary>
     public bool IsVariadic { get; init; }
+
+    /// <summary>
+    /// Whether the parameter is positional-only (before /)
+    /// </summary>
+    public bool IsPositionalOnly { get; init; }
+
+    /// <summary>
+    /// Whether the parameter is keyword-only (after * or *args)
+    /// </summary>
+    public bool IsKeywordOnly { get; init; }
 }
 
 /// <summary>

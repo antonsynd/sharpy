@@ -242,10 +242,22 @@ internal partial class TypeChecker
         }
 
         // Validate parameter ordering: non-default parameters cannot follow default parameters
+        // Keyword-only params (after * or *args) reset the default tracking since they
+        // may be required even when previous normal/positional-only params have defaults
         bool hasSeenDefault = false;
         for (int i = 0; i < functionDef.Parameters.Length; i++)
         {
             var param = functionDef.Parameters[i];
+
+            // Keyword-only zone resets the default tracking
+            if (param.Kind == Parser.Ast.ParameterKind.KeywordOnly)
+            {
+                hasSeenDefault = false;
+            }
+
+            // Variadic parameters don't participate in default ordering validation
+            if (param.IsVariadic)
+                continue;
 
             if (param.DefaultValue != null)
             {
@@ -708,7 +720,9 @@ internal partial class TypeChecker
                             Type = paramType,
                             HasDefault = param.DefaultValue != null,
                             DefaultValue = param.DefaultValue,
-                            IsVariadic = param.IsVariadic
+                            IsVariadic = param.IsVariadic,
+                            IsPositionalOnly = param.Kind == Parser.Ast.ParameterKind.PositionalOnly,
+                            IsKeywordOnly = param.Kind == Parser.Ast.ParameterKind.KeywordOnly
                         });
                     }
 

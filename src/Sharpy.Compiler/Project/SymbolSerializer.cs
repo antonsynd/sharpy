@@ -245,7 +245,9 @@ internal static class SymbolSerializer
             Name = ps.Name,
             TypeId = SerializeType(ps.Type),
             HasDefault = ps.HasDefault,
-            IsVariadic = ps.IsVariadic
+            IsVariadic = ps.IsVariadic,
+            IsPositionalOnly = ps.IsPositionalOnly,
+            IsKeywordOnly = ps.IsKeywordOnly
         };
     }
 
@@ -505,7 +507,9 @@ internal static class SymbolSerializer
             Name = cached.Name,
             Type = typeResolver(cached.TypeId),
             HasDefault = cached.HasDefault,
-            IsVariadic = cached.IsVariadic
+            IsVariadic = cached.IsVariadic,
+            IsPositionalOnly = cached.IsPositionalOnly,
+            IsKeywordOnly = cached.IsKeywordOnly
         };
     }
 

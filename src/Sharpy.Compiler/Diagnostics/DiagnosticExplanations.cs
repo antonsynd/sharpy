@@ -294,6 +294,26 @@ public static class DiagnosticExplanations
             "match value:\n    case Box[int]() as x:\n        ...",
             "Remove the type arguments from the pattern:\nmatch value:\n    case Box() as x:\n        ...");
 
+        Add(dict, DiagnosticCodes.Parser.SlashAfterStar, "'/' after '*' in parameter list", "Parser",
+            "The positional-only marker '/' must appear before the keyword-only marker '*' or variadic '*args' in a parameter list. Having '/' after '*' is not valid.",
+            "def foo(a: int, *, b: int, /): ...",
+            "Place '/' before '*':\ndef foo(a: int, /, *, b: int): ...");
+
+        Add(dict, DiagnosticCodes.Parser.DuplicateSlashMarker, "Duplicate '/' marker", "Parser",
+            "The positional-only marker '/' can only appear once in a parameter list.",
+            "def foo(a: int, /, b: int, /): ...",
+            "Use '/' only once:\ndef foo(a: int, /, b: int): ...");
+
+        Add(dict, DiagnosticCodes.Parser.DuplicateStarMarker, "Duplicate '*' marker", "Parser",
+            "The keyword-only marker '*' (or '*args') can only appear once in a parameter list. A second bare '*' or '*args' is not allowed.",
+            "def foo(*, a: int, *, b: int): ...",
+            "Use '*' only once:\ndef foo(*, a: int, b: int): ...");
+
+        Add(dict, DiagnosticCodes.Parser.SlashAtStart, "'/' at start of parameter list", "Parser",
+            "The positional-only marker '/' must have at least one parameter before it. Parameters preceding '/' become positional-only.",
+            "def foo(/, a: int): ...",
+            "Place at least one parameter before '/':\ndef foo(a: int, /): ...");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",
@@ -886,6 +906,16 @@ public static class DiagnosticExplanations
             "A positional pattern was used on a type that does not support it. The type has no Deconstruct method and the number of pattern elements does not match the type's field count.",
             "class Point:\n    x: int\n    y: int\nmatch p:\n    case Point(a, b, c):  # Point has 2 fields, not 3\n        ...",
             "Use the correct number of positional elements matching the type's fields, or use a property pattern:\nmatch p:\n    case Point(a, b):\n        print(a, b)");
+
+        Add(dict, DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword, "Positional-only parameter passed by keyword", "Semantic",
+            "A parameter that is declared as positional-only (before '/') was passed as a keyword argument. Positional-only parameters cannot be referred to by name at call sites.",
+            "def foo(x: int, /) -> int:\n    return x\nfoo(x=1)  # error: 'x' is positional-only",
+            "Pass the argument positionally:\nfoo(1)");
+
+        Add(dict, DiagnosticCodes.Semantic.KeywordOnlyPassedPositionally, "Keyword-only parameter passed positionally", "Semantic",
+            "A parameter that is declared as keyword-only (after '*' or '*args') was passed positionally. Keyword-only parameters must be passed by name.",
+            "def foo(*, key: int) -> int:\n    return key\nfoo(1)  # error: 'key' is keyword-only",
+            "Pass the argument by name:\nfoo(key=1)");
 
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
