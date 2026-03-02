@@ -290,6 +290,7 @@ internal class NameResolver
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = typeSymbol,
                 Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
                 DeclarationColumn = typeParam.ColumnStart
             };
@@ -356,6 +357,7 @@ internal class NameResolver
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = typeSymbol,
                 Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
                 DeclarationColumn = typeParam.ColumnStart
             };
@@ -422,6 +424,7 @@ internal class NameResolver
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = typeSymbol,
                 Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
                 DeclarationColumn = typeParam.ColumnStart
             };
@@ -481,6 +484,7 @@ internal class NameResolver
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = typeSymbol,
                 Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
                 DeclarationColumn = typeParam.ColumnStart
             };

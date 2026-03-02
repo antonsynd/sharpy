@@ -106,7 +106,8 @@ internal class TypeResolver
             {
                 Name = annotation.Name,
                 DeclaringType = typeParamSymbol.DeclaringType,
-                Constraints = typeParamSymbol.Constraints
+                Constraints = typeParamSymbol.Constraints,
+                Variance = typeParamSymbol.Variance
             };
         }
         // Look up user-defined type

@@ -60,6 +60,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = null,  // No declaring type for standalone generic functions
                 Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
                 DeclarationColumn = typeParam.ColumnStart
             };
@@ -512,6 +513,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = classSymbol,
                 Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
                 DeclarationColumn = typeParam.ColumnStart
             };
@@ -592,6 +594,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = structSymbol,
                 Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
                 DeclarationColumn = typeParam.ColumnStart
             };
@@ -669,6 +672,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = interfaceSymbol,
                 Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
                 DeclarationColumn = typeParam.ColumnStart
             };
@@ -791,6 +795,7 @@ internal partial class TypeChecker
                     Kind = SymbolKind.TypeParameter,
                     DeclaringType = unionSymbol,
                     Constraints = typeParam.Constraints,
+                    Variance = typeParam.Variance,
                     DeclarationLine = typeParam.LineStart,
                     DeclarationColumn = typeParam.ColumnStart
                 };
@@ -873,6 +878,7 @@ internal partial class TypeChecker
                     Kind = SymbolKind.TypeParameter,
                     DeclaringType = delegateSymbol,
                     Constraints = typeParam.Constraints,
+                    Variance = typeParam.Variance,
                     DeclarationLine = typeParam.LineStart,
                     DeclarationColumn = typeParam.ColumnStart
                 };
