@@ -301,6 +301,11 @@ public record TypeParameterSymbol : Symbol
     public ImmutableArray<ConstraintClause> Constraints { get; init; }
         = ImmutableArray<ConstraintClause>.Empty;
 
+    /// <summary>
+    /// Variance annotation (None, Covariant, Contravariant) for delegate/interface type parameters.
+    /// </summary>
+    public TypeParameterVariance Variance { get; init; } = TypeParameterVariance.None;
+
     public virtual bool Equals(TypeParameterSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

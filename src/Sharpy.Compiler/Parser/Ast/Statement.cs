@@ -637,12 +637,26 @@ public record TypeAlias : Statement
 }
 
 /// <summary>
+/// Variance annotation for type parameters in delegate and interface declarations.
+/// </summary>
+public enum TypeParameterVariance
+{
+    /// <summary>No variance annotation (invariant).</summary>
+    None,
+    /// <summary>Covariant (out) — the type parameter appears only in output positions.</summary>
+    Covariant,
+    /// <summary>Contravariant (in) — the type parameter appears only in input positions.</summary>
+    Contravariant
+}
+
+/// <summary>
 /// Represents a single type parameter with its constraints (e.g., "T: IComparable")
 /// </summary>
 public record TypeParameterDef
 {
     public string Name { get; init; } = "";
     public ImmutableArray<ConstraintClause> Constraints { get; init; } = ImmutableArray<ConstraintClause>.Empty;
+    public TypeParameterVariance Variance { get; init; } = TypeParameterVariance.None;
 
     // Source location
     public int LineStart { get; init; }

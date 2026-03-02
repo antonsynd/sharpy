@@ -718,6 +718,11 @@ public sealed record TypeParameterType : SemanticType
     public ImmutableArray<ConstraintClause> Constraints { get; init; }
         = ImmutableArray<ConstraintClause>.Empty;
 
+    /// <summary>
+    /// Variance annotation (None, Covariant, Contravariant) for delegate/interface type parameters.
+    /// </summary>
+    public TypeParameterVariance Variance { get; init; } = TypeParameterVariance.None;
+
     public override string GetDisplayName() => Name;
 
     public override bool IsAssignableTo(SemanticType other)

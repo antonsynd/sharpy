@@ -249,6 +249,11 @@ public static class DiagnosticCodes
         // Exhaustiveness validation (SPY0416)
         public const string NonExhaustiveMatchExpression = "SPY0416";
 
+        // Variance validation (SPY0417-SPY0419)
+        public const string VarianceOnClassOrStruct = "SPY0417";
+        public const string CovariantInContravariantPosition = "SPY0418";
+        public const string ContravariantInCovariantPosition = "SPY0419";
+
         // Warnings (SPY0450-SPY0499)
         public const string UnreachableCodeWarning = "SPY0450";
         public const string UnusedVariable = "SPY0451";

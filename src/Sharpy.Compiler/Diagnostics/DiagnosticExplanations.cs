@@ -1064,6 +1064,24 @@ public static class DiagnosticExplanations
             "union Option:\n    case Some(value: int)\n    case None_\nx: int = match opt:\n    case Some(v): v  # missing None_ case",
             "Cover all cases or add a wildcard:\nx: int = match opt:\n    case Some(v): v\n    case _: 0");
 
+        Add(dict, DiagnosticCodes.Validation.VarianceOnClassOrStruct, "Variance annotation not allowed on class/struct", "Validation",
+            "Type parameter variance annotations (in/out) are only allowed on delegate and interface declarations. " +
+            "Classes and structs cannot have variant type parameters because they have both input and output positions.",
+            "class Box[out T]:  # error: variance not allowed on class\n    value: T",
+            "Remove the variance annotation:\nclass Box[T]:\n    value: T\n\nOr use a delegate or interface instead:\ndelegate Producer[out T]() -> T");
+
+        Add(dict, DiagnosticCodes.Validation.CovariantInContravariantPosition, "Covariant type parameter in contravariant position", "Validation",
+            "A type parameter declared as covariant (out) appears in a contravariant position (e.g., as a parameter type). " +
+            "Covariant type parameters can only appear in output positions such as return types.",
+            "delegate BadHandler[out T](value: T) -> None  # error: T is covariant but used as parameter",
+            "Change the variance to 'in' or remove it:\ndelegate Handler[in T](value: T) -> None");
+
+        Add(dict, DiagnosticCodes.Validation.ContravariantInCovariantPosition, "Contravariant type parameter in covariant position", "Validation",
+            "A type parameter declared as contravariant (in) appears in a covariant position (e.g., as a return type). " +
+            "Contravariant type parameters can only appear in input positions such as parameter types.",
+            "delegate BadProducer[in T]() -> T  # error: T is contravariant but used as return type",
+            "Change the variance to 'out' or remove it:\ndelegate Producer[out T]() -> T");
+
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
         Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",
