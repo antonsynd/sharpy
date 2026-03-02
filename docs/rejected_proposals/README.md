@@ -27,3 +27,5 @@ Precedence: **Axiom 1 (.NET Runtime Compatibility) > Axiom 3 (Type Safety) > Axi
 |---|----------|--------|----------------------|
 | SRP-0001 | [`@kwargs` decorator](SRP-0001-kwargs-decorator.md) | Rejected | Anti-pattern: magic behavior |
 | SRP-0002 | [`@dynamic_kwargs` decorator](SRP-0002-dynamic-kwargs-decorator.md) | Rejected | Axiom 3: type safety |
+| SRP-0003 | [Events with function type syntax](SRP-0003-events-function-type-syntax.md) | Rejected | Axiom 1: function types → `Action<T>`, not `EventHandler` |
+| SRP-0004 | [Events with nested accessor syntax](SRP-0004-events-nested-accessor-syntax.md) | Rejected | Consistency: inconsistent with property accessor pattern |
