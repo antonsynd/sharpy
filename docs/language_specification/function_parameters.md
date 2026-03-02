@@ -80,41 +80,21 @@ total = sum_all(1, 2, 3)  # 6
 
 For complete details on variadic arguments, including unpacking rules, C# interop, and examples, see [Function Variadic Arguments](function_variadic_arguments.md).
 
-## Flexible Arguments (Extended Features)
+## Flexible Arguments
 
-Sharpy provides optional extended argument handling for Python-style flexibility:
-
-- **Positional-only (`/`)** and **keyword-only (`*`)** parameter markers — zero-cost compile-time validation
-- **Typed kwargs** via `@kwargs` decorator — generates a companion struct for bundling keyword arguments
-- **Dynamic kwargs** via `@dynamic_kwargs` decorator — dictionary-based kwargs for truly dynamic scenarios
-
-These features are opt-in and preserve the vanilla C# calling convention alongside any extended overloads.
+Sharpy provides **positional-only (`/`)** and **keyword-only (`*`)** parameter markers for zero-cost compile-time validation of how arguments are passed.
 
 For complete details, see [Flexible Arguments](flexible_arguments.md).
 
 ### Quick Example
 
 ```python
-# Tier 0: Positional-only and keyword-only markers (zero cost)
 def search(query: str, /, limit: int = 10, *, case_sensitive: bool = False) -> list[str]:
     pass
 
 search("hello", 20, case_sensitive=True)  # ✅ Valid
 search(query="hello")                      # ❌ ERROR: 'query' is positional-only
 search("hello", 20, True)                  # ❌ ERROR: 'case_sensitive' is keyword-only
-
-# Tier 1: Typed kwargs struct (small overhead, full type safety)
-@kwargs
-def configure(host: str, /, *, port: int = 8080, timeout: float = 30.0) -> Config:
-    return Config(host, port, timeout)
-
-opts = ConfigureKwargs(port=9000, timeout=60.0)
-configure("localhost", opts)  # Pass bundled options
-
-# Tier 2: Dynamic kwargs (runtime cost, for forwarding scenarios)
-@dynamic_kwargs
-def forward_request(endpoint: str, **kwargs: dict[str, object]) -> Response:
-    return http_post(endpoint, kwargs)
 ```
 
 ## Method Overloading

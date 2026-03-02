@@ -8,6 +8,8 @@
 <!-- Phase 10.2 marked complete on 2026-02-28 (await expressions implemented) -->
 <!-- Phase 10.3-10.6 marked complete on 2026-02-28 (async for/with, async generators, asyncio.gather) -->
 <!-- Phase 11.1-11.2 marked complete on 2026-03-01 (positional-only and keyword-only parameters) -->
+<!-- Phase 11.5 marked complete on 2026-03-01 (partial application with operator sections) -->
+<!-- Phase 11 marked COMPLETE on 2026-03-01 (11.3 @kwargs + 11.4 @dynamic_kwargs dropped) -->
 
 # Sharpy Language Feature Completeness — Phased Roadmap
 
@@ -40,6 +42,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 - **Phase 9 (v0.2.3):** `yield` statement, `yield from` delegation, generator return type inference
 - **Phase 8 (v0.2.2):** Match expressions, or-patterns, type patterns with binding, relational patterns, property/positional patterns, tagged union declarations, union case patterns in match, exhaustiveness checking (bool/enum/union/non-finite types)
 - **Phase 10 (v0.2.4):** `async def` functions, `await` expressions, `async for` loops, `async with` statements (IDisposable + dunder protocol), async generators (`yield`/`yield from` in async), `asyncio.gather` → `Task.WhenAll`
+- **Phase 11 (v0.2.5):** Positional-only (`/`) and keyword-only (`*`) parameter markers, partial application with operator sections (11.3 `@kwargs` + 11.4 `@dynamic_kwargs` dropped)
 
 ### Missing (grouped by phase below)
 
@@ -147,13 +150,13 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 |---|---------|-----------|-------|
 | ~~11.1~~ | ~~Positional-only parameters (`/`)~~ | ~~M~~ | ~~Completed.~~ `ParameterKind.PositionalOnly` flag; parser handles `/` separator (SPY0126–SPY0129); call-site enforcement via SPY0370; codegen uses named arguments for C# translation |
 | ~~11.2~~ | ~~Keyword-only parameters (`*`)~~ | ~~M~~ | ~~Completed.~~ `ParameterKind.KeywordOnly` flag; parser handles bare `*` separator; call-site enforcement via SPY0371; `ReorderParametersForCSharp()` + named argument generation |
-| 11.3 | `@kwargs` decorator | L | Compiler-understood transforming decorator; generates typed kwargs struct + method overload |
-| 11.4 | `@dynamic_kwargs` decorator | L | Enables `**kwargs: dict[str, T]` parameter on decorated function; explicit opt-in for dynamic typing |
+| ~~11.3~~ | ~~`@kwargs` decorator~~ | ~~L~~ | ~~Dropped.~~ Compiler-understood transforming decorators violate "no magic" principle; named arguments + user-defined option structs achieve the same goal without invisible code generation |
+| ~~11.4~~ | ~~`@dynamic_kwargs` decorator~~ | ~~L~~ | ~~Dropped.~~ Trades type safety for flexibility (conflicts with Axiom 3); `**kwargs` syntax only valid with decorator is surprising; passing `dict[str, T]` explicitly is clearer |
 | ~~11.5~~ | ~~Partial application~~ | ~~L~~ | ~~Completed.~~ Parser-level desugaring: `Identifier("_")` in call args and paren exprs lowered to `LambdaExpression`. No new AST node needed. SPY0130–SPY0131 for error cases. TypeChecker body-based param inference for unannotated lambdas. Operator sections `(_ * 2)`, `(_ > 0)`, `(-_)` |
 
 **Key files:** `Parser.Definitions.cs`, `Parser.Expressions.cs`, `TypeChecker.Expressions.cs`, `RoslynEmitter.Expressions.cs`, `ParameterSymbol`
 
-**Dependencies:** ~~11.1+11.2 complete.~~ 11.3+11.4 together. ~~11.5 complete.~~
+**Dependencies:** ~~All complete.~~ Phase 11 is done.
 
 ---
 
@@ -184,10 +187,10 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | **8** | v0.2.2 | Pattern Matching & Tagged Unions | ~~8~~ ✅ Complete | Match expressions, or/type/relational/property/positional patterns, tagged unions, union case patterns, exhaustiveness checking |
 | **9** | v0.2.3 | Generators & Iterators | ~~3~~ ✅ Complete | `yield`/`yield from`, generator inference, 4 new diagnostics (SPY0265–SPY0269) |
 | **10** | v0.2.4 | Async/Await | ~~6~~ ✅ Complete | `async def`, `await`, `async for`, `async with` (dual protocol), async generators, `asyncio.gather` |
-| **11** | v0.2.5 | Advanced Functions | ~~2~~ + 3 | ~~Pos-only/kw-only~~ ✅, `@kwargs`, `@dynamic_kwargs`, partial application |
+| **11** | v0.2.5 | Advanced Functions | ~~5~~ ✅ Complete | ~~Pos-only/kw-only~~ ✅, ~~partial application~~ ✅ (11.3 `@kwargs` + 11.4 `@dynamic_kwargs` dropped — see Out of Scope) |
 | **12** | v0.2.6 | Type System & Polish | 5 | Variance, delegates, events, custom decorators, spec audit |
 
-**Total: 8 remaining items across 2 phases (v0.2.5–v0.2.6)** — Phases 6, 7, 8, 9, 10 all complete; 11.1–11.2 complete (30 items delivered)
+**Total: 5 remaining items in Phase 12 (v0.2.6)** — Phases 6–11 all complete (33 items delivered, 2 dropped)
 
 ---
 
@@ -196,13 +199,12 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 ```
 ✅ Phase 6 (v0.2.0) ──→ ✅ Phase 7 (v0.2.1) ──→ ✅ Phase 8 (v0.2.2)  ──→ ┐
                                                                              ├──→ Phase 12 (v0.2.6)
-✅ Phase 9 (v0.2.3) ──→ ✅ Phase 10 (v0.2.4)  ──→    Phase 11 (v0.2.5) ──→ ┘
+✅ Phase 9 (v0.2.3) ──→ ✅ Phase 10 (v0.2.4)  ──→ ✅ Phase 11 (v0.2.5) ──→ ┘
 ```
 
-- ✅ Phases 6, 7, 8, 9, 10 all complete
-- **Phase 11 is next** — 3 remaining items: `@kwargs`, `@dynamic_kwargs`, partial application (11.1–11.2 complete)
-- **Phase 12 follows** — 5 items: delegates, generic variance, events, custom decorator args, spec audit
-- Phases 11 and 12 can proceed in parallel (independent tracks)
+- ✅ Phases 6–11 all complete
+- **Phase 12 is next** — 5 items: delegates, generic variance, events, custom decorator args, spec audit
+- 12.1 (delegates) → 12.2 (variance) is the only dependency chain; 12.3–12.5 are independent
 
 ---
 
@@ -213,7 +215,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 3. ~~**Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy~~ ✅ Complete (8.1–8.8 all done: match expressions, all pattern types, tagged unions, union case patterns, exhaustiveness checking)
 4. ~~**Phase 9 before 10** — generators are prerequisite for async generators~~ ✅ Done
 5. ~~**Phase 10 completes the async story** — last major syntax feature~~ ✅ Complete (10.1–10.6 all done: async def, await, async for/with, async generators with yield from, asyncio.gather mapping)
-6. **Phases 11–12 are next** — 11.1–11.2 complete; remaining: kwargs decorators, partial application, type system advances (delegates, variance, events), and gap-filling
+6. **Phase 12 is next** — Phases 6–11 complete; remaining: type system advances (delegates, variance, events), custom decorator args, and gap-filling
 
 ---
 
@@ -221,7 +223,9 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 Intentional language design decisions:
 - `global`/`nonlocal` — C# scoping rules (Axiom 1)
-- `**kwargs` without decorator — statically untypeable (Axiom 3)
+- `**kwargs` (any form) — statically untypeable (Axiom 3); pass `dict[str, T]` explicitly instead
+- `@kwargs` decorator — compiler-understood transforming decorators violate "no magic" principle; named arguments + user-defined option structs achieve the same goal without invisible code generation
+- `@dynamic_kwargs` decorator — trades type safety for flexibility (Axiom 3 violation); `**kwargs` syntax only valid with decorator is surprising; explicit dict parameter is clearer
 - Multiple class inheritance — C# single inheritance (Axiom 1)
 - `@classmethod` — use `@static` instead
 - `__call__` — no callable protocol
@@ -305,9 +309,9 @@ Intentional language design decisions:
 
 **Phase 10 audit (2026-02-28)** — All 6 items confirmed COMPLETE. 10.1: `async def` with `FunctionDef.IsAsync`. 10.2: `await` with SPY0273/SPY0274. 10.3: `async for` → `await foreach` with `IAsyncEnumerable<T>` validation (SPY0360). 10.4: `async with` dual protocol — `IAsyncDisposable` → `await using` + `__aenter__`/`__aexit__` → try/finally with `ContextManagerKind` enum in SemanticInfo. 10.5: Async generators → `IAsyncEnumerable<T>` return type, `yield from` in async generators as Sharpy extension. 10.6: Synthetic `asyncio` module with `gather` → `Task.WhenAll`, `sleep` → `Task.Delay`. 42 async test fixtures total.
 
-**Phase 11 audit (updated 2026-03-01)** — 11.1 (positional-only `/`) and 11.2 (keyword-only `*`) confirmed COMPLETE: `ParameterKind` enum, parser separators (SPY0126–SPY0129), call-site enforcement (SPY0370/SPY0371), codegen parameter reordering with named arguments, comprehensive test fixtures. 11.5 (partial application) COMPLETE: parser-level desugaring of `Identifier("_")` in call args and paren exprs to `LambdaExpression`; SPY0130–SPY0131 diagnostics; TypeChecker body-based param inference; operator sections. 11.3–11.4 NOT STARTED: no `@kwargs`/`@dynamic_kwargs` decorator handling.
+**Phase 11 audit (updated 2026-03-01)** — PHASE COMPLETE. 11.1 (positional-only `/`) and 11.2 (keyword-only `*`) confirmed COMPLETE: `ParameterKind` enum, parser separators (SPY0126–SPY0129), call-site enforcement (SPY0370/SPY0371), codegen parameter reordering with named arguments, comprehensive test fixtures. 11.5 (partial application) COMPLETE: parser-level desugaring of `Identifier("_")` in call args and paren exprs to `LambdaExpression`; SPY0130–SPY0131 diagnostics; TypeChecker body-based param inference; operator sections. 11.3 (`@kwargs`) and 11.4 (`@dynamic_kwargs`) DROPPED: compiler-understood transforming decorators violate "no magic" principle; dynamic kwargs conflicts with Axiom 3; named arguments + explicit option structs suffice.
 
-**Phase 12 audit** — 5 items remaining, NOT STARTED. No `DelegateDef`/`EventDef` AST nodes, no variance markers on `TypeParameterDef`, no custom decorator arguments. `TokenType.Event` is reserved but unused by parser. (Nested comprehensions removed — SPY0515 was dead code; feature already works.)
+**Phase 12 audit** — 5 items remaining, NOT STARTED. No `DelegateDef`/`EventDef` AST nodes, no variance markers on `TypeParameterDef`, no custom decorator arguments. `TokenType.Event` is reserved but unused by parser. (Nested comprehensions removed — SPY0515 was dead code; feature already works.) **This is now the only remaining phase.**
 
 ### Language Spec Accuracy Issues Found
 

@@ -1,20 +1,20 @@
 # Flexible Arguments
 
-> **Implementation status:** Not yet implemented — planned for Phase 11 (v0.2.5). Positional-only (`/`), keyword-only (`*`), `@kwargs`, and `@dynamic_kwargs` are all not yet parsed.
+> **Implementation status:** Tier 0 (positional-only `/` and keyword-only `*`) is fully implemented. Tiers 1 and 2 (`@kwargs` and `@dynamic_kwargs`) have been dropped from the roadmap.
 
 This document specifies Sharpy's extended argument handling features, which provide Python-style parameter flexibility while maintaining static type safety.
 
 ## Overview
 
-Sharpy provides three tiers of argument flexibility:
+Sharpy provides compile-time argument flexibility via positional-only and keyword-only parameter markers:
 
-| Tier | Feature | Cost | Decorator Required |
-|------|---------|------|-------------------|
-| 0 | Positional-only (`/`) and keyword-only (`*`) markers | Zero (compile-time only) | No |
-| 1 | Typed kwargs via generated struct | Small (struct + overload) | `@kwargs` |
-| 2 | Dynamic kwargs dictionary | Runtime (dictionary operations) | `@dynamic_kwargs` |
+| Feature | Cost | Decorator Required |
+|---------|------|-------------------|
+| Positional-only (`/`) and keyword-only (`*`) markers | Zero (compile-time only) | No |
 
-Each tier is opt-in and the costs are explicit. The vanilla C# calling convention is always preserved alongside any extended overloads.
+The vanilla C# calling convention is always preserved. For bundling optional keyword arguments, use a user-defined options struct — no special decorator needed.
+
+> **Design note:** `@kwargs` (compiler-generated structs) and `@dynamic_kwargs` (dictionary-based `**kwargs`) were evaluated and dropped. Compiler-understood transforming decorators violate the "no magic" principle, and dynamic kwargs conflicts with Axiom 3 (type safety). Named arguments with default values and explicit option structs achieve the same goals without invisible code generation.
 
 ---
 
@@ -112,254 +112,31 @@ The Sharpy compiler tracks parameter categories and validates call sites accordi
 
 ---
 
-## Tier 1: Typed Kwargs (`@kwargs`)
+## ~~Tier 1: Typed Kwargs (`@kwargs`)~~ — Dropped
 
-The `@kwargs` decorator enables Python-style keyword argument bundling while maintaining full static type safety. It generates a companion struct and an additional overload.
-
-### Syntax
-
-```python
-@kwargs
-def configure(host: str, /, *, port: int = 8080, timeout: float = 30.0, retries: int = 3) -> Config:
-    return Config(host, port, timeout, retries)
-```
-
-**Requirements:**
-- The `@kwargs` decorator must be applied to the function
-- At least one keyword-only parameter (after `*`) must be present
-- Positional-only parameters (before `/`) remain positional in all overloads
-
-### Generated Code
-
-For the example above, the compiler generates:
-
-```csharp
-// Primary overload (vanilla C# signature)
-public static Config Configure(string host, int port = 8080, float timeout = 30.0f, int retries = 3)
-    => new Config(host, port, timeout, retries);
-
-// Kwargs overload
-public static Config Configure(string host, ConfigureKwargs kwargs)
-    => Configure(host, kwargs.Port ?? 8080, kwargs.Timeout ?? 30.0f, kwargs.Retries ?? 3);
-
-// Auto-generated kwargs struct
-public readonly struct ConfigureKwargs
-{
-    public int? Port { get; init; }
-    public float? Timeout { get; init; }
-    public int? Retries { get; init; }
-}
-```
-
-### Calling Conventions
-
-```python
-# Standard call (uses primary overload)
-configure("localhost", port=9000, timeout=60.0)
-
-# Create reusable options object
-prod_opts = ConfigureKwargs(port=443, timeout=120.0, retries=5)
-dev_opts = ConfigureKwargs(port=8080, timeout=5.0, retries=1)
-
-# Pass options object (uses kwargs overload)
-configure("prod.example.com", prod_opts)
-configure("localhost", dev_opts)
-
-# Spread syntax to unpack kwargs struct
-configure("localhost", **prod_opts)
-```
-
-### Struct Initialization
-
-The kwargs struct supports multiple initialization styles:
-
-```python
-# Named arguments (most common)
-opts = ConfigureKwargs(port=9000, timeout=60.0)
-
-# Partial initialization (unset fields remain None internally)
-opts = ConfigureKwargs(port=9000)  # timeout and retries use function defaults
-
-# Modification via 'with' expression
-new_opts = opts with timeout=120.0
-```
-
-### Combining with Positional-Only
-
-When `/` is used, positional-only parameters are excluded from the kwargs struct:
-
-```python
-@kwargs
-def process(data: bytes, /, *, encoding: str = "utf-8", validate: bool = True) -> str:
-    pass
-```
-
-```csharp
-// 'data' stays positional, only keyword-only params go in struct
-public readonly struct ProcessKwargs
-{
-    public string? Encoding { get; init; }
-    public bool? Validate { get; init; }
-}
-
-public static string Process(byte[] data, string encoding = "utf-8", bool validate = true) => ...;
-public static string Process(byte[] data, ProcessKwargs kwargs) => ...;
-```
-
-### Struct Naming Convention
-
-The generated struct name follows the pattern `{FunctionName}Kwargs`:
-
-| Function | Struct Name |
-|----------|-------------|
-| `configure` | `ConfigureKwargs` |
-| `http_request` | `HttpRequestKwargs` |
-| `MyClass.process` | `MyClass.ProcessKwargs` (nested) |
-
-For methods, the struct is nested within the containing class to avoid name collisions.
-
-### Inheritance and Kwargs
-
-When overriding a method decorated with `@kwargs`, the derived class can:
-
-1. **Inherit the same kwargs struct** (default behavior)
-2. **Extend with additional kwargs** (generates a new struct that includes parent fields)
-
-```python
-class BaseClient:
-    @kwargs
-    @virtual
-    def request(self, url: str, /, *, timeout: float = 30.0) -> Response:
-        pass
-
-class ExtendedClient(BaseClient):
-    @kwargs
-    @override
-    def request(self, url: str, /, *, timeout: float = 30.0, retry_count: int = 3) -> Response:
-        pass
-```
-
-### Performance Characteristics
-
-| Aspect | Cost |
-|--------|------|
-| Struct allocation | Stack-allocated (zero heap allocation for `readonly struct`) |
-| Nullable wrappers | Minimal overhead for value types |
-| Overload dispatch | Resolved at compile time |
-| Default value handling | Single null-coalescing check per field |
-
-The kwargs struct is a `readonly struct`, which .NET can often optimize to pass by reference or inline entirely.
-
-### Limitations
-
-- Kwargs struct fields are always nullable (to detect "not provided")
-- Cannot spread (`**`) a dictionary into a kwargs struct (use Tier 2 for dynamic kwargs)
-- Kwargs struct cannot contain `ref` or `out` parameters
-
-*Implementation: 🔄 Lowered - Generates struct definition and additional method overload.*
+> **Dropped from roadmap.** Compiler-understood transforming decorators (generating invisible structs and overloads) violate the "no magic" principle. Named arguments with default values provide equivalent ergonomics. For reusable option bundles, define an explicit struct:
+>
+> ```python
+> struct ConfigOptions:
+>     port: int = 8080
+>     timeout: float = 30.0
+>
+> def configure(host: str, opts: ConfigOptions = ConfigOptions()) -> Config:
+>     return Config(host, opts.port, opts.timeout)
+> ```
 
 ---
 
-## Tier 2: Dynamic Kwargs (`@dynamic_kwargs`)
+## ~~Tier 2: Dynamic Kwargs (`@dynamic_kwargs`)~~ — Dropped
 
-For rare cases requiring truly dynamic keyword arguments (unknown keys at compile time), Sharpy provides `@dynamic_kwargs`. This trades type safety for flexibility.
-
-### Syntax
-
-```python
-@dynamic_kwargs
-def forward_request(endpoint: str, **kwargs: dict[str, object]) -> Response:
-    return http_post(endpoint, kwargs)
-```
-
-**Requirements:**
-- The `@dynamic_kwargs` decorator must be applied
-- The function must have a `**kwargs` parameter with explicit type annotation
-- The annotation must be `dict[str, T]` where `T` is the value type
-
-### Generated Code
-
-```csharp
-public static Response ForwardRequest(string endpoint, IDictionary<string, object?>? kwargs = null)
-{
-    kwargs ??= new Dictionary<string, object?>();
-    return HttpPost(endpoint, kwargs);
-}
-```
-
-### Calling Conventions
-
-```python
-# Pass keyword arguments dynamically
-forward_request("/api/users", name="Alice", age=30, active=True)
-
-# Pass a dictionary directly
-params = {"name": "Bob", "role": "admin"}
-forward_request("/api/users", **params)
-
-# Mix positional and dynamic kwargs
-forward_request("/api/users", **params, extra_field="value")
-```
-
-### Type Safety Trade-offs
-
-| Aspect | Tier 1 (`@kwargs`) | Tier 2 (`@dynamic_kwargs`) |
-|--------|-------------------|---------------------------|
-| Key validation | Compile-time | Runtime (KeyError) |
-| Value types | Strongly typed per field | Single type or `object` |
-| IDE autocomplete | Full support | Limited to known keys |
-| Refactoring safety | High | Low |
-
-### Accessing Dynamic Kwargs
-
-Inside the function, kwargs is a standard dictionary:
-
-```python
-@dynamic_kwargs
-def process(**kwargs: dict[str, object]) -> None:
-    # Type-safe access requires explicit casting
-    name = kwargs.get("name") to str? ?? "default"
-    count = kwargs.get("count") to int? ?? 0
-
-    # Iteration
-    for key, value in kwargs.items():
-        print(f"{key} = {value}")
-
-    # Check for presence
-    if "optional_flag" in kwargs:
-        handle_flag(kwargs["optional_flag"] to bool)
-```
-
-### Combining with Typed Parameters
-
-Dynamic kwargs can coexist with typed positional and keyword parameters:
-
-```python
-@dynamic_kwargs
-def api_call(
-    method: str,           # Required positional
-    url: str,              # Required positional
-    /,                     # Positional-only marker
-    *,                     # Keyword-only marker
-    timeout: float = 30.0, # Typed keyword-only
-    **headers: dict[str, str]  # Dynamic kwargs for HTTP headers
-) -> Response:
-    pass
-
-# Usage
-api_call("GET", "/users", timeout=60.0, Authorization="Bearer token", Accept="application/json")
-```
-
-### When to Use Tier 2
-
-Use `@dynamic_kwargs` only when:
-- Forwarding arguments to external APIs with unknown schemas
-- Building generic wrappers or decorators
-- Interfacing with dynamic .NET APIs (e.g., `ExpandoObject`)
-
-For most cases, prefer Tier 1 (`@kwargs`) for its compile-time safety.
-
-*Implementation: 🔄 Lowered - Generates method with dictionary parameter and call-site transformation.*
+> **Dropped from roadmap.** Dynamic kwargs conflicts with Axiom 3 (type safety) and introduces a `**kwargs` parameter syntax that only works with a specific decorator. For dynamic argument forwarding, pass a `dict[str, T]` explicitly:
+>
+> ```python
+> def forward_request(endpoint: str, kwargs: dict[str, object] = {}) -> Response:
+>     return http_post(endpoint, kwargs)
+>
+> forward_request("/api", {"name": "Alice", "age": 30})
+> ```
 
 ---
 
@@ -367,24 +144,18 @@ For most cases, prefer Tier 1 (`@kwargs`) for its compile-time safety.
 
 ### Pipe Operator
 
-All tiers work with the pipe operator:
+Positional-only and keyword-only markers work with the pipe operator:
 
 ```python
-@kwargs
 def transform(data: list[int], /, *, scale: float = 1.0) -> list[float]:
     return [x * scale for x in data]
 
-# Pipe with kwargs
 result = [1, 2, 3] |> transform(scale=2.0)
-
-# Pipe with kwargs struct
-opts = TransformKwargs(scale=2.0)
-result = [1, 2, 3] |> transform(opts)
 ```
 
 ### Partial Application
 
-Partial application works with Tier 0 validation:
+Partial application works with positional-only and keyword-only validation:
 
 ```python
 def example(a: int, /, b: int, *, c: int) -> int:
@@ -392,24 +163,6 @@ def example(a: int, /, b: int, *, c: int) -> int:
 
 partial_fn = example(1, _, c=3)  # ✅ 'a' positional, 'c' keyword-only
 result = partial_fn(2)          # Returns 6
-```
-
-### Overloading
-
-Functions with `@kwargs` can still be overloaded by parameter types:
-
-```python
-@kwargs
-def process(data: str, /, *, encoding: str = "utf-8") -> bytes:
-    pass
-
-@kwargs
-def process(data: bytes, /, *, validate: bool = True) -> str:
-    pass
-
-# Each overload gets its own kwargs struct
-# ProcessKwargs_str (for str overload)
-# ProcessKwargs_bytes (for bytes overload)
 ```
 
 ---
@@ -423,10 +176,6 @@ positional_only_params = param_def {"," param_def} "," "/" ;
 regular_params    = param_def {"," param_def} ;
 keyword_only_params = "*" "," param_def {"," param_def} ;
 variadic_params   = "*" IDENTIFIER [":" type_annotation] ;
-dynamic_kwargs    = "**" IDENTIFIER ":" "dict" "[" type "," type "]" ;
-
-(* Kwargs spread at call site *)
-argument          = expression | IDENTIFIER "=" expression | "**" expression ;
 ```
 
 ---
@@ -438,8 +187,8 @@ argument          = expression | IDENTIFIER "=" expression | "**" expression ;
 | Python | Sharpy |
 |--------|--------|
 | `def f(x, /, y, *, z): ...` | `def f(x: T, /, y: T, *, z: T) -> R: ...` (same syntax, needs types) |
-| `def f(**kwargs): ...` | `@dynamic_kwargs def f(**kwargs: dict[str, object]) -> R: ...` |
-| Untyped kwargs dict | Use `@kwargs` with typed struct instead |
+| `def f(**kwargs): ...` | Not supported — pass `dict[str, T]` explicitly |
+| Untyped kwargs dict | Use named arguments with defaults, or a user-defined options struct |
 
 ### From C#
 
