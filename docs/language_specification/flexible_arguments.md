@@ -114,7 +114,7 @@ The Sharpy compiler tracks parameter categories and validates call sites accordi
 
 ## ~~Tier 1: Typed Kwargs (`@kwargs`)~~ — Dropped
 
-> **Dropped from roadmap.** Compiler-understood transforming decorators (generating invisible structs and overloads) violate the "no magic" principle. Named arguments with default values provide equivalent ergonomics. For reusable option bundles, define an explicit struct:
+> **Dropped from roadmap.** See [SRP-0001](../rejected_proposals/SRP-0001-kwargs-decorator.md) for full rationale. Compiler-understood transforming decorators (generating invisible structs and overloads) violate the "no magic" principle. Named arguments with default values provide equivalent ergonomics. For reusable option bundles, define an explicit struct:
 >
 > ```python
 > struct ConfigOptions:
@@ -129,7 +129,7 @@ The Sharpy compiler tracks parameter categories and validates call sites accordi
 
 ## ~~Tier 2: Dynamic Kwargs (`@dynamic_kwargs`)~~ — Dropped
 
-> **Dropped from roadmap.** Dynamic kwargs conflicts with Axiom 3 (type safety) and introduces a `**kwargs` parameter syntax that only works with a specific decorator. For dynamic argument forwarding, pass a `dict[str, T]` explicitly:
+> **Dropped from roadmap.** See [SRP-0002](../rejected_proposals/SRP-0002-dynamic-kwargs-decorator.md) for full rationale. Dynamic kwargs conflicts with Axiom 3 (type safety) and introduces a `**kwargs` parameter syntax that only works with a specific decorator. For dynamic argument forwarding, pass a `dict[str, T]` explicitly:
 >
 > ```python
 > def forward_request(endpoint: str, kwargs: dict[str, object] = {}) -> Response:

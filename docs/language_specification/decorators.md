@@ -211,4 +211,4 @@ class TodoService:
 
 ## Flexible Argument Decorators
 
-> **Dropped** — `@kwargs` and `@dynamic_kwargs` were removed from the roadmap. Compiler-understood transforming decorators violate the "no magic" principle, and `@dynamic_kwargs` conflicts with Axiom 3 (type safety). Named arguments with default values and user-defined option structs provide equivalent functionality without invisible code generation. See [Flexible Arguments](flexible_arguments.md) for the rationale.
+> **Dropped** — `@kwargs` and `@dynamic_kwargs` were removed from the roadmap. Compiler-understood transforming decorators violate the "no magic" principle, and `@dynamic_kwargs` conflicts with Axiom 3 (type safety). Named arguments with default values and user-defined option structs provide equivalent functionality without invisible code generation. See [SRP-0001](../rejected_proposals/SRP-0001-kwargs-decorator.md) and [SRP-0002](../rejected_proposals/SRP-0002-dynamic-kwargs-decorator.md) for full rationale.
