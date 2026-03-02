@@ -937,6 +937,11 @@ public static class DiagnosticExplanations
             "def foo(*, key: int) -> int:\n    return key\nfoo(1)  # error: 'key' is keyword-only",
             "Pass the argument by name:\nfoo(key=1)");
 
+        Add(dict, DiagnosticCodes.Semantic.DelegateWithBody, "Delegate declaration must not have a body", "Semantic",
+            "A delegate declaration defines a function signature type and cannot have a body. Delegates are pure type declarations.",
+            "delegate Handler(event: Event) -> bool:\n    pass  # error: delegates cannot have a body",
+            "Remove the body from the delegate declaration:\ndelegate Handler(event: Event) -> bool");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",

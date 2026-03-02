@@ -215,6 +215,7 @@ public static class DiagnosticCodes
         public const string PositionalPatternNoDeconstruct = "SPY0369";
         public const string PositionalOnlyPassedByKeyword = "SPY0370";
         public const string KeywordOnlyPassedPositionally = "SPY0371";
+        public const string DelegateWithBody = "SPY0372";
     }
 
     /// <summary>

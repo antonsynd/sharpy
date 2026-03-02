@@ -322,6 +322,10 @@ internal partial class TypeChecker
                 CheckUnion(unionDef);
                 break;
 
+            case DelegateDef delegateDef:
+                CheckDelegate(delegateDef);
+                break;
+
             case Assignment assignment:
                 CheckAssignment(assignment);
                 break;

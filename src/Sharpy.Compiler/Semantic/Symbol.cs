@@ -323,7 +323,8 @@ public enum TypeKind
     Struct,
     Interface,
     Enum,
-    Union
+    Union,
+    Delegate
 }
 
 public enum AccessLevel

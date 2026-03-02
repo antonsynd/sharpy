@@ -848,6 +848,89 @@ internal partial class TypeChecker
         }
     }
 
+    private void CheckDelegate(DelegateDef delegateDef)
+    {
+        _logger.LogDebug($"Type checking delegate: {delegateDef.Name}");
+
+        var delegateSymbol = _symbolTable.Lookup(delegateDef.Name) as TypeSymbol;
+        if (delegateSymbol == null)
+        {
+            AddError($"Delegate symbol for '{delegateDef.Name}' not found", delegateDef.LineStart, delegateDef.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedType, span: delegateDef.Span);
+            return;
+        }
+
+        _symbolTable.EnterScope($"delegate:{delegateDef.Name}");
+
+        try
+        {
+            // Register type parameters in the scope so they can be resolved
+            foreach (var typeParam in delegateDef.TypeParameters)
+            {
+                var typeParamSymbol = new TypeParameterSymbol
+                {
+                    Name = typeParam.Name,
+                    Kind = SymbolKind.TypeParameter,
+                    DeclaringType = delegateSymbol,
+                    Constraints = typeParam.Constraints,
+                    DeclarationLine = typeParam.LineStart,
+                    DeclarationColumn = typeParam.ColumnStart
+                };
+                _symbolTable.Define(typeParamSymbol);
+            }
+
+            // Find the synthetic Invoke method
+            var invokeSymbol = delegateSymbol.Methods.FirstOrDefault(m => m.Name == "Invoke");
+            if (invokeSymbol == null)
+                return;
+
+            // Resolve parameter types
+            var updatedParameters = new List<ParameterSymbol>();
+            for (int i = 0; i < delegateDef.Parameters.Length; i++)
+            {
+                var param = delegateDef.Parameters[i];
+                var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+
+                if (param.Type == null)
+                {
+                    AddError($"Delegate parameter '{param.Name}' requires a type annotation",
+                        param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.MissingTypeAnnotation,
+                        span: param.Span);
+                }
+
+                updatedParameters.Add(new ParameterSymbol
+                {
+                    Name = param.Name,
+                    Type = paramType,
+                    HasDefault = param.DefaultValue != null,
+                    DefaultValue = param.DefaultValue,
+                    IsVariadic = param.IsVariadic,
+                    IsPositionalOnly = param.Kind == Parser.Ast.ParameterKind.PositionalOnly,
+                    IsKeywordOnly = param.Kind == Parser.Ast.ParameterKind.KeywordOnly
+                });
+            }
+
+            // Resolve return type
+            var returnType = _typeResolver.ResolveTypeAnnotation(delegateDef.ReturnType);
+            if (returnType == SemanticType.Unknown && delegateDef.ReturnType == null)
+            {
+                returnType = SemanticType.Void;
+            }
+
+            // Update the Invoke method symbol with resolved types
+            var invokeIndex = delegateSymbol.Methods.IndexOf(invokeSymbol);
+            delegateSymbol.Methods[invokeIndex] = invokeSymbol with
+            {
+                Parameters = updatedParameters,
+                ReturnType = returnType
+            };
+        }
+        finally
+        {
+            _symbolTable.ExitScope();
+        }
+    }
+
     /// <summary>
     /// Resolves property types from their type annotations in the AST.
     /// Must be called after field type resolution and before member checking.

@@ -217,6 +217,10 @@ internal class NameResolver
                 ResolveUnionDeclaration(unionDef);
                 break;
 
+            case DelegateDef delegateDef:
+                ResolveDelegateDeclaration(delegateDef);
+                break;
+
             case FunctionDef functionDef:
                 ResolveFunctionDeclaration(functionDef);
                 break;
@@ -439,6 +443,81 @@ internal class NameResolver
         }
 
         _symbolTable.ExitScope();
+    }
+
+    private void ResolveDelegateDeclaration(DelegateDef delegateDef)
+    {
+        _logger.LogDebug($"Resolving delegate declaration: {delegateDef.Name}");
+
+        if (_symbolTable.Lookup(delegateDef.Name, searchParents: false) != null)
+        {
+            AddError($"Delegate '{delegateDef.Name}' is already defined",
+                delegateDef.LineStart, delegateDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: delegateDef.Span);
+            return;
+        }
+
+        var typeSymbol = new TypeSymbol
+        {
+            Name = delegateDef.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Delegate,
+            AccessLevel = AccessLevel.Public,
+            TypeParameters = delegateDef.TypeParameters.ToList(),
+            DefiningFilePath = _currentFilePath,
+            DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = delegateDef.Span,
+            DeclarationLine = delegateDef.LineStart,
+            DeclarationColumn = delegateDef.ColumnStart
+        };
+
+        _symbolTable.EnterScope($"delegate:{delegateDef.Name}");
+
+        // Register type parameters in the scope so they can be resolved
+        foreach (var typeParam in delegateDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = typeSymbol,
+                Constraints = typeParam.Constraints,
+                DeclarationLine = typeParam.LineStart,
+                DeclarationColumn = typeParam.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
+        // Create a synthetic Invoke method with the delegate's parameters and return type
+        var parameters = delegateDef.Parameters.Select(p => new ParameterSymbol
+        {
+            Name = p.Name,
+            Type = SemanticType.Unknown,  // Will be resolved during type checking
+            HasDefault = p.DefaultValue != null,
+            DefaultValue = p.DefaultValue,
+            IsVariadic = p.IsVariadic,
+            IsPositionalOnly = p.Kind == ParameterKind.PositionalOnly,
+            IsKeywordOnly = p.Kind == ParameterKind.KeywordOnly
+        }).ToList();
+
+        var invokeSymbol = new FunctionSymbol
+        {
+            Name = "Invoke",
+            Kind = SymbolKind.Function,
+            AccessLevel = AccessLevel.Public,
+            Parameters = parameters,
+            ReturnType = SemanticType.Unknown,  // Will be resolved during type checking
+            IsAbstract = true,
+            DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = delegateDef.Span,
+            DeclarationLine = delegateDef.LineStart,
+            DeclarationColumn = delegateDef.ColumnStart
+        };
+
+        typeSymbol.Methods.Add(invokeSymbol);
+
+        _symbolTable.ExitScope();
+
+        _symbolTable.Define(typeSymbol);
     }
 
     private void ResolveEnumDeclaration(EnumDef enumDef)
