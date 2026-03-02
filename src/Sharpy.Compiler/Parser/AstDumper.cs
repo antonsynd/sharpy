@@ -277,7 +277,7 @@ internal class AstDumper
                 }
                 if (classDef.TypeParameters.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", classDef.TypeParameters.Select(tp => tp.Name))}]");
+                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", classDef.TypeParameters.Select(FormatTypeParam))}]");
                 }
                 if (classDef.Decorators.Length > 0)
                 {
@@ -314,7 +314,7 @@ internal class AstDumper
                 }
                 if (structDef.TypeParameters.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", structDef.TypeParameters.Select(tp => tp.Name))}]");
+                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", structDef.TypeParameters.Select(FormatTypeParam))}]");
                 }
                 if (structDef.BaseClasses.Length > 0)
                 {
@@ -340,7 +340,7 @@ internal class AstDumper
                 }
                 if (interfaceDef.TypeParameters.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", interfaceDef.TypeParameters.Select(tp => tp.Name))}]");
+                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", interfaceDef.TypeParameters.Select(FormatTypeParam))}]");
                 }
                 if (interfaceDef.BaseInterfaces.Length > 0)
                 {
@@ -391,7 +391,7 @@ internal class AstDumper
                 }
                 if (delegateDef.TypeParameters.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", delegateDef.TypeParameters.Select(tp => tp.Name))}]");
+                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", delegateDef.TypeParameters.Select(FormatTypeParam))}]");
                 }
                 if (delegateDef.Parameters.Length > 0)
                 {
@@ -801,6 +801,16 @@ internal class AstDumper
             result += "?";
         }
         return result;
+    }
+
+    private static string FormatTypeParam(TypeParameterDef tp)
+    {
+        return tp.Variance switch
+        {
+            TypeParameterVariance.Covariant => $"out {tp.Name}",
+            TypeParameterVariance.Contravariant => $"in {tp.Name}",
+            _ => tp.Name
+        };
     }
 
     private string EscapeString(string str)

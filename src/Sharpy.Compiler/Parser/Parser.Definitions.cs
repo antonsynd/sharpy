@@ -643,6 +643,19 @@ public partial class Parser
             var paramStartColumn = Current.Column;
             var paramStartToken = Current;
 
+            // Check for variance annotation: out T (covariant) or in T (contravariant)
+            var variance = TypeParameterVariance.None;
+            if (Current.Type == TokenType.Identifier && Current.Value == "out")
+            {
+                variance = TypeParameterVariance.Covariant;
+                Advance();
+            }
+            else if (Current.Type == TokenType.In)
+            {
+                variance = TypeParameterVariance.Contravariant;
+                Advance();
+            }
+
             var paramName = ExpectIdentifier();
             var constraints = new List<ConstraintClause>();
 
@@ -659,6 +672,7 @@ public partial class Parser
             {
                 Name = paramName,
                 Constraints = constraints.ToImmutableArray(),
+                Variance = variance,
                 LineStart = paramStartLine,
                 ColumnStart = paramStartColumn,
                 LineEnd = paramEndToken.Line,

@@ -588,7 +588,7 @@ decorator       ::= '@' qualified_name NEWLINE
 
 type_params     ::= '[' type_param { ',' type_param } [ ',' ] ']'
 
-type_param      ::= identifier [ ':' type_constraint ]
+type_param      ::= [ 'in' | 'out' ] identifier [ ':' type_constraint ]
 
 type_constraint ::= qualified_name [ '[' type_args ']' ]
                   | 'class'
