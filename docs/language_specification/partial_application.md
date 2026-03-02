@@ -1,6 +1,6 @@
 # Partial Application
 
-> **Implementation status:** Not yet implemented — planned for Phase 11 (v0.2.5). No `PlaceholderExpression` AST node exists yet.
+> **Implementation status:** Implemented (Phase 11.5). Parser-level desugaring: `Identifier("_")` in call arguments and parenthesized operator expressions is lowered to `LambdaExpression`. No `PlaceholderExpression` AST node needed.
 
 Partial application creates new functions by fixing some arguments of an existing function using the underscore `_` placeholder.
 

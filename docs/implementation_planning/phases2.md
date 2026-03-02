@@ -149,11 +149,11 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | ~~11.2~~ | ~~Keyword-only parameters (`*`)~~ | ~~M~~ | ~~Completed.~~ `ParameterKind.KeywordOnly` flag; parser handles bare `*` separator; call-site enforcement via SPY0371; `ReorderParametersForCSharp()` + named argument generation |
 | 11.3 | `@kwargs` decorator | L | Compiler-understood transforming decorator; generates typed kwargs struct + method overload |
 | 11.4 | `@dynamic_kwargs` decorator | L | Enables `**kwargs: dict[str, T]` parameter on decorated function; explicit opt-in for dynamic typing |
-| 11.5 | Partial application | L | `f(5, _)` → lambda; new `PlaceholderExpression` AST; operator sections `(_ * 2)`, `(_ > 0)`, `(-_)` |
+| ~~11.5~~ | ~~Partial application~~ | ~~L~~ | ~~Completed.~~ Parser-level desugaring: `Identifier("_")` in call args and paren exprs lowered to `LambdaExpression`. No new AST node needed. SPY0130–SPY0131 for error cases. TypeChecker body-based param inference for unannotated lambdas. Operator sections `(_ * 2)`, `(_ > 0)`, `(-_)` |
 
 **Key files:** `Parser.Definitions.cs`, `Parser.Expressions.cs`, `TypeChecker.Expressions.cs`, `RoslynEmitter.Expressions.cs`, `ParameterSymbol`
 
-**Dependencies:** ~~11.1+11.2 complete.~~ 11.3+11.4 together. 11.5 independent.
+**Dependencies:** ~~11.1+11.2 complete.~~ 11.3+11.4 together. ~~11.5 complete.~~
 
 ---
 
@@ -305,7 +305,7 @@ Intentional language design decisions:
 
 **Phase 10 audit (2026-02-28)** — All 6 items confirmed COMPLETE. 10.1: `async def` with `FunctionDef.IsAsync`. 10.2: `await` with SPY0273/SPY0274. 10.3: `async for` → `await foreach` with `IAsyncEnumerable<T>` validation (SPY0360). 10.4: `async with` dual protocol — `IAsyncDisposable` → `await using` + `__aenter__`/`__aexit__` → try/finally with `ContextManagerKind` enum in SemanticInfo. 10.5: Async generators → `IAsyncEnumerable<T>` return type, `yield from` in async generators as Sharpy extension. 10.6: Synthetic `asyncio` module with `gather` → `Task.WhenAll`, `sleep` → `Task.Delay`. 42 async test fixtures total.
 
-**Phase 11 audit (updated 2026-03-01)** — 11.1 (positional-only `/`) and 11.2 (keyword-only `*`) confirmed COMPLETE: `ParameterKind` enum, parser separators (SPY0126–SPY0129), call-site enforcement (SPY0370/SPY0371), codegen parameter reordering with named arguments, comprehensive test fixtures. 11.3–11.5 NOT STARTED: no `@kwargs`/`@dynamic_kwargs` decorator handling, no `PlaceholderExpression` AST node.
+**Phase 11 audit (updated 2026-03-01)** — 11.1 (positional-only `/`) and 11.2 (keyword-only `*`) confirmed COMPLETE: `ParameterKind` enum, parser separators (SPY0126–SPY0129), call-site enforcement (SPY0370/SPY0371), codegen parameter reordering with named arguments, comprehensive test fixtures. 11.5 (partial application) COMPLETE: parser-level desugaring of `Identifier("_")` in call args and paren exprs to `LambdaExpression`; SPY0130–SPY0131 diagnostics; TypeChecker body-based param inference; operator sections. 11.3–11.4 NOT STARTED: no `@kwargs`/`@dynamic_kwargs` decorator handling.
 
 **Phase 12 audit** — 5 items remaining, NOT STARTED. No `DelegateDef`/`EventDef` AST nodes, no variance markers on `TypeParameterDef`, no custom decorator arguments. `TokenType.Event` is reserved but unused by parser. (Nested comprehensions removed — SPY0515 was dead code; feature already works.)
 
