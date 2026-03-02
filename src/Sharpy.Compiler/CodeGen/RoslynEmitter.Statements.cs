@@ -302,7 +302,23 @@ internal partial class RoslynEmitter
                     // First declaration of this variable in this scope
                     var varName = GetMangledVariableName(name.Name, isNewDeclaration: true);
                     _declaredVariables.Add(varName);
-                    var declaration = VariableDeclaration(IdentifierName("var"))
+
+                    // Check if the value is a lambda/function — C# can't infer delegate
+                    // types with 'var'. Use explicit Func<>/Action<> from semantic type.
+                    TypeSyntax declType;
+                    var semanticType = GetExpressionSemanticType(assign.Value);
+                    if (semanticType is not Semantic.FunctionType)
+                    {
+                        var varSymbol = _context.LookupSymbol(name.Name);
+                        if (varSymbol is VariableSymbol vs && vs.Type is Semantic.FunctionType)
+                            semanticType = vs.Type;
+                    }
+                    if (semanticType is Semantic.FunctionType ft && !ft.HasUnresolvedTypes())
+                        declType = _typeMapper.MapSemanticType(semanticType);
+                    else
+                        declType = IdentifierName("var");
+
+                    var declaration = VariableDeclaration(declType)
                         .WithVariables(SingletonSeparatedList(
                             VariableDeclarator(Identifier(varName))
                                 .WithInitializer(EqualsValueClause(value))));
