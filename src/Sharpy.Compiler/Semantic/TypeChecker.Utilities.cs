@@ -178,6 +178,37 @@ internal partial class TypeChecker
             return source.IsAssignableTo(optional.UnderlyingType);
         }
 
+        // FunctionType is assignable to a delegate type if the signatures are compatible
+        if (source is FunctionType sourceFt)
+        {
+            var delegateInvoke = TryGetDelegateInvokeMethod(target);
+            if (delegateInvoke != null)
+            {
+                // Compare parameter counts
+                if (sourceFt.ParameterTypes.Count != delegateInvoke.Parameters.Count)
+                    return false;
+
+                // Compare parameter types
+                for (int i = 0; i < sourceFt.ParameterTypes.Count; i++)
+                {
+                    var invokeParamType = delegateInvoke.Parameters[i].Type;
+                    if (!invokeParamType.IsAssignableTo(sourceFt.ParameterTypes[i])
+                        && !sourceFt.ParameterTypes[i].IsAssignableTo(invokeParamType))
+                        return false;
+                }
+
+                // Compare return types
+                if (delegateInvoke.ReturnType is not VoidType && sourceFt.ReturnType is not VoidType)
+                {
+                    if (!sourceFt.ReturnType.IsAssignableTo(delegateInvoke.ReturnType)
+                        && !IsAssignable(sourceFt.ReturnType, delegateInvoke.ReturnType))
+                        return false;
+                }
+
+                return true;
+            }
+        }
+
         // Handle covariance for generic collection types (list, set)
         if (source is GenericType sourceGeneric && target is GenericType targetGeneric)
         {
@@ -194,6 +225,57 @@ internal partial class TypeChecker
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Extracts the Invoke method from a delegate type, substituting type parameters
+    /// for generic delegates. Returns null if the type is not a delegate.
+    /// </summary>
+    private FunctionSymbol? TryGetDelegateInvokeMethod(SemanticType type)
+    {
+        TypeSymbol? delegateSymbol = null;
+        List<SemanticType>? typeArgs = null;
+
+        if (type is UserDefinedType { Symbol: { TypeKind: TypeKind.Delegate } udt })
+        {
+            delegateSymbol = udt;
+        }
+        else if (type is GenericType gt && gt.GenericDefinition is { TypeKind: TypeKind.Delegate })
+        {
+            delegateSymbol = gt.GenericDefinition;
+            typeArgs = gt.TypeArguments;
+        }
+
+        if (delegateSymbol == null)
+            return null;
+
+        var invoke = delegateSymbol.Methods.FirstOrDefault(m => m.Name == "Invoke");
+        if (invoke == null)
+            return null;
+
+        // For generic delegates, substitute type parameters in the Invoke signature
+        if (typeArgs != null && delegateSymbol.TypeParameters.Count == typeArgs.Count)
+        {
+            var substitutions = new Dictionary<string, SemanticType>();
+            for (int i = 0; i < delegateSymbol.TypeParameters.Count; i++)
+            {
+                substitutions[delegateSymbol.TypeParameters[i].Name] = typeArgs[i];
+            }
+
+            var substitutedParams = invoke.Parameters.Select(p => p with
+            {
+                Type = SubstituteTypeParametersInType(p.Type, substitutions)
+            }).ToList();
+            var substitutedReturn = SubstituteTypeParametersInType(invoke.ReturnType, substitutions);
+
+            return invoke with
+            {
+                Parameters = substitutedParams,
+                ReturnType = substitutedReturn
+            };
+        }
+
+        return invoke;
     }
 
     /// <summary>

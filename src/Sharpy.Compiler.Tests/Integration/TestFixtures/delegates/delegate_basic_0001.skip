@@ -1,1 +1,0 @@
-Blocked by compiler bugs: DelegateDef not recognized as module-level declaration (SPY0340), lambda not assignable to delegate type (SPY0220), delegate variables not callable (SPY0201)

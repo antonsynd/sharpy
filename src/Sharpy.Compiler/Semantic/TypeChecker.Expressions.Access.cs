@@ -830,10 +830,12 @@ internal partial class TypeChecker
                     return SemanticType.Unknown;
                 }
 
-                // Check if it's a variable with a FunctionType - those are callable
-                if (symbol is VariableSymbol varSym && GetVariableType(varSym) is FunctionType)
+                // Check if it's a variable with a FunctionType or delegate type - those are callable
+                if (symbol is VariableSymbol varSym &&
+                    (GetVariableType(varSym) is FunctionType
+                     || TryGetDelegateInvokeMethod(GetVariableType(varSym)) != null))
                 {
-                    // Let the FunctionType handling below deal with this
+                    // Let the FunctionType / delegate handling below deal with this
                 }
                 else
                 {
@@ -944,6 +946,16 @@ internal partial class TypeChecker
         {
             return CheckLambdaCall(call, ft, argTypes, totalArgCount,
                 isNullConditionalCall, isOptionalNullConditional);
+        }
+
+        // Handle delegate-typed variable invocation: extract the Invoke method and validate
+        {
+            var delegateInvoke = TryGetDelegateInvokeMethod(calleeType);
+            if (delegateInvoke != null)
+            {
+                return ValidateFunctionSymbolCall(call, delegateInvoke, argTypes, kwargTypes, totalArgCount,
+                    isNullConditionalCall, isOptionalNullConditional);
+            }
         }
 
         // If callee type is Unknown, this is error recovery from a sub-expression
