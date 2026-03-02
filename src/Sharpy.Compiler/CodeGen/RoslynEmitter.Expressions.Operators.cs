@@ -421,7 +421,36 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
-        // Case 2: Right side is an identifier or member access - call it with left as the only argument
+        // Case 2: Right side is a lambda from partial application lowering
+        // x |> multiply(_, 3) → parser lowered to: x |> lambda __p0: multiply(__p0, 3)
+        // Unwrap: substitute the pipe value for the placeholder and generate a direct call
+        if (rightExpr is LambdaExpression partialLambda
+            && partialLambda.Parameters.Length == 1
+            && partialLambda.Body is FunctionCall partialCall)
+        {
+            var placeholderName = partialLambda.Parameters[0].Name;
+            var func = GeneratePipeCallTarget(partialCall.Function);
+
+            // Build arguments, replacing the placeholder identifier with the piped value
+            var substitutedArgs = new List<ArgumentSyntax>();
+            foreach (var arg in partialCall.Arguments)
+            {
+                if (arg is Identifier id && id.Name == placeholderName)
+                    substitutedArgs.Add(Argument(left));
+                else
+                    substitutedArgs.Add(Argument(GenerateExpression(arg)));
+            }
+            foreach (var kw in partialCall.KeywordArguments)
+            {
+                substitutedArgs.Add(Argument(GenerateExpression(kw.Value))
+                    .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kw.Name)))));
+            }
+
+            return InvocationExpression(func)
+                .WithArgumentList(ArgumentList(SeparatedList(substitutedArgs)));
+        }
+
+        // Case 3: Right side is an identifier or member access - call it with left as the only argument
         // x |> f → f(x)
         var right = GeneratePipeCallTarget(rightExpr);
         return InvocationExpression(right)
