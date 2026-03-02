@@ -77,6 +77,10 @@ public static class DiagnosticCodes
         public const string DuplicateSlashMarker = "SPY0127";
         public const string DuplicateStarMarker = "SPY0128";
         public const string SlashAtStart = "SPY0129";
+        public const string PlaceholderInKeywordArg = "SPY0130";
+        public const string PlaceholderWithSpread = "SPY0131";
+        public const string PlaceholderOutsideCallOrOperator = "SPY0132";
+        public const string NestedPlaceholder = "SPY0133";
     }
 
     /// <summary>
