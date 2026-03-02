@@ -1,0 +1,5 @@
+def f(x: int, y: int) -> int:
+    return x + y
+
+def main():
+    result = f(x=_)

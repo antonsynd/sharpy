@@ -1,0 +1,6 @@
+def f(x: int, *args: int) -> int:
+    return x
+
+def main():
+    args: list[int] = [1, 2]
+    result = f(_, *args)

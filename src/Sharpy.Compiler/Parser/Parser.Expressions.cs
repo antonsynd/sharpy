@@ -858,7 +858,7 @@ public partial class Parser
                     Expect(TokenType.RightParen);
                     var closeParen = Previous;
 
-                    expr = new FunctionCall
+                    var callNode = new FunctionCall
                     {
                         Function = expr,
                         Arguments = args.ToImmutableArray(),
@@ -869,6 +869,8 @@ public partial class Parser
                         ColumnEnd = Previous.Column + Previous.Value.Length,
                         Span = CombineSpans(expr.Span, GetSpanFromToken(closeParen))
                     };
+
+                    expr = LowerPartialApplicationCall(callNode);
                 }
                 else
                 {
@@ -974,6 +976,115 @@ public partial class Parser
                 ColumnEnd = Current.Column
             };
         }
+    }
+
+    /// <summary>
+    /// If a FunctionCall contains any positional Identifier("_") arguments,
+    /// lower the call to a LambdaExpression. Otherwise return the call unchanged.
+    /// </summary>
+    private Expression LowerPartialApplicationCall(FunctionCall call)
+    {
+        // Check keyword args for placeholder usage (not allowed)
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (kwarg.Value is Identifier { Name: "_" })
+            {
+                ReportError(
+                    "Cannot use '_' placeholder in keyword arguments",
+                    kwarg.LineStart, kwarg.ColumnStart,
+                    DiagnosticCodes.Parser.PlaceholderInKeywordArg,
+                    span: kwarg.Value.Span);
+            }
+        }
+
+        // Check if any positional argument is a placeholder
+        var hasPlaceholder = false;
+        var hasSpread = false;
+        foreach (var arg in call.Arguments)
+        {
+            if (arg is Identifier { Name: "_" })
+                hasPlaceholder = true;
+            if (arg is SpreadElement)
+                hasSpread = true;
+        }
+
+        if (!hasPlaceholder)
+            return call;
+
+        // Check for placeholder mixed with spread args
+        if (hasSpread)
+        {
+            // Find the first placeholder to report the error location
+            foreach (var arg in call.Arguments)
+            {
+                if (arg is Identifier { Name: "_" } placeholder)
+                {
+                    ReportError(
+                        "Cannot use '_' placeholder with spread arguments",
+                        placeholder.LineStart, placeholder.ColumnStart,
+                        DiagnosticCodes.Parser.PlaceholderWithSpread,
+                        span: placeholder.Span);
+                    break;
+                }
+            }
+
+            return call;
+        }
+
+        // Lower to lambda: replace each Identifier("_") with a unique parameter
+        var placeholderIndex = 0;
+        var parameters = new List<Parameter>();
+        var modifiedArgs = new List<Expression>(call.Arguments.Length);
+
+        foreach (var arg in call.Arguments)
+        {
+            if (arg is Identifier { Name: "_" } placeholder)
+            {
+                var paramName = $"__placeholder_{placeholderIndex}";
+                parameters.Add(new Parameter
+                {
+                    Name = paramName,
+                    Type = null,
+                    DefaultValue = null,
+                    Kind = ParameterKind.Normal,
+                    LineStart = placeholder.LineStart,
+                    ColumnStart = placeholder.ColumnStart,
+                    LineEnd = placeholder.LineEnd,
+                    ColumnEnd = placeholder.ColumnEnd,
+                    Span = placeholder.Span
+                });
+                modifiedArgs.Add(new Identifier
+                {
+                    Name = paramName,
+                    LineStart = placeholder.LineStart,
+                    ColumnStart = placeholder.ColumnStart,
+                    LineEnd = placeholder.LineEnd,
+                    ColumnEnd = placeholder.ColumnEnd,
+                    Span = placeholder.Span
+                });
+                placeholderIndex++;
+            }
+            else
+            {
+                modifiedArgs.Add(arg);
+            }
+        }
+
+        var modifiedCall = call with
+        {
+            Arguments = modifiedArgs.ToImmutableArray()
+        };
+
+        return new LambdaExpression
+        {
+            Parameters = parameters.ToImmutableArray(),
+            Body = modifiedCall,
+            LineStart = call.LineStart,
+            ColumnStart = call.ColumnStart,
+            LineEnd = call.LineEnd,
+            ColumnEnd = call.ColumnEnd,
+            Span = call.Span
+        };
     }
 
 }

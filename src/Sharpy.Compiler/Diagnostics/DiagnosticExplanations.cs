@@ -314,6 +314,26 @@ public static class DiagnosticExplanations
             "def foo(/, a: int): ...",
             "Place at least one parameter before '/':\ndef foo(a: int, /): ...");
 
+        Add(dict, DiagnosticCodes.Parser.PlaceholderInKeywordArg, "Placeholder in keyword argument", "Parser",
+            "The '_' placeholder for partial application cannot be used as the value of a keyword argument. Placeholders are only allowed in positional arguments.",
+            "result = f(x=_)",
+            "Use a lambda instead:\nresult = lambda v: f(x=v)");
+
+        Add(dict, DiagnosticCodes.Parser.PlaceholderWithSpread, "Placeholder with spread argument", "Parser",
+            "The '_' placeholder for partial application cannot be mixed with spread (*) arguments in the same call. The number of arguments would be ambiguous.",
+            "result = f(_, *args)",
+            "Use a lambda instead:\nresult = lambda v: f(v, *args)");
+
+        Add(dict, DiagnosticCodes.Parser.PlaceholderOutsideCallOrOperator, "Placeholder outside call or operator", "Parser",
+            "The '_' placeholder for partial application is only valid inside function call arguments or parenthesized operator expressions.",
+            "x = _",
+            "Use '_' inside a function call:\nx = f(_)");
+
+        Add(dict, DiagnosticCodes.Parser.NestedPlaceholder, "Nested placeholder", "Parser",
+            "The '_' placeholder cannot be used in nested positions within partial application expressions.",
+            "result = f(g(_)(_))",
+            "Break into separate expressions:\ninner = g(_)\nresult = f(inner(_))");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",
