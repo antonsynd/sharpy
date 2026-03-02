@@ -49,6 +49,9 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
             case UnionDef unionDef:
                 ValidateUnion(unionDef);
                 break;
+            case DelegateDef delegateDef:
+                ValidateDelegate(delegateDef);
+                break;
             case VariableDeclaration varDecl:
                 CheckName(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart, varDecl.Span);
                 break;
@@ -141,6 +144,12 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
                 }
             }
         }
+    }
+
+    private void ValidateDelegate(DelegateDef delegateDef)
+    {
+        CheckName(delegateDef.Name, delegateDef.LineStart, delegateDef.ColumnStart, delegateDef.Span);
+        ValidateParameters(delegateDef.Parameters);
     }
 
     private void ValidateParameters(System.Collections.Immutable.ImmutableArray<Parameter> parameters)
