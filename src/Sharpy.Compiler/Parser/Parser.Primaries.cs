@@ -276,6 +276,13 @@ public partial class Parser
                     }
 
                     Expect(TokenType.RightParen);
+
+                    // Check for operator section: (_ * 2) or (_ > 0)
+                    if (ContainsPlaceholderIdentifier(expr))
+                    {
+                        return LowerOperatorSectionToLambda(expr, startLine, startColumn, startToken);
+                    }
+
                     return new Parenthesized
                     {
                         Expression = expr,
@@ -685,5 +692,98 @@ public partial class Parser
         Expect(TokenType.Colon);
         var value = ParseExpression();
         return new DictEntry { Key = key, Value = value };
+    }
+
+    /// <summary>
+    /// Checks if an expression tree contains any Identifier("_") placeholder.
+    /// Only checks expression types that can appear in operator sections.
+    /// </summary>
+    private static bool ContainsPlaceholderIdentifier(Expression expr) => expr switch
+    {
+        Identifier { Name: "_" } => true,
+        BinaryOp bin => ContainsPlaceholderIdentifier(bin.Left) || ContainsPlaceholderIdentifier(bin.Right),
+        UnaryOp un => ContainsPlaceholderIdentifier(un.Operand),
+        ComparisonChain chain => chain.Operands.Any(ContainsPlaceholderIdentifier),
+        _ => false
+    };
+
+    /// <summary>
+    /// Lowers an expression containing Identifier("_") placeholders into a LambdaExpression.
+    /// Each placeholder gets a unique __placeholder_N parameter name.
+    /// </summary>
+    private Expression LowerOperatorSectionToLambda(Expression expr, int startLine, int startColumn, Token startToken)
+    {
+        var placeholderIndex = 0;
+        var parameters = new List<Parameter>();
+
+        var modifiedExpr = ReplacePlaceholders(expr, parameters, ref placeholderIndex);
+
+        return new LambdaExpression
+        {
+            Parameters = parameters.ToImmutableArray(),
+            Body = modifiedExpr,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromTokens(startToken, Previous)
+        };
+    }
+
+    /// <summary>
+    /// Recursively replaces Identifier("_") nodes with unique __placeholder_N identifiers
+    /// and collects the corresponding Parameter records.
+    /// </summary>
+    private static Expression ReplacePlaceholders(Expression expr, List<Parameter> parameters, ref int index)
+    {
+        switch (expr)
+        {
+            case Identifier { Name: "_" } placeholder:
+                var paramName = $"__placeholder_{index}";
+                parameters.Add(new Parameter
+                {
+                    Name = paramName,
+                    Type = null,
+                    DefaultValue = null,
+                    Kind = ParameterKind.Normal,
+                    LineStart = placeholder.LineStart,
+                    ColumnStart = placeholder.ColumnStart,
+                    LineEnd = placeholder.LineEnd,
+                    ColumnEnd = placeholder.ColumnEnd,
+                    Span = placeholder.Span
+                });
+                index++;
+                return new Identifier
+                {
+                    Name = paramName,
+                    LineStart = placeholder.LineStart,
+                    ColumnStart = placeholder.ColumnStart,
+                    LineEnd = placeholder.LineEnd,
+                    ColumnEnd = placeholder.ColumnEnd,
+                    Span = placeholder.Span
+                };
+
+            case BinaryOp bin:
+                return bin with
+                {
+                    Left = ReplacePlaceholders(bin.Left, parameters, ref index),
+                    Right = ReplacePlaceholders(bin.Right, parameters, ref index)
+                };
+
+            case UnaryOp un:
+                return un with
+                {
+                    Operand = ReplacePlaceholders(un.Operand, parameters, ref index)
+                };
+
+            case ComparisonChain chain:
+                var builder = ImmutableArray.CreateBuilder<Expression>(chain.Operands.Length);
+                foreach (var operand in chain.Operands)
+                    builder.Add(ReplacePlaceholders(operand, parameters, ref index));
+                return chain with { Operands = builder.MoveToImmutable() };
+
+            default:
+                return expr;
+        }
     }
 }

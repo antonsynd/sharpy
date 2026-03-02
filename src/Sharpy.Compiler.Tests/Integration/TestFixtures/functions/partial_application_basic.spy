@@ -1,0 +1,22 @@
+def add(x: int, y: int) -> int:
+    return x + y
+
+def format_name(first: str, middle: str, last: str) -> str:
+    return first + " " + middle + " " + last
+
+def main():
+    # Basic partial application - fix first arg
+    add_five: (int) -> int = add(5, _)
+    print(add_five(3))
+
+    # Fix second arg
+    add_to_ten: (int) -> int = add(_, 10)
+    print(add_to_ten(7))
+
+    # Multiple placeholders
+    format_smith: (str, str) -> str = format_name(_, _, "Smith")
+    print(format_smith("John", "Paul"))
+
+    # Single placeholder in middle
+    format_j_smith: (str) -> str = format_name("John", _, "Smith")
+    print(format_j_smith("Q"))
