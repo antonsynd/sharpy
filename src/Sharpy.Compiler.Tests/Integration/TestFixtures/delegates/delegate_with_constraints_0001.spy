@@ -1,0 +1,23 @@
+# Generic delegate with type constraint
+interface IStringable:
+    def to_string(self) -> str: ...
+
+class Name(IStringable):
+    value: str
+
+    def __init__(self, value: str):
+        self.value = value
+
+    @override
+    def to_string(self) -> str:
+        return self.value
+
+delegate Formatter[T: IStringable](item: T) -> str
+
+def format_item[T: IStringable](item: T, fmt: Formatter[T]) -> str:
+    return fmt(item)
+
+def main():
+    name = Name("Alice")
+    result = format_item[Name](name, lambda n: "Name: " + n.to_string())
+    print(result)

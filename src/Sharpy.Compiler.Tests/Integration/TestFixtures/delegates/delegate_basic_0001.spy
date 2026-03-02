@@ -1,0 +1,7 @@
+# Basic delegate type declaration and usage
+delegate Greeter(name: str) -> str
+
+def main():
+    greet: Greeter = lambda name: "Hello, " + name
+    result = greet("World")
+    print(result)

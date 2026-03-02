@@ -1,0 +1,14 @@
+# Delegate used as a function parameter type
+delegate Predicate(value: int) -> bool
+
+def filter_positive(items: list[int], pred: Predicate) -> list[int]:
+    result: list[int] = []
+    for item in items:
+        if pred(item):
+            result.append(item)
+    return result
+
+def main():
+    numbers: list[int] = [1, -2, 3, -4, 5]
+    positives = filter_positive(numbers, lambda x: x > 0)
+    print(positives)

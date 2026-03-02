@@ -1,0 +1,7 @@
+# Generic delegate type with concrete type arguments
+delegate Mapper[T, R](value: T) -> R
+
+def main():
+    to_str: Mapper[int, str] = lambda x: str(x)
+    result = to_str(42)
+    print(result)

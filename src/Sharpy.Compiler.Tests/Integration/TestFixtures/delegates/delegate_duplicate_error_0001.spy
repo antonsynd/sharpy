@@ -1,0 +1,6 @@
+# Duplicate delegate definitions should produce an error
+delegate Handler(msg: str) -> bool
+delegate Handler(x: int) -> int
+
+def main():
+    print("unreachable")

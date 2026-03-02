@@ -1,0 +1,6 @@
+# Delegate with void (None) return type
+delegate Action(msg: str) -> None
+
+def main():
+    do_print: Action = lambda msg: print(msg)
+    do_print("hello from delegate")
