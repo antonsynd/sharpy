@@ -1,0 +1,1 @@
+Blocked on SPY0220: pipe operator type checker cannot infer lambda param types from piped value
