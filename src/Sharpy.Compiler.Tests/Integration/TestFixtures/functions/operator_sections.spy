@@ -1,0 +1,20 @@
+def main():
+    # Binary operator sections
+    doubler: (int) -> int = (_ * 2)
+    print(doubler(5))
+
+    add_ten: (int) -> int = (_ + 10)
+    print(add_ten(3))
+
+    is_positive: (int) -> bool = (_ > 0)
+    print(is_positive(5))
+    print(is_positive(-3))
+
+    # Unary operator section
+    negate: (int) -> int = (-_)
+    print(negate(5))
+    print(negate(-3))
+
+    # Two placeholders
+    adder: (int, int) -> int = (_ + _)
+    print(adder(3, 4))
