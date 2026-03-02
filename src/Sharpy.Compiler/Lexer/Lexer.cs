@@ -123,6 +123,7 @@ public partial class Lexer
         { "event", TokenType.Event },
 
         // Other
+        { "delegate", TokenType.Delegate },
         { "del", TokenType.Del },
         { "to", TokenType.To },
         { "maybe", TokenType.Maybe },

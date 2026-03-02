@@ -382,6 +382,32 @@ internal class AstDumper
                 }
                 break;
 
+            case DelegateDef delegateDef:
+                _output.AppendLine($"{indent}{prefix}DelegateDef @ L{node.LineStart}:C{node.ColumnStart}");
+                _output.AppendLine($"{indent}{childPrefix}Name: {delegateDef.Name}");
+                if (delegateDef.DocString != null)
+                {
+                    _output.AppendLine($"{indent}{childPrefix}DocString: \"{EscapeString(delegateDef.DocString)}\"");
+                }
+                if (delegateDef.TypeParameters.Length > 0)
+                {
+                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", delegateDef.TypeParameters.Select(tp => tp.Name))}]");
+                }
+                if (delegateDef.Parameters.Length > 0)
+                {
+                    _output.AppendLine($"{indent}{childPrefix}Parameters: [{delegateDef.Parameters.Length}]");
+                    for (int i = 0; i < delegateDef.Parameters.Length; i++)
+                    {
+                        DumpParameter(delegateDef.Parameters[i], depth + 2, i == delegateDef.Parameters.Length - 1);
+                    }
+                }
+                if (delegateDef.ReturnType != null)
+                {
+                    _output.AppendLine($"{indent}{childPrefix}ReturnType:");
+                    DumpTypeAnnotation(delegateDef.ReturnType, depth + 2, true);
+                }
+                break;
+
             case PropertyDef propDef:
                 _output.AppendLine($"{indent}{prefix}PropertyDef @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Name: {propDef.Name}");

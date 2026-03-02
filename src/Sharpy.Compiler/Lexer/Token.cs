@@ -74,6 +74,7 @@ public enum TokenType
     Event,
 
     // Keywords - Other
+    Delegate,       // Delegate type declaration
     Del,            // Delete statement
     To,             // Type coercion operator
     Maybe,          // Optional from nullable expressions

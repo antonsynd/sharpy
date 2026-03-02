@@ -41,7 +41,7 @@ identifier      ::= IDENTIFIER | ESCAPED_IDENT
 (* Hard keywords - always reserved *)
 KEYWORD         ::= 'and' | 'as' | 'assert' | 'async' | 'auto' | 'await'
                   | 'break' | 'case' | 'class' | 'const' | 'continue'
-                  | 'def' | 'del' | 'do' | 'elif' | 'else' | 'enum'
+                  | 'def' | 'del' | 'delegate' | 'do' | 'elif' | 'else' | 'enum'
                   | 'event' | 'except' | 'False' | 'finally' | 'for'
                   | 'from' | 'if' | 'import' | 'in' | 'interface' | 'is'
                   | 'lambda' | 'match' | 'maybe' | 'None' | 'not' | 'or'
@@ -228,6 +228,7 @@ simple_stmt     ::= expression_stmt
                   | type_alias_stmt
                   | const_stmt
                   | yield_stmt
+                  | delegate_def
 
 compound_stmt   ::= if_stmt
                   | while_stmt
@@ -567,6 +568,9 @@ union_def       ::= 'union' identifier [ type_params ] ':' NEWLINE union_body
 union_body      ::= INDENT union_case { union_case } DEDENT
 
 union_case      ::= 'case' identifier [ '(' case_fields ')' ] NEWLINE
+
+(* Delegate type declarations (named function signature types) *)
+delegate_def    ::= 'delegate' identifier [ type_params ] '(' [ parameters ] ')' [ '->' type_expr ]
 
 # -----------------------------------------------------------------------------
 # 2.16 Decorators

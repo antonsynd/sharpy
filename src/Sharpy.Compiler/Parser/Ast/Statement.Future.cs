@@ -194,3 +194,61 @@ public record UnionCaseField
 }
 
 #endregion
+
+#region Delegate Types
+
+/// <summary>
+/// Delegate type declaration (named function signature type).
+/// </summary>
+/// <example>
+/// delegate Handler(event: Event) -> bool
+/// delegate Predicate[T](item: T) -> bool
+/// </example>
+public record DelegateDef : Statement
+{
+    /// <summary>
+    /// The name of the delegate type.
+    /// </summary>
+    public string Name { get; init; } = "";
+
+    /// <summary>
+    /// Type parameters for generic delegates (e.g., T in Predicate[T]).
+    /// </summary>
+    public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
+
+    /// <summary>
+    /// The delegate's parameter list.
+    /// </summary>
+    public ImmutableArray<Parameter> Parameters { get; init; } = ImmutableArray<Parameter>.Empty;
+
+    /// <summary>
+    /// The return type annotation. Null means void/None return.
+    /// </summary>
+    public TypeAnnotation? ReturnType { get; init; }
+
+    /// <summary>
+    /// Documentation string.
+    /// </summary>
+    public string? DocString { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "DelegateDef.Name cannot be null or empty");
+        Debug.Assert(TypeParameters != null, "DelegateDef.TypeParameters cannot be null");
+        Debug.Assert(Parameters != null, "DelegateDef.Parameters cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        foreach (var param in Parameters)
+        {
+            if (param.DefaultValue != null)
+                yield return param.DefaultValue;
+        }
+    }
+}
+
+#endregion

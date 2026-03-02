@@ -987,6 +987,50 @@ public partial class Parser
         };
     }
 
+    private DelegateDef ParseDelegateDef()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        var startToken = Current;
+
+        Expect(TokenType.Delegate);
+        var name = ExpectIdentifier();
+
+        // Optional type parameters: delegate Predicate[T](item: T) -> bool
+        var typeParams = new List<TypeParameterDef>();
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            typeParams = ParseTypeParameterList();
+        }
+
+        Expect(TokenType.LeftParen);
+        var parameters = ParseParameters();
+        Expect(TokenType.RightParen);
+
+        // Optional return type: -> type
+        TypeAnnotation? returnType = null;
+        if (Current.Type == TokenType.Arrow)
+        {
+            Advance();
+            returnType = ParseTypeAnnotation();
+        }
+
+        var endToken = Previous;
+
+        return new DelegateDef
+        {
+            Name = name,
+            TypeParameters = typeParams.ToImmutableArray(),
+            Parameters = parameters.ToImmutableArray(),
+            ReturnType = returnType,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
     private TypeAlias ParseTypeAlias()
     {
         var startLine = Current.Line;
