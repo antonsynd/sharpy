@@ -151,4 +151,81 @@ public class PartialApplicationParserTests
     }
 
     #endregion
+
+    #region Operator Sections
+
+    [Fact]
+    public void BinaryOperatorSection_LowersToLambda()
+    {
+        var module = Parse("(_ * 2)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(1);
+        lambda.Parameters[0].Name.Should().Be("__placeholder_0");
+        var body = lambda.Body.Should().BeOfType<BinaryOp>().Subject;
+        body.Operator.Should().Be(BinaryOperator.Multiply);
+        body.Left.Should().BeOfType<Identifier>().Which.Name.Should().Be("__placeholder_0");
+        body.Right.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("2");
+    }
+
+    [Fact]
+    public void ComparisonOperatorSection_LowersToLambda()
+    {
+        // (_ > 0) may produce a ComparisonChain
+        var module = Parse("(_ > 0)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(1);
+        lambda.Parameters[0].Name.Should().Be("__placeholder_0");
+    }
+
+    [Fact]
+    public void UnaryOperatorSection_LowersToLambda()
+    {
+        var module = Parse("(-_)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(1);
+        lambda.Parameters[0].Name.Should().Be("__placeholder_0");
+        var body = lambda.Body.Should().BeOfType<UnaryOp>().Subject;
+        body.Operator.Should().Be(UnaryOperator.Minus);
+        body.Operand.Should().BeOfType<Identifier>().Which.Name.Should().Be("__placeholder_0");
+    }
+
+    [Fact]
+    public void TwoPlaceholderOperatorSection_LowersToLambdaWithTwoParams()
+    {
+        var module = Parse("(_ + _)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(2);
+        lambda.Parameters[0].Name.Should().Be("__placeholder_0");
+        lambda.Parameters[1].Name.Should().Be("__placeholder_1");
+        var body = lambda.Body.Should().BeOfType<BinaryOp>().Subject;
+        body.Left.Should().BeOfType<Identifier>().Which.Name.Should().Be("__placeholder_0");
+        body.Right.Should().BeOfType<Identifier>().Which.Name.Should().Be("__placeholder_1");
+    }
+
+    [Fact]
+    public void UnderscoreWithoutParens_NotAPlaceholder()
+    {
+        // _ * 2 without parens is NOT a placeholder
+        var module = Parse("_ * 2");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        // Should be a regular BinaryOp with Identifier("_"), not a LambdaExpression
+        var binOp = exprStmt.Expression.Should().BeOfType<BinaryOp>().Subject;
+        binOp.Left.Should().BeOfType<Identifier>().Which.Name.Should().Be("_");
+    }
+
+    [Fact]
+    public void ComparisonGte_LowersToLambda()
+    {
+        var module = Parse("(_ >= 0)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(1);
+        lambda.Parameters[0].Name.Should().Be("__placeholder_0");
+    }
+
+    #endregion
 }
