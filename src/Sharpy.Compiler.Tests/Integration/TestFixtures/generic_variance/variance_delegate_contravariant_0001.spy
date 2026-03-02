@@ -1,0 +1,8 @@
+# Contravariant delegate: in T in parameter position
+delegate Consumer[in T](value: T) -> None
+
+def use_consumer(c: Consumer[str]) -> None:
+    c("hello from consumer")
+
+def main():
+    use_consumer(lambda x: print(x))

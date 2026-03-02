@@ -1,0 +1,35 @@
+# Covariant interface with type constraint
+@abstract
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @abstract
+    def speak(self) -> str
+
+class Dog(Animal):
+    def __init__(self):
+        super().__init__("Dog")
+
+    @override
+    def speak(self) -> str:
+        return "Woof"
+
+interface IAnimalProducer[out T: Animal]:
+    def produce(self) -> T: ...
+
+class DogFactory(IAnimalProducer[Dog]):
+    def __init__(self):
+        pass
+
+    @override
+    def produce(self) -> Dog:
+        return Dog()
+
+def main():
+    factory = DogFactory()
+    dog = factory.produce()
+    print(dog.name)
+    print(dog.speak())

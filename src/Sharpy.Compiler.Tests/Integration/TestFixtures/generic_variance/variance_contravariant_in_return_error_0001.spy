@@ -1,0 +1,5 @@
+# Contravariant type parameter used in covariant position (return)
+delegate BadProducer[in T]() -> T
+
+def main():
+    print("unreachable")

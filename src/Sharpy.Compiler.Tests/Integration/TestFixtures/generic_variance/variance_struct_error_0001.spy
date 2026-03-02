@@ -1,0 +1,6 @@
+# Variance annotations not allowed on structs
+struct Wrapper[in T]:
+    value: T
+
+def main():
+    print("unreachable")

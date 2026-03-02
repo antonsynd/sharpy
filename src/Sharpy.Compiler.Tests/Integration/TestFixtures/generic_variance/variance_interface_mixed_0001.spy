@@ -1,0 +1,16 @@
+# Mixed variance: in for input, out for output
+interface IConverter[in TIn, out TOut]:
+    def convert(self, value: TIn) -> TOut: ...
+
+class IntToStr(IConverter[int, str]):
+    def __init__(self):
+        pass
+
+    @override
+    def convert(self, value: int) -> str:
+        return str(value)
+
+def main():
+    c = IntToStr()
+    print(c.convert(42))
+    print(c.convert(-1))

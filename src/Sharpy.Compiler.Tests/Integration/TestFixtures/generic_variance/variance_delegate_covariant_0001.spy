@@ -1,0 +1,9 @@
+# Covariant delegate: out T in return position
+delegate Producer[out T]() -> T
+
+def make_string(factory: Producer[str]) -> str:
+    return factory()
+
+def main():
+    result = make_string(lambda: "from delegate")
+    print(result)

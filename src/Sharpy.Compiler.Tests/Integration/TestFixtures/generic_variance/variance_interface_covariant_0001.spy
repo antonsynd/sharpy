@@ -1,0 +1,15 @@
+# Covariant interface: out T only in return positions
+interface IProducer[out T]:
+    def produce(self) -> T: ...
+
+class StringProducer(IProducer[str]):
+    def __init__(self):
+        pass
+
+    @override
+    def produce(self) -> str:
+        return "hello from producer"
+
+def main():
+    p = StringProducer()
+    print(p.produce())

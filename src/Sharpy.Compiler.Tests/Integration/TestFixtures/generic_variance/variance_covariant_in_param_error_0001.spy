@@ -1,0 +1,5 @@
+# Covariant type parameter used in contravariant position (parameter)
+delegate BadHandler[out T](value: T) -> None
+
+def main():
+    print("unreachable")

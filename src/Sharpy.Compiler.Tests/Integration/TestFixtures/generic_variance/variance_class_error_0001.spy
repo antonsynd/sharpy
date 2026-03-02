@@ -1,0 +1,9 @@
+# Variance annotations not allowed on classes
+class Box[out T]:
+    value: T
+
+    def __init__(self, v: T):
+        self.value = v
+
+def main():
+    print("unreachable")

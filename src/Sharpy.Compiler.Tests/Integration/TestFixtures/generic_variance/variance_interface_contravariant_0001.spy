@@ -1,0 +1,15 @@
+# Contravariant interface: in T only in parameter positions
+interface IConsumer[in T]:
+    def consume(self, value: T) -> None: ...
+
+class StringPrinter(IConsumer[str]):
+    def __init__(self):
+        pass
+
+    @override
+    def consume(self, value: str) -> None:
+        print(value)
+
+def main():
+    p = StringPrinter()
+    p.consume("consumed")
