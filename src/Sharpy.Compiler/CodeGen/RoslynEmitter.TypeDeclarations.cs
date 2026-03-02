@@ -100,7 +100,7 @@ internal partial class RoslynEmitter
         if (func.TypeParameters.Length > 0)
         {
             var typeParams = func.TypeParameters
-                .Select(tp => TypeParameter(tp.Name))
+                .Select(GenerateTypeParameterSyntax)
                 .ToArray();
             method = method
                 .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
@@ -286,7 +286,7 @@ internal partial class RoslynEmitter
         if (classDef.TypeParameters.Length > 0)
         {
             var typeParams = classDef.TypeParameters
-                .Select(tp => TypeParameter(tp.Name))
+                .Select(GenerateTypeParameterSyntax)
                 .ToArray();
             classDecl = classDecl
                 .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
@@ -657,7 +657,7 @@ internal partial class RoslynEmitter
         if (structDef.TypeParameters.Length > 0)
         {
             var typeParams = structDef.TypeParameters
-                .Select(tp => TypeParameter(tp.Name))
+                .Select(GenerateTypeParameterSyntax)
                 .ToArray();
             structDecl = structDecl
                 .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
@@ -709,7 +709,7 @@ internal partial class RoslynEmitter
         if (interfaceDef.TypeParameters.Length > 0)
         {
             var typeParams = interfaceDef.TypeParameters
-                .Select(tp => TypeParameter(tp.Name))
+                .Select(GenerateTypeParameterSyntax)
                 .ToArray();
             interfaceDecl = interfaceDecl
                 .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
@@ -736,6 +736,21 @@ internal partial class RoslynEmitter
         }
 
         return interfaceDecl;
+    }
+
+    /// <summary>
+    /// Creates a TypeParameterSyntax from a TypeParameterDef, applying variance annotations.
+    /// Covariant (out) → SyntaxKind.OutKeyword, Contravariant (in) → SyntaxKind.InKeyword.
+    /// </summary>
+    private static TypeParameterSyntax GenerateTypeParameterSyntax(TypeParameterDef tp)
+    {
+        var typeParam = TypeParameter(tp.Name);
+        return tp.Variance switch
+        {
+            TypeParameterVariance.Covariant => typeParam.WithVarianceKeyword(Token(SyntaxKind.OutKeyword)),
+            TypeParameterVariance.Contravariant => typeParam.WithVarianceKeyword(Token(SyntaxKind.InKeyword)),
+            _ => typeParam
+        };
     }
 
     private SyntaxList<TypeParameterConstraintClauseSyntax> GenerateConstraintClauses(
@@ -1021,7 +1036,7 @@ internal partial class RoslynEmitter
         if (unionDef.TypeParameters.Length > 0)
         {
             var typeParams = unionDef.TypeParameters
-                .Select(tp => TypeParameter(tp.Name))
+                .Select(GenerateTypeParameterSyntax)
                 .ToArray();
             classDecl = classDecl
                 .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)));
@@ -1203,7 +1218,7 @@ internal partial class RoslynEmitter
         if (delegateDef.TypeParameters.Length > 0)
         {
             var typeParams = delegateDef.TypeParameters
-                .Select(tp => TypeParameter(tp.Name))
+                .Select(GenerateTypeParameterSyntax)
                 .ToArray();
             delegateDecl = delegateDecl
                 .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
