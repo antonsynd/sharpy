@@ -352,6 +352,7 @@ internal partial class RoslynEmitter
 
             if (NeedsParameterReordering(pipeFuncSymbol))
             {
+                // TODO(#255): Duplicates logic from GenerateReorderedCallArguments — refactor to share.
                 // When reordering is needed, the prepended arg must also be named.
                 // Find the first non-self/cls parameter name for the piped argument.
                 var firstParam = pipeFuncSymbol!.Parameters

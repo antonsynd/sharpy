@@ -223,6 +223,7 @@ internal partial class RoslynEmitter
 
                     var qualifiedCaseName = QualifiedName(unionNameSyntax, IdentifierName(caseCSharpName));
 
+                    // TODO(#254): GetCallTarget always returns null — reordering is a no-op here.
                     var caseCallTarget = _context.SemanticInfo?.GetCallTarget(call);
                     var caseAllArgs = GenerateReorderedCallArguments(call, caseCallTarget);
 
@@ -411,6 +412,7 @@ internal partial class RoslynEmitter
             }
         }
 
+        // TODO(#254): GetCallTarget always returns null — reordering is a no-op here.
         var fallbackCallTarget = _context.SemanticInfo?.GetCallTarget(call);
         var fallbackAllArgs = GenerateReorderedCallArguments(call, fallbackCallTarget);
 
