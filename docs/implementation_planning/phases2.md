@@ -10,6 +10,7 @@
 <!-- Phase 11.1-11.2 marked complete on 2026-03-01 (positional-only and keyword-only parameters) -->
 <!-- Phase 11.5 marked complete on 2026-03-01 (partial application with operator sections) -->
 <!-- Phase 11 marked COMPLETE on 2026-03-01 (11.3 @kwargs + 11.4 @dynamic_kwargs dropped) -->
+<!-- Phase 12.1-12.2 marked complete on 2026-03-02 (delegates + generic variance implemented) -->
 
 # Sharpy Language Feature Completeness — Phased Roadmap
 
@@ -166,8 +167,8 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 
 | # | Feature | Complexity | Notes |
 |---|---------|-----------|-------|
-| 12.1 | Delegate type declarations | M | `delegate Factory[out T]() -> T` — new AST node; parser + codegen emit C# delegate type |
-| 12.2 | Generic variance (`out T`, `in T`) | L | Covariant/contravariant on interfaces and delegates; compiler validates position correctness (return vs. parameter positions) |
+| ~~12.1~~ | ~~Delegate type declarations~~ | ~~M~~ | ~~Completed.~~ `DelegateDef` AST node; `ParseDelegateDef()` parser; `ResolveDelegateDeclaration()` + `CheckDelegate()` semantics; `GenerateDelegateDeclaration()` codegen emits C# delegate type. Lambda-to-delegate assignment + delegate invocation supported. 6 test fixtures (5 positive, 1 error). |
+| ~~12.2~~ | ~~Generic variance (`out T`, `in T`)~~ | ~~L~~ | ~~Completed.~~ `TypeParameterVariance` enum on `TypeParameterDef`; parser recognizes `out`/`in` annotations; `VarianceValidator` (Order 415) checks position correctness (SPY0417–SPY0419); codegen emits C# `out`/`in` keywords; `SymbolSerializer` v6. 10 test fixtures (6 positive, 4 error). |
 | 12.3 | Events | L | `event clicked: (object, EventArgs) -> None`; `+=`/`-=` subscribe; `?.invoke()` thread-safe invocation; only declaring class can fire |
 | 12.4 | Custom decorator arguments | M | Extend `Decorator` record with `Arguments`; parse `@decorator(args)`; attribute mapping |
 | 12.5 | Spec gap audit + integration test sweep | M | Systematic pass through all 112 spec files vs. test fixtures; file issues for any remaining gaps |
@@ -188,9 +189,9 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | **9** | v0.2.3 | Generators & Iterators | ~~3~~ ✅ Complete | `yield`/`yield from`, generator inference, 4 new diagnostics (SPY0265–SPY0269) |
 | **10** | v0.2.4 | Async/Await | ~~6~~ ✅ Complete | `async def`, `await`, `async for`, `async with` (dual protocol), async generators, `asyncio.gather` |
 | **11** | v0.2.5 | Advanced Functions | ~~5~~ ✅ Complete | ~~Pos-only/kw-only~~ ✅, ~~partial application~~ ✅ (11.3 `@kwargs` + 11.4 `@dynamic_kwargs` dropped — see Out of Scope) |
-| **12** | v0.2.6 | Type System & Polish | 5 | Variance, delegates, events, custom decorators, spec audit |
+| **12** | v0.2.6 | Type System & Polish | ~~2~~ ✅ + 3 remaining | ~~Delegates~~ ✅, ~~variance~~ ✅, events, custom decorators, spec audit |
 
-**Total: 5 remaining items in Phase 12 (v0.2.6)** — Phases 6–11 all complete (33 items delivered, 2 dropped)
+**Total: 3 remaining items in Phase 12 (v0.2.6)** — Phases 6–11 all complete (33 items delivered, 2 dropped); Phase 12.1–12.2 complete (delegates + variance)
 
 ---
 
@@ -203,8 +204,8 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 ```
 
 - ✅ Phases 6–11 all complete
-- **Phase 12 is next** — 5 items: delegates, generic variance, events, custom decorator args, spec audit
-- 12.1 (delegates) → 12.2 (variance) is the only dependency chain; 12.3–12.5 are independent
+- **Phase 12 in progress** — 2 of 5 items complete (delegates, variance); 3 remaining: events, custom decorator args, spec audit
+- ~~12.1 (delegates) → 12.2 (variance) is the only dependency chain~~; 12.3–12.5 are independent
 
 ---
 
@@ -215,7 +216,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 3. ~~**Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy~~ ✅ Complete (8.1–8.8 all done: match expressions, all pattern types, tagged unions, union case patterns, exhaustiveness checking)
 4. ~~**Phase 9 before 10** — generators are prerequisite for async generators~~ ✅ Done
 5. ~~**Phase 10 completes the async story** — last major syntax feature~~ ✅ Complete (10.1–10.6 all done: async def, await, async for/with, async generators with yield from, asyncio.gather mapping)
-6. **Phase 12 is next** — Phases 6–11 complete; remaining: type system advances (delegates, variance, events), custom decorator args, and gap-filling
+6. **Phase 12 in progress** — Phases 6–11 complete; 12.1 (delegates) + 12.2 (variance) complete; remaining: events, custom decorator args, and gap-filling
 
 ---
 
@@ -311,7 +312,7 @@ Intentional language design decisions:
 
 **Phase 11 audit (updated 2026-03-01)** — PHASE COMPLETE. 11.1 (positional-only `/`) and 11.2 (keyword-only `*`) confirmed COMPLETE: `ParameterKind` enum, parser separators (SPY0126–SPY0129), call-site enforcement (SPY0370/SPY0371), codegen parameter reordering with named arguments, comprehensive test fixtures. 11.5 (partial application) COMPLETE: parser-level desugaring of `Identifier("_")` in call args and paren exprs to `LambdaExpression`; SPY0130–SPY0131 diagnostics; TypeChecker body-based param inference; operator sections. 11.3 (`@kwargs`) and 11.4 (`@dynamic_kwargs`) DROPPED: compiler-understood transforming decorators violate "no magic" principle; dynamic kwargs conflicts with Axiom 3; named arguments + explicit option structs suffice.
 
-**Phase 12 audit** — 5 items remaining, NOT STARTED. No `DelegateDef`/`EventDef` AST nodes, no variance markers on `TypeParameterDef`, no custom decorator arguments. `TokenType.Event` is reserved but unused by parser. (Nested comprehensions removed — SPY0515 was dead code; feature already works.) **This is now the only remaining phase.**
+**Phase 12 audit (updated 2026-03-02)** — 2 of 5 items COMPLETE, 3 remaining. 12.1 (delegates): `DelegateDef` AST node, `ParseDelegateDef()`, `ResolveDelegateDeclaration()` + `CheckDelegate()`, `GenerateDelegateDeclaration()`, lambda-to-delegate assignment, delegate invocation — 6 test fixtures. 12.2 (variance): `TypeParameterVariance` enum, parser `out`/`in` recognition, `VarianceValidator` (SPY0417–SPY0419), codegen `out`/`in` keywords, `SymbolSerializer` v6 — 10 test fixtures. Remaining: 12.3 (events — no `EventDef` AST node, `TokenType.Event` reserved but unused), 12.4 (custom decorator arguments), 12.5 (spec gap audit).
 
 ### Language Spec Accuracy Issues Found
 

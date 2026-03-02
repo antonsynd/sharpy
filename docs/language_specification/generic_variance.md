@@ -1,6 +1,6 @@
 # Generic Variance (`in` and `out` Type Parameters)
 
-> **Implementation status:** Not yet implemented — planned for Phase 12 (v0.2.6). `TypeParameterDef` does not yet have variance markers.
+> **Implementation status:** ✅ Implemented in v0.2.6 (Phase 12.2). `TypeParameterDef.Variance` property, `VarianceValidator` (SPY0417–SPY0419), and C# `in`/`out` keyword emission fully working.
 
 Generic variance allows substitution of generic types based on their type arguments' inheritance relationships. Sharpy supports covariance (`out`) and contravariance (`in`) annotations on interface and delegate type parameters.
 
@@ -245,11 +245,11 @@ public delegate T Factory<out T>();
 public delegate void Handler<in T>(T value);
 ```
 
-*Implementation: ❌ Not yet implemented — planned for Phase 12 (v0.2.6)*
-- *`out T` → `out T` (C# covariance) — not yet parsed*
-- *`in T` → `in T` (C# contravariance) — not yet parsed*
-- *Variance validation will be performed at compile time*
-- *Position checking will be enforced by semantic analyzer*
+*Implementation: ✅ Native — direct mapping to C# variance keywords.*
+- *`out T` → `out T` (C# covariance)*
+- *`in T` → `in T` (C# contravariance)*
+- *Variance validation performed at compile time (SPY0417–SPY0419)*
+- *Position checking enforced by `VarianceValidator`*
 
 ## Compiler Validation
 

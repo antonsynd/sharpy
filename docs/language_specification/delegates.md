@@ -1,6 +1,6 @@
 # Delegate Type Declarations
 
-> **Implementation status:** Not yet implemented — planned for Phase 12 (v0.2.6). No `DelegateDef` AST node exists yet.
+> **Implementation status:** ✅ Implemented in v0.2.6 (Phase 12.1). `DelegateDef` AST node, semantic analysis, and C# delegate emission fully working.
 
 Delegates are named function type declarations that map directly to C# delegate types. They provide reusable, named function signatures that can be used as event handler types, callback parameters, and variance-annotated function types.
 
