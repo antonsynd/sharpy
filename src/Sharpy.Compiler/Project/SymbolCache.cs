@@ -147,6 +147,12 @@ internal record CachedSymbol
     public CachedCodeGenInfo? CodeGenInfo { get; init; }
 
     /// <summary>
+    /// For TypeParameterSymbol: variance annotation (None, Covariant, Contravariant).
+    /// Omitted (null) when None.
+    /// </summary>
+    public string? Variance { get; init; }
+
+    /// <summary>
     /// Additional properties for extensibility
     /// </summary>
     public Dictionary<string, object>? Properties { get; init; }

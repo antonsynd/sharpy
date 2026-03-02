@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Utilities;
 using TypeAnnotation = Sharpy.Compiler.Parser.Ast.TypeAnnotation;
+using TypeParameterVariance = Sharpy.Compiler.Parser.Ast.TypeParameterVariance;
 
 namespace Sharpy.Compiler.Project;
 
@@ -232,6 +233,7 @@ internal static class SymbolSerializer
             DeclarationColumn = tps.DeclarationColumn,
             DeclarationSpanStart = tps.DeclarationSpan?.Start,
             DeclarationSpanLength = tps.DeclarationSpan?.Length,
+            Variance = tps.Variance != TypeParameterVariance.None ? tps.Variance.ToString() : null,
             IsReExport = tps.IsReExport,
             OriginalModule = tps.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(tps.CodeGenInfo)
@@ -482,6 +484,9 @@ internal static class SymbolSerializer
     private static TypeParameterSymbol DeserializeTypeParameterSymbol(CachedSymbol cached)
     {
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
+        var variance = cached.Variance != null
+            ? Enum.Parse<TypeParameterVariance>(cached.Variance)
+            : TypeParameterVariance.None;
 
         return new TypeParameterSymbol
         {
@@ -492,6 +497,7 @@ internal static class SymbolSerializer
             DeclarationColumn = cached.DeclarationColumn,
             DeclarationSpan = DeserializeDeclarationSpan(cached),
             DeclaringFilePath = cached.FilePath,
+            Variance = variance,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
