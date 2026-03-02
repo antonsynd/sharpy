@@ -128,6 +128,7 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 170**: `InterfaceConflictValidator` — Interface conflict detection
 - **Order 250**: `DefaultParameterValidator` — Default parameter validation
 - **Order 400**: `ControlFlowValidator` — CFG-based unreachable code, missing returns
+- **Order 405**: `ExhaustivenessValidator` — Match statement exhaustiveness checks
 - **Order 410**: `PropertyValidator` — Property validation
 - **Order 420**: `UnusedVariableValidator` — Unused variable warnings
 - **Order 430**: `UnusedImportValidator` — Unused import warnings
@@ -154,7 +155,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 12 partial classes (~10,800 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
+The `RoslynEmitter` is split into 12 partial classes (~12,700 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -365,7 +366,7 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 
 `.github/workflows/`:
 - `dotnet10.yml` — Active; tests on .NET 10
-- `python-build-tools.yml` — Runs pytest for `build_tools/` on Python 3.11 and 3.12
+- `python-build-tools.yml` — Runs pytest for `build_tools/` on Python 3.12
 - `benchmarks.yml` — Performance benchmarks
 
 An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
