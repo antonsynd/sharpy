@@ -170,7 +170,7 @@ internal partial class RoslynEmitter
 
             // After generating class/struct/function declarations, clear local scope tracking
             // so that parameter names from their methods don't leak into module-level code
-            if (stmt is ClassDef or StructDef or FunctionDef or InterfaceDef or EnumDef or UnionDef)
+            if (stmt is ClassDef or StructDef or FunctionDef or InterfaceDef or EnumDef or UnionDef or DelegateDef)
             {
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
@@ -273,6 +273,7 @@ internal partial class RoslynEmitter
                     StructDef sd => SimpleToPascalCase(sd.Name),
                     InterfaceDef id => SimpleToPascalCase(id.Name),
                     EnumDef ed => SimpleToPascalCase(ed.Name),
+                    DelegateDef dd => SimpleToPascalCase(dd.Name),
                     _ => null
                 };
 
@@ -547,6 +548,7 @@ internal partial class RoslynEmitter
             InterfaceDef interfaceDef => GenerateInterfaceDeclaration(interfaceDef),
             EnumDef enumDef => GenerateEnumDeclaration(enumDef),
             UnionDef unionDef => GenerateUnionDeclaration(unionDef),
+            DelegateDef delegateDef => GenerateDelegateDeclaration(delegateDef),
             VariableDeclaration varDecl => GenerateModuleLevelField(varDecl),
             TypeAlias => null,  // Type aliases are compile-time only, no C# output
             ReturnStatement ret => GenerateReturn(ret),

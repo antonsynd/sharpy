@@ -1171,4 +1171,53 @@ internal partial class RoslynEmitter
     }
 
     #endregion
+
+    #region Delegate Declarations
+
+    private DelegateDeclarationSyntax GenerateDelegateDeclaration(DelegateDef delegateDef)
+    {
+        // Transform delegate name using Type context (PascalCase)
+        var delegateName = NameMangler.Transform(delegateDef.Name, NameContext.Type);
+
+        // Determine return type from annotation or default to void
+        TypeSyntax returnType = delegateDef.ReturnType != null
+            ? _typeMapper.MapType(delegateDef.ReturnType)
+            : PredefinedType(Token(SyntaxKind.VoidKeyword));
+
+        // Delegates are always public
+        var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
+
+        // Reorder parameters for C# compliance (required before optional, params last)
+        var orderedParams = ReorderParametersForCSharp(delegateDef.Parameters);
+
+        // Generate parameters with type annotations
+        var parameters = orderedParams
+            .Select(GenerateParameter)
+            .ToArray();
+
+        var delegateDecl = DelegateDeclaration(returnType, delegateName)
+            .WithModifiers(modifiers)
+            .WithParameterList(ParameterList(SeparatedList(parameters)));
+
+        // Add type parameters if generic
+        if (delegateDef.TypeParameters.Length > 0)
+        {
+            var typeParams = delegateDef.TypeParameters
+                .Select(tp => TypeParameter(tp.Name))
+                .ToArray();
+            delegateDecl = delegateDecl
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(delegateDef.TypeParameters));
+        }
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(delegateDef.DocString))
+        {
+            delegateDecl = delegateDecl.WithLeadingTrivia(GenerateXmlDocComment(delegateDef.DocString));
+        }
+
+        return delegateDecl;
+    }
+
+    #endregion
 }
