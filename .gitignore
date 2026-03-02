@@ -12,6 +12,7 @@ src/Sharpy.Compiler.Tests/Integration/TestFixtures/**/*.cs
 # Claude settings
 .claude/settings.local.json
 .claude/worktrees/
+.claude/tmp/
 
 # Screen files
 screenlog.*
