@@ -558,7 +558,7 @@ def foo():
         funcDef!.Decorators.Should().HaveCount(3);
     }
 
-    [Fact(Skip = "See: #172 (decorator arguments not yet supported)")]
+    [Fact]
     public void ParsesDecoratorWithArguments()
     {
         var source = @"
@@ -568,6 +568,11 @@ def foo():
 ";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Decorators.Should().HaveCount(1);
+        var decorator = funcDef.Decorators[0];
+        decorator.Name.Should().Be("decorator");
+        decorator.Arguments.Should().HaveCount(2);
     }
 
     [Fact]

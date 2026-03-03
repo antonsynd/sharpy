@@ -1104,8 +1104,8 @@ internal partial class RoslynEmitter
         return expr switch
         {
             StringLiteral strLit => LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(strLit.Value)),
-            IntegerLiteral intLit => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(intLit.Value)),
-            FloatLiteral floatLit => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(floatLit.Value)),
+            IntegerLiteral intLit => GenerateIntegerLiteral(intLit),
+            FloatLiteral floatLit => GenerateFloatLiteral(floatLit),
             BooleanLiteral boolLit => LiteralExpression(boolLit.Value ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
             NoneLiteral => LiteralExpression(SyntaxKind.NullLiteralExpression),
             // type(X) → typeof(X)
@@ -1139,6 +1139,13 @@ internal partial class RoslynEmitter
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.AbstractKeyword)));
+
+        // Add C# attributes from unknown decorators
+        var unionAttributes = GenerateAttributeListsFromDecorators(unionDef.Decorators);
+        if (unionAttributes.Count > 0)
+        {
+            classDecl = classDecl.WithAttributeLists(unionAttributes);
+        }
 
         // Add type parameters if generic
         if (unionDef.TypeParameters.Length > 0)
