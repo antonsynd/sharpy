@@ -112,6 +112,13 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GenerateIdentifierExpression(Identifier name)
     {
+        // In event accessor bodies, rewrite the explicit handler parameter to C#'s implicit 'value'
+        if (_eventHandlerParamName != null
+            && string.Equals(name.Name, _eventHandlerParamName, StringComparison.Ordinal))
+        {
+            return IdentifierName("value");
+        }
+
         var mangledName = GetMangledVariableName(name.Name, isNewDeclaration: false);
         ExpressionSyntax expr = IdentifierName(mangledName);
 
