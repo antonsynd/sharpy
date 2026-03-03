@@ -1001,7 +1001,7 @@ internal partial class TypeChecker
                                     var addType = _typeResolver.ResolveTypeAnnotation(addHandlerParam.Type);
                                     var removeType = _typeResolver.ResolveTypeAnnotation(removeHandlerParam.Type);
 
-                                if (!addType.Equals(removeType))
+                                    if (!addType.Equals(removeType))
                                     {
                                         AddError(
                                             $"Event '{eventDef.Name}' add/remove accessors have mismatched handler types: add expects '{addType.GetDisplayName()}', remove expects '{removeType.GetDisplayName()}'",
