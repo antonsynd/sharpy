@@ -132,10 +132,30 @@ internal partial class TypeChecker
                     {
                         // For isinstance, the second argument is an identifier referring to a type
                         // We need to look it up in the symbol table
-                        var typeSymbol = _symbolTable.Lookup(typeId.Name) as TypeSymbol;
-                        if (typeSymbol != null)
+                        // Check if the type is a builtin primitive first
+                        var builtinType = typeId.Name switch
                         {
-                            narrowedTypes[narrowingKey] = new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                            BuiltinNames.Int => SemanticType.Int,
+                            BuiltinNames.Long => SemanticType.Long,
+                            BuiltinNames.Float => SemanticType.Float,
+                            BuiltinNames.Float32 => SemanticType.Float32,
+                            BuiltinNames.Double => SemanticType.Double,
+                            BuiltinNames.Bool => SemanticType.Bool,
+                            BuiltinNames.Str => SemanticType.Str,
+                            _ => (SemanticType?)null
+                        };
+
+                        if (builtinType != null)
+                        {
+                            narrowedTypes[narrowingKey] = builtinType;
+                        }
+                        else
+                        {
+                            var typeSymbol = _symbolTable.Lookup(typeId.Name) as TypeSymbol;
+                            if (typeSymbol != null)
+                            {
+                                narrowedTypes[narrowingKey] = new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                            }
                         }
                     }
                 }
