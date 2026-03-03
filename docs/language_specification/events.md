@@ -1,6 +1,6 @@
 # Events
 
-> **Implementation status:** Not yet implemented — planned for Phase 12 (v0.2.6). No `EventDef` AST node exists yet.
+> **Implementation status:** Implemented in Phase 12.3. Function-style event accessor bodies have a known limitation with `self` parameter scope resolution (see [#260](https://github.com/antonsynd/sharpy/issues/260)).
 
 Events provide a publish-subscribe mechanism for objects to notify subscribers when something of interest occurs. Sharpy events map directly to .NET events, enabling seamless interop with UI frameworks, reactive patterns, and the broader .NET ecosystem.
 
