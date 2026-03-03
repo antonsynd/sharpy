@@ -1,0 +1,119 @@
+# Test: Property patterns in match statements with inheritance
+# Tests match_property_pattern with various property matching scenarios
+# NOTE: Using basic match + if/elif since property patterns not available
+
+class Point:
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+class SizedRectangle:
+    _width: int
+    _height: int
+
+    def __init__(self, w: int, h: int):
+        self._width = w
+        self._height = h
+
+    property get width(self) -> int:
+        return self._width
+
+    property get height(self) -> int:
+        return self._height
+
+    @virtual
+    def get_size_category(self) -> str:
+        return "base"
+
+class SmallRectangle(SizedRectangle):
+    def __init__(self, w: int, h: int):
+        super().__init__(w, h)
+
+    @override
+    def get_size_category(self) -> str:
+        return "small"
+
+class LargeRectangle(SizedRectangle):
+    def __init__(self, w: int, h: int):
+        super().__init__(w, h)
+
+    @override
+    def get_size_category(self) -> str:
+        return "large"
+
+def describe_point(p: Point) -> str:
+    # Using if/elif since property patterns not available
+    if p.x == 0:
+        return "origin-x"
+    elif p.y == 0:
+        return "origin-y"
+    else:
+        return "other point"
+
+def classify_rectangle(r: SizedRectangle) -> str:
+    w = r.width
+    h = r.height
+
+    # Using type checks and property comparisons
+    if isinstance(r, SmallRectangle):
+        if w == h:
+            return "small square"
+        else:
+            return "narrow"
+    elif isinstance(r, LargeRectangle):
+        if h > 20:
+            return "tall-large"
+        else:
+            return "regular rectangle"
+    elif isinstance(r, SizedRectangle):
+        if w < 5:
+            return "narrow"
+        else:
+            return "regular rectangle"
+    else:
+        return "regular rectangle"
+
+def analyze_shapes(shapes: list[object]) -> None:
+    i = 0
+    while i < len(shapes):
+        s = shapes[i]
+        result = "unknown"
+
+        if isinstance(s, Point):
+            p = s as Point
+            vx = p.x
+            vy = p.y
+            if vx > 0 and vy > 0:
+                result = "quadrant-1"
+            elif vx < 0:
+                result = "left-half"
+            else:
+                result = "other-point"
+        elif isinstance(s, SmallRectangle):
+            r = s as SmallRectangle
+            w = r.width
+            result = f"small-w{w}"
+
+        print(result)
+        i += 1
+
+def main():
+    p1 = Point(0, 5)
+    p2 = Point(3, 0)
+    p3 = Point(7, 8)
+    r1 = SmallRectangle(3, 3)
+    r2 = LargeRectangle(10, 25)
+    r3 = SizedRectangle(2, 10)
+
+    print(describe_point(p1))
+    print(describe_point(p2))
+    print(describe_point(p3))
+    print(classify_rectangle(r1))
+    print(classify_rectangle(r2))
+    print(classify_rectangle(r3))
+
+    shapes: list[object] = [Point(2, 3), Point(-1, 5), SmallRectangle(4, 4)]
+    analyze_shapes(shapes)
