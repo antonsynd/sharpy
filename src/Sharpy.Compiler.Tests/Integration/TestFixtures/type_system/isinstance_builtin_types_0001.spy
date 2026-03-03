@@ -1,0 +1,19 @@
+def check_type(x: object):
+    if isinstance(x, str):
+        print("str: " + x)
+    elif isinstance(x, float):
+        result: float = x * 2.0
+        print("float: " + str(result))
+    elif isinstance(x, bool):
+        if x:
+            print("bool: True")
+        else:
+            print("bool: False")
+    else:
+        print("other")
+
+def main():
+    check_type("hello")
+    check_type(3.5)
+    check_type(True)
+    check_type(42)
