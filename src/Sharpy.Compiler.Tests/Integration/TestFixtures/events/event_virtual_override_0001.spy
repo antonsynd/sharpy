@@ -1,0 +1,20 @@
+# Virtual event with override in derived class
+delegate SimpleHandler() -> None
+
+class Base:
+    @virtual
+    event on_action: SimpleHandler
+
+    def do_action(self):
+        self.on_action?.invoke()
+
+class Derived(Base):
+    pass
+
+def handler():
+    print("action handled")
+
+def main():
+    d: Derived = Derived()
+    d.on_action += handler
+    d.do_action()

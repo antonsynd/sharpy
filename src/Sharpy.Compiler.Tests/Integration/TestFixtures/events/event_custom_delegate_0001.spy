@@ -1,0 +1,17 @@
+# Event with user-defined delegate type (multi-parameter)
+delegate DataHandler(sender: object, key: str, value: int) -> None
+
+class DataStore:
+    event on_data: DataHandler
+
+    def update(self, key: str, value: int):
+        self.on_data?.invoke(self, key, value)
+
+def log_handler(sender: object, key: str, value: int):
+    print(key + "=" + str(value))
+
+def main():
+    store: DataStore = DataStore()
+    store.on_data += log_handler
+    store.update("count", 42)
+    store.update("total", 100)

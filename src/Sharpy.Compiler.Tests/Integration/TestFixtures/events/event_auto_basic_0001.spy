@@ -1,0 +1,19 @@
+# Basic auto-event: subscribe, raise, unsubscribe
+delegate MsgHandler(msg: str) -> None
+
+class Publisher:
+    event on_msg: MsgHandler
+
+    def notify(self, msg: str):
+        self.on_msg?.invoke(msg)
+
+def handler(msg: str):
+    print(msg)
+
+def main():
+    p: Publisher = Publisher()
+    p.on_msg += handler
+    p.notify("hello")
+    p.on_msg -= handler
+    p.notify("should not print")
+    print("done")
