@@ -169,13 +169,13 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 |---|---------|-----------|-------|
 | ~~12.1~~ | ~~Delegate type declarations~~ | ~~M~~ | ~~Completed.~~ `DelegateDef` AST node; `ParseDelegateDef()` parser; `ResolveDelegateDeclaration()` + `CheckDelegate()` semantics; `GenerateDelegateDeclaration()` codegen emits C# delegate type. Lambda-to-delegate assignment + delegate invocation supported. 6 test fixtures (5 positive, 1 error). |
 | ~~12.2~~ | ~~Generic variance (`out T`, `in T`)~~ | ~~L~~ | ~~Completed.~~ `TypeParameterVariance` enum on `TypeParameterDef`; parser recognizes `out`/`in` annotations; `VarianceValidator` (Order 415) checks position correctness (SPY0417–SPY0419); codegen emits C# `out`/`in` keywords; `SymbolSerializer` v6. 10 test fixtures (6 positive, 4 error). |
-| 12.3 | Events | L | `event clicked: (object, EventArgs) -> None`; `+=`/`-=` subscribe; `?.invoke()` thread-safe invocation; only declaring class can fire |
+| 12.3 | Events | L | Two forms mirroring property syntax: **auto-events** (`event name: DelegateType` → C# field-like event) and **function-style events** (`event add`/`event remove name(self, handler: T):` → C# event accessors). Event types must be named delegate types (not inline function types — see SRP-0003). `+=`/`-=` subscribe/unsubscribe; `?.invoke()` thread-safe invocation; only declaring class can raise. Supports `@virtual`/`@abstract`/`@override`/`@static`/`@final` decorators. Interface event declarations. `TokenType.Event` already lexed but not dispatched. |
 | 12.4 | Custom decorator arguments | M | Extend `Decorator` record with `Arguments`; parse `@decorator(args)`; attribute mapping |
 | 12.5 | Spec gap audit + integration test sweep | M | Systematic pass through all 112 spec files vs. test fixtures; file issues for any remaining gaps |
 
-**Key files:** New AST nodes, `Parser.Definitions.cs`, `Parser.Types.cs`, `TypeChecker.cs`, `RoslynEmitter.TypeDeclarations.cs`, `RoslynEmitter.Expressions.Literals.cs`
+**Key files:** `Statement.Future.cs` (new `EventDef` AST), `Parser.Definitions.cs` (`ParseEventDef()`), `NameResolver.cs` (`ResolveEventDeclaration()`), `TypeChecker.Definitions.cs` (`CheckEvent()`), `RoslynEmitter.ClassMembers.cs` (`GenerateAutoEvent()`/`GenerateFunctionStyleEvent()`), `RoslynEmitter.Statements.cs` (event `+=`/`-=` codegen)
 
-**Dependencies:** 12.1 before 12.2 (variance needs delegates to exist). 12.3–12.6 independent.
+**Dependencies:** ~~12.1 before 12.2 (variance needs delegates to exist).~~ 12.3 depends on 12.1 (events use delegate types). 12.4–12.5 independent.
 
 ---
 
