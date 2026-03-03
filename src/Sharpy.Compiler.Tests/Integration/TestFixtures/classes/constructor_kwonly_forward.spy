@@ -1,0 +1,39 @@
+# Test keyword-only parameters with inheritance - no super() forwarding
+# (super().__init__() with named args has a known codegen issue)
+
+class Config:
+    host: str
+    port: int
+
+    def __init__(self, *, host: str, port: int):
+        self.host = host
+        self.port = port
+
+    def info(self) -> str:
+        return self.host
+
+# Derived class with its own keyword-only __init__ (no base constructor)
+class ServerConfig:
+    host: str
+    port: int
+    ssl: bool
+
+    def __init__(self, *, host: str, port: int, ssl: bool):
+        self.host = host
+        self.port = port
+        self.ssl = ssl
+
+    def info(self) -> str:
+        return self.host
+
+def main():
+    # Base class with keyword-only params
+    cfg1: Config = Config(host="localhost", port=8080)
+    print(cfg1.info())
+    print(cfg1.port)
+
+    # Derived-style class with keyword-only params
+    cfg2: ServerConfig = ServerConfig(host="secure.host", port=443, ssl=True)
+    print(cfg2.info())
+    print(cfg2.port)
+    print(cfg2.ssl)

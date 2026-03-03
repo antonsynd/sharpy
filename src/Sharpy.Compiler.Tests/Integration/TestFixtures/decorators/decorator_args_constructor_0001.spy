@@ -1,0 +1,18 @@
+# Test decorator arguments on constructors
+
+class Widget:
+    name: str
+
+    @obsolete("Use Widget.create() factory instead")
+    def __init__(self, name: str):
+        self.name = name
+
+    # Static method (no self parameter = automatically static)
+    def create(name: str) -> Widget:
+        return Widget(name)
+
+def main():
+    w: Widget = Widget("test")
+    print(w.name)
+    w2: Widget = Widget.create("factory")
+    print(w2.name)

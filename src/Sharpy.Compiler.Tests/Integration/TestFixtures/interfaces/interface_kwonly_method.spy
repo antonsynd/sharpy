@@ -1,0 +1,30 @@
+# Test keyword-only parameters in interface methods
+
+interface IConfigurable:
+    def configure(self, *, name: str, value: int) -> str:
+        ...
+
+class Widget(IConfigurable):
+    label: str
+
+    def __init__(self, label: str):
+        self.label = label
+
+    def configure(self, *, name: str, value: int) -> str:
+        return name
+
+class Button(IConfigurable):
+    text: str
+
+    def __init__(self, text: str):
+        self.text = text
+
+    def configure(self, *, name: str, value: int) -> str:
+        return self.text
+
+def main():
+    w: Widget = Widget("my-widget")
+    print(w.configure(name="setting", value=42))
+
+    b: Button = Button("Click Me")
+    print(b.configure(name="action", value=100))

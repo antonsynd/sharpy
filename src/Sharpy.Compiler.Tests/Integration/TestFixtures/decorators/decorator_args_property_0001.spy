@@ -1,0 +1,21 @@
+# Test decorator arguments on properties
+
+class Settings:
+    _debug: bool
+
+    def __init__(self):
+        self._debug = False
+
+    @obsolete("Use debug_mode instead")
+    property get debug(self) -> bool:
+        return self._debug
+
+    @obsolete("Use set_debug_mode instead")
+    property set debug(self, value: bool):
+        self._debug = value
+
+def main():
+    s: Settings = Settings()
+    print(s.debug)
+    s.debug = True
+    print(s.debug)

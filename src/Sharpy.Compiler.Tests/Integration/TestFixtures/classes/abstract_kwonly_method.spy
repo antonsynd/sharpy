@@ -1,0 +1,34 @@
+# Test keyword-only parameters in abstract methods
+
+@abstract
+class Shape:
+    @abstract
+    def configure(self, *, scale: float, rotation: int) -> str:
+        ...
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, radius: float):
+        self.radius = radius
+
+    @override
+    def configure(self, *, scale: float, rotation: int) -> str:
+        return "circle"
+
+class Square(Shape):
+    side: float
+
+    def __init__(self, side: float):
+        self.side = side
+
+    @override
+    def configure(self, *, scale: float, rotation: int) -> str:
+        return "square"
+
+def main():
+    c: Circle = Circle(5.0)
+    print(c.configure(scale=2.0, rotation=90))
+
+    s: Square = Square(10.0)
+    print(s.configure(scale=1.5, rotation=45))
