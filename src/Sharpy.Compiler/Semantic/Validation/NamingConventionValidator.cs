@@ -58,6 +58,9 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
             case PropertyDef propDef:
                 CheckName(propDef.Name, propDef.LineStart, propDef.ColumnStart, propDef.Span);
                 break;
+            case EventDef eventDef:
+                CheckName(eventDef.Name, eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
+                break;
         }
     }
 
@@ -82,6 +85,9 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
                 case VariableDeclaration field:
                     CheckName(field.Name, field.LineStart, field.ColumnStart, field.Span);
                     break;
+                case EventDef eventDef:
+                    CheckName(eventDef.Name, eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
+                    break;
             }
         }
     }
@@ -100,6 +106,9 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
                 case VariableDeclaration field:
                     CheckName(field.Name, field.LineStart, field.ColumnStart, field.Span);
                     break;
+                case EventDef eventDef:
+                    CheckName(eventDef.Name, eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
+                    break;
             }
         }
     }
@@ -114,6 +123,10 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
             {
                 CheckName(method.Name, method.LineStart, method.ColumnStart, method.Span);
                 ValidateParameters(method.Parameters);
+            }
+            else if (member is EventDef eventDef)
+            {
+                CheckName(eventDef.Name, eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
             }
         }
     }
