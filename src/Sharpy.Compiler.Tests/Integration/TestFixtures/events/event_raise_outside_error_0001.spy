@@ -1,0 +1,9 @@
+# Cannot raise (invoke) an event from outside the declaring class
+delegate MyHandler(sender: object, data: str) -> None
+
+class Publisher:
+    event on_change: MyHandler
+
+def main():
+    p: Publisher = Publisher()
+    p.on_change.invoke(p, "hello")
