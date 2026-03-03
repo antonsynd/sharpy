@@ -166,7 +166,73 @@ internal class DecoratorValidator : SemanticValidatorBase
                     code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
                     span: decorator.Span);
             }
+
+            // For unknown decorators (custom attributes), validate arguments are compile-time constants
+            if (!DecoratorNames.KnownModifierDecorators.Contains(decorator.Name)
+                && !UnsupportedDecorators.ContainsKey(decorator.Name))
+            {
+                ValidateDecoratorArgumentsAreConstants(decorator);
+            }
         }
+    }
+
+    /// <summary>
+    /// Validates that all arguments to a custom decorator are compile-time constant expressions.
+    /// Allowed: string/int/float/bool literals, None, enum member access (dotted names), type(X).
+    /// </summary>
+    private void ValidateDecoratorArgumentsAreConstants(Decorator decorator)
+    {
+        foreach (var arg in decorator.Arguments)
+        {
+            if (!IsCompileTimeConstant(arg))
+            {
+                AddError(_context,
+                    "Decorator argument must be a compile-time constant",
+                    arg.LineStart,
+                    arg.ColumnStart,
+                    code: DiagnosticCodes.Validation.NonConstantDecoratorArgument,
+                    span: arg.Span);
+            }
+        }
+
+        foreach (var kwArg in decorator.KeywordArguments)
+        {
+            if (!IsCompileTimeConstant(kwArg.Value))
+            {
+                AddError(_context,
+                    "Decorator argument must be a compile-time constant",
+                    kwArg.Value.LineStart,
+                    kwArg.Value.ColumnStart,
+                    code: DiagnosticCodes.Validation.NonConstantDecoratorArgument,
+                    span: kwArg.Value.Span);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns true if the expression is a compile-time constant suitable for a decorator argument.
+    /// Allowed forms:
+    /// - Literals: string, int, float, bool, None
+    /// - Enum member access: dotted name like EnumType.member (MemberAccess with Identifier object)
+    /// - type(X): FunctionCall with name "type" and exactly one argument
+    /// </summary>
+    private static bool IsCompileTimeConstant(Expression expr)
+    {
+        return expr switch
+        {
+            StringLiteral => true,
+            IntegerLiteral => true,
+            FloatLiteral => true,
+            BooleanLiteral => true,
+            NoneLiteral => true,
+            // Enum member access: SomeType.Member
+            MemberAccess { Object: Identifier } => true,
+            // type(X) is allowed as typeof equivalent
+            FunctionCall { Function: Identifier { Name: "type" }, Arguments.Length: 1, KeywordArguments.Length: 0 } => true,
+            // Negative numeric literals: -42, -3.14
+            UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral or FloatLiteral } => true,
+            _ => false,
+        };
     }
 
     /// <summary>

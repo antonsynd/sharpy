@@ -273,6 +273,9 @@ public static class DiagnosticCodes
         public const string AbstractEventWithBody = "SPY0423";
         // SPY0424 reserved for future event validation errors
 
+        // Decorator argument validation (SPY0425-SPY0429)
+        public const string NonConstantDecoratorArgument = "SPY0425";
+
         // Warnings (SPY0450-SPY0499)
         public const string UnreachableCodeWarning = "SPY0450";
         public const string UnusedVariable = "SPY0451";
