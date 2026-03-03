@@ -1,0 +1,18 @@
+# Event accessor parameter type mismatch test
+# The add and remove accessors must have matching handler parameter types
+
+delegate Handler1() -> None
+delegate Handler2(x: int) -> None
+
+class Publisher:
+    _handlers: list[Handler1] = []
+
+    event add on_action(self, handler: Handler1):
+        self._handlers.append(handler)
+
+    # Mismatched handler type - should produce SPY0374
+    event remove on_action(self, handler: Handler2):
+        pass
+
+def main():
+    pass

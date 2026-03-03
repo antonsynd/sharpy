@@ -949,7 +949,7 @@ internal partial class TypeChecker
     /// <summary>
     /// Resolves event types from their type annotations in the AST.
     /// For auto-events, resolves the delegate type annotation and verifies it's a delegate type.
-    /// For function-style events, resolves the handler parameter type.
+    /// For function-style events, resolves the handler parameter type and validates add/remove consistency.
     /// Must be called after field type resolution and before member checking.
     /// </summary>
     private void ResolveEventTypes(TypeSymbol typeSymbol, System.Collections.Immutable.ImmutableArray<Statement> body)
@@ -959,11 +959,13 @@ internal partial class TypeChecker
             var eventSymbol = typeSymbol.Events[i];
             if (eventSymbol.Type is UnknownType)
             {
-                // Find the corresponding EventDef in the AST
-                var eventDef = body
+                // Find all EventDefs for this event (may have separate add/remove)
+                var eventDefs = body
                     .OfType<EventDef>()
-                    .FirstOrDefault(e => e.Name == eventSymbol.Name);
+                    .Where(e => e.Name == eventSymbol.Name)
+                    .ToList();
 
+                var eventDef = eventDefs.FirstOrDefault();
                 if (eventDef != null)
                 {
                     SemanticType resolvedType;
@@ -980,6 +982,35 @@ internal partial class TypeChecker
                         else
                         {
                             resolvedType = SemanticType.Unknown;
+                        }
+
+                        // Validate handler parameter type consistency between add/remove accessors (#262)
+                        if (eventDefs.Count > 1)
+                        {
+                            var addDef = eventDefs.FirstOrDefault(e => e.Accessor == Parser.Ast.EventAccessor.Add);
+                            var removeDef = eventDefs.FirstOrDefault(e => e.Accessor == Parser.Ast.EventAccessor.Remove);
+                            if (addDef != null && removeDef != null)
+                            {
+                                var addHandlerParam = addDef.Parameters
+                                    .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
+                                var removeHandlerParam = removeDef.Parameters
+                                    .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
+
+                                if (addHandlerParam?.Type != null && removeHandlerParam?.Type != null)
+                                {
+                                    var addType = _typeResolver.ResolveTypeAnnotation(addHandlerParam.Type);
+                                    var removeType = _typeResolver.ResolveTypeAnnotation(removeHandlerParam.Type);
+
+                                if (!addType.Equals(removeType))
+                                    {
+                                        AddError(
+                                            $"Event '{eventDef.Name}' add/remove accessors have mismatched handler types: add expects '{addType.GetDisplayName()}', remove expects '{removeType.GetDisplayName()}'",
+                                            removeDef.LineStart, removeDef.ColumnStart,
+                                            DiagnosticCodes.Semantic.EventAccessorParamMismatch,
+                                            removeDef.Span);
+                                    }
+                                }
+                            }
                         }
                     }
                     else
