@@ -1,0 +1,13 @@
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @virtual("x")
+    def speak(self) -> str:
+        return self.name
+
+def main():
+    a = Animal("dog")
+    print(a.speak())

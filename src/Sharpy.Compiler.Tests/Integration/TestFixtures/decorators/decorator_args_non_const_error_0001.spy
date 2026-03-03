@@ -1,0 +1,6 @@
+@custom(1 + 2)
+def greet() -> str:
+    return "hello"
+
+def main():
+    print(greet())
