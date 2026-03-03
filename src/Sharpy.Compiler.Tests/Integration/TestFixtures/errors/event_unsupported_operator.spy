@@ -1,0 +1,13 @@
+# Test that unsupported operators on events produce SPY0378
+
+delegate SimpleHandler() -> None
+
+class Publisher:
+    event on_action: SimpleHandler
+
+def handler():
+    pass
+
+def main():
+    p: Publisher = Publisher()
+    p.on_action *= handler  # SPY0378: *= not supported on events

@@ -183,7 +183,7 @@ internal partial class TypeChecker
                 AddError(
                     $"Events only support '+=' and '-=' operators",
                     assignment.LineStart, assignment.ColumnStart,
-                    DiagnosticCodes.Semantic.DirectEventAssignment,
+                    DiagnosticCodes.Semantic.EventUnsupportedOperator,
                     assignment.Span);
                 return;
             }

@@ -979,6 +979,11 @@ public static class DiagnosticExplanations
             "An event is being raised (invoked) from outside the class that declares it. Events are protected and can only be raised from within their declaring class.",
             "btn.on_click()  # error: cannot raise from outside Button class",
             "Only call the event from within its declaring class, or provide a public method to raise it:\n# Inside Button class:\ndef do_click(self):\n    self.on_click()  # OK: inside the class");
+
+        Add(dict, DiagnosticCodes.Semantic.EventUnsupportedOperator, "Unsupported event operator", "Semantic",
+            "An augmented operator other than '+=' or '-=' was used on an event. Events only support adding handlers with '+=' and removing handlers with '-='.",
+            "btn.on_click *= handler  # error: *= not supported",
+            "Use '+=' to add a handler or '-=' to remove one:\nbtn.on_click += handler\nbtn.on_click -= handler");
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",

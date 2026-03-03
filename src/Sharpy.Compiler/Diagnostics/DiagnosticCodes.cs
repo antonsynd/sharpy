@@ -227,7 +227,8 @@ public static class DiagnosticCodes
         public const string DirectEventAssignment = "SPY0375";
         public const string EventHandlerTypeMismatch = "SPY0376";
         public const string RaiseEventOutsideClass = "SPY0377";
-        // SPY0378-SPY0379 reserved for future event semantic errors
+        public const string EventUnsupportedOperator = "SPY0378";
+        // SPY0379 reserved for future event semantic errors
     }
 
     /// <summary>
