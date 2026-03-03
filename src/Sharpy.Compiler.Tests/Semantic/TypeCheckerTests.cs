@@ -1687,6 +1687,70 @@ def main():
         (effectiveType as UserDefinedType)!.Name.Should().Be("Dog");
     }
 
+    [Theory]
+    [InlineData("int", typeof(BuiltinType))]
+    [InlineData("str", typeof(BuiltinType))]
+    [InlineData("float", typeof(BuiltinType))]
+    [InlineData("bool", typeof(BuiltinType))]
+    [InlineData("long", typeof(BuiltinType))]
+    [InlineData("double", typeof(BuiltinType))]
+    // float32 omitted: not registered as a type in the symbol table for isinstance checks
+    public void TypeNarrowing_IsInstance_BuiltinTypes_ReturnsBuiltinType(string typeName, Type expectedType)
+    {
+        var source = $@"
+def main():
+    x: object = 42
+    if isinstance(x, {typeName}):
+        y: {typeName} = x
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Find 'x' in the assignment inside the if block
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var ifStmt = mainFunc.Body.OfType<IfStatement>().First();
+        var assignment = ifStmt.ThenBody.OfType<VariableDeclaration>().First();
+        var xIdentifier = assignment.InitialValue as Identifier;
+
+        xIdentifier.Should().NotBeNull();
+        xIdentifier!.Name.Should().Be("x");
+
+        var narrowedType = semanticInfo.GetNarrowedType(xIdentifier);
+        narrowedType.Should().NotBeNull($"isinstance(x, {typeName}) should produce a narrowed type");
+        narrowedType.Should().BeOfType(expectedType, $"isinstance(x, {typeName}) should narrow to {expectedType.Name}, not UserDefinedType");
+    }
+
+    [Fact]
+    public void TypeNarrowing_IsInstance_UserDefinedType_ReturnsUserDefinedType()
+    {
+        var source = @"
+class Foo:
+    ...
+
+def main():
+    x: object = Foo()
+    if isinstance(x, Foo):
+        y: Foo = x
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var ifStmt = mainFunc.Body.OfType<IfStatement>().First();
+        var assignment = ifStmt.ThenBody.OfType<VariableDeclaration>().First();
+        var xIdentifier = assignment.InitialValue as Identifier;
+
+        xIdentifier.Should().NotBeNull();
+        var narrowedType = semanticInfo.GetNarrowedType(xIdentifier!);
+        narrowedType.Should().NotBeNull();
+        narrowedType.Should().BeOfType<UserDefinedType>();
+        (narrowedType as UserDefinedType)!.Name.Should().Be("Foo");
+    }
+
     [Fact]
     public void GetEffectiveType_ReturnsNull_WhenNoTypeRecorded()
     {
