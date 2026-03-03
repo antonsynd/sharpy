@@ -1,0 +1,42 @@
+# Main entry point testing cross-module imports
+# and interaction between module classes
+from utils import Counter, multiply_by_2, multiply_by_3, create_counter
+from shapes import Rectangle
+
+def main():
+    # Test module-level function from utils
+    result: int = multiply_by_2(7)
+    print(result)
+    
+    # Test class with methods
+    c: Counter = Counter(5)
+    print(c.get_value())
+    
+    # Test method that modifies state
+    c.add(10)
+    print(c.get_value())
+    
+    # Test increment
+    c.increment()
+    print(c.get_value())
+    
+    # Test multiply_by_3
+    result2: int = multiply_by_3(4)
+    print(result2)
+    
+    # Test shape class from shapes module
+    rect: Rectangle = Rectangle(3.0, 4.0)
+    area: float = rect.area()
+    print(area)
+    
+    # Test rectangle getters
+    print(rect.get_width())
+    print(rect.get_height())
+    
+    # Test cross-module function returning imported type
+    c2: Counter = create_counter(100)
+    print(c2.get_value())
+    
+    # Modify and check
+    c2.add(50)
+    print(c2.get_value())

@@ -1,0 +1,10 @@
+Rectangle at (0.0, 0.0)
+Rectangle diagonal: 11.180339887498949
+Rectangle area: 50.0
+Rectangle perimeter: 30.0
+---
+Circle center: (5.0, 5.0)
+Point (6.0, 6.0) inside circle: True
+Point (10.0, 10.0) inside circle: False
+Circle area: 28.27431
+Circle perimeter: 18.84954

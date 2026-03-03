@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T03:05:15.486815",
+  "generated_code": "# Test abstract class with concrete method calling abstract method\n@abstract\nclass Greeter:\n    @abstract\n    def get_name(self) -> str: ...\n    \n    def greet(self) -> str:\n        return f\"Hello, {self.get_name()}!\"\n\nclass WorldGreeter(Greeter):\n    @override\n    def get_name(self) -> str:\n        return \"World\"\n\ndef main():\n    g = WorldGreeter()\n    print(g.greet())\n",
+  "expected_output": "Hello, World!\n",
+  "actual_output": "Hello, World!",
+  "feature_focus": "abstract_class",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 81.95308780670166,
+  "execution_duration": 4.58481240272522,
+  "source_files": null
+}

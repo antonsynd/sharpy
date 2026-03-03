@@ -1,0 +1,14 @@
+cumulative:
+3
+2
+6
+5
+10
+positive:
+5
+2
+1
+5
+7
+limited:
+10

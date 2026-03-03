@@ -1,0 +1,10 @@
+# Base geometry module with abstract shape class
+
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float: ...
+    
+    @virtual
+    def describe(self) -> str:
+        return "Shape"

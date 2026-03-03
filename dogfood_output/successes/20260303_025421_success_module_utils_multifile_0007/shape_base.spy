@@ -1,0 +1,8 @@
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float: ...
+    
+    @virtual
+    def shape_type(self) -> str:
+        return "Shape"

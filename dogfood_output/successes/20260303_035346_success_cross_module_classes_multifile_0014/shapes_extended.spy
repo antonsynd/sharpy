@@ -1,0 +1,30 @@
+# Extended module importing base classes and adding implementations
+
+from shapes_base import Component, IMeasurable
+
+class Widget(Component, IMeasurable):
+    _label: str
+
+    def __init__(self, id: int, label: str):
+        super().__init__(id)
+        self._label = label
+
+    @override
+    def get_info(self) -> str:
+        base = super().get_info()
+        return f"{base}:{self._label}"
+
+    @override
+    def measure(self) -> float:
+        return float(self._id * 10)
+
+class Gadget(Component):
+    _version: int
+
+    def __init__(self, id: int, version: int):
+        super().__init__(id)
+        self._version = version
+
+    @override
+    def get_info(self) -> str:
+        return f"Gadget-v{self._version}:{self._id}"

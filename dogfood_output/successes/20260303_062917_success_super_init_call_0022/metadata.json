@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T06:28:02.902028",
+  "generated_code": "# Test: Subclass providing convenience constructor with computed super call\nclass Rectangle:\n    width: int\n    height: int\n\n    def __init__(self, w: int, h: int):\n        self.width = w\n        self.height = h\n\nclass Square(Rectangle):\n    def __init__(self, side: int):\n        super().__init__(side, side)\n\ndef main():\n    sq = Square(7)\n    print(sq.width)\n    print(sq.height)\n",
+  "expected_output": "7\n7\n",
+  "actual_output": "7\n7",
+  "feature_focus": "super_init_call",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 64.14080500602722,
+  "execution_duration": 4.539586544036865,
+  "source_files": null
+}

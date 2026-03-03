@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-03T07:39:07.444646",
+  "generated_code": "# Access modifiers with pattern matching and class design\n# A secure vault system with role-based access levels\n\nclass SecureVault:\n    # Static fields - no access modifiers allowed on fields, use naming convention\n    @static\n    _master_key: str = \"vault-abc-123\"\n    \n    @static\n    _access_level: int = 5\n    \n    vault_id: int\n    owner: str\n    \n    def __init__(self, id: int, owner: str):\n        self.vault_id = id\n        self.owner = owner\n    \n    @private\n    def _validate(self, credential: str) -> bool:\n        # Access static via class name\n        return credential == SecureVault._master_key\n    \n    @protected\n    def _log_access(self, user: str) -> None:\n        print(user)\n    \n    def open(self, user: str, credential: str) -> bool:\n        self._log_access(user)\n        if self._validate(credential):\n            return True\n        return False\n\nclass AdminVault(SecureVault):\n    admin_code: int\n    \n    def __init__(self, id: int, owner: str, code: int):\n        super().__init__(id, owner)\n        self.admin_code = code\n    \n    def verify_admin(self, level: int) -> bool:\n        # Access protected static from subclass via class name\n        if level >= SecureVault._access_level:\n            return True\n        return False\n\nclass AuditLogger:\n    @static\n    _logs: list[str] = []\n    \n    @static\n    _max_logs: int = 100\n    \n    # Static methods - no @staticmethod decorator, just omit self\n    def add_entry(entry: str) -> None:\n        AuditLogger._logs.append(entry)\n    \n    def get_count() -> int:\n        return len(AuditLogger._logs)\n\ndef main():\n    # Create vaults\n    vault: SecureVault = SecureVault(1, \"alice\")\n    admin: AdminVault = AdminVault(2, \"bob\", 999)\n    \n    # Test pattern matching on access levels\n    level: int = 7\n    match level:\n        case 5 | 6:\n            print(\"standard\")\n        case _ if level > 6:\n            print(\"elevated\")\n        case _:\n            print(\"basic\")\n    \n    # Test vault opening\n    result1: bool = vault.open(\"alice\", \"wrong-key\")\n    print(result1)\n    \n    result2: bool = vault.open(\"alice\", \"vault-abc-123\")\n    print(result2)\n    \n    # Verify admin access level\n    is_admin: bool = admin.verify_admin(7)\n    print(is_admin)\n    \n    # Log entries\n    AuditLogger.add_entry(\"vault-1-access\")\n    AuditLogger.add_entry(\"vault-2-access\")\n    print(AuditLogger.get_count())\n",
+  "expected_output": "elevated\nFalse\nalice\nTrue\nTrue\nTrue\n2\n",
+  "actual_output": "elevated\nalice\nFalse\nalice\nTrue\nTrue\n2",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "access_modifiers",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 373.9788839817047,
+  "compilation_duration": null,
+  "execution_duration": 4.80730128288269,
+  "source_files": null
+}

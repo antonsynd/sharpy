@@ -1,0 +1,21 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-03T07:58:24.001239",
+  "generated_code": "from shapes import Shape, Rectangle, Circle, print_shape_info, create_shape_collection\n\ndef main():\n    # Create shapes directly using imported classes\n    rect = Rectangle(3.0, 4.0)\n    circle = Circle(2.0)\n    \n    # Print individual shape areas (cross-module class instantiation)\n    print(rect.area())\n    print(circle.area())\n    \n    # Test polymorphism through imported function\n    print_shape_info(rect)\n    print_shape_info(circle)\n    \n    # Test imported function that returns cross-module types\n    shapes = create_shape_collection()\n    total: float = 0.0\n    for shape in shapes:\n        total += shape.area()\n    print(total)\n",
+  "expected_output": "12.0\n12.56636\nRectangle: area = 12.0\nCircle: area = 12.56636\n48.28338\n",
+  "actual_output": "12.0\n12.56636\nRectangle: area = 12.0\nCircle: area = 12.56636\n52.27431",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 100.52837347984314,
+  "compilation_duration": null,
+  "execution_duration": 4.829503536224365,
+  "source_files": {
+    "shapes.spy": "class Shape:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    @virtual\n    def area(self) -> float:\n        return 0.0\n\n@final\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, width: float, height: float):\n        super().__init__(\"Rectangle\")\n        self.width = width\n        self.height = height\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n\n@final\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, radius: float):\n        super().__init__(\"Circle\")\n        self.radius = radius\n    \n    @override\n    def area(self) -> float:\n        # \u03c0 * r\u00b2, using 3.14159 as pi\n        return 3.14159 * self.radius * self.radius\n\ndef print_shape_info(shape: Shape):\n    print(f\"{shape.name}: area = {shape.area()}\")\n\ndef create_shape_collection() -> list[Shape]:\n    shapes: list[Shape] = []\n    shapes.append(Rectangle(4.0, 5.0))\n    shapes.append(Circle(3.0))\n    shapes.append(Rectangle(2.0, 2.0))\n    return shapes\n",
+    "main.spy": "from shapes import Shape, Rectangle, Circle, print_shape_info, create_shape_collection\n\ndef main():\n    # Create shapes directly using imported classes\n    rect = Rectangle(3.0, 4.0)\n    circle = Circle(2.0)\n    \n    # Print individual shape areas (cross-module class instantiation)\n    print(rect.area())\n    print(circle.area())\n    \n    # Test polymorphism through imported function\n    print_shape_info(rect)\n    print_shape_info(circle)\n    \n    # Test imported function that returns cross-module types\n    shapes = create_shape_collection()\n    total: float = 0.0\n    for shape in shapes:\n        total += shape.area()\n    print(total)\n"
+  }
+}

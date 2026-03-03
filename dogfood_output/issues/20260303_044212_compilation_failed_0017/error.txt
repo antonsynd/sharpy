@@ -1,0 +1,75 @@
+Assembly compilation failed:
+
+error[CS1039]: Unterminated string literal
+  --> /tmp/tmpkavdcimg/library.spy:26:87
+    |
+ 26 |     print(first_info)
+    |                      ^
+    |
+
+error[CS1003]: Syntax error, ',' expected
+  --> /tmp/tmpkavdcimg/library.spy:26:88
+    |
+ 26 |     print(first_info)
+    |                      ^
+    |
+
+error[CS1010]: Newline in constant
+  --> /tmp/tmpkavdcimg/library.spy:27:1
+    |
+ 27 | 
+    | ^
+    |
+
+error[CS1003]: Syntax error, ',' expected
+  --> /tmp/tmpkavdcimg/library.spy:27:4
+    |
+ 27 | 
+    | ^
+    |
+
+error[CS1039]: Unterminated string literal
+  --> /tmp/tmpkavdcimg/library.spy:27:108
+    |
+ 27 | 
+    | ^
+    |
+
+error[CS1003]: Syntax error, ',' expected
+  --> /tmp/tmpkavdcimg/library.spy:27:109
+    |
+ 27 | 
+    | ^
+    |
+
+error[CS1010]: Newline in constant
+  --> /tmp/tmpkavdcimg/library.spy:28:1
+    |
+ 28 |     first_mag: Magazine = city_library.magazines[0]
+    | ^
+    |
+
+error[CS1003]: Syntax error, ',' expected
+  --> /tmp/tmpkavdcimg/library.spy:28:4
+    |
+ 28 |     first_mag: Magazine = city_library.magazines[0]
+    |    ^
+    |
+
+error[CS1026]: ) expected
+  --> /tmp/tmpkavdcimg/library.spy:28:119
+    |
+ 28 |     first_mag: Magazine = city_library.magazines[0]
+    |                                                    ^
+    |
+
+error[CS0506]: 'Catalog.Magazine.GetAge(int)': cannot override inherited member 'Catalog.LibraryItem.GetAge(int)' because it is not marked virtual, abstract, or override
+  --> /tmp/tmpkavdcimg/catalog.spy:49:29
+
+error[CS0165]: Use of unassigned local variable 'result'
+  --> /tmp/tmpkavdcimg/library.spy:27:18
+    |
+ 27 | 
+    | ^
+    |
+

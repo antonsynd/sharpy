@@ -1,0 +1,4 @@
+n=2, square=4, running_total=5
+n=4, square=16, running_total=30
+Final result:
+55

@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0535]: 'DogfoodTest.Document' does not implement interface member 'DogfoodTest.IVersioned.Version.set'
+  --> dogfood_test.cs:28:29
+    |
+ 28 |         return self._version
+    |                             ^
+    |
+
+error[CS0535]: 'DogfoodTest.Image' does not implement interface member 'DogfoodTest.IVersioned.Version.set'
+  --> /tmp/tmpft5cpf_z/dogfood_test.spy:26:26
+    |
+ 26 |     
+    |     ^
+    |
+

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T02:44:19.996131",
+  "generated_code": "# Test: Basic enum arithmetic using .value and .name properties\nenum Scale:\n    SMALL = 10\n    MEDIUM = 20\n    LARGE = 30\n\ndef main():\n    # Double the medium scale value\n    result: int = Scale.MEDIUM.value * 2\n    print(result)\n    \n    # Access enum name (PascalCase)\n    print(Scale.LARGE.name)\n    \n    # Access raw value\n    print(Scale.SMALL.value)\n",
+  "expected_output": "40\nLarge\n10\n",
+  "actual_output": "40\nLarge\n10",
+  "feature_focus": "enum_usage",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 31.20998454093933,
+  "execution_duration": 4.710905075073242,
+  "source_files": null
+}

@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'Product' is never used
+  --> /tmp/tmpc91gplns/services.spy:4:10
+    |
+  4 | from services import EntityService, SearchService
+    |          ^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Service' is never used
+  --> /tmp/tmpc91gplns/services.spy:4:19
+    |
+  4 | from services import EntityService, SearchService
+    |                   ^^^^^^^
+    |
+

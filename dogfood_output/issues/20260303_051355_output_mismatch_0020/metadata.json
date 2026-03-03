@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-03T05:09:06.529205",
+  "generated_code": "# Test: Bool variables with pattern matching and computed properties\n# Simple traffic light state machine using bool variables and match expressions\n\nenum TrafficState:\n    RED = 0\n    YELLOW = 1\n    GREEN = 2\n\nclass TrafficLight:\n    current: TrafficState\n\n    def __init__(self, initial: TrafficState):\n        self.current = initial\n\n    property get is_stopped(self) -> bool:\n        return self.current == TrafficState.RED\n\n    property get is_caution(self) -> bool:\n        return self.current == TrafficState.YELLOW\n\n    property get is_go(self) -> bool:\n        return self.current == TrafficState.GREEN\n\n    def transition(self, next_state: TrafficState) -> None:\n        self.current = next_state\n\ndef describe_state(light: TrafficLight) -> str:\n    # Using bool variables with individual pattern matching\n    stopped: bool = light.is_stopped\n    caution: bool = light.is_caution\n    going: bool = light.is_go\n    \n    # Match on individual bools with guard-like logic\n    if stopped and not caution and not going:\n        return \"STOP - Red light\"\n    elif not stopped and caution and not going:\n        return \"CAUTION - Yellow light\"\n    elif not stopped and not caution and going:\n        return \"GO - Green light\"\n    else:\n        return \"INVALID state\"\n\ndef main():\n    light = TrafficLight(TrafficState.RED)\n    \n    # Test initial state\n    print(describe_state(light))\n    \n    # Transition through states\n    light.transition(TrafficState.GREEN)\n    print(describe_state(light))\n    \n    light.transition(TrafficState.YELLOW)\n    print(describe_state(light))\n    \n    # Direct bool variable usage with logical operators\n    is_safe: bool = light.is_stopped or light.is_caution\n    print(is_safe)\n    \n    # Negation of bool variable\n    is_moving: bool = not light.is_stopped\n    print(is_moving)\n",
+  "expected_output": "STOP - Red light\nGO - Green light\nCAUTION - Yellow light\nFalse\nTrue\n",
+  "actual_output": "STOP - Red light\nGO - Green light\nCAUTION - Yellow light\nTrue\nTrue",
+  "error_message": "AI verification backend failure",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "bool_variables",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 123.13474178314209,
+  "compilation_duration": null,
+  "execution_duration": 4.75731348991394,
+  "source_files": null
+}

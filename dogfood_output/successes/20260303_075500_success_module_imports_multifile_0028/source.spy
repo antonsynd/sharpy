@@ -1,0 +1,43 @@
+# Main entry point - demonstrates complex cross-module imports
+from types import Status, Point, Dimensions, PI_VALUE, distance
+from shapes import Rectangle, Circle, create_square, create_unit_circle, Shape
+from utils import validate_shape, total_rect_area, get_origin, get_test_point, format_status
+
+def main():
+    # Create shapes using factory functions
+    square: Rectangle = create_square(5.0)
+    circle: Circle = create_unit_circle()
+
+    # Test 1: Shape descriptions (interface implementations)
+    print(square.describe())
+    print(circle.describe())
+
+    # Test 2: Drawable interface methods
+    print(square.draw())
+    print(circle.draw())
+
+    # Test 3: Area calculations (IMeasurable)
+    print(square.area())
+    print(circle.area())
+
+    # Test 4: Status handling with enums across modules
+    square.set_status(Status.APPROVED)
+    print(format_status(square.status))
+
+    # Test 5: Point and distance from types module
+    origin: Point = get_origin()
+    point: Point = get_test_point()
+    dist: float = distance(origin, point)
+    print(dist)
+
+    # Test 6: Validation
+    result: str = validate_shape(square)
+    print(result)
+
+    # Test 7: List processing
+    shapes_list: list[Rectangle] = [create_square(2.0), create_square(3.0)]
+    total_area: float = total_rect_area(shapes_list)
+    print(total_area)
+
+    # Test 8: Constants
+    print(PI_VALUE)

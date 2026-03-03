@@ -1,0 +1,17 @@
+Circle(r=5.0)
+Rectangle(4.0x6.0)
+(0.0, 0.0)
+78.53975
+24.0
+5.0
+70.0
+Drawing rectangle at (2.0, 3.0)
+3
+High
+medium
+0
+2
+0
+0
+10
+20

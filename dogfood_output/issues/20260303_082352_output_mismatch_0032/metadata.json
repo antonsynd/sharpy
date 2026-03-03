@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-03T08:20:04.435121",
+  "generated_code": "# Generator with running cumulative sum - yields intermediate totals\ndef cumulative_sums(values: list[int]) -> int:\n    total: int = 0\n    for v in values:\n        total += v\n        yield total\n\n# Generator that yields only positive running totals\ndef positive_accumulations(values: list[int]) -> int:\n    total: int = 0\n    for v in values:\n        total += v\n        if total > 0:\n            yield total\n\ndef main():\n    # Test cumulative sums generator\n    nums: list[int] = [3, -1, 4, -1, 5]\n    \n    print(\"cumulative:\")\n    for running in cumulative_sums(nums):\n        print(running)\n    \n    print(\"positive:\")\n    for positive in positive_accumulations([5, -3, -1, 4, 2]):\n        print(positive)\n    \n    # Generator with early termination via return\n    print(\"limited:\")\n    for partial in cumulative_sums([10, 20, 30, 40]):\n        if partial > 25:\n            break\n        print(partial)\n",
+  "expected_output": "cumulative:\n3\n2\n6\n5\n10\npositive:\n5\n9\n11\nlimited:\n10\n20\n",
+  "actual_output": "cumulative:\n3\n2\n6\n5\n10\npositive:\n5\n2\n1\n5\n7\nlimited:\n10",
+  "error_message": "AI verification backend failure",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "generator_basic",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 66.41816806793213,
+  "compilation_duration": null,
+  "execution_duration": 5.183823108673096,
+  "source_files": null
+}

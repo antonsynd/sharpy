@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T02:18:50.417151",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0222]: Type 'int' does not support operator '==' with operand of type 'int'\n  --> /tmp/tmpn6h5ff9k/dogfood_test.spy:5:12\n    |\n  5 |         if value == 0:\n    |            ^^^^^^^^^^\n    |\n\nerror[SPY0222]: Type 'int' does not support operator '>' with operand of type 'int'\n  --> /tmp/tmpn6h5ff9k/dogfood_test.spy:7:14\n    |\n  7 |         elif value > 0 and value < 10:\n    |              ^^^^^^^^^\n    |\n\nerror[SPY0222]: Type 'int' does not support operator '<' with operand of type 'int'\n  --> /tmp/tmpn6h5ff9k/dogfood_test.spy:7:28\n    |\n  7 |         elif value > 0 and value < 10:\n    |                            ^^^^^^^^^^\n    |\n\nerror[SPY0222]: Type 'int' does not support operator '%' with operand of type 'int'\n  --> /tmp/tmpn6h5ff9k/dogfood_test.spy:9:14\n    |\n  9 |         elif value % 2 == 0:\n    |              ^^^^^^^^^\n    |\n\n",
+  "generated_code": "# Test match guard logic using if/elif/else\n# Simulates: case int() as n if n == 0: etc.\ndef classify(value: object) -> str:\n    if isinstance(value, int):\n        if value == 0:\n            return \"zero\"\n        elif value > 0 and value < 10:\n            return f\"single digit: {value}\"\n        elif value % 2 == 0:\n            return f\"even number: {value}\"\n        else:\n            return \"other\"\n    elif isinstance(value, str):\n        s: str = str(value)\n        if len(s) == 0:\n            return \"empty string\"\n        elif s[0] == \"a\":\n            return f\"starts with a: {s}\"\n        else:\n            return \"other\"\n    else:\n        return \"other\"\n\ndef main():\n    print(classify(0))\n    print(classify(7))\n    print(classify(42))\n    print(classify(\"\"))\n    print(classify(\"apple\"))\n    print(classify(\"banana\"))\n",
+  "expected_output": "zero\nsingle digit: 7\neven number: 42\nempty string\nstarts with a: apple\nother\n",
+  "feature_focus": "match_guard",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 479.6933767795563,
+  "source_files": null,
+  "validation_output": null
+}

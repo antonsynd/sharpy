@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'PI' is never used
+  --> /tmp/tmp138o7vuq/shape_classes.spy:1:28
+    |
+  1 | from geometry_utils import PI, square
+    |                            ^^
+    |
+
+warning[SPY0452]: Imported name 'Shape' is never used
+  --> /tmp/tmp138o7vuq/main.spy:2:61
+    |
+  2 | from shape_classes import Circle, Rectangle, RightTriangle, Shape
+    |                                                             ^^^^^
+    |
+

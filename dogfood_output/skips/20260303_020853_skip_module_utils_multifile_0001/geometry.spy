@@ -1,0 +1,78 @@
+# Geometry module - abstract base classes and concrete implementations
+from core_types import IIdentifiable, ShapeCategory, IRenderable
+from utils import Point2D
+
+# Rectangle class
+class Rectangle(IIdentifiable, IRenderable):
+    _id: int
+    _width: float
+    _height: float
+    _position: Point2D
+
+    def __init__(self, id: int, position: Point2D, width: float, height: float):
+        self._id = id
+        self._position = position
+        self._width = width
+        self._height = height
+
+    @virtual
+    def area(self) -> float:
+        return self._width * self._height
+
+    @virtual
+    def perimeter(self) -> float:
+        return 2.0 * (self._width + self._height)
+
+    @virtual
+    def describe(self) -> str:
+        return f"Rectangle {self._width}x{self._height}"
+
+    property get id() -> int:
+        return self._id
+
+    property get width() -> float:
+        return self._width
+
+    property get height() -> float:
+        return self._height
+
+    property get position() -> Point2D:
+        return self._position
+
+    def render(self) -> str:
+        return f"Rectangle[{self._id}] at ({self._position.x}, {self._position.y})"
+
+# Circle class with computed property
+class Circle(IIdentifiable, IRenderable):
+    _id: int
+    _radius: float
+    _position: Point2D
+
+    def __init__(self, id: int, position: Point2D, radius: float):
+        self._id = id
+        self._position = position
+        self._radius = radius
+
+    @virtual
+    def area(self) -> float:
+        return 3.14159 * self._radius * self._radius
+
+    @virtual
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self._radius
+
+    @virtual
+    def describe(self) -> str:
+        return f"Circle radius={self._radius}"
+
+    property get id() -> int:
+        return self._id
+
+    property get radius() -> float:
+        return self._radius
+
+    property get position() -> Point2D:
+        return self._position
+
+    def render(self) -> str:
+        return f"Circle[{self._id}] at ({self._position.x}, {self._position.y})"

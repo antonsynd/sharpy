@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-03T02:46:36.051416",
+  "generated_code": "from shapes import Rectangle, create_square, total_area\n\ndef main():\n    rect = Rectangle(4.0, 5.0)\n    print(rect.area())\n    \n    square = create_square(6.0)\n    print(square.area())\n    \n    shapes: list[Shape] = [rect, square]\n    print(len(shapes))\n    \n    combined = total_area(shapes)\n    print(combined)\n",
+  "expected_output": "20.0\n36.0\n2\n56.0\n",
+  "actual_output": "20.0\n36.0\n2\n56.0",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 449.20711970329285,
+  "execution_duration": 4.786750078201294,
+  "source_files": {
+    "shape_base.spy": "@abstract\nclass Shape:\n    @abstract\n    def area(self) -> float: ...\n    \n    @virtual\n    def shape_type(self) -> str:\n        return \"Shape\"\n",
+    "shapes.spy": "from shape_base import Shape\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    def __init__(self, w: float, h: float):\n        self.width = w\n        self.height = h\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    @override\n    def shape_type(self) -> str:\n        return \"Rectangle\"\n\ndef create_square(side: float) -> Shape:\n    return Rectangle(side, side)\n\ndef total_area(shapes: list[Shape]) -> float:\n    total: float = 0.0\n    for s in shapes:\n        total += s.area()\n    return total\n",
+    "main.spy": "from shapes import Rectangle, create_square, total_area\n\ndef main():\n    rect = Rectangle(4.0, 5.0)\n    print(rect.area())\n    \n    square = create_square(6.0)\n    print(square.area())\n    \n    shapes: list[Shape] = [rect, square]\n    print(len(shapes))\n    \n    combined = total_area(shapes)\n    print(combined)\n"
+  }
+}

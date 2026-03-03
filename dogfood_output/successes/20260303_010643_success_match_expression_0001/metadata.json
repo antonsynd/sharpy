@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T01:02:50.682994",
+  "generated_code": "# Test match expression returning enum values\nenum Status:\n    CLEAR = 1\n    WARNING = 2\n    DANGER = 3\n\ndef classify_score(n: int) -> Status:\n    return match n:\n        case x if x < 40: Status.CLEAR\n        case x if x < 80: Status.WARNING\n        case _: Status.DANGER\n\ndef get_priority(s: Status) -> int:\n    return match s:\n        case Status.CLEAR: 1\n        case Status.WARNING: 2\n        case Status.DANGER: 3\n\ndef main():\n    threshold: int = 45\n    result: Status = classify_score(threshold)\n    print(result.name)\n    priority: int = get_priority(result)\n    print(priority)\n    print(classify_score(25).name)\n    print(get_priority(Status.DANGER))\n",
+  "expected_output": "Warning\n2\nClear\n3\n",
+  "actual_output": "Warning\n2\nClear\n3",
+  "feature_focus": "match_expression",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 221.41550493240356,
+  "execution_duration": 5.207110166549683,
+  "source_files": null
+}

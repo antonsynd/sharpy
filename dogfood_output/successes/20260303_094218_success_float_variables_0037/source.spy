@@ -1,0 +1,37 @@
+def main():
+    # Basic float variable declarations
+    pi: float = 3.14159
+    radius: float = 5.0
+    
+    # Calculate area of circle
+    area: float = pi * radius * radius
+    print(area)
+    
+    # Float operations
+    a: float = 10.5
+    b: float = 2.5
+    print(a + b)
+    print(a - b)
+    print(a * b)
+    print(a / b)
+    print(a // b)
+    
+    # Float division
+    x: int = 7
+    y: int = 2
+    result: float = float(x) / float(y)
+    print(result)
+    
+    # Type conversion
+    int_val: int = 42
+    float_val: float = float(int_val)
+    print(float_val)
+    
+    # Power operations
+    p: float = 2.0 ** 3.0
+    print(p)
+    
+    # Negative floats
+    neg: float = -15.5
+    print(neg)
+    print(abs(neg))

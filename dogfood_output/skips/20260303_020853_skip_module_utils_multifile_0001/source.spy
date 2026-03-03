@@ -1,0 +1,41 @@
+# Main entry point - demonstrates cross-module imports and complex interactions
+from core_types import ShapeCategory
+from geometry import Rectangle, Circle
+from utils import Point2D, PointUtils
+
+def main():
+    # Create points using struct
+    origin: Point2D = PointUtils.origin()
+    p1: Point2D = Point2D(10.0, 20.0)
+    p2: Point2D = Point2D(30.0, 40.0)
+    mid: Point2D = PointUtils.midpoint(p1, p2)
+    print(f"Origin: {origin}")
+    print(f"Midpoint: {mid}")
+    print(f"Origin-to-P1 distance squared: {origin.distance_to(p1)}")
+
+    # Create shapes with cross-module types
+    rect: Rectangle = Rectangle(1, Point2D(0.0, 0.0), 5.0, 3.0)
+    circle: Circle = Circle(2, Point2D(10.0, 10.0), 7.0)
+
+    # Print shape information
+    print(rect.render())
+    print(rect.describe())
+    print(f"Rectangle area: {rect.area()}")
+    print(f"Rectangle width: {rect.width}")
+    print(f"Rectangle height: {rect.height}")
+
+    print(circle.render())
+    print(circle.describe())
+    print(f"Circle radius: {circle.radius}")
+    print(f"Circle area: {circle.area()}")
+    print(f"Circle perimeter: {circle.perimeter()}")
+
+    # Test struct value semantics
+    points: list[Point2D] = [origin, p1, p2]
+    sums: tuple[float, float] = PointUtils.sum_coordinates(points)
+    print(f"Sum X: {sums[0]}")
+    print(f"Sum Y: {sums[1]}")
+
+    # Test enum value
+    cat: ShapeCategory = ShapeCategory.BASIC
+    print(f"Category: {cat}")

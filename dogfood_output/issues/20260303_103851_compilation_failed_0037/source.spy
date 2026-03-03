@@ -1,0 +1,38 @@
+# Main entry point - imports and uses classes from both modules
+
+from shapes import Shape, Rectangle, Circle
+from utils import total_area, describe_all, ShapeStats
+
+def main():
+    # Create shapes
+    rect1: Rectangle = Rectangle(3.0, 4.0)
+    rect2: Rectangle = Rectangle(5.0, 6.0)
+    circ: Circle = Circle(2.0)
+    
+    # List of base class type
+    shapes: list[Shape] = [rect1, rect2, circ]
+    
+    # Test inherited methods
+    for s in shapes:
+        print(s.area())
+    
+    # Test total area from utils module
+    total: float = total_area(shapes)
+    print(total)
+    
+    # Test descriptions
+    descs: list[str] = describe_all(shapes)
+    for d in descs:
+        print(d)
+    
+    # Test static class from utils module
+    rect_count: int = ShapeStats.count_rectangles(shapes)
+    print(rect_count)
+    
+    circ_count: int = ShapeStats.count_circles(shapes)
+    print(circ_count)
+    
+    # Test individual method calls
+    print(rect1.area())
+    print(circ.area())
+    print(rect1.describe())

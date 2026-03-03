@@ -1,0 +1,28 @@
+warning[SPY0452]: Imported name 'ColorType' is never used
+  --> /tmp/tmp2dx104c4/shapes.spy:4:20
+    |
+  4 | from colors import Color, ColorType, get_color_type
+    |                    ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'get_color_type' is never used
+  --> /tmp/tmp2dx104c4/shapes.spy:4:31
+    |
+  4 | from colors import Color, ColorType, get_color_type
+    |                               ^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ColorType' is never used
+  --> /tmp/tmp2dx104c4/utils.spy:4:19
+    |
+  4 | from colors import Color, ColorType, get_color_type
+    |                   ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'get_color_type' is never used
+  --> /tmp/tmp2dx104c4/utils.spy:4:30
+    |
+  4 | from colors import Color, ColorType, get_color_type
+    |                              ^^^^^^^^^^^^^^
+    |
+

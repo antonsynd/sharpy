@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-03T04:00:31.415557",
+  "generated_code": "# Test nested tuple unpacking with geometric shapes\n# Tests: nested unpacking in assignments, control flow with unpacked values\n#        arithmetic on unpacked nested values\n\ndef main():\n    # Rectangle defined by two corner points: ((x1, y1), (x2, y2))\n    rect: tuple[tuple[int, int], tuple[int, int]] = ((3, 5), (8, 11))\n    \n    # Unpack nested tuple to get all four coordinates\n    (x1, y1), (x2, y2) = rect\n    \n    print(x1)\n    print(y1)\n    print(x2)\n    print(y2)\n    \n    # Calculate dimensions using unpacked values\n    width: int = x2 - x1\n    height: int = y2 - y1\n    area: int = width * height\n    \n    print(width)\n    print(height)\n    print(area)\n    \n    # Control flow using unpacked values\n    if width > 5 and height > 5:\n        print(\"large\")\n    else:\n        print(\"small\")\n    \n    # Another nested pattern: triple nesting for 3D bounds\n    bounds: tuple[tuple[tuple[int, int], tuple[int, int]], int] = (((0, 0), (10, 10)), 5)\n    ((min_x, min_y), (max_x, max_y)), depth = bounds\n    \n    print(min_x)\n    print(max_x)\n    print(depth)\n    \n    # Verify arithmetic with deeply unpacked values\n    total_span: int = (max_x - min_x) + (max_y - min_y) + depth\n    print(total_span)\n",
+  "expected_output": "3\n5\n8\n11\n5\n6\n30\nlarge\n0\n10\n5\n25\n",
+  "actual_output": "3\n5\n8\n11\n5\n6\n30\nsmall\n0\n10\n5\n25",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "tuple_unpacking_nested",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 53.95342206954956,
+  "compilation_duration": null,
+  "execution_duration": 4.817107200622559,
+  "source_files": null
+}

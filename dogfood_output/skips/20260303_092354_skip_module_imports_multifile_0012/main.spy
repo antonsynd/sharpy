@@ -1,0 +1,31 @@
+# Main entry point - demonstrates complex multi-module imports
+# Imports from all three other modules
+from types import Color, Point, IDrawable, IMeasurable
+from shapes import Circle, Rectangle
+from utils import describe_shape, calculate_total_area, get_shape_info
+
+def main():
+    # Create positions using struct
+    origin: Point = Point(0.0, 0.0)
+    offset: Point = Point(10.0, 20.0)
+
+    # Create shapes with different colors
+    red_circle: Circle = Circle(Color.RED, origin, 5.0)
+    blue_rect: Rectangle = Rectangle(Color.BLUE, offset, 4.0, 6.0)
+
+    # Test interface polymorphism from utils module
+    print(describe_shape(red_circle))
+    print(describe_shape(blue_rect))
+
+    # Test property access through interface
+    print(get_shape_info(red_circle))
+    print(get_shape_info(blue_rect))
+
+    # Test aggregation via interface
+    all_shapes: list[IMeasurable] = [red_circle, blue_rect]
+    total: float = calculate_total_area(all_shapes)
+    print(f"Total area: {total}")
+
+    # Direct property access
+    print(red_circle.area)
+    print(blue_rect.area)

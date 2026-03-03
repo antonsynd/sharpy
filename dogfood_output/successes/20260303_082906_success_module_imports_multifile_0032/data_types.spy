@@ -1,0 +1,18 @@
+# data_types.spy - Module providing core data types
+# Contains enums and structs used across the project
+
+enum Status:
+    PENDING = 0
+    ACTIVE = 1
+    COMPLETED = 2
+
+struct Point:
+    x: float
+    y: float
+    
+    def __init__(self, x_val: float, y_val: float):
+        self.x = x_val
+        self.y = y_val
+
+def create_origin() -> Point:
+    return Point(0.0, 0.0)

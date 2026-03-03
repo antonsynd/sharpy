@@ -1,0 +1,3 @@
+Drill at Workshop-A is operational
+Lathe at Workshop-B needs service
+Saw at Workshop-C is standby

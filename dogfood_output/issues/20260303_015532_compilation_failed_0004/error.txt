@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0117]: 'Structures.Config' does not contain a definition for 'MaxItems'
+  --> /tmp/tmpe8831wot/main.spy:33:46
+    |
+ 33 |     print(Config.MAX_ITEMS)
+    |                            ^
+    |
+

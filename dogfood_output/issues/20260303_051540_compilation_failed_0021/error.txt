@@ -1,0 +1,15 @@
+Assembly compilation failed:
+
+error[CS0534]: 'ShapeClasses.Circle' does not implement inherited abstract member 'ShapeClasses.Shape.Area()'
+  --> /tmp/tmp138o7vuq/shape_classes.spy:12:18
+    |
+ 12 |     # Test Circle class
+    |                  ^
+    |
+
+error[CS0534]: 'ShapeClasses.Rectangle' does not implement inherited abstract member 'ShapeClasses.Shape.Area()'
+  --> /tmp/tmp138o7vuq/shape_classes.spy:27:18
+
+error[CS0534]: 'ShapeClasses.RightTriangle' does not implement inherited abstract member 'ShapeClasses.Shape.Area()'
+  --> /tmp/tmp138o7vuq/shape_classes.spy:42:18
+

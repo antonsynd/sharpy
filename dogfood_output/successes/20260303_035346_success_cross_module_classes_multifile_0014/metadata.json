@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-03T03:49:58.750206",
+  "generated_code": "# Main entry point - tests cross-module inheritance and interfaces\n\nfrom shapes_base import Component, IMeasurable\nfrom shapes_extended import Widget, Gadget\n\ndef main():\n    # Test 1: Polymorphic dispatch through base class reference\n    c: Component = Widget(1, \"TestWidget\")\n    print(c.get_info())\n\n    # Test 2: Direct instantiation with inherited behavior\n    g = Gadget(5, 2)\n    print(g.get_info())\n\n    # Test 3: Interface implementation from another module\n    m: IMeasurable = Widget(3, \"MeasurableItem\")\n    result: float = m.measure()\n    print(result)\n\n    # Test 4: List with mixed types, virtual dispatch\n    items: list[Component] = [Component(0), Widget(7, \"W\"), Gadget(9, 1)]\n    for item in items:\n        print(item.get_info())\n",
+  "expected_output": "Component-1:TestWidget\nGadget-v2:5\n30.0\nComponent-0\nComponent-7:W\nGadget-v1:9\n",
+  "actual_output": "Component-1:TestWidget\nGadget-v2:5\n30.0\nComponent-0\nComponent-7:W\nGadget-v1:9",
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 211.27134799957275,
+  "execution_duration": 4.903688907623291,
+  "source_files": {
+    "shapes_base.spy": "# Base module providing component hierarchy and interfaces\n\ninterface IMeasurable:\n    def measure(self) -> float: ...\n\nclass Component:\n    _id: int\n\n    def __init__(self, id: int):\n        self._id = id\n\n    @virtual\n    def get_info(self) -> str:\n        return f\"Component-{self._id}\"\n",
+    "shapes_extended.spy": "# Extended module importing base classes and adding implementations\n\nfrom shapes_base import Component, IMeasurable\n\nclass Widget(Component, IMeasurable):\n    _label: str\n\n    def __init__(self, id: int, label: str):\n        super().__init__(id)\n        self._label = label\n\n    @override\n    def get_info(self) -> str:\n        base = super().get_info()\n        return f\"{base}:{self._label}\"\n\n    @override\n    def measure(self) -> float:\n        return float(self._id * 10)\n\nclass Gadget(Component):\n    _version: int\n\n    def __init__(self, id: int, version: int):\n        super().__init__(id)\n        self._version = version\n\n    @override\n    def get_info(self) -> str:\n        return f\"Gadget-v{self._version}:{self._id}\"\n",
+    "main.spy": "# Main entry point - tests cross-module inheritance and interfaces\n\nfrom shapes_base import Component, IMeasurable\nfrom shapes_extended import Widget, Gadget\n\ndef main():\n    # Test 1: Polymorphic dispatch through base class reference\n    c: Component = Widget(1, \"TestWidget\")\n    print(c.get_info())\n\n    # Test 2: Direct instantiation with inherited behavior\n    g = Gadget(5, 2)\n    print(g.get_info())\n\n    # Test 3: Interface implementation from another module\n    m: IMeasurable = Widget(3, \"MeasurableItem\")\n    result: float = m.measure()\n    print(result)\n\n    # Test 4: List with mixed types, virtual dispatch\n    items: list[Component] = [Component(0), Widget(7, \"W\"), Gadget(9, 1)]\n    for item in items:\n        print(item.get_info())\n"
+  }
+}

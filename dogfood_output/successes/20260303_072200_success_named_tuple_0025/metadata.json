@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T07:14:13.850409",
+  "generated_code": "type Point2D = tuple[x: float, y: float]\n\n@abstract\nclass Shape:\n    @abstract\n    def get_bounds(self) -> tuple[min: Point2D, max: Point2D]:\n        ...\n\nclass Rectangle(Shape):\n    _top_left: Point2D\n    _bottom_right: Point2D\n    \n    def __init__(self, tl: Point2D, br: Point2D):\n        self._top_left = tl\n        self._bottom_right = br\n    \n    @override\n    def get_bounds(self) -> tuple[min: Point2D, max: Point2D]:\n        return (min=self._top_left, max=self._bottom_right)\n\nclass Circle(Shape):\n    _center: Point2D\n    _radius: float\n    \n    def __init__(self, c: Point2D, r: float):\n        self._center = c\n        self._radius = r\n    \n    @override\n    def get_bounds(self) -> tuple[min: Point2D, max: Point2D]:\n        min_x = self._center.x - self._radius\n        min_y = self._center.y - self._radius\n        max_x = self._center.x + self._radius\n        max_y = self._center.y + self._radius\n        return (min=(x=min_x, y=min_y), max=(x=max_x, y=max_y))\n\ndef calculate_centroid(shapes: list[Shape]) -> Point2D:\n    if len(shapes) == 0:\n        return (x=0.0, y=0.0)\n    \n    total_x = 0.0\n    total_y = 0.0\n    \n    for s in shapes:\n        bounds = s.get_bounds()\n        min_pt, max_pt = bounds\n        cx = (min_pt.x + max_pt.x) / 2.0\n        cy = (min_pt.y + max_pt.y) / 2.0\n        total_x += cx\n        total_y += cy\n    \n    return (x=total_x / len(shapes), y=total_y / len(shapes))\n\ndef main():\n    rect = Rectangle((x=0.0, y=0.0), (x=10.0, y=5.0))\n    circle = Circle((x=5.0, y=5.0), 3.0)\n    \n    shapes: list[Shape] = [rect, circle]\n    centroid = calculate_centroid(shapes)\n    \n    print(centroid.x)\n    print(centroid.y)\n    \n    rect_bounds = rect.get_bounds()\n    circle_bounds = circle.get_bounds()\n    \n    print(rect_bounds.min.x)\n    print(rect_bounds.max.y)\n    print(circle_bounds.min.x)\n    print(circle_bounds.max.y)\n",
+  "expected_output": "5.0\n3.75\n0.0\n5.0\n2.0\n8.0\n",
+  "actual_output": "5.0\n3.75\n0.0\n5.0\n2.0\n8.0",
+  "feature_focus": "named_tuple",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 456.1931071281433,
+  "execution_duration": 4.8463006019592285,
+  "source_files": null
+}

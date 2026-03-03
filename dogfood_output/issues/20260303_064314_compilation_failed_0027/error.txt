@@ -1,0 +1,12 @@
+Assembly compilation failed:
+
+error[CS1729]: 'DataTypes.Point' does not contain a constructor that takes 2 arguments
+  --> /tmp/tmpugo9olrv/data_types.spy:43:20
+
+error[CS1729]: 'DataTypes.Point' does not contain a constructor that takes 2 arguments
+  --> /tmp/tmpugo9olrv/main.spy:15:34
+    |
+ 15 |     p2: Point = Point(0.0, 0.0)
+    |                                ^
+    |
+

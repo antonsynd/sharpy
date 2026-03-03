@@ -1,0 +1,17 @@
+# Test abstract class with concrete method calling abstract method
+@abstract
+class Greeter:
+    @abstract
+    def get_name(self) -> str: ...
+    
+    def greet(self) -> str:
+        return f"Hello, {self.get_name()}!"
+
+class WorldGreeter(Greeter):
+    @override
+    def get_name(self) -> str:
+        return "World"
+
+def main():
+    g = WorldGreeter()
+    print(g.greet())

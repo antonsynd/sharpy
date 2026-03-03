@@ -1,0 +1,20 @@
+# Math helper module - provides mathematical utilities
+
+const PI: float = 3.14159
+
+def square(x: int) -> int:
+    return x * x
+
+def cube(x: int) -> int:
+    return x * x * x
+
+def factorial(n: int) -> int:
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+def average(values: list[int]) -> float:
+    if len(values) == 0:
+        return 0.0
+    total: int = sum(values)
+    return float(total) / float(len(values))

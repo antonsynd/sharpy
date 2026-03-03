@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0103]: Expected end of statement, got Identifier
+  --> /tmp/tmpjk112czc/dogfood_test.spy:73:5
+    |
+ 73 |     high_id_entities = filter_by_predicate(entities, lambda e: e.id > 2)
+    |     ^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0103]: Expected end of statement, got Identifier
+  --> /tmp/tmpjk112czc/dogfood_test.spy:100:5
+     |
+ 100 |     product_ids = extract_ids(products)
+     |     ^^^^^^^^^^^
+     |
+

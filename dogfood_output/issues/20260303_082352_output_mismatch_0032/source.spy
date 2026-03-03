@@ -1,0 +1,33 @@
+# Generator with running cumulative sum - yields intermediate totals
+def cumulative_sums(values: list[int]) -> int:
+    total: int = 0
+    for v in values:
+        total += v
+        yield total
+
+# Generator that yields only positive running totals
+def positive_accumulations(values: list[int]) -> int:
+    total: int = 0
+    for v in values:
+        total += v
+        if total > 0:
+            yield total
+
+def main():
+    # Test cumulative sums generator
+    nums: list[int] = [3, -1, 4, -1, 5]
+    
+    print("cumulative:")
+    for running in cumulative_sums(nums):
+        print(running)
+    
+    print("positive:")
+    for positive in positive_accumulations([5, -3, -1, 4, 2]):
+        print(positive)
+    
+    # Generator with early termination via return
+    print("limited:")
+    for partial in cumulative_sums([10, 20, 30, 40]):
+        if partial > 25:
+            break
+        print(partial)

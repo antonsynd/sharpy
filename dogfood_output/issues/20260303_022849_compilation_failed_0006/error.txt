@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0513]: 'Shapes.Shape.Area()' is abstract but it is contained in non-abstract type 'Shapes.Shape'
+  --> shapes.cs:15:32
+    |
+ 15 |     # Test imported class from shapes
+    |                                ^
+    |
+
+error[CS0513]: 'Shapes.Shape.Describe()' is abstract but it is contained in non-abstract type 'Shapes.Shape'
+  --> shapes.cs:16:32
+    |
+ 16 |     rect: Rectangle = Rectangle(5.0, 3.0)
+    |                                ^
+    |
+

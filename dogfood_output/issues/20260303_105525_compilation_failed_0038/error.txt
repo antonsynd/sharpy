@@ -1,0 +1,30 @@
+Assembly compilation failed:
+
+error[CS0026]: Keyword 'this' is not valid in a static property, static method, or static field initializer
+  --> /tmp/tmphy2ckh63/main.spy:39:24
+    |
+ 39 |         return self._radius
+    |                        ^
+    |
+
+error[CS0026]: Keyword 'this' is not valid in a static property, static method, or static field initializer
+  --> /tmp/tmphy2ckh63/main.spy:21:24
+    |
+ 21 |         return self._shape_name
+    |                        ^
+    |
+
+error[CS0176]: Member 'Program.Shape.Name' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmphy2ckh63/main.spy:84:39
+    |
+ 84 |     print(c.name)
+    |                  ^
+    |
+
+error[CS0176]: Member 'Program.Shape.Name' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmphy2ckh63/main.spy:85:39
+    |
+ 85 |     print(r.name)
+    |                  ^
+    |
+

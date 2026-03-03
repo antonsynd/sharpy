@@ -1,0 +1,58 @@
+# Shapes module - base classes and interfaces for graphics system
+# Demonstrates abstract classes, virtual methods, and interface implementation
+
+interface IDrawable:
+    def draw() -> str
+    ...
+
+interface IMeasurable:
+    def area(self) -> float
+    def perimeter(self) -> float
+    ...
+
+enum ShapeCategory:
+    GEOMETRIC = 0
+    ORGANIC = 1
+    ABSTRACT = 2
+
+@abstract
+class Shape:
+    _name: str
+    _category: ShapeCategory
+    
+    def __init__(self, name: str, category: ShapeCategory):
+        self._name = name
+        self._category = category
+    
+    property get name(self) -> str:
+        return self._name
+    
+    property get category(self) -> ShapeCategory:
+        return self._category
+    
+    @virtual
+    def describe(self) -> str:
+        return f"Shape: {self._name}"
+    
+    @abstract
+    def perimeter(self) -> float
+    ...
+
+class ColoredShape(Shape):
+    _color: str
+    
+    def __init__(self, name: str, category: ShapeCategory, color: str):
+        super().__init__(name, category)
+        self._color = color
+    
+    property get color(self) -> str:
+        return self._color
+    
+    @override
+    def describe(self) -> str:
+        base: str = super().describe()
+        return f"{base} in {self._color}"
+    
+    @override
+    def perimeter(self) -> float:
+        return 0.0

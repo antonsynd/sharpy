@@ -1,0 +1,13 @@
+cumulative:
+3
+2
+6
+5
+10
+positive:
+5
+9
+11
+limited:
+10
+20

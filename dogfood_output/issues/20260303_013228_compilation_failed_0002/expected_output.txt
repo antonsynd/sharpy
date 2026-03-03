@@ -1,0 +1,7 @@
+int: 100
+int: 42
+int chain length: 2
+str: WORLD
+str: HELLO
+str chain length: 2
+total visited: 4

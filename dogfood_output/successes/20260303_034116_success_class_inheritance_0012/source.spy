@@ -1,0 +1,13 @@
+# Test basic field inheritance - child accesses parent field without its own constructor
+class Vehicle:
+    wheels: int
+    
+    def __init__(self, w: int):
+        self.wheels = w
+
+class Bicycle(Vehicle):
+    pass
+
+def main():
+    b = Bicycle(2)
+    print(b.wheels)

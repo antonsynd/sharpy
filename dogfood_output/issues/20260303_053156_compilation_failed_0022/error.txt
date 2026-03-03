@@ -1,0 +1,58 @@
+Assembly compilation failed:
+
+error[CS0513]: 'Shapes.Shape.Area()' is abstract but it is contained in non-abstract type 'Shapes.Shape'
+  --> /tmp/tmp43llm_31/shapes.spy:16:32
+    |
+ 16 |     # Test distance calculation
+    |                                ^
+    |
+
+error[CS0513]: 'Shapes.Shape.Perimeter()' is abstract but it is contained in non-abstract type 'Shapes.Shape'
+  --> /tmp/tmp43llm_31/shapes.spy:17:32
+    |
+ 17 |     calc = Calculator()
+    |                        ^
+    |
+
+error[CS0117]: 'Shapes.Circle' does not contain a definition for 'Pi'
+  --> /tmp/tmp43llm_31/shapes.spy:62:27
+    |
+ 62 |     
+    |     ^
+    |
+
+error[CS1061]: '(double min_x, double min_y, double max_x, double max_y)' does not contain a definition for 'MinX' and no accessible extension method 'MinX' accepting a first argument of type '(double min_x, double min_y, double max_x, double max_y)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp43llm_31/main.spy:64:85
+    |
+ 64 |     print(f"min_x: {bounds.min_x}")
+    |                                    ^
+    |
+
+error[CS1061]: '(double min_x, double min_y, double max_x, double max_y)' does not contain a definition for 'MaxX' and no accessible extension method 'MaxX' accepting a first argument of type '(double min_x, double min_y, double max_x, double max_y)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp43llm_31/main.spy:65:85
+    |
+ 65 |     print(f"max_x: {bounds.max_x}")
+    |                                    ^
+    |
+
+error[CS1061]: '(double min_x, double min_y, double max_x, double max_y)' does not contain a definition for 'MinY' and no accessible extension method 'MinY' accepting a first argument of type '(double min_x, double min_y, double max_x, double max_y)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp43llm_31/main.spy:66:85
+    |
+ 66 |     print(f"min_y: {bounds.min_y}")
+    |                                    ^
+    |
+
+error[CS1061]: '(double min_x, double min_y, double max_x, double max_y)' does not contain a definition for 'MaxY' and no accessible extension method 'MaxY' accepting a first argument of type '(double min_x, double min_y, double max_x, double max_y)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp43llm_31/main.spy:67:85
+    |
+ 67 |     print(f"max_y: {bounds.max_y}")
+    |                                    ^
+    |
+
+error[CS0117]: 'Shapes.Circle' does not contain a definition for 'Pi'
+  --> /tmp/tmp43llm_31/shapes.spy:66:34
+    |
+ 66 |     print(f"min_y: {bounds.min_y}")
+    |                                  ^
+    |
+

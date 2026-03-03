@@ -1,0 +1,8 @@
+[timeout] positive int: 30
+[delay] negative int: -5
+[pi] small float: 3.1
+[scale] large float: 250.50
+[message] string (11 chars): 'hello world'
+[empty] empty string
+[enabled] boolean: True
+[data] unknown type

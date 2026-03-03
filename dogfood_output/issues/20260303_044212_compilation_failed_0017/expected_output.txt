@@ -1,0 +1,8 @@
+4
+Library 'Central City Library' contains:
+  Books: 2
+  Magazines: 2
+'The Great Adventure' by Alice Smith (2019)
+Tech Weekly #42 (Tech Media)
+6
+1

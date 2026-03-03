@@ -1,0 +1,23 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot assign type 'list[Shape]' to variable of type 'list[IMeasurable]'
+  --> /tmp/tmpfu4l4os4/main.spy:25:5
+    |
+ 25 |     all_shapes: list[IMeasurable] = [red_circle, blue_rect]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Circle' has no member 'area'
+  --> /tmp/tmpfu4l4os4/main.spy:30:11
+    |
+ 30 |     print(red_circle.area)
+    |           ^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Rectangle' has no member 'area'
+  --> /tmp/tmpfu4l4os4/main.spy:31:11
+    |
+ 31 |     print(blue_rect.area)
+    |           ^^^^^^^^^^^^^^
+    |
+

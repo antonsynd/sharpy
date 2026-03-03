@@ -1,0 +1,7 @@
+warning[SPY0452]: Imported name 'Point2D' is never used
+  --> /tmp/tmpf5eys2wu/render.spy:4:22
+    |
+  4 | from math_utils import Point2D, ShapeCategory, classify_shape, format_point
+    |                      ^^^^^^^
+    |
+

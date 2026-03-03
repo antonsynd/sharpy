@@ -1,0 +1,17 @@
+def sum_of_squares_verbose(n: int) -> int:
+    # Compute sum of squares from 1 to n with progress logging
+    total: int = 0
+    i: int = 1
+    while i <= n:
+        square: int = i * i
+        total += square
+        # Print progress every 2 steps
+        if i % 2 == 0:
+            print(f"n={i}, square={square}, running_total={total}")
+        i += 1
+    return total
+
+def main():
+    result: int = sum_of_squares_verbose(5)
+    print("Final result:")
+    print(result)

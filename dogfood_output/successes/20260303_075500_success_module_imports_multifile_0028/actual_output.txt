@@ -1,0 +1,11 @@
+Rectangle(5.0, 5.0)
+Circle(r=1.0)
+Drawing rectangle 5.0x5.0
+Drawing circle with radius 1.0
+25.0
+3.14159
+Approved
+5.0
+Valid rectangle with area 25.0
+13.0
+3.14159

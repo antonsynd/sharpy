@@ -1,0 +1,24 @@
+# Core types module - defines enums, interfaces, and a struct
+# This module has no dependencies
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+interface IDrawable:
+    def draw(self) -> str: ...
+
+interface IMeasurable:
+    property area: float
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return f"Point({self.x}, {self.y})"

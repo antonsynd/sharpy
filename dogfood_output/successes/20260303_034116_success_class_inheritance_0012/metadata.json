@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T03:40:00.849709",
+  "generated_code": "# Test basic field inheritance - child accesses parent field without its own constructor\nclass Vehicle:\n    wheels: int\n    \n    def __init__(self, w: int):\n        self.wheels = w\n\nclass Bicycle(Vehicle):\n    pass\n\ndef main():\n    b = Bicycle(2)\n    print(b.wheels)\n",
+  "expected_output": "2\n",
+  "actual_output": "2",
+  "feature_focus": "class_inheritance",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 64.9474675655365,
+  "execution_duration": 4.639175653457642,
+  "source_files": null
+}

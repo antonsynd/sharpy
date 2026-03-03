@@ -1,0 +1,107 @@
+# Issue Report: output_mismatch
+
+**Timestamp:** 2026-03-03T05:09:06.529205
+**Type:** output_mismatch
+**Feature Focus:** bool_variables
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: Bool variables with pattern matching and computed properties
+# Simple traffic light state machine using bool variables and match expressions
+
+enum TrafficState:
+    RED = 0
+    YELLOW = 1
+    GREEN = 2
+
+class TrafficLight:
+    current: TrafficState
+
+    def __init__(self, initial: TrafficState):
+        self.current = initial
+
+    property get is_stopped(self) -> bool:
+        return self.current == TrafficState.RED
+
+    property get is_caution(self) -> bool:
+        return self.current == TrafficState.YELLOW
+
+    property get is_go(self) -> bool:
+        return self.current == TrafficState.GREEN
+
+    def transition(self, next_state: TrafficState) -> None:
+        self.current = next_state
+
+def describe_state(light: TrafficLight) -> str:
+    # Using bool variables with individual pattern matching
+    stopped: bool = light.is_stopped
+    caution: bool = light.is_caution
+    going: bool = light.is_go
+    
+    # Match on individual bools with guard-like logic
+    if stopped and not caution and not going:
+        return "STOP - Red light"
+    elif not stopped and caution and not going:
+        return "CAUTION - Yellow light"
+    elif not stopped and not caution and going:
+        return "GO - Green light"
+    else:
+        return "INVALID state"
+
+def main():
+    light = TrafficLight(TrafficState.RED)
+    
+    # Test initial state
+    print(describe_state(light))
+    
+    # Transition through states
+    light.transition(TrafficState.GREEN)
+    print(describe_state(light))
+    
+    light.transition(TrafficState.YELLOW)
+    print(describe_state(light))
+    
+    # Direct bool variable usage with logical operators
+    is_safe: bool = light.is_stopped or light.is_caution
+    print(is_safe)
+    
+    # Negation of bool variable
+    is_moving: bool = not light.is_stopped
+    print(is_moving)
+
+```
+
+## Error
+
+```
+AI verification backend failure
+```
+
+## Output Comparison
+
+### Expected
+```
+STOP - Red light
+GO - Green light
+CAUTION - Yellow light
+False
+True
+
+```
+
+### Actual
+```
+STOP - Red light
+GO - Green light
+CAUTION - Yellow light
+True
+True
+```
+
+## Timing
+
+- Generation: 123.13s
+- Execution: 4.76s

@@ -1,0 +1,37 @@
+# Main entry point testing module imports with class-based function objects
+
+from utils import StringValidator, ListScaler
+from math_utils import find_best, composite_transform, process_strings
+from math_utils import GreaterThanComparator, LessThanComparator
+from math_utils import Doubler, Tripler, StartsWithA, LengthChecker
+
+
+def main():
+    # Test StringValidator
+    sv = StringValidator(3, 8)
+    print(sv.validate("hi"))
+    print(sv.validate("hello"))
+    print(sv.validate("supercalifragilistic"))
+    
+    # Test ListScaler with static method and instance method
+    ls = ListScaler(5)
+    print(ListScaler.identity(42))
+    
+    scaled: list[int] = ls.apply_to_list([1, 2, 3])
+    for val in scaled:
+        print(val)
+    
+    # Test comparator using class-based approach
+    gt = GreaterThanComparator()
+    numbers: list[int] = [3, 7, 2, 8, 4]
+    print(find_best(numbers, gt))
+    
+    # Test composite transformation
+    doubler = Doubler()
+    tripler = Tripler()
+    print(composite_transform(5, doubler, tripler))
+    
+    # Test string predicate
+    starts_a = StartsWithA()
+    words: list[str] = ["apple", "banana", "apricot", "cherry"]
+    print(process_strings(words, starts_a))

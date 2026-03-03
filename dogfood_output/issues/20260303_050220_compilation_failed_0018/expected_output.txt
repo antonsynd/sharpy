@@ -1,0 +1,8 @@
+positive: 10
+error: must be positive
+error: must be even
+combined: 80
+failed: must be even
+Both ok: 10 and 8
+First ok (10), second failed: must be positive
+Both failed: must be positive and must be positive

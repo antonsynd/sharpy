@@ -1,0 +1,8 @@
+Circle(r=10.0)
+314.159
+1
+Drawing circle at (0.0, 0.0)
+4.0
+Rectangle(4.0x6.0)
+24.0
+2

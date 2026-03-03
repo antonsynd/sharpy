@@ -1,0 +1,14 @@
+from shapes import Rectangle, create_square, total_area
+
+def main():
+    rect = Rectangle(4.0, 5.0)
+    print(rect.area())
+    
+    square = create_square(6.0)
+    print(square.area())
+    
+    shapes: list[Shape] = [rect, square]
+    print(len(shapes))
+    
+    combined = total_area(shapes)
+    print(combined)

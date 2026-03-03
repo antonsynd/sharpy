@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-03T08:57:03.869225",
+  "generated_code": "# Complex Result type test with class hierarchy and error handling patterns\n# Tests: Result[T,E], unwrap_or, map, map_err, try expression\n\ntype ValidationError = str\n\n@abstract\nclass Validator:\n    @abstract\n    def validate(self, value: int) -> bool ! ValidationError: ...\n\nclass RangeValidator(Validator):\n    min_val: int\n    max_val: int\n\n    def __init__(self, min_val: int, max_val: int):\n        self.min_val = min_val\n        self.max_val = max_val\n\n    @override\n    def validate(self, value: int) -> bool ! ValidationError:\n        if value < self.min_val:\n            return Err(f\"Value {value} below minimum {self.min_val}\")\n        if value > self.max_val:\n            return Err(f\"Value {value} above maximum {self.max_val}\")\n        return Ok(True)\n\nclass DivisorValidator(Validator):\n    divisor: int\n\n    def __init__(self, divisor: int):\n        self.divisor = divisor\n\n    @override\n    def validate(self, value: int) -> bool ! ValidationError:\n        if value % self.divisor != 0:\n            return Err(f\"Value {value} not divisible by {self.divisor}\")\n        return Ok(True)\n\ndef process_results(results: list[bool !str], default: bool) -> list[bool]:\n    processed: list[bool] = []\n    for r in results:\n        processed.append(r.unwrap_or(default))\n    return processed\n\ndef main():\n    range_v = RangeValidator(10, 100)\n    div_v = DivisorValidator(5)\n\n    # Test validation chain with Result types\n    test_values: list[int] = [15, 5, 105, 20, 7]\n    for val in test_values:\n        # Chain validate through multiple validators\n        range_result = range_v.validate(val)\n\n        # Use map_err to transform success, map_err for error context\n        result = range_result.map_err(lambda e: f\"Range check failed: {e}\")\n\n        # Unwrap with fallback\n        is_valid = result.unwrap_or(False)\n        print(is_valid)\n\n    # Test list of Results by building list via append (not direct literals)\n    results: list[bool !str] = []\n    results.append(Ok(True))\n    results.append(Err(\"bad\"))\n    results.append(Ok(True))\n    results.append(Err(\"fail\"))\n\n    processed = process_results(results, False)\n    print(processed[0])\n    print(processed[1])\n    print(processed[2])\n\n    # Test try expression producing Result\n    risky_add = try 100 // 10\n    risky_div = try 50 // 0\n    print(risky_add.unwrap_or(-1))\n    print(risky_div.unwrap_or(-2))\n",
+  "expected_output": "True\nTrue\nFalse\nTrue\nTrue\nTrue\nFalse\nTrue\n10\n-2\n",
+  "actual_output": "True\nFalse\nFalse\nTrue\nFalse\nTrue\nFalse\nTrue\n10\n2147483647",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "result_type",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 275.0152540206909,
+  "compilation_duration": null,
+  "execution_duration": 5.179646253585815,
+  "source_files": null
+}

@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'DataProcessor' has no member 'count'
+  --> /tmp/tmphbrxw4o8/main.spy:26:18
+    |
+ 26 |     count: int = processor.count
+    |                  ^^^^^^^^^^^^^^^
+    |
+

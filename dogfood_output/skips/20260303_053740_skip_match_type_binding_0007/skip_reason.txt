@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot assign type 'int' to variable of type 'int'
+  --> /tmp/tmph58o8xqs/dogfood_test.spy:16:9
+    |
+ 16 |         num: int = v
+    |         ^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type 'float' to variable of type 'float'
+  --> /tmp/tmph58o8xqs/dogfood_test.spy:22:9
+    |
+ 22 |         fval: float = v
+    |         ^^^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type 'str' to variable of type 'str'
+  --> /tmp/tmph58o8xqs/dogfood_test.spy:28:9
+    |
+ 28 |         text: str = v
+    |         ^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type 'bool' to variable of type 'bool'
+  --> /tmp/tmph58o8xqs/dogfood_test.spy:34:9
+    |
+ 34 |         flag: bool = v
+    |         ^^^^^^^^^^^^^^
+    |
+

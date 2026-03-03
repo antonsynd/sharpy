@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-03T03:42:10.761773",
+  "generated_code": "# Test: Basic try/except block catching ZeroDivisionError  \n# Tests: try block execution, exception catching, control flow transfer\n\ndef main():\n    x: int = 5\n    y: int = 0\n    z: int = 2\n    \n    try:\n        a: int = x * z\n        b: int = a // y\n        print(b)\n    except ZeroDivisionError:\n        print(999)\n",
+  "expected_output": "999\n",
+  "actual_output": "2147483647",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "try_except_basic",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 40.763851165771484,
+  "compilation_duration": null,
+  "execution_duration": 4.584059000015259,
+  "source_files": null
+}

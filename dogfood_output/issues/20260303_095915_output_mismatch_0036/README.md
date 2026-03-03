@@ -1,0 +1,137 @@
+# Issue Report: output_mismatch
+
+**Timestamp:** 2026-03-03T09:44:21.053441
+**Type:** output_mismatch
+**Feature Focus:** cross_module_classes
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Main entry point - demonstrates cross-module class usage
+from shapes import Circle, Rectangle, Drawable, Shape
+from geometry import Point, BoundingBox, enclosing_box
+from config import Priority, Status, Settings, Counter
+
+def process_shapes(shapes: list[Shape]) -> None:
+    total_area: float = 0.0
+    for s in shapes:
+        total_area = total_area + s.area()
+    
+    descriptions: list[str] = [s.describe() for s in shapes]
+    sorted_desc: list[str] = sorted(descriptions)
+    for desc in sorted_desc:
+        print(desc)
+
+def main():
+    # Create shapes from shapes.spy
+    c1 = Circle(0.0, 0.0, 5.0)
+    c2 = Circle(10.0, 10.0, 3.0)
+    r1 = Rectangle(2.0, 3.0, 4.0, 6.0)
+    
+    print(c1.describe())
+    print(r1.describe())
+    print(c1.position())
+    
+    # Calculate areas
+    circle_area: float = c1.area()
+    rect_area: float = r1.area()
+    print(circle_area)
+    print(rect_area)
+    
+    # Using geometry module
+    p1 = Point(0.0, 0.0)
+    p2 = Point(3.0, 4.0)
+    distance: float = p1.distance_to(p2)
+    print(distance)
+    
+    # Test BoundingBox with polymorphic shapes list
+    shape_list: list[Shape] = [c1, c2, r1]
+    bbox: BoundingBox = enclosing_box(shape_list)
+    bbox_area: float = bbox.area()
+    print(bbox_area)
+    
+    # Drawable interface usage
+    drawable: Drawable = r1
+    print(drawable.draw())
+    
+    # Config module - enums
+    high_priority: Priority = Priority.HIGH
+    print(high_priority.value)
+    print(high_priority.name)
+    
+    # Settings with enum
+    settings: Settings = Settings("test_config", Priority.MEDIUM, True)
+    print(settings.get_priority_name())
+    
+    # Counter with getter method
+    counter: Counter = Counter()
+    print(counter.get_count())
+    counter.increment()
+    counter.increment()
+    print(counter.get_count())
+    counter.reset()
+    print(counter.get_count())
+    
+    # Status enum iteration
+    for s in Status:
+        print(s.value)
+
+```
+
+## Error
+
+```
+AI verification backend failure
+```
+
+## Output Comparison
+
+### Expected
+```
+Circle(r=5.0)
+Rectangle(4.0x6.0)
+(0.0, 0.0)
+78.53975
+24.0
+5.0
+70.0
+Drawing rectangle at (2.0, 3.0)
+3
+High
+medium
+0
+2
+0
+0
+10
+20
+
+```
+
+### Actual
+```
+Circle(r=5.0)
+Rectangle(4.0x6.0)
+(0.0, 0.0)
+78.53975
+24.0
+5.0
+100.0
+Drawing rectangle at (2.0, 3.0)
+3
+High
+medium
+0
+2
+0
+0
+10
+20
+```
+
+## Timing
+
+- Generation: 711.93s
+- Execution: 5.22s

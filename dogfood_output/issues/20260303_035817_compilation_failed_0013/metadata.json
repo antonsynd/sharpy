@@ -1,0 +1,21 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-03T03:53:46.064019",
+  "generated_code": "# Main entry point - demonstrates shape utilities with inheritance\n\nfrom shape_utils import Rectangle, Circle, compare_shapes\n\ndef main():\n    # Create shapes\n    rect: Rectangle = Rectangle(6.0, 5.0)\n    circle: Circle = Circle(3.0)\n    \n    # Calculate and print shape properties\n    print(rect.area())\n    print(rect.perimeter())\n    print(circle.area())\n    print(circle.perimeter())\n    \n    # Compare shapes using polymorphic function\n    larger: str = compare_shapes(rect, circle)\n    print(larger)\n",
+  "expected_output": "30.0\n22.0\n28.27431\n18.84954\nfirst\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0117]: 'ShapeUtils.Circle' does not contain a definition for 'Pi'\n  --> /tmp/tmpaen1_7g9/shape_utils.spy:38:27\n\nerror[CS0117]: 'ShapeUtils.Circle' does not contain a definition for 'Pi'\n  --> /tmp/tmpaen1_7g9/shape_utils.spy:42:34\n\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 258.1516315937042,
+  "compilation_duration": null,
+  "execution_duration": 4.605491876602173,
+  "source_files": {
+    "shape_utils.spy": "# Shape utilities module - provides geometric shapes and comparison functions\n\n@abstract\nclass Shape:\n    @abstract\n    def area(self) -> float: ...\n    \n    @abstract\n    def perimeter(self) -> float: ...\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, w: float, h: float):\n        self.width = w\n        self.height = h\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    @override\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)\n\nclass Circle(Shape):\n    radius: float\n    \n    @static\n    PI: float = 3.14159\n    \n    def __init__(self, r: float):\n        self.radius = r\n    \n    @override\n    def area(self) -> float:\n        return Circle.PI * self.radius * self.radius\n    \n    @override\n    def perimeter(self) -> float:\n        return 2.0 * Circle.PI * self.radius\n\ndef compare_shapes(s1: Shape, s2: Shape) -> str:\n    \"\"\"Compare two shapes by area, return which is larger.\"\"\"\n    a1: float = s1.area()\n    a2: float = s2.area()\n    if a1 > a2:\n        return \"first\"\n    elif a2 > a1:\n        return \"second\"\n    return \"equal\"\n",
+    "main.spy": "# Main entry point - demonstrates shape utilities with inheritance\n\nfrom shape_utils import Rectangle, Circle, compare_shapes\n\ndef main():\n    # Create shapes\n    rect: Rectangle = Rectangle(6.0, 5.0)\n    circle: Circle = Circle(3.0)\n    \n    # Calculate and print shape properties\n    print(rect.area())\n    print(rect.perimeter())\n    print(circle.area())\n    print(circle.perimeter())\n    \n    # Compare shapes using polymorphic function\n    larger: str = compare_shapes(rect, circle)\n    print(larger)\n"
+  }
+}

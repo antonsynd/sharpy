@@ -1,0 +1,29 @@
+# Base classes module - demonstrates cross-module inheritance and interface implementation
+from types_module import IDrawable, Point, Color
+
+class Shape(IDrawable):
+    position: Point
+    color: Color
+
+    def __init__(self, pos: Point, col: Color):
+        self.position = pos
+        self.color = col
+
+    @virtual
+    def area(self) -> float:
+        return 0.0
+
+    @virtual
+    def draw(self) -> str:
+        return "Drawing shape"
+
+    def get_color_name(self) -> str:
+        if self.color == Color.RED:
+            return "Red"
+        elif self.color == Color.GREEN:
+            return "Green"
+        else:
+            return "Blue"
+
+def create_default_point() -> Point:
+    return Point(0.0, 0.0)

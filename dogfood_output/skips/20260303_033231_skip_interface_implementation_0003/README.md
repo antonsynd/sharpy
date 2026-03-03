@@ -1,0 +1,151 @@
+# Skipped Dogfood Run
+
+**Timestamp:** 2026-03-03T03:21:52.306954
+**Skip Reason:** Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0200]: Undefined identifier 'measureable2'. Did you mean 'measurable2'?
+  --> /tmp/tmpl6onugqb/dogfood_test.spy:117:11
+     |
+ 117 |     print(measureable2.measure())
+     |           ^^^^^^^^^^^^
+     |
+
+
+**Feature Focus:** interface_implementation
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Complex interface implementation test
+# Tests: multiple interfaces, interface composition,
+# abstract base classes with interfaces, and higher-order functions with interfaces
+
+interface IIdentifiable:
+    property id: int
+
+interface IMeasurable:
+    def measure(self) -> float
+
+interface IStringContainer:
+    def get_contents(self) -> list[str]
+    def add_item(self, item: str) -> None
+
+@abstract
+class Asset(IIdentifiable):
+    property id: int
+    _name: str
+
+    def __init__(self, asset_id: int, name: str):
+        self.id = asset_id
+        self._name = name
+
+    def get_name(self) -> str:
+        return self._name
+
+class Document(Asset, IMeasurable):
+    word_count: int
+    _tags: list[str]
+
+    def __init__(self, asset_id: int, name: str, words: int):
+        super().__init__(asset_id, name)
+        self.word_count = words
+        self._tags = ["doc", "text"]
+
+    def measure(self) -> float:
+        # Returns reading time in minutes
+        return float(self.word_count) / 200.0
+
+class Image(Asset, IMeasurable, IStringContainer):
+    width: int
+    height: int
+    _layers: list[str]
+
+    def __init__(self, asset_id: int, name: str, w: int, h: int):
+        super().__init__(asset_id, name)
+        self.width = w
+        self.height = h
+        self._layers = ["base", "overlay"]
+
+    def measure(self) -> float:
+        # Returns file size estimate in MB
+        return float(self.width * self.height) / 1000000.0
+
+    def get_contents(self) -> list[str]:
+        return self._layers
+
+    def add_item(self, item: str) -> None:
+        self._layers.append(item)
+
+def get_total_measure(items: list[Document], imgs: list[Image]) -> float:
+    total = 0.0
+    for item in items:
+        total += item.measure()
+    for item in imgs:
+        total += item.measure()
+    return total
+
+def describe_asset(asset: IIdentifiable) -> str:
+    return f"Asset-{asset.id}"
+
+def main():
+    # Create documents
+    doc1 = Document(101, "Report", 1500)
+    doc2 = Document(102, "Summary", 400)
+
+    # Create images
+    img1 = Image(201, "Header", 1920, 1080)
+    img2 = Image(202, "Banner", 800, 600)
+
+    # Test interface method dispatch
+    print(doc1.get_name())
+    print(doc2.get_name())
+
+    # Test IMeasurable with separate lists (covariance workaround)
+    doc_total = get_total_measure([doc1, doc2], [img1, img2])
+    print(doc_total)
+
+    # Alternative: calculate individually
+    total = doc1.measure() + doc2.measure() + img1.measure() + img2.measure()
+    print(total)
+
+    # Test IContainer implementation
+    img1.add_item("filter")
+    contents = img1.get_contents()
+    print(len(contents))
+    print(contents[0])
+    print(contents[1])
+    print(contents[2])
+
+    # Test IIdentifiable through different paths
+    print(describe_asset(doc1))
+    print(describe_asset(img1))
+
+    # Access properties through interfaces
+    print(doc1.id)
+    print(img1.id)
+
+    # Verify Image implements both Asset and IContainer
+    img_info = img1.measure()
+    print(img_info)
+
+    # Verify polymorphic dispatch works
+    measurable1: IMeasurable = doc1
+    measurable2: IMeasurable = img1
+    print(measurable1.measure())
+    print(measureable2.measure())
+
+```
+
+## Timing
+
+- Generation: 622.38s
+
+## Notes
+
+This iteration was skipped because the generated code didn't pass validation.
+This is typically due to the AI generating code with unsupported features
+or syntax that doesn't match the Sharpy spec (phases 0.1.0-0.2.6).
+
+This output is saved for inspection to help improve prompting.

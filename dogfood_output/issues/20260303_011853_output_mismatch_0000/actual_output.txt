@@ -1,0 +1,6 @@
+warning_alert
+cool_and_dehumidify
+3
+critical_exhaust
+gentle_heat
+cool

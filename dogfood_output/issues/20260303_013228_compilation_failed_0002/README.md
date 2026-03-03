@@ -1,0 +1,143 @@
+# Issue Report: compilation_failed
+
+**Timestamp:** 2026-03-03T01:27:46.676934
+**Type:** compilation_failed
+**Feature Focus:** generic_class
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Complex generic class test: Generic inheritance with constraints and visitor pattern
+
+interface IVisitable:
+    def accept(self, visitor: IVisitor) -> None: ...
+
+interface IVisitor:
+    def visit(self, item: int) -> None: ...
+    def visit_str(self, item: str) -> None: ...
+
+class Container[T: IVisitable]:
+    value: T
+    parent: Container[T]?
+
+    def __init__(self, value: T, parent: Container[T]? = None()):
+        self.value = value
+        self.parent = parent
+
+    def get_value(self) -> T:
+        return self.value
+
+    def has_parent(self) -> bool:
+        return self.parent is not None
+
+class IntWrapper(IVisitable):
+    data: int
+
+    def __init__(self, x: int):
+        self.data = x
+
+    def accept(self, visitor: IVisitor) -> None:
+        visitor.visit(self.data)
+
+class StrWrapper(IVisitable):
+    text: str
+
+    def __init__(self, s: str):
+        self.text = s
+
+    def accept(self, visitor: IVisitor) -> None:
+        visitor.visit_str(self.text)
+
+class PrintVisitor(IVisitor):
+    count: int
+
+    def __init__(self):
+        self.count = 0
+
+    def visit(self, item: int) -> None:
+        self.count += 1
+        print(f"int: {item}")
+
+    def visit_str(self, item: str) -> None:
+        self.count += 1
+        print(f"str: {item.upper()}")
+
+def process_chain[T: IVisitable](start: Container[T], visitor: IVisitor) -> int:
+    current: Container[T]? = Some(start)
+    visited: int = 0
+    while current is not None:
+        container: Container[T] = current.unwrap()
+        container.value.accept(visitor)
+        visited += 1
+        if container.has_parent():
+            current = container.parent
+        else:
+            current = None()
+    return visited
+
+def main():
+    # Create wrapped values
+    int1: IntWrapper = IntWrapper(42)
+    int2: IntWrapper = IntWrapper(100)
+
+    # Create nested containers: int2 is parent of int1
+    inner: Container[IntWrapper] = Container[IntWrapper](int1)
+    # Use explicit variable with type annotation for Some()
+    inner_opt: Container[IntWrapper]? = Some(inner)
+    outer: Container[IntWrapper] = Container[IntWrapper](int2, inner_opt)
+
+    # Str container chain
+    str1: StrWrapper = StrWrapper("hello")
+    str2: StrWrapper = StrWrapper("world")
+    str_inner: Container[StrWrapper] = Container[StrWrapper](str1)
+    # Use explicit variable with type annotation for Some()
+    str_inner_opt: Container[StrWrapper]? = Some(str_inner)
+    str_outer: Container[StrWrapper] = Container[StrWrapper](str2, str_inner_opt)
+
+    # Process with visitor
+    visitor: PrintVisitor = PrintVisitor()
+
+    # Track total visited
+    total: int = 0
+
+    # Process int chain
+    total += process_chain(outer, visitor)
+    print(f"int chain length: {total}")
+
+    # Process str chain
+    str_total: int = process_chain(str_outer, visitor)
+    print(f"str chain length: {str_total}")
+
+    # Verify visitor counted all
+    print(f"total visited: {visitor.count}")
+
+```
+
+## Error
+
+```
+Assembly compilation failed:
+
+error[CS1929]: 'DogfoodTest.Container<T>' does not contain a definition for 'Unwrap' and the best extension method overload 'TaskExtensions.Unwrap(Task<Task>)' requires a receiver of type 'System.Threading.Tasks.Task<System.Threading.Tasks.Task>'
+  --> /tmp/tmpqoa3_ka_/dogfood_test.spy:60:38
+    |
+ 60 |         container: Container[T] = current.unwrap()
+    |                                      ^
+    |
+
+
+```
+
+## Generated C#
+
+```csharp
+Generated C# code written to: /tmp/tmpqoa3_ka_/dogfood_test.cs
+
+```
+
+## Timing
+
+- Generation: 261.81s
+- Execution: 4.70s

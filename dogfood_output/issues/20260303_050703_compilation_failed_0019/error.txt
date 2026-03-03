@@ -1,0 +1,18 @@
+Assembly compilation failed:
+
+error[CS1061]: 'object' does not contain a definition for 'Compare' and no accessible extension method 'Compare' accepting a first argument of type 'object' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp89b57efd/math_utils.spy:35:21
+    |
+ 35 |     starts_a = StartsWithA()
+    |                     ^
+    |
+
+error[CS1061]: 'object' does not contain a definition for 'Transform' and no accessible extension method 'Transform' accepting a first argument of type 'object' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp89b57efd/math_utils.spy:41:32
+
+error[CS1061]: 'object' does not contain a definition for 'Transform' and no accessible extension method 'Transform' accepting a first argument of type 'object' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp89b57efd/math_utils.spy:41:19
+
+error[CS1061]: 'object' does not contain a definition for 'Check' and no accessible extension method 'Check' accepting a first argument of type 'object' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp89b57efd/math_utils.spy:47:22
+

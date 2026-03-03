@@ -1,0 +1,11 @@
+Circle(r=3.0)
+28.27431
+Rectangle(4.0 x 5.0)
+20.0
+circle
+rectangle
+18.0
+6.4031242374328485
+80.0
+28.27431
+Circle area: 12.56636

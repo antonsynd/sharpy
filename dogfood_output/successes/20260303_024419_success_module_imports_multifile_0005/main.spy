@@ -1,0 +1,29 @@
+# Main entry point - demonstrates module imports
+
+from math_helpers import square, cube, factorial, average, PI
+from string_helpers import reverse, is_palindrome, word_count, capitalize_words
+
+def main():
+    # Test math imports
+    x: int = 5
+    print(f"Square of {x}: {square(x)}")
+    print(f"Cube of {x}: {cube(x)}")
+    print(f"Factorial of {x}: {factorial(x)}")
+    print(f"PI constant: {PI}")
+    
+    numbers: list[int] = [10, 20, 30, 40, 50]
+    avg: float = average(numbers)
+    print(f"Average of list: {avg}")
+    
+    # Test string imports
+    text: str = "hello world"
+    print(f"Original: {text}")
+    print(f"Reversed: {reverse(text)}")
+    print(f"Word count: {word_count(text)}")
+    print(f"Capitalized: {capitalize_words(text)}")
+    
+    palindrome: str = "radar"
+    print(f"'{palindrome}' is palindrome: {is_palindrome(palindrome)}")
+    
+    not_palindrome: str = "hello"
+    print(f"'{not_palindrome}' is palindrome: {is_palindrome(not_palindrome)}")

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-03T05:37:40.124750",
+  "generated_code": "from geometry import Point\nfrom shapes import Rectangle\n\ndef main():\n    p1: Point = Point(0.0, 0.0)\n    print(p1)\n\n    rect: Rectangle = Rectangle(p1, 6.0, 8.0)\n    print(rect.area())\n    print(rect.perimeter())\n\n    center: Point = rect.center()\n    print(center)\n    print(center.distance_from_origin())\n",
+  "expected_output": "Point(0.0, 0.0)\n48.0\n28.0\nPoint(3.0, 4.0)\n5.0\n",
+  "actual_output": "Point(0.0, 0.0)\n48.0\n28.0\nPoint(3.0, 4.0)\n5.0",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 262.68284845352173,
+  "execution_duration": 4.8860321044921875,
+  "source_files": {
+    "geometry.spy": "class Point:\n    x: float\n    y: float\n\n    def __init__(self, x: float, y: float):\n        self.x = x\n        self.y = y\n\n    def distance_from_origin(self) -> float:\n        return (self.x ** 2 + self.y ** 2) ** 0.5\n\n    def __str__(self) -> str:\n        return f\"Point({self.x}, {self.y})\"\n",
+    "shapes.spy": "from geometry import Point\n\nclass Rectangle:\n    top_left: Point\n    width: float\n    height: float\n\n    def __init__(self, top_left: Point, width: float, height: float):\n        self.top_left = top_left\n        self.width = width\n        self.height = height\n\n    def area(self) -> float:\n        return self.width * self.height\n\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)\n\n    def center(self) -> Point:\n        return Point(\n            self.top_left.x + self.width / 2.0,\n            self.top_left.y + self.height / 2.0\n        )\n",
+    "main.spy": "from geometry import Point\nfrom shapes import Rectangle\n\ndef main():\n    p1: Point = Point(0.0, 0.0)\n    print(p1)\n\n    rect: Rectangle = Rectangle(p1, 6.0, 8.0)\n    print(rect.area())\n    print(rect.perimeter())\n\n    center: Point = rect.center()\n    print(center)\n    print(center.distance_from_origin())\n"
+  }
+}

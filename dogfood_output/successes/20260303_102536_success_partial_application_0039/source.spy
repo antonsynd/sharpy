@@ -1,0 +1,15 @@
+# Test partial application with lambdas
+def add_offset(base: int, offset: int) -> int:
+    return base + offset
+
+def main():
+    # Partial application using lambda: fix second argument to 1000
+    add_thousand: (int) -> int = lambda x: add_offset(x, 1000)
+    
+    # Lambda for doubling - renamed to avoid shadowing double type
+    doubler: (int) -> int = lambda x: x * 2
+    
+    x: int = 5
+    print(add_thousand(x))
+    print(doubler(x))
+    print(add_thousand(doubler(3)))

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T06:24:36.288548",
+  "generated_code": "# Test comparison chaining with functions and boundary conditions\ndef clamped_middle(value: int, min_val: int, max_val: int) -> bool:\n    # Chained comparison for inclusive range check\n    return min_val <= value <= max_val\n\ndef classify_pressure(p: float) -> str:\n    # Triple chained comparison with mixed operators\n    if 0.0 <= p < 1.0:\n        return \"low\"\n    elif 1.0 <= p <= 10.0:\n        return \"normal\"\n    elif 10.0 < p < 100.0:\n        return \"high\"\n    else:\n        return \"critical\"\n\ndef main():\n    # Test boundary conditions with integers\n    print(clamped_middle(5, 0, 10))\n    print(clamped_middle(0, 0, 10))\n    print(clamped_middle(10, 0, 10))\n    \n    # Test with floats\n    print(clamped_middle(-1, 0, 10))\n    \n    # Test pressure classification\n    print(classify_pressure(0.5))\n    print(classify_pressure(5.0))\n    print(classify_pressure(50.0))\n",
+  "expected_output": "True\nTrue\nTrue\nFalse\nlow\nnormal\nhigh\n",
+  "actual_output": "True\nTrue\nTrue\nFalse\nlow\nnormal\nhigh",
+  "feature_focus": "comparison_chaining",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 158.32937836647034,
+  "execution_duration": 4.758320569992065,
+  "source_files": null
+}

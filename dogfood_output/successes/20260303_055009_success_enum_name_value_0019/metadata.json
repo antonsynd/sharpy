@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T05:49:25.520717",
+  "generated_code": "enum Priority:\n    LOW = 10\n    MEDIUM = 20\n    HIGH = 30\n\ndef main():\n    level = Priority.HIGH\n    print(level.name)\n    print(level.value)\n    print(Priority.LOW.name)\n    print(Priority.MEDIUM.value)\n",
+  "expected_output": "High\n30\nLow\n20\n",
+  "actual_output": "High\n30\nLow\n20",
+  "feature_focus": "enum_name_value",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 33.3567271232605,
+  "execution_duration": 4.615182399749756,
+  "source_files": null
+}

@@ -1,0 +1,8 @@
+Assembly compilation failed:
+
+error[CS0117]: 'ShapeUtils.Circle' does not contain a definition for 'Pi'
+  --> /tmp/tmpaen1_7g9/shape_utils.spy:38:27
+
+error[CS0117]: 'ShapeUtils.Circle' does not contain a definition for 'Pi'
+  --> /tmp/tmpaen1_7g9/shape_utils.spy:42:34
+

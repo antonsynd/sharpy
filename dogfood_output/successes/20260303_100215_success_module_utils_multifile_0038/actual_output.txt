@@ -1,0 +1,5 @@
+Entity(1): Alice, age=25 | Entity(2): Bob, age=17 | Entity(3): Carol, age=30 | Entity(4): System
+2
+3
+True
+False

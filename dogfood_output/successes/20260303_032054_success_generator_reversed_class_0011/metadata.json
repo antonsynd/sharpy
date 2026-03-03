@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T03:20:08.494921",
+  "generated_code": "# Simple test: class with __reversed__ using manual indexing\n# Tests generator-based __reversed__ iterating in reverse order\n\nclass SimpleStack:\n    items: list[int]\n    \n    def __init__(self):\n        self.items = [1, 2, 3]\n    \n    def __iter__(self) -> int:\n        i = 0\n        while i < len(self.items):\n            yield self.items[i]\n            i += 1\n    \n    def __reversed__(self) -> int:\n        i = len(self.items) - 1\n        while i >= 0:\n            yield self.items[i]\n            i -= 1\n\ndef main():\n    s = SimpleStack()\n    \n    # Forward iteration\n    for x in s:\n        print(x)\n    \n    # Reverse iteration\n    for y in reversed(s):\n        print(y)\n",
+  "expected_output": "1\n2\n3\n3\n2\n1\n",
+  "actual_output": "1\n2\n3\n3\n2\n1",
+  "feature_focus": "generator_reversed_class",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 34.83154344558716,
+  "execution_duration": 5.058971405029297,
+  "source_files": null
+}

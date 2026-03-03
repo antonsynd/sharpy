@@ -1,0 +1,28 @@
+# Main entry point - demonstrates cross-module imports and inheritance
+from geometry import Point, IShape
+from shapes import Rectangle, Circle
+
+def print_shape_info(shape: IShape, name: str):
+    print(f"{name} area: {shape.area()}")
+    print(f"{name} perimeter: {shape.perimeter()}")
+
+def main():
+    # Create a rectangle using the shapes module
+    rect: Rectangle = Rectangle(0.0, 0.0, 10.0, 5.0)
+    print(f"Rectangle at {rect.position}")
+    print(f"Rectangle diagonal: {rect.diagonal()}")
+    print_shape_info(rect, "Rectangle")
+
+    print("---")
+
+    # Create a circle using the shapes module
+    circle: Circle = Circle(5.0, 5.0, 3.0)
+    print(f"Circle center: {circle.center}")
+
+    # Test if points are inside the circle
+    p1: Point = Point(6.0, 6.0)
+    p2: Point = Point(10.0, 10.0)
+    print(f"Point {p1} inside circle: {circle.contains(p1)}")
+    print(f"Point {p2} inside circle: {circle.contains(p2)}")
+
+    print_shape_info(circle, "Circle")

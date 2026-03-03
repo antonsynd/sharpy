@@ -1,0 +1,39 @@
+# Utility module - structs and helper functions
+from core_types import ShapeCategory
+
+# Struct for 2D points (value type)
+struct Point2D:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    @override
+    def __str__(self) -> str:
+        return f"({self.x}, {self.y})"
+
+    def distance_to(self, other: Point2D) -> float:
+        dx: float = self.x - other.x
+        dy: float = self.y - other.y
+        return dx * dx + dy * dy
+
+# Utility class for static methods
+class PointUtils:
+    @static
+    def origin() -> Point2D:
+        return Point2D(0.0, 0.0)
+
+    @static
+    def midpoint(p1: Point2D, p2: Point2D) -> Point2D:
+        return Point2D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
+
+    @static
+    def sum_coordinates(points: list[Point2D]) -> tuple[float, float]:
+        sum_x: float = 0.0
+        sum_y: float = 0.0
+        for p in points:
+            sum_x += p.x
+            sum_y += p.y
+        return (sum_x, sum_y)

@@ -1,0 +1,5 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'pi' does not exist in the current context
+  --> /tmp/tmp1j45coi1/math_utils.spy:31:16
+

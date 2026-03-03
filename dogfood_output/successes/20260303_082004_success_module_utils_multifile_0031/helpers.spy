@@ -1,0 +1,26 @@
+# Helpers module: utility functions
+from types import Status, Point, IValidatable, IIdentifiable
+from utils import StaticUtils
+
+def calculate_distance(p1: Point, p2: Point) -> float:
+    dx: float = p1.x - p2.x
+    dy: float = p1.y - p2.y
+    return (dx ** 2.0 + dy ** 2.0) ** 0.5
+
+def check_entities(items: list[IValidatable]) -> int:
+    valid_count: int = 0
+    for item in items:
+        if item.is_valid():
+            valid_count += 1
+    return valid_count
+
+def get_ids(items: list[IIdentifiable]) -> list[int]:
+    results: list[int] = []
+    for item in items:
+        results.append(item.id)
+    return results
+
+def create_default_user(user_id: int) -> "utils.User":
+    # Forward reference to User type
+    import utils
+    return utils.User(user_id, "Default", Status.ACTIVE)

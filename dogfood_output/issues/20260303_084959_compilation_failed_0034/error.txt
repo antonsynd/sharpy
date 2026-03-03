@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: '(double area, double perimeter)' does not contain a definition for 'Area' and no accessible extension method 'Area' accepting a first argument of type '(double area, double perimeter)' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpb1tq93zb/main.spy:25:45
+    |
+ 25 |     print(stats.area)
+    |                      ^
+    |
+

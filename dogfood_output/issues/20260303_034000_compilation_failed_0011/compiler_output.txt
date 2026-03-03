@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'ColorType' is never used
+  --> /tmp/tmpm4i2_0e6/main.spy:2:39
+    |
+  2 | from types import Point2D, Dimension, ColorType, ShapeCategory
+    |                                       ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ShapeCategory' is never used
+  --> /tmp/tmpm4i2_0e6/main.spy:2:50
+    |
+  2 | from types import Point2D, Dimension, ColorType, ShapeCategory
+    |                                                  ^^^^^^^^^^^^^
+    |
+

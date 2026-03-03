@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0222]: Type 'int' does not support operator '==' with operand of type 'int'
+  --> /tmp/tmpn6h5ff9k/dogfood_test.spy:5:12
+    |
+  5 |         if value == 0:
+    |            ^^^^^^^^^^
+    |
+
+error[SPY0222]: Type 'int' does not support operator '>' with operand of type 'int'
+  --> /tmp/tmpn6h5ff9k/dogfood_test.spy:7:14
+    |
+  7 |         elif value > 0 and value < 10:
+    |              ^^^^^^^^^
+    |
+
+error[SPY0222]: Type 'int' does not support operator '<' with operand of type 'int'
+  --> /tmp/tmpn6h5ff9k/dogfood_test.spy:7:28
+    |
+  7 |         elif value > 0 and value < 10:
+    |                            ^^^^^^^^^^
+    |
+
+error[SPY0222]: Type 'int' does not support operator '%' with operand of type 'int'
+  --> /tmp/tmpn6h5ff9k/dogfood_test.spy:9:14
+    |
+  9 |         elif value % 2 == 0:
+    |              ^^^^^^^^^
+    |
+

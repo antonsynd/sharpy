@@ -1,0 +1,30 @@
+# Module providing base types and enums
+
+# Enums for shape categories
+enum ShapeType:
+    CIRCLE = 1
+    RECTANGLE = 2
+    TRIANGLE = 3
+
+# Interface for drawable objects
+interface IDrawable:
+    def draw() -> str
+
+# Interface for measurable objects
+interface IMeasurable:
+    def area(self) -> float
+
+# Struct for 2D point (value type)
+struct Point2D:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+# Function to calculate distance between points
+def distance(p1: Point2D, p2: Point2D) -> float:
+    dx: float = p2.x - p1.x
+    dy: float = p2.y - p1.y
+    return (dx * dx + dy * dy) ** 0.5

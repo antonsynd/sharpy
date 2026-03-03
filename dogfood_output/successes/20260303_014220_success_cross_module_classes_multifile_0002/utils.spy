@@ -1,0 +1,26 @@
+# Utility module for shape operations
+from shapes import Rectangle, Circle, Shape
+
+class DrawingContext:
+    @static
+    _shape_count: int = 0
+
+    def register_shape(self, shape: Shape) -> str:
+        DrawingContext._shape_count = DrawingContext._shape_count + 1
+        return f"Registered shape #{DrawingContext._shape_count}: {shape.describe()}"
+
+    @static
+    def get_count() -> int:
+        return DrawingContext._shape_count
+
+@static
+_shape_total_area: float = 0.0
+
+def calculate_total_area(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for shape in shapes:
+        total = total + shape.area()
+    return total
+
+def format_dimensions(width: float, height: float) -> str:
+    return f"{width} by {height}"

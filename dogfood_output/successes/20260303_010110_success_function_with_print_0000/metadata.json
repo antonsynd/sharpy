@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T00:58:55.001376",
+  "generated_code": "def sum_of_squares_verbose(n: int) -> int:\n    # Compute sum of squares from 1 to n with progress logging\n    total: int = 0\n    i: int = 1\n    while i <= n:\n        square: int = i * i\n        total += square\n        # Print progress every 2 steps\n        if i % 2 == 0:\n            print(f\"n={i}, square={square}, running_total={total}\")\n        i += 1\n    return total\n\ndef main():\n    result: int = sum_of_squares_verbose(5)\n    print(\"Final result:\")\n    print(result)\n",
+  "expected_output": "n=2, square=4, running_total=5\nn=4, square=16, running_total=30\nFinal result:\n55\n",
+  "actual_output": "n=2, square=4, running_total=5\nn=4, square=16, running_total=30\nFinal result:\n55",
+  "feature_focus": "function_with_print",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 121.3239393234253,
+  "execution_duration": 5.900320768356323,
+  "source_files": null
+}

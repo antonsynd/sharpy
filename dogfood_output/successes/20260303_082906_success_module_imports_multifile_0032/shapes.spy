@@ -1,0 +1,46 @@
+# shapes.spy - Module providing shape abstractions
+# Demonstrates interfaces, abstract classes, and cross-module dependencies
+
+from data_types import Status, Point
+
+interface IShape:
+    def area(self) -> float: ...
+    def get_status(self) -> Status: ...
+
+@abstract
+class ShapeBase:
+    status: Status
+    
+    def __init__(self, status: Status):
+        self.status = status
+    
+    @virtual
+    def describe(self) -> str:
+        return "Base shape"
+
+class Rectangle(ShapeBase, IShape):
+    width: float
+    height: float
+    
+    def __init__(self, width: float, height: float):
+        super().__init__(Status.ACTIVE)
+        self.width = width
+        self.height = height
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def describe(self) -> str:
+        return "Rectangle"
+
+    @override
+    def get_status(self) -> Status:
+        return self.status
+
+def create_rectangle(w: float, h: float) -> IShape:
+    return Rectangle(w, h)
+
+def create_point_shape(x: float, y: float) -> Point:
+    return Point(x, y)

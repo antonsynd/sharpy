@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T07:55:00.677272",
+  "generated_code": "def find_and_process() -> None:\n    # Process a workflow queue: skip low-priority items, stop at large items\n    items: list[int] = [1, 3, 5, 7, 9, 11, 2, 4]\n    processed: int = 0\n    skipped: int = 0\n    \n    for item in items:\n        # Skip low-priority items (value < 4)\n        if item < 4:\n            skipped += 1\n            continue\n        \n        # Stop processing if we've processed 3 items\n        if processed >= 3:\n            break\n        \n        processed += 1\n        print(item)\n    \n    print(skipped)\n\ndef main():\n    find_and_process()\n",
+  "expected_output": "5\n7\n9\n2\n",
+  "actual_output": "5\n7\n9\n2",
+  "feature_focus": "break_continue",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 100.82820510864258,
+  "execution_duration": 4.8617329597473145,
+  "source_files": null
+}

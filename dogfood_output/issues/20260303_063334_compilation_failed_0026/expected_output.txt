@@ -1,0 +1,6 @@
+Result: 13.00
+Result: 30.00
+Result: 3.33
+Result: 7.00
+Total calculations: 4
+Last: sub 10.0 3.0 -> 7.0

@@ -1,0 +1,32 @@
+# Utility module with concrete implementations
+
+def swap_int(a: int, b: int) -> tuple[int, int]:
+    return (b, a)
+
+def swap_str(a: str, b: str) -> tuple[str, str]:
+    return (b, a)
+
+def clamp(value: int, min_val: int, max_val: int) -> int:
+    if value < min_val:
+        return min_val
+    elif value > max_val:
+        return max_val
+    return value
+
+def transform_list(items: list[str], transformer: (str) -> str) -> list[str]:
+    result: list[str] = []
+    for item in items:
+        result.append(transformer(item))
+    return result
+
+interface IPicker[T]:
+    def pick(self, items: list[T]) -> T: ...
+
+class LastPicker(IPicker[int]):
+    def pick(self, items: list[int]) -> int:
+        last_idx: int = len(items) - 1
+        return items[last_idx]
+
+class UpperCaser:
+    def transform(self, s: str) -> str:
+        return s.upper()

@@ -1,0 +1,35 @@
+# Main entry point
+from utils import swap_int, clamp, swap_str, transform_list, IPicker, LastPicker, UpperCaser
+
+def main():
+    # Test swap_int function
+    swapped: tuple[int, int] = swap_int(10, 20)
+    print(swapped[0])
+    print(swapped[1])
+    
+    # Test swap_str function
+    swapped_str: tuple[str, str] = swap_str("hello", "world")
+    print(swapped_str[0])
+    print(swapped_str[1])
+    
+    # Test clamp utility
+    value: int = 150
+    clamped: int = clamp(value, 0, 100)
+    print(clamped)
+    
+    # Test LastPicker class implementing IPicker interface
+    numbers: list[int] = [1, 2, 3, 4, 5]
+    picker: LastPicker = LastPicker()
+    last: int = picker.pick(numbers)
+    print(last)
+    
+    # Test UpperCaser
+    caser: UpperCaser = UpperCaser()
+    print(caser.transform("hello"))
+    
+    # Test transform_list with a lambda
+    words: list[str] = ["apple", "banana", "cherry"]
+    upper_words: list[str] = transform_list(words, lambda s: s.upper())
+    print(upper_words[0])
+    print(upper_words[1])
+    print(upper_words[2])

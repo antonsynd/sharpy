@@ -1,0 +1,6 @@
+Component-1:TestWidget
+Gadget-v2:5
+30.0
+Component-0
+Component-7:W
+Gadget-v1:9

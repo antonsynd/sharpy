@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T07:32:28.689031",
+  "generated_code": "# Test: __len__ dunder method enables len() builtin on custom class\nclass SimpleCollection:\n    items: list[str]\n\n    def __init__(self):\n        self.items = [\"a\", \"b\", \"c\"]\n\n    def __len__(self) -> int:\n        return len(self.items)\n\ndef main():\n    col = SimpleCollection()\n    print(len(col))\n",
+  "expected_output": "3\n",
+  "actual_output": "3",
+  "feature_focus": "dunder_len",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 31.709675312042236,
+  "execution_duration": 4.846096754074097,
+  "source_files": null
+}

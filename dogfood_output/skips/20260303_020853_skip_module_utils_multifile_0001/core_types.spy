@@ -1,0 +1,15 @@
+# Core types for the geometry system - enums and interfaces only
+
+# Enum for shape categories
+enum ShapeCategory:
+    BASIC = 1
+    COMPLEX = 2
+    COMPOSITE = 3
+
+# Interface for identifiable objects
+interface IIdentifiable:
+    property get id() -> int
+
+# Interface for renderable objects
+interface IRenderable:
+    def render() -> str

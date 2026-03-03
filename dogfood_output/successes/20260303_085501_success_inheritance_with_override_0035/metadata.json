@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T08:49:59.560014",
+  "generated_code": "# Test: Inheritance with override - simple discount pricing\n# Tests @virtual and @override decorators with basic arithmetic\n\nclass Item:\n    base_price: float\n    \n    def __init__(self, price: float):\n        self.base_price = price\n    \n    @virtual\n    def get_price(self) -> float:\n        return self.base_price\n\nclass DiscountedItem(Item):\n    discount_percent: int\n    \n    def __init__(self, price: float, discount: int):\n        super().__init__(price)\n        self.discount_percent = discount\n    \n    @override\n    def get_price(self) -> float:\n        discount_amount: float = self.base_price * self.discount_percent / 100.0\n        return self.base_price - discount_amount\n\ndef main():\n    regular: Item = Item(100.0)\n    on_sale: Item = DiscountedItem(100.0, 25)\n    \n    print(regular.get_price())\n    print(on_sale.get_price())\n",
+  "expected_output": "100.0\n75.0\n",
+  "actual_output": "100.0\n75.0",
+  "feature_focus": "inheritance_with_override",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 290.83421635627747,
+  "execution_duration": 4.72826623916626,
+  "source_files": null
+}

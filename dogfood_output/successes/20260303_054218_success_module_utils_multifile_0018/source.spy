@@ -1,0 +1,14 @@
+from geometry import Point
+from shapes import Rectangle
+
+def main():
+    p1: Point = Point(0.0, 0.0)
+    print(p1)
+
+    rect: Rectangle = Rectangle(p1, 6.0, 8.0)
+    print(rect.area())
+    print(rect.perimeter())
+
+    center: Point = rect.center()
+    print(center)
+    print(center.distance_from_origin())

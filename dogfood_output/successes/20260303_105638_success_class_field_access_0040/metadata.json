@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-03T10:55:25.762724",
+  "generated_code": "class Account:\n    owner: str\n    balance: float\n    transactions: int\n\n    def __init__(self, owner: str, initial: float):\n        self.owner = owner\n        self.balance = initial\n        self.transactions = 0\n\n    def deposit(self, amount: float) -> None:\n        self.balance += amount\n        self.transactions += 1\n\n    def get_balance(self) -> float:\n        return self.balance\n\n    def get_transactions(self) -> int:\n        return self.transactions\n\ndef main():\n    acc = Account(\"Bob\", 100.0)\n    \n    # Process a series of deposits\n    amounts: list[float] = [25.0, 50.0, 75.0]\n    \n    for amt in amounts:\n        acc.deposit(amt)\n        print(acc.get_balance())\n    \n    print(acc.get_transactions())\n    print(acc.owner)\n",
+  "expected_output": "125.0\n175.0\n250.0\n3\nBob\n",
+  "actual_output": "125.0\n175.0\n250.0\n3\nBob",
+  "feature_focus": "class_field_access",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 62.419719219207764,
+  "execution_duration": 4.6950342655181885,
+  "source_files": null
+}

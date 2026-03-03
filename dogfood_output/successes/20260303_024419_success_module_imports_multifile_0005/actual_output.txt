@@ -1,0 +1,11 @@
+Square of 5: 25
+Cube of 5: 125
+Factorial of 5: 120
+PI constant: 3.14159
+Average of list: 30.0
+Original: hello world
+Reversed: dlrow olleh
+Word count: 2
+Capitalized: Hello World
+'radar' is palindrome: True
+'hello' is palindrome: False
