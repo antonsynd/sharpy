@@ -1039,13 +1039,46 @@ internal partial class TypeChecker
             return;
         }
 
-        // Function-style events: type-check the accessor body
+        // Function-style events: enter accessor scope and register parameters
+        _symbolTable.EnterScope($"event:{eventDef.Name}:{eventDef.Accessor}");
+
+        // Register parameters in scope (self, handler)
+        for (int i = 0; i < eventDef.Parameters.Length; i++)
+        {
+            var param = eventDef.Parameters[i];
+            SemanticType paramType;
+
+            // Special handling for 'self' parameter
+            if (i == 0 && param.Name == PythonNames.Self && _currentClass != null)
+            {
+                paramType = new UserDefinedType { Symbol = _currentClass };
+            }
+            else
+            {
+                paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+            }
+
+            var paramSymbol = new VariableSymbol
+            {
+                Name = param.Name,
+                Kind = SymbolKind.Parameter,
+                Type = paramType,
+                IsParameter = true,
+                DeclarationLine = param.LineStart,
+                DeclarationColumn = param.ColumnStart
+            };
+            _symbolTable.Define(paramSymbol);
+            SemanticBinding.SetVariableType(paramSymbol, paramType);
+        }
+
+        // Type-check the accessor body
         // TODO(#262): Validate handler parameter type consistency between add/remove accessors (SPY0374)
-        // Blocked by #260 (self parameter scope resolution in function-style event bodies)
         foreach (var stmt in eventDef.Body)
         {
             CheckStatement(stmt);
         }
+
+        _symbolTable.ExitScope();
     }
 
     /// <summary>
