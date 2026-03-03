@@ -1129,6 +1129,9 @@ internal partial class TypeChecker
         // The calleeType will be GenericFunctionType from CheckIndexAccess
         if (calleeType is GenericFunctionType genericFuncType)
         {
+            // Record the resolved call target for codegen
+            _semanticInfo.SetCallTarget(call, genericFuncType.FunctionSymbol);
+
             // Substitute type parameters with type arguments in the return type
             var substitutedReturnType = SubstituteTypeParameters(
                 genericFuncType.FunctionSymbol.ReturnType,
@@ -1215,6 +1218,8 @@ internal partial class TypeChecker
         {
             // Update the identifier symbol to point to the matching overload
             _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
+            // Record the resolved call target for codegen
+            _semanticInfo.SetCallTarget(call, matchingOverload);
             return matchingOverload.ReturnType;
         }
 
@@ -1376,6 +1381,9 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // Record the resolved call target for codegen
+        _semanticInfo.SetCallTarget(call, matchingOverload);
+
         var returnType = matchingOverload.ReturnType;
 
         // Substitute type parameters for builtin generic types (e.g., T0 -> int for dict[str, int])
@@ -1479,6 +1487,9 @@ internal partial class TypeChecker
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
         int totalArgCount, bool isNullConditionalCall, bool isOptionalNullConditional)
     {
+        // Record the resolved call target for codegen
+        _semanticInfo.SetCallTarget(call, funcSymbol);
+
         // Check for iterable spread into non-variadic function (SPY0357)
         // Must run before generic inference — generic functions without *args must also reject
         // iterable spread. Tuple spread is excluded because tuple size is statically known.

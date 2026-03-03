@@ -350,72 +350,8 @@ internal partial class RoslynEmitter
             if (pipeFuncSymbol == null && funcCall.Function is Identifier pipeFuncId)
                 pipeFuncSymbol = _context.LookupSymbol(pipeFuncId.Name) as FunctionSymbol;
 
-            if (NeedsParameterReordering(pipeFuncSymbol))
-            {
-                // TODO(#255): Duplicates logic from GenerateReorderedCallArguments — refactor to share.
-                // When reordering is needed, the prepended arg must also be named.
-                // Find the first non-self/cls parameter name for the piped argument.
-                var firstParam = pipeFuncSymbol!.Parameters
-                    .FirstOrDefault(p => p.Name != PythonNames.Self && p.Name != PythonNames.Cls);
-                var prependedArg = firstParam != null
-                    ? Argument(left).WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(firstParam.Name))))
-                    : Argument(left);
-
-                // Build a synthetic call with prepended positional arg for reordering.
-                // The remaining args are already in funcCall — handle them via
-                // matching against remaining parameters (skip first).
-                var remainingParams = pipeFuncSymbol.Parameters
-                    .Where(p => p.Name != PythonNames.Self && p.Name != PythonNames.Cls)
-                    .Skip(1)
-                    .ToList();
-
-                var result = new List<ArgumentSyntax> { prependedArg };
-
-                // Match funcCall's positional args to remaining params
-                var kwArgsByName = funcCall.KeywordArguments.ToDictionary(k => k.Name, k => k);
-                int posIdx = 0;
-                foreach (var param in remainingParams)
-                {
-                    if (param.IsVariadic)
-                        continue;
-                    string csharpName = NameMangler.ToCamelCase(param.Name);
-                    if (kwArgsByName.TryGetValue(param.Name, out var kw))
-                    {
-                        result.Add(Argument(GenerateExpression(kw.Value))
-                            .WithNameColon(NameColon(IdentifierName(csharpName))));
-                        kwArgsByName.Remove(param.Name);
-                    }
-                    else if (!param.IsKeywordOnly && posIdx < funcCall.Arguments.Length)
-                    {
-                        result.Add(Argument(GenerateExpression(funcCall.Arguments[posIdx]))
-                            .WithNameColon(NameColon(IdentifierName(csharpName))));
-                        posIdx++;
-                    }
-                }
-                foreach (var remaining in kwArgsByName.Values)
-                {
-                    result.Add(Argument(GenerateExpression(remaining.Value))
-                        .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(remaining.Name)))));
-                }
-                // Variadic trailing args
-                while (posIdx < funcCall.Arguments.Length)
-                {
-                    result.Add(Argument(GenerateExpression(funcCall.Arguments[posIdx])));
-                    posIdx++;
-                }
-
-                return InvocationExpression(func)
-                    .WithArgumentList(ArgumentList(SeparatedList(result)));
-            }
-
-            // No reordering needed — use the original positional concat pattern
-            var prependedArgSimple = Argument(left);
-            var existingArgs = funcCall.Arguments.Select(a => Argument(GenerateExpression(a)));
-            var keywordArgs = funcCall.KeywordArguments.Select(k =>
-                Argument(GenerateExpression(k.Value))
-                    .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(k.Name)))));
-
-            var allArgs = new[] { prependedArgSimple }.Concat(existingArgs).Concat(keywordArgs);
+            // Delegate to shared call-site reordering with the piped value prepended
+            var allArgs = GenerateReorderedCallArguments(funcCall, pipeFuncSymbol, Argument(left));
 
             return InvocationExpression(func)
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));

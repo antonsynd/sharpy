@@ -1103,7 +1103,6 @@ internal partial class TypeChecker
         }
 
         // Type-check the accessor body
-        // TODO(#262): Validate handler parameter type consistency between add/remove accessors (SPY0374)
         foreach (var stmt in eventDef.Body)
         {
             CheckStatement(stmt);

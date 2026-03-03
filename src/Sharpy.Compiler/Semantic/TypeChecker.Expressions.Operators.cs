@@ -198,6 +198,9 @@ internal partial class TypeChecker
 
             if (symbol is FunctionSymbol funcSymbol)
             {
+                // Record the resolved call target for codegen
+                _semanticInfo.SetCallTarget(call, funcSymbol);
+
                 // Validate argument count considering variadic and keyword-only params
                 var hasVariadicParam = funcSymbol.Parameters.Any(p => p.IsVariadic);
                 var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);

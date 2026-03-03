@@ -1435,7 +1435,31 @@ internal partial class RoslynEmitter
     /// so C# binds by name regardless of parameter position. Variadic arguments remain
     /// positional (trailing). When not needed, falls back to positional + keyword concat.
     /// </summary>
+    /// <summary>
+    /// Generates call arguments in the correct order for a potentially-reordered C# signature.
+    /// </summary>
     private ArgumentSyntax[] GenerateReorderedCallArguments(FunctionCall call, FunctionSymbol? funcSymbol)
+        => GenerateReorderedCallArgumentsCore(call, funcSymbol, prependedArgument: null);
+
+    /// <summary>
+    /// Generates call arguments with a pre-built argument prepended (used by pipe forward operator).
+    /// The <paramref name="prependedArgument"/> is mapped to the first non-self/cls parameter and
+    /// emitted as a named argument when reordering is needed.
+    /// </summary>
+    private ArgumentSyntax[] GenerateReorderedCallArguments(
+        FunctionCall call, FunctionSymbol? funcSymbol, ArgumentSyntax prependedArgument)
+        => GenerateReorderedCallArgumentsCore(call, funcSymbol, prependedArgument);
+
+    /// <summary>
+    /// Core implementation for call-site argument reordering.
+    /// When reordering is needed, all non-variadic arguments are emitted as named arguments
+    /// so C# binds by name regardless of parameter position. Variadic arguments remain
+    /// positional (trailing). When not needed, falls back to positional + keyword concat.
+    /// If <paramref name="prependedArgument"/> is non-null it is inserted before call arguments
+    /// (pipe forward scenario: <c>x |> f(y)</c> → <c>f(x, y)</c>).
+    /// </summary>
+    private ArgumentSyntax[] GenerateReorderedCallArgumentsCore(
+        FunctionCall call, FunctionSymbol? funcSymbol, ArgumentSyntax? prependedArgument)
     {
         if (!NeedsParameterReordering(funcSymbol))
         {
@@ -1444,6 +1468,8 @@ internal partial class RoslynEmitter
             var keywordArgs = call.KeywordArguments.Select(kwarg =>
                 Argument(GenerateExpression(kwarg.Value))
                     .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
+            if (prependedArgument != null)
+                return new[] { prependedArgument }.Concat(positionalArgs).Concat(keywordArgs).ToArray();
             return positionalArgs.Concat(keywordArgs).ToArray();
         }
 
@@ -1460,8 +1486,21 @@ internal partial class RoslynEmitter
             .ToDictionary(k => k.Name, k => k);
 
         int positionalIndex = 0;
-        foreach (var param in paramList)
+        int paramStartIndex = 0;
+
+        // If there's a prepended argument, assign it to the first parameter
+        if (prependedArgument != null && paramList.Count > 0)
         {
+            var firstParam = paramList[0];
+            string csharpName = NameMangler.ToCamelCase(firstParam.Name);
+            argByParam[firstParam.Name] = prependedArgument
+                .WithNameColon(NameColon(IdentifierName(csharpName)));
+            paramStartIndex = 1;
+        }
+
+        for (int pi = paramStartIndex; pi < paramList.Count; pi++)
+        {
+            var param = paramList[pi];
             if (param.IsVariadic)
                 continue;
 
@@ -1480,6 +1519,8 @@ internal partial class RoslynEmitter
                 {
                     // Spread elements can't be named — fall back to positional for safety
                     var result = new List<ArgumentSyntax>();
+                    if (prependedArgument != null)
+                        result.Add(prependedArgument);
                     foreach (var spreadArg in GeneratePositionalArguments(call.Arguments))
                         result.Add(spreadArg);
                     foreach (var remaining in keywordArgsByName.Values)

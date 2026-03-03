@@ -931,62 +931,72 @@ internal partial class RoslynEmitter
     // ============================================================
 
     /// <summary>
-    /// Reorders AST <see cref="Parameter"/> nodes into C#-compliant order.
+    /// Generic reordering of parameter-like items into C#-compliant order.
     /// Required parameters come before optional, and the variadic (params) parameter is last.
     /// Declaration order within each group is preserved.
     /// </summary>
-    /// <param name="parameters">AST parameters, already filtered to exclude self/cls.</param>
-    /// <returns>Parameters in C#-compliant order.</returns>
-    private static Parameter[] ReorderParametersForCSharp(IEnumerable<Parameter> parameters)
+    /// <typeparam name="T">The parameter type (AST <see cref="Parameter"/> or <see cref="ParameterSymbol"/>).</typeparam>
+    /// <param name="items">Parameters to reorder.</param>
+    /// <param name="isVariadic">Returns true if the item is a variadic (params) parameter.</param>
+    /// <param name="isKeywordOnly">Returns true if the item is keyword-only.</param>
+    /// <param name="hasDefault">Returns true if the item has a default value.</param>
+    /// <returns>Items in C#-compliant order.</returns>
+    private static T[] ReorderForCSharp<T>(
+        IEnumerable<T> items,
+        Func<T, bool> isVariadic,
+        Func<T, bool> isKeywordOnly,
+        Func<T, bool> hasDefault)
     {
-        var paramList = parameters as IList<Parameter> ?? parameters.ToList();
+        var itemList = items as IList<T> ?? items.ToList();
 
         // Fast path: if no variadic and no keyword-only params, no reordering needed
-        bool hasVariadic = false;
-        bool hasKeywordOnly = false;
-        foreach (var p in paramList)
+        bool foundVariadic = false;
+        bool foundKeywordOnly = false;
+        foreach (var item in itemList)
         {
-            if (p.IsVariadic)
-                hasVariadic = true;
-            if (p.Kind == ParameterKind.KeywordOnly)
-                hasKeywordOnly = true;
+            if (isVariadic(item))
+                foundVariadic = true;
+            if (isKeywordOnly(item))
+                foundKeywordOnly = true;
         }
 
-        if (!hasVariadic && !hasKeywordOnly)
-            return paramList as Parameter[] ?? paramList.ToArray();
+        if (!foundVariadic && !foundKeywordOnly)
+            return itemList as T[] ?? itemList.ToArray();
 
-        var normalRequired = new List<Parameter>();
-        var keywordOnlyRequired = new List<Parameter>();
-        var normalOptional = new List<Parameter>();
-        var keywordOnlyOptional = new List<Parameter>();
-        Parameter? variadic = null;
+        var normalRequired = new List<T>();
+        var keywordOnlyRequired = new List<T>();
+        var normalOptional = new List<T>();
+        var keywordOnlyOptional = new List<T>();
+        T? variadic = default;
+        bool hasVariadicItem = false;
 
-        foreach (var p in paramList)
+        foreach (var item in itemList)
         {
-            if (p.IsVariadic)
+            if (isVariadic(item))
             {
-                variadic = p;
+                variadic = item;
+                hasVariadicItem = true;
             }
-            else if (p.Kind == ParameterKind.KeywordOnly)
+            else if (isKeywordOnly(item))
             {
-                if (p.DefaultValue != null)
-                    keywordOnlyOptional.Add(p);
+                if (hasDefault(item))
+                    keywordOnlyOptional.Add(item);
                 else
-                    keywordOnlyRequired.Add(p);
+                    keywordOnlyRequired.Add(item);
             }
             else
             {
-                if (p.DefaultValue != null)
-                    normalOptional.Add(p);
+                if (hasDefault(item))
+                    normalOptional.Add(item);
                 else
-                    normalRequired.Add(p);
+                    normalRequired.Add(item);
             }
         }
 
         var capacity = normalRequired.Count + keywordOnlyRequired.Count
                      + normalOptional.Count + keywordOnlyOptional.Count
-                     + (variadic != null ? 1 : 0);
-        var result = new Parameter[capacity];
+                     + (hasVariadicItem ? 1 : 0);
+        var result = new T[capacity];
         int i = 0;
         foreach (var p in normalRequired)
             result[i++] = p;
@@ -996,81 +1006,30 @@ internal partial class RoslynEmitter
             result[i++] = p;
         foreach (var p in keywordOnlyOptional)
             result[i++] = p;
-        if (variadic != null)
-            result[i++] = variadic;
+        if (hasVariadicItem)
+            result[i++] = variadic!;
         return result;
     }
 
     /// <summary>
-    /// Reorders <see cref="ParameterSymbol"/> instances into C#-compliant order.
-    /// Same logic as <see cref="ReorderParametersForCSharp(IEnumerable{Parameter})"/>
-    /// but operates on semantic symbols (used by forwarding constructors and abstract stubs).
+    /// Reorders AST <see cref="Parameter"/> nodes into C#-compliant order.
     /// </summary>
-    /// <param name="parameters">Parameter symbols, already filtered to exclude self/cls.</param>
-    /// <returns>Parameter symbols in C#-compliant order.</returns>
+    private static Parameter[] ReorderParametersForCSharp(IEnumerable<Parameter> parameters)
+        => ReorderForCSharp(
+            parameters,
+            static p => p.IsVariadic,
+            static p => p.Kind == ParameterKind.KeywordOnly,
+            static p => p.DefaultValue != null);
+
+    /// <summary>
+    /// Reorders <see cref="ParameterSymbol"/> instances into C#-compliant order.
+    /// </summary>
     private static ParameterSymbol[] ReorderParameterSymbolsForCSharp(IEnumerable<ParameterSymbol> parameters)
-    {
-        var paramList = parameters as IList<ParameterSymbol> ?? parameters.ToList();
-
-        // Fast path: if no variadic and no keyword-only params, no reordering needed
-        bool hasVariadic = false;
-        bool hasKeywordOnly = false;
-        foreach (var p in paramList)
-        {
-            if (p.IsVariadic)
-                hasVariadic = true;
-            if (p.IsKeywordOnly)
-                hasKeywordOnly = true;
-        }
-
-        if (!hasVariadic && !hasKeywordOnly)
-            return paramList as ParameterSymbol[] ?? paramList.ToArray();
-
-        var normalRequired = new List<ParameterSymbol>();
-        var keywordOnlyRequired = new List<ParameterSymbol>();
-        var normalOptional = new List<ParameterSymbol>();
-        var keywordOnlyOptional = new List<ParameterSymbol>();
-        ParameterSymbol? variadic = null;
-
-        foreach (var p in paramList)
-        {
-            if (p.IsVariadic)
-            {
-                variadic = p;
-            }
-            else if (p.IsKeywordOnly)
-            {
-                if (p.HasDefault)
-                    keywordOnlyOptional.Add(p);
-                else
-                    keywordOnlyRequired.Add(p);
-            }
-            else
-            {
-                if (p.HasDefault)
-                    normalOptional.Add(p);
-                else
-                    normalRequired.Add(p);
-            }
-        }
-
-        var capacity = normalRequired.Count + keywordOnlyRequired.Count
-                     + normalOptional.Count + keywordOnlyOptional.Count
-                     + (variadic != null ? 1 : 0);
-        var result = new ParameterSymbol[capacity];
-        int i = 0;
-        foreach (var p in normalRequired)
-            result[i++] = p;
-        foreach (var p in keywordOnlyRequired)
-            result[i++] = p;
-        foreach (var p in normalOptional)
-            result[i++] = p;
-        foreach (var p in keywordOnlyOptional)
-            result[i++] = p;
-        if (variadic != null)
-            result[i++] = variadic;
-        return result;
-    }
+        => ReorderForCSharp(
+            parameters,
+            static p => p.IsVariadic,
+            static p => p.IsKeywordOnly,
+            static p => p.HasDefault);
 
     /// <summary>
     /// Emits a diagnostic for an unrecognized statement type in code generation.
