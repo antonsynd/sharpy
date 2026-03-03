@@ -111,6 +111,60 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "They cannot override non-generator abstract methods. "
         "Either mark the base method as a generator too, or don't use `yield` in the override.",
     ),
+    (
+        r"SPY0273",
+        "`await` can only be used inside `async def` functions. "
+        "Either mark the enclosing function as `async def`, or remove the `await`.",
+    ),
+    (
+        r"SPY0274",
+        "`await` cannot be used inside lambda expressions. "
+        "Move the async logic into a named `async def` function instead.",
+    ),
+    (
+        r"SPY0360",
+        "`async for` requires an IAsyncEnumerable operand and must be inside an `async def` function. "
+        "Check that the iterable is an async iterable and the enclosing function is `async def`.",
+    ),
+    (
+        r"SPY0370",
+        "This argument must be passed positionally (it's before the `/` separator). "
+        "Remove the keyword name from the call: use `foo(1, 2)` not `foo(x=1, y=2)`.",
+    ),
+    (
+        r"SPY0371",
+        "This argument must be passed as a keyword (it's after the `*` separator). "
+        "Add the keyword name: use `bar(1, b=2)` not `bar(1, 2)`.",
+    ),
+    (
+        r"SPY0416",
+        "Non-exhaustive match expression. All possible values must be covered. "
+        "Add a `case _:` wildcard arm, or add missing enum/bool/union cases.",
+    ),
+    (
+        r"SPY0417",
+        "Variance annotation (`out`/`in`) is only allowed on interface or delegate type parameters. "
+        "Remove the variance annotation from class or struct type parameters.",
+    ),
+    (
+        r"SPY0418",
+        "Covariant type parameter (`out T`) can only appear in output (return) positions. "
+        "Move `T` out of parameter positions, or change to `in T`.",
+    ),
+    (
+        r"SPY0419",
+        "Contravariant type parameter (`in T`) can only appear in input (parameter) positions. "
+        "Move `T` out of return positions, or change to `out T`.",
+    ),
+    (
+        r"SPY0124",
+        "Empty union declarations are not allowed. "
+        "Add at least one `case` to the union definition.",
+    ),
+    (
+        r"SPY0365",
+        "Duplicate union case name. " "Each case in a union must have a unique name.",
+    ),
 ]
 
 
@@ -146,10 +200,10 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Spread requires variadic**: `func(*args)` only works if the function accepts `*args` variadic parameter, or if spreading a tuple that matches the exact parameter count.
 - **With statement CLR limitation**: The `with` statement works with `IDisposable` types, but CLR type discovery currently cannot resolve inherited methods. Avoid using `StringWriter.WriteLine()` (inherited from `TextWriter`). Stick to types whose methods are defined directly on the type, not inherited.
 - **Named tuple field names**: All fields must be named, or none. Cannot mix named and unnamed fields in a named tuple type definition.
-- **Match exhaustiveness**: Match statements on enums or bools must cover all possible values OR include a `case _:` wildcard.
+- **Match exhaustiveness**: Match statements on enums, bools, or tagged unions must cover all possible values/cases OR include a `case _:` wildcard. Match expressions ALWAYS require exhaustive coverage.
 - **Instance fields not static by default**: Class fields are INSTANCE fields by default. To make a class-level static field, use the `@static` decorator: `@static` then `FIELD_NAME: type = value`. Access via `ClassName.FIELD_NAME`.
 - **Struct inheritance forbidden**: Classes CANNOT inherit from structs. Structs are sealed value types.
-- **Generic invariance**: Generic collections are INVARIANT. `list[Child]` cannot be assigned to `list[Parent]`. Declare the collection with the base/interface type.
+- **Generic invariance**: Generic collections are INVARIANT. `list[Child]` cannot be assigned to `list[Parent]`. Declare the collection with the base/interface type. Use `out`/`in` variance only on interfaces and delegates.
 - **Abstract class decorator**: When using `@abstract` methods, the containing class MUST also be decorated with `@abstract`.
 - **Optional usage**: `Some()` and `None()` can only be used where the target type is `T?` (Optional). Cannot pass `None()` where a non-optional type is expected.
 - **Virtual/override required for polymorphism**: Polymorphic dispatch requires `@virtual` on the base class method AND `@override` on each subclass method. Without these decorators, the base class method is called even when the object is a subclass instance.
@@ -158,11 +212,21 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Private field access**: Private fields (prefixed with `_`) cannot be accessed from outside the class — use properties to expose them.
 - **No type annotations on self.field**: In `__init__`, write `self.name = name`, NOT `self.name: str = name`. Type annotations on `self.field` assignments are forbidden (SPY0107).
 - **Enum integer value**: Use `.value` to get the integer value of an enum member: `e.value`, NOT `int(e)`.
+- **Enum name**: Use `.name` to get the PascalCase string name of an enum member: `color.name`.
+- **Enum iteration**: `for member in EnumType:` iterates over all members.
 - **Only import what you define**: Only import symbols you actually define in your source files. Do NOT import symbols that don't exist in the module.
 - **Type narrowing and .unwrap()**: After `if x is not None:`, `x` is automatically narrowed to its unwrapped type. Do NOT call `.unwrap()` after narrowing — just use `x` directly. `.unwrap()` is only valid on `T?` before narrowing.
 - **Char vs str in iteration**: `for c in some_string:` yields `char` values, not `str`. `char` has different methods than `str` — no `.lower()`, `.upper()`, etc. Use `str(c)` to convert a char back to a string if needed.
 - **Static fields**: Use `@static` decorator on class-level fields that should be shared across instances. Use `const` for compile-time constants (integers, floats, strings, bools). Access static/const fields via `ClassName.FIELD_NAME`.
-- **Tuples are fixed-size**: `tuple[int, int, int]` always has exactly 3 elements. Star unpacking (`*mid`) only works with `list`, not `tuple`. Access tuple elements by index: `t[0]`, `t[1]`, etc."""
+- **Tuples are fixed-size**: `tuple[int, int, int]` always has exactly 3 elements. Star unpacking (`*mid`) only works with `list`, not `tuple`. Access tuple elements by index: `t[0]`, `t[1]`, etc.
+- **Union construction**: Tagged union cases are constructed via `UnionName.CaseName(args)`, NOT `CaseName(args)` directly.
+- **Union matching**: When matching union cases, use the full form `case UnionName.CaseName(fields):` or the short form `case CaseName(fields):` when the match subject type is known.
+- **Async context**: `await` can only appear inside `async def` functions. Using `await` in a regular function is a compile error (SPY0274).
+- **Positional-only enforcement**: Arguments before `/` must be passed by position — using keyword names for them is a compile error (SPY0370).
+- **Keyword-only enforcement**: Arguments after `*` must be passed by keyword — passing them positionally is a compile error (SPY0371).
+- **Partial application placeholder**: `_` in a function call creates a partial application (lambda). Don't confuse with `case _:` wildcard in match statements.
+- **Variance position rules**: `out T` can only appear in return types, `in T` can only appear in parameter types. Violation causes SPY0418/SPY0419.
+- **Delegate vs function type**: Named delegates (`delegate Pred(x: int) -> bool`) are interchangeable with function types (`(int) -> bool`). Use delegates for public API readability."""
 
 ENTRY_POINT_SECTION = """\
 ## CRITICAL: Program Entry Point Requirement
@@ -175,7 +239,7 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - Example of WRONG: `def main(): ... \\n main()` - the `main()` call is forbidden at module level"""
 
 ALLOWED_FEATURES_SECTION = """\
-## CRITICAL: Allowed Features (Phases 0.1.0-0.1.18)
+## CRITICAL: Allowed Features (Phases 0.1.0-0.2.6)
 
 ### ✅ ALLOWED - Use these features:
 
@@ -430,17 +494,89 @@ ALLOWED_FEATURES_SECTION = """\
 #### Try Expression (0.1.18)
 - **Try**: `try risky_call()` wraps a call in `Result[T, Exception]`
 - **Try with type**: `try[ValueError] int("abc")` catches specific exception type
-- **Usage**: Converts exception-throwing code into Result-based error handling"""
+- **Usage**: Converts exception-throwing code into Result-based error handling
+
+### ✅ ALLOWED — Phase 0.2.0+ Features (recently implemented)
+
+#### Constructor Chaining (0.2.0)
+- **`self.__init__()`**: Chain to another constructor in the same class: `self.__init__(default_value)` inside an overloaded `__init__`
+- **`super().__init__()`**: Call parent constructor (already supported, now also chainable with `self.__init__`)
+- **IMPORTANT**: Constructor chaining translates to `: this(...)` in C#
+
+#### Enum Enhancements (0.2.0)
+- **Enum `.name`**: Get the string name of an enum member: `color.name` → `"Red"`
+- **Enum `.value`**: Get the integer value of an enum member: `color.value` → `1`
+- **Enum iteration**: `for c in Color:` iterates over all enum members
+- **IMPORTANT**: `.name` returns PascalCase (e.g., `"Red"` not `"RED"`)
+
+#### Generic Type Aliases (0.2.0)
+- **Generic alias**: `type Callback[T] = (T) -> None` — parameterized type aliases
+- **Usage**: `handler: Callback[int] = lambda x: print(x)`
+
+#### Method Overloading (0.2.0)
+- **Overloaded methods**: Multiple methods with the same name but different parameter types/counts
+- **Resolution**: Compiler selects the best match at compile time based on argument types
+- **IMPORTANT**: Overloaded methods must differ in parameter count or types, not just return type
+
+#### Advanced Pattern Matching (0.2.2)
+- **Match expression**: `result = match value: case 1: "one" case _: "other"` — produces a value
+- **Or-patterns**: `case "a" | "b":` — match multiple values in one arm
+- **Type patterns with binding**: `case int() as n:` — match a type and bind the value
+- **Relational patterns**: `case > 0:`, `case >= 10:` — compare against values
+- **Property patterns**: `case Point(x=0):` — match on property values
+- **Positional patterns**: `case Point(0, y):` — match by position with `Deconstruct`
+- **Guard clauses**: `case int() as n if n > 0:` — additional conditions on match arms
+- **Exhaustiveness**: Match on enums/bools must cover all values or have `case _:`; match expressions on non-finite types require a wildcard arm
+
+#### Tagged Unions (0.2.2)
+- **Union declaration**: `union Shape:` with `case Circle(radius: float)`, `case Rectangle(width: float, height: float)`
+- **Union construction**: `s: Shape = Shape.Circle(5.0)` or `s = Shape.Rectangle(2.0, 3.0)`
+- **Union matching**: `match shape: case Shape.Circle(r): ... case Shape.Rectangle(w, h): ...`
+- **Generic unions**: `union Option[T]:` with `case Some(value: T)`, `case None_()`
+- **Unit cases**: `case None_()` — cases with no fields
+- **Exhaustiveness**: Match on unions must cover all cases or have `case _:`
+- **IMPORTANT**: Union cases are constructed via `UnionName.CaseName(args)`
+
+#### Async/Await (0.2.4)
+- **Async functions**: `async def fetch_data() -> str:` — returns `Task<T>` under the hood
+- **Await expressions**: `result = await fetch_data()` — suspends until task completes
+- **Async for**: `async for item in async_iter:` — iterate over `IAsyncEnumerable<T>`
+- **Async with**: `async with resource as r:` — async resource management
+- **Async generators**: `async def` + `yield` → `IAsyncEnumerable<T>` return type
+- **asyncio.gather**: `results = await asyncio.gather(task1, task2)` → `Task.WhenAll`
+- **asyncio.sleep**: `await asyncio.sleep(1.0)` → `Task.Delay`
+- **IMPORTANT**: `await` can only be used inside `async def` functions
+- **IMPORTANT**: Import asyncio with `import asyncio` before using `asyncio.gather` or `asyncio.sleep`
+
+#### Positional-Only & Keyword-Only Parameters (0.2.5)
+- **Positional-only (`/`)**: `def foo(x: int, y: int, /, z: int):` — `x` and `y` can only be passed positionally
+- **Keyword-only (`*`)**: `def bar(a: int, *, b: int, c: int):` — `b` and `c` must be passed as keywords
+- **Combined**: `def baz(a: int, /, b: int, *, c: int):` — `a` positional-only, `c` keyword-only, `b` either
+
+#### Partial Application (0.2.5)
+- **Placeholder `_` in calls**: `add_five = add(_, 5)` — creates a lambda `lambda x: add(x, 5)`
+- **Operator sections**: `double = (_ * 2)`, `is_positive = (_ > 0)`, `negate = (-_)` — shorthand for lambdas
+- **IMPORTANT**: `_` in function arguments is the partial application placeholder, not a discard
+- **IMPORTANT**: Operator sections require parentheses: `(_ * 2)` not `_ * 2`
+
+#### Delegate Type Declarations (0.2.6)
+- **Delegate definition**: `delegate Predicate(value: int) -> bool` — named function type
+- **Usage**: `p: Predicate = lambda x: x > 0` or as parameter type `def filter(pred: Predicate):`
+- **Generic delegates**: `delegate Transform[T](value: T) -> T`
+
+#### Generic Variance (0.2.6)
+- **Covariant (`out`)**: `interface IProducer[out T]:` — `T` only in output positions
+- **Contravariant (`in`)**: `interface IConsumer[in T]:` — `T` only in input positions
+- **On delegates**: `delegate Func[in T, out R](value: T) -> R`
+- **IMPORTANT**: Variance annotations only valid on interfaces and delegates, not classes/structs"""
 
 FORBIDDEN_FEATURES_SECTION = """\
 ### ❌ FORBIDDEN - Do NOT use these features (not yet implemented or restricted):
 - **NO main() call at module level**: Do NOT write `main()` after defining it - it's auto-invoked by runtime
 - **NO multi-argument print**: `print(a, b, c)` - use multiple `print()` calls
-- **NO async/await**: Async programming not implemented
 - **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
 - **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
 - **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
-- **NO union types (T | U)**: union types are not supported — use a common base class or interface instead
 - **NO bare string indexing in comparisons/assignments**: `s[i] == "a"` or `c: str = s[i]` fails — always wrap with `str()`: `str(s[i]) == "a"`, `c: str = str(s[i])`
 - **NO 'in' operator on strings**: `char in "abc"` — not yet supported
 - **NO bare char iteration**: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
@@ -451,9 +587,11 @@ FORBIDDEN_FEATURES_SECTION = """\
 - **NO `yield` inside `__next__`**: `yield` is only allowed in regular functions, `__iter__`, and `__reversed__`
 - **NO `return value` in generators**: Generators cannot return a value — use bare `return` for early termination
 - **NO mixing generator `__iter__` with `__next__`**: A class cannot have both `yield`-based `__iter__` AND a `__next__` method
-- **NO type pattern with binding**: `case int() as n:` — not yet implemented
-- **NO guard clauses in match**: `case int() as n if n > 0:` — not yet implemented
-- **NO direct dunder calls**: Use builtin functions instead — `reversed(obj)` not `obj.__reversed__()`, `len(obj)` not `obj.__len__()`, `str(obj)` not `obj.__str__()`"""
+- **NO direct dunder calls**: Use builtin functions instead — `reversed(obj)` not `obj.__reversed__()`, `len(obj)` not `obj.__len__()`, `str(obj)` not `obj.__str__()`
+- **NO events**: `event name: DelegateType` — not yet implemented
+- **NO custom decorator arguments**: `@decorator(args)` — not yet implemented
+- **NO `raise X from Y`**: Inner exception chaining not supported
+- **NO async comprehensions**: `[await x async for x in ...]` — not supported"""
 
 NAMING_RULES_SECTION = """\
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
@@ -786,6 +924,91 @@ class Range:
         while i >= self.start:
             yield i
             i -= 1
+
+# Tagged union declaration and matching
+union Shape:
+    case Circle(radius: float)
+    case Rectangle(width: float, height: float)
+    case Point()
+
+def describe(s: Shape) -> str:
+    return match s:
+        case Shape.Circle(r): f"Circle r={{r}}"
+        case Shape.Rectangle(w, h): f"Rect {{w}}x{{h}}"
+        case Shape.Point(): "Point"
+
+# Or-patterns and relational patterns
+match score:
+    case 90 | 95 | 100:
+        print("excellent")
+    case > 80:
+        print("good")
+    case _:
+        print("ok")
+
+# Type pattern with binding
+match value:
+    case int() as n if n > 0:
+        print(f"positive int: {{n}}")
+    case str() as s:
+        print(f"string: {{s}}")
+    case _:
+        print("other")
+
+# Async function and await
+async def fetch_value() -> int:
+    await asyncio.sleep(0.1)
+    return 42
+
+async def main_async() -> None:
+    result = await fetch_value()
+    print(result)
+
+# Positional-only and keyword-only parameters
+def create(x: int, y: int, /, *, label: str = "default") -> str:
+    return f"{{label}}: ({{x}}, {{y}})"
+
+# Partial application
+def add(a: int, b: int) -> int:
+    return a + b
+add_five = add(_, 5)
+print(add_five(3))  # 8
+
+# Operator section
+nums: list[int] = [1, -2, 3, -4]
+positives = filter((_ > 0), nums)
+
+# Delegate type
+delegate Predicate(value: int) -> bool
+def count_matching(items: list[int], pred: Predicate) -> int:
+    result = 0
+    for item in items:
+        if pred(item):
+            result += 1
+    return result
+
+# Generic variance
+interface IProducer[out T]:
+    def produce(self) -> T: ...
+
+interface IConsumer[in T]:
+    def consume(self, item: T) -> None: ...
+
+# Enum iteration and .name/.value
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+for c in Color:
+    print(f"{{c.name}} = {{c.value}}")
+
+# Method overloading
+class Printer:
+    def show(self, x: int) -> None:
+        print(f"int: {{x}}")
+    def show(self, x: str) -> None:
+        print(f"str: {{x}}")
 ```
 
 ## Output Format
@@ -1075,7 +1298,7 @@ Your previous code FAILED validation. You must fix the issue and regenerate.
 ## Instructions
 
 1. Analyze the validation error carefully
-2. Identify which feature(s) are NOT allowed in phases 0.1.0-0.1.18
+2. Identify which feature(s) are NOT allowed in phases 0.1.0-0.2.6
 3. REMOVE or REPLACE the forbidden features
 4. Keep the same general logic/intent but use only allowed features
 

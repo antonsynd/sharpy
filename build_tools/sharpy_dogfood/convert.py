@@ -219,6 +219,45 @@ def get_category_from_feature(feature_focus: Optional[str]) -> str:
         "generator_early_return": "generators",
         "generator_iter_class": "generators",
         "generator_reversed_class": "generators",
+        # Phase 0.2.0: Constructor Chaining & Enum Enhancements
+        "constructor_chaining": "classes",
+        "enum_name_value": "structs_enums",
+        "enum_iteration": "structs_enums",
+        "generic_type_alias": "type_system",
+        "method_overloading": "classes",
+        # Phase 0.2.2: Advanced Pattern Matching
+        "match_expression": "pattern_matching",
+        "match_or_pattern": "pattern_matching",
+        "match_type_pattern": "pattern_matching",
+        "match_relational_pattern": "pattern_matching",
+        "match_property_pattern": "pattern_matching",
+        "match_positional_pattern": "pattern_matching",
+        "match_exhaustiveness": "pattern_matching",
+        "match_union_exhaustive": "pattern_matching",
+        # Phase 0.2.2: Tagged Unions
+        "union_declaration": "unions",
+        "union_matching": "unions",
+        "union_generic": "unions",
+        "union_with_generics": "unions",
+        # Phase 0.2.4: Async/Await
+        "async_function": "async",
+        "await_expression": "async",
+        "async_for": "async",
+        "async_with": "async",
+        "async_generator": "async",
+        "asyncio_gather": "async",
+        "async_with_generators": "async",
+        # Phase 0.2.5: Advanced Function Features
+        "positional_only_params": "functions",
+        "keyword_only_params": "functions",
+        "partial_application": "expressions",
+        "operator_section": "expressions",
+        # Phase 0.2.6: Delegates & Variance
+        "delegate_declaration": "delegates",
+        "delegate_with_lambda": "delegates",
+        "generic_variance": "type_system",
+        # Feature Combinations
+        "overloading_with_inheritance": "classes",
     }
 
     return category_map.get(feature_focus, "misc")

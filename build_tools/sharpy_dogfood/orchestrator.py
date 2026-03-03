@@ -145,13 +145,13 @@ def _extract_top_level_symbols(source: str) -> list[str]:
             if m:
                 symbols.append(m.group(1))
                 continue
-            # struct Foo: or enum Foo:
-            m = re.match(r"^(?:struct|enum|interface)\s+(\w+)", stripped)
+            # struct Foo: or enum Foo: or union Foo:
+            m = re.match(r"^(?:struct|enum|interface|union)\s+(\w+)", stripped)
             if m:
                 symbols.append(m.group(1))
                 continue
-            # def foo(...):
-            m = re.match(r"^def\s+(\w+)\s*\(", stripped)
+            # def foo(...): or async def foo(...):
+            m = re.match(r"^(?:async\s+)?def\s+(\w+)\s*\(", stripped)
             if m:
                 name = m.group(1)
                 if name != "main":
@@ -159,6 +159,11 @@ def _extract_top_level_symbols(source: str) -> list[str]:
                 continue
             # type Foo = ...
             m = re.match(r"^type\s+(\w+)\s*=", stripped)
+            if m:
+                symbols.append(m.group(1))
+                continue
+            # delegate Foo(...) -> ...
+            m = re.match(r"^delegate\s+(\w+)", stripped)
             if m:
                 symbols.append(m.group(1))
                 continue
@@ -669,7 +674,7 @@ _TIER3_ADVANCED: list[str] = [
     "spread_call",
     # Walrus Operator
     "walrus_operator",
-    # Pattern Matching
+    # Pattern Matching (basic)
     "match_literal",
     "match_type_binding",
     "match_wildcard",
@@ -684,6 +689,39 @@ _TIER3_ADVANCED: list[str] = [
     "generator_early_return",
     "generator_iter_class",
     "generator_reversed_class",
+    # Phase 0.2.0: Constructor Chaining & Enum Enhancements
+    "constructor_chaining",
+    "enum_name_value",
+    "enum_iteration",
+    "generic_type_alias",
+    "method_overloading",
+    # Phase 0.2.2: Advanced Pattern Matching
+    "match_expression",
+    "match_or_pattern",
+    "match_type_pattern",
+    "match_relational_pattern",
+    "match_property_pattern",
+    "match_positional_pattern",
+    "match_exhaustiveness",
+    # Phase 0.2.2: Tagged Unions
+    "union_declaration",
+    "union_matching",
+    "union_generic",
+    # Phase 0.2.4: Async/Await
+    "async_function",
+    "await_expression",
+    "async_for",
+    "async_with",
+    "async_generator",
+    "asyncio_gather",
+    # Phase 0.2.5: Advanced Function Features
+    "positional_only_params",
+    "keyword_only_params",
+    "partial_application",
+    "operator_section",
+    # Phase 0.2.6: Delegates & Variance
+    "delegate_declaration",
+    "generic_variance",
     # Feature Combinations (advanced)
     "nested_if_in_loop",
     "loop_in_function",
@@ -692,6 +730,11 @@ _TIER3_ADVANCED: list[str] = [
     "property_with_validation",
     "match_with_enum",
     "spread_with_comprehension",
+    "union_with_generics",
+    "async_with_generators",
+    "match_union_exhaustive",
+    "delegate_with_lambda",
+    "overloading_with_inheritance",
 ]
 
 # Flat list for backward compatibility (e.g. category mapping lookups).
@@ -813,18 +856,17 @@ class DogfoodOrchestrator:
     def _load_example_snippets(self) -> None:
         """Load example Sharpy snippets from the snippets directory.
 
-        Filters to only include snippets that use features from phases 0.1.0-0.1.18.
-        Now includes f-strings, collections, comprehensions, exceptions, lambdas, .NET interop.
+        Filters to only include snippets that use features from supported phases.
+        Now includes all phases through 0.2.6.
         """
         snippets_dir = self.config.snippets_dir
         if not snippets_dir.exists():
             return
 
-        # Features that indicate code is beyond phases 0.1.0-0.1.18
+        # Features that indicate code is beyond supported phases
         # (only features NOT yet implemented)
         forbidden_patterns = [
-            "async def",  # Not implemented
-            "await ",  # Not implemented
+            "event ",  # Events not yet implemented
         ]
 
         for spy_file in snippets_dir.glob("*.spy"):
@@ -2094,9 +2136,10 @@ class DogfoodOrchestrator:
         which avoids false positives from keywords inside f-string text or string
         literals. Falls back to regex if the lexer fails.
 
-        Validates against phases 0.1.0-0.1.18 (includes f-strings, collections,
-        exception handling, lambdas, .NET interop, Optional/Result types,
-        maybe/try expressions).
+        Validates against phases 0.1.0-0.2.6 (includes all implemented features:
+        f-strings, collections, exception handling, lambdas, .NET interop, Optional/Result types,
+        maybe/try expressions, generators, async/await, tagged unions, pattern matching,
+        delegates, variance, partial application, method overloading).
         """
         lines = code.split("\n")
         for i, line in enumerate(lines, 1):
@@ -2141,9 +2184,8 @@ class DogfoodOrchestrator:
         import tempfile
 
         # Forbidden token types that indicate unimplemented features
-        forbidden_tokens = {
-            "Async": "async function (not implemented)",
-            "Await": "await expression (not implemented)",
+        forbidden_tokens: dict[str, str] = {
+            # Currently no keyword tokens are forbidden — all phases through 0.2.6 implemented
         }
 
         try:

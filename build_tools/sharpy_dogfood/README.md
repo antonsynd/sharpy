@@ -6,7 +6,7 @@ A comprehensive testing tool that generates random/novel Sharpy code using AI, v
 
 The dogfooding tool helps catch compiler bugs by:
 1. **Generating** novel Sharpy code using Claude or GitHub Copilot
-2. **Validating** the generated code against the language spec (phases 0.1.0-0.1.18)
+2. **Validating** the generated code against the language spec (phases 0.1.0-0.2.6)
 3. **Compiling** the code using the Sharpy compiler
 4. **Executing** the compiled code and capturing output
 5. **Verifying** that the output matches expectations (via print statements)

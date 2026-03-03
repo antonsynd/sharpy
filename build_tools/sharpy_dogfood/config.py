@@ -96,7 +96,7 @@ class Config(BaseConfig):
         }
     )
 
-    # Feature coverage phases (0.1.0 to 0.1.18)
+    # Feature coverage phases (0.1.0 to 0.2.6)
     supported_phases: list[str] = field(
         default_factory=lambda: [
             "0.1.0",  # Lexer Foundation
@@ -118,6 +118,13 @@ class Config(BaseConfig):
             "0.1.16",  # Result Types
             "0.1.17",  # Maybe Expression
             "0.1.18",  # Try Expression
+            "0.2.0",  # Constructor Chaining, Enum Polish, Generic Type Aliases, Method Overloading
+            "0.2.1",  # Destructuring & Spread (complex unpacking, rest, spread literals/calls)
+            "0.2.2",  # Pattern Matching & Tagged Unions (match expr, or/type/relational/property/positional, unions, exhaustiveness)
+            "0.2.3",  # Generators & Iterators (yield, yield from, generator inference)
+            "0.2.4",  # Async/Await (async def, await, async for/with, async generators, asyncio.gather)
+            "0.2.5",  # Advanced Functions (positional-only, keyword-only, partial application)
+            "0.2.6",  # Type System Advances (delegates, generic variance)
         ]
     )
 
