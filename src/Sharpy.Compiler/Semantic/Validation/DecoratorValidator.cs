@@ -154,6 +154,18 @@ internal class DecoratorValidator : SemanticValidatorBase
                 AddError(_context, errorMessage, decorator.LineStart, decorator.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
                     span: decorator.Span);
             }
+
+            // Known modifier decorators must not have arguments
+            if (DecoratorNames.KnownModifierDecorators.Contains(decorator.Name)
+                && (decorator.Arguments.Length > 0 || decorator.KeywordArguments.Length > 0))
+            {
+                AddError(_context,
+                    $"Built-in decorator '@{decorator.Name}' does not accept arguments",
+                    decorator.LineStart,
+                    decorator.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                    span: decorator.Span);
+            }
         }
     }
 
