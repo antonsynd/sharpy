@@ -717,4 +717,179 @@ public partial class RoslynEmitterDefinitionTests
     }
 
     #endregion
+
+    #region Custom Decorator Attribute Emission Tests
+
+    [Fact]
+    public void GenerateFunction_WithUnknownDecorator_EmitsAttribute()
+    {
+        var func = new FunctionDef
+        {
+            Name = "greet",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "obsolete",
+                    Arguments = new List<Expression>
+                    {
+                        new StringLiteral { Value = "Use new_greet" }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("[Obsolete(\"Use new_greet\")]", code);
+    }
+
+    [Fact]
+    public void GenerateFunction_WithDottedDecorator_EmitsQualifiedAttribute()
+    {
+        var func = new FunctionDef
+        {
+            Name = "old_func",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "system.obsolete",
+                    QualifiedParts = new List<string> { "system", "obsolete" }.ToImmutableArray(),
+                    Arguments = new List<Expression>
+                    {
+                        new StringLiteral { Value = "deprecated" }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("System.Obsolete", code);
+        Assert.Contains("\"deprecated\"", code);
+    }
+
+    [Fact]
+    public void GenerateFunction_WithKeywordArgDecorator_EmitsNamedAttributeArg()
+    {
+        var func = new FunctionDef
+        {
+            Name = "my_func",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "custom_attr",
+                    Arguments = new List<Expression>
+                    {
+                        new StringLiteral { Value = "value" }
+                    }.ToImmutableArray(),
+                    KeywordArguments = new List<KeywordArgument>
+                    {
+                        new KeywordArgument
+                        {
+                            Name = "flag",
+                            Value = new BooleanLiteral { Value = true }
+                        }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("[CustomAttr(\"value\", Flag = true)]", code);
+    }
+
+    [Fact]
+    public void GenerateClass_WithUnknownDecorator_EmitsAttribute()
+    {
+        var classDef = new ClassDef
+        {
+            Name = "MyClass",
+            Decorators = new List<Decorator>
+            {
+                new Decorator { Name = "serializable" }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("[Serializable]", code);
+    }
+
+    [Fact]
+    public void GenerateClass_WithModifierAndAttribute_EmitsBoth()
+    {
+        var classDef = new ClassDef
+        {
+            Name = "OldClass",
+            Decorators = new List<Decorator>
+            {
+                new Decorator { Name = "abstract" },
+                new Decorator
+                {
+                    Name = "obsolete",
+                    Arguments = new List<Expression>
+                    {
+                        new StringLiteral { Value = "use NewClass" }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("abstract class OldClass", code);
+        Assert.Contains("[Obsolete(\"use NewClass\")]", code);
+    }
+
+    [Fact]
+    public void GenerateFunction_WithNegativeIntArg_EmitsNegativeLiteral()
+    {
+        var func = new FunctionDef
+        {
+            Name = "my_func",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "custom_attr",
+                    Arguments = new List<Expression>
+                    {
+                        new UnaryOp
+                        {
+                            Operator = UnaryOperator.Minus,
+                            Operand = new IntegerLiteral { Value = "42" }
+                        }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("[CustomAttr(-42)]", code);
+    }
+
+    #endregion
 }

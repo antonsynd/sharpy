@@ -355,5 +355,37 @@ def foo():
         Assert.Equal(DiagnosticCodes.Validation.NonConstantDecoratorArgument, errors[0].Code);
     }
 
+    [Fact]
+    public void Custom_WithNegativeInt_NoError()
+    {
+        var code = @"
+@custom(-42)
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void Custom_WithNegativeFloat_NoError()
+    {
+        var code = @"
+@custom(-3.14)
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
     #endregion
 }

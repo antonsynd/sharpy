@@ -1,0 +1,9 @@
+@final
+@obsolete("Use NewGreeter instead")
+class Greeter:
+    def greet(self) -> str:
+        return "hello"
+
+def main():
+    g: Greeter = Greeter()
+    print(g.greet())

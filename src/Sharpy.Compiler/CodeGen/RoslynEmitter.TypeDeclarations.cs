@@ -1097,7 +1097,8 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generates a C# expression for a decorator argument.
     /// Only compile-time constant expressions are valid (validated by DecoratorValidator).
-    /// Handles: literals, None → null, type(X) → typeof(X), member access (enum values).
+    /// Handles: literals, None → null, type(X) → typeof(X), member access (enum values),
+    /// negative numeric literals.
     /// </summary>
     private ExpressionSyntax GenerateAttributeArgumentExpression(Expression expr)
     {
@@ -1108,6 +1109,9 @@ internal partial class RoslynEmitter
             FloatLiteral floatLit => GenerateFloatLiteral(floatLit),
             BooleanLiteral boolLit => LiteralExpression(boolLit.Value ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
             NoneLiteral => LiteralExpression(SyntaxKind.NullLiteralExpression),
+            // Negative numeric literals: -42, -3.14
+            UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral or FloatLiteral } unaryOp
+                => PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, GenerateAttributeArgumentExpression(unaryOp.Operand)),
             // type(X) → typeof(X)
             FunctionCall { Function: Identifier { Name: "type" }, Arguments.Length: 1, KeywordArguments.Length: 0 } call
                 => TypeOfExpression(_typeMapper.MapTypeFromExpression(call.Arguments[0])),
