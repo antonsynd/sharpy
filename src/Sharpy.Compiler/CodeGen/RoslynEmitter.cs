@@ -1046,6 +1046,14 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Returns true if the lambda expression has any parameters with default values.
+    /// C# delegates / Func&lt;&gt; don't support optional parameters, so lambdas with defaults
+    /// must be hoisted to local functions.
+    /// </summary>
+    private static bool HasDefaultParameters(LambdaExpression lambda)
+        => lambda.Parameters.Any(p => p.DefaultValue != null);
+
+    /// <summary>
     /// Emits a diagnostic for a not-yet-implemented feature in code generation and returns
     /// a <c>default</c> literal as a safe placeholder expression. The diagnostic error ensures
     /// compilation reports failure, so this code should never execute.

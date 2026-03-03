@@ -270,7 +270,7 @@ internal partial class RoslynEmitter
         if (assign.Operator == AssignmentOperator.Assign
             && assign.Target is Identifier lambdaTargetId
             && assign.Value is LambdaExpression lambdaWithDefaults
-            && lambdaWithDefaults.Parameters.Any(p => p.DefaultValue != null))
+            && HasDefaultParameters(lambdaWithDefaults))
         {
             var baseName = NameMangler.ToCamelCase(lambdaTargetId.Name);
             var symbol = _context.LookupSymbol(lambdaTargetId.Name);
@@ -683,7 +683,7 @@ internal partial class RoslynEmitter
         // but local functions do, so `f = lambda x: int, y: int = 10: x + y` becomes
         //   long f(long x, long y = 10) => x + y;
         if (varDecl.InitialValue is LambdaExpression lambdaWithDefaults
-            && lambdaWithDefaults.Parameters.Any(p => p.DefaultValue != null))
+            && HasDefaultParameters(lambdaWithDefaults))
         {
             var localFuncName = GetMangledVariableName(varDecl.Name, isNewDeclaration: true);
             _declaredVariables.Add(localFuncName);

@@ -942,7 +942,7 @@ internal partial class RoslynEmitter
         // hoist a local function and return the function name as an identifier.
         // This allows the lambda to be passed as a delegate while preserving default values
         // for direct calls via the hoisted local function.
-        if (lambda.Parameters.Any(p => p.DefaultValue != null))
+        if (HasDefaultParameters(lambda))
         {
             var tempName = $"__lambda_{_tempVarCounter++}";
             _hoistedStatements.Add(GenerateLambdaAsLocalFunction(lambda, tempName));
