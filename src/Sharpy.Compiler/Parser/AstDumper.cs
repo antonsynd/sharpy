@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Parser.Ast;
 
@@ -65,6 +66,7 @@ internal class AstDumper
             case VariableDeclaration varDecl:
                 _output.AppendLine($"{indent}{prefix}VariableDeclaration @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Name: {varDecl.Name}");
+                DumpDecorators(varDecl.Decorators, depth, indent, childPrefix);
                 _output.AppendLine($"{indent}{childPrefix}IsConst: {varDecl.IsConst}");
                 if (varDecl.Type != null)
                 {
@@ -237,17 +239,7 @@ internal class AstDumper
                 {
                     _output.AppendLine($"{indent}{childPrefix}DocString: \"{EscapeString(funcDef.DocString)}\"");
                 }
-                if (funcDef.Decorators.Length > 0)
-                {
-                    _output.AppendLine($"{indent}{childPrefix}Decorators: [{funcDef.Decorators.Length}]");
-                    for (int i = 0; i < funcDef.Decorators.Length; i++)
-                    {
-                        var decorator = funcDef.Decorators[i];
-                        var decIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var decPrefix = i == funcDef.Decorators.Length - 1 ? "└─ " : "├─ ";
-                        _output.AppendLine($"{decIndent}{decPrefix}@{decorator.Name} @ L{decorator.LineStart}:C{decorator.ColumnStart}");
-                    }
-                }
+                DumpDecorators(funcDef.Decorators, depth, indent, childPrefix);
                 if (funcDef.Parameters.Length > 0)
                 {
                     _output.AppendLine($"{indent}{childPrefix}Parameters: [{funcDef.Parameters.Length}]");
@@ -279,17 +271,7 @@ internal class AstDumper
                 {
                     _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", classDef.TypeParameters.Select(FormatTypeParam))}]");
                 }
-                if (classDef.Decorators.Length > 0)
-                {
-                    _output.AppendLine($"{indent}{childPrefix}Decorators: [{classDef.Decorators.Length}]");
-                    for (int i = 0; i < classDef.Decorators.Length; i++)
-                    {
-                        var decorator = classDef.Decorators[i];
-                        var decIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var decPrefix = i == classDef.Decorators.Length - 1 ? "└─ " : "├─ ";
-                        _output.AppendLine($"{decIndent}{decPrefix}@{decorator.Name} @ L{decorator.LineStart}:C{decorator.ColumnStart}");
-                    }
-                }
+                DumpDecorators(classDef.Decorators, depth, indent, childPrefix);
                 if (classDef.BaseClasses.Length > 0)
                 {
                     _output.AppendLine($"{indent}{childPrefix}BaseClasses: [{classDef.BaseClasses.Length}]");
@@ -312,6 +294,7 @@ internal class AstDumper
                 {
                     _output.AppendLine($"{indent}{childPrefix}DocString: \"{EscapeString(structDef.DocString)}\"");
                 }
+                DumpDecorators(structDef.Decorators, depth, indent, childPrefix);
                 if (structDef.TypeParameters.Length > 0)
                 {
                     _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", structDef.TypeParameters.Select(FormatTypeParam))}]");
@@ -411,6 +394,7 @@ internal class AstDumper
             case PropertyDef propDef:
                 _output.AppendLine($"{indent}{prefix}PropertyDef @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Name: {propDef.Name}");
+                DumpDecorators(propDef.Decorators, depth, indent, childPrefix);
                 _output.AppendLine($"{indent}{childPrefix}Accessor: {propDef.Accessor}");
                 _output.AppendLine($"{indent}{childPrefix}FunctionStyle: {propDef.IsFunctionStyle}");
                 if (propDef.ExplicitInterface != null)
@@ -457,17 +441,7 @@ internal class AstDumper
                         DumpNode(eventDef.Body[i], depth + 2, i == eventDef.Body.Length - 1);
                     }
                 }
-                if (eventDef.Decorators.Length > 0)
-                {
-                    _output.AppendLine($"{indent}{childPrefix}Decorators: [{eventDef.Decorators.Length}]");
-                    for (int i = 0; i < eventDef.Decorators.Length; i++)
-                    {
-                        var decorator = eventDef.Decorators[i];
-                        var decIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var decPrefix = i == eventDef.Decorators.Length - 1 ? "└─ " : "├─ ";
-                        _output.AppendLine($"{decIndent}{decPrefix}@{decorator.Name} @ L{decorator.LineStart}:C{decorator.ColumnStart}");
-                    }
-                }
+                DumpDecorators(eventDef.Decorators, depth, indent, childPrefix);
                 break;
 
             case ImportStatement importStmt:
@@ -857,6 +831,50 @@ internal class AstDumper
             .Replace("\r", "\\r")
             .Replace("\t", "\\t")
             .Replace("\"", "\\\"");
+    }
+
+    private void DumpDecorators(ImmutableArray<Decorator> decorators, int depth, string indent, string childPrefix)
+    {
+        if (decorators.Length == 0)
+            return;
+
+        _output.AppendLine($"{indent}{childPrefix}Decorators: [{decorators.Length}]");
+        for (int i = 0; i < decorators.Length; i++)
+        {
+            var decorator = decorators[i];
+            var decIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+            var decPrefix = i == decorators.Length - 1 ? "└─ " : "├─ ";
+
+            var nameDisplay = decorator.QualifiedParts.Length > 1
+                ? string.Join(".", decorator.QualifiedParts)
+                : decorator.Name;
+
+            if (decorator.Arguments.Length > 0 || decorator.KeywordArguments.Length > 0)
+            {
+                _output.AppendLine($"{decIndent}{decPrefix}@{nameDisplay}(...) @ L{decorator.LineStart}:C{decorator.ColumnStart}");
+                var argDepth = depth + 3;
+                var argIndent = new string(' ', argDepth * IndentUnit.Length);
+                var totalArgs = decorator.Arguments.Length + decorator.KeywordArguments.Length;
+                var argIndex = 0;
+                foreach (var arg in decorator.Arguments)
+                {
+                    argIndex++;
+                    DumpNode(arg, argDepth, argIndex == totalArgs);
+                }
+                foreach (var kwarg in decorator.KeywordArguments)
+                {
+                    argIndex++;
+                    var kwargIsLast = argIndex == totalArgs;
+                    var kwPrefix = kwargIsLast ? "└─ " : "├─ ";
+                    _output.AppendLine($"{argIndent}{kwPrefix}{kwarg.Name}=");
+                    DumpNode(kwarg.Value, argDepth + 1, true);
+                }
+            }
+            else
+            {
+                _output.AppendLine($"{decIndent}{decPrefix}@{nameDisplay} @ L{decorator.LineStart}:C{decorator.ColumnStart}");
+            }
+        }
     }
 
     private void DumpComprehensionClause(ComprehensionClause clause, int depth, bool isLast)
