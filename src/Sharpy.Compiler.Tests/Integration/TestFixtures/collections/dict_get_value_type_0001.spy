@@ -1,0 +1,10 @@
+# Test: dict.get() returns None instead of default(V) for value types (#240)
+def main():
+    d: dict[str, int] = {"a": 1, "b": 2}
+    print(d.get("a"))
+    print(d.get("missing"))
+
+    # Also test with bool (default(bool) = false, should be None)
+    b: dict[str, bool] = {"x": True}
+    print(b.get("x"))
+    print(b.get("missing"))

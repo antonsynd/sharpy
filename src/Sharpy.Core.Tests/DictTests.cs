@@ -80,20 +80,21 @@ public class Dict_Tests
         var value = dict.Get("key");
 
         // Assert
-        value.Should().Be(42);
+        value.IsSome.Should().BeTrue();
+        value.Unwrap().Should().Be(42);
     }
 
     [Fact]
-    public void Get_ReturnsNullForMissingKey()
+    public void Get_ReturnsNoneForMissingKey()
     {
         // Arrange
-        var dict = new Dict<string, int?>();
+        var dict = new Dict<string, int>();
 
         // Act
         var value = dict.Get("missing");
 
         // Assert
-        value.Should().BeNull();
+        value.IsNone.Should().BeTrue();
     }
 
     [Fact]

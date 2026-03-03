@@ -4,10 +4,20 @@ using System.Collections.Generic;
 namespace Sharpy
 {
     /// <summary>
+    /// Non-generic interface for detecting Optional values at runtime (e.g., in print/str).
+    /// </summary>
+    public interface IOptional
+    {
+        bool IsSome { get; }
+        bool IsNone { get; }
+        object? BoxedValue { get; }
+    }
+
+    /// <summary>
     /// A safe tagged union for optional values. T? desugars to Optional[T].
     /// This is a struct - no heap allocation for returning optional values.
     /// </summary>
-    public readonly struct Optional<T> : System.IEquatable<Optional<T>>
+    public readonly struct Optional<T> : System.IEquatable<Optional<T>>, IOptional
     {
         private readonly T _value;
         private readonly bool _hasValue;
@@ -25,6 +35,9 @@ namespace Sharpy
         // Properties
         public bool IsSome => _hasValue;
         public bool IsNone => !_hasValue;
+
+        // IOptional implementation
+        object? IOptional.BoxedValue => _hasValue ? (object?)_value : null;
 
         // Methods
         public T Unwrap() =>

@@ -86,14 +86,14 @@ namespace Sharpy
         /// </summary>
         public bool Contains(K key) => ContainsKey(key);
 
-        public V? Get(K key)
+        public Optional<V> Get(K key)
         {
             if (_dict.TryGetValue(key, out V? value))
             {
-                return value;
+                return Optional<V>.Some(value!);
             }
 
-            return default;
+            return Optional<V>.None;
         }
 
         public V Get(K key, V @default)
