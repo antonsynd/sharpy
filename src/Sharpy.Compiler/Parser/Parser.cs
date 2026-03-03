@@ -439,8 +439,20 @@ public partial class Parser
             if (Current.Type != TokenType.Identifier)
                 throw ReportError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
 
-            var decoratorName = Current.Value;
+            var qualifiedParts = new List<string> { Current.Value };
             Advance();
+
+            // Parse dotted names: @system.serializable, @system.runtime.interop_services.dll_import
+            while (Current.Type == TokenType.Dot)
+            {
+                Advance();  // Skip .
+                if (Current.Type != TokenType.Identifier)
+                    throw ReportError("Expected identifier after '.' in decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
+                qualifiedParts.Add(Current.Value);
+                Advance();
+            }
+
+            var decoratorName = string.Join(".", qualifiedParts);
             var decoratorEndToken = Previous;
             var decoratorEndLine = decoratorEndToken.Line;
             var decoratorEndColumn = decoratorEndToken.Column + decoratorEndToken.Value.Length;
@@ -448,6 +460,7 @@ public partial class Parser
             decorators.Add(new Decorator
             {
                 Name = decoratorName,
+                QualifiedParts = qualifiedParts.Count > 1 ? qualifiedParts.ToImmutableArray() : ImmutableArray<string>.Empty,
                 LineStart = decoratorStartLine,
                 ColumnStart = decoratorStartColumn,
                 LineEnd = decoratorEndLine,
