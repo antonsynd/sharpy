@@ -906,9 +906,30 @@ internal partial class RoslynEmitter
 
         // For integer operands, cast to int (pragmatic .NET-first approach);
         // for float operands, return as-is (double from Math.Floor)
-        return hasFloatOperand
+        var floorDivExpr = hasFloatOperand
             ? floorCall
-            : CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), floorCall);
+            : (ExpressionSyntax)CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), floorCall);
+
+        // Guard against division by zero — Python raises ZeroDivisionError for both int and float
+        var zeroLiteral = hasFloatOperand
+            ? (ExpressionSyntax)LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0.0))
+            : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
+
+        var errorMessage = hasFloatOperand
+            ? "float floor division by zero"
+            : "integer division or modulo by zero";
+
+        var throwExpr = ThrowExpression(
+            ObjectCreationExpression(ParseTypeName("global::Sharpy.ZeroDivisionError"))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(errorMessage)))))));
+
+        // right == 0 ? throw new ZeroDivisionError(...) : floorDivExpr
+        return ParenthesizedExpression(
+            ConditionalExpression(
+                BinaryExpression(SyntaxKind.EqualsExpression, right, zeroLiteral),
+                throwExpr,
+                floorDivExpr));
     }
 
     /// <summary>

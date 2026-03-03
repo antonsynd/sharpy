@@ -82,7 +82,7 @@ public static partial class TypeAliasGameInventory
             }
 
 #line 58 "type_alias_game_inventory.spy"
-            return (int)System.Math.Floor((double)((double)(this.TotalDamage) / this.WeaponCount));
+            return (this.WeaponCount == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)System.Math.Floor((double)((double)(this.TotalDamage) / this.WeaponCount)));
         }
 
         public Inventory()
