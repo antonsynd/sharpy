@@ -1658,10 +1658,10 @@ class MyClass:
 # comment 1
 
 # comment 2
-    
+
 y = 2
 
-    
+
 # comment 3
 z = 3";
         var module = Parse(source);
