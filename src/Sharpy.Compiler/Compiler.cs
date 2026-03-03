@@ -206,29 +206,21 @@ public class Compiler
                 return result.BuildFailure();
             }
 
-            // Pass 1: Name resolution (declarations)
+            // Pass 1: Name resolution (declarations only)
+            // NOTE: Inheritance resolution is deferred to after imports are resolved
+            // so that imported base types are available in the symbol table.
+            // This matches the ordering in ProjectCompiler.Phases.cs (Phase 3 → 4 → 4b).
             metrics.StartPhase("Name Resolution");
             LogPhaseStart("Name Resolution", filePath, module.Body.Length);
             var nameResolver = new NameResolver(symbolTable, _logger, semanticBinding);
             nameResolver.ResolveDeclarations(module, cancellationToken);
-            nameResolver.ResolveInheritance(cancellationToken); // Second pass: resolve inheritance after all types are declared
             LogPhaseEnd(filePath, nameResolver.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
-            // Assertions: After name resolution, verify symbol table integrity
-            assertionTimer.Restart();
-            CompilerInvariants.AssertPostNameResolution(symbolTable, diagnostics);
-            assertionTimer.Stop();
-            _logger.LogDebug($"Post-name-resolution assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
-
-            if (nameResolver.Diagnostics.HasErrors)
-            {
-                diagnostics.Merge(nameResolver.Diagnostics);
-                // Capture artifact counts even on error paths for better observability
-                metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
-                metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return result.BuildFailure();
-            }
+            // Merge declaration errors but don't early-exit yet — imports and
+            // inheritance resolution may resolve symbols that appear missing now.
+            // Early exit is deferred to after inheritance resolution (below).
+            diagnostics.Merge(nameResolver.Diagnostics);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -249,9 +241,18 @@ public class Compiler
 
             importResolver.ResolveAllImports(module, symbolTable, currentDir, cancellationToken);
 
+            // Pass 1b: Resolve inheritance (after imports, so imported base types are available)
+            nameResolver.ResolveInheritance(cancellationToken);
+
             // Resolve inheritance for imported types (transitive base types + imported type inheritance)
             var inheritanceResolver = new InheritanceResolver(symbolTable, _logger, semanticBinding);
             inheritanceResolver.ResolveAll(importResolver);
+
+            // Assertions: After name resolution + inheritance, verify symbol table integrity
+            assertionTimer.Restart();
+            CompilerInvariants.AssertPostNameResolution(symbolTable, diagnostics);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-name-resolution assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
 
             // Materialize inheritance data onto Symbol properties, then verify and freeze
             semanticBinding.MaterializeInheritance();
@@ -271,6 +272,16 @@ public class Compiler
             if (importResolver.Diagnostics.GetAll().Count > 0)
             {
                 diagnostics.Merge(importResolver.Diagnostics);
+            }
+
+            // Now that imports and inheritance are resolved, check for name resolution
+            // errors that couldn't be resolved by imports. Abort before type checking
+            // to avoid cascading failures (e.g., Debug.Assert in type checker).
+            if (nameResolver.Diagnostics.HasErrors)
+            {
+                metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
+                metrics.DiagnosticCount = diagnostics.GetAll().Count;
+                return result.BuildFailure();
             }
 
             cancellationToken.ThrowIfCancellationRequested();
