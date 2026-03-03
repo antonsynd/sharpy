@@ -529,14 +529,60 @@ public partial class Parser
 
                             var paramToken = Current;
                             var name = ExpectIdentifier();
+
+                            TypeAnnotation? paramType = null;
+                            if (Current.Type == TokenType.Colon)
+                            {
+                                // Disambiguate: ':' can be either a type annotation separator
+                                // (e.g., x: int) or the lambda body separator (e.g., lambda x: body).
+                                // Use look-ahead: the ':' is a type annotation if the next token
+                                // starts a type AND the token after that is compatible with
+                                // "more parameter list" (comma, default, generic args, etc.).
+                                var nextType = Peek().Type;
+                                var isTypeAnnotation = false;
+
+                                if (nextType == TokenType.Identifier
+                                    || nextType == TokenType.Auto
+                                    || nextType == TokenType.None)
+                                {
+                                    var afterType = Peek(2).Type;
+                                    // These tokens can follow a type name in a parameter:
+                                    // , (more params), = (default), : (body), [ (generic),
+                                    // ? (optional), ! (result), | (nullable)
+                                    isTypeAnnotation = afterType is TokenType.Comma
+                                        or TokenType.Assign or TokenType.Colon
+                                        or TokenType.LeftBracket or TokenType.Question
+                                        or TokenType.Bang or TokenType.Pipe;
+                                }
+
+                                if (isTypeAnnotation)
+                                {
+                                    Advance();
+                                    paramType = ParseTypeAnnotation();
+                                }
+                            }
+
+                            Expression? defaultValue = null;
+                            if (Current.Type == TokenType.Assign)
+                            {
+                                Advance();
+                                defaultValue = ParseExpression();
+                            }
+
+                            var paramEndToken = Previous;
+                            var paramEndLine = defaultValue != null || paramType != null ? paramEndToken.Line : paramToken.Line;
+                            var paramEndColumn = defaultValue != null || paramType != null ? paramEndToken.Column + paramEndToken.Value.Length : paramToken.Column + name.Length;
+
                             parameters.Add(new Parameter
                             {
                                 Name = name,
+                                Type = paramType,
+                                DefaultValue = defaultValue,
                                 LineStart = paramToken.Line,
                                 ColumnStart = paramToken.Column,
-                                LineEnd = paramToken.Line,
-                                ColumnEnd = paramToken.Column + name.Length,
-                                Span = GetSpanFromToken(paramToken)
+                                LineEnd = paramEndLine,
+                                ColumnEnd = paramEndColumn,
+                                Span = defaultValue != null || paramType != null ? GetSpanFromTokens(paramToken, paramEndToken) : GetSpanFromToken(paramToken)
                             });
 
                             if (Current.Type == TokenType.Comma)

@@ -887,7 +887,7 @@ def foo():
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "See: #173 (lambda default arguments not yet supported)")]
+    [Fact]
     public void ParsesLambdaWithDefaultArgs()
     {
         var source = "f = lambda x, y=10: x + y";

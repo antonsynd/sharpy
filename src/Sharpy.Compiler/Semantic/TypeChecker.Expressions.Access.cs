@@ -1565,12 +1565,25 @@ internal partial class TypeChecker
         // (C# compiler will handle overload resolution)
         if (!ft.SkipArgumentValidation)
         {
-            // Validate argument count (include both positional and keyword arguments)
-            if (totalArgCount != ft.ParameterTypes.Count)
+            // Validate argument count (accounting for optional parameters with defaults)
+            var requiredCount = ft.ParameterTypes.Count - ft.OptionalParameterCount;
+            var tooFew = totalArgCount < requiredCount;
+            var tooMany = totalArgCount > ft.ParameterTypes.Count;
+
+            if (tooFew || tooMany)
             {
-                AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                    span: call.Span);
+                if (ft.OptionalParameterCount > 0 && requiredCount != ft.ParameterTypes.Count)
+                {
+                    AddError($"Function expects {requiredCount} to {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: call.Span);
+                }
+                else
+                {
+                    AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: call.Span);
+                }
             }
             else
             {
@@ -1969,10 +1982,17 @@ internal partial class TypeChecker
         foreach (var arg in call.Arguments)
             argTypes.Add(CheckExpression(arg));
 
-        // 2. Validate argument count
-        if (argTypes.Count != lambda.Parameters.Length)
+        // 2. Validate argument count (accounting for default parameters)
+        var totalParamCount = lambda.Parameters.Length;
+        var optionalCount = lambda.Parameters.Count(p => p.DefaultValue != null);
+        var requiredParamCount = totalParamCount - optionalCount;
+
+        if (argTypes.Count < requiredParamCount || argTypes.Count > totalParamCount)
         {
-            AddError($"Lambda expects {lambda.Parameters.Length} argument(s) but {argTypes.Count} were given",
+            var countDesc = requiredParamCount == totalParamCount
+                ? $"{totalParamCount}"
+                : $"{requiredParamCount} to {totalParamCount}";
+            AddError($"Lambda expects {countDesc} argument(s) but {argTypes.Count} were given",
                 call.LineStart, call.ColumnStart,
                 code: DiagnosticCodes.Semantic.WrongArgumentCount,
                 span: call.Span);
@@ -2059,15 +2079,36 @@ internal partial class TypeChecker
             _symbolTable.Define(paramSymbol);
         }
 
+        // Type-check default value expressions and validate compatibility
+        for (int i = 0; i < lambda.Parameters.Length; i++)
+        {
+            var param = lambda.Parameters[i];
+            if (param.DefaultValue != null)
+            {
+                var defaultType = CheckExpression(param.DefaultValue);
+                if (paramTypes[i] is not UnknownType && !IsAssignable(defaultType, paramTypes[i]))
+                {
+                    AddError(
+                        $"Default value of type '{defaultType.GetDisplayName()}' is not assignable to parameter type '{paramTypes[i].GetDisplayName()}'",
+                        param.DefaultValue.LineStart, param.DefaultValue.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: param.DefaultValue.Span);
+                }
+            }
+        }
+
         var bodyType = CheckExpression(lambda.Body);
 
         _currentFunctionIsAsync = previousIsAsync;
         _symbolTable.ExitScope();
 
+        var optionalParamCount = lambda.Parameters.Count(p => p.DefaultValue != null);
+
         return new FunctionType
         {
             ParameterTypes = paramTypes,
-            ReturnType = bodyType
+            ReturnType = bodyType,
+            OptionalParameterCount = optionalParamCount
         };
     }
 

@@ -264,6 +264,28 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateAssignment(Assignment assign)
     {
+        // Check if this is an assignment of a lambda with default parameters to a simple
+        // identifier (first declaration). Emit as a local function instead of a delegate
+        // variable, because C# delegates / Func<> don't support optional parameters.
+        if (assign.Operator == AssignmentOperator.Assign
+            && assign.Target is Identifier lambdaTargetId
+            && assign.Value is LambdaExpression lambdaWithDefaults
+            && lambdaWithDefaults.Parameters.Any(p => p.DefaultValue != null))
+        {
+            var baseName = NameMangler.ToCamelCase(lambdaTargetId.Name);
+            var symbol = _context.LookupSymbol(lambdaTargetId.Name);
+            var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
+            var existsAsLocal = _variableVersions.ContainsKey(baseName);
+
+            if (!existsAsModuleLevel && !existsAsLocal)
+            {
+                // First declaration — emit as local function
+                var localFuncName = GetMangledVariableName(lambdaTargetId.Name, isNewDeclaration: true);
+                _declaredVariables.Add(localFuncName);
+                return GenerateLambdaAsLocalFunction(lambdaWithDefaults, localFuncName);
+            }
+        }
+
         var value = GenerateExpression(assign.Value);
 
         // Handle simple identifier assignment
@@ -654,6 +676,18 @@ internal partial class RoslynEmitter
         if (varDecl.IsConst)
         {
             _constVariables.Add(varDecl.Name);
+        }
+
+        // Check if this is a lambda with default parameters — emit as a local function
+        // instead of a delegate. C# delegates / Func<> don't support optional parameters,
+        // but local functions do, so `f = lambda x: int, y: int = 10: x + y` becomes
+        //   long f(long x, long y = 10) => x + y;
+        if (varDecl.InitialValue is LambdaExpression lambdaWithDefaults
+            && lambdaWithDefaults.Parameters.Any(p => p.DefaultValue != null))
+        {
+            var localFuncName = GetMangledVariableName(varDecl.Name, isNewDeclaration: true);
+            _declaredVariables.Add(localFuncName);
+            return GenerateLambdaAsLocalFunction(lambdaWithDefaults, localFuncName);
         }
 
         // IMPORTANT: Generate the initializer expression FIRST, before updating version tracking.

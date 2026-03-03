@@ -937,6 +937,18 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateLambdaExpression(LambdaExpression lambda)
     {
+        // If the lambda has default parameters and appears in an expression context
+        // (not a direct variable assignment — that case is handled by GenerateVariableDeclaration),
+        // hoist a local function and return the function name as an identifier.
+        // This allows the lambda to be passed as a delegate while preserving default values
+        // for direct calls via the hoisted local function.
+        if (lambda.Parameters.Any(p => p.DefaultValue != null))
+        {
+            var tempName = $"__lambda_{_tempVarCounter++}";
+            _hoistedStatements.Add(GenerateLambdaAsLocalFunction(lambda, tempName));
+            return IdentifierName(tempName);
+        }
+
         // lambda x, y: x + y → (x, y) => x + y
         var parameters = lambda.Parameters
             .Select(p => Parameter(Identifier(NameMangler.ToCamelCase(p.Name))))
@@ -960,6 +972,72 @@ internal partial class RoslynEmitter
                 .WithParameterList(ParameterList(SeparatedList(parameters)))
                 .WithExpressionBody(body);
         }
+    }
+
+    /// <summary>
+    /// Generates a C# local function statement from a lambda expression.
+    /// Used when a lambda has default parameter values, since C# delegates / Func&lt;&gt; don't
+    /// support optional parameters but local functions do.
+    /// </summary>
+    private LocalFunctionStatementSyntax GenerateLambdaAsLocalFunction(
+        LambdaExpression lambda, string functionName)
+    {
+        // Get the semantic type of the lambda (FunctionType) for parameter and return types
+        var lambdaType = GetExpressionSemanticType(lambda) as Semantic.FunctionType;
+
+        // Generate parameters with types and defaults
+        var parameters = new List<ParameterSyntax>();
+        for (int i = 0; i < lambda.Parameters.Length; i++)
+        {
+            var param = lambda.Parameters[i];
+            var paramName = NameMangler.ToCamelCase(param.Name);
+
+            // Resolve type from semantic info first, fall back to annotation
+            TypeSyntax paramType;
+            if (lambdaType != null && i < lambdaType.ParameterTypes.Count
+                && lambdaType.ParameterTypes[i] is not UnknownType)
+            {
+                paramType = _typeMapper.MapSemanticType(lambdaType.ParameterTypes[i]);
+            }
+            else if (param.Type != null)
+            {
+                paramType = _typeMapper.MapType(param.Type);
+            }
+            else
+            {
+                paramType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+            }
+
+            var paramSyntax = Parameter(Identifier(paramName)).WithType(paramType);
+
+            // Handle default value
+            if (param.DefaultValue != null)
+            {
+                paramSyntax = paramSyntax.WithDefault(
+                    EqualsValueClause(GenerateExpression(param.DefaultValue)));
+            }
+
+            parameters.Add(paramSyntax);
+        }
+
+        // Get return type from semantic info
+        TypeSyntax returnType;
+        if (lambdaType != null && lambdaType.ReturnType is not UnknownType)
+        {
+            returnType = _typeMapper.MapSemanticType(lambdaType.ReturnType);
+        }
+        else
+        {
+            returnType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+
+        // Generate body expression
+        var body = GenerateExpression(lambda.Body);
+
+        return LocalFunctionStatement(returnType, Identifier(functionName))
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithExpressionBody(ArrowExpressionClause(body))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
     }
 
     /// <summary>

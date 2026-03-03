@@ -523,6 +523,13 @@ public sealed record FunctionType : SemanticType
     public SemanticType ReturnType { get; init; } = SemanticType.Void;
 
     /// <summary>
+    /// Number of trailing parameters that have default values and can be omitted at call sites.
+    /// For example, a lambda <c>(x: int, y: int = 10) -> x + y</c> has OptionalParameterCount = 1.
+    /// The required parameter count is <c>ParameterTypes.Count - OptionalParameterCount</c>.
+    /// </summary>
+    public int OptionalParameterCount { get; init; } = 0;
+
+    /// <summary>
     /// When true, argument validation is skipped (used for .NET types with multiple
     /// constructor overloads where we can't do proper overload resolution).
     /// The C# compiler will handle overload resolution at compile time.
@@ -573,6 +580,7 @@ public sealed record FunctionType : SemanticType
         }
 
         return ReturnType.Equals(other.ReturnType)
+            && OptionalParameterCount == other.OptionalParameterCount
             && SkipArgumentValidation == other.SkipArgumentValidation;
     }
 
@@ -584,6 +592,7 @@ public sealed record FunctionType : SemanticType
             hash.Add(param);
         }
         hash.Add(ReturnType);
+        hash.Add(OptionalParameterCount);
         hash.Add(SkipArgumentValidation);
         return hash.ToHashCode();
     }
