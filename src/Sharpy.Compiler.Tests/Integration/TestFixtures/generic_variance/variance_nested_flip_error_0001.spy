@@ -1,0 +1,7 @@
+# Invalid: consumer takes T as param of function in covariant position (return type)
+# () -> T in method param (contravariant): T in func return keeps context = contravariant = ERROR for out T
+interface IBad[out T]:
+    def process(self, factory: () -> T) -> None
+
+def main():
+    print("unreachable")

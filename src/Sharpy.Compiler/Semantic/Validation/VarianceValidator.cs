@@ -130,8 +130,6 @@ internal class VarianceValidator : SemanticValidatorBase
         return result;
     }
 
-    // TODO(#256): Implement nested variance flip rules for generic type arguments.
-    // Currently only checks direct type parameter references at the top level.
     private void CheckTypeInPosition(
         TypeAnnotation typeAnnotation,
         Dictionary<string, TypeParameterVariance> variantParams,
@@ -158,5 +156,104 @@ internal class VarianceValidator : SemanticValidatorBase
                     span: typeAnnotation.Span);
             }
         }
+
+        // Recurse into generic type arguments with variance flipping
+        if (typeAnnotation.TypeArguments.Length > 0)
+        {
+            RecurseIntoGenericTypeArguments(typeAnnotation, variantParams, isCovariantPosition, context);
+        }
+    }
+
+    /// <summary>
+    /// Recurses into the type arguments of a generic type, applying variance flip rules.
+    /// When a type argument position has its own declared variance:
+    /// - Covariant arg in covariant context → covariant (same)
+    /// - Covariant arg in contravariant context → contravariant (flipped!)
+    /// - Contravariant arg in covariant context → contravariant (same)
+    /// - Contravariant arg in contravariant context → covariant (flipped!)
+    /// </summary>
+    private void RecurseIntoGenericTypeArguments(
+        TypeAnnotation typeAnnotation,
+        Dictionary<string, TypeParameterVariance> variantParams,
+        bool isCovariantPosition,
+        SemanticContext context)
+    {
+        // Function types: (T1, T2, ...) -> R
+        // Represented as Name="function", TypeArguments=[param_types..., return_type]
+        if (typeAnnotation.Name == "function")
+        {
+            // All type arguments except the last are parameter types (contravariant position)
+            for (int i = 0; i < typeAnnotation.TypeArguments.Length - 1; i++)
+            {
+                // Parameter positions of a function are contravariant: flip the context
+                bool effectivePosition = !isCovariantPosition;
+                CheckTypeInPosition(typeAnnotation.TypeArguments[i], variantParams, effectivePosition, context);
+            }
+
+            // The last type argument is the return type (covariant position: same as context)
+            if (typeAnnotation.TypeArguments.Length > 0)
+            {
+                var returnArg = typeAnnotation.TypeArguments[typeAnnotation.TypeArguments.Length - 1];
+                CheckTypeInPosition(returnArg, variantParams, isCovariantPosition, context);
+            }
+
+            return;
+        }
+
+        // For named generic types (e.g., IProducer[T], IConsumer[T]), look up
+        // the type's declared type parameters to determine their variance
+        var typeParamVariances = LookupTypeParameterVariances(typeAnnotation.Name, context);
+
+        for (int i = 0; i < typeAnnotation.TypeArguments.Length; i++)
+        {
+            var argVariance = (typeParamVariances.HasValue && i < typeParamVariances.Value.Length)
+                ? typeParamVariances.Value[i]
+                : TypeParameterVariance.None;
+
+            bool effectivePosition = CombineVariance(isCovariantPosition, argVariance);
+            CheckTypeInPosition(typeAnnotation.TypeArguments[i], variantParams, effectivePosition, context);
+        }
+    }
+
+    /// <summary>
+    /// Looks up the declared type parameter variances for a named generic type.
+    /// Returns null if the type is not found or has no type parameters.
+    /// </summary>
+    private static System.Collections.Immutable.ImmutableArray<TypeParameterVariance>?
+        LookupTypeParameterVariances(string typeName, SemanticContext context)
+    {
+        var typeSymbol = context.SymbolTable.LookupType(typeName);
+        if (typeSymbol != null && typeSymbol.TypeParameters.Count > 0)
+        {
+            var builder = System.Collections.Immutable.ImmutableArray.CreateBuilder<TypeParameterVariance>(
+                typeSymbol.TypeParameters.Count);
+            foreach (var tp in typeSymbol.TypeParameters)
+            {
+                builder.Add(tp.Variance);
+            }
+            return builder.MoveToImmutable();
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Combines the current context position with the declared variance of a type argument position.
+    /// Returns the effective covariant-position for the nested type argument.
+    /// </summary>
+    private static bool CombineVariance(bool isCovariantPosition, TypeParameterVariance argVariance)
+    {
+        // Invariant type parameter: position is unchanged (treated as both input and output)
+        if (argVariance == TypeParameterVariance.None)
+            return isCovariantPosition;
+
+        // Covariant (out) type parameter: same direction as context
+        if (argVariance == TypeParameterVariance.Covariant)
+            return isCovariantPosition;
+
+        // Contravariant (in) type parameter: flip the context!
+        // covariant context + contravariant arg = contravariant
+        // contravariant context + contravariant arg = covariant (double flip)
+        return !isCovariantPosition;
     }
 }

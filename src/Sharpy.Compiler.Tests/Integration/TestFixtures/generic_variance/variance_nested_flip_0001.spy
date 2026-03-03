@@ -1,0 +1,21 @@
+# Valid nested variance flip rules
+# (T) -> None in method param (contravariant): T in func param flips to covariant = OK for out T
+interface IFactory[out T]:
+    def create(self, consumer: (T) -> None) -> None
+
+# IProducer[out T] in method return (covariant): T in covariant of covariant = covariant = OK for out T
+interface IProducer[out T]:
+    def get(self) -> T: ...
+
+interface IContainer[out T]:
+    def get_producer(self) -> IProducer[T]
+
+# IConsumer[in T] in method return (covariant): T in contravariant of covariant = contravariant = OK for in T
+interface IConsumer[in T]:
+    def accept(self, value: T): ...
+
+interface IHandler[in T]:
+    def get_consumer(self) -> IConsumer[T]
+
+def main():
+    print("nested variance ok")
