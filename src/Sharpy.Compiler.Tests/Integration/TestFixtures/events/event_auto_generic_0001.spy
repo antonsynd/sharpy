@@ -1,0 +1,19 @@
+# Auto-event with a two-parameter delegate (sender + data pattern)
+delegate ChangeHandler(sender: object, data: str) -> None
+
+class Publisher:
+    event on_change: ChangeHandler
+
+    def notify(self, data: str):
+        self.on_change?.invoke(self, data)
+
+def handler(sender: object, data: str):
+    print("changed: " + data)
+
+def main():
+    p: Publisher = Publisher()
+    p.on_change += handler
+    p.notify("new value")
+    p.on_change -= handler
+    p.notify("ignored")
+    print("done")

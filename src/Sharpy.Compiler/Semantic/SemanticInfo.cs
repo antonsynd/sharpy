@@ -62,6 +62,9 @@ public class SemanticInfo : ISemanticQuery
     // Track functions that contain yield statements (generators)
     private readonly HashSet<FunctionDef> _generatorFunctions = new(ReferenceEqualityComparer.Instance);
 
+    // Track member access expressions that resolve to events (for codegen to emit +=/-= correctly)
+    private readonly HashSet<Expression> _eventAccessNodes = new(ReferenceEqualityComparer.Instance);
+
     // Map patterns to their resolved union case type symbols
     // Used when a PositionalPattern or MemberAccessPattern matches a union case
     private readonly Dictionary<Pattern, TypeSymbol> _patternUnionCases =
@@ -233,6 +236,16 @@ public class SemanticInfo : ISemanticQuery
     /// Returns true if the function has been marked as a generator.
     /// </summary>
     public bool IsGenerator(FunctionDef funcDef) => _generatorFunctions.Contains(funcDef);
+
+    /// <summary>
+    /// Marks an expression as an event access (for codegen to emit event += / -= correctly).
+    /// </summary>
+    public void MarkAsEventAccess(Expression expr) => _eventAccessNodes.Add(expr);
+
+    /// <summary>
+    /// Returns true if the expression has been marked as an event access.
+    /// </summary>
+    public bool IsEventAccess(Expression expr) => _eventAccessNodes.Contains(expr);
 
     /// <summary>
     /// Returns true if any expression type in the semantic info is UnknownType.

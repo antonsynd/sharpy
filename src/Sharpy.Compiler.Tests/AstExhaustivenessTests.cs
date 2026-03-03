@@ -90,7 +90,7 @@ public class AstExhaustivenessTests
             // Imports
             "ImportStatement", "FromImportStatement",
             // Future
-            "MatchStatement", "UnionDef", "DelegateDef",
+            "MatchStatement", "UnionDef", "DelegateDef", "EventDef",
         };
 
         var unhandled = concreteTypes.Except(handledTypes).ToList();

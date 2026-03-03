@@ -391,6 +391,21 @@ internal partial class RoslynEmitter
         // Handle member assignment: obj.field = value
         if (assign.Target is MemberAccess memberAccess)
         {
+            // Event subscription/unsubscription: obj.on_change += handler / -= handler
+            // Emit native C# event += / -= instead of desugaring through GenerateAugmentedValue
+            if (_context.SemanticInfo?.IsEventAccess(memberAccess) == true
+                && (assign.Operator == AssignmentOperator.PlusAssign
+                    || assign.Operator == AssignmentOperator.MinusAssign))
+            {
+                var eventTarget = GenerateMemberAccess(memberAccess);
+                var assignKind = assign.Operator == AssignmentOperator.PlusAssign
+                    ? SyntaxKind.AddAssignmentExpression
+                    : SyntaxKind.SubtractAssignmentExpression;
+
+                return ExpressionStatement(
+                    AssignmentExpression(assignKind, eventTarget, value));
+            }
+
             // For simple assignments, clear narrowing on the target field so we emit
             // the raw field (e.g., this.BestScore) not the unwrapped version
             // (e.g., this.BestScore.Unwrap()). Narrowing only applies to reads.

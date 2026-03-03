@@ -252,3 +252,100 @@ public record DelegateDef : Statement
 }
 
 #endregion
+
+#region Events
+
+/// <summary>
+/// Event accessor type.
+/// </summary>
+public enum EventAccessor { None, Add, Remove }
+
+/// <summary>
+/// Event definition. Auto-events use <c>event name: DelegateType</c> syntax,
+/// function-style events use <c>event add name(self, handler: T):</c> / <c>event remove name(self, handler: T):</c>.
+/// </summary>
+/// <example>
+/// # Auto-event (compiler-generated backing delegate)
+/// event on_click: EventHandler
+///
+/// # Function-style event (custom add/remove logic)
+/// event add on_click(self, handler: EventHandler):
+///     self._handlers.append(handler)
+///
+/// event remove on_click(self, handler: EventHandler):
+///     self._handlers.remove(handler)
+/// </example>
+public record EventDef : Statement
+{
+    /// <summary>
+    /// The event name.
+    /// </summary>
+    public string Name { get; init; } = "";
+
+    /// <summary>
+    /// The accessor kind: None for auto-events, Add or Remove for function-style events.
+    /// </summary>
+    public EventAccessor Accessor { get; init; } = EventAccessor.None;
+
+    /// <summary>
+    /// The delegate type annotation (for auto-events).
+    /// </summary>
+    public TypeAnnotation? Type { get; init; }
+
+    /// <summary>
+    /// Whether this is a function-style event (with parameters and body).
+    /// </summary>
+    public bool IsFunctionStyle { get; init; }
+
+    /// <summary>
+    /// Parameters for function-style events (e.g., self, handler: EventHandler).
+    /// </summary>
+    public ImmutableArray<Parameter> Parameters { get; init; } = ImmutableArray<Parameter>.Empty;
+
+    /// <summary>
+    /// Body statements for function-style events.
+    /// </summary>
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+
+    /// <summary>
+    /// Decorators applied to the event.
+    /// </summary>
+    public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "EventDef.Name cannot be null or empty");
+        Debug.Assert(Parameters != null, "EventDef.Parameters cannot be null");
+        Debug.Assert(Body != null, "EventDef.Body cannot be null");
+        Debug.Assert(Decorators != null, "EventDef.Decorators cannot be null");
+
+        if (IsFunctionStyle)
+        {
+            Debug.Assert(Accessor != EventAccessor.None,
+                "Function-style EventDef must have Add or Remove accessor");
+        }
+        else
+        {
+            Debug.Assert(Accessor == EventAccessor.None,
+                "Auto-event EventDef must have None accessor");
+            Debug.Assert(Type != null,
+                "Auto-event EventDef must have a type annotation");
+        }
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        foreach (var param in Parameters)
+        {
+            if (param.DefaultValue != null)
+                yield return param.DefaultValue;
+        }
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+}
+
+#endregion

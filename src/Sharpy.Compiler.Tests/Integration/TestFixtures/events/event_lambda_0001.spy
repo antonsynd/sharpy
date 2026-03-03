@@ -1,0 +1,13 @@
+# Lambda handler subscription
+delegate MsgHandler(msg: str) -> None
+
+class Publisher:
+    event on_msg: MsgHandler
+
+    def notify(self, msg: str):
+        self.on_msg?.invoke(msg)
+
+def main():
+    p: Publisher = Publisher()
+    p.on_msg += lambda msg: print("lambda: " + msg)
+    p.notify("hello")

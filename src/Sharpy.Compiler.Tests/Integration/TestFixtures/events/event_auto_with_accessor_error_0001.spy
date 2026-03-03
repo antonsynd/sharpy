@@ -1,0 +1,8 @@
+# Auto-event must not have an accessor keyword (SPY0135)
+delegate MyHandler(sender: object, data: str) -> None
+
+class Publisher:
+    event add on_change: MyHandler
+
+def main():
+    print("unreachable")

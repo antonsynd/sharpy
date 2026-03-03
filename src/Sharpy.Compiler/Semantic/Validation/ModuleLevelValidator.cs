@@ -54,6 +54,11 @@ internal class ModuleLevelValidator : SemanticValidatorBase
                     // These are valid module-level declarations
                     break;
 
+                case EventDef eventDef:
+                    // Events are not allowed at module level — only inside class/struct/interface
+                    executableStatements.Add(eventDef);
+                    break;
+
                 case VariableDeclaration varDecl:
                     // Module-level variable declarations must have type annotations
                     if (varDecl.Type == null && !varDecl.IsConst)

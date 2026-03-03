@@ -247,6 +247,22 @@ internal class UnusedImportValidator : SemanticValidatorBase
                 foreach (var s in propDef.Body)
                     CollectReferencesFromStatement(s, refs);
                 break;
+
+            case EventDef eventDef:
+                foreach (var decorator in eventDef.Decorators)
+                    refs.Add(decorator.Name);
+                if (eventDef.Type != null)
+                    CollectReferencesFromTypeAnnotation(eventDef.Type, refs);
+                foreach (var param in eventDef.Parameters)
+                {
+                    if (param.Type != null)
+                        CollectReferencesFromTypeAnnotation(param.Type, refs);
+                    if (param.DefaultValue != null)
+                        CollectReferencesFromExpression(param.DefaultValue, refs);
+                }
+                foreach (var s in eventDef.Body)
+                    CollectReferencesFromStatement(s, refs);
+                break;
         }
     }
 

@@ -1,0 +1,19 @@
+# Interface declaring event, class implementing it
+delegate SimpleHandler() -> None
+
+interface INotifiable:
+    event on_notify: SimpleHandler
+
+class Publisher(INotifiable):
+    event on_notify: SimpleHandler
+
+    def notify(self):
+        self.on_notify?.invoke()
+
+def handler():
+    print("notified via interface")
+
+def main():
+    p: Publisher = Publisher()
+    p.on_notify += handler
+    p.notify()

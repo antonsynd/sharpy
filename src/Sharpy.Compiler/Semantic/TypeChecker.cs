@@ -393,6 +393,10 @@ internal partial class TypeChecker
                 // Property validation handled elsewhere (property-specific validation)
                 break;
 
+            case EventDef eventDef:
+                CheckEvent(eventDef);
+                break;
+
             case MatchStatement matchStmt:
                 CheckMatch(matchStmt);
                 break;

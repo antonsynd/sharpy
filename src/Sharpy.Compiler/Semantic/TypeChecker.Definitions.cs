@@ -543,6 +543,9 @@ internal partial class TypeChecker
         // Resolve property types (before checking methods that might reference them)
         ResolvePropertyTypes(classSymbol, classDef.Body);
 
+        // Resolve event types (before checking methods that might reference them)
+        ResolveEventTypes(classSymbol, classDef.Body);
+
         // Set current class for method type checking (used for self parameter typing)
         var previousClass = _currentClass;
         _currentClass = classSymbol;
@@ -623,6 +626,9 @@ internal partial class TypeChecker
 
         // Resolve property types (before checking methods that might reference them)
         ResolvePropertyTypes(structSymbol, structDef.Body);
+
+        // Resolve event types (before checking methods that might reference them)
+        ResolveEventTypes(structSymbol, structDef.Body);
 
         // Set current class for method type checking (structs behave like classes for self parameter)
         var previousClass = _currentClass;
@@ -742,6 +748,9 @@ internal partial class TypeChecker
 
         // Resolve property types
         ResolvePropertyTypes(interfaceSymbol, interfaceDef.Body);
+
+        // Resolve event types
+        ResolveEventTypes(interfaceSymbol, interfaceDef.Body);
 
         // Type-check default method bodies (methods with real implementations)
         // Set _currentClass to the interface symbol so CheckFunction resolves self correctly
@@ -934,6 +943,108 @@ internal partial class TypeChecker
         finally
         {
             _symbolTable.ExitScope();
+        }
+    }
+
+    /// <summary>
+    /// Resolves event types from their type annotations in the AST.
+    /// For auto-events, resolves the delegate type annotation and verifies it's a delegate type.
+    /// For function-style events, resolves the handler parameter type.
+    /// Must be called after field type resolution and before member checking.
+    /// </summary>
+    private void ResolveEventTypes(TypeSymbol typeSymbol, System.Collections.Immutable.ImmutableArray<Statement> body)
+    {
+        for (int i = 0; i < typeSymbol.Events.Count; i++)
+        {
+            var eventSymbol = typeSymbol.Events[i];
+            if (eventSymbol.Type is UnknownType)
+            {
+                // Find the corresponding EventDef in the AST
+                var eventDef = body
+                    .OfType<EventDef>()
+                    .FirstOrDefault(e => e.Name == eventSymbol.Name);
+
+                if (eventDef != null)
+                {
+                    SemanticType resolvedType;
+                    if (eventDef.IsFunctionStyle)
+                    {
+                        // For function-style events, the handler type comes from the handler parameter
+                        // (second parameter after self, or first parameter for static events)
+                        var handlerParam = eventDef.Parameters
+                            .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
+                        if (handlerParam?.Type != null)
+                        {
+                            resolvedType = _typeResolver.ResolveTypeAnnotation(handlerParam.Type);
+                        }
+                        else
+                        {
+                            resolvedType = SemanticType.Unknown;
+                        }
+                    }
+                    else
+                    {
+                        // Auto-event: type comes from type annotation
+                        resolvedType = _typeResolver.ResolveTypeAnnotation(eventDef.Type);
+                    }
+
+                    if (resolvedType != SemanticType.Unknown)
+                    {
+                        // Verify the resolved type is a delegate type
+                        if (resolvedType is UserDefinedType udt && udt.Symbol?.TypeKind == TypeKind.Delegate)
+                        {
+                            typeSymbol.Events[i] = eventSymbol with { Type = resolvedType };
+                        }
+                        else if (resolvedType is GenericType gt)
+                        {
+                            // Check if the generic type is a known delegate (e.g., EventHandler[T], Action[T])
+                            var baseSymbol = _symbolTable.LookupType(gt.Name);
+                            if (baseSymbol?.TypeKind == TypeKind.Delegate)
+                            {
+                                typeSymbol.Events[i] = eventSymbol with { Type = resolvedType };
+                            }
+                            else
+                            {
+                                AddError(
+                                    $"Event '{eventDef.Name}' type '{resolvedType}' is not a delegate type",
+                                    eventDef.LineStart, eventDef.ColumnStart,
+                                    DiagnosticCodes.Semantic.EventTypeNotDelegate,
+                                    eventDef.Span);
+                            }
+                        }
+                        else
+                        {
+                            AddError(
+                                $"Event '{eventDef.Name}' type '{resolvedType}' is not a delegate type",
+                                eventDef.LineStart, eventDef.ColumnStart,
+                                DiagnosticCodes.Semantic.EventTypeNotDelegate,
+                                eventDef.Span);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Type-checks an event declaration.
+    /// For auto-events, type resolution is handled by ResolveEventTypes().
+    /// For function-style events, checks the accessor body.
+    /// </summary>
+    private void CheckEvent(EventDef eventDef)
+    {
+        if (!eventDef.IsFunctionStyle)
+        {
+            // Auto-events are fully handled by ResolveEventTypes()
+            return;
+        }
+
+        // Function-style events: type-check the accessor body
+        // TODO(#262): Validate handler parameter type consistency between add/remove accessors (SPY0374)
+        // Blocked by #260 (self parameter scope resolution in function-style event bodies)
+        foreach (var stmt in eventDef.Body)
+        {
+            CheckStatement(stmt);
         }
     }
 

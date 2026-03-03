@@ -234,6 +234,55 @@ internal partial class TypeChecker
                 return propType;
             }
 
+            // Look for event (including inherited events)
+            var eventSymbol = FindEventInHierarchy(udt.Symbol, memberAccess.Member);
+            if (eventSymbol != null)
+            {
+                _semanticInfo.MarkAsEventAccess(memberAccess);
+                var eventType = eventSymbol.Type;
+
+                // Events are nullable (may have no subscribers)
+                if (eventType is not UnknownType and not NullableType)
+                {
+                    eventType = new NullableType { UnderlyingType = eventType };
+                }
+
+                // Wrap result in optional/nullable for null conditional access
+                if (memberAccess.IsNullConditional && eventType is NullableType nullableEventType)
+                {
+                    // ?. unwraps the nullable, returning the underlying type
+                    eventType = nullableEventType.UnderlyingType;
+                }
+
+                // Check raise restriction: events can only be invoked from within the declaring class
+                if (_currentClass == null || !TypeHasEvent(_currentClass, memberAccess.Member))
+                {
+                    // We're outside the declaring class — the event access is allowed for +=/-=
+                    // (which is handled in CheckAssignment), but direct member access for invocation
+                    // will be caught when the invoke() call is attempted.
+                    // For now, we mark the access and let the codegen/caller handle the restriction.
+                }
+
+                return eventType;
+            }
+
+            // Resolve .invoke() on delegate types — Sharpy's `invoke` maps to C#'s `Invoke`.
+            // This enables the event raise pattern: self.on_change?.invoke(self, args)
+            if (memberAccess.Member == "invoke" && udt.Symbol.TypeKind == TypeKind.Delegate)
+            {
+                var invokeMethod = TryGetDelegateInvokeMethod(memberLookupType);
+                if (invokeMethod != null)
+                {
+                    // Build a FunctionType from the delegate's Invoke signature
+                    var paramTypes = invokeMethod.Parameters.Select(p => p.Type).ToList();
+                    return new FunctionType
+                    {
+                        ParameterTypes = paramTypes,
+                        ReturnType = invokeMethod.ReturnType
+                    };
+                }
+            }
+
             // Look for method (including inherited methods)
             var (method, methodOwner) = FindMethodInHierarchy(udt.Symbol, memberAccess.Member);
             if (method != null && methodOwner != null)
@@ -284,6 +333,22 @@ internal partial class TypeChecker
                 memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember,
                 span: memberAccess.Span);
             return SemanticType.Unknown;
+        }
+
+        // Resolve .invoke() on generic delegate types (e.g., EventHandler[T]?.invoke(...))
+        if (memberAccess.Member == "invoke" && memberLookupType is GenericType delegateGenericType
+            && delegateGenericType.GenericDefinition is { TypeKind: TypeKind.Delegate })
+        {
+            var invokeMethod = TryGetDelegateInvokeMethod(memberLookupType);
+            if (invokeMethod != null)
+            {
+                var paramTypes = invokeMethod.Parameters.Select(p => p.Type).ToList();
+                return new FunctionType
+                {
+                    ParameterTypes = paramTypes,
+                    ReturnType = invokeMethod.ReturnType
+                };
+            }
         }
 
         // Resolve builtin type method types at semantic time via TypeSymbol metadata.
@@ -554,6 +619,29 @@ internal partial class TypeChecker
         {
             var objType = _semanticInfo.GetExpressionType(nullCondMa.Object);
             isOptionalNullConditional = objType is OptionalType;
+        }
+
+        // Check event raise restriction: events can only be invoked from within the declaring class
+        if (call.Function is MemberAccess invokeMA && invokeMA.Member == "invoke")
+        {
+            // The object of .invoke() might be an event access (e.g., self.on_click?.invoke(...))
+            if (_semanticInfo.IsEventAccess(invokeMA.Object))
+            {
+                // Determine the event's declaring type
+                if (invokeMA.Object is MemberAccess eventMA)
+                {
+                    var eventOwner = ResolveEventOwner(eventMA);
+                    if (eventOwner != null && (_currentClass == null || !ReferenceEquals(_currentClass, eventOwner)))
+                    {
+                        AddError(
+                            $"Cannot raise event '{eventMA.Member}' from outside the declaring class",
+                            call.LineStart, call.ColumnStart,
+                            DiagnosticCodes.Semantic.RaiseEventOutsideClass,
+                            call.Span);
+                        return SemanticType.Void;
+                    }
+                }
+            }
         }
 
         // Track super().__init__() calls AFTER validation completes

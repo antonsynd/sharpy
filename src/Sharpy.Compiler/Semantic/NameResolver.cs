@@ -311,6 +311,10 @@ internal class NameResolver
             {
                 ResolvePropertyDeclaration(propDef, typeSymbol);
             }
+            else if (statement is EventDef eventDef)
+            {
+                ResolveEventDeclaration(eventDef, typeSymbol);
+            }
         }
 
         _symbolTable.ExitScope();
@@ -378,6 +382,10 @@ internal class NameResolver
             {
                 ResolvePropertyDeclaration(propDef, typeSymbol);
             }
+            else if (statement is EventDef eventDef)
+            {
+                ResolveEventDeclaration(eventDef, typeSymbol);
+            }
         }
 
         _symbolTable.ExitScope();
@@ -442,6 +450,10 @@ internal class NameResolver
             else if (statement is PropertyDef propDef)
             {
                 ResolvePropertyDeclaration(propDef, typeSymbol);
+            }
+            else if (statement is EventDef eventDef)
+            {
+                ResolveEventDeclaration(eventDef, typeSymbol);
             }
         }
 
@@ -938,6 +950,88 @@ internal class NameResolver
             };
 
             owningType.Properties.Add(propSymbol);
+        }
+    }
+
+    private void ResolveEventDeclaration(EventDef eventDef, TypeSymbol owningType)
+    {
+        _logger.LogDebug($"Resolving event declaration: {owningType.Name}.{eventDef.Name}");
+
+        // Check if an event with this name already exists (for merging add/remove accessors)
+        var existingEvent = owningType.Events.FirstOrDefault(e => e.Name == eventDef.Name);
+
+        bool isStatic = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
+            || eventDef.IsFunctionStyle
+            && !eventDef.Parameters.Any(p => string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
+        bool isVirtual = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
+        bool isAbstract = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool isOverride = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Override);
+        bool isFinal = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Final);
+
+        bool hasAdd = eventDef.Accessor == EventAccessor.Add;
+        bool hasRemove = eventDef.Accessor == EventAccessor.Remove;
+
+        // Auto-events have both add and remove implicitly
+        if (!eventDef.IsFunctionStyle)
+        {
+            hasAdd = true;
+            hasRemove = true;
+        }
+
+        var accessLevel = DetermineAccessLevel(eventDef.Name);
+        // Override with explicit decorator
+        foreach (var decorator in eventDef.Decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "private":
+                    accessLevel = AccessLevel.Private;
+                    break;
+                case "protected":
+                    accessLevel = AccessLevel.Protected;
+                    break;
+                case "internal":
+                    accessLevel = AccessLevel.Internal;
+                    break;
+                case "public":
+                    accessLevel = AccessLevel.Public;
+                    break;
+            }
+        }
+
+        if (existingEvent != null)
+        {
+            // Merge: combine accessor info from additional EventDef (add + remove pair)
+            var merged = existingEvent with
+            {
+                HasAdd = existingEvent.HasAdd || hasAdd,
+                HasRemove = existingEvent.HasRemove || hasRemove,
+                AddAccessLevel = hasAdd ? accessLevel : existingEvent.AddAccessLevel,
+                RemoveAccessLevel = hasRemove ? accessLevel : existingEvent.RemoveAccessLevel,
+            };
+
+            // Replace existing in the list
+            var index = owningType.Events.IndexOf(existingEvent);
+            owningType.Events[index] = merged;
+        }
+        else
+        {
+            var eventSymbol = new EventSymbol
+            {
+                Name = eventDef.Name,
+                HasAdd = hasAdd,
+                HasRemove = hasRemove,
+                IsStatic = isStatic,
+                IsVirtual = isVirtual,
+                IsAbstract = isAbstract,
+                IsOverride = isOverride,
+                IsFinal = isFinal,
+                AccessLevel = accessLevel,
+                AddAccessLevel = hasAdd ? accessLevel : AccessLevel.Public,
+                RemoveAccessLevel = hasRemove ? accessLevel : AccessLevel.Public,
+            };
+
+            owningType.Events.Add(eventSymbol);
         }
     }
 

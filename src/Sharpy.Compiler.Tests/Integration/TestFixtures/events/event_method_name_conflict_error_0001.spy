@@ -1,0 +1,11 @@
+# Event cannot share name with a method (SPY0422)
+delegate MyHandler(sender: object, data: str) -> None
+
+class Publisher:
+    def on_change(self):
+        pass
+
+    event on_change: MyHandler
+
+def main():
+    print("unreachable")

@@ -174,6 +174,7 @@ public record TypeSymbol : Symbol
     public List<VariableSymbol> Fields { get; init; } = new();
     public List<FunctionSymbol> Methods { get; init; } = new();
     public List<PropertySymbol> Properties { get; init; } = new();
+    public List<EventSymbol> Events { get; init; } = new();
 
     // Operator methods (dunder methods for operators)
     // Maps operator dunder names (e.g., "__add__", "__eq__") to lists of overloads
@@ -240,6 +241,26 @@ public record PropertySymbol
     public AccessLevel GetterAccess { get; init; } = AccessLevel.Public;
     public AccessLevel SetterAccess { get; init; } = AccessLevel.Public;
     public string? ExplicitInterface { get; init; }
+}
+
+/// <summary>
+/// Event symbol for class/struct/interface events.
+/// Modeled on PropertySymbol with add/remove accessors instead of get/set.
+/// </summary>
+public record EventSymbol
+{
+    public string Name { get; init; } = string.Empty;
+    public SemanticType Type { get; internal set; } = SemanticType.Unknown;
+    public bool HasAdd { get; init; }
+    public bool HasRemove { get; init; }
+    public bool IsStatic { get; init; }
+    public bool IsVirtual { get; init; }
+    public bool IsAbstract { get; init; }
+    public bool IsOverride { get; init; }
+    public bool IsFinal { get; init; }
+    public AccessLevel AccessLevel { get; init; } = AccessLevel.Public;
+    public AccessLevel AddAccessLevel { get; init; } = AccessLevel.Public;
+    public AccessLevel RemoveAccessLevel { get; init; } = AccessLevel.Public;
 }
 
 /// <summary>
@@ -318,6 +339,7 @@ public enum SymbolKind
     Type,
     Module,
     Property,
+    Event,
     TypeAlias,
     TypeParameter
 }

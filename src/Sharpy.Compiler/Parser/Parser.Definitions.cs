@@ -1317,6 +1317,171 @@ public partial class Parser
         };
     }
 
+    private EventDef ParseEventDef()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        var startToken = Current;
+
+        Expect(TokenType.Event);
+
+        // Check for accessor keyword: add or remove
+        var accessor = EventAccessor.None;
+        if (Current.Type == TokenType.Identifier)
+        {
+            switch (Current.Value)
+            {
+                case "add":
+                    accessor = EventAccessor.Add;
+                    Advance();
+                    break;
+                case "remove":
+                    accessor = EventAccessor.Remove;
+                    Advance();
+                    break;
+            }
+        }
+
+        // Read event name
+        var name = ExpectIdentifier();
+
+        // Function-style event: event add name(self, handler: T): body
+        if (Current.Type == TokenType.LeftParen)
+        {
+            if (accessor == EventAccessor.None)
+            {
+                throw ReportError(
+                    "Function-style event requires 'add' or 'remove' accessor keyword",
+                    Current.Line, Current.Column,
+                    DiagnosticCodes.Parser.FunctionStyleEventWithoutAccessor,
+                    GetSpanFromToken(Current));
+            }
+
+            Advance(); // consume '('
+            var parameters = ParseParameters();
+            Expect(TokenType.RightParen);
+
+            // For interface events, the colon and body are optional.
+            if (_parsingInterface && Current.Type != TokenType.Colon)
+            {
+                ExpectNewline();
+
+                var ellipsisExpr = new EllipsisLiteral
+                {
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = startLine,
+                    ColumnEnd = startColumn
+                };
+
+                return new EventDef
+                {
+                    Name = name,
+                    Accessor = accessor,
+                    IsFunctionStyle = true,
+                    Parameters = parameters.ToImmutableArray(),
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = Previous.Line,
+                    ColumnEnd = Previous.Column,
+                    Span = GetSpanFromTokens(startToken, Previous)
+                };
+            }
+
+            Expect(TokenType.Colon);
+
+            // Support inline ellipsis syntax: event add name(self, handler: T): ...
+            if (Current.Type == TokenType.Ellipsis)
+            {
+                var ellipsisLine = Current.Line;
+                var ellipsisColumn = Current.Column;
+                var ellipsisToken = Current;
+                Advance(); // consume '...'
+                ExpectNewline();
+
+                return new EventDef
+                {
+                    Name = name,
+                    Accessor = accessor,
+                    IsFunctionStyle = true,
+                    Parameters = parameters.ToImmutableArray(),
+                    Body = ImmutableArray.Create<Statement>(
+                        new ExpressionStatement
+                        {
+                            Expression = new EllipsisLiteral
+                            {
+                                LineStart = ellipsisLine,
+                                ColumnStart = ellipsisColumn,
+                                LineEnd = ellipsisLine,
+                                ColumnEnd = ellipsisColumn + 3,
+                                Span = GetSpanFromToken(ellipsisToken)
+                            },
+                            LineStart = ellipsisLine,
+                            ColumnStart = ellipsisColumn,
+                            LineEnd = ellipsisLine,
+                            ColumnEnd = ellipsisColumn + 3,
+                            Span = GetSpanFromToken(ellipsisToken)
+                        }
+                    ),
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = Current.Line,
+                    ColumnEnd = Current.Column,
+                    Span = GetSpanFromTokens(startToken, ellipsisToken)
+                };
+            }
+
+            ExpectNewline();
+            Expect(TokenType.Indent);
+            var body = ParseBlock();
+            Expect(TokenType.Dedent);
+            var endToken = Previous;
+
+            return new EventDef
+            {
+                Name = name,
+                Accessor = accessor,
+                IsFunctionStyle = true,
+                Parameters = parameters.ToImmutableArray(),
+                Body = body.ToImmutableArray(),
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = Current.Line,
+                ColumnEnd = Current.Column,
+                Span = GetSpanFromTokens(startToken, endToken)
+            };
+        }
+
+        // Auto-event: event name: DelegateType
+        if (accessor != EventAccessor.None)
+        {
+            throw ReportError(
+                "Auto-event must not have an accessor keyword; use 'event name: DelegateType'",
+                startToken.Line, startToken.Column,
+                DiagnosticCodes.Parser.AutoEventWithBody,
+                GetSpanFromToken(startToken));
+        }
+
+        Expect(TokenType.Colon);
+        var type = ParseTypeAnnotation();
+
+        var autoEndToken = Previous;
+        ExpectStatementEnd();
+
+        return new EventDef
+        {
+            Name = name,
+            Accessor = EventAccessor.None,
+            Type = type,
+            IsFunctionStyle = false,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = autoEndToken.Line,
+            ColumnEnd = autoEndToken.Column + autoEndToken.Value.Length,
+            Span = CombineSpans(GetSpanFromToken(startToken), GetSpanFromToken(autoEndToken))
+        };
+    }
+
     private VariableDeclaration ParseConstDeclaration()
     {
         var startLine = Current.Line;

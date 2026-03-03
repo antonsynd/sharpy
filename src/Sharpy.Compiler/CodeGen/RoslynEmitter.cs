@@ -130,6 +130,11 @@ internal partial class RoslynEmitter
     // Used for inlining dunder bodies into static operators (self → left/value).
     private string? _selfReplacementIdentifier;
 
+    // When set, identifier references to this name are rewritten to C#'s implicit `value`
+    // keyword in event accessor bodies. In Sharpy, function-style events declare an explicit
+    // handler parameter, but C# event accessors use implicit `value`.
+    private string? _eventHandlerParamName;
+
     /// <summary>
     /// Tracks variable names (original Sharpy names) that have been narrowed from
     /// Optional&lt;T&gt; to T via an is-not-None check. Uses reference counting to support

@@ -1,0 +1,28 @@
+# Function-style event with custom add/remove logic
+delegate SimpleHandler() -> None
+
+class Publisher:
+    _handlers: list[SimpleHandler] = []
+
+    event add on_action(self, handler: SimpleHandler):
+        self._handlers.append(handler)
+        print("added")
+
+    event remove on_action(self, handler: SimpleHandler):
+        self._handlers.remove(handler)
+        print("removed")
+
+    def fire(self):
+        for h in self._handlers:
+            h.invoke()
+
+def handler():
+    print("action fired")
+
+def main():
+    p: Publisher = Publisher()
+    p.on_action += handler
+    p.fire()
+    p.on_action -= handler
+    p.fire()
+    print("done")

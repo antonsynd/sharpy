@@ -73,6 +73,10 @@ internal class DecoratorValidator : SemanticValidatorBase
                 ValidateDecorators(propDef.Decorators, propDef.Name);
                 break;
 
+            case EventDef eventDef:
+                ValidateDecorators(eventDef.Decorators, eventDef.Name);
+                break;
+
             case VariableDeclaration varDecl when varDecl.Decorators.Length > 0:
                 // Decorated variables at module level are not allowed —
                 // @static only makes sense on class/struct fields
@@ -95,6 +99,11 @@ internal class DecoratorValidator : SemanticValidatorBase
             {
                 ValidateFieldDecorators(varDecl, classDef.Name);
             }
+            else if (member is EventDef eventDef)
+            {
+                ValidateDecorators(eventDef.Decorators, $"{classDef.Name}.{eventDef.Name}");
+                ValidateEventFinalRequiresOverride(eventDef, classDef.Name);
+            }
         }
     }
 
@@ -112,6 +121,11 @@ internal class DecoratorValidator : SemanticValidatorBase
             {
                 ValidateFieldDecorators(varDecl, structDef.Name);
             }
+            else if (member is EventDef eventDef)
+            {
+                ValidateDecorators(eventDef.Decorators, $"{structDef.Name}.{eventDef.Name}");
+                ValidateEventFinalRequiresOverride(eventDef, structDef.Name);
+            }
         }
     }
 
@@ -122,6 +136,10 @@ internal class DecoratorValidator : SemanticValidatorBase
             if (member is FunctionDef method)
             {
                 ValidateDecorators(method.Decorators, $"{interfaceDef.Name}.{method.Name}");
+            }
+            else if (member is EventDef eventDef)
+            {
+                ValidateDecorators(eventDef.Decorators, $"{interfaceDef.Name}.{eventDef.Name}");
             }
         }
     }
@@ -233,6 +251,27 @@ internal class DecoratorValidator : SemanticValidatorBase
                 virtualDecorator.ColumnStart,
                 code: DiagnosticCodes.Validation.VirtualOnObjectOverride,
                 span: virtualDecorator.Span);
+        }
+    }
+
+    /// <summary>
+    /// Validates that @final on an event is always accompanied by @override.
+    /// </summary>
+    private void ValidateEventFinalRequiresOverride(EventDef eventDef, string typeName)
+    {
+        bool hasFinal = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Final);
+        bool hasOverride = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Override);
+
+        if (hasFinal && !hasOverride)
+        {
+            var finalDecorator = eventDef.Decorators.First(d => d.Name == DecoratorNames.Final);
+            AddError(_context,
+                $"Event '{eventDef.Name}' in '{typeName}' is marked @final but not @override. " +
+                "The @final decorator prevents further overriding and requires @override.",
+                finalDecorator.LineStart,
+                finalDecorator.ColumnStart,
+                code: DiagnosticCodes.Validation.FinalWithoutOverride,
+                span: finalDecorator.Span);
         }
     }
 

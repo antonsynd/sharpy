@@ -1,0 +1,9 @@
+# Event type must be a delegate type, not a regular class
+class NotADelegate:
+    pass
+
+class Publisher:
+    event on_change: NotADelegate
+
+def main():
+    print("unreachable")

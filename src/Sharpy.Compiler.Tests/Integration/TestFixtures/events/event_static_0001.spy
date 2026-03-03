@@ -1,0 +1,27 @@
+# Static events with @static decorator
+delegate SimpleHandler() -> None
+
+class Application:
+    @static
+    event on_startup: SimpleHandler
+
+    @static
+    event on_shutdown: SimpleHandler
+
+    def start():
+        Application.on_startup?.invoke()
+
+    def stop():
+        Application.on_shutdown?.invoke()
+
+def on_start():
+    print("app started")
+
+def on_stop():
+    print("app stopped")
+
+def main():
+    Application.on_startup += on_start
+    Application.on_shutdown += on_stop
+    Application.start()
+    Application.stop()

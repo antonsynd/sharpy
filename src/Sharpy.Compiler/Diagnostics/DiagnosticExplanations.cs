@@ -334,6 +334,16 @@ public static class DiagnosticExplanations
             "result = f(g(_)(_))",
             "Break into separate expressions:\ninner = g(_)\nresult = f(inner(_))");
 
+        Add(dict, DiagnosticCodes.Parser.AutoEventWithBody, "Auto-event with accessor keyword", "Parser",
+            "An auto-event declaration ('event name: DelegateType') must not have an 'add' or 'remove' accessor keyword. Auto-events generate backing delegate fields and accessors automatically.",
+            "event add on_click: EventHandler",
+            "Remove the accessor keyword for auto-events:\n  event on_click: EventHandler\n\nOr use function-style syntax for custom accessors:\n  event add on_click(self, handler: EventHandler):\n      ...");
+
+        Add(dict, DiagnosticCodes.Parser.FunctionStyleEventWithoutAccessor, "Function-style event without accessor", "Parser",
+            "A function-style event with parameters requires an 'add' or 'remove' accessor keyword. Without it, the parser cannot determine which accessor is being defined.",
+            "event on_click(self, handler: EventHandler):\n    ...",
+            "Add 'add' or 'remove' keyword:\n  event add on_click(self, handler: EventHandler):\n      ...\n  event remove on_click(self, handler: EventHandler):\n      ...");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",
@@ -942,6 +952,33 @@ public static class DiagnosticExplanations
             "delegate Handler(event: Event) -> bool:\n    pass  # error: delegates cannot have a body",
             "Remove the body from the delegate declaration:\ndelegate Handler(event: Event) -> bool");
 
+
+        // ── Semantic errors: Events (SPY0373-SPY0379) ──────────────────────
+
+        Add(dict, DiagnosticCodes.Semantic.EventTypeNotDelegate, "Event type is not a delegate", "Semantic",
+            "An event declaration specifies a type that is not a delegate. Events must be declared with a delegate type that specifies the handler signature.",
+            "event on_click: int  # error: int is not a delegate type",
+            "Use a delegate type for the event:\ndelegate EventHandler(self) -> None\nevent on_click: EventHandler");
+
+        Add(dict, DiagnosticCodes.Semantic.EventAccessorParamMismatch, "Event accessor parameter mismatch", "Semantic",
+            "A function-style event accessor has parameters that don't match the event's delegate type. The handler parameter must be assignable to the delegate type.",
+            "delegate ClickHandler(self) -> None\nevent add on_click(self, handler: int):  # error: int != ClickHandler\n    pass",
+            "Use the correct delegate type as the handler parameter:\nevent add on_click(self, handler: ClickHandler):\n    pass");
+
+        Add(dict, DiagnosticCodes.Semantic.DirectEventAssignment, "Direct event assignment not allowed", "Semantic",
+            "An event was assigned to directly using '=' instead of using '+=' to add a handler or '-=' to remove a handler. Events cannot be overwritten; handlers must be added or removed.",
+            "btn.on_click = my_handler  # error: direct assignment",
+            "Use += to add a handler or -= to remove one:\nbtn.on_click += my_handler");
+
+        Add(dict, DiagnosticCodes.Semantic.EventHandlerTypeMismatch, "Event handler type mismatch", "Semantic",
+            "A handler being added to or removed from an event is not compatible with the event's delegate type. The handler type must be assignable to the delegate type.",
+            "delegate ClickHandler(self) -> None\nevent on_click: ClickHandler\ndef invalid_handler(x: int) -> None: pass\nbtn.on_click += invalid_handler  # error: signature mismatch",
+            "Use a handler with the correct signature:\ndef valid_handler(self) -> None: pass\nbtn.on_click += valid_handler");
+
+        Add(dict, DiagnosticCodes.Semantic.RaiseEventOutsideClass, "Event raise outside class", "Semantic",
+            "An event is being raised (invoked) from outside the class that declares it. Events are protected and can only be raised from within their declaring class.",
+            "btn.on_click()  # error: cannot raise from outside Button class",
+            "Only call the event from within its declaring class, or provide a public method to raise it:\n# Inside Button class:\ndef do_click(self):\n    self.on_click()  # OK: inside the class");
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",
@@ -1081,6 +1118,29 @@ public static class DiagnosticExplanations
             "Contravariant type parameters can only appear in input positions such as parameter types.",
             "delegate BadProducer[in T]() -> T  # error: T is contravariant but used as return type",
             "Change the variance to 'out' or remove it:\ndelegate Producer[out T]() -> T");
+
+
+        // ── Event validation (SPY0420-SPY0423) ───────────────────────────
+
+        Add(dict, DiagnosticCodes.Validation.UnpairedEventAccessor, "Unpaired event accessor", "Validation",
+            "An event declaration has a function-style accessor (add/remove) without both accessors. Auto-events (without parentheses) generate both add and remove automatically. Function-style events with custom logic must define both.",
+            "event add on_click(self, handler: EventHandler):  # error: missing remove accessor\n    pass",
+            "Add the missing accessor or use auto-event syntax:\nevent add on_click(self, handler: EventHandler):\n    pass\nevent remove on_click(self, handler: EventHandler):\n    pass");
+
+        Add(dict, DiagnosticCodes.Validation.EventFieldNameConflict, "Event conflicts with field name", "Validation",
+            "An event has the same name as a field in the same class or struct. Events and fields occupy the same namespace and cannot share names.",
+            "class Button:\n    on_click: str  # field\n    event on_click: EventHandler  # error: conflicts with field",
+            "Rename either the field or the event to avoid the conflict.");
+
+        Add(dict, DiagnosticCodes.Validation.EventMethodNameConflict, "Event conflicts with method name", "Validation",
+            "An event has the same name as a method in the same class or struct. Events and methods occupy the same namespace and cannot share names.",
+            "class Button:\n    def on_click(self) -> None: pass  # method\n    event on_click: EventHandler  # error: conflicts with method",
+            "Rename either the method or the event to avoid the conflict.");
+
+        Add(dict, DiagnosticCodes.Validation.AbstractEventWithBody, "Abstract event must not have a body", "Validation",
+            "An abstract event has a function-style accessor with a body. Abstract events define only the signature and cannot provide an implementation.",
+            "abstract event on_click(self, handler: EventHandler):  # error: abstract events cannot have implementation\n    pass",
+            "Remove the body or remove the abstract keyword:\nabstract event on_click(self, handler: EventHandler)  # no body\n\nOr:\nevent add on_click(self, handler: EventHandler):\n    pass");
 
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
