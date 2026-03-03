@@ -81,6 +81,10 @@ public static class DiagnosticCodes
         public const string PlaceholderWithSpread = "SPY0131";
         public const string PlaceholderOutsideCallOrOperator = "SPY0132";
         public const string NestedPlaceholder = "SPY0133";
+        // SPY0134 reserved for future parser use
+        public const string AutoEventWithBody = "SPY0135";
+        public const string FunctionStyleEventWithoutAccessor = "SPY0136";
+        // SPY0137 reserved for future parser use
     }
 
     /// <summary>
@@ -216,6 +220,14 @@ public static class DiagnosticCodes
         public const string PositionalOnlyPassedByKeyword = "SPY0370";
         public const string KeywordOnlyPassedPositionally = "SPY0371";
         public const string DelegateWithBody = "SPY0372";
+
+        // Event errors (SPY0373-SPY0379)
+        public const string EventTypeNotDelegate = "SPY0373";
+        public const string EventAccessorParamMismatch = "SPY0374";
+        public const string DirectEventAssignment = "SPY0375";
+        public const string EventHandlerTypeMismatch = "SPY0376";
+        public const string RaiseEventOutsideClass = "SPY0377";
+        // SPY0378-SPY0379 reserved for future event semantic errors
     }
 
     /// <summary>
@@ -253,6 +265,13 @@ public static class DiagnosticCodes
         public const string VarianceOnClassOrStruct = "SPY0417";
         public const string CovariantInContravariantPosition = "SPY0418";
         public const string ContravariantInCovariantPosition = "SPY0419";
+
+        // Event validation (SPY0420-SPY0424)
+        public const string UnpairedEventAccessor = "SPY0420";
+        public const string EventFieldNameConflict = "SPY0421";
+        public const string EventMethodNameConflict = "SPY0422";
+        public const string AbstractEventWithBody = "SPY0423";
+        // SPY0424 reserved for future event validation errors
 
         // Warnings (SPY0450-SPY0499)
         public const string UnreachableCodeWarning = "SPY0450";
