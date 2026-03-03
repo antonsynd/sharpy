@@ -704,8 +704,24 @@ public record NewConstraint : ConstraintClause;
 public record Decorator
 {
     public string Name { get; init; } = "";
-    // Note: v0.3 only supports simple identifier decorators
-    // No arguments or dotted names in v0.3
+
+    /// <summary>
+    /// Positional arguments to the decorator (e.g., @obsolete("msg") has one string arg).
+    /// Empty when the decorator has no parenthesized argument list.
+    /// </summary>
+    public ImmutableArray<Expression> Arguments { get; init; } = ImmutableArray<Expression>.Empty;
+
+    /// <summary>
+    /// Keyword arguments to the decorator (e.g., @dll_import("lib", entry_point="Func")).
+    /// Empty when the decorator has no keyword arguments.
+    /// </summary>
+    public ImmutableArray<KeywordArgument> KeywordArguments { get; init; } = ImmutableArray<KeywordArgument>.Empty;
+
+    /// <summary>
+    /// For dotted decorator names (e.g., @system.serializable), holds each segment.
+    /// Empty for simple (non-dotted) decorator names.
+    /// </summary>
+    public ImmutableArray<string> QualifiedParts { get; init; } = ImmutableArray<string>.Empty;
 
     // Source location
     public int LineStart { get; init; }
