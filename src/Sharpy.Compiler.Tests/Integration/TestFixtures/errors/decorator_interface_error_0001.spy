@@ -1,0 +1,3 @@
+@virtual
+interface IGreeter:
+    def greet(self) -> str

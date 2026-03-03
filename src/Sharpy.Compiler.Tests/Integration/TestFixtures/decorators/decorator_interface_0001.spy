@@ -1,0 +1,11 @@
+@obsolete("Use INewGreeter instead")
+interface IGreeter:
+    def greet(self) -> str
+
+class HelloGreeter(IGreeter):
+    def greet(self) -> str:
+        return "hello"
+
+def main():
+    g: IGreeter = HelloGreeter()
+    print(g.greet())

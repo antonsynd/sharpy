@@ -65,7 +65,8 @@ internal class DecoratorValidator : SemanticValidatorBase
                 break;
 
             case InterfaceDef interfaceDef:
-                // InterfaceDef doesn't have decorators, but validate methods inside
+                ValidateDecorators(interfaceDef.Decorators, interfaceDef.Name);
+                ValidateInterfaceDecorators(interfaceDef);
                 ValidateInterfaceBody(interfaceDef);
                 break;
 
@@ -125,6 +126,37 @@ internal class DecoratorValidator : SemanticValidatorBase
             {
                 ValidateDecorators(eventDef.Decorators, $"{structDef.Name}.{eventDef.Name}");
                 ValidateEventFinalRequiresOverride(eventDef, structDef.Name);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates that member-level modifier decorators are not applied to interface definitions.
+    /// Only custom attribute decorators (and access modifiers) are valid on interfaces.
+    /// </summary>
+    private void ValidateInterfaceDecorators(InterfaceDef interfaceDef)
+    {
+        // Decorators that are invalid on interfaces — these are member-level modifiers
+        HashSet<string> invalidOnInterface = new()
+        {
+            DecoratorNames.Virtual,
+            DecoratorNames.Override,
+            DecoratorNames.Abstract,
+            DecoratorNames.Static,
+            DecoratorNames.Final,
+        };
+
+        foreach (var decorator in interfaceDef.Decorators)
+        {
+            if (invalidOnInterface.Contains(decorator.Name))
+            {
+                AddError(_context,
+                    $"Decorator '@{decorator.Name}' is not valid on interface '{interfaceDef.Name}'. " +
+                    "Only custom attribute decorators and access modifiers are allowed on interfaces.",
+                    decorator.LineStart,
+                    decorator.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                    span: decorator.Span);
             }
         }
     }

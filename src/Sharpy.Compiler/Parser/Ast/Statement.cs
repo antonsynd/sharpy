@@ -541,6 +541,7 @@ public record InterfaceDef : Statement
     public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
     public ImmutableArray<TypeAnnotation> BaseInterfaces { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
     public string? DocString { get; init; }
 
     /// <inheritdoc/>
@@ -551,6 +552,7 @@ public record InterfaceDef : Statement
         Debug.Assert(TypeParameters != null, "InterfaceDef.TypeParameters cannot be null");
         Debug.Assert(BaseInterfaces != null, "InterfaceDef.BaseInterfaces cannot be null");
         Debug.Assert(Body != null, "InterfaceDef.Body cannot be null");
+        Debug.Assert(Decorators != null, "InterfaceDef.Decorators cannot be null");
     }
 
     /// <inheritdoc/>

@@ -719,12 +719,19 @@ internal partial class RoslynEmitter
         // Transform interface name using Interface context to preserve I prefix pattern
         var interfaceName = NameMangler.Transform(interfaceDef.Name, NameContext.Interface);
 
-        // Interfaces are always public by default
-        var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
+        // Process decorators to determine modifiers (access modifiers)
+        var modifiers = GenerateTypeModifiersFromDecorators(interfaceDef.Decorators);
 
         // Create interface declaration
         var interfaceDecl = InterfaceDeclaration(interfaceName)
             .WithModifiers(modifiers);
+
+        // Add C# attributes from custom decorators
+        var interfaceAttributes = GenerateAttributeListsFromDecorators(interfaceDef.Decorators);
+        if (interfaceAttributes.Count > 0)
+        {
+            interfaceDecl = interfaceDecl.WithAttributeLists(interfaceAttributes);
+        }
 
         // Add type parameters if generic
         if (interfaceDef.TypeParameters.Length > 0)
