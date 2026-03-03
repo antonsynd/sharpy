@@ -489,26 +489,20 @@ def foo(*args: int,):
         funcDef.Parameters[0].IsVariadic.Should().BeTrue();
     }
 
-    [Fact(Skip = "See: #171 (kwargs not yet supported)")]
-    public void ParsesFunctionWithKwargs()
+    /// <summary>
+    /// **kwargs syntax is explicitly dropped from the Sharpy spec (see flexible_arguments.md).
+    /// This test verifies that the parser produces a clear error.
+    /// </summary>
+    [Fact]
+    public void ParsesFunctionWithKwargs_ProducesError()
     {
         var source = @"
 def foo(**kwargs):
     pass
 ";
-        var module = Parse(source);
-        module.Body.Should().HaveCount(1);
-    }
-
-    [Fact(Skip = "See: #171 (kwargs not yet supported)")]
-    public void ParsesFunctionWithAllParameterTypes()
-    {
-        var source = @"
-def foo(a: int, b: int = 10, *args, **kwargs):
-    pass
-";
-        var module = Parse(source);
-        module.Body.Should().HaveCount(1);
+        // **kwargs is not supported - parser should produce an error
+        var errorMessage = ParseExpectingError(source);
+        errorMessage.Should().Contain("DoubleStar");
     }
 
     [Fact]
@@ -674,7 +668,7 @@ class Foo:
         listComp.Clauses[1].Should().BeOfType<IfClause>();
     }
 
-    [Fact(Skip = "See: #114 (nested list comprehensions with multiple for clauses not yet supported)")]
+    [Fact]
     public void ParsesNestedListComprehension()
     {
         var source = "x = [[j for j in range(i)] for i in range(5)]";
@@ -682,7 +676,7 @@ class Foo:
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "See: #104 (tuple unpacking in comprehensions not yet supported)")]
+    [Fact]
     public void ParsesDictComprehension()
     {
         var source = "x = {k: v for k, v in items}";
