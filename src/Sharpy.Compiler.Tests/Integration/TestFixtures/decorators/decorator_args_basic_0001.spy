@@ -1,0 +1,6 @@
+@obsolete("Use new_greet instead")
+def greet() -> str:
+    return "hello"
+
+def main():
+    print(greet())

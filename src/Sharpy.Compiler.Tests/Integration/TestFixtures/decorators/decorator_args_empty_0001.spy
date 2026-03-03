@@ -1,0 +1,13 @@
+@serializable()
+class Config:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def describe(self):
+        print("name=" + self.name)
+
+def main():
+    c = Config("empty-parens")
+    c.describe()

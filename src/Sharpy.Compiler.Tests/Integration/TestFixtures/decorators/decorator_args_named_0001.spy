@@ -1,0 +1,6 @@
+@system.obsolete("deprecated function", False)
+def old_greet() -> str:
+    return "hi"
+
+def main():
+    print(old_greet())

@@ -1,0 +1,13 @@
+@system.serializable
+class Config:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def greet(self) -> str:
+        return "Config: " + self.name
+
+def main():
+    c = Config("app-settings")
+    print(c.greet())
