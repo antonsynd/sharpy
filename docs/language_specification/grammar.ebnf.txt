@@ -577,10 +577,10 @@ delegate_def    ::= 'delegate' identifier [ type_params ] '(' [ parameters ] ')'
 # -----------------------------------------------------------------------------
 
 decorated_def   ::= decorator { decorator } ( func_def | async_func_def | class_def
-                                            | struct_def | union_def | property_decl )
+                                            | struct_def | union_def | property_decl
+                                            | event_def )
 
-decorator       ::= '@' qualified_name NEWLINE
-                  (* Note: No parameterized decorators in current spec *)
+decorator       ::= '@' qualified_name [ '(' [ arguments ] ')' ] NEWLINE
 
 # -----------------------------------------------------------------------------
 # 2.17 Type Parameters and Constraints
