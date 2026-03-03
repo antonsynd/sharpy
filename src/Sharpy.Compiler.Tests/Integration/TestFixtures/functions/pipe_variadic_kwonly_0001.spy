@@ -1,0 +1,15 @@
+# Test pipe operator with variadic + keyword-only parameters
+# The piped value fills the first parameter, variadic can be empty,
+# and keyword-only params with defaults don't need to be provided.
+
+def with_kwonly(first: int, *, suffix: str = "default") -> str:
+    return f"{first}:{suffix}"
+
+def main():
+    # Basic pipe - kwonly uses default
+    result1: str = 10 |> with_kwonly()
+    print(result1)  # 10:default
+
+    # Pipe with kwonly override
+    result2: str = 20 |> with_kwonly(suffix="custom")
+    print(result2)  # 20:custom

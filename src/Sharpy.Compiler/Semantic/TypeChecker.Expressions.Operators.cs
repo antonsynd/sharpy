@@ -198,13 +198,25 @@ internal partial class TypeChecker
 
             if (symbol is FunctionSymbol funcSymbol)
             {
-                // Validate argument count (include both positional and keyword args)
-                var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
+                // Validate argument count considering variadic and keyword-only params
+                var hasVariadicParam = funcSymbol.Parameters.Any(p => p.IsVariadic);
+                var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
                 var totalParamCount = funcSymbol.Parameters.Count;
+                var positionalParamCount = funcSymbol.Parameters.Count(p => !p.IsKeywordOnly);
 
-                if (totalArgCount < requiredParamCount || totalArgCount > totalParamCount)
+                var tooFew = totalArgCount < requiredParamCount;
+                var tooManyPositional = !hasVariadicParam && allArgTypes.Count > positionalParamCount;
+                var tooMany = !hasVariadicParam && totalArgCount > totalParamCount;
+
+                if (tooFew || tooMany || tooManyPositional)
                 {
-                    if (requiredParamCount == totalParamCount)
+                    if (hasVariadicParam)
+                    {
+                        AddError($"Function '{id.Name}' expects at least {requiredParamCount} arguments but got {totalArgCount} (including piped value)",
+                            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                            span: call.Span);
+                    }
+                    else if (requiredParamCount == totalParamCount)
                     {
                         AddError($"Function '{id.Name}' expects {totalParamCount} arguments but got {totalArgCount} (including piped value)",
                             call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
@@ -220,16 +232,29 @@ internal partial class TypeChecker
                 }
 
                 // Validate positional argument types (piped value + call.Arguments)
+                var variadicParamIndex = funcSymbol.Parameters.ToList().FindIndex(p => p.IsVariadic);
                 for (int i = 0; i < allArgTypes.Count; i++)
                 {
                     var argType = allArgTypes[i];
-                    var paramType = funcSymbol.Parameters[i].Type;
+                    ParameterSymbol param;
+                    if (variadicParamIndex >= 0 && i >= variadicParamIndex)
+                    {
+                        param = funcSymbol.Parameters[variadicParamIndex];
+                    }
+                    else if (i < funcSymbol.Parameters.Count)
+                    {
+                        param = funcSymbol.Parameters[i];
+                    }
+                    else
+                    {
+                        break; // Shouldn't happen due to tooMany check
+                    }
 
-                    if (!argType.IsAssignableTo(paramType))
+                    if (!argType.IsAssignableTo(param.Type))
                     {
                         var argDesc = i == 0 ? "piped value" : $"argument {i}";
                         var argNode = i == 0 ? binOp.Left : call.Arguments[i - 1];
-                        AddError($"Cannot pass {argDesc} of type '{argType.GetDisplayName()}' to parameter '{funcSymbol.Parameters[i].Name}' of type '{paramType.GetDisplayName()}'",
+                        AddError($"Cannot pass {argDesc} of type '{argType.GetDisplayName()}' to parameter '{param.Name}' of type '{param.Type.GetDisplayName()}'",
                             argNode.LineStart,
                             argNode.ColumnStart,
                             code: DiagnosticCodes.Semantic.TypeMismatch,
