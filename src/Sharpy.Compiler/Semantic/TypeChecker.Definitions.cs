@@ -1040,8 +1040,8 @@ internal partial class TypeChecker
         }
 
         // Function-style events: type-check the accessor body
-        // The handler parameter type should be consistent between add and remove
-        // (validated by EventValidator for pairing, here we just type-check the body)
+        // TODO(#262): Validate handler parameter type consistency between add/remove accessors (SPY0374)
+        // Blocked by #260 (self parameter scope resolution in function-style event bodies)
         foreach (var stmt in eventDef.Body)
         {
             CheckStatement(stmt);
