@@ -162,9 +162,12 @@ internal partial class TypeChecker
                     var handlerType = CheckExpression(assignment.Value);
 
                     // Verify handler type matches event type (if event type is resolved)
+                    // Use IsAssignable (not IsAssignableTo) to handle FunctionType-to-delegate
+                    // structural compatibility (e.g., a function with matching signature can
+                    // subscribe to an event whose type is a named delegate).
                     if (eventSymbol.Type is not UnknownType && handlerType is not UnknownType)
                     {
-                        if (!handlerType.IsAssignableTo(eventSymbol.Type))
+                        if (!IsAssignable(handlerType, eventSymbol.Type))
                         {
                             AddError(
                                 $"Handler type '{handlerType.GetDisplayName()}' is not compatible with event type '{eventSymbol.Type.GetDisplayName()}'",
