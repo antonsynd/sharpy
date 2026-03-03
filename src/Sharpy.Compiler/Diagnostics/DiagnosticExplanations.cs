@@ -1142,6 +1142,13 @@ public static class DiagnosticExplanations
             "abstract event on_click(self, handler: EventHandler):  # error: abstract events cannot have implementation\n    pass",
             "Remove the body or remove the abstract keyword:\nabstract event on_click(self, handler: EventHandler)  # no body\n\nOr:\nevent add on_click(self, handler: EventHandler):\n    pass");
 
+        // ── Decorator argument validation (SPY0425) ─────────────────────
+
+        Add(dict, DiagnosticCodes.Validation.NonConstantDecoratorArgument, "Decorator argument must be a compile-time constant", "Validation",
+            "Custom decorator arguments must be compile-time constant expressions because they map to C# attribute arguments. Allowed: string, int, float, bool literals, None, enum member access (e.g., MyEnum.value), and type(X).",
+            "@custom(1 + 2)  # error: arithmetic expression is not a compile-time constant\ndef foo():\n    pass",
+            "Use a literal value instead:\n@custom(3)\ndef foo():\n    pass");
+
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
         Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",
