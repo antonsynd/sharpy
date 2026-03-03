@@ -1260,7 +1260,7 @@ internal partial class TypeChecker
         if (owningType == null)
             return null;
 
-        return owningType.Events.FirstOrDefault(e => e.Name == memberAccess.Member);
+        return FindEventInHierarchy(owningType, memberAccess.Member);
     }
 }
 
