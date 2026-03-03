@@ -453,6 +453,18 @@ public partial class Parser
             }
 
             var decoratorName = string.Join(".", qualifiedParts);
+
+            // Parse optional argument list: @decorator(args)
+            var arguments = ImmutableArray<Expression>.Empty;
+            var keywordArguments = ImmutableArray<KeywordArgument>.Empty;
+            if (Current.Type == TokenType.LeftParen)
+            {
+                Advance();  // Skip (
+                var (args, kwargs) = ParseCallArguments();
+                arguments = args.ToImmutableArray();
+                keywordArguments = kwargs.ToImmutableArray();
+            }
+
             var decoratorEndToken = Previous;
             var decoratorEndLine = decoratorEndToken.Line;
             var decoratorEndColumn = decoratorEndToken.Column + decoratorEndToken.Value.Length;
@@ -460,6 +472,8 @@ public partial class Parser
             decorators.Add(new Decorator
             {
                 Name = decoratorName,
+                Arguments = arguments,
+                KeywordArguments = keywordArguments,
                 QualifiedParts = qualifiedParts.Count > 1 ? qualifiedParts.ToImmutableArray() : ImmutableArray<string>.Empty,
                 LineStart = decoratorStartLine,
                 ColumnStart = decoratorStartColumn,
@@ -509,6 +523,99 @@ public partial class Parser
             Assignment => throw ReportError("Decorators cannot be applied to assignments — only functions, classes, structs, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span),
             _ => throw ReportError("Decorators can only be applied to functions, classes, structs, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span)
         };
+    }
+
+    /// <summary>
+    /// Parses a parenthesized argument list: positional args, keyword args, spread elements.
+    /// The opening '(' must already be consumed. Consumes through the closing ')'.
+    /// Used by both function call parsing and decorator argument parsing.
+    /// </summary>
+    private (List<Expression> Args, List<KeywordArgument> Kwargs) ParseCallArguments()
+    {
+        var args = new List<Expression>();
+        var kwargs = new List<KeywordArgument>();
+        var seenKeywordArg = false;
+
+        if (Current.Type != TokenType.RightParen)
+        {
+            _lastLoopPosition = -1;
+            do
+            {
+                if (!CheckLoopProgress())
+                    break;
+
+                // Check for dict spread argument: **expr
+                if (Current.Type == TokenType.DoubleStar)
+                {
+                    throw ReportError("Dict spread arguments (**expr) in function calls are not yet supported",
+                        Current.Line, Current.Column, DiagnosticCodes.Parser.DictSpreadCallNotSupported, span: CurrentSpan);
+                }
+                // Check for spread argument: *expr
+                else if (Current.Type == TokenType.Star)
+                {
+                    if (seenKeywordArg)
+                    {
+                        throw ReportError("Spread argument cannot follow keyword argument", Current.Line, Current.Column, DiagnosticCodes.Parser.PositionalAfterKeyword, span: CurrentSpan);
+                    }
+                    var starToken = Current;
+                    Advance();
+                    var operand = ParseExpression();
+                    args.Add(new SpreadElement
+                    {
+                        Value = operand,
+                        LineStart = starToken.Line,
+                        ColumnStart = starToken.Column,
+                        LineEnd = operand.LineEnd,
+                        ColumnEnd = operand.ColumnEnd,
+                        Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
+                    });
+                }
+                // Check for keyword argument
+                else if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
+                {
+                    seenKeywordArg = true;
+                    var kwargStartLine = Current.Line;
+                    var kwargStartColumn = Current.Column;
+                    var name = Current.Value;
+                    Advance();  // Skip name
+                    Advance();  // Skip =
+                    var value = ParseExpression();
+                    var kwargEndLine = Peek(-1).Line;
+                    var kwargEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+                    kwargs.Add(new KeywordArgument
+                    {
+                        Name = name,
+                        Value = value,
+                        LineStart = kwargStartLine,
+                        ColumnStart = kwargStartColumn,
+                        LineEnd = kwargEndLine,
+                        ColumnEnd = kwargEndColumn
+                    });
+                }
+                else
+                {
+                    if (seenKeywordArg)
+                    {
+                        throw ReportError("Positional argument cannot follow keyword argument", Current.Line, Current.Column, DiagnosticCodes.Parser.PositionalAfterKeyword, span: CurrentSpan);
+                    }
+                    args.Add(ParseExpression());
+                }
+
+                if (Current.Type == TokenType.Comma)
+                {
+                    Advance();
+                    // Allow trailing comma: foo(1, 2, 3,)
+                    if (Current.Type == TokenType.RightParen)
+                        break;
+                }
+                else
+                    break;
+            } while (true);
+        }
+
+        Expect(TokenType.RightParen);
+        return (args, kwargs);
     }
 
     /// <summary>
