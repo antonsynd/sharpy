@@ -81,6 +81,136 @@ class Point:
         classDef.Decorators[0].Name.Should().Be("dataclass");
     }
 
+    [Fact]
+    public void ParseDecoratorWithStringArgOnFunction()
+    {
+        var source = @"
+@obsolete(""Use new_method instead"")
+def old_method():
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Decorators.Should().HaveCount(1);
+        var dec = funcDef.Decorators[0];
+        dec.Name.Should().Be("obsolete");
+        dec.Arguments.Should().HaveCount(1);
+        dec.Arguments[0].Should().BeOfType<StringLiteral>().Which.Value.Should().Be("Use new_method instead");
+        dec.KeywordArguments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParseDecoratorWithStringArgOnClass()
+    {
+        var source = @"
+@obsolete(""deprecated class"")
+class OldThing:
+    pass
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        classDef.Decorators.Should().HaveCount(1);
+        var dec = classDef.Decorators[0];
+        dec.Name.Should().Be("obsolete");
+        dec.Arguments.Should().HaveCount(1);
+        dec.Arguments[0].Should().BeOfType<StringLiteral>().Which.Value.Should().Be("deprecated class");
+    }
+
+    [Fact]
+    public void ParseDottedDecoratorName()
+    {
+        var source = @"
+@system.serializable
+class Data:
+    pass
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        classDef.Decorators.Should().HaveCount(1);
+        var dec = classDef.Decorators[0];
+        dec.Name.Should().Be("system.serializable");
+        dec.QualifiedParts.Should().HaveCount(2);
+        dec.QualifiedParts[0].Should().Be("system");
+        dec.QualifiedParts[1].Should().Be("serializable");
+        dec.Arguments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParseDecoratorWithKeywordArg()
+    {
+        var source = @"
+@dll_import(""lib"", entry_point=""Func"")
+def my_func():
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Decorators.Should().HaveCount(1);
+        var dec = funcDef.Decorators[0];
+        dec.Name.Should().Be("dll_import");
+        dec.Arguments.Should().HaveCount(1);
+        dec.Arguments[0].Should().BeOfType<StringLiteral>().Which.Value.Should().Be("lib");
+        dec.KeywordArguments.Should().HaveCount(1);
+        dec.KeywordArguments[0].Name.Should().Be("entry_point");
+        dec.KeywordArguments[0].Value.Should().BeOfType<StringLiteral>().Which.Value.Should().Be("Func");
+    }
+
+    [Fact]
+    public void ParseDecoratorEmptyArgs()
+    {
+        var source = @"
+@decorator()
+def my_func():
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Decorators.Should().HaveCount(1);
+        var dec = funcDef.Decorators[0];
+        dec.Name.Should().Be("decorator");
+        dec.Arguments.Should().BeEmpty();
+        dec.KeywordArguments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParseDecoratorWithTrailingComma()
+    {
+        var source = @"
+@attr(""a"",)
+def my_func():
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Decorators.Should().HaveCount(1);
+        var dec = funcDef.Decorators[0];
+        dec.Name.Should().Be("attr");
+        dec.Arguments.Should().HaveCount(1);
+        dec.Arguments[0].Should().BeOfType<StringLiteral>().Which.Value.Should().Be("a");
+    }
+
+    [Fact]
+    public void ParseDeeplyQualifiedDecoratorWithArgs()
+    {
+        var source = @"
+@system.runtime.interop_services.dll_import(""lib"")
+def my_func():
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Decorators.Should().HaveCount(1);
+        var dec = funcDef.Decorators[0];
+        dec.Name.Should().Be("system.runtime.interop_services.dll_import");
+        dec.QualifiedParts.Should().HaveCount(4);
+        dec.QualifiedParts[0].Should().Be("system");
+        dec.QualifiedParts[1].Should().Be("runtime");
+        dec.QualifiedParts[2].Should().Be("interop_services");
+        dec.QualifiedParts[3].Should().Be("dll_import");
+        dec.Arguments.Should().HaveCount(1);
+        dec.Arguments[0].Should().BeOfType<StringLiteral>().Which.Value.Should().Be("lib");
+    }
+
     #endregion
 
     #region Struct Definitions
