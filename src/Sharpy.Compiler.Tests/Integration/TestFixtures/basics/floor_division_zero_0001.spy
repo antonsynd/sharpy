@@ -1,0 +1,34 @@
+# Test floor division by zero raises ZeroDivisionError
+# Python: 10 // 0 -> ZeroDivisionError("integer division or modulo by zero")
+# Python: 10.0 // 0.0 -> ZeroDivisionError("float floor division by zero")
+
+def main():
+    # Integer floor division by zero
+    try:
+        x: int = 10 // 0
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("caught int zero div")
+
+    # Float floor division by zero
+    try:
+        y: float = 10.0 // 0.0
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("caught float zero div")
+
+    # Mixed: int // float(0)
+    try:
+        z: float = 10 // 0.0
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("caught mixed zero div")
+
+    # Augmented assignment: x //= 0
+    a: int = 42
+    try:
+        a //= 0
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("caught augmented zero div")
+    print(a)
