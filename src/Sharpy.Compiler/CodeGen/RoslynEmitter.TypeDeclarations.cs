@@ -1013,6 +1013,93 @@ internal partial class RoslynEmitter
         return TokenList(tokens);
     }
 
+    /// <summary>
+    /// Generates C# attribute lists from decorators that are not known modifier decorators.
+    /// Unknown decorators are emitted as C# attributes with name mangling (snake_case → PascalCase).
+    /// Dotted names become qualified names. Arguments and keyword arguments are mapped to attribute arguments.
+    /// </summary>
+    private SyntaxList<AttributeListSyntax> GenerateAttributeListsFromDecorators(IReadOnlyList<Decorator> decorators)
+    {
+        var attributeLists = new List<AttributeListSyntax>();
+
+        foreach (var decorator in decorators)
+        {
+            if (DecoratorNames.KnownModifierDecorators.Contains(decorator.Name))
+                continue;
+
+            // Build the attribute name
+            NameSyntax attributeName;
+            if (decorator.QualifiedParts.Length > 0)
+            {
+                // Dotted name: build QualifiedNameSyntax from parts, each PascalCase-mangled
+                attributeName = IdentifierName(NameMangler.ToPascalCase(decorator.QualifiedParts[0]));
+                for (int i = 1; i < decorator.QualifiedParts.Length; i++)
+                {
+                    attributeName = QualifiedName(attributeName, IdentifierName(NameMangler.ToPascalCase(decorator.QualifiedParts[i])));
+                }
+            }
+            else
+            {
+                attributeName = IdentifierName(NameMangler.ToPascalCase(decorator.Name));
+            }
+
+            var attribute = Attribute(attributeName);
+
+            // Build attribute argument list if there are arguments
+            if (decorator.Arguments.Length > 0 || decorator.KeywordArguments.Length > 0)
+            {
+                var args = new List<AttributeArgumentSyntax>();
+
+                // Positional arguments
+                foreach (var arg in decorator.Arguments)
+                {
+                    args.Add(AttributeArgument(GenerateAttributeArgumentExpression(arg)));
+                }
+
+                // Keyword arguments: name=value → NameEquals
+                foreach (var kwArg in decorator.KeywordArguments)
+                {
+                    var nameEquals = NameEquals(IdentifierName(NameMangler.ToPascalCase(kwArg.Name)));
+                    args.Add(AttributeArgument(GenerateAttributeArgumentExpression(kwArg.Value))
+                        .WithNameEquals(nameEquals));
+                }
+
+                attribute = attribute.WithArgumentList(AttributeArgumentList(SeparatedList(args)));
+            }
+
+            attributeLists.Add(AttributeList(SingletonSeparatedList(attribute)));
+        }
+
+        return List(attributeLists);
+    }
+
+    /// <summary>
+    /// Generates a C# expression for a decorator argument.
+    /// Only compile-time constant expressions are valid (validated by DecoratorValidator).
+    /// Handles: literals, None → null, type(X) → typeof(X), member access (enum values).
+    /// </summary>
+    private ExpressionSyntax GenerateAttributeArgumentExpression(Expression expr)
+    {
+        return expr switch
+        {
+            StringLiteral strLit => LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(strLit.Value)),
+            IntegerLiteral intLit => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(intLit.Value)),
+            FloatLiteral floatLit => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(floatLit.Value)),
+            BooleanLiteral boolLit => LiteralExpression(boolLit.Value ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
+            NoneLiteral => LiteralExpression(SyntaxKind.NullLiteralExpression),
+            // type(X) → typeof(X)
+            FunctionCall { Function: Identifier { Name: "type" }, Arguments.Length: 1, KeywordArguments.Length: 0 } call
+                => TypeOfExpression(_typeMapper.MapTypeFromExpression(call.Arguments[0])),
+            // Member access (e.g., StringComparison.ordinal → StringComparison.Ordinal)
+            MemberAccess { Object: Identifier objId } memberAccess => MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(NameMangler.ToPascalCase(objId.Name)),
+                IdentifierName(NameMangler.ToPascalCase(memberAccess.Member))),
+            // Fallback: use the general expression generator for anything else
+            _ => GenerateExpression(expr),
+        };
+    }
+
     #endregion
 
     #region Union Declarations
