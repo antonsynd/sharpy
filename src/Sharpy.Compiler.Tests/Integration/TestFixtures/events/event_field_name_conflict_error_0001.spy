@@ -1,0 +1,9 @@
+# Event cannot share name with a field (SPY0421)
+delegate MyHandler(sender: object, data: str) -> None
+
+class Publisher:
+    on_change: int = 0
+    event on_change: MyHandler
+
+def main():
+    print("unreachable")

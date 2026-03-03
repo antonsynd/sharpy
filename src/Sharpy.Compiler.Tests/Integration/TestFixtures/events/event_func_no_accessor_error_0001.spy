@@ -1,0 +1,9 @@
+# Function-style event without add/remove accessor keyword (SPY0136)
+delegate MyHandler(sender: object, data: str) -> None
+
+class Publisher:
+    event on_change(self, handler: MyHandler):
+        pass
+
+def main():
+    print("unreachable")

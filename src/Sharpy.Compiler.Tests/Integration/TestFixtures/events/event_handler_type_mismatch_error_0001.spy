@@ -1,0 +1,12 @@
+# Handler type incompatible with event delegate type (SPY0376)
+delegate MsgHandler(msg: str) -> None
+
+class Publisher:
+    event on_msg: MsgHandler
+
+def wrong_handler(x: int, y: int) -> int:
+    return x + y
+
+def main():
+    p: Publisher = Publisher()
+    p.on_msg += wrong_handler
