@@ -1165,6 +1165,44 @@ internal partial class TypeChecker
     /// </summary>
     private static bool TryGetConstantIntIndex(Expression expr, out int value)
         => AstHelper.TryGetConstantIntIndex(expr, out value);
+
+    /// <summary>
+    /// Attempts to resolve a member access expression to an event symbol.
+    /// Returns the EventSymbol if the member access refers to an event, null otherwise.
+    /// Handles both self.event_name and obj.event_name patterns.
+    /// </summary>
+    private EventSymbol? TryResolveEventAccess(MemberAccess memberAccess)
+    {
+        // Resolve the object type to find the owning type
+        TypeSymbol? owningType = null;
+
+        if (memberAccess.Object is Identifier objId)
+        {
+            if (objId.Name == PythonNames.Self && _currentClass != null)
+            {
+                owningType = _currentClass;
+            }
+            else
+            {
+                var symbol = _symbolTable.Lookup(objId.Name);
+                if (symbol is VariableSymbol varSym)
+                {
+                    var varType = GetVariableType(varSym);
+                    if (varType is UserDefinedType udt)
+                        owningType = udt.Symbol;
+                }
+                else if (symbol is TypeSymbol ts)
+                {
+                    owningType = ts;
+                }
+            }
+        }
+
+        if (owningType == null)
+            return null;
+
+        return owningType.Events.FirstOrDefault(e => e.Name == memberAccess.Member);
+    }
 }
 
 internal class SemanticAnalysisException : Exception

@@ -135,6 +135,57 @@ internal partial class TypeChecker
             return;
         }
 
+        // Check if the assignment target is an event member access
+        if (assignment.Target is MemberAccess eventMa)
+        {
+            var eventSymbol = TryResolveEventAccess(eventMa);
+            if (eventSymbol != null)
+            {
+                if (assignment.Operator == AssignmentOperator.Assign)
+                {
+                    // Direct assignment to events is not allowed from outside
+                    AddError(
+                        $"Cannot assign directly to event '{eventMa.Member}'. Use '+=' to subscribe or '-=' to unsubscribe.",
+                        assignment.LineStart, assignment.ColumnStart,
+                        DiagnosticCodes.Semantic.DirectEventAssignment,
+                        assignment.Span);
+                    return;
+                }
+
+                if (assignment.Operator == AssignmentOperator.PlusAssign
+                    || assignment.Operator == AssignmentOperator.MinusAssign)
+                {
+                    // Mark as event access for codegen
+                    _semanticInfo.MarkAsEventAccess(assignment.Target);
+
+                    // Type-check the handler value
+                    var handlerType = CheckExpression(assignment.Value);
+
+                    // Verify handler type matches event type (if event type is resolved)
+                    if (eventSymbol.Type is not UnknownType && handlerType is not UnknownType)
+                    {
+                        if (!handlerType.IsAssignableTo(eventSymbol.Type))
+                        {
+                            AddError(
+                                $"Handler type '{handlerType.GetDisplayName()}' is not compatible with event type '{eventSymbol.Type.GetDisplayName()}'",
+                                assignment.Value.LineStart, assignment.Value.ColumnStart,
+                                DiagnosticCodes.Semantic.EventHandlerTypeMismatch,
+                                assignment.Value.Span);
+                        }
+                    }
+                    return;
+                }
+
+                // Other augmented operators are not valid on events
+                AddError(
+                    $"Events only support '+=' and '-=' operators",
+                    assignment.LineStart, assignment.ColumnStart,
+                    DiagnosticCodes.Semantic.DirectEventAssignment,
+                    assignment.Span);
+                return;
+            }
+        }
+
         // Check target and value types
         var targetType = CheckExpression(assignment.Target);
         // For assignments to self.field, use the DECLARED field type rather than the
