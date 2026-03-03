@@ -1,0 +1,15 @@
+# Base module - defines a base class for cross-module inheritance
+
+class Animal:
+    name: str
+    sound: str
+
+    def __init__(self, name: str, sound: str):
+        self.name = name
+        self.sound = sound
+
+    def speak(self) -> str:
+        return self.name + " says " + self.sound
+
+    def describe(self) -> str:
+        return "Animal: " + self.name

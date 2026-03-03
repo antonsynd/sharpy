@@ -1,0 +1,41 @@
+# Main file - tests cross-module class inheritance
+# This verifies that classes can extend imported base classes
+
+from base_mod import Animal
+
+class Dog(Animal):
+    breed: str
+
+    def __init__(self, name: str, breed: str):
+        super().__init__(name, "woof")
+        self.breed = breed
+
+    def describe(self) -> str:
+        return "Dog: " + self.name + " (" + self.breed + ")"
+
+class Cat(Animal):
+    indoor: bool
+
+    def __init__(self, name: str, indoor: bool):
+        super().__init__(name, "meow")
+        self.indoor = indoor
+
+def main():
+    dog: Dog = Dog("Rex", "Labrador")
+    cat: Cat = Cat("Whiskers", True)
+
+    # Test inherited method
+    print(dog.speak())
+    print(cat.speak())
+
+    # Test overridden method
+    print(dog.describe())
+
+    # Test inherited field access
+    print(dog.name)
+    print(cat.sound)
+
+    # Test isinstance with imported base class
+    a: Animal = dog
+    print(isinstance(a, Dog))
+    print(isinstance(a, Animal))
