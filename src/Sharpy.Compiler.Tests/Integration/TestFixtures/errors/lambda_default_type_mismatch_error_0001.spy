@@ -1,0 +1,4 @@
+# Lambda default parameter with type mismatch
+def main():
+    f = lambda x: int, y: int = "hello": x + y
+    print(f(1, 2))
