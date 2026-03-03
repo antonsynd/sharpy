@@ -170,7 +170,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | ~~12.1~~ | ~~Delegate type declarations~~ | ~~M~~ | ~~Completed.~~ `DelegateDef` AST node; `ParseDelegateDef()` parser; `ResolveDelegateDeclaration()` + `CheckDelegate()` semantics; `GenerateDelegateDeclaration()` codegen emits C# delegate type. Lambda-to-delegate assignment + delegate invocation supported. 6 test fixtures (5 positive, 1 error). |
 | ~~12.2~~ | ~~Generic variance (`out T`, `in T`)~~ | ~~L~~ | ~~Completed.~~ `TypeParameterVariance` enum on `TypeParameterDef`; parser recognizes `out`/`in` annotations; `VarianceValidator` (Order 415) checks position correctness (SPY0417–SPY0419); codegen emits C# `out`/`in` keywords; `SymbolSerializer` v6. 10 test fixtures (6 positive, 4 error). |
 | 12.3 | Events | L | Two forms mirroring property syntax: **auto-events** (`event name: DelegateType` → C# field-like event) and **function-style events** (`event add`/`event remove name(self, handler: T):` → C# event accessors). Event types must be named delegate types (not inline function types — see SRP-0003). `+=`/`-=` subscribe/unsubscribe; `?.invoke()` thread-safe invocation; only declaring class can raise. Supports `@virtual`/`@abstract`/`@override`/`@static`/`@final` decorators. Interface event declarations. `TokenType.Event` already lexed but not dispatched. |
-| 12.4 | Custom decorator arguments | M | Extend `Decorator` record with `Arguments`; parse `@decorator(args)`; attribute mapping |
+| ~~12.4~~ | ~~Custom decorator arguments~~ | ~~M~~ | ~~Completed.~~ `Decorator` record extended with `Arguments`, `KeywordArguments`, `QualifiedParts`; parser handles `@dotted.name(args, keyword=value)`; `DecoratorValidator` rejects args on built-in decorators (SPY0322) and validates compile-time constants (SPY0425); codegen emits C# attributes via `SyntaxFactory.AttributeList()` with name mangling, dotted names, positional + named args, `type(X)` → `typeof(X)`. |
 | 12.5 | Spec gap audit + integration test sweep | M | Systematic pass through all 112 spec files vs. test fixtures; file issues for any remaining gaps |
 
 **Key files:** `Statement.Future.cs` (new `EventDef` AST), `Parser.Definitions.cs` (`ParseEventDef()`), `NameResolver.cs` (`ResolveEventDeclaration()`), `TypeChecker.Definitions.cs` (`CheckEvent()`), `RoslynEmitter.ClassMembers.cs` (`GenerateAutoEvent()`/`GenerateFunctionStyleEvent()`), `RoslynEmitter.Statements.cs` (event `+=`/`-=` codegen)
@@ -189,9 +189,9 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 | **9** | v0.2.3 | Generators & Iterators | ~~3~~ ✅ Complete | `yield`/`yield from`, generator inference, 4 new diagnostics (SPY0265–SPY0269) |
 | **10** | v0.2.4 | Async/Await | ~~6~~ ✅ Complete | `async def`, `await`, `async for`, `async with` (dual protocol), async generators, `asyncio.gather` |
 | **11** | v0.2.5 | Advanced Functions | ~~5~~ ✅ Complete | ~~Pos-only/kw-only~~ ✅, ~~partial application~~ ✅ (11.3 `@kwargs` + 11.4 `@dynamic_kwargs` dropped — see Out of Scope) |
-| **12** | v0.2.6 | Type System & Polish | ~~2~~ ✅ + 3 remaining | ~~Delegates~~ ✅, ~~variance~~ ✅, events, custom decorators, spec audit |
+| **12** | v0.2.6 | Type System & Polish | ~~3~~ ✅ + 2 remaining | ~~Delegates~~ ✅, ~~variance~~ ✅, events, ~~custom decorators~~ ✅, spec audit |
 
-**Total: 3 remaining items in Phase 12 (v0.2.6)** — Phases 6–11 all complete (33 items delivered, 2 dropped); Phase 12.1–12.2 complete (delegates + variance)
+**Total: 2 remaining items in Phase 12 (v0.2.6)** — Phases 6–11 all complete (33 items delivered, 2 dropped); Phase 12.1–12.2 + 12.4 complete (delegates, variance, custom decorator args)
 
 ---
 
@@ -204,7 +204,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 ```
 
 - ✅ Phases 6–11 all complete
-- **Phase 12 in progress** — 2 of 5 items complete (delegates, variance); 3 remaining: events, custom decorator args, spec audit
+- **Phase 12 in progress** — 3 of 5 items complete (delegates, variance, custom decorator args); 2 remaining: events, spec audit
 - ~~12.1 (delegates) → 12.2 (variance) is the only dependency chain~~; 12.3–12.5 are independent
 
 ---
@@ -216,7 +216,7 @@ Implementation plans Phase 1–5 were drafted post-v0.1.x. Several items from th
 3. ~~**Phase 8 = highest impact** — pattern matching + tagged unions enable idiomatic Sharpy~~ ✅ Complete (8.1–8.8 all done: match expressions, all pattern types, tagged unions, union case patterns, exhaustiveness checking)
 4. ~~**Phase 9 before 10** — generators are prerequisite for async generators~~ ✅ Done
 5. ~~**Phase 10 completes the async story** — last major syntax feature~~ ✅ Complete (10.1–10.6 all done: async def, await, async for/with, async generators with yield from, asyncio.gather mapping)
-6. **Phase 12 in progress** — Phases 6–11 complete; 12.1 (delegates) + 12.2 (variance) complete; remaining: events, custom decorator args, and gap-filling
+6. **Phase 12 in progress** — Phases 6–11 complete; 12.1 (delegates) + 12.2 (variance) + 12.4 (custom decorator args) complete; remaining: events and gap-filling
 
 ---
 
