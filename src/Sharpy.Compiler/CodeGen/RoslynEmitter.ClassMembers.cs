@@ -469,6 +469,13 @@ internal partial class RoslynEmitter
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
 
+        // Add C# attributes from unknown decorators
+        var ctorAttributes = GenerateAttributeListsFromDecorators(func.Decorators);
+        if (ctorAttributes.Count > 0)
+        {
+            constructor = constructor.WithAttributeLists(ctorAttributes);
+        }
+
         // Add constructor initializer if present (: base(...) or : this(...))
         if (constructorInitializer != null)
         {
@@ -722,6 +729,13 @@ internal partial class RoslynEmitter
         var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)
             .WithParameterList(ParameterList(SeparatedList(parameters)));
+
+        // Add C# attributes from unknown decorators
+        var methodAttributes = GenerateAttributeListsFromDecorators(func.Decorators);
+        if (methodAttributes.Count > 0)
+        {
+            method = method.WithAttributeLists(methodAttributes);
+        }
 
         if (isAsync)
         {
@@ -1640,6 +1654,13 @@ internal partial class RoslynEmitter
             property = property.WithModifiers(modifiers);
         }
 
+        // Add C# attributes from unknown decorators on the getter/first property
+        var propAttributes = GenerateAttributeListsFromDecorators(modifierSource.Decorators);
+        if (propAttributes.Count > 0)
+        {
+            property = property.WithAttributeLists(propAttributes);
+        }
+
         return property;
     }
 
@@ -1748,6 +1769,13 @@ internal partial class RoslynEmitter
         else
         {
             property = property.WithModifiers(modifiers);
+        }
+
+        // Add C# attributes from unknown decorators
+        var autoPropAttributes = GenerateAttributeListsFromDecorators(propDef.Decorators);
+        if (autoPropAttributes.Count > 0)
+        {
+            property = property.WithAttributeLists(autoPropAttributes);
         }
 
         // Add initializer if default value is present
@@ -1889,6 +1917,13 @@ internal partial class RoslynEmitter
         else
         {
             property = property.WithModifiers(modifiers);
+        }
+
+        // Add C# attributes from unknown decorators
+        var funcPropAttributes = GenerateAttributeListsFromDecorators(propDef.Decorators);
+        if (funcPropAttributes.Count > 0)
+        {
+            property = property.WithAttributeLists(funcPropAttributes);
         }
 
         return property;
@@ -2053,8 +2088,17 @@ internal partial class RoslynEmitter
             .WithVariables(SingletonSeparatedList(
                 VariableDeclarator(Identifier(eventName))));
 
-        return EventFieldDeclaration(declaration)
+        var eventField = EventFieldDeclaration(declaration)
             .WithModifiers(modifiers);
+
+        // Add C# attributes from unknown decorators
+        var eventAttributes = GenerateAttributeListsFromDecorators(eventDef.Decorators);
+        if (eventAttributes.Count > 0)
+        {
+            eventField = eventField.WithAttributeLists(eventAttributes);
+        }
+
+        return eventField;
     }
 
     /// <summary>
@@ -2151,9 +2195,18 @@ internal partial class RoslynEmitter
             accessors.Add(accessor);
         }
 
-        return EventDeclaration(eventType, eventName)
+        var eventDecl = EventDeclaration(eventType, eventName)
             .WithModifiers(modifiers)
             .WithAccessorList(AccessorList(List(accessors)));
+
+        // Add C# attributes from unknown decorators
+        var funcEventAttributes = GenerateAttributeListsFromDecorators(first.Decorators);
+        if (funcEventAttributes.Count > 0)
+        {
+            eventDecl = eventDecl.WithAttributeLists(funcEventAttributes);
+        }
+
+        return eventDecl;
     }
 
     /// <summary>

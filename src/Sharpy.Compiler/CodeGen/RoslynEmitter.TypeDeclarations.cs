@@ -91,6 +91,13 @@ internal partial class RoslynEmitter
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
 
+        // Add C# attributes from unknown decorators
+        var attributes = GenerateAttributeListsFromDecorators(func.Decorators);
+        if (attributes.Count > 0)
+        {
+            method = method.WithAttributeLists(attributes);
+        }
+
         if (isAsync)
         {
             method = method.AddModifiers(Token(SyntaxKind.AsyncKeyword));
@@ -281,6 +288,13 @@ internal partial class RoslynEmitter
         // Create class declaration
         var classDecl = ClassDeclaration(className)
             .WithModifiers(modifiers);
+
+        // Add C# attributes from unknown decorators
+        var classAttributes = GenerateAttributeListsFromDecorators(classDef.Decorators);
+        if (classAttributes.Count > 0)
+        {
+            classDecl = classDecl.WithAttributeLists(classAttributes);
+        }
 
         // Add type parameters if generic
         if (classDef.TypeParameters.Length > 0)
@@ -652,6 +666,13 @@ internal partial class RoslynEmitter
         // Create struct declaration
         var structDecl = StructDeclaration(structName)
             .WithModifiers(modifiers);
+
+        // Add C# attributes from unknown decorators
+        var structAttributes = GenerateAttributeListsFromDecorators(structDef.Decorators);
+        if (structAttributes.Count > 0)
+        {
+            structDecl = structDecl.WithAttributeLists(structAttributes);
+        }
 
         // Add type parameters if generic
         if (structDef.TypeParameters.Length > 0)
