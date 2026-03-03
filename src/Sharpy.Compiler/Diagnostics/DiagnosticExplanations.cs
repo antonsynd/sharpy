@@ -334,6 +334,16 @@ public static class DiagnosticExplanations
             "result = f(g(_)(_))",
             "Break into separate expressions:\ninner = g(_)\nresult = f(inner(_))");
 
+        Add(dict, DiagnosticCodes.Parser.AutoEventWithBody, "Auto-event with accessor keyword", "Parser",
+            "An auto-event declaration ('event name: DelegateType') must not have an 'add' or 'remove' accessor keyword. Auto-events generate backing delegate fields and accessors automatically.",
+            "event add on_click: EventHandler",
+            "Remove the accessor keyword for auto-events:\n  event on_click: EventHandler\n\nOr use function-style syntax for custom accessors:\n  event add on_click(self, handler: EventHandler):\n      ...");
+
+        Add(dict, DiagnosticCodes.Parser.FunctionStyleEventWithoutAccessor, "Function-style event without accessor", "Parser",
+            "A function-style event with parameters requires an 'add' or 'remove' accessor keyword. Without it, the parser cannot determine which accessor is being defined.",
+            "event on_click(self, handler: EventHandler):\n    ...",
+            "Add 'add' or 'remove' keyword:\n  event add on_click(self, handler: EventHandler):\n      ...\n  event remove on_click(self, handler: EventHandler):\n      ...");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",

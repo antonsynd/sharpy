@@ -243,6 +243,9 @@ public abstract class AstVisitor
             case DelegateDef n:
                 VisitDelegateDef(n);
                 break;
+            case EventDef n:
+                VisitEventDef(n);
+                break;
 
             // Patterns
             case WildcardPattern n:
@@ -465,6 +468,7 @@ public abstract class AstVisitor
     public virtual void VisitMatchStatement(MatchStatement node) => VisitStatement(node);
     public virtual void VisitUnionDef(UnionDef node) => VisitStatement(node);
     public virtual void VisitDelegateDef(DelegateDef node) => VisitStatement(node);
+    public virtual void VisitEventDef(EventDef node) => VisitStatement(node);
 
     #endregion
 
@@ -599,6 +603,7 @@ public abstract class AstVisitor<T>
             MatchStatement n => VisitMatchStatement(n),
             UnionDef n => VisitUnionDef(n),
             DelegateDef n => VisitDelegateDef(n),
+            EventDef n => VisitEventDef(n),
 
             // Patterns
             WildcardPattern n => VisitWildcardPattern(n),
@@ -790,6 +795,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitMatchStatement(MatchStatement node) => VisitStatement(node);
     public virtual T VisitUnionDef(UnionDef node) => VisitStatement(node);
     public virtual T VisitDelegateDef(DelegateDef node) => VisitStatement(node);
+    public virtual T VisitEventDef(EventDef node) => VisitStatement(node);
 
     #endregion
 

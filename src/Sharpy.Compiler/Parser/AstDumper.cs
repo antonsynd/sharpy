@@ -434,6 +434,42 @@ internal class AstDumper
                 }
                 break;
 
+            case EventDef eventDef:
+                _output.AppendLine($"{indent}{prefix}EventDef @ L{node.LineStart}:C{node.ColumnStart}");
+                _output.AppendLine($"{indent}{childPrefix}Name: {eventDef.Name}");
+                _output.AppendLine($"{indent}{childPrefix}Accessor: {eventDef.Accessor}");
+                _output.AppendLine($"{indent}{childPrefix}FunctionStyle: {eventDef.IsFunctionStyle}");
+                if (eventDef.Type != null)
+                    _output.AppendLine($"{indent}{childPrefix}Type: {eventDef.Type.Name}");
+                if (eventDef.Parameters.Length > 0)
+                {
+                    _output.AppendLine($"{indent}{childPrefix}Parameters: [{eventDef.Parameters.Length}]");
+                    for (int i = 0; i < eventDef.Parameters.Length; i++)
+                    {
+                        DumpParameter(eventDef.Parameters[i], depth + 2, i == eventDef.Parameters.Length - 1);
+                    }
+                }
+                if (eventDef.IsFunctionStyle && eventDef.Body.Length > 0)
+                {
+                    _output.AppendLine($"{indent}{childPrefix}Body: [{eventDef.Body.Length}]");
+                    for (int i = 0; i < eventDef.Body.Length; i++)
+                    {
+                        DumpNode(eventDef.Body[i], depth + 2, i == eventDef.Body.Length - 1);
+                    }
+                }
+                if (eventDef.Decorators.Length > 0)
+                {
+                    _output.AppendLine($"{indent}{childPrefix}Decorators: [{eventDef.Decorators.Length}]");
+                    for (int i = 0; i < eventDef.Decorators.Length; i++)
+                    {
+                        var decorator = eventDef.Decorators[i];
+                        var decIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+                        var decPrefix = i == eventDef.Decorators.Length - 1 ? "└─ " : "├─ ";
+                        _output.AppendLine($"{decIndent}{decPrefix}@{decorator.Name} @ L{decorator.LineStart}:C{decorator.ColumnStart}");
+                    }
+                }
+                break;
+
             case ImportStatement importStmt:
                 _output.AppendLine($"{indent}{prefix}ImportStatement @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Names: [{importStmt.Names.Length}]");
