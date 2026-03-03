@@ -234,6 +234,38 @@ internal partial class TypeChecker
                 return propType;
             }
 
+            // Look for event (including inherited events)
+            var eventSymbol = FindEventInHierarchy(udt.Symbol, memberAccess.Member);
+            if (eventSymbol != null)
+            {
+                _semanticInfo.MarkAsEventAccess(memberAccess);
+                var eventType = eventSymbol.Type;
+
+                // Events are nullable (may have no subscribers)
+                if (eventType is not UnknownType and not NullableType)
+                {
+                    eventType = new NullableType { UnderlyingType = eventType };
+                }
+
+                // Wrap result in optional/nullable for null conditional access
+                if (memberAccess.IsNullConditional && eventType is NullableType nullableEventType)
+                {
+                    // ?. unwraps the nullable, returning the underlying type
+                    eventType = nullableEventType.UnderlyingType;
+                }
+
+                // Check raise restriction: events can only be invoked from within the declaring class
+                if (_currentClass == null || !TypeHasEvent(_currentClass, memberAccess.Member))
+                {
+                    // We're outside the declaring class — the event access is allowed for +=/-=
+                    // (which is handled in CheckAssignment), but direct member access for invocation
+                    // will be caught when the invoke() call is attempted.
+                    // For now, we mark the access and let the codegen/caller handle the restriction.
+                }
+
+                return eventType;
+            }
+
             // Look for method (including inherited methods)
             var (method, methodOwner) = FindMethodInHierarchy(udt.Symbol, memberAccess.Member);
             if (method != null && methodOwner != null)
@@ -554,6 +586,29 @@ internal partial class TypeChecker
         {
             var objType = _semanticInfo.GetExpressionType(nullCondMa.Object);
             isOptionalNullConditional = objType is OptionalType;
+        }
+
+        // Check event raise restriction: events can only be invoked from within the declaring class
+        if (call.Function is MemberAccess invokeMA && invokeMA.Member == "invoke")
+        {
+            // The object of .invoke() might be an event access (e.g., self.on_click?.invoke(...))
+            if (_semanticInfo.IsEventAccess(invokeMA.Object))
+            {
+                // Determine the event's declaring type
+                if (invokeMA.Object is MemberAccess eventMA)
+                {
+                    var eventOwner = ResolveEventOwner(eventMA);
+                    if (eventOwner != null && (_currentClass == null || !ReferenceEquals(_currentClass, eventOwner)))
+                    {
+                        AddError(
+                            $"Cannot raise event '{eventMA.Member}' from outside the declaring class",
+                            call.LineStart, call.ColumnStart,
+                            DiagnosticCodes.Semantic.RaiseEventOutsideClass,
+                            call.Span);
+                        return SemanticType.Void;
+                    }
+                }
+            }
         }
 
         // Track super().__init__() calls AFTER validation completes

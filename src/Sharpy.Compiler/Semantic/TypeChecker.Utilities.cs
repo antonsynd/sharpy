@@ -1167,6 +1167,65 @@ internal partial class TypeChecker
         => AstHelper.TryGetConstantIntIndex(expr, out value);
 
     /// <summary>
+    /// Walks the type hierarchy to find an event with the given name.
+    /// </summary>
+    private static EventSymbol? FindEventInHierarchy(TypeSymbol type, string eventName)
+    {
+        var current = type;
+        while (current != null)
+        {
+            var evt = current.Events.FirstOrDefault(e => e.Name == eventName);
+            if (evt != null)
+                return evt;
+            current = current.BaseType;
+        }
+
+        // Also check interfaces
+        foreach (var ifaceRef in type.Interfaces)
+        {
+            var iface = ifaceRef.Definition;
+            var evt = iface.Events.FirstOrDefault(e => e.Name == eventName);
+            if (evt != null)
+                return evt;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Returns true if the given type (or its base types) declares an event with the given name.
+    /// </summary>
+    private static bool TypeHasEvent(TypeSymbol type, string eventName)
+    {
+        return FindEventInHierarchy(type, eventName) != null;
+    }
+
+    /// <summary>
+    /// Resolves the owner type of an event member access expression.
+    /// </summary>
+    private TypeSymbol? ResolveEventOwner(MemberAccess memberAccess)
+    {
+        if (memberAccess.Object is Identifier objId)
+        {
+            if (objId.Name == PythonNames.Self && _currentClass != null)
+                return _currentClass;
+
+            var symbol = _symbolTable.Lookup(objId.Name);
+            if (symbol is VariableSymbol varSym)
+            {
+                var varType = GetVariableType(varSym);
+                if (varType is UserDefinedType udt)
+                    return udt.Symbol;
+            }
+            else if (symbol is TypeSymbol ts)
+            {
+                return ts;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Attempts to resolve a member access expression to an event symbol.
     /// Returns the EventSymbol if the member access refers to an event, null otherwise.
     /// Handles both self.event_name and obj.event_name patterns.
