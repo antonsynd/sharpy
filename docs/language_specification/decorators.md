@@ -209,6 +209,85 @@ class TodoService:
 *Implementation: ✅ Native - Direct mapping to C# keywords.*
 
 
+## Custom Decorators / .NET Attributes
+
+Unknown decorators (those not in the set of built-in modifier decorators) are emitted as C# attributes, enabling full .NET interop. Built-in modifier decorators (`@virtual`, `@static`, `@abstract`, `@override`, `@final`, `@public`, `@protected`, `@private`, `@internal`) continue to map to C# modifier keywords and **must not** have arguments.
+
+### Syntax
+
+```
+decorator ::= '@' qualified_name [ '(' [ arguments ] ')' ] NEWLINE
+```
+
+Decorators support:
+- **Positional arguments**: `@obsolete("Use new_method instead")`
+- **Keyword (named) arguments**: `@dll_import("user32.dll", entry_point="MessageBox")`
+- **Empty parentheses**: `@my_attr()`
+- **Dotted names**: `@system.serializable`, `@system.obsolete("old")`
+
+### Argument Restrictions
+
+Decorator arguments must be **compile-time constants**, matching C# attribute argument restrictions:
+- String, int, float, bool literals
+- `None` (maps to `null`)
+- Enum member access (e.g., `StringComparison.ordinal`)
+- `type(X)` (maps to `typeof(X)` in C#)
+
+Non-constant expressions (e.g., `1 + 2`, variable references, function calls other than `type()`) are rejected at compile time with SPY0425.
+
+### Name Mangling
+
+Decorator names follow the same snake_case → PascalCase mangling as other identifiers:
+
+| Sharpy | C# Output |
+|--------|-----------|
+| `@obsolete("msg")` | `[Obsolete("msg")]` |
+| `@dll_import("lib")` | `[DllImport("lib")]` |
+| `@conditional("DEBUG")` | `[Conditional("DEBUG")]` |
+| `@default_value(42)` | `[DefaultValue(42)]` |
+| `@system.serializable` | `[System.Serializable]` |
+| `@system.obsolete("old")` | `[System.Obsolete("old")]` |
+
+Keyword argument names are also PascalCase-mangled: `entry_point="Func"` → `EntryPoint = "Func"`.
+
+### Known vs. Unknown Decorators
+
+| Category | Behavior | Arguments |
+|----------|----------|-----------|
+| Built-in modifier (`@virtual`, `@static`, etc.) | Maps to C# keyword modifier | **Not allowed** (SPY0322) |
+| Unknown | Emitted as C# `[Attribute]` | Allowed (compile-time constants only) |
+
+### Examples
+
+```python
+# Simple attribute with argument
+@obsolete("Use bar() instead")
+def foo() -> None:
+    pass
+
+# Dotted attribute name
+@system.serializable
+class Config:
+    pass
+
+# Multiple arguments with keyword
+@dll_import("user32.dll", entry_point="MessageBox")
+def message_box() -> None: ...
+
+# Combining modifier and attribute decorators
+@virtual
+@obsolete("Will be removed in v2")
+def legacy_method(self) -> None:
+    pass
+
+# type() maps to typeof() in attribute arguments
+@custom_attr(type(int))
+def typed_method() -> None:
+    pass
+```
+
+*Implementation: ✅ Emitted as C# attributes via Roslyn SyntaxFactory.*
+
 ## Flexible Argument Decorators
 
 > **Dropped** — `@kwargs` and `@dynamic_kwargs` were removed from the roadmap. Compiler-understood transforming decorators violate the "no magic" principle, and `@dynamic_kwargs` conflicts with Axiom 3 (type safety). Named arguments with default values and user-defined option structs provide equivalent functionality without invisible code generation. See [SRP-0001](../rejected_proposals/SRP-0001-kwargs-decorator.md) and [SRP-0002](../rejected_proposals/SRP-0002-dynamic-kwargs-decorator.md) for full rationale.
