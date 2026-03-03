@@ -250,7 +250,7 @@ public record PropertySymbol
 public record EventSymbol
 {
     public string Name { get; init; } = string.Empty;
-    public SemanticType Type { get; internal set; } = SemanticType.Unknown;
+    public SemanticType Type { get; init; } = SemanticType.Unknown;
     public bool HasAdd { get; init; }
     public bool HasRemove { get; init; }
     public bool IsStatic { get; init; }
