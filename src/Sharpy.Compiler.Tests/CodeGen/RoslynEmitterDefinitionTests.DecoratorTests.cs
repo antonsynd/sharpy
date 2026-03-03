@@ -891,5 +891,206 @@ public partial class RoslynEmitterDefinitionTests
         Assert.Contains("[CustomAttr(-42)]", code);
     }
 
+    [Fact]
+    public void GenerateFunction_WithNoneArg_EmitsNullLiteral()
+    {
+        var func = new FunctionDef
+        {
+            Name = "my_func",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "custom_attr",
+                    Arguments = new List<Expression>
+                    {
+                        new NoneLiteral()
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("[CustomAttr(null)]", code);
+    }
+
+    [Fact]
+    public void GenerateFunction_WithFloatArg_EmitsFloatLiteral()
+    {
+        var func = new FunctionDef
+        {
+            Name = "my_func",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "custom_attr",
+                    Arguments = new List<Expression>
+                    {
+                        new FloatLiteral { Value = "3.14" }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("[CustomAttr(3.14d)]", code);
+    }
+
+    [Fact]
+    public void GenerateFunction_WithBoolArg_EmitsBoolLiteral()
+    {
+        var func = new FunctionDef
+        {
+            Name = "my_func",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "custom_attr",
+                    Arguments = new List<Expression>
+                    {
+                        new BooleanLiteral { Value = true }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("[CustomAttr(true)]", code);
+    }
+
+    [Fact]
+    public void GenerateFunction_WithMemberAccessArg_EmitsPascalCaseMemberAccess()
+    {
+        var func = new FunctionDef
+        {
+            Name = "my_func",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "custom_attr",
+                    Arguments = new List<Expression>
+                    {
+                        new MemberAccess
+                        {
+                            Object = new Identifier { Name = "string_comparison" },
+                            Member = "ordinal"
+                        }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("[CustomAttr(StringComparison.Ordinal)]", code);
+    }
+
+    [Fact]
+    public void GenerateFunction_WithTypeArg_EmitsTypeOf()
+    {
+        var func = new FunctionDef
+        {
+            Name = "my_func",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "custom_attr",
+                    Arguments = new List<Expression>
+                    {
+                        new FunctionCall
+                        {
+                            Function = new Identifier { Name = "type" },
+                            Arguments = new List<Expression>
+                            {
+                                new Identifier { Name = "int" }
+                            }.ToImmutableArray()
+                        }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("typeof(int)", code);
+    }
+
+    [Fact]
+    public void GenerateFunction_WithNegativeFloatArg_EmitsNegativeFloatLiteral()
+    {
+        var func = new FunctionDef
+        {
+            Name = "my_func",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "custom_attr",
+                    Arguments = new List<Expression>
+                    {
+                        new UnaryOp
+                        {
+                            Operator = UnaryOperator.Minus,
+                            Operand = new FloatLiteral { Value = "3.14" }
+                        }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("[CustomAttr(-3.14d)]", code);
+    }
+
+    [Fact]
+    public void GenerateStruct_WithUnknownDecorator_EmitsAttribute()
+    {
+        var structDef = new StructDef
+        {
+            Name = "MyStruct",
+            Decorators = new List<Decorator>
+            {
+                new Decorator
+                {
+                    Name = "serializable"
+                }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
+        };
+
+        var module = new Module { Body = new List<Statement> { structDef }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("[Serializable]", code);
+        Assert.Contains("struct MyStruct", code);
+    }
+
     #endregion
 }

@@ -1116,12 +1116,15 @@ internal partial class RoslynEmitter
             FunctionCall { Function: Identifier { Name: "type" }, Arguments.Length: 1, KeywordArguments.Length: 0 } call
                 => TypeOfExpression(_typeMapper.MapTypeFromExpression(call.Arguments[0])),
             // Member access (e.g., StringComparison.ordinal → StringComparison.Ordinal)
+            // Intentionally permissive — accepts any Identifier.Member form. Invalid cases
+            // (non-enum, non-const fields) are caught downstream by the C# compiler.
             MemberAccess { Object: Identifier objId } memberAccess => MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 IdentifierName(NameMangler.ToPascalCase(objId.Name)),
                 IdentifierName(NameMangler.ToPascalCase(memberAccess.Member))),
-            // Fallback: use the general expression generator for anything else
-            _ => GenerateExpression(expr),
+            _ => throw new InvalidOperationException(
+                $"Unsupported decorator argument expression: {expr.GetType().Name}. " +
+                "DecoratorValidator should have rejected this."),
         };
     }
 

@@ -225,7 +225,9 @@ internal class DecoratorValidator : SemanticValidatorBase
             FloatLiteral => true,
             BooleanLiteral => true,
             NoneLiteral => true,
-            // Enum member access: SomeType.Member
+            // Enum member access or const field: SomeType.Member
+            // Intentionally permissive — we can't resolve types at this validation phase (Order 60).
+            // Invalid cases (non-const fields, instance members) are caught by the C# compiler.
             MemberAccess { Object: Identifier } => true,
             // type(X) is allowed as typeof equivalent
             FunctionCall { Function: Identifier { Name: "type" }, Arguments.Length: 1, KeywordArguments.Length: 0 } => true,
