@@ -1,0 +1,22 @@
+# Test abstract class with keyword-only param in abstract method
+
+@abstract
+class Shape:
+    @abstract
+    def area(self, *, unit: str) -> str:
+        ...
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, radius: float):
+        self.radius = radius
+
+    @override
+    def area(self, *, unit: str) -> str:
+        return str(3.14 * self.radius * self.radius) + " " + unit
+
+def main():
+    c: Shape = Circle(5.0)
+    print(c.area(unit="sq_cm"))
+    print(c.area(unit="sq_m"))

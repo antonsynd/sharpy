@@ -1,0 +1,19 @@
+# Test derived class forwarding keyword-only params to base constructor
+
+class Base:
+    name: str
+
+    def __init__(self, *, name: str):
+        self.name = name
+
+class Derived(Base):
+    age: int
+
+    def __init__(self, *, name: str, age: int):
+        super().__init__(name)
+        self.age = age
+
+def main():
+    d = Derived(name="Alice", age=30)
+    print(d.name)
+    print(d.age)

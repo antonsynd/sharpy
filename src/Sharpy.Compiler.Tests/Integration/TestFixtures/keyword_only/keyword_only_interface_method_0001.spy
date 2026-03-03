@@ -1,0 +1,16 @@
+# Test interface with keyword-only param method, class implementing it
+
+interface IFormatter:
+    def format(self, value: str, *, uppercase: bool) -> str:
+        ...
+
+class SimpleFormatter(IFormatter):
+    def format(self, value: str, *, uppercase: bool) -> str:
+        if uppercase:
+            return value.upper()
+        return value
+
+def main():
+    f: IFormatter = SimpleFormatter()
+    print(f.format("hello", uppercase=False))
+    print(f.format("hello", uppercase=True))

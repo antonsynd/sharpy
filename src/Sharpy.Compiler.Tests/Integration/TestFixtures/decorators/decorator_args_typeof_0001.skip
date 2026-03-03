@@ -1,0 +1,1 @@
+Parser bug: type is tokenized as TokenType.Type keyword, not recognized as callable in decorator argument context. See #265.

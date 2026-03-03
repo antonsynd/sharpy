@@ -1,0 +1,20 @@
+# Test type(X) → typeof(X) in decorator arguments
+# Uses DebuggerTypeProxy which accepts a Type parameter
+
+@debugger_type_proxy(type(str))
+class MyList:
+    items: list[str]
+
+    def __init__(self):
+        self.items = []
+
+    def add(self, item: str):
+        self.items.append(item)
+
+    def count(self) -> int:
+        return len(self.items)
+
+def main():
+    ml = MyList()
+    ml.add("hello")
+    print(ml.count())
