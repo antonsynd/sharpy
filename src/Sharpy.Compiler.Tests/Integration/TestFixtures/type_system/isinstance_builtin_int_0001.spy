@@ -1,0 +1,13 @@
+def check_int(x: object) -> int:
+    if isinstance(x, int):
+        y: int = x
+        result: int = x + 10
+        if x == 42:
+            return result
+        return x * 2
+    return -1
+
+def main():
+    print(check_int(42))
+    print(check_int(7))
+    print(check_int("hello"))
