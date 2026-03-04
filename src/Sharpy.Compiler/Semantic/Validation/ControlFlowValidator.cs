@@ -113,7 +113,15 @@ internal class ControlFlowValidator : SemanticValidatorBase
                 span: error.Statement.Span);
         }
 
-        // 4. Recursively validate nested functions
+        // 4. For async functions, identify async state regions
+        if (func.IsAsync)
+        {
+            var regions = ControlFlowAnalysis.IdentifyAsyncRegions(cfg);
+            _logger.LogDebug($"Async function '{func.Name}': {regions.Length} state region(s), " +
+                $"{regions.Count(r => r.AwaitExpression != null)} await point(s)");
+        }
+
+        // 5. Recursively validate nested functions
         ValidateNestedFunctions(func.Body);
     }
 
