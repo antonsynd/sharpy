@@ -550,11 +550,11 @@ public partial class Parser
                             TypeAnnotation? paramType = null;
                             if (Current.Type == TokenType.Colon)
                             {
-                                // Lambda parameter type annotation disambiguation (#275)
+                                // Lambda parameter type annotation disambiguation (#275, #289)
                                 //
                                 // Problem: In `lambda x: body`, the ':' separates params from body.
                                 // But in `lambda x: int: body`, the first ':' is a type annotation.
-                                // We need a 2-token lookahead heuristic to disambiguate.
+                                // We need a lookahead heuristic to disambiguate.
                                 //
                                 // Strategy: After seeing ':', check if the NEXT token starts a type
                                 // (Identifier, Auto, or None), then check if the token AFTER THAT
@@ -568,11 +568,14 @@ public partial class Parser
                                 //   [ → generic type arguments          (lambda x: list[int]: ...)
                                 //   ? → optional type                   (lambda x: int?: ...)
                                 //   ! → result type                     (lambda x: int!str: ...)
-                                //   | → nullable type via pipe          (lambda x: int | None: ...)
+                                //   | → nullable type only if followed by None (lambda x: int | None: ...)
+                                //       Otherwise '|' starts a bitwise-OR body (lambda x: a | b).
+                                //       None is not a valid bitwise-OR operand, so Peek(3)==None
+                                //       unambiguously identifies the type annotation case.
                                 //
-                                // Known limitation: Union types like `int | str` use '|' as a type
-                                // continuation token, but multi-element unions (e.g., `int | str | float`)
-                                // would need deeper lookahead. See #289 for tracking this.
+                                // Note: True/False are TokenType.True/TokenType.False (not Identifier),
+                                // so `lambda x: True | False` skips the type path entirely and parses
+                                // as a body expression, which is correct.
                                 //
                                 // This heuristic works for all currently supported type syntax
                                 // (simple, generic, optional, nullable, result types).
@@ -584,10 +587,19 @@ public partial class Parser
                                     || nextType == TokenType.None)
                                 {
                                     var afterType = Peek(2).Type;
-                                    isTypeAnnotation = afterType is TokenType.Comma
-                                        or TokenType.Assign or TokenType.Colon
-                                        or TokenType.LeftBracket or TokenType.Question
-                                        or TokenType.Bang or TokenType.Pipe;
+                                    if (afterType == TokenType.Pipe)
+                                    {
+                                        // Disambiguate: `int | None` is a nullable type annotation,
+                                        // but `a | b` (where b is not None) is a bitwise-OR body.
+                                        isTypeAnnotation = Peek(3).Type == TokenType.None;
+                                    }
+                                    else
+                                    {
+                                        isTypeAnnotation = afterType is TokenType.Comma
+                                            or TokenType.Assign or TokenType.Colon
+                                            or TokenType.LeftBracket or TokenType.Question
+                                            or TokenType.Bang;
+                                    }
                                 }
 
                                 if (isTypeAnnotation)
