@@ -1,0 +1,25 @@
+class Config:
+    value: str
+
+    def __init__(self, value: str):
+        self.value = value
+
+    def get_value(self) -> str:
+        return self.value
+
+def get_config() -> Config | None:
+    return Config("hello")
+
+def get_none_config() -> Config | None:
+    return None
+
+def main():
+    # maybe converts nullable to optional
+    cfg: Config? = maybe get_config()
+    result: str = cfg?.get_value() ?? "fallback"
+    print(result)
+
+    # maybe with None result
+    cfg2: Config? = maybe get_none_config()
+    result2: str = cfg2?.get_value() ?? "fallback"
+    print(result2)
