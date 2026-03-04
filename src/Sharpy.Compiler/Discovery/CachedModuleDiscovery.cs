@@ -161,23 +161,13 @@ internal class CachedModuleDiscovery
             }
         }
 
-        // Convert operator methods from discovery
-        var operatorMethods = new Dictionary<string, List<FunctionSymbol>>();
-        foreach (var (dunderName, signatures) in typeInfo.OperatorMethods)
-        {
-            operatorMethods[dunderName] = signatures
-                .Select(sig => ConvertToFunctionSymbol(sig, typeInfo.Name, sharedTypeParams))
-                .ToList();
-        }
+        // Convert operator methods from discovery as marker-only stubs.
+        // Validators only check for key presence, not signatures, so we strip
+        // parameters/return types to match BuiltinMethodDefinitions.MakeDunderDict format.
+        var operatorMethods = NormalizeToDunderStubs(typeInfo.OperatorMethods);
 
-        // Convert protocol methods from discovery
-        var protocolMethods = new Dictionary<string, List<FunctionSymbol>>();
-        foreach (var (dunderName, signatures) in typeInfo.ProtocolMethods)
-        {
-            protocolMethods[dunderName] = signatures
-                .Select(sig => ConvertToFunctionSymbol(sig, typeInfo.Name, sharedTypeParams))
-                .ToList();
-        }
+        // Convert protocol methods from discovery as marker-only stubs (same rationale).
+        var protocolMethods = NormalizeToDunderStubs(typeInfo.ProtocolMethods);
 
         return new TypeSymbol
         {
@@ -253,6 +243,31 @@ internal class CachedModuleDiscovery
     public void ClearCache()
     {
         _cache.ClearAll();
+    }
+
+    /// <summary>
+    /// Converts discovered dunder methods (operators or protocols) to marker-only stubs.
+    /// Each stub retains only Name, Kind, and AccessLevel — Parameters, ReturnType, and
+    /// TypeParameters are left at their defaults (empty/null). This matches the format
+    /// produced by BuiltinMethodDefinitions.MakeDunderDict, which validators expect.
+    /// </summary>
+    private static Dictionary<string, List<FunctionSymbol>> NormalizeToDunderStubs(
+        Dictionary<string, List<FunctionSignature>> discovered)
+    {
+        var result = new Dictionary<string, List<FunctionSymbol>>();
+        foreach (var (dunderName, _) in discovered)
+        {
+            result[dunderName] = new List<FunctionSymbol>
+            {
+                new FunctionSymbol
+                {
+                    Name = dunderName,
+                    Kind = SymbolKind.Function,
+                    AccessLevel = AccessLevel.Public,
+                }
+            };
+        }
+        return result;
     }
 
     /// <summary>
