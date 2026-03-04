@@ -1,0 +1,18 @@
+def main():
+    # Case 1: else executes (no break)
+    x: int = 0
+    while x < 3:
+        x += 1
+    else:
+        print("while completed without break")
+
+    # Case 2: break prevents else
+    y: int = 0
+    while y < 10:
+        y += 1
+        if y == 3:
+            break
+    else:
+        print("this should not print")
+
+    print("done")

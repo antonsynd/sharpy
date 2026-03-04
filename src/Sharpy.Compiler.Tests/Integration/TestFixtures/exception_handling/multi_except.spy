@@ -1,0 +1,19 @@
+def test_multi_except(n: int):
+    try:
+        if n == 1:
+            raise ValueError("value error")
+        elif n == 2:
+            raise TypeError("type error")
+        else:
+            raise RuntimeError("runtime error")
+    except ValueError:
+        print("ValueError caught")
+    except TypeError:
+        print("TypeError caught")
+    except RuntimeError:
+        print("RuntimeError caught")
+
+def main():
+    test_multi_except(1)
+    test_multi_except(2)
+    test_multi_except(3)

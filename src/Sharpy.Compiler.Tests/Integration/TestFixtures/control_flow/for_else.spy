@@ -1,0 +1,15 @@
+def main():
+    # Case 1: else executes (no break)
+    for i in range(5):
+        pass
+    else:
+        print("for completed without break")
+
+    # Case 2: break prevents else
+    for i in range(5):
+        if i == 3:
+            break
+    else:
+        print("this should not print")
+
+    print("done")

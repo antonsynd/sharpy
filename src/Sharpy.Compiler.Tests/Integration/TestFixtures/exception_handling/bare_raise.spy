@@ -1,0 +1,12 @@
+def inner():
+    try:
+        raise ValueError("test error")
+    except ValueError:
+        print("caught in inner")
+        raise
+
+def main():
+    try:
+        inner()
+    except ValueError:
+        print("caught in outer")

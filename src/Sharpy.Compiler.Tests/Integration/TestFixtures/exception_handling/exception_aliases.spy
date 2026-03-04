@@ -1,0 +1,43 @@
+def test_index_error():
+    try:
+        raise IndexError("index out of range")
+    except IndexError:
+        print("IndexError caught")
+
+def test_key_error():
+    try:
+        raise KeyError("missing key")
+    except KeyError:
+        print("KeyError caught")
+
+def test_not_implemented_error():
+    try:
+        raise NotImplementedError("not yet")
+    except NotImplementedError:
+        print("NotImplementedError caught")
+
+def test_zero_division_error():
+    try:
+        raise ZeroDivisionError("division by zero")
+    except ZeroDivisionError:
+        print("ZeroDivisionError caught")
+
+def test_overflow_error():
+    try:
+        raise OverflowError("overflow")
+    except OverflowError:
+        print("OverflowError caught")
+
+def test_attribute_error():
+    try:
+        raise AttributeError("no attribute")
+    except AttributeError:
+        print("AttributeError caught")
+
+def main():
+    test_index_error()
+    test_key_error()
+    test_not_implemented_error()
+    test_zero_division_error()
+    test_overflow_error()
+    test_attribute_error()

@@ -1,0 +1,6 @@
+IndexError caught
+KeyError caught
+NotImplementedError caught
+ZeroDivisionError caught
+OverflowError caught
+AttributeError caught
