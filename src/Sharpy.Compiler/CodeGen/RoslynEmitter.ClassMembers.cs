@@ -108,66 +108,13 @@ internal partial class RoslynEmitter
             switch (stmt)
             {
                 case FunctionDef funcDef:
-                    // Check if this is a constructor (__init__)
+                    // Special cases handled outside the registry:
+                    // __init__ requires collecting multiple defs for overloads
+                    // __getitem__/__setitem__ are collected for combined indexer generation
                     if (funcDef.Name == DunderNames.Init)
                     {
-                        // Collect for later generation (supports multiple overloads)
                         initMethods.Add(funcDef);
                     }
-                    // __len__ generates a Count property (not a method) to satisfy ISized
-                    else if (funcDef.Name == DunderNames.Len)
-                    {
-                        members.Add(GenerateLenProperty(funcDef));
-                    }
-                    // __bool__ generates an IsTrue property + operator true/false
-                    else if (funcDef.Name == DunderNames.Bool)
-                    {
-                        members.Add(GenerateBoolProperty(funcDef));
-                        members.Add(GenerateBoolOperatorTrue(className));
-                        // operator false is generated in the complementary section below
-                    }
-                    // __next__ generates IEnumerator<T> protocol members (MoveNext, Current, etc.)
-                    else if (funcDef.Name == DunderNames.Next)
-                    {
-                        members.AddRange(GenerateIteratorProtocolMembers(funcDef));
-                    }
-                    // __iter__ generates IEnumerable<T> protocol members (GetEnumerator, etc.)
-                    else if (funcDef.Name == DunderNames.Iter)
-                    {
-                        if (dunders.Contains(DunderNames.Next))
-                        {
-                            // Self-iterating class: __iter__ returns self → GetEnumerator() => this
-                            // Get element type from __next__'s return type
-                            var nextFunc = body.OfType<FunctionDef>()
-                                .FirstOrDefault(f => f.Name == DunderNames.Next);
-                            TypeSyntax elemType = nextFunc?.ReturnType != null
-                                ? _typeMapper.MapType(nextFunc.ReturnType)
-                                : PredefinedType(Token(SyntaxKind.ObjectKeyword));
-                            members.AddRange(GenerateEnumerableBridgeMembers(elemType));
-                        }
-                        else if (_context.SemanticInfo?.IsGenerator(funcDef) == true)
-                        {
-                            // Generator __iter__: body contains yield → emit
-                            // IEnumerator<T> GetEnumerator() with the user's body
-                            // plus the non-generic IEnumerable.GetEnumerator() bridge
-                            members.AddRange(GenerateGeneratorIterMethod(funcDef));
-                        }
-                        else
-                        {
-                            // Iterable-only: just generate GetEnumerator() with user body
-                            // C# foreach uses duck-typing (GetEnumerator pattern), so no
-                            // IEnumerable<T> synthesis needed for this case
-                            members.Add(GenerateClassMethod(funcDef));
-                        }
-                    }
-                    // __reversed__ generates GetReverseEnumerator() with IEnumerator<T> return type
-                    else if (funcDef.Name == DunderNames.Reversed)
-                    {
-                        using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(funcDef) == true);
-                        using var _asyncRev = SetAsyncScope(funcDef.IsAsync);
-                        members.Add(GenerateReverseEnumeratorMethod(funcDef));
-                    }
-                    // __getitem__/__setitem__ → collect for combined C# indexer generation
                     else if (funcDef.Name == DunderNames.GetItem)
                     {
                         getItemFunc = funcDef;
@@ -176,34 +123,19 @@ internal partial class RoslynEmitter
                     {
                         setItemFunc = funcDef;
                     }
-                    // Check if this is a dunder method that needs operator synthesis
+                    // Registry-based dispatch for dunders with special codegen
+                    else if (_dunderRegistry.TryGetHandler(funcDef.Name, out var handler))
+                    {
+                        var ctx = new DunderCodeGenRegistry.DunderCodeGenContext(
+                            className, dunders, body);
+                        members.AddRange(handler!(funcDef, ctx));
+                    }
+                    // Remaining dunders: attempt operator synthesis with inlining
                     else if (DunderMapping.IsDunderMethod(funcDef.Name))
                     {
-                        if (funcDef.Name == DunderNames.Eq || funcDef.Name == DunderNames.Ne)
-                        {
-                            // __eq__/__ne__ keep their current path: Equals()/method + operator ==/ !=
-                            // because operator == routes through Equals() for null-safety and IEquatable<T>
-                            members.Add(GenerateClassMethod(funcDef));
-                            var eqOp = TryGenerateOperatorOverload(funcDef, className);
-                            if (eqOp != null)
-                                members.Add(eqOp);
-                        }
-                        else
-                        {
-                            // Try the inlined path: operator body is inlined, no instance method
-                            var inlined = TryGenerateInlinedOperatorOverload(funcDef, className);
-                            if (inlined != null)
-                            {
-                                members.AddRange(inlined);
-                            }
-                            else
-                            {
-                                // Fallback for dunders that don't map to operators
-                                // (e.g., __getitem__, __setitem__, __str__, __hash__)
-                                members.Add(GenerateClassMethod(funcDef));
-                            }
-                        }
+                        members.AddRange(HandleDefaultDunderMethod(funcDef, className));
                     }
+                    // Regular methods
                     else
                     {
                         members.Add(GenerateClassMethod(funcDef));
@@ -2412,4 +2344,105 @@ internal partial class RoslynEmitter
         return otherParam?.Type is TypeAnnotation { Name: "object" };
     }
 
+    #region Dunder Registry
+
+    /// <summary>
+    /// Builds the dunder codegen registry with handlers for each dunder that requires
+    /// special code generation (as opposed to regular method emission).
+    /// </summary>
+    private DunderCodeGenRegistry BuildDunderRegistry()
+    {
+        var registry = new DunderCodeGenRegistry();
+
+        // __len__ → Count property (ISized protocol)
+        registry.Register(DunderNames.Len, (funcDef, _) =>
+            new[] { GenerateLenProperty(funcDef) });
+
+        // __bool__ → IsTrue property + operator true (operator false added in complementary pass)
+        registry.Register(DunderNames.Bool, (funcDef, ctx) =>
+            new MemberDeclarationSyntax[]
+            {
+                GenerateBoolProperty(funcDef),
+                GenerateBoolOperatorTrue(ctx.ClassName)
+            });
+
+        // __next__ → IEnumerator<T> protocol members (MoveNext, Current, etc.)
+        registry.Register(DunderNames.Next, (funcDef, _) =>
+            GenerateIteratorProtocolMembers(funcDef));
+
+        // __iter__ → IEnumerable<T> protocol (depends on whether __next__ is also present)
+        registry.Register(DunderNames.Iter, (funcDef, ctx) =>
+        {
+            if (ctx.DundersPresent.Contains(DunderNames.Next))
+            {
+                // Self-iterating class: __iter__ returns self → GetEnumerator() => this
+                var nextFunc = ctx.Body.OfType<FunctionDef>()
+                    .FirstOrDefault(f => f.Name == DunderNames.Next);
+                TypeSyntax elemType = nextFunc?.ReturnType != null
+                    ? _typeMapper.MapType(nextFunc.ReturnType)
+                    : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+                return GenerateEnumerableBridgeMembers(elemType);
+            }
+            else if (_context.SemanticInfo?.IsGenerator(funcDef) == true)
+            {
+                // Generator __iter__: body contains yield → emit IEnumerator<T> GetEnumerator()
+                return GenerateGeneratorIterMethod(funcDef);
+            }
+            else
+            {
+                // Iterable-only: just generate GetEnumerator() with user body
+                return new[] { GenerateClassMethod(funcDef) };
+            }
+        });
+
+        // __reversed__ → GetReverseEnumerator() with IEnumerator<T> return type
+        registry.Register(DunderNames.Reversed, (funcDef, _) =>
+        {
+            using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(funcDef) == true);
+            using var _asyncRev = SetAsyncScope(funcDef.IsAsync);
+            return new[] { GenerateReverseEnumeratorMethod(funcDef) };
+        });
+
+        // __eq__/__ne__ → Equals()/method + operator ==/!=
+        registry.Register(DunderNames.Eq, (funcDef, ctx) =>
+        {
+            var result = new List<MemberDeclarationSyntax> { GenerateClassMethod(funcDef) };
+            var eqOp = TryGenerateOperatorOverload(funcDef, ctx.ClassName);
+            if (eqOp != null)
+                result.Add(eqOp);
+            return result;
+        });
+
+        registry.Register(DunderNames.Ne, (funcDef, ctx) =>
+        {
+            var result = new List<MemberDeclarationSyntax> { GenerateClassMethod(funcDef) };
+            var eqOp = TryGenerateOperatorOverload(funcDef, ctx.ClassName);
+            if (eqOp != null)
+                result.Add(eqOp);
+            return result;
+        });
+
+        return registry;
+    }
+
+    /// <summary>
+    /// Handles a dunder method that is not in the registry — attempts operator synthesis
+    /// with inlining, falling back to regular method generation.
+    /// </summary>
+    private IEnumerable<MemberDeclarationSyntax> HandleDefaultDunderMethod(
+        FunctionDef funcDef, string className)
+    {
+        var inlined = TryGenerateInlinedOperatorOverload(funcDef, className);
+        if (inlined != null)
+        {
+            return inlined;
+        }
+        else
+        {
+            // Fallback for dunders that don't map to operators
+            return new[] { GenerateClassMethod(funcDef) };
+        }
+    }
+
+    #endregion
 }

@@ -82,6 +82,7 @@ internal partial class RoslynEmitter
     // CodeGenInfo.IsStringEnum (for string enums). This information is populated
     // during semantic analysis.
 
+    private readonly DunderCodeGenRegistry _dunderRegistry;
     private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new(); // Track interface definitions for abstract class stub generation
     private int _tempVarCounter = 0;
 
@@ -416,6 +417,7 @@ internal partial class RoslynEmitter
         _typeMapper = new TypeMapper(context);
         _nameResolutionService = new NameResolutionService(context.Logger);
         _cancellationToken = cancellationToken;
+        _dunderRegistry = BuildDunderRegistry();
     }
 
     /// <summary>
