@@ -1,7 +1,0 @@
-True
-True
-True
-False
-low
-normal
-high

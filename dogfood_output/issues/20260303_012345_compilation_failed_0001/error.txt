@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0106]: The modifier 'virtual' is not valid for this item
-  --> math_utils.cs:24:31
-    |
- 24 |     
-    |     ^
-    |
-

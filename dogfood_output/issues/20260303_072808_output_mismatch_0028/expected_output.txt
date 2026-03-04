@@ -1,7 +1,0 @@
-Green
-2
-Circle(r=1.0)
-Rectangle(4.0x4.0)
-29.637275
-Drawing at (0.0, 0.0)
-3.14159

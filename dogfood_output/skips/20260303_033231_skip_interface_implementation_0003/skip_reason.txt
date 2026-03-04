@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0200]: Undefined identifier 'measureable2'. Did you mean 'measurable2'?
-  --> /tmp/tmpl6onugqb/dogfood_test.spy:117:11
-     |
- 117 |     print(measureable2.measure())
-     |           ^^^^^^^^^^^^
-     |
-

@@ -1,6 +1,0 @@
-Count: 4
-Sum: 60.0
-Average: 15.0
-Square: 25.0
-Double: 10.0
-PI: 3.14159

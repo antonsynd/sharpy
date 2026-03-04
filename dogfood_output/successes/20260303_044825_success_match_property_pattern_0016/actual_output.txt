@@ -1,9 +1,0 @@
-origin-x
-origin-y
-other point
-small square
-tall-large
-narrow
-quadrant-1
-left-half
-small-w4

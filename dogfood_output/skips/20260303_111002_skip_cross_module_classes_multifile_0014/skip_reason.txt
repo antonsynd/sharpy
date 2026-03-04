@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0203]: Type 'Inventory' has no member 'location'
-  --> /tmp/tmp0z0ji3iw/main.spy:22:5
-    |
- 22 |     inv.location = Point(10.0, 20.0)
-    |     ^^^^^^^^^^^^
-    |
-

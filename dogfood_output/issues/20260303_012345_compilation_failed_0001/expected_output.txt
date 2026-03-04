@@ -1,9 +1,0 @@
-78.53975
-48.0
-126.53975
-Rectangular
-(3.0, 4.0)
-SmallCircle: area=12.56636, cat=Circular
-BigRect: area=48.0, cat=Rectangular
-2
-60.56636

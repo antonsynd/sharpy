@@ -1,6 +1,0 @@
-warning_alert
-emergency_cool
-2
-maximum_cooling
-heat_and_humidify
-warm

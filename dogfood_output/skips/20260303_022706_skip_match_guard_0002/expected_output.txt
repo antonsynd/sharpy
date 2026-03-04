@@ -1,6 +1,0 @@
-zero
-single digit: 7
-even number: 42
-empty string
-starts with a: apple
-other

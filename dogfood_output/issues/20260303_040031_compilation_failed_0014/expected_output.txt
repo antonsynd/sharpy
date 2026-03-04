@@ -1,5 +1,0 @@
-Tasks: 3, Duration: 135min, High Priority: 2
-1. Code Review: 60min [Normal]
-2. Bug Fix: 30min [URGENT]
-3. Documentation: 45min [Normal]
-Tasks: 4, Duration: 225min, High Priority: 2

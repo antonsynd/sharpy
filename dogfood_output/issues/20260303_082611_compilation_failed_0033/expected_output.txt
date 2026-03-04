@@ -1,6 +1,0 @@
-boolean
-int=42
-negative int
-string len=5
-float=3.5
-other

@@ -1,8 +1,0 @@
-B
-C
-Good
-Good
-Significant improvement
-Slight or no improvement
-Decline
-15

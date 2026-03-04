@@ -1,7 +1,0 @@
-NetworkDevice[router-001@192.168.1.1]: Offline
-Server[srv-001@10.0.0.5]: Offline, CPUs=8
-Online
-1
-3
-Offline
-192.168.1.1

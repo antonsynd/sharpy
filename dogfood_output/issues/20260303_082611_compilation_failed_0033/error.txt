@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0103]: The name 'n' does not exist in the current context
-  --> /tmp/tmp8ksyi78y/dogfood_test.spy:12:60
-    |
- 12 |             desc = f"int={n}"
-    |                              ^
-    |
-

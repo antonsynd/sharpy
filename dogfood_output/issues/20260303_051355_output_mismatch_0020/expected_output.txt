@@ -1,5 +1,0 @@
-STOP - Red light
-GO - Green light
-CAUTION - Yellow light
-False
-True

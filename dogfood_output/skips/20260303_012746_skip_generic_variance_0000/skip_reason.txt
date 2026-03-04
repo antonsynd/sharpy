@@ -1,9 +1,0 @@
-Repeated identical compiler error (likely compiler bug): Compilation errors:
-
-error[SPY0013]: Indentation must be multiple of 4 spaces (found 1)
-  --> /tmp/tmpi2f9w64a/dogfood_test.spy:50:1
-    |
- 50 | ) -> None:
-    | ^
-    |
-

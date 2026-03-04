@@ -1,8 +1,0 @@
-Circle 'sun' with radius 5.0
-Rectangle 'box1' 4.0 x 6.0
-114.53975
-Red
-Green
-Blue
-Yellow
-5.0

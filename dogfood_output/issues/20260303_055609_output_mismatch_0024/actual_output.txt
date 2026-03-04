@@ -1,4 +1,0 @@
-=== DateTime Operations ===
-Duration hours: 2.5
-Duration minutes: 150
-=== Done ===

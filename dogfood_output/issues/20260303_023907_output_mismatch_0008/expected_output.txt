@@ -1,8 +1,0 @@
-7.0710678118654755
-122.522025
-56.84952
-Drawing circle with radius 5.0
-Drawing rectangle 4.0 x 6.0
-Circle(r=5.0) at (0.0, 0.0)
-2.0
-19.6349375

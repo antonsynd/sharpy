@@ -1,8 +1,0 @@
-B
-C
-Good
-Excellent
-Outstanding improvement
-Slight or no improvement
-Decline
-15

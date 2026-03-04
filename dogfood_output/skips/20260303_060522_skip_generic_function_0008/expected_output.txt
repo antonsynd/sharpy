@@ -1,9 +1,0 @@
-2
-alpha
-beta
-delta
-gamma
-beta
-5
-11
-10

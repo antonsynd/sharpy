@@ -1,4 +1,0 @@
-success
-client_error
-server_error
-unknown
