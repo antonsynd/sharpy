@@ -1,0 +1,6 @@
+42
+-7
+Sharpy.ValueError: invalid literal for int() with base 10: ''
+Sharpy.ValueError: invalid literal for int() with base 10: '   '
+Sharpy.ValueError: invalid literal for int() with base 10: '99999999999'
+5

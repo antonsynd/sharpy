@@ -1,0 +1,6 @@
+100000.0
+3.14
+-2.5
+Sharpy.ValueError: could not convert string to float: ''
+Sharpy.ValueError: could not convert string to float: '   '
+Sharpy.ValueError: could not convert string to float: 'abc'

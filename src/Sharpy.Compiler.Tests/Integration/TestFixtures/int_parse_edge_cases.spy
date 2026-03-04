@@ -1,0 +1,42 @@
+def main():
+    # Leading/trailing whitespace - should succeed (like Python's int())
+    r1: int !ValueError = int.parse("  42  ")
+    if r1.is_ok():
+        print(r1.unwrap())
+    else:
+        print(r1.unwrap_err())
+
+    # Negative number
+    r2: int !ValueError = int.parse("-7")
+    if r2.is_ok():
+        print(r2.unwrap())
+    else:
+        print(r2.unwrap_err())
+
+    # Empty string - should fail
+    r3: int !ValueError = int.parse("")
+    if r3.is_ok():
+        print(r3.unwrap())
+    else:
+        print(r3.unwrap_err())
+
+    # Whitespace-only - should fail
+    r4: int !ValueError = int.parse("   ")
+    if r4.is_ok():
+        print(r4.unwrap())
+    else:
+        print(r4.unwrap_err())
+
+    # Overflow (larger than int32 max) - should fail
+    r5: int !ValueError = int.parse("99999999999")
+    if r5.is_ok():
+        print(r5.unwrap())
+    else:
+        print(r5.unwrap_err())
+
+    # Leading plus sign
+    r6: int !ValueError = int.parse("+5")
+    if r6.is_ok():
+        print(r6.unwrap())
+    else:
+        print(r6.unwrap_err())
