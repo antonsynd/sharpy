@@ -148,7 +148,7 @@ public record TypeSymbol : Symbol
 
     /// <summary>
     /// Whether this generic type is covariant in its type parameters.
-    /// For built-in types, set by BuiltinMethodDefinitions during registration.
+    /// For built-in types, set by BuiltinRegistry during registration.
     /// Currently only applies to single-type-parameter types (list, set).
     /// The covariance check in TypeChecker.Utilities uses TypeArguments[0] only.
     /// </summary>

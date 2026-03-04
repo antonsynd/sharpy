@@ -321,7 +321,7 @@ internal class ProtocolValidator : SemanticValidatorBase
             return dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.GetItem;
         }
 
-        // Check generic container types — use TypeSymbol metadata (populated by BuiltinMethodDefinitions)
+        // Check generic container types — use TypeSymbol metadata (populated by discovery)
         if (type is GenericType generic)
         {
             var typeSymbol = _context.SymbolTable.BuiltinRegistry.GetType(generic.Name);

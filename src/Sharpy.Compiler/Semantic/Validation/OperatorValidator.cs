@@ -414,7 +414,7 @@ internal class OperatorValidator : SemanticValidatorBase
             };
         }
 
-        // Generic types — check TypeSymbol metadata (populated by BuiltinMethodDefinitions)
+        // Generic types — check TypeSymbol metadata (populated by discovery)
         if (type is GenericType generic)
         {
             var typeSymbol = _context.SymbolTable.BuiltinRegistry.GetType(generic.Name);

@@ -152,21 +152,15 @@ internal class BuiltinRegistry
             ? typeParams.Select(tp => new TypeParameterType { Name = tp.Name }).ToArray()
             : Array.Empty<TypeParameterType>();
 
-        // Discovery-first with fallback to hand-coded definitions.
-        // Discovery uses type param remapping, overload expansion, and stub normalization.
+        // Discover methods, operators, and protocols from Sharpy.Core via CLR reflection.
         var discovered = _discovery.GetTypeByName(sharpyName, sharedTypeParams);
 
-        var methods = discovered?.Methods.Count > 0
-            ? discovered.Methods
-            : BuiltinMethodDefinitions.GetMethods(sharpyName, typeParams);
+        var methods = discovered?.Methods ?? new List<FunctionSymbol>();
+        var operatorMethods = discovered?.OperatorMethods ?? new Dictionary<string, List<FunctionSymbol>>();
+        var protocolMethods = discovered?.ProtocolMethods ?? new Dictionary<string, List<FunctionSymbol>>();
 
-        var operatorMethods = discovered?.OperatorMethods.Count > 0
-            ? discovered.OperatorMethods
-            : BuiltinMethodDefinitions.GetOperatorMethods(sharpyName, typeParams);
-
-        var protocolMethods = discovered?.ProtocolMethods.Count > 0
-            ? discovered.ProtocolMethods
-            : BuiltinMethodDefinitions.GetProtocolMethods(sharpyName, typeParams);
+        // For types not discoverable from Sharpy.Core, provide inline definitions.
+        ApplyNonDiscoverableDefinitions(sharpyName, ref methods, ref operatorMethods, ref protocolMethods);
 
         var typeSymbol = new TypeSymbol
         {
@@ -182,8 +176,102 @@ internal class BuiltinRegistry
             ProtocolMethods = protocolMethods,
         };
 
-        BuiltinMethodDefinitions.PopulateMethodOverloads(typeSymbol);
+        PopulateMethodOverloads(typeSymbol);
         _types[sharpyName] = typeSymbol;
+    }
+
+    /// <summary>
+    /// Populates MethodOverloads on a TypeSymbol for methods that share the same name.
+    /// </summary>
+    private static void PopulateMethodOverloads(TypeSymbol typeSymbol)
+    {
+        var overloadGroups = typeSymbol.Methods
+            .GroupBy(m => m.Name)
+            .Where(g => g.Count() > 1);
+
+        foreach (var group in overloadGroups)
+        {
+            typeSymbol.MethodOverloads[group.Key] = group.ToList();
+        }
+    }
+
+    /// <summary>
+    /// Provides methods, operators, and protocols for types that cannot be discovered
+    /// from Sharpy.Core via CLR reflection (e.g., tuple maps to System.ValueTuple,
+    /// int.parse/float.parse are on separate utility classes, Iterator/IEnumerable are
+    /// placeholder types).
+    /// </summary>
+    private static void ApplyNonDiscoverableDefinitions(
+        string typeName,
+        ref List<FunctionSymbol> methods,
+        ref Dictionary<string, List<FunctionSymbol>> operatorMethods,
+        ref Dictionary<string, List<FunctionSymbol>> protocolMethods)
+    {
+        switch (typeName)
+        {
+            case BuiltinNames.Tuple:
+                operatorMethods = MakeDunderDict(DunderNames.Add, DunderNames.Mul, DunderNames.Eq, DunderNames.Ne);
+                protocolMethods = MakeDunderDict(DunderNames.Len, DunderNames.Iter, DunderNames.GetItem);
+                break;
+
+            case BuiltinNames.Iterator or BuiltinNames.IEnumerable or BuiltinNames.IEnumerator:
+                protocolMethods = MakeDunderDict(DunderNames.Iter);
+                break;
+
+            case BuiltinNames.Int:
+                if (methods.Count == 0)
+                    methods = new List<FunctionSymbol> { MakeParseMethod(SemanticType.Int) };
+                else
+                    methods.Add(MakeParseMethod(SemanticType.Int));
+                break;
+
+            case BuiltinNames.Float:
+                if (methods.Count == 0)
+                    methods = new List<FunctionSymbol> { MakeParseMethod(SemanticType.Float) };
+                else
+                    methods.Add(MakeParseMethod(SemanticType.Float));
+                break;
+        }
+    }
+
+    private static readonly UserDefinedType ValueErrorType = new() { Name = "ValueError" };
+
+    private static FunctionSymbol MakeParseMethod(SemanticType resultOkType)
+    {
+        return new FunctionSymbol
+        {
+            Name = "parse",
+            Kind = SymbolKind.Function,
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol { Name = "s", Type = SemanticType.Str }
+            },
+            ReturnType = new ResultType { OkType = resultOkType, ErrorType = ValueErrorType },
+            AccessLevel = AccessLevel.Public,
+            IsStatic = true,
+        };
+    }
+
+    /// <summary>
+    /// Creates a dictionary of dunder names, each with a single placeholder FunctionSymbol.
+    /// Used for operator and protocol stubs where validators only check key presence.
+    /// </summary>
+    private static Dictionary<string, List<FunctionSymbol>> MakeDunderDict(params string[] dunderNames)
+    {
+        var dict = new Dictionary<string, List<FunctionSymbol>>();
+        foreach (var name in dunderNames)
+        {
+            dict[name] = new List<FunctionSymbol>
+            {
+                new FunctionSymbol
+                {
+                    Name = name,
+                    Kind = SymbolKind.Function,
+                    AccessLevel = AccessLevel.Public,
+                }
+            };
+        }
+        return dict;
     }
 
     public TypeSymbol? GetType(string name) => _types.GetValueOrDefault(name);

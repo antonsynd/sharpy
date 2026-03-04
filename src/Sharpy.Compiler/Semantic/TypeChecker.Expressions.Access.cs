@@ -1017,7 +1017,7 @@ internal partial class TypeChecker
             }
 
             // Builtin method overloads (dict.get, list.pop) are now handled by
-            // ResolveUserMethodOverload above via BuiltinMethodDefinitions metadata.
+            // ResolveUserMethodOverload above via discovery-populated metadata.
         }
 
         // If we have a FunctionSymbol, use it for validation (supports default parameters)
