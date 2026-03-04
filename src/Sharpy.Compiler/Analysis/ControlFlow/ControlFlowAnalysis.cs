@@ -122,14 +122,14 @@ internal static class ControlFlowAnalysis
     /// </summary>
     public static ImmutableArray<AsyncStateRegion> IdentifyAsyncRegions(ControlFlowGraph cfg)
     {
-        // Find all blocks containing await
-        var awaitBlocks = cfg.Blocks
-            .Where(b => b.ContainsAwait)
-            .ToList();
+        var rpo = cfg.GetReversePostOrder();
 
-        if (awaitBlocks.Count == 0)
+        // Check if any block contains an await
+        bool hasAwaits = rpo.Any(b => b.ContainsAwait);
+
+        if (!hasAwaits)
         {
-            // No awaits - single region
+            // No awaits - single region containing all blocks
             return ImmutableArray.Create(new AsyncStateRegion(
                 0,
                 cfg.Blocks.ToImmutableArray(),
@@ -137,22 +137,79 @@ internal static class ControlFlowAnalysis
             ));
         }
 
-        // See: #105 (async state machine implementation)
-
+        // Split into regions: each await-containing block ends a region and
+        // starts a new one. Consecutive non-await blocks are grouped together.
         var regions = new List<AsyncStateRegion>();
         int stateId = 0;
+        var currentRegionBlocks = new List<BasicBlock>();
 
-        // For now, each await block is its own state
-        foreach (var block in awaitBlocks)
+        foreach (var block in rpo)
+        {
+            if (block.ContainsAwait)
+            {
+                // Include this block in the current region (pre-await code)
+                currentRegionBlocks.Add(block);
+
+                // Extract the actual AwaitExpression from this block's statements
+                var awaitExpr = ExtractAwaitExpression(block);
+
+                // End the current region
+                regions.Add(new AsyncStateRegion(
+                    stateId++,
+                    currentRegionBlocks.ToImmutableArray(),
+                    awaitExpr
+                ));
+                currentRegionBlocks = new List<BasicBlock>();
+            }
+            else
+            {
+                currentRegionBlocks.Add(block);
+            }
+        }
+
+        // Final region: blocks after the last await (continuation to exit)
+        if (currentRegionBlocks.Count > 0)
         {
             regions.Add(new AsyncStateRegion(
-                stateId++,
-                ImmutableArray.Create(block),
-                null // See: #105 (extract await expression)
+                stateId,
+                currentRegionBlocks.ToImmutableArray(),
+                null // No await in the final continuation region
             ));
         }
 
         return regions.ToImmutableArray();
+    }
+
+    /// <summary>
+    /// Extracts the first AwaitExpression from a block's statements.
+    /// </summary>
+    private static Expression? ExtractAwaitExpression(BasicBlock block)
+    {
+        foreach (var stmt in block.Statements)
+        {
+            var awaitExpr = FindFirstAwait(stmt);
+            if (awaitExpr != null)
+                return awaitExpr;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Recursively walks an AST node to find the first AwaitExpression.
+    /// </summary>
+    private static AwaitExpression? FindFirstAwait(Node node)
+    {
+        if (node is AwaitExpression awaitExpr)
+            return awaitExpr;
+
+        foreach (var child in node.GetChildNodes())
+        {
+            var found = FindFirstAwait(child);
+            if (found != null)
+                return found;
+        }
+
+        return null;
     }
 
     private static bool IsLoopExitBlock(BasicBlock? block, ControlFlowGraph cfg)
