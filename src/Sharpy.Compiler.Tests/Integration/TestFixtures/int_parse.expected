@@ -1,0 +1,2 @@
+42
+Sharpy.ValueError: invalid literal for int() with base 10: 'abc'

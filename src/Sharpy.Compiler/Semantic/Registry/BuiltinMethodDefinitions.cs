@@ -25,6 +25,8 @@ internal static class BuiltinMethodDefinitions
             BuiltinNames.Dict => GetDictMethods(tps),
             BuiltinNames.List => GetListMethods(tps),
             BuiltinNames.Set => GetSetMethods(tps),
+            "int" => GetIntStaticMethods(),
+            "float" => GetFloatStaticMethods(),
             _ => new List<FunctionSymbol>()
         };
     }
@@ -220,6 +222,28 @@ internal static class BuiltinMethodDefinitions
         return MakeProtocolDict(DunderNames.Iter);
     }
 
+    // ---- Primitive static methods ----
+
+    private static readonly UserDefinedType ValueErrorType = new() { Name = "ValueError" };
+
+    private static List<FunctionSymbol> GetIntStaticMethods()
+    {
+        return new List<FunctionSymbol>
+        {
+            MakeStaticMethod("parse", new[] { Param("s", SemanticType.Str) },
+                new ResultType { OkType = SemanticType.Int, ErrorType = ValueErrorType }),
+        };
+    }
+
+    private static List<FunctionSymbol> GetFloatStaticMethods()
+    {
+        return new List<FunctionSymbol>
+        {
+            MakeStaticMethod("parse", new[] { Param("s", SemanticType.Str) },
+                new ResultType { OkType = SemanticType.Float, ErrorType = ValueErrorType }),
+        };
+    }
+
     // ---- Helpers ----
 
     private static TypeParameterType[] MakeTypeParams(List<TypeParameterDef> typeParams)
@@ -236,6 +260,19 @@ internal static class BuiltinMethodDefinitions
             Parameters = parameters.ToList(),
             ReturnType = returnType,
             AccessLevel = AccessLevel.Public,
+        };
+    }
+
+    private static FunctionSymbol MakeStaticMethod(string name, ParameterSymbol[] parameters, SemanticType returnType)
+    {
+        return new FunctionSymbol
+        {
+            Name = name,
+            Kind = SymbolKind.Function,
+            Parameters = parameters.ToList(),
+            ReturnType = returnType,
+            AccessLevel = AccessLevel.Public,
+            IsStatic = true,
         };
     }
 

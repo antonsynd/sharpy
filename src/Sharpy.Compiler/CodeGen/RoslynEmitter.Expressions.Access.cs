@@ -232,6 +232,22 @@ internal partial class RoslynEmitter
                 }
             }
 
+            // Handle static method calls on primitive types: int.parse(s), float.parse(s)
+            // The TypeChecker records these via SetMemberAccessResolution. We intercept here
+            // to emit the correct Sharpy.Core helper class call instead of trying to generate
+            // an expression for the type name (which would produce invalid C#).
+            var staticResolution = _context.SemanticInfo?.GetMemberAccessResolution(memberAccess);
+            if (staticResolution is { } sr && sr.Member is FunctionSymbol { IsStatic: true } staticMethod)
+            {
+                var staticCallTarget = GetPrimitiveStaticCallTarget(sr.Owner.Name, staticMethod.Name);
+                if (staticCallTarget != null)
+                {
+                    var staticArgs = call.Arguments.Select(a => Argument(GenerateExpression(a))).ToArray();
+                    return InvocationExpression(ParseName(staticCallTarget))
+                        .WithArgumentList(ArgumentList(SeparatedList(staticArgs)));
+                }
+            }
+
             var obj = GenerateExpression(memberAccess.Object);
 
             // Cross-dunder calls: transform operator dunders to C# operator expressions.
@@ -1315,6 +1331,20 @@ internal partial class RoslynEmitter
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Maps primitive type static method calls to their Sharpy.Core helper class methods.
+    /// Returns the fully qualified C# method name, or null if not a known primitive static call.
+    /// </summary>
+    private static string? GetPrimitiveStaticCallTarget(string typeName, string methodName)
+    {
+        return (typeName, methodName) switch
+        {
+            ("int", "parse") => "global::Sharpy.IntParse.Parse",
+            ("float", "parse") => "global::Sharpy.DoubleParse.Parse",
+            _ => null
+        };
     }
 
     /// <summary>
