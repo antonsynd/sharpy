@@ -1,0 +1,1 @@
+# TODO(#287): f-string brace escape ({{ → {) generates invalid C#

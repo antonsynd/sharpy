@@ -1,0 +1,3 @@
+{literal braces}
+value = {42}
+empty: {}

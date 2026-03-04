@@ -1,0 +1,7 @@
+# Test f-string brace escaping: {{ → { and }} → }
+
+def main():
+    x: int = 42
+    print(f"{{literal braces}}")
+    print(f"value = {{{x}}}")
+    print(f"empty: {{}}")

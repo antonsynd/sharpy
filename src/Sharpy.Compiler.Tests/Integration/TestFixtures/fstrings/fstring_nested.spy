@@ -1,0 +1,5 @@
+# Test nested f-string expressions
+
+def main():
+    name: str = "world"
+    print(f"Hello {f'dear {name}'}")
