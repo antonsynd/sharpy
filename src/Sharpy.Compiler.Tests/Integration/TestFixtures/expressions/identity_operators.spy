@@ -1,0 +1,10 @@
+# Test is/is not for object identity (not just None)
+a: list[int] = [1, 2, 3]
+b: list[int] = a
+c: list[int] = [1, 2, 3]
+
+def main():
+    print(a is b)
+    print(a is c)
+    print(a is not c)
+    print(a is not b)

@@ -1,0 +1,4 @@
+def main():
+    assert True, "this should pass"
+    assert 1 == 1, "equality check"
+    print("assertions with messages passed")

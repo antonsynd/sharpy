@@ -1,0 +1,5 @@
+def main():
+    s: str = r"hello\nworld"
+    print(s)
+    t: str = r"path\to\file"
+    print(t)

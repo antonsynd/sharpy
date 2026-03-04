@@ -1,0 +1,15 @@
+# Test __contains__ operator overloading for membership testing
+class WordList:
+    _words: list[str]
+
+    def __init__(self):
+        self._words = ["hello", "world", "foo"]
+
+    def __contains__(self, word: str) -> bool:
+        return word in self._words
+
+def main():
+    wl: WordList = WordList()
+    print("hello" in wl)
+    print("bar" in wl)
+    print("foo" in wl)

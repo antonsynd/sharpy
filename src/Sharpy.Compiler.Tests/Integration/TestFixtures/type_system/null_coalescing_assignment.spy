@@ -1,0 +1,31 @@
+# Test null coalescing assignment (??=) with nullable (T | None) types
+def main():
+    # Assign to None variable
+    x: int | None = None
+    x ??= 42
+    print(x)
+
+    # No-op when already has value
+    y: int | None = 10
+    y ??= 99
+    print(y)
+
+    # String nullable
+    name: str | None = None
+    name ??= "Anonymous"
+    print(name)
+
+    # String already has value
+    greeting: str | None = "Hello"
+    greeting ??= "Hi"
+    print(greeting)
+
+    # Zero is not None, should not be overwritten
+    z: int | None = 0
+    z ??= 100
+    print(z)
+
+    # Empty string is not None, should not be overwritten
+    s: str | None = ""
+    s ??= "default"
+    print(s)

@@ -1,0 +1,22 @@
+# Test __div__ and __mod__ operator overloading
+class Number:
+    value: float
+
+    def __init__(self, value: float):
+        self.value = value
+
+    def __div__(self, other: Number) -> Number:
+        return Number(self.value / other.value)
+
+    def __mod__(self, other: Number) -> Number:
+        return Number(self.value % other.value)
+
+    @override
+    def __str__(self) -> str:
+        return str(self.value)
+
+def main():
+    a: Number = Number(10.0)
+    b: Number = Number(3.0)
+    print(a / b)
+    print(a % b)

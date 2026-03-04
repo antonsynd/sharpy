@@ -1,0 +1,7 @@
+# Test membership operators (in/not in) with strings
+def main():
+    print("ell" in "hello")
+    print("xyz" in "hello")
+    print("hello" in "hello world")
+    print("abc" not in "hello")
+    print("ell" not in "hello")

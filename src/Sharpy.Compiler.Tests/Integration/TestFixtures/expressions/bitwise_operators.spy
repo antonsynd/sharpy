@@ -1,0 +1,7 @@
+def main():
+    print(5 & 3)
+    print(5 | 3)
+    print(5 ^ 3)
+    print(~5)
+    print(1 << 4)
+    print(32 >> 2)

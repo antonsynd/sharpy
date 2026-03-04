@@ -1,0 +1,17 @@
+# Test conflict resolution when two interfaces have same default method
+interface IA:
+    def method(self) -> str:
+        return "A"
+
+interface IB:
+    def method(self) -> str:
+        return "B"
+
+class C(IA, IB):
+    @override
+    def method(self) -> str:
+        return "C"
+
+def main():
+    c: C = C()
+    print(c.method())

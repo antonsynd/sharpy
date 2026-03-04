@@ -1,0 +1,8 @@
+def main():
+    s: str = """hello
+world"""
+    print(s)
+    t: str = """line one
+line two
+line three"""
+    print(t)

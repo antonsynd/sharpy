@@ -1,0 +1,8 @@
+# This is a comment
+def main():
+    x: int = 42  # inline comment
+    print(x)
+    # Another comment
+    y: str = "hello # not a comment"
+    print(y)
+    print("done")

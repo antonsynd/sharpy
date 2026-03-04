@@ -1,0 +1,16 @@
+def main():
+    x: int = 15
+    x &= 7
+    print(x)
+    x = 3
+    x |= 12
+    print(x)
+    x = 15
+    x ^= 9
+    print(x)
+    x = 1
+    x <<= 4
+    print(x)
+    x = 32
+    x >>= 2
+    print(x)

@@ -1,0 +1,21 @@
+# Test null coalescing assignment (??=) with Optional (T?) types
+def main():
+    # Assign to None() optional
+    x: int? = None()
+    x ??= 42
+    print(x)
+
+    # No-op when already has value
+    y: int? = Some(10)
+    y ??= 99
+    print(y)
+
+    # Optional string - None case
+    name: str? = None()
+    name ??= "Anonymous"
+    print(name)
+
+    # Optional string - already has value
+    greeting: str? = Some("Hello")
+    greeting ??= "Hi"
+    print(greeting)

@@ -1,0 +1,7 @@
+# Test variable scoping within if blocks
+def main():
+    x: int = 10
+    if x > 5:
+        y: int = 20
+        print(y)
+    print(x)

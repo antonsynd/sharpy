@@ -1,0 +1,12 @@
+# Test numeric type promotion in arithmetic
+def main():
+    # int + float -> float
+    a: int = 5
+    b: float = 2.5
+    print(a + b)
+    # int * float -> float
+    print(a * b)
+    # int + long -> long
+    e: int = 10
+    f: long = 100L
+    print(e + f)

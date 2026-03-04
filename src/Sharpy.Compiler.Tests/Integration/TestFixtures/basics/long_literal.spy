@@ -1,0 +1,8 @@
+# Test long (int64) literals with L suffix
+def main():
+    x: long = 42L
+    print(x)
+    y = 100L
+    print(y)
+    z: long = 9999999999
+    print(z)

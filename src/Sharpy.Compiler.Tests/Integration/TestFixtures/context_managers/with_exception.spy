@@ -1,0 +1,19 @@
+# Test that __exit__ is called when exception occurs in with block
+class Resource:
+    def __init__(self):
+        pass
+
+    def __enter__(self) -> Resource:
+        print("enter")
+        return self
+
+    def __exit__(self):
+        print("exit")
+
+def main():
+    try:
+        with Resource():
+            print("inside")
+            raise ValueError("oops")
+    except ValueError:
+        print("caught error")

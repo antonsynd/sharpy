@@ -1,0 +1,6 @@
+# Test backtick escaping to preserve exact casing
+def `ExactName`() -> str:
+    return "exact"
+
+def main():
+    print(`ExactName`())

@@ -1,0 +1,7 @@
+def main():
+    x: float = 3.14
+    y: int = x to int
+    print(y)
+    z: int = 7
+    w: float = z to float
+    print(w)

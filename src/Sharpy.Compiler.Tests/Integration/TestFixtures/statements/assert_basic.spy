@@ -1,0 +1,5 @@
+def main():
+    assert True
+    assert 1 + 1 == 2
+    assert "hello" == "hello"
+    print("all assertions passed")

@@ -1,0 +1,9 @@
+# Test float32 literal with f suffix - type inference only
+# NOTE: Explicit annotation (x: float32 = 3.14f) fails due to #280
+def main():
+    x = 3.14f
+    print(x)
+    y = 2.0f
+    print(y)
+    z = 0.5f
+    print(z)

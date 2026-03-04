@@ -1,0 +1,12 @@
+# Test operator precedence and associativity
+def main():
+    # Exponentiation is right-associative: 2**3**2 = 2**(3**2) = 512
+    print(2 ** 3 ** 2)
+    # Multiplication before addition
+    print(2 + 3 * 4)
+    # Parentheses override precedence
+    print((2 + 3) * 4)
+    # Null coalescing lower than arithmetic: x ?? (5 + 3)
+    x: int | None = None
+    y: int = x ?? 5 + 3
+    print(y)

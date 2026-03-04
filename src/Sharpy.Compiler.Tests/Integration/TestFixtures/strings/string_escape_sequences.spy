@@ -1,0 +1,6 @@
+def main():
+    print("hello\tworld")
+    print("line1\nline2")
+    print("back\\slash")
+    s: str = "a\0b"
+    print(len(s))
