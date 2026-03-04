@@ -197,9 +197,27 @@ internal class BuiltinRegistry
 
     /// <summary>
     /// Provides methods, operators, and protocols for types that cannot be discovered
-    /// from Sharpy.Core via CLR reflection (e.g., tuple maps to System.ValueTuple,
-    /// int.parse/float.parse are on separate utility classes, Iterator/IEnumerable are
-    /// placeholder types).
+    /// <summary>
+    /// Provides inline definitions for types whose methods, operators, or protocols cannot
+    /// be discovered from Sharpy.Core via CLR reflection. Each case here is permanent by design:
+    /// <list type="bullet">
+    /// <item><description>
+    /// <b>tuple</b>: Maps to <c>System.ValueTuple</c>, whose operators (<c>==</c>, <c>+</c>, <c>*</c>)
+    /// are compiler-synthesized by Roslyn/CLR, not present as discoverable CLR methods.
+    /// Protocols (<c>__len__</c>, <c>__iter__</c>, <c>__getitem__</c>) similarly have no CLR surface.
+    /// </description></item>
+    /// <item><description>
+    /// <b>Iterator/IEnumerable/IEnumerator</b>: Abstract placeholder types registered with
+    /// <c>typeof(object)</c>. They have no real CLR type surface — only the <c>__iter__</c>
+    /// protocol stub is needed for type-checking iteration patterns.
+    /// </description></item>
+    /// <item><description>
+    /// <b>int.parse / float.parse</b>: Live on separate utility classes (<c>IntParse</c>,
+    /// <c>DoubleParse</c>) in Sharpy.Core, not on <c>System.Int32</c> / <c>System.Double</c>.
+    /// Discovery operates on the actual CLR type surface, so these cross-type helpers
+    /// must be registered manually as static methods on the Sharpy <c>int</c>/<c>float</c> types.
+    /// </description></item>
+    /// </list>
     /// </summary>
     private static void ApplyNonDiscoverableDefinitions(
         string typeName,
