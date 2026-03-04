@@ -146,20 +146,13 @@ internal class BuiltinRegistry
             ? Enumerable.Range(0, typeParamCount).Select(i => new TypeParameterDef { Name = $"T{i}" }).ToList()
             : new List<TypeParameterDef>();
 
-        // Try discovery-backed method population first
-        var discovered = _discovery.GetTypeByName(sharpyName);
-
-        var methods = discovered?.Methods.Count > 0
-            ? discovered.Methods
-            : BuiltinMethodDefinitions.GetMethods(sharpyName, typeParams);
-
-        var operatorMethods = discovered?.OperatorMethods.Count > 0
-            ? discovered.OperatorMethods
-            : BuiltinMethodDefinitions.GetOperatorMethods(sharpyName, typeParams);
-
-        var protocolMethods = discovered?.ProtocolMethods.Count > 0
-            ? discovered.ProtocolMethods
-            : BuiltinMethodDefinitions.GetProtocolMethods(sharpyName, typeParams);
+        // Discovery infrastructure is in place (GetTypeByName) but not yet used for
+        // method population due to signature differences (default parameters, protocol
+        // stubs). BuiltinMethodDefinitions remains the source of truth until discovery
+        // signatures are fully aligned. See #290 for tracking.
+        var methods = BuiltinMethodDefinitions.GetMethods(sharpyName, typeParams);
+        var operatorMethods = BuiltinMethodDefinitions.GetOperatorMethods(sharpyName, typeParams);
+        var protocolMethods = BuiltinMethodDefinitions.GetProtocolMethods(sharpyName, typeParams);
 
         var typeSymbol = new TypeSymbol
         {
