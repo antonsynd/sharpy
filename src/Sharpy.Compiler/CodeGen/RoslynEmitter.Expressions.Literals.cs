@@ -673,11 +673,15 @@ internal partial class RoslynEmitter
         {
             if (part.Text != null)
             {
+                // Escape literal braces for C# interpolated strings:
+                // The lexer already converts Python's {{ → { and }} → },
+                // so we re-escape { → {{ and } → }} for C# interpolation syntax.
+                var sourceText = part.Text.Replace("{", "{{").Replace("}", "}}");
                 parts.Add(InterpolatedStringText()
                     .WithTextToken(Token(
                         TriviaList(),
                         SyntaxKind.InterpolatedStringTextToken,
-                        part.Text,
+                        sourceText,
                         part.Text,
                         TriviaList())));
             }
