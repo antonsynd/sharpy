@@ -300,8 +300,14 @@ internal partial class TypeChecker
             }
             else if (!IsAssignable(initType, declaredType))
             {
+                // Allow implicit narrowing of double literals to float32 (matches C# behavior)
+                if (declaredType is BuiltinType { Name: "float32" } && initType is BuiltinType { Name: "float" }
+                    && varDecl.InitialValue is FloatLiteral)
+                {
+                    // Literal narrowing is safe — no runtime data loss risk
+                }
                 // Special case: Provide helpful error messages for None misuse
-                if (initType is VoidType && declaredType is OptionalType)
+                else if (initType is VoidType && declaredType is OptionalType)
                 {
                     AddError($"Cannot assign 'None' to '{declaredType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
                         varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
@@ -728,6 +734,29 @@ internal partial class TypeChecker
             _symbolTable.EnterScope("except");
             _controlFlowDepth++;
             _inExceptBlock = true;
+
+            // Register the 'as' variable binding (e.g., except ValueError as e:)
+            if (handler.Name != null)
+            {
+                var exceptionType = handler.ExceptionType != null
+                    ? _typeResolver.ResolveTypeAnnotation(handler.ExceptionType)
+                    : _typeResolver.ResolveTypeAnnotation(
+                        new TypeAnnotation { Name = "Exception", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart });
+
+                var varSymbol = new VariableSymbol
+                {
+                    Name = handler.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = exceptionType,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = handler.LineStart,
+                    DeclarationColumn = handler.ColumnStart
+                };
+
+                _symbolTable.Define(varSymbol);
+                SemanticBinding.SetVariableType(varSymbol, exceptionType);
+            }
+
             foreach (var stmt in handler.Body)
                 CheckStatement(stmt);
             _inExceptBlock = false;

@@ -1,0 +1,4 @@
+# Negative test: runtime narrowing from float to float32 is not allowed (#285)
+def main():
+    y: float = 1.0
+    x: float32 = y

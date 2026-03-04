@@ -28,7 +28,9 @@ internal partial class TypeChecker
         SemanticType type = expr switch
         {
             IntegerLiteral => SemanticType.Int,
-            FloatLiteral => SemanticType.Double,
+            FloatLiteral fl => fl.Suffix?.Equals("f", StringComparison.OrdinalIgnoreCase) == true
+                ? SemanticType.Float32
+                : SemanticType.Double,
             StringLiteral => SemanticType.Str,
             BooleanLiteral => SemanticType.Bool,
             NoneLiteral => SemanticType.Void,

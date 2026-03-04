@@ -1,0 +1,24 @@
+def test_basic():
+    try:
+        raise ValueError("test error")
+    except ValueError as e:
+        print("caught ValueError")
+
+def test_multiple_handlers():
+    try:
+        raise TypeError("type problem")
+    except ValueError as e:
+        print("caught ValueError")
+    except TypeError as e:
+        print("caught TypeError")
+
+def test_generic_except():
+    try:
+        raise RuntimeError("broken")
+    except Exception as e:
+        print("caught Exception")
+
+def main():
+    test_basic()
+    test_multiple_handlers()
+    test_generic_except()

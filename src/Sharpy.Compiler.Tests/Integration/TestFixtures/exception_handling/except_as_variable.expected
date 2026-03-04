@@ -1,0 +1,3 @@
+caught ValueError
+caught TypeError
+caught Exception
