@@ -1,0 +1,16 @@
+from system import IComparable
+
+class Score(IComparable[Score]):
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def compare_to(self, other: Score) -> int:
+        return self.value - other.value
+
+def main():
+    a = Score(10)
+    b = Score(5)
+    print(a.compare_to(b) > 0)
+    print(b.compare_to(a) > 0)

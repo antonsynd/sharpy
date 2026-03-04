@@ -1,0 +1,5 @@
+from system import NonExistentClrType
+
+def main():
+    x = NonExistentClrType()
+    print(x)
