@@ -775,6 +775,93 @@ public class ControlFlowGraphBuilderTests
 
     #endregion
 
+    #region ContainsAwait Detection
+
+    [Fact]
+    public void Build_SimpleAwaitExpression_SetsContainsAwait()
+    {
+        var func = CreateFunction("async_func", ImmutableArray.Create<Statement>(
+            new ExpressionStatement
+            {
+                Expression = new AwaitExpression { Operand = Id("task") }
+            }
+        ));
+
+        var cfg = _builder.Build(func);
+
+        var awaitBlocks = cfg.Blocks.Where(b => b.ContainsAwait).ToList();
+        Assert.Single(awaitBlocks);
+    }
+
+    [Fact]
+    public void Build_NestedAwaitInAssignment_SetsContainsAwait()
+    {
+        // x = await get_value()
+        var func = CreateFunction("async_nested", ImmutableArray.Create<Statement>(
+            new Assignment
+            {
+                Target = Id("x"),
+                Value = new AwaitExpression
+                {
+                    Operand = new FunctionCall
+                    {
+                        Function = Id("get_value"),
+                        Arguments = ImmutableArray<Expression>.Empty
+                    }
+                }
+            }
+        ));
+
+        var cfg = _builder.Build(func);
+
+        var awaitBlocks = cfg.Blocks.Where(b => b.ContainsAwait).ToList();
+        Assert.Single(awaitBlocks);
+    }
+
+    [Fact]
+    public void Build_NoAwaitExpression_ContainsAwaitFalse()
+    {
+        var func = CreateFunction("sync_func", ImmutableArray.Create<Statement>(
+            new ExpressionStatement { Expression = Id("x") },
+            Pass()
+        ));
+
+        var cfg = _builder.Build(func);
+
+        Assert.DoesNotContain(cfg.Blocks, b => b.ContainsAwait);
+    }
+
+    [Fact]
+    public void Build_AwaitInBranch_OnlyBranchBlockMarked()
+    {
+        // if True:
+        //     await task
+        // else:
+        //     pass
+        var func = CreateFunction("async_branch", ImmutableArray.Create<Statement>(
+            new IfStatement
+            {
+                Test = Bool(true),
+                ThenBody = ImmutableArray.Create<Statement>(
+                    new ExpressionStatement
+                    {
+                        Expression = new AwaitExpression { Operand = Id("task") }
+                    }
+                ),
+                ElseBody = ImmutableArray.Create<Statement>(Pass())
+            }
+        ));
+
+        var cfg = _builder.Build(func);
+
+        var awaitBlocks = cfg.Blocks.Where(b => b.ContainsAwait).ToList();
+        Assert.Single(awaitBlocks);
+        Assert.Contains(awaitBlocks[0].Statements, s =>
+            s is ExpressionStatement es && es.Expression is AwaitExpression);
+    }
+
+    #endregion
+
     #region Helpers
 
     private static FunctionDef CreateFunction(string name, ImmutableArray<Statement> body)

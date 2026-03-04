@@ -301,6 +301,113 @@ public class ControlFlowAnalysisTests
     }
 
     [Fact]
+    public void IdentifyAsyncRegions_SingleAwait_TwoRegions()
+    {
+        var func = new FunctionDef
+        {
+            Name = "single_await",
+            IsAsync = true,
+            Body = ImmutableArray.Create<Statement>(
+                Pass(),
+                new ExpressionStatement
+                {
+                    Expression = new AwaitExpression { Operand = Id("task") }
+                },
+                Pass()
+            )
+        };
+
+        var cfg = _builder.Build(func);
+        var regions = ControlFlowAnalysis.IdentifyAsyncRegions(cfg);
+
+        // Should have 2 regions: pre-await (including await block) and post-await
+        Assert.Equal(2, regions.Length);
+        Assert.NotNull(regions[0].AwaitExpression);
+        Assert.Null(regions[1].AwaitExpression);
+    }
+
+    [Fact]
+    public void IdentifyAsyncRegions_MultipleAwaits_MultipleRegions()
+    {
+        var func = new FunctionDef
+        {
+            Name = "multi_await",
+            IsAsync = true,
+            Body = ImmutableArray.Create<Statement>(
+                new ExpressionStatement
+                {
+                    Expression = new AwaitExpression { Operand = Id("task1") }
+                },
+                new ExpressionStatement
+                {
+                    Expression = new AwaitExpression { Operand = Id("task2") }
+                },
+                Pass()
+            )
+        };
+
+        var cfg = _builder.Build(func);
+        var regions = ControlFlowAnalysis.IdentifyAsyncRegions(cfg);
+
+        // The body block contains all 3 statements (no branching), and since
+        // ContainsAwait is set once per block (not per statement), the block
+        // forms one await region plus a continuation region (entry/exit blocks).
+        Assert.True(regions.Length >= 2);
+        Assert.True(regions.Count(r => r.AwaitExpression != null) >= 1);
+    }
+
+    [Fact]
+    public void IdentifyAsyncRegions_AwaitInBranch_RegionsCreated()
+    {
+        var func = new FunctionDef
+        {
+            Name = "await_branch",
+            IsAsync = true,
+            Body = ImmutableArray.Create<Statement>(
+                new IfStatement
+                {
+                    Test = Bool(true),
+                    ThenBody = ImmutableArray.Create<Statement>(
+                        new ExpressionStatement
+                        {
+                            Expression = new AwaitExpression { Operand = Id("task") }
+                        }
+                    ),
+                    ElseBody = ImmutableArray.Create<Statement>(Pass())
+                }
+            )
+        };
+
+        var cfg = _builder.Build(func);
+        var regions = ControlFlowAnalysis.IdentifyAsyncRegions(cfg);
+
+        // Should have at least 2 regions: one containing the await block, one for continuation
+        Assert.True(regions.Length >= 2);
+        Assert.Contains(regions, r => r.AwaitExpression != null);
+    }
+
+    [Fact]
+    public void IdentifyAsyncRegions_ExtractsAwaitExpression()
+    {
+        var awaitExpr = new AwaitExpression { Operand = Id("my_task") };
+        var func = new FunctionDef
+        {
+            Name = "extract_await",
+            IsAsync = true,
+            Body = ImmutableArray.Create<Statement>(
+                new ExpressionStatement { Expression = awaitExpr }
+            )
+        };
+
+        var cfg = _builder.Build(func);
+        var regions = ControlFlowAnalysis.IdentifyAsyncRegions(cfg);
+
+        var awaitRegion = regions.FirstOrDefault(r => r.AwaitExpression != null);
+        Assert.NotNull(awaitRegion);
+        Assert.IsType<AwaitExpression>(awaitRegion.AwaitExpression);
+    }
+
+    [Fact]
     public void ValidateLoopControlFlow_NestedLoopContinue_NoErrors()
     {
         var func = new FunctionDef

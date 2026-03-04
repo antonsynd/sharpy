@@ -1,0 +1,8 @@
+async def greet() -> str:
+    return "hello"
+    x: str = "unreachable"
+    return x
+
+async def main():
+    result: str = await greet()
+    print(result)
