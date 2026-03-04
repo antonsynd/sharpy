@@ -244,8 +244,8 @@ internal class SignatureValidator : SemanticValidatorBase
         var actualReturnType = TypeAnnotationHelper.GetName(funcDef.ReturnType);
 
         // Normalize: "None" and "void" are equivalent
-        var expectedNormalized = protocol.ExpectedReturnType == "None" ? "void" : protocol.ExpectedReturnType;
-        var actualNormalized = actualReturnType == "None" ? "void" : actualReturnType;
+        var expectedNormalized = protocol.ExpectedReturnType == BuiltinNames.None ? "void" : protocol.ExpectedReturnType;
+        var actualNormalized = actualReturnType == BuiltinNames.None ? "void" : actualReturnType;
 
         if (!string.Equals(actualNormalized, expectedNormalized, StringComparison.OrdinalIgnoreCase))
         {
@@ -294,12 +294,12 @@ internal class SignatureValidator : SemanticValidatorBase
 
     private static bool IsTypeAnnotationBool(TypeAnnotation typeAnnotation)
     {
-        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Length == 0 && !typeAnnotation.IsOptional;
+        return typeAnnotation.Name == BuiltinNames.Bool && typeAnnotation.TypeArguments.Length == 0 && !typeAnnotation.IsOptional;
     }
 
     private static bool IsTypeAnnotationVoid(TypeAnnotation typeAnnotation)
     {
-        return typeAnnotation.Name == "None" && typeAnnotation.TypeArguments.Length == 0;
+        return typeAnnotation.Name == BuiltinNames.None && typeAnnotation.TypeArguments.Length == 0;
     }
 
     #endregion

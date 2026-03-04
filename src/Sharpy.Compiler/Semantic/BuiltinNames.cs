@@ -65,6 +65,11 @@ internal static class BuiltinNames
     public const string None = "None";
     public const string Object = "object";
 
+    // ---- Wrapper type names ----
+    public const string Optional = "Optional";
+    public const string Result = "Result";
+    public const string Function = "function";
+
     // ---- Dict view types (returned by dict.items(), .keys(), .values()) ----
     public const string DictItemsView = "DictItemsView";
     public const string DictKeyView = "DictKeyView";

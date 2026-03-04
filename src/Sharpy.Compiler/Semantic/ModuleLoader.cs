@@ -545,15 +545,15 @@ internal class ModuleLoader
             {
                 baseType = new TupleType { ElementTypes = typeArgs };
             }
-            else if (typeAnnotation.Name == "Optional" && typeArgs.Count == 1)
+            else if (typeAnnotation.Name == BuiltinNames.Optional && typeArgs.Count == 1)
             {
                 baseType = new OptionalType { UnderlyingType = typeArgs[0] };
             }
-            else if (typeAnnotation.Name == "Result" && typeArgs.Count == 2)
+            else if (typeAnnotation.Name == BuiltinNames.Result && typeArgs.Count == 2)
             {
                 baseType = new ResultType { OkType = typeArgs[0], ErrorType = typeArgs[1] };
             }
-            else if (typeAnnotation.Name == "function")
+            else if (typeAnnotation.Name == BuiltinNames.Function)
             {
                 var returnType = typeArgs[^1];
                 var paramTypes = typeArgs.Take(typeArgs.Count - 1).ToList();

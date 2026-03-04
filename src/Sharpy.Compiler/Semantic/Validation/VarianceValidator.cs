@@ -180,7 +180,7 @@ internal class VarianceValidator : SemanticValidatorBase
     {
         // Function types: (T1, T2, ...) -> R
         // Represented as Name="function", TypeArguments=[param_types..., return_type]
-        if (typeAnnotation.Name == "function")
+        if (typeAnnotation.Name == BuiltinNames.Function)
         {
             // All type arguments except the last are parameter types (contravariant position)
             for (int i = 0; i < typeAnnotation.TypeArguments.Length - 1; i++)
