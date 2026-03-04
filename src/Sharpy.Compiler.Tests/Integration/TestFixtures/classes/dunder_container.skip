@@ -1,1 +1,1 @@
-TODO: __getitem__/__setitem__ on user-defined classes produces UnknownType. See #279
+Blocked on C# indexer codegen for __getitem__/__setitem__ (#279)

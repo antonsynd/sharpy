@@ -721,6 +721,25 @@ internal class TypeInferenceService
             return SemanticType.Str;
         }
 
+        // User-defined types with __getitem__
+        TypeSymbol? typeSymbol = container switch
+        {
+            UserDefinedType udt => udt.Symbol,
+            GenericType gt => gt.GenericDefinition,
+            _ => null
+        };
+
+        if (typeSymbol != null &&
+            typeSymbol.OperatorMethods.TryGetValue(DunderNames.GetItem, out var getItemMethods))
+        {
+            var bestOverload = FindBestOverload(getItemMethods, index);
+            if (bestOverload != null)
+                return bestOverload.ReturnType;
+            // Fall back to first overload's return type
+            if (getItemMethods.Count > 0)
+                return getItemMethods[0].ReturnType;
+        }
+
         return null;
     }
 

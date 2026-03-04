@@ -50,6 +50,12 @@ internal partial class RoslynEmitter
                 return powCall;
 
             case BinaryOperator.Divide:
+                // User-defined types with __div__: emit plain left / right (C# operator overload)
+                var leftDivType = _context.SemanticInfo?.GetExpressionType(binOp.Left);
+                var rightDivType = _context.SemanticInfo?.GetExpressionType(binOp.Right);
+                if (leftDivType is UserDefinedType || rightDivType is UserDefinedType)
+                    return BinaryExpression(SyntaxKind.DivideExpression, left, right);
+
                 // x / y → true division with Python semantics (always returns float64)
                 // Cast at least one operand to double to ensure float result
                 // If either operand is already float, the division will naturally produce float
