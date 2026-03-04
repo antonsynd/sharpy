@@ -16,7 +16,7 @@ internal class CachedModuleDiscovery
     private readonly OverloadIndexCache _cache;
     private readonly OverloadIndexBuilder _builder;
     private readonly ClrTypeMapper _typeMapper;
-    private readonly ConcurrentDictionary<string, OverloadIndex> _loadedIndices = new();
+    private readonly ConcurrentDictionary<string, Lazy<OverloadIndex>> _loadedIndices = new();
 
     /// <summary>
     /// Create a discovery instance using the default cache directory.
@@ -45,8 +45,10 @@ internal class CachedModuleDiscovery
     {
         var identity = AssemblyIdentity.FromAssembly(assembly);
 
-        // Use GetOrAdd for thread-safe loading
-        _loadedIndices.GetOrAdd(identity.Name, _ =>
+        // Use Lazy<T> with GetOrAdd to guarantee single factory execution
+        // under contention — ConcurrentDictionary.GetOrAdd may invoke the factory
+        // multiple times, but only one Lazy<T>.Value will be evaluated.
+        var lazy = _loadedIndices.GetOrAdd(identity.Name, _ => new Lazy<OverloadIndex>(() =>
         {
             // Try to load from cache
             var index = _cache.TryLoad(identity);
@@ -59,7 +61,10 @@ internal class CachedModuleDiscovery
             }
 
             return index;
-        });
+        }));
+
+        // Force evaluation so the assembly is loaded eagerly
+        _ = lazy.Value;
     }
 
     /// <summary>
@@ -69,8 +74,9 @@ internal class CachedModuleDiscovery
     {
         var functions = new List<FunctionSymbol>();
 
-        foreach (var index in _loadedIndices.Values)
+        foreach (var lazy in _loadedIndices.Values)
         {
+            var index = lazy.Value;
             if (!index.Modules.TryGetValue(moduleName, out var moduleOverloads))
                 continue;
 
@@ -93,8 +99,9 @@ internal class CachedModuleDiscovery
     {
         var types = new List<TypeSymbol>();
 
-        foreach (var index in _loadedIndices.Values)
+        foreach (var lazy in _loadedIndices.Values)
         {
+            var index = lazy.Value;
             if (!index.Modules.TryGetValue(moduleName, out var moduleOverloads))
                 continue;
 
@@ -202,8 +209,9 @@ internal class CachedModuleDiscovery
     /// </summary>
     public TypeSymbol? GetTypeByName(string sharpyName, TypeParameterType[]? sharedTypeParams)
     {
-        foreach (var index in _loadedIndices.Values)
+        foreach (var lazy in _loadedIndices.Values)
         {
+            var index = lazy.Value;
             foreach (var moduleOverloads in index.Modules.Values)
             {
                 // For generic types like List`1, match by stripping the generic arity suffix
@@ -233,6 +241,7 @@ internal class CachedModuleDiscovery
     public IEnumerable<string> GetLoadedModules()
     {
         return _loadedIndices.Values
+            .Select(lazy => lazy.Value)
             .SelectMany(index => index.Modules.Keys)
             .Distinct();
     }
