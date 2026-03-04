@@ -146,10 +146,15 @@ internal class BuiltinRegistry
             ? Enumerable.Range(0, typeParamCount).Select(i => new TypeParameterDef { Name = $"T{i}" }).ToList()
             : new List<TypeParameterDef>();
 
-        // Discovery infrastructure is in place (GetTypeByName) but not yet used for
-        // method population due to signature differences (default parameters, protocol
-        // stubs). BuiltinMethodDefinitions remains the source of truth until discovery
-        // signatures are fully aligned. See #290 for tracking.
+        // Build shared TypeParameterType instances for generic types so all methods
+        // reference the same objects (required for reference equality in substitution).
+        var sharedTypeParams = isGeneric
+            ? typeParams.Select(tp => new TypeParameterType { Name = tp.Name }).ToArray()
+            : Array.Empty<TypeParameterType>();
+
+        // Discovery infrastructure is in place (GetTypeByName with sharedTypeParams) but
+        // not yet used for method population. BuiltinMethodDefinitions remains the source
+        // of truth until discovery signatures are fully aligned. See #290 for tracking.
         var methods = BuiltinMethodDefinitions.GetMethods(sharpyName, typeParams);
         var operatorMethods = BuiltinMethodDefinitions.GetOperatorMethods(sharpyName, typeParams);
         var protocolMethods = BuiltinMethodDefinitions.GetProtocolMethods(sharpyName, typeParams);
