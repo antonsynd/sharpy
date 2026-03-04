@@ -31,14 +31,14 @@ internal partial class RoslynEmitter
         // Prefer target type annotation if available (e.g., list[int] = [...])
         TypeSyntax elementType;
         if (_targetTypeContext != null &&
-            _targetTypeContext.Name == "list" &&
+            _targetTypeContext.Name == BuiltinNames.List &&
             _targetTypeContext.TypeArguments.Length > 0)
         {
             // Use the declared element type from the target type annotation
             elementType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
         }
         else if (GetExpressionSemanticType(list) is GenericType listSemType &&
-                 listSemType.Name == "list" &&
+                 listSemType.Name == BuiltinNames.List &&
                  listSemType.TypeArguments.Count > 0 &&
                  listSemType.TypeArguments[0] is not UnknownType)
         {
@@ -56,7 +56,8 @@ internal partial class RoslynEmitter
         // If any element is a spread, use imperative builder pattern
         if (list.Elements.Any(e => e is SpreadElement))
         {
-            return GenerateSpreadCollectionBuilder(list.Elements, listType, "Extend", "Add");
+            CollectionTypeRegistry.TryGet(BuiltinNames.List, out var listInfo);
+            return GenerateSpreadCollectionBuilder(list.Elements, listType, listInfo!.SpreadMethodName, listInfo.AddMethodName);
         }
 
         var elements = list.Elements.Select(elem => GenerateWithNestedTargetType(elem, _targetTypeContext));
@@ -75,14 +76,14 @@ internal partial class RoslynEmitter
         // Prefer target type annotation if available (e.g., dict[str, int] = {...})
         TypeSyntax keyType, valueType;
         if (_targetTypeContext != null &&
-            _targetTypeContext.Name == "dict" &&
+            _targetTypeContext.Name == BuiltinNames.Dict &&
             _targetTypeContext.TypeArguments.Length >= 2)
         {
             keyType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
             valueType = _typeMapper.MapType(_targetTypeContext.TypeArguments[1]);
         }
         else if (GetExpressionSemanticType(dict) is GenericType dictSemType &&
-                 dictSemType.Name == "dict" &&
+                 dictSemType.Name == BuiltinNames.Dict &&
                  dictSemType.TypeArguments.Count >= 2 &&
                  dictSemType.TypeArguments[0] is not UnknownType &&
                  dictSemType.TypeArguments[1] is not UnknownType)
@@ -126,13 +127,13 @@ internal partial class RoslynEmitter
         // Prefer target type annotation if available (e.g., set[int] = {...})
         TypeSyntax elementType;
         if (_targetTypeContext != null &&
-            _targetTypeContext.Name == "set" &&
+            _targetTypeContext.Name == BuiltinNames.Set &&
             _targetTypeContext.TypeArguments.Length > 0)
         {
             elementType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
         }
         else if (GetExpressionSemanticType(set) is GenericType setSemType &&
-                 setSemType.Name == "set" &&
+                 setSemType.Name == BuiltinNames.Set &&
                  setSemType.TypeArguments.Count > 0 &&
                  setSemType.TypeArguments[0] is not UnknownType)
         {
@@ -149,7 +150,8 @@ internal partial class RoslynEmitter
         // If any element is a spread, use imperative builder pattern
         if (set.Elements.Any(e => e is SpreadElement))
         {
-            return GenerateSpreadCollectionBuilder(set.Elements, setType, "UnionWith", "Add");
+            CollectionTypeRegistry.TryGet(BuiltinNames.Set, out var setInfo);
+            return GenerateSpreadCollectionBuilder(set.Elements, setType, setInfo!.SpreadMethodName, setInfo.AddMethodName);
         }
 
         var elements = set.Elements.Select(elem => GenerateWithNestedTargetType(elem, _targetTypeContext));
@@ -191,7 +193,7 @@ internal partial class RoslynEmitter
     {
         // Multi-for comprehensions use imperative codegen (nested foreach loops)
         if (listComp.Clauses.Count(c => c is ForClause) > 1)
-            return GenerateImperativeComprehension(listComp.Clauses, listComp.Element, null, null, "list");
+            return GenerateImperativeComprehension(listComp.Clauses, listComp.Element, null, null, BuiltinNames.List);
 
         // Single-for: LINQ method chain
         var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
@@ -228,7 +230,7 @@ internal partial class RoslynEmitter
     {
         // Multi-for comprehensions use imperative codegen (nested foreach loops)
         if (setComp.Clauses.Count(c => c is ForClause) > 1)
-            return GenerateImperativeComprehension(setComp.Clauses, setComp.Element, null, null, "set");
+            return GenerateImperativeComprehension(setComp.Clauses, setComp.Element, null, null, BuiltinNames.Set);
 
         // Single-for: LINQ method chain
         var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
@@ -265,7 +267,7 @@ internal partial class RoslynEmitter
     {
         // Multi-for comprehensions use imperative codegen (nested foreach loops)
         if (dictComp.Clauses.Count(c => c is ForClause) > 1)
-            return GenerateImperativeComprehension(dictComp.Clauses, null, dictComp.Key, dictComp.Value, "dict");
+            return GenerateImperativeComprehension(dictComp.Clauses, null, dictComp.Key, dictComp.Value, BuiltinNames.Dict);
 
         // Single-for: LINQ method chain
         var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
@@ -318,7 +320,7 @@ internal partial class RoslynEmitter
     /// <param name="element">Element expression for list/set comprehensions (null for dict)</param>
     /// <param name="keyExpr">Key expression for dict comprehensions (null for list/set)</param>
     /// <param name="valueExpr">Value expression for dict comprehensions (null for list/set)</param>
-    /// <param name="collectionKind">"list", "set", or "dict"</param>
+    /// <param name="collectionKind">BuiltinNames.List, BuiltinNames.Set, or BuiltinNames.Dict</param>
     private ExpressionSyntax GenerateImperativeComprehension(
         ImmutableArray<ComprehensionClause> clauses,
         Expression? element,
@@ -328,9 +330,10 @@ internal partial class RoslynEmitter
     {
         var tempName = GenerateTempVarName("comp");
 
-        // Determine collection type
+        // Determine collection type via registry
+        CollectionTypeRegistry.TryGet(collectionKind, out var collInfo);
         TypeSyntax collectionType;
-        if (collectionKind == "dict")
+        if (collectionKind == BuiltinNames.Dict)
         {
             var kType = keyExpr != null ? GetExpressionSemanticType(keyExpr) : null;
             var vType = valueExpr != null ? GetExpressionSemanticType(valueExpr) : null;
@@ -341,7 +344,7 @@ internal partial class RoslynEmitter
                 ? _typeMapper.MapSemanticType(vType)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
             collectionType = TypeMapper.QualifiedGenericName(
-                    CSharpTypeNames.SharpyDict,
+                    collInfo!.CSharpTypeName,
                     kTypeSyntax, vTypeSyntax);
         }
         else
@@ -350,8 +353,7 @@ internal partial class RoslynEmitter
             var elemTypeSyntax = elemType != null
                 ? _typeMapper.MapSemanticType(elemType)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            var typeName = collectionKind == "list" ? CSharpTypeNames.SharpyList : CSharpTypeNames.SharpySet;
-            collectionType = TypeMapper.QualifiedGenericName(typeName, elemTypeSyntax);
+            collectionType = TypeMapper.QualifiedGenericName(collInfo!.CSharpTypeName, elemTypeSyntax);
         }
 
         // var __comp_N = new CollectionType();
@@ -365,7 +367,7 @@ internal partial class RoslynEmitter
 
         // Build the innermost statement: __comp_N.Add(element) or __comp_N[key] = value
         StatementSyntax innerStmt;
-        if (collectionKind == "dict")
+        if (collectionKind == BuiltinNames.Dict)
         {
             // __comp_N[key] = value;
             innerStmt = ExpressionStatement(
@@ -384,7 +386,7 @@ internal partial class RoslynEmitter
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         IdentifierName(tempName),
-                        IdentifierName("Add")))
+                        IdentifierName(collInfo!.AddMethodName)))
                     .AddArgumentListArguments(Argument(GenerateExpression(element!))));
         }
 
