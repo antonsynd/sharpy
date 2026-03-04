@@ -4,6 +4,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Registry;
@@ -255,6 +256,27 @@ internal class ModuleRegistry
                      : clrType.IsValueType ? TypeKind.Struct
                      : TypeKind.Class;
 
+        // Strip arity suffix from generic type names (e.g., "IEquatable`1" -> "IEquatable")
+        var typeName = clrType.Name;
+        if (clrType.IsGenericType || clrType.IsGenericTypeDefinition)
+        {
+            var backtickIndex = typeName.IndexOf('`');
+            if (backtickIndex >= 0)
+            {
+                typeName = typeName.Substring(0, backtickIndex);
+            }
+        }
+
+        // Build TypeParameterDefs from CLR generic arguments
+        var typeParameters = new List<TypeParameterDef>();
+        if (clrType.IsGenericTypeDefinition)
+        {
+            foreach (var arg in clrType.GetGenericArguments())
+            {
+                typeParameters.Add(new TypeParameterDef { Name = arg.Name });
+            }
+        }
+
         // Collect all data before construction so TypeSymbol properties can be init-only
 
         // Resolve base type for classes (except System.Object)
@@ -292,7 +314,7 @@ internal class ModuleRegistry
 
         var typeSymbol = new TypeSymbol
         {
-            Name = clrType.Name,
+            Name = typeName,
             Kind = SymbolKind.Type,
             TypeKind = typeKind,
             ClrType = clrType,
@@ -300,7 +322,8 @@ internal class ModuleRegistry
             AccessLevel = AccessLevel.Public,
             BaseType = baseTypeSymbol,
             Interfaces = interfaces,
-            Constructors = ctorSymbols
+            Constructors = ctorSymbols,
+            TypeParameters = typeParameters
         };
 
         return typeSymbol;
