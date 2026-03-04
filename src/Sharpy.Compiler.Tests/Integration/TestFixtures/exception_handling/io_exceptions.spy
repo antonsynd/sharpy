@@ -1,0 +1,15 @@
+def test_io_error():
+    try:
+        raise IOError("test")
+    except IOError as e:
+        print(e.Message)
+
+def test_file_not_found_error():
+    try:
+        raise FileNotFoundError("missing")
+    except FileNotFoundError as e:
+        print(e.Message)
+
+def main():
+    test_io_error()
+    test_file_not_found_error()
