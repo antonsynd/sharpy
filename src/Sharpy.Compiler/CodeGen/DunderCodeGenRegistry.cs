@@ -69,8 +69,4 @@ internal sealed class DunderCodeGenRegistry
         return _handlers.TryGetValue(dunderName, out handler);
     }
 
-    /// <summary>
-    /// Returns whether a handler is registered for the given dunder name.
-    /// </summary>
-    public bool HasHandler(string dunderName) => _handlers.ContainsKey(dunderName);
 }

@@ -22,7 +22,7 @@ namespace Sharpy
 
             s = s.Trim();
 
-            if (double.TryParse(s, NumberStyles.Float | NumberStyles.AllowThousands,
+            if (double.TryParse(s, NumberStyles.Float,
                 CultureInfo.InvariantCulture, out double result))
             {
                 return Result<double, ValueError>.Ok(result);
