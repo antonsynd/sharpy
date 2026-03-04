@@ -1,0 +1,14 @@
+class Lookup:
+    _items: list[str]
+
+    def __init__(self, items: list[str]):
+        self._items = items
+
+    def __getitem__(self, index: int) -> str:
+        return self._items[index]
+
+def main():
+    lookup: Lookup = Lookup(["hello", "world", "test"])
+    print(lookup[0])
+    print(lookup[1])
+    print(lookup[2])

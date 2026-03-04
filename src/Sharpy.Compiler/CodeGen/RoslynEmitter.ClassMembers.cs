@@ -83,6 +83,10 @@ internal partial class RoslynEmitter
         // Collect all __init__ methods for constructor generation (supports overloading)
         var initMethods = new List<FunctionDef>();
 
+        // Collect __getitem__ and __setitem__ for indexer generation
+        FunctionDef? getItemFunc = null;
+        FunctionDef? setItemFunc = null;
+
         // Collect all PropertyDef nodes, grouped by name for combining getter/setter
         var propertyGroups = new Dictionary<string, List<PropertyDef>>();
 
@@ -162,6 +166,15 @@ internal partial class RoslynEmitter
                         using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(funcDef) == true);
                         using var _asyncRev = SetAsyncScope(funcDef.IsAsync);
                         members.Add(GenerateReverseEnumeratorMethod(funcDef));
+                    }
+                    // __getitem__/__setitem__ → collect for combined C# indexer generation
+                    else if (funcDef.Name == DunderNames.GetItem)
+                    {
+                        getItemFunc = funcDef;
+                    }
+                    else if (funcDef.Name == DunderNames.SetItem)
+                    {
+                        setItemFunc = funcDef;
                     }
                     // Check if this is a dunder method that needs operator synthesis
                     else if (DunderMapping.IsDunderMethod(funcDef.Name))
@@ -249,6 +262,12 @@ internal partial class RoslynEmitter
         foreach (var (eventName, eventGroup) in eventGroups)
         {
             members.Add(GenerateGroupedEvent(eventGroup));
+        }
+
+        // Generate indexer from __getitem__/__setitem__ (combined into single C# indexer)
+        if (getItemFunc != null || setItemFunc != null)
+        {
+            members.Add(GenerateIndexer(getItemFunc, setItemFunc));
         }
 
         // Generate all constructors (supports overloading)
@@ -907,6 +926,143 @@ internal partial class RoslynEmitter
         }
 
         return property;
+    }
+
+    /// <summary>
+    /// Generates a C# indexer (this[K key] { get; set; }) from __getitem__ and/or __setitem__.
+    /// If both are present, they are combined into a single indexer with both accessors.
+    /// </summary>
+    private IndexerDeclarationSyntax GenerateIndexer(FunctionDef? getItemFunc, FunctionDef? setItemFunc)
+    {
+        // Use __getitem__ for determining the indexer parameter type and return type,
+        // fall back to __setitem__ if __getitem__ is not present
+        var primaryFunc = getItemFunc ?? setItemFunc!;
+
+        ResetMethodScope();
+        CollectSourceVariableNames(primaryFunc.Body);
+
+        // Determine modifiers from the primary function's decorators
+        var modifiers = GenerateMethodModifiersFromDecorators(primaryFunc.Decorators);
+
+        // Check if abstract
+        bool hasAbstractDecorator = primaryFunc.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool hasEllipsisBody = primaryFunc.Body.Length == 1
+            && primaryFunc.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+        bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
+
+        if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
+        }
+
+        modifiers = ResolveModifierConflicts(modifiers);
+
+        // Get the indexer parameter (first non-self parameter of __getitem__ or __setitem__)
+        var indexParam = primaryFunc.Parameters
+            .FirstOrDefault(p =>
+                !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(p.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase));
+
+        var indexParamSyntax = indexParam != null
+            ? GenerateParameter(indexParam)
+            : Parameter(Identifier("key"))
+                .WithType(PredefinedType(Token(SyntaxKind.ObjectKeyword)));
+
+        // Determine return type from __getitem__'s return type, or __setitem__'s value parameter type
+        TypeSyntax returnType;
+        if (getItemFunc?.ReturnType != null)
+        {
+            returnType = _typeMapper.MapType(getItemFunc.ReturnType);
+        }
+        else if (setItemFunc != null)
+        {
+            // Use the type of the value parameter (last non-self parameter) from __setitem__
+            var valueParam = setItemFunc.Parameters
+                .Where(p =>
+                    !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(p.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))
+                .Skip(1) // Skip the key parameter
+                .FirstOrDefault();
+            returnType = valueParam?.Type != null
+                ? _typeMapper.MapType(valueParam.Type)
+                : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+        else
+        {
+            returnType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+
+        // Build accessors
+        var accessors = new List<AccessorDeclarationSyntax>();
+
+        if (getItemFunc != null)
+        {
+            ResetMethodScope();
+            CollectSourceVariableNames(getItemFunc.Body);
+
+            // Track the index parameter as a declared variable
+            if (indexParam != null)
+            {
+                var paramName = NameMangler.Transform(indexParam.Name, NameContext.Parameter);
+                _declaredVariables.Add(paramName);
+                var baseName = NameMangler.ToCamelCase(indexParam.Name);
+                _variableVersions[baseName] = 0;
+            }
+
+            if (isAbstract)
+            {
+                accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+            }
+            else
+            {
+                var bodyStatements = getItemFunc.Body.SelectMany(GenerateBodyStatements);
+                accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                    .WithBody(Block(bodyStatements)));
+            }
+        }
+
+        if (setItemFunc != null)
+        {
+            ResetMethodScope();
+            CollectSourceVariableNames(setItemFunc.Body);
+
+            // Track all non-self parameters as declared variables
+            foreach (var param in setItemFunc.Parameters)
+            {
+                if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(param.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                _declaredVariables.Add(paramName);
+                var baseName = NameMangler.ToCamelCase(param.Name);
+                _variableVersions[baseName] = 0;
+            }
+
+            if (isAbstract)
+            {
+                accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+            }
+            else
+            {
+                var bodyStatements = setItemFunc.Body.SelectMany(GenerateBodyStatements);
+                accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                    .WithBody(Block(bodyStatements)));
+            }
+        }
+
+        var indexer = IndexerDeclaration(returnType)
+            .WithModifiers(modifiers)
+            .WithParameterList(BracketedParameterList(SingletonSeparatedList(indexParamSyntax)))
+            .WithAccessorList(AccessorList(List(accessors)));
+
+        if (!string.IsNullOrEmpty(primaryFunc.DocString))
+        {
+            indexer = indexer.WithLeadingTrivia(GenerateXmlDocComment(primaryFunc.DocString));
+        }
+
+        return indexer;
     }
 
     /// <summary>
