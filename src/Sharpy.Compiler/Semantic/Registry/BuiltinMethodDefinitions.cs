@@ -25,8 +25,8 @@ internal static class BuiltinMethodDefinitions
             BuiltinNames.Dict => GetDictMethods(tps),
             BuiltinNames.List => GetListMethods(tps),
             BuiltinNames.Set => GetSetMethods(tps),
-            "int" => GetIntStaticMethods(),
-            "float" => GetFloatStaticMethods(),
+            BuiltinNames.Int => GetIntStaticMethods(),
+            BuiltinNames.Float => GetFloatStaticMethods(),
             _ => new List<FunctionSymbol>()
         };
     }
