@@ -103,7 +103,8 @@ internal partial class RoslynEmitter
         // If any entry is a spread (**expr), use imperative builder pattern
         if (dict.Entries.Any(entry => entry.Key == null))
         {
-            return GenerateSpreadDictBuilder(dict.Entries, dictType);
+            CollectionTypeRegistry.TryGet(BuiltinNames.Dict, out var dictInfo);
+            return GenerateSpreadDictBuilder(dict.Entries, dictType, dictInfo!.SpreadMethodName);
         }
 
         var initializers = dict.Entries.Select(entry =>
@@ -1327,7 +1328,8 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GenerateSpreadDictBuilder(
         ImmutableArray<DictEntry> entries,
-        TypeSyntax dictType)
+        TypeSyntax dictType,
+        string spreadMethodName)
     {
         var tempName = GenerateTempVarName("spread");
 
@@ -1344,13 +1346,13 @@ internal partial class RoslynEmitter
         {
             if (entry.Key == null)
             {
-                // __spread_N.Update(spreadDict)
+                // __spread_N.{spreadMethodName}(spreadDict)
                 _hoistedStatements.Add(ExpressionStatement(
                     InvocationExpression(
                         MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             IdentifierName(tempName),
-                            IdentifierName("Update")))
+                            IdentifierName(spreadMethodName)))
                         .AddArgumentListArguments(Argument(GenerateExpression(entry.Value)))));
             }
             else
