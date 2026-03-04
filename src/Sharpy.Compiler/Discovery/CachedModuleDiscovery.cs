@@ -214,7 +214,7 @@ internal class CachedModuleDiscovery
                     var backtickIndex = name.IndexOf('`');
                     if (backtickIndex >= 0)
                         name = name[..backtickIndex];
-                    return string.Equals(name, sharpyName, StringComparison.Ordinal);
+                    return string.Equals(name, sharpyName, StringComparison.OrdinalIgnoreCase);
                 });
 
                 if (typeInfo != null && (typeInfo.Methods.Count > 0 || typeInfo.OperatorMethods.Count > 0 || typeInfo.ProtocolMethods.Count > 0))
