@@ -722,6 +722,17 @@ _TIER3_ADVANCED: list[str] = [
     # Phase 0.2.6: Delegates & Variance
     "delegate_declaration",
     "generic_variance",
+    # Phase 0.2.6: Events
+    "event_auto",
+    "event_function_style",
+    "event_subscribe_unsubscribe",
+    "event_with_delegate",
+    # Phase 0.2.6: Custom Decorators / .NET Attributes
+    "custom_decorator_simple",
+    "custom_decorator_dotted",
+    "custom_decorator_keyword_args",
+    # Phase 0.2.6: Context Managers (dunder protocol)
+    "context_manager_dunder",
     # Feature Combinations (advanced)
     "nested_if_in_loop",
     "loop_in_function",
@@ -735,6 +746,9 @@ _TIER3_ADVANCED: list[str] = [
     "match_union_exhaustive",
     "delegate_with_lambda",
     "overloading_with_inheritance",
+    "event_with_inheritance",
+    "event_with_lambda_subscribe",
+    "custom_decorator_on_class",
 ]
 
 # Flat list for backward compatibility (e.g. category mapping lookups).

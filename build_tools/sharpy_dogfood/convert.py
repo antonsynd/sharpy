@@ -256,6 +256,20 @@ def get_category_from_feature(feature_focus: Optional[str]) -> str:
         "delegate_declaration": "delegates",
         "delegate_with_lambda": "delegates",
         "generic_variance": "type_system",
+        # Phase 0.2.6: Events
+        "event_auto": "events",
+        "event_function_style": "events",
+        "event_subscribe_unsubscribe": "events",
+        "event_with_delegate": "events",
+        "event_with_inheritance": "events",
+        "event_with_lambda_subscribe": "events",
+        # Phase 0.2.6: Custom Decorators / .NET Attributes
+        "custom_decorator_simple": "decorators",
+        "custom_decorator_dotted": "decorators",
+        "custom_decorator_keyword_args": "decorators",
+        "custom_decorator_on_class": "decorators",
+        # Phase 0.2.6: Context Managers (dunder protocol)
+        "context_manager_dunder": "with_statement",
         # Feature Combinations
         "overloading_with_inheritance": "classes",
     }

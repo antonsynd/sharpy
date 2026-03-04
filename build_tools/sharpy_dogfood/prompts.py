@@ -165,6 +165,44 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         r"SPY0365",
         "Duplicate union case name. " "Each case in a union must have a unique name.",
     ),
+    (
+        r"SPY0322",
+        "Built-in decorators (@abstract, @virtual, @override, @static, @final, "
+        "@private, @protected, @internal) do NOT accept arguments. "
+        "Remove the parentheses and arguments: use `@abstract` not `@abstract(something)`.",
+    ),
+    (
+        r"SPY0425",
+        "Custom decorator arguments must be compile-time constants: "
+        "strings, ints, floats, bools, None, enum member access, or type(X). "
+        "Variable references and function calls are not allowed.",
+    ),
+    (
+        r"SPY0373",
+        "Event type must be a delegate type. Use `event name: DelegateType` where "
+        "DelegateType is declared with `delegate`. Do not use function types directly.",
+    ),
+    (
+        r"SPY0374",
+        "Events can only be raised from inside the declaring class. "
+        "Move the `.invoke()` call inside a method of the class that owns the event.",
+    ),
+    (
+        r"SPY0375|SPY0376",
+        "Event subscribe (`+=`) and unsubscribe (`-=`) require a compatible handler. "
+        "Ensure the handler signature matches the event's delegate type.",
+    ),
+    (
+        r"SPY0420",
+        "Function-style events require BOTH `event add` and `event remove` accessors. "
+        "Add the missing accessor.",
+    ),
+    (
+        r"SPY0135|SPY0136",
+        "Event declaration syntax error. Use `event name: DelegateType` for auto-events, "
+        "or `event add name(self, handler: DelegateType):` / "
+        "`event remove name(self, handler: DelegateType):` for function-style events.",
+    ),
 ]
 
 
@@ -226,7 +264,13 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Keyword-only enforcement**: Arguments after `*` must be passed by keyword — passing them positionally is a compile error (SPY0371).
 - **Partial application placeholder**: `_` in a function call creates a partial application (lambda). Don't confuse with `case _:` wildcard in match statements.
 - **Variance position rules**: `out T` can only appear in return types, `in T` can only appear in parameter types. Violation causes SPY0418/SPY0419.
-- **Delegate vs function type**: Named delegates (`delegate Pred(x: int) -> bool`) are interchangeable with function types (`(int) -> bool`). Use delegates for public API readability."""
+- **Delegate vs function type**: Named delegates (`delegate Pred(x: int) -> bool`) are interchangeable with function types (`(int) -> bool`). Use delegates for public API readability.
+- **Event raise location**: Events can ONLY be raised from inside the declaring class. Use `self.on_click?.invoke()` — the `?.invoke()` pattern is thread-safe. Outside code can only `+=` (subscribe) and `-=` (unsubscribe).
+- **Event delegate type required**: Events must use a delegate type: `event on_click: EventHandler`, NOT a function type `event on_click: () -> None`.
+- **Function-style event accessors**: Function-style events have `event add name(self, handler: DelegateType):` and `event remove name(self, handler: DelegateType):` — both are required if using function-style.
+- **Custom decorator arguments**: Only compile-time constants allowed as decorator arguments: strings, ints, floats, bools, `None`, enum member access (`Color.RED`), and `type(X)`. Variable references or function calls are rejected (SPY0425).
+- **Built-in decorator no-args**: `@abstract`, `@virtual`, `@override`, `@static`, `@final`, `@private`, `@protected`, `@internal` never take arguments. Adding parentheses with arguments to these is an error (SPY0322).
+- **Decorator name mangling**: Custom decorator names are mangled from snake_case to PascalCase: `@my_custom_attr` → `[MyCustomAttr]`. Dotted names like `@system.serializable` → `[System.Serializable]`."""
 
 ENTRY_POINT_SECTION = """\
 ## CRITICAL: Program Entry Point Requirement
@@ -568,7 +612,35 @@ ALLOWED_FEATURES_SECTION = """\
 - **Covariant (`out`)**: `interface IProducer[out T]:` — `T` only in output positions
 - **Contravariant (`in`)**: `interface IConsumer[in T]:` — `T` only in input positions
 - **On delegates**: `delegate Func[in T, out R](value: T) -> R`
-- **IMPORTANT**: Variance annotations only valid on interfaces and delegates, not classes/structs"""
+- **IMPORTANT**: Variance annotations only valid on interfaces and delegates, not classes/structs
+
+#### Events (0.2.6)
+- **Auto-event**: `event on_click: EventHandler` — compiler-generated backing field and accessors
+- **Auto-event with generic args**: `event on_data: EventHandler[DataEventArgs]` — typed event args
+- **Custom delegate event**: `event on_change: MyDelegate` — use any delegate type
+- **Function-style event**: Custom `add`/`remove` accessors for fine-grained control:
+  ```
+  event add on_click(self, handler: EventHandler):
+      self._handlers.append(handler)
+  event remove on_click(self, handler: EventHandler):
+      self._handlers.remove(handler)
+  ```
+- **Subscribe**: `obj.on_click += handler` or `obj.on_click += lambda: print("clicked")`
+- **Unsubscribe**: `obj.on_click -= handler`
+- **Raise (inside class only)**: `self.on_click?.invoke()` or `self.on_click?.invoke(self, args)` — thread-safe null-check
+- **Event decorators**: `@virtual`, `@override`, `@abstract`, `@static`, `@private`, `@protected` work on events
+- **Interface events**: Interfaces can declare `event on_click: EventHandler` requirements
+- **IMPORTANT**: Events can ONLY be raised from inside the declaring class. Outside code can only `+=` and `-=`.
+- **IMPORTANT**: Use `?.invoke()` for thread-safe raising — do NOT call the event directly
+
+#### Custom Decorators / .NET Attributes (0.2.6)
+- **Simple attribute**: `@obsolete("Use bar() instead")` — maps to C# `[Obsolete("Use bar() instead")]`
+- **Dotted name**: `@system.serializable` — maps to C# `[System.Serializable]`
+- **Keyword arguments**: `@dll_import("user32.dll", entry_point="MessageBox")` — maps to named attribute arguments
+- **Type argument**: `@some_attr(type(MyClass))` — `type(X)` maps to C# `typeof(X)`
+- **Decorator names** undergo snake_case → PascalCase mangling (e.g., `@my_custom_attr` → `[MyCustomAttr]`)
+- **IMPORTANT**: Arguments must be compile-time constants: string, int, float, bool, None, enum access, `type(X)`. No variables or function calls.
+- **IMPORTANT**: Built-in decorators (`@abstract`, `@virtual`, `@override`, `@static`, `@final`, `@private`, `@protected`, `@internal`) must NOT have arguments (SPY0322)"""
 
 FORBIDDEN_FEATURES_SECTION = """\
 ### ❌ FORBIDDEN - Do NOT use these features (not yet implemented or restricted):
@@ -588,10 +660,12 @@ FORBIDDEN_FEATURES_SECTION = """\
 - **NO `return value` in generators**: Generators cannot return a value — use bare `return` for early termination
 - **NO mixing generator `__iter__` with `__next__`**: A class cannot have both `yield`-based `__iter__` AND a `__next__` method
 - **NO direct dunder calls**: Use builtin functions instead — `reversed(obj)` not `obj.__reversed__()`, `len(obj)` not `obj.__len__()`, `str(obj)` not `obj.__str__()`
-- **NO events**: `event name: DelegateType` — not yet implemented
-- **NO custom decorator arguments**: `@decorator(args)` — not yet implemented
 - **NO `raise X from Y`**: Inner exception chaining not supported
-- **NO async comprehensions**: `[await x async for x in ...]` — not supported"""
+- **NO async comprehensions**: `[await x async for x in ...]` — not supported
+- **NO event raise from outside class**: Events can ONLY be raised inside the declaring class via `?.invoke()`. Outside code can only use `+=` (subscribe) and `-=` (unsubscribe).
+- **NO direct event assignment**: Do NOT write `obj.on_click = handler`. Use `obj.on_click += handler` to subscribe.
+- **NO non-constant decorator arguments**: Custom decorator arguments must be compile-time constants (string, int, float, bool, None, enum access, `type(X)`). Variable expressions are rejected (SPY0425).
+- **NO arguments on built-in decorators**: `@abstract(something)` or `@virtual(args)` is forbidden (SPY0322). Built-in decorators like `@abstract`, `@virtual`, `@override`, `@static`, `@final`, `@private`, `@protected`, `@internal` take NO arguments."""
 
 NAMING_RULES_SECTION = """\
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
@@ -1009,6 +1083,43 @@ class Printer:
         print(f"int: {{x}}")
     def show(self, x: str) -> None:
         print(f"str: {{x}}")
+
+# Events — auto-event with subscribe and raise
+delegate EventHandler() -> None
+
+class Button:
+    event on_click: EventHandler
+
+    def click(self) -> None:
+        self.on_click?.invoke()
+
+def main():
+    b = Button()
+    b.on_click += lambda: print("clicked!")
+    b.click()
+
+# Custom decorators / .NET attributes
+@obsolete("Use new_function instead")
+def old_function() -> None:
+    pass
+
+@system.serializable
+class Config:
+    name: str
+    def __init__(self, name: str):
+        self.name = name
+
+# Context manager with dunder protocol
+class ManagedResource:
+    def __enter__(self) -> ManagedResource:
+        print("enter")
+        return self
+
+    def __exit__(self):
+        print("exit")
+
+with ManagedResource() as r:
+    print("using")
 ```
 
 ## Output Format
