@@ -411,40 +411,11 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Extract element type from an iterable type
+    /// Extract element type from an iterable type.
+    /// Delegates to <see cref="TypeInferenceService.InferIterableElementType"/>.
     /// </summary>
     private SemanticType ExtractElementType(SemanticType iterType)
-    {
-        // Handle generic iterable types
-        if (iterType is GenericType generic)
-        {
-            // list[T], set[T] -> T
-            if ((generic.Name == BuiltinNames.List || generic.Name == BuiltinNames.Set) && generic.TypeArguments.Count > 0)
-            {
-                return generic.TypeArguments[0];
-            }
-            // dict[K, V] -> K (when iterating, we get keys by default)
-            if (generic.Name == BuiltinNames.Dict && generic.TypeArguments.Count > 0)
-            {
-                return generic.TypeArguments[0];
-            }
-        }
-        // Handle tuple types
-        else if (iterType is TupleType tuple && tuple.ElementTypes.Count > 0)
-        {
-            // For simplicity, return the first element type
-            // In a more sophisticated implementation, we'd handle heterogeneous tuples
-            return tuple.ElementTypes[0];
-        }
-        // Handle string iteration -> str
-        else if (iterType == SemanticType.Str)
-        {
-            return SemanticType.Str;
-        }
-
-        // Unknown iterable type
-        return SemanticType.Unknown;
-    }
+        => _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
     /// <summary>
     /// Validates that no two __init__ methods have the same parameter signature.
