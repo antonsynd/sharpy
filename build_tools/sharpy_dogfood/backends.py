@@ -37,6 +37,27 @@ from build_tools.shared.logging import ExecutionLogger, LogEventType
 from .config import Config, BackendConfig, RateLimitConfig, BackendType
 
 
+# Optional imports for exception-type timeout detection (#200).
+# These packages may not be installed in all environments, so we
+# guard the imports and fall back to string-pattern matching when
+# they are unavailable.
+_TIMEOUT_EXCEPTION_TYPES: tuple[type[Exception], ...] = ()
+
+try:
+    import httpx  # type: ignore[import-untyped]
+
+    _TIMEOUT_EXCEPTION_TYPES += (httpx.ReadTimeout,)
+except (ImportError, AttributeError):
+    pass
+
+try:
+    import anthropic  # type: ignore[import-untyped]
+
+    _TIMEOUT_EXCEPTION_TYPES += (anthropic.APITimeoutError,)
+except (ImportError, AttributeError):
+    pass
+
+
 # Known error patterns that indicate infrastructure problems (not code issues).
 # These warrant automatic failover to the next backend.
 _INFRASTRUCTURE_ERROR_PATTERNS: list[str] = [
@@ -270,6 +291,10 @@ class ClaudeBackend:
 
         Note: Does NOT wait for rate limit availability — the BackendManager
         controls failover/wait logic so it can try other backends first.
+
+        Catches known timeout exception types (httpx.ReadTimeout,
+        anthropic.APITimeoutError) explicitly so they are reported as
+        timed_out rather than generic errors (#200).
         """
         # Build shared config
         effective_timeout = timeout or self.config.execution_timeout
@@ -286,8 +311,23 @@ class ClaudeBackend:
                 file=sys.stderr,
             )
 
-        # Execute via shared backend (includes heartbeat logging)
-        response = await self._shared_backend.execute(prompt, shared_config)
+        start_time = time.time()
+        try:
+            # Execute via shared backend (includes heartbeat logging)
+            response = await self._shared_backend.execute(prompt, shared_config)
+        except _TIMEOUT_EXCEPTION_TYPES as exc:
+            # Structured timeout detection for httpx/anthropic exceptions (#200)
+            duration = time.time() - start_time
+            return ExecutionResult(
+                success=False,
+                output="",
+                error=f"Timeout exception: {type(exc).__name__}: {exc}",
+                duration_seconds=duration,
+                backend=self.name,
+                timed_out=True,
+            )
+        except Exception:
+            raise
 
         if self._verbose:
             print(
@@ -375,6 +415,10 @@ class CopilotBackend:
 
         Note: Does NOT wait for rate limit availability — the BackendManager
         controls failover/wait logic so it can try other backends first.
+
+        Catches known timeout exception types (httpx.ReadTimeout,
+        anthropic.APITimeoutError) explicitly so they are reported as
+        timed_out rather than generic errors (#200).
         """
         # Build shared config
         effective_timeout = timeout or self.config.execution_timeout
@@ -384,8 +428,23 @@ class CopilotBackend:
             model=self.config.model,  # Use model from backend config
         )
 
-        # Execute via shared backend (includes heartbeat logging)
-        response = await self._shared_backend.execute(prompt, shared_config)
+        start_time = time.time()
+        try:
+            # Execute via shared backend (includes heartbeat logging)
+            response = await self._shared_backend.execute(prompt, shared_config)
+        except _TIMEOUT_EXCEPTION_TYPES as exc:
+            # Structured timeout detection for httpx/anthropic exceptions (#200)
+            duration = time.time() - start_time
+            return ExecutionResult(
+                success=False,
+                output="",
+                error=f"Timeout exception: {type(exc).__name__}: {exc}",
+                duration_seconds=duration,
+                backend=self.name,
+                timed_out=True,
+            )
+        except Exception:
+            raise
 
         # Update our rate limit state based on response
         if response.rate_limited:

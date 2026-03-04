@@ -339,3 +339,176 @@ class TestIsTimeoutError:
 
         assert _is_timeout_error("TIMED OUT") is True
         assert _is_timeout_error("Deadline Exceeded") is True
+
+
+class TestTimeoutExceptionTypes:
+    """Tests for exception-type timeout detection in backend execute() (#200)."""
+
+    def test_timeout_exception_types_is_tuple(self):
+        """_TIMEOUT_EXCEPTION_TYPES should be a tuple (may be empty if deps not installed)."""
+        from build_tools.sharpy_dogfood.backends import _TIMEOUT_EXCEPTION_TYPES
+
+        assert isinstance(_TIMEOUT_EXCEPTION_TYPES, tuple)
+
+    @pytest.mark.asyncio
+    async def test_claude_backend_catches_timeout_exception(self):
+        """ClaudeBackend.execute() should return timed_out=True on timeout exceptions."""
+        from build_tools.sharpy_dogfood.backends import ClaudeBackend
+        from build_tools.sharpy_dogfood.config import BackendConfig, RateLimitConfig
+
+        backend_config = BackendConfig(
+            name="claude",
+            enabled=True,
+            rate_limit=RateLimitConfig(),
+        )
+        backend = ClaudeBackend(backend_config, Path("/tmp"), verbose=False)
+
+        # Create a custom exception that simulates a timeout
+        # We monkey-patch _TIMEOUT_EXCEPTION_TYPES to include our test exception
+        class FakeTimeoutError(Exception):
+            pass
+
+        import build_tools.sharpy_dogfood.backends as backends_mod
+
+        original = backends_mod._TIMEOUT_EXCEPTION_TYPES
+        backends_mod._TIMEOUT_EXCEPTION_TYPES = (FakeTimeoutError,)
+
+        try:
+            # Mock the shared backend to raise our fake timeout
+            backend._shared_backend = MagicMock()
+            backend._shared_backend.execute = AsyncMock(
+                side_effect=FakeTimeoutError("Read timed out")
+            )
+
+            result = await backend.execute("test prompt", timeout=10.0)
+
+            assert result.timed_out is True
+            assert result.success is False
+            assert "FakeTimeoutError" in result.error
+            assert result.backend == "claude"
+        finally:
+            backends_mod._TIMEOUT_EXCEPTION_TYPES = original
+
+    @pytest.mark.asyncio
+    async def test_copilot_backend_catches_timeout_exception(self):
+        """CopilotBackend.execute() should return timed_out=True on timeout exceptions."""
+        from build_tools.sharpy_dogfood.backends import CopilotBackend
+        from build_tools.sharpy_dogfood.config import BackendConfig, RateLimitConfig
+
+        backend_config = BackendConfig(
+            name="copilot",
+            enabled=True,
+            rate_limit=RateLimitConfig(),
+        )
+        backend = CopilotBackend(backend_config, Path("/tmp"), verbose=False)
+
+        # Create a custom exception that simulates a timeout
+        class FakeTimeoutError(Exception):
+            pass
+
+        import build_tools.sharpy_dogfood.backends as backends_mod
+
+        original = backends_mod._TIMEOUT_EXCEPTION_TYPES
+        backends_mod._TIMEOUT_EXCEPTION_TYPES = (FakeTimeoutError,)
+
+        try:
+            # Mock the shared backend to raise our fake timeout
+            backend._shared_backend = MagicMock()
+            backend._shared_backend.execute = AsyncMock(
+                side_effect=FakeTimeoutError("API timeout")
+            )
+
+            result = await backend.execute("test prompt", timeout=10.0)
+
+            assert result.timed_out is True
+            assert result.success is False
+            assert "FakeTimeoutError" in result.error
+            assert result.backend == "copilot"
+        finally:
+            backends_mod._TIMEOUT_EXCEPTION_TYPES = original
+
+    @pytest.mark.asyncio
+    async def test_non_timeout_exception_still_raises(self):
+        """Non-timeout exceptions should propagate normally."""
+        from build_tools.sharpy_dogfood.backends import ClaudeBackend
+        from build_tools.sharpy_dogfood.config import BackendConfig, RateLimitConfig
+
+        backend_config = BackendConfig(
+            name="claude",
+            enabled=True,
+            rate_limit=RateLimitConfig(),
+        )
+        backend = ClaudeBackend(backend_config, Path("/tmp"), verbose=False)
+
+        # Mock the shared backend to raise a non-timeout exception
+        backend._shared_backend = MagicMock()
+        backend._shared_backend.execute = AsyncMock(
+            side_effect=RuntimeError("Something else went wrong")
+        )
+
+        with pytest.raises(RuntimeError, match="Something else went wrong"):
+            await backend.execute("test prompt", timeout=10.0)
+
+    @pytest.mark.asyncio
+    async def test_timeout_exception_records_duration(self):
+        """Timeout exception result should include a positive duration."""
+        from build_tools.sharpy_dogfood.backends import ClaudeBackend
+        from build_tools.sharpy_dogfood.config import BackendConfig, RateLimitConfig
+
+        backend_config = BackendConfig(
+            name="claude",
+            enabled=True,
+            rate_limit=RateLimitConfig(),
+        )
+        backend = ClaudeBackend(backend_config, Path("/tmp"), verbose=False)
+
+        class FakeTimeoutError(Exception):
+            pass
+
+        import build_tools.sharpy_dogfood.backends as backends_mod
+
+        original = backends_mod._TIMEOUT_EXCEPTION_TYPES
+        backends_mod._TIMEOUT_EXCEPTION_TYPES = (FakeTimeoutError,)
+
+        try:
+            backend._shared_backend = MagicMock()
+            backend._shared_backend.execute = AsyncMock(
+                side_effect=FakeTimeoutError("timed out")
+            )
+
+            result = await backend.execute("test prompt", timeout=10.0)
+
+            assert result.duration_seconds >= 0.0
+            assert result.timed_out is True
+        finally:
+            backends_mod._TIMEOUT_EXCEPTION_TYPES = original
+
+    @pytest.mark.asyncio
+    async def test_empty_timeout_exception_tuple_no_catch(self):
+        """When _TIMEOUT_EXCEPTION_TYPES is empty, exceptions propagate normally."""
+        from build_tools.sharpy_dogfood.backends import ClaudeBackend
+        from build_tools.sharpy_dogfood.config import BackendConfig, RateLimitConfig
+
+        backend_config = BackendConfig(
+            name="claude",
+            enabled=True,
+            rate_limit=RateLimitConfig(),
+        )
+        backend = ClaudeBackend(backend_config, Path("/tmp"), verbose=False)
+
+        import build_tools.sharpy_dogfood.backends as backends_mod
+
+        original = backends_mod._TIMEOUT_EXCEPTION_TYPES
+        # Empty tuple - should not catch anything
+        backends_mod._TIMEOUT_EXCEPTION_TYPES = ()
+
+        try:
+            backend._shared_backend = MagicMock()
+            backend._shared_backend.execute = AsyncMock(
+                side_effect=ValueError("not a timeout")
+            )
+
+            with pytest.raises(ValueError, match="not a timeout"):
+                await backend.execute("test prompt", timeout=10.0)
+        finally:
+            backends_mod._TIMEOUT_EXCEPTION_TYPES = original
