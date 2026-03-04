@@ -152,12 +152,21 @@ internal class BuiltinRegistry
             ? typeParams.Select(tp => new TypeParameterType { Name = tp.Name }).ToArray()
             : Array.Empty<TypeParameterType>();
 
-        // Discovery infrastructure is in place (GetTypeByName with sharedTypeParams) but
-        // not yet used for method population. BuiltinMethodDefinitions remains the source
-        // of truth until discovery signatures are fully aligned. See #290 for tracking.
-        var methods = BuiltinMethodDefinitions.GetMethods(sharpyName, typeParams);
-        var operatorMethods = BuiltinMethodDefinitions.GetOperatorMethods(sharpyName, typeParams);
-        var protocolMethods = BuiltinMethodDefinitions.GetProtocolMethods(sharpyName, typeParams);
+        // Discovery-first with fallback to hand-coded definitions.
+        // Discovery uses type param remapping, overload expansion, and stub normalization.
+        var discovered = _discovery.GetTypeByName(sharpyName, sharedTypeParams);
+
+        var methods = discovered?.Methods.Count > 0
+            ? discovered.Methods
+            : BuiltinMethodDefinitions.GetMethods(sharpyName, typeParams);
+
+        var operatorMethods = discovered?.OperatorMethods.Count > 0
+            ? discovered.OperatorMethods
+            : BuiltinMethodDefinitions.GetOperatorMethods(sharpyName, typeParams);
+
+        var protocolMethods = discovered?.ProtocolMethods.Count > 0
+            ? discovered.ProtocolMethods
+            : BuiltinMethodDefinitions.GetProtocolMethods(sharpyName, typeParams);
 
         var typeSymbol = new TypeSymbol
         {
