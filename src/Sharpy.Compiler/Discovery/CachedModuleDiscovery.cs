@@ -114,6 +114,16 @@ internal class CachedModuleDiscovery
     /// </summary>
     private TypeSymbol? ConvertToTypeSymbol(Caching.DiscoveredTypeInfo typeInfo)
     {
+        return ConvertToTypeSymbol(typeInfo, sharedTypeParams: null);
+    }
+
+    /// <summary>
+    /// Convert a cached DiscoveredTypeInfo to a TypeSymbol, optionally remapping generic type
+    /// parameters to shared instances.
+    /// </summary>
+    private TypeSymbol? ConvertToTypeSymbol(
+        Caching.DiscoveredTypeInfo typeInfo, TypeParameterType[]? sharedTypeParams)
+    {
         // Resolve CLR type
         Type? clrType = Type.GetType(typeInfo.ClrTypeName);
         if (clrType == null)
@@ -131,17 +141,32 @@ internal class CachedModuleDiscovery
             _ => TypeKind.Class
         };
 
-        // Convert methods from discovery
-        var methods = typeInfo.Methods.Count > 0
-            ? typeInfo.Methods.Select(sig => ConvertToFunctionSymbol(sig, typeInfo.Name)).ToList()
-            : new List<FunctionSymbol>();
+        // Convert methods from discovery, expanding default parameters into separate overloads
+        var methods = new List<FunctionSymbol>();
+        if (typeInfo.Methods.Count > 0)
+        {
+            // Strip generic arity suffix for OverloadExpander type name matching
+            var expanderTypeName = typeInfo.Name;
+            var backtick = expanderTypeName.IndexOf('`');
+            if (backtick >= 0)
+                expanderTypeName = expanderTypeName[..backtick];
+
+            foreach (var sig in typeInfo.Methods)
+            {
+                var expanded = OverloadExpander.Expand(sig, expanderTypeName);
+                foreach (var overloadSig in expanded)
+                {
+                    methods.Add(ConvertToFunctionSymbol(overloadSig, typeInfo.Name, sharedTypeParams));
+                }
+            }
+        }
 
         // Convert operator methods from discovery
         var operatorMethods = new Dictionary<string, List<FunctionSymbol>>();
         foreach (var (dunderName, signatures) in typeInfo.OperatorMethods)
         {
             operatorMethods[dunderName] = signatures
-                .Select(sig => ConvertToFunctionSymbol(sig, typeInfo.Name))
+                .Select(sig => ConvertToFunctionSymbol(sig, typeInfo.Name, sharedTypeParams))
                 .ToList();
         }
 
@@ -150,7 +175,7 @@ internal class CachedModuleDiscovery
         foreach (var (dunderName, signatures) in typeInfo.ProtocolMethods)
         {
             protocolMethods[dunderName] = signatures
-                .Select(sig => ConvertToFunctionSymbol(sig, typeInfo.Name))
+                .Select(sig => ConvertToFunctionSymbol(sig, typeInfo.Name, sharedTypeParams))
                 .ToList();
         }
 
@@ -175,6 +200,18 @@ internal class CachedModuleDiscovery
     /// </summary>
     public TypeSymbol? GetTypeByName(string sharpyName)
     {
+        return GetTypeByName(sharpyName, sharedTypeParams: null);
+    }
+
+    /// <summary>
+    /// Get a fully-populated TypeSymbol for a specific builtin type name,
+    /// with methods, operators, and protocols populated from discovery.
+    /// When sharedTypeParams is provided, all discovered methods will use
+    /// the same TypeParameterType instances for generic type parameters.
+    /// Returns null if the type is not found in the discovery index.
+    /// </summary>
+    public TypeSymbol? GetTypeByName(string sharpyName, TypeParameterType[]? sharedTypeParams)
+    {
         foreach (var index in _loadedIndices.Values)
         {
             foreach (var moduleOverloads in index.Modules.Values)
@@ -192,7 +229,7 @@ internal class CachedModuleDiscovery
 
                 if (typeInfo != null && (typeInfo.Methods.Count > 0 || typeInfo.OperatorMethods.Count > 0 || typeInfo.ProtocolMethods.Count > 0))
                 {
-                    return ConvertToTypeSymbol(typeInfo);
+                    return ConvertToTypeSymbol(typeInfo, sharedTypeParams);
                 }
             }
         }
@@ -223,17 +260,31 @@ internal class CachedModuleDiscovery
     /// </summary>
     private FunctionSymbol ConvertToFunctionSymbol(FunctionSignature signature, string moduleName)
     {
+        return ConvertToFunctionSymbol(signature, moduleName, sharedTypeParams: null);
+    }
+
+    /// <summary>
+    /// Convert a cached FunctionSignature back to a FunctionSymbol, remapping generic type
+    /// parameters to shared <see cref="TypeParameterType"/> instances when provided.
+    /// This ensures all methods on a generic type share the same TypeParameterType objects,
+    /// which is required for reference equality during generic substitution.
+    /// </summary>
+    internal FunctionSymbol ConvertToFunctionSymbol(
+        FunctionSignature signature, string moduleName, TypeParameterType[]? sharedTypeParams)
+    {
         return new FunctionSymbol
         {
             Name = signature.Name,
             Kind = SymbolKind.Function,
-            ReturnType = ConvertTypeSignature(signature.ReturnType),
+            ReturnType = ConvertTypeSignature(signature.ReturnType, sharedTypeParams),
             Parameters = signature.Parameters
                 .Select(p => new ParameterSymbol
                 {
                     Name = p.Name,
                     // For variadic parameters, extract the element type from list[T] -> T
-                    Type = p.IsVariadic ? GetVariadicElementType(p.Type) : ConvertTypeSignature(p.Type),
+                    Type = p.IsVariadic
+                        ? GetVariadicElementType(p.Type, sharedTypeParams)
+                        : ConvertTypeSignature(p.Type, sharedTypeParams),
                     HasDefault = p.HasDefault,
                     DefaultValue = p.HasDefault ? DefaultValueParser.Parse(p.DefaultValue) : null,
                     IsVariadic = p.IsVariadic
@@ -252,16 +303,17 @@ internal class CachedModuleDiscovery
     /// Extract the element type from a variadic parameter's type signature.
     /// Variadic parameters are stored as list[T] but we need just T for type checking.
     /// </summary>
-    private SemanticType GetVariadicElementType(TypeSignature typeSignature)
+    private SemanticType GetVariadicElementType(
+        TypeSignature typeSignature, TypeParameterType[]? sharedTypeParams = null)
     {
         // Variadic parameters are stored as list[T] (mapped from T[])
         // We need to extract T
         if (typeSignature.IsGeneric && typeSignature.Name.StartsWith("list") && typeSignature.TypeArguments.Count == 1)
         {
-            return ConvertTypeSignature(typeSignature.TypeArguments[0]);
+            return ConvertTypeSignature(typeSignature.TypeArguments[0], sharedTypeParams);
         }
         // Fallback to the full type if not a list
-        return ConvertTypeSignature(typeSignature);
+        return ConvertTypeSignature(typeSignature, sharedTypeParams);
     }
 
     /// <summary>
@@ -269,9 +321,29 @@ internal class CachedModuleDiscovery
     /// </summary>
     private SemanticType ConvertTypeSignature(TypeSignature signature)
     {
+        return ConvertTypeSignature(signature, sharedTypeParams: null);
+    }
+
+    /// <summary>
+    /// Convert a TypeSignature back to a SemanticType, optionally remapping generic type
+    /// parameters to shared instances by positional index.
+    /// </summary>
+    private SemanticType ConvertTypeSignature(TypeSignature signature, TypeParameterType[]? sharedTypeParams)
+    {
         // Handle generic type parameters (e.g., T in Min<T>)
         if (signature.IsGenericParameter)
         {
+            // When shared type params are provided, remap by positional index
+            // to ensure all methods share the same TypeParameterType instances.
+            if (sharedTypeParams != null)
+            {
+                var position = signature.GenericParameterPosition;
+                if (position >= 0 && position < sharedTypeParams.Length)
+                {
+                    return sharedTypeParams[position];
+                }
+            }
+
             return new TypeParameterType { Name = signature.Name };
         }
 
@@ -300,6 +372,15 @@ internal class CachedModuleDiscovery
         // Handle generic types
         if (signature.IsGeneric)
         {
+            // Handle Optional[T] -> OptionalType (produced by OverloadExpander for dict.get/pop)
+            if (signature.Name == "Optional" && signature.TypeArguments.Count == 1)
+            {
+                return new OptionalType
+                {
+                    UnderlyingType = ConvertTypeSignature(signature.TypeArguments[0], sharedTypeParams)
+                };
+            }
+
             return new GenericType
             {
                 // Extract base name before '[' if present; otherwise use the whole name.
@@ -307,7 +388,7 @@ internal class CachedModuleDiscovery
                     ? signature.Name[..signature.Name.IndexOf('[')]
                     : signature.Name,
                 TypeArguments = signature.TypeArguments
-                    .Select(ConvertTypeSignature)
+                    .Select(ta => ConvertTypeSignature(ta, sharedTypeParams))
                     .ToList()
             };
         }

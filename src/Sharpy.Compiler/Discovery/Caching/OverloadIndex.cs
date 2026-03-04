@@ -9,7 +9,7 @@ internal class OverloadIndex
 {
     public AssemblyIdentity Identity { get; set; } = new();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public int CacheFormatVersion { get; set; } = 4;
+    public int CacheFormatVersion { get; set; } = 5;
     public Dictionary<string, ModuleOverloads> Modules { get; set; } = new();
 }
 
@@ -85,6 +85,13 @@ internal class TypeSignature
     /// True if this type references a generic type parameter (e.g., T in Min&lt;T&gt;).
     /// </summary>
     public bool IsGenericParameter { get; set; }
+
+    /// <summary>
+    /// Positional index of the generic parameter on the declaring type (0-based).
+    /// Only meaningful when <see cref="IsGenericParameter"/> is true.
+    /// Maps to <see cref="Type.GenericParameterPosition"/> from CLR reflection.
+    /// </summary>
+    public int GenericParameterPosition { get; set; }
 
     /// <summary>
     /// CLR type name for mapping back.

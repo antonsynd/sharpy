@@ -28,7 +28,7 @@ internal class OverloadIndexBuilder
         {
             Identity = identity,
             CreatedAt = DateTime.UtcNow,
-            CacheFormatVersion = 4
+            CacheFormatVersion = 5
         };
 
         // Find all module classes decorated with [SharpyModule]
@@ -384,6 +384,7 @@ internal class OverloadIndexBuilder
             {
                 Name = clrType.Name,
                 IsGenericParameter = true,
+                GenericParameterPosition = clrType.GenericParameterPosition,
                 ClrTypeName = string.Empty
             };
         }

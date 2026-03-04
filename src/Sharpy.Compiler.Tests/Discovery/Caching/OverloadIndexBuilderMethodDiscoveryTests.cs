@@ -143,8 +143,8 @@ public class OverloadIndexBuilderMethodDiscoveryTests
     }
 
     [Fact]
-    public void CacheFormatVersion_Is4()
+    public void CacheFormatVersion_Is5()
     {
-        Assert.Equal(4, _index.CacheFormatVersion);
+        Assert.Equal(5, _index.CacheFormatVersion);
     }
 }
