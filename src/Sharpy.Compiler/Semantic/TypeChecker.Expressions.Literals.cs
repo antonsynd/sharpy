@@ -8,24 +8,38 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 internal partial class TypeChecker
 {
+    /// <summary>
+    /// Tries to infer the type of an empty collection literal from the expected type context.
+    /// Returns the inferred GenericType if successful, or null if no contextual type is available
+    /// (after emitting an error diagnostic).
+    /// </summary>
+    private SemanticType? TryInferEmptyCollectionType(
+        string collectionName, int expectedArgCount, Expression node, string errorHint)
+    {
+        if (_expectedType is GenericType expected
+            && expected.Name == collectionName
+            && expected.TypeArguments.Count == expectedArgCount)
+        {
+            return new GenericType
+            {
+                Name = collectionName,
+                TypeArguments = expected.TypeArguments.ToList()
+            };
+        }
+
+        AddError(
+            $"Cannot infer type of empty {collectionName} literal; add a type annotation (e.g., {errorHint})",
+            node.LineStart, node.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+            span: node.Span);
+        return null;
+    }
+
     private SemanticType CheckListLiteral(ListLiteral list)
     {
         if (list.Elements.Length == 0)
         {
-            if (_expectedType is GenericType expected && expected.Name == BuiltinNames.List && expected.TypeArguments.Count == 1)
-            {
-                return new GenericType
-                {
-                    Name = BuiltinNames.List,
-                    TypeArguments = new List<SemanticType> { expected.TypeArguments[0] }
-                };
-            }
-
-            // Cannot infer element type for empty list literal without annotation
-            AddError("Cannot infer type of empty list literal; add a type annotation (e.g., x: list[int] = [])",
-                list.LineStart, list.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
-                span: list.Span);
-            return SemanticType.Unknown;
+            return TryInferEmptyCollectionType(
+                BuiltinNames.List, 1, list, "x: list[int] = []") ?? SemanticType.Unknown;
         }
 
         var elementTypes = new List<SemanticType>();
@@ -75,20 +89,8 @@ internal partial class TypeChecker
     {
         if (dict.Entries.Length == 0)
         {
-            if (_expectedType is GenericType expected && expected.Name == BuiltinNames.Dict && expected.TypeArguments.Count == 2)
-            {
-                return new GenericType
-                {
-                    Name = BuiltinNames.Dict,
-                    TypeArguments = new List<SemanticType> { expected.TypeArguments[0], expected.TypeArguments[1] }
-                };
-            }
-
-            // Cannot infer key/value types for empty dict literal without annotation
-            AddError("Cannot infer type of empty dict literal; add a type annotation (e.g., d: dict[str, int] = {})",
-                dict.LineStart, dict.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
-                span: dict.Span);
-            return SemanticType.Unknown;
+            return TryInferEmptyCollectionType(
+                BuiltinNames.Dict, 2, dict, "d: dict[str, int] = {}") ?? SemanticType.Unknown;
         }
 
         var keyTypes = new List<SemanticType>();
@@ -142,20 +144,8 @@ internal partial class TypeChecker
     {
         if (set.Elements.Length == 0)
         {
-            if (_expectedType is GenericType expected && expected.Name == BuiltinNames.Set && expected.TypeArguments.Count == 1)
-            {
-                return new GenericType
-                {
-                    Name = BuiltinNames.Set,
-                    TypeArguments = new List<SemanticType> { expected.TypeArguments[0] }
-                };
-            }
-
-            // Cannot infer element type for empty set literal without annotation
-            AddError("Cannot infer type of empty set literal; add a type annotation (e.g., s: set[int] = set())",
-                set.LineStart, set.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
-                span: set.Span);
-            return SemanticType.Unknown;
+            return TryInferEmptyCollectionType(
+                BuiltinNames.Set, 1, set, "s: set[int] = set()") ?? SemanticType.Unknown;
         }
 
         var elementTypes = new List<SemanticType>();
