@@ -28,7 +28,7 @@ internal class OverloadIndexBuilder
         {
             Identity = identity,
             CreatedAt = DateTime.UtcNow,
-            CacheFormatVersion = 6
+            CacheFormatVersion = OverloadIndexCache.CurrentCacheFormatVersion
         };
 
         // Find all module classes decorated with [SharpyModule]

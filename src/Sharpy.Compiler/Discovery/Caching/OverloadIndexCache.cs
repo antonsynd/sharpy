@@ -15,7 +15,7 @@ internal class OverloadIndexCache
     private readonly ICompilerLogger _logger;
     private const int MaxRetries = 3;
     private const int RetryDelayMs = 100;
-    private const int CurrentCacheFormatVersion = 6;
+    internal const int CurrentCacheFormatVersion = 6;
 
     // Using camelCase for JSON serialization to reduce file size and follow common conventions.
     // DefaultIgnoreCondition.WhenWritingNull reduces cache file size by omitting null properties.
