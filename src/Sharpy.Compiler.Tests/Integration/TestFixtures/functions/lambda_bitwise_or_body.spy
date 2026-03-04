@@ -1,0 +1,14 @@
+# Test: Lambda with bitwise-OR body expression (#289)
+# Ensures `lambda x: x | b` parses as a lambda with body `x | b`,
+# not as a type annotation followed by `| b`.
+
+def main():
+    # Typed param with bitwise-OR body
+    f = lambda x: int: x | 3
+    print(f(4))
+    print(f(0))
+
+    # Untyped param with bitwise-OR body (the main bug fix case)
+    g = lambda x: x | 5
+    print(g(2))
+    print(g(0))

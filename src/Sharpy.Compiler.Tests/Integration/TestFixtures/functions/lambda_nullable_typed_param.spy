@@ -1,0 +1,14 @@
+# Test: Lambda with nullable typed parameter using pipe syntax (#289)
+# Ensures `lambda x: int | None: body` correctly parses `int | None` as
+# a nullable type annotation, not as a bitwise-OR body.
+
+def main():
+    # Single nullable typed param — just pass through and print
+    f = lambda x: int | None: x
+    print(f(42))
+    print(f(None))
+
+    # Nullable typed param followed by another typed param
+    g = lambda x: int | None, y: int: y
+    print(g(10, 5))
+    print(g(None, 7))

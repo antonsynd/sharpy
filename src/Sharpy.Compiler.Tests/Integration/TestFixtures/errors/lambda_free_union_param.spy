@@ -1,0 +1,5 @@
+# Test: Lambda with free union type annotation should error (#289)
+# `int | str` inside a generic type is not supported; only `T | None` is allowed.
+
+def main():
+    f = lambda x: list[int | str]: x
