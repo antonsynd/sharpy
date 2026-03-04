@@ -218,8 +218,11 @@ internal class DecoratorValidator : SemanticValidatorBase
         {
             if (!IsCompileTimeConstant(arg))
             {
+                var message = arg is Identifier id
+                    ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
+                    : "Decorator argument must be a compile-time constant";
                 AddError(_context,
-                    "Decorator argument must be a compile-time constant",
+                    message,
                     arg.LineStart,
                     arg.ColumnStart,
                     code: DiagnosticCodes.Validation.NonConstantDecoratorArgument,
@@ -231,8 +234,11 @@ internal class DecoratorValidator : SemanticValidatorBase
         {
             if (!IsCompileTimeConstant(kwArg.Value))
             {
+                var message = kwArg.Value is Identifier id
+                    ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
+                    : "Decorator argument must be a compile-time constant";
                 AddError(_context,
-                    "Decorator argument must be a compile-time constant",
+                    message,
                     kwArg.Value.LineStart,
                     kwArg.Value.ColumnStart,
                     code: DiagnosticCodes.Validation.NonConstantDecoratorArgument,

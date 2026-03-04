@@ -151,7 +151,7 @@ public partial class RoslynEmitterDefinitionTests
             Body = new List<Statement> { new PassStatement() }.ToImmutableArray(),
             Decorators = new List<Decorator>
             {
-                new Decorator { Name = "private" }
+                new Decorator { QualifiedParts = ImmutableArray.Create("private") }
             }.ToImmutableArray()
         };
 

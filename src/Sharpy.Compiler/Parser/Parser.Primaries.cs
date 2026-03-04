@@ -204,6 +204,23 @@ public partial class Parser
                     };
                 }
 
+            // 'type' is a keyword (TokenType.Type) for type alias declarations,
+            // but in expression context it acts as a callable: type(X) → typeof(X)
+            case TokenType.Type:
+                {
+                    var typeToken = Current;
+                    Advance();
+                    return new Identifier
+                    {
+                        Name = "type",
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(typeToken)
+                    };
+                }
+
             case TokenType.Super:
                 {
                     var startToken = Current;
@@ -533,11 +550,32 @@ public partial class Parser
                             TypeAnnotation? paramType = null;
                             if (Current.Type == TokenType.Colon)
                             {
-                                // Disambiguate: ':' can be either a type annotation separator
-                                // (e.g., x: int) or the lambda body separator (e.g., lambda x: body).
-                                // Use look-ahead: the ':' is a type annotation if the next token
-                                // starts a type AND the token after that is compatible with
-                                // "more parameter list" (comma, default, generic args, etc.).
+                                // Lambda parameter type annotation disambiguation (#275)
+                                //
+                                // Problem: In `lambda x: body`, the ':' separates params from body.
+                                // But in `lambda x: int: body`, the first ':' is a type annotation.
+                                // We need a 2-token lookahead heuristic to disambiguate.
+                                //
+                                // Strategy: After seeing ':', check if the NEXT token starts a type
+                                // (Identifier, Auto, or None), then check if the token AFTER THAT
+                                // is consistent with "still in parameter list" rather than "start of
+                                // lambda body expression".
+                                //
+                                // Tokens that confirm a type annotation (they follow a type name):
+                                //   , → another parameter follows      (lambda x: int, y: ...)
+                                //   = → default value follows           (lambda x: int = 0: ...)
+                                //   : → lambda body separator           (lambda x: int: body)
+                                //   [ → generic type arguments          (lambda x: list[int]: ...)
+                                //   ? → optional type                   (lambda x: int?: ...)
+                                //   ! → result type                     (lambda x: int!str: ...)
+                                //   | → nullable type via pipe          (lambda x: int | None: ...)
+                                //
+                                // Known limitation: Union types like `int | str` use '|' as a type
+                                // continuation token, but multi-element unions (e.g., `int | str | float`)
+                                // would need deeper lookahead. See #289 for tracking this.
+                                //
+                                // This heuristic works for all currently supported type syntax
+                                // (simple, generic, optional, nullable, result types).
                                 var nextType = Peek().Type;
                                 var isTypeAnnotation = false;
 
@@ -546,9 +584,6 @@ public partial class Parser
                                     || nextType == TokenType.None)
                                 {
                                     var afterType = Peek(2).Type;
-                                    // These tokens can follow a type name in a parameter:
-                                    // , (more params), = (default), : (body), [ (generic),
-                                    // ? (optional), ! (result), | (nullable)
                                     isTypeAnnotation = afterType is TokenType.Comma
                                         or TokenType.Assign or TokenType.Colon
                                         or TokenType.LeftBracket or TokenType.Question

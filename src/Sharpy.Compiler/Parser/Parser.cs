@@ -452,6 +452,7 @@ public partial class Parser
                 Advance();
             }
 
+            // decoratorName computed for legacy usage; QualifiedParts is the source of truth
             var decoratorName = string.Join(".", qualifiedParts);
 
             // Parse optional argument list: @decorator(args)
@@ -471,10 +472,9 @@ public partial class Parser
 
             decorators.Add(new Decorator
             {
-                Name = decoratorName,
                 Arguments = arguments,
                 KeywordArguments = keywordArguments,
-                QualifiedParts = qualifiedParts.Count > 1 ? qualifiedParts.ToImmutableArray() : ImmutableArray<string>.Empty,
+                QualifiedParts = qualifiedParts.ToImmutableArray(),
                 LineStart = decoratorStartLine,
                 ColumnStart = decoratorStartColumn,
                 LineEnd = decoratorEndLine,

@@ -705,7 +705,12 @@ public record NewConstraint : ConstraintClause;
 /// </summary>
 public record Decorator
 {
-    public string Name { get; init; } = "";
+    /// <summary>
+    /// Full decorator name, computed from QualifiedParts (e.g., "system.serializable" or "static").
+    /// </summary>
+    public string Name => QualifiedParts.Length > 0
+        ? string.Join(".", QualifiedParts)
+        : "";
 
     /// <summary>
     /// Positional arguments to the decorator (e.g., @obsolete("msg") has one string arg).
@@ -720,8 +725,8 @@ public record Decorator
     public ImmutableArray<KeywordArgument> KeywordArguments { get; init; } = ImmutableArray<KeywordArgument>.Empty;
 
     /// <summary>
-    /// For dotted decorator names (e.g., @system.serializable), holds each segment.
-    /// Empty for simple (non-dotted) decorator names.
+    /// Segments of the decorator name. Always populated.
+    /// Single segment for simple names (e.g., ["static"]), multiple for dotted names (e.g., ["system", "serializable"]).
     /// </summary>
     public ImmutableArray<string> QualifiedParts { get; init; } = ImmutableArray<string>.Empty;
 

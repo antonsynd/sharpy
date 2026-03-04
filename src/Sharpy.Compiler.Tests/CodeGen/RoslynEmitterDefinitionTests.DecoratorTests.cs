@@ -25,7 +25,7 @@ public partial class RoslynEmitterDefinitionTests
             Name = "Shape",
             Decorators = new List<Decorator>
             {
-                new Decorator { Name = "abstract" }
+                new Decorator { QualifiedParts = ImmutableArray.Create("abstract") }
             }.ToImmutableArray(),
             Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
@@ -48,7 +48,7 @@ public partial class RoslynEmitterDefinitionTests
             Name = "Shape",
             Decorators = new List<Decorator>
             {
-                new Decorator { Name = "abstract" }
+                new Decorator { QualifiedParts = ImmutableArray.Create("abstract") }
             }.ToImmutableArray(),
             Body = new List<Statement>
             {
@@ -57,7 +57,7 @@ public partial class RoslynEmitterDefinitionTests
                     Name = "area",
                     Decorators = new List<Decorator>
                     {
-                        new Decorator { Name = "abstract" }
+                        new Decorator { QualifiedParts = ImmutableArray.Create("abstract") }
                     }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
@@ -142,7 +142,7 @@ public partial class RoslynEmitterDefinitionTests
                     Name = "add",
                     Decorators = new List<Decorator>
                     {
-                        new Decorator { Name = "staticmethod" }
+                        new Decorator { QualifiedParts = ImmutableArray.Create("staticmethod") }
                     }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
@@ -249,7 +249,7 @@ public partial class RoslynEmitterDefinitionTests
             Name = "FinalImplementation",
             Decorators = new List<Decorator>
             {
-                new Decorator { Name = "sealed" }
+                new Decorator { QualifiedParts = ImmutableArray.Create("sealed") }
             }.ToImmutableArray(),
             Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
@@ -277,7 +277,7 @@ public partial class RoslynEmitterDefinitionTests
                     Name = "internal_helper",
                     Decorators = new List<Decorator>
                     {
-                        new Decorator { Name = "protected" }
+                        new Decorator { QualifiedParts = ImmutableArray.Create("protected") }
                     }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
@@ -315,7 +315,7 @@ public partial class RoslynEmitterDefinitionTests
                     Name = "assembly_method",
                     Decorators = new List<Decorator>
                     {
-                        new Decorator { Name = "internal" }
+                        new Decorator { QualifiedParts = ImmutableArray.Create("internal") }
                     }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
@@ -353,7 +353,7 @@ public partial class RoslynEmitterDefinitionTests
                     Name = "overridable_method",
                     Decorators = new List<Decorator>
                     {
-                        new Decorator { Name = "virtual" }
+                        new Decorator { QualifiedParts = ImmutableArray.Create("virtual") }
                     }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
@@ -391,7 +391,7 @@ public partial class RoslynEmitterDefinitionTests
                     Name = "overridden_method",
                     Decorators = new List<Decorator>
                     {
-                        new Decorator { Name = "override" }
+                        new Decorator { QualifiedParts = ImmutableArray.Create("override") }
                     }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
@@ -424,7 +424,7 @@ public partial class RoslynEmitterDefinitionTests
             Name = "UtilityClass",
             Decorators = new List<Decorator>
             {
-                new Decorator { Name = "static" }
+                new Decorator { QualifiedParts = ImmutableArray.Create("static") }
             }.ToImmutableArray(),
             Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
@@ -452,8 +452,8 @@ public partial class RoslynEmitterDefinitionTests
                     Name = "template_method",
                     Decorators = new List<Decorator>
                     {
-                        new Decorator { Name = "protected" },
-                        new Decorator { Name = "virtual" }
+                        new Decorator { QualifiedParts = ImmutableArray.Create("protected") },
+                        new Decorator { QualifiedParts = ImmutableArray.Create("virtual") }
                     }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
@@ -486,7 +486,7 @@ public partial class RoslynEmitterDefinitionTests
             Name = "PublicClass",
             Decorators = new List<Decorator>
             {
-                new Decorator { Name = "public" }
+                new Decorator { QualifiedParts = ImmutableArray.Create("public") }
             }.ToImmutableArray(),
             Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
@@ -514,7 +514,7 @@ public partial class RoslynEmitterDefinitionTests
                     Name = "public_method",
                     Decorators = new List<Decorator>
                     {
-                        new Decorator { Name = "public" }
+                        new Decorator { QualifiedParts = ImmutableArray.Create("public") }
                     }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
@@ -730,7 +730,7 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "obsolete",
+                    QualifiedParts = ImmutableArray.Create("obsolete"),
                     Arguments = new List<Expression>
                     {
                         new StringLiteral { Value = "Use new_greet" }
@@ -757,7 +757,6 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "system.obsolete",
                     QualifiedParts = new List<string> { "system", "obsolete" }.ToImmutableArray(),
                     Arguments = new List<Expression>
                     {
@@ -786,7 +785,7 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "custom_attr",
+                    QualifiedParts = ImmutableArray.Create("custom_attr"),
                     Arguments = new List<Expression>
                     {
                         new StringLiteral { Value = "value" }
@@ -819,7 +818,7 @@ public partial class RoslynEmitterDefinitionTests
             Name = "MyClass",
             Decorators = new List<Decorator>
             {
-                new Decorator { Name = "serializable" }
+                new Decorator { QualifiedParts = ImmutableArray.Create("serializable") }
             }.ToImmutableArray(),
             Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
@@ -839,10 +838,10 @@ public partial class RoslynEmitterDefinitionTests
             Name = "OldClass",
             Decorators = new List<Decorator>
             {
-                new Decorator { Name = "abstract" },
+                new Decorator { QualifiedParts = ImmutableArray.Create("abstract") },
                 new Decorator
                 {
-                    Name = "obsolete",
+                    QualifiedParts = ImmutableArray.Create("obsolete"),
                     Arguments = new List<Expression>
                     {
                         new StringLiteral { Value = "use NewClass" }
@@ -870,7 +869,7 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "custom_attr",
+                    QualifiedParts = ImmutableArray.Create("custom_attr"),
                     Arguments = new List<Expression>
                     {
                         new UnaryOp
@@ -901,7 +900,7 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "custom_attr",
+                    QualifiedParts = ImmutableArray.Create("custom_attr"),
                     Arguments = new List<Expression>
                     {
                         new NoneLiteral()
@@ -928,7 +927,7 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "custom_attr",
+                    QualifiedParts = ImmutableArray.Create("custom_attr"),
                     Arguments = new List<Expression>
                     {
                         new FloatLiteral { Value = "3.14" }
@@ -955,7 +954,7 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "custom_attr",
+                    QualifiedParts = ImmutableArray.Create("custom_attr"),
                     Arguments = new List<Expression>
                     {
                         new BooleanLiteral { Value = true }
@@ -982,7 +981,7 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "custom_attr",
+                    QualifiedParts = ImmutableArray.Create("custom_attr"),
                     Arguments = new List<Expression>
                     {
                         new MemberAccess
@@ -1013,7 +1012,7 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "custom_attr",
+                    QualifiedParts = ImmutableArray.Create("custom_attr"),
                     Arguments = new List<Expression>
                     {
                         new FunctionCall
@@ -1047,7 +1046,7 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "custom_attr",
+                    QualifiedParts = ImmutableArray.Create("custom_attr"),
                     Arguments = new List<Expression>
                     {
                         new UnaryOp
@@ -1078,7 +1077,7 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    Name = "serializable"
+                    QualifiedParts = ImmutableArray.Create("serializable")
                 }
             }.ToImmutableArray(),
             Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
