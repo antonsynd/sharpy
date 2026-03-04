@@ -86,6 +86,11 @@ namespace Sharpy
     {
         private static readonly Type OptionalGenericDef = typeof(Optional<>);
 
+        // Cached reflection accessors per concrete Optional<T> type to avoid
+        // repeated GetProperty/GetField lookups on every TryFormat call.
+        private static readonly Dictionary<Type, (PropertyInfo isSome, FieldInfo value)> ReflectionCache
+            = new Dictionary<Type, (PropertyInfo, FieldInfo)>();
+
         public static Optional<T> Some<T>(T value) => Optional<T>.Some(value);
 
         /// <summary>
@@ -100,9 +105,23 @@ namespace Sharpy
         public static Optional<T> From<T>(T? value) where T : struct
             => value.HasValue ? Optional<T>.Some(value.Value) : Optional<T>.None;
 
+        private static (PropertyInfo isSome, FieldInfo value) GetAccessors(Type type)
+        {
+            if (!ReflectionCache.TryGetValue(type, out var accessors))
+            {
+                accessors = (
+                    type.GetProperty("IsSome"),
+                    type.GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance)
+                );
+                ReflectionCache[type] = accessors;
+            }
+            return accessors;
+        }
+
         /// <summary>
-        /// Detect and format an Optional value at runtime using reflection.
-        /// Avoids the boxing caused by the former IOptional interface approach.
+        /// Detect and format an Optional value at runtime using cached reflection.
+        /// Avoids the boxing caused by the former IOptional interface approach by
+        /// caching PropertyInfo/FieldInfo per concrete Optional&lt;T&gt; type.
         /// </summary>
         /// <param name="obj">A boxed object that may be an Optional&lt;T&gt;.</param>
         /// <param name="result">The formatted string if obj is an Optional.</param>
@@ -112,14 +131,15 @@ namespace Sharpy
             var type = obj.GetType();
             if (type.IsGenericType && type.GetGenericTypeDefinition() == OptionalGenericDef)
             {
-                var hasValue = (bool)type.GetProperty("IsSome").GetValue(obj);
+                var (isSomeProp, valueField) = GetAccessors(type);
+                var hasValue = (bool)isSomeProp.GetValue(obj);
                 if (!hasValue)
                 {
                     result = "None";
                     return true;
                 }
 
-                var innerValue = type.GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(obj);
+                var innerValue = valueField.GetValue(obj);
                 result = Builtins.Str(innerValue!);
                 return true;
             }
