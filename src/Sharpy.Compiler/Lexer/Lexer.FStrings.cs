@@ -206,6 +206,11 @@ public partial class Lexer
                 throw ReportError("Unterminated format specification in f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
             }
 
+            // Nested f-string start (e.g., f"outer {f'inner {x}'}")
+            if (current == 'f' && (_position + 1 < _source.Length) &&
+                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
+                return ReadFStringStart();
+
             // String literals inside expressions
             if (current == '"' || current == '\'')
                 return ReadString();
