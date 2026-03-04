@@ -261,7 +261,7 @@ public class BuiltinMethodDefinitionsTests
         Assert.Single(protocols);
     }
 
-    // ---- IsCovariant ----
+    // ---- IsCovariant (moved to BuiltinRegistry) ----
 
     [Theory]
     [InlineData("list", true)]
@@ -271,7 +271,7 @@ public class BuiltinMethodDefinitionsTests
     [InlineData("str", false)]
     public void IsCovariant_Returns_Expected(string typeName, bool expected)
     {
-        Assert.Equal(expected, BuiltinMethodDefinitions.IsCovariant(typeName));
+        Assert.Equal(expected, BuiltinRegistry.IsCovariant(typeName));
     }
 
     // ---- Unknown type returns empty ----

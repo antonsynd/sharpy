@@ -167,7 +167,7 @@ internal class BuiltinRegistry
             ClrType = clrType,
             TypeParameters = typeParams,
             AccessLevel = AccessLevel.Public,
-            IsCovariant = BuiltinMethodDefinitions.IsCovariant(sharpyName),
+            IsCovariant = IsCovariant(sharpyName),
             Methods = methods,
             OperatorMethods = operatorMethods,
             ProtocolMethods = protocolMethods,
@@ -195,6 +195,11 @@ internal class BuiltinRegistry
     /// These are handled by the type checker via expected type inference, not as regular functions.
     /// </summary>
     public bool IsTaggedUnionConstructor(string name) => TaggedUnionConstructors.Contains(name);
+
+    /// <summary>
+    /// Returns whether the given builtin type is covariant in its type parameters.
+    /// </summary>
+    public static bool IsCovariant(string typeName) => typeName is BuiltinNames.List or BuiltinNames.Set;
 
     public IEnumerable<(string Name, TypeSymbol Type)> GetAllTypes() => _types.Select(kv => (kv.Key, kv.Value));
     public IEnumerable<(string Name, FunctionSymbol Function)> GetAllFunctions() =>

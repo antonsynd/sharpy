@@ -73,11 +73,6 @@ internal static class BuiltinMethodDefinitions
         };
     }
 
-    /// <summary>
-    /// Returns whether the given builtin type is covariant in its type parameters.
-    /// </summary>
-    public static bool IsCovariant(string typeName) => typeName is BuiltinNames.List or BuiltinNames.Set;
-
     // ---- Dict methods ----
 
     private static List<FunctionSymbol> GetDictMethods(TypeParameterType[] tps)
