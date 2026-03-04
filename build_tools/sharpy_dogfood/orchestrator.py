@@ -783,6 +783,42 @@ class DogfoodOrchestrator:
         """Apply the configured timeout multiplier to a base timeout value."""
         return base_seconds * self.config.timeout_multiplier
 
+    def _record_timeout_skip(
+        self,
+        timestamp: str,
+        skip_reason: str,
+        feature_focus: str,
+        complexity: str,
+        backend_used: Optional[str],
+        generation_duration: Optional[float],
+        generated_code: str = "",
+    ) -> IterationResult:
+        """Record a timeout skip and return the corresponding IterationResult.
+
+        Shared by run_iteration() and run_multifile_iteration() to avoid
+        duplicating the timeout-skip recording logic.
+        """
+        print(
+            "  Generation timed out (not a bug)",
+            file=sys.stderr,
+        )
+        skip = Skip(
+            timestamp=timestamp,
+            skip_reason=skip_reason,
+            generated_code=generated_code,
+            feature_focus=feature_focus,
+            complexity=complexity,
+            backend_used=backend_used,
+            generation_duration=generation_duration,
+        )
+        skip_dir = self.skip_reporter.report(skip)
+        print(f"  Timeout skip saved: {skip_dir.name}", file=sys.stderr)
+        return IterationResult(
+            IterationStatus.SKIPPED,
+            skip_dir=skip_dir,
+            skip_reason=skip_reason,
+        )
+
     async def initialize(self) -> bool:
         """Initialize the orchestrator and verify dependencies."""
         print("Initializing dogfooding tool...", file=sys.stderr)
@@ -918,25 +954,13 @@ class DogfoodOrchestrator:
 
             # Check for generation timeout (not a bug)
             if gen_result.timed_out:
-                print(
-                    "  Generation timed out (not a bug)",
-                    file=sys.stderr,
-                )
-                skip = Skip(
+                return self._record_timeout_skip(
                     timestamp=timestamp,
                     skip_reason=gen_result.skip_reason or "Generation timed out",
-                    generated_code="",
                     feature_focus=feature_focus,
                     complexity=complexity,
                     backend_used=gen_result.backend_used,
                     generation_duration=gen_result.generation_duration,
-                )
-                skip_dir = self.skip_reporter.report(skip)
-                print(f"  Timeout skip saved: {skip_dir.name}", file=sys.stderr)
-                return IterationResult(
-                    IterationStatus.SKIPPED,
-                    skip_dir=skip_dir,
-                    skip_reason=gen_result.skip_reason,
                 )
 
             # Check for internal compiler errors (SPY09xx) — report immediately
@@ -1829,7 +1853,36 @@ class DogfoodOrchestrator:
             expected_output = extract_expected_output_from_response(
                 gen_result.output
             ) or extract_expected_output_from_multifile(files)
-            print("  All files validated successfully (compiler)", file=sys.stderr)
+
+            # Verify expected output using Python (if main.spy is self-contained enough)
+            if expected_output and "main.spy" in files:
+                main_code = files["main.spy"]
+                is_valid, python_output, verify_error = (
+                    await _verify_expected_with_python(main_code, expected_output)
+                )
+                if not is_valid and python_output is not None:
+                    # Python ran successfully but output differs — adopt Python's output
+                    print(
+                        f"  Expected output corrected by Python (was: '{expected_output[:30]}...', "
+                        f"now: '{python_output[:30]}...')",
+                        file=sys.stderr,
+                    )
+                    expected_output = python_output
+                    # Update the expected output comment block in main.spy
+                    files["main.spy"] = _replace_expected_output_in_code(
+                        main_code, python_output
+                    )
+                    last_files = files
+                elif not is_valid:
+                    # Python couldn't run the code (likely due to imports) — keep LLM's output
+                    pass
+                elif python_output is not None:
+                    print(
+                        f"  Expected output verified with Python: {python_output[:50]}...",
+                        file=sys.stderr,
+                    )
+
+            print("  All files validated successfully (compiler + Python)", file=sys.stderr)
             return MultifileGenerationResult(
                 success=True,
                 files=files,
@@ -1897,25 +1950,13 @@ class DogfoodOrchestrator:
 
             # Check for generation timeout (not a bug)
             if gen_result.timed_out:
-                print(
-                    "  Generation timed out (not a bug)",
-                    file=sys.stderr,
-                )
-                skip = Skip(
+                return self._record_timeout_skip(
                     timestamp=timestamp,
                     skip_reason=gen_result.skip_reason or "Generation timed out",
-                    generated_code="",
                     feature_focus=feature_focus,
                     complexity=complexity,
                     backend_used=gen_result.backend_used,
                     generation_duration=gen_result.generation_duration,
-                )
-                skip_dir = self.skip_reporter.report(skip)
-                print(f"  Timeout skip saved: {skip_dir.name}", file=sys.stderr)
-                return IterationResult(
-                    IterationStatus.SKIPPED,
-                    skip_dir=skip_dir,
-                    skip_reason=gen_result.skip_reason,
                 )
 
             # Check for internal compiler errors (SPY09xx) — report immediately
