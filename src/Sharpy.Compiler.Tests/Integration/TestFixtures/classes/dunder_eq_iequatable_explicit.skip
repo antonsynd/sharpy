@@ -1,2 +1,2 @@
-CLR type discovery does not yet surface System.IEquatable<T> for import.
+TODO(#286): CLR type discovery does not yet surface System.IEquatable<T> for import.
 Dedup logic in CollectSynthesizedInterfaces exists (checks explicitNames) but cannot be end-to-end tested until IEquatable is importable.

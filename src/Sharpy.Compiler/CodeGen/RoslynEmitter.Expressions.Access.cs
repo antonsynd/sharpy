@@ -1509,12 +1509,7 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates call arguments in the correct order for a potentially-reordered C# signature.
-    /// When reordering is needed, all non-variadic arguments are emitted as named arguments
-    /// so C# binds by name regardless of parameter position. Variadic arguments remain
-    /// positional (trailing). When not needed, falls back to positional + keyword concat.
-    /// </summary>
-    /// <summary>
-    /// Generates call arguments in the correct order for a potentially-reordered C# signature.
+    /// Forwards to <see cref="GenerateReorderedCallArgumentsCore"/> with no prepended argument.
     /// </summary>
     private ArgumentSyntax[] GenerateReorderedCallArguments(FunctionCall call, FunctionSymbol? funcSymbol)
         => GenerateReorderedCallArgumentsCore(call, funcSymbol, prependedArgument: null);
