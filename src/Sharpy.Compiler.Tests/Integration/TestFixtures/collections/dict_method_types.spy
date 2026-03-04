@@ -1,4 +1,4 @@
-# Test: dict method type resolution through BuiltinMethodDefinitions
+# Test: dict method type resolution via discovery
 # Exercises items(), keys(), values(), get() via the registry-based member access path
 def main():
     d: dict[str, int] = {"x": 10, "y": 20, "z": 30}

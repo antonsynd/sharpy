@@ -1,0 +1,39 @@
+# Test: set method resolution via discovery
+# Exercises add, discard, remove, union, intersection, difference, copy, clear
+def main():
+    a: set[int] = {1, 2, 3}
+    b: set[int] = {2, 3, 4, 5}
+
+    # union
+    u: set[int] = a.union(b)
+    print(len(u))
+
+    # intersection
+    i: set[int] = a.intersection(b)
+    print(len(i))
+
+    # difference
+    d: set[int] = a.difference(b)
+    print(len(d))
+
+    # symmetric_difference
+    sd: set[int] = a.symmetric_difference(b)
+    print(len(sd))
+
+    # copy
+    c: set[int] = a.copy()
+    print(len(c))
+
+    # add and discard
+    a.add(10)
+    print(len(a))
+    a.discard(10)
+    print(len(a))
+
+    # remove
+    a.remove(1)
+    print(len(a))
+
+    # clear
+    a.clear()
+    print(len(a))

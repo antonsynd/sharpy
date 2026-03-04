@@ -1,4 +1,4 @@
-# Test: list method type resolution through BuiltinMethodDefinitions
+# Test: list method type resolution via discovery
 # Exercises append, insert, pop, remove, count, sort, reverse, copy, clear
 def main():
     nums: list[int] = [3, 1, 2]
