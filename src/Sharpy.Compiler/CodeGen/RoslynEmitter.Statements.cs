@@ -395,11 +395,37 @@ internal partial class RoslynEmitter
             var obj = GenerateExpression(indexAccess.Object);
             var index = GenerateExpression(indexAccess.Index);
 
+            // User-defined types with __setitem__: emit obj.SetItem(key, value)
+            var targetObjType = GetExpressionSemanticType(indexAccess.Object);
+            if (targetObjType is Semantic.UserDefinedType setUdt && setUdt.Symbol != null &&
+                (setUdt.Symbol.ProtocolMethods.ContainsKey(Semantic.DunderNames.SetItem) ||
+                 setUdt.Symbol.OperatorMethods.ContainsKey(Semantic.DunderNames.SetItem)))
+            {
+                var assignmentValue = assign.Operator == AssignmentOperator.Assign
+                    ? value
+                    : GenerateAugmentedValue(assign.Operator,
+                        InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                obj, IdentifierName("GetItem")))
+                            .AddArgumentListArguments(Argument(index)),
+                        value, assign.Target, assign.Value);
+
+                return ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            obj,
+                            IdentifierName("SetItem")))
+                        .AddArgumentListArguments(
+                            Argument(index),
+                            Argument(assignmentValue)));
+            }
+
             var elementAccess = ElementAccessExpression(obj)
                 .WithArgumentList(BracketedArgumentList(
                     SingletonSeparatedList(Argument(index))));
 
-            var assignmentValue = assign.Operator == AssignmentOperator.Assign
+            var augmentedValue = assign.Operator == AssignmentOperator.Assign
                 ? value
                 : GenerateAugmentedValue(assign.Operator, elementAccess, value, assign.Target, assign.Value);
 
@@ -407,7 +433,7 @@ internal partial class RoslynEmitter
                 AssignmentExpression(
                     SyntaxKind.SimpleAssignmentExpression,
                     elementAccess,
-                    assignmentValue));
+                    augmentedValue));
         }
 
         // Handle member assignment: obj.field = value

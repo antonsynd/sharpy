@@ -730,7 +730,8 @@ internal class TypeInferenceService
         };
 
         if (typeSymbol != null &&
-            typeSymbol.OperatorMethods.TryGetValue(DunderNames.GetItem, out var getItemMethods))
+            (typeSymbol.OperatorMethods.TryGetValue(DunderNames.GetItem, out var getItemMethods) ||
+             typeSymbol.ProtocolMethods.TryGetValue(DunderNames.GetItem, out getItemMethods)))
         {
             var bestOverload = FindBestOverload(getItemMethods, index);
             if (bestOverload != null)

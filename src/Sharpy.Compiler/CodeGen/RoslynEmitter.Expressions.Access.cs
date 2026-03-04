@@ -877,12 +877,26 @@ internal partial class RoslynEmitter
         var objExpr = GenerateExpression(indexAccess.Object);
         var index = GenerateExpression(indexAccess.Index);
 
+        // User-defined types with __getitem__: emit obj.GetItem(key) instead of obj[key]
+        // because user-defined classes don't have a C# indexer property.
+        var objectType = GetExpressionSemanticType(indexAccess.Object);
+        if (objectType is Semantic.UserDefinedType udt && udt.Symbol != null &&
+            (udt.Symbol.ProtocolMethods.ContainsKey(Semantic.DunderNames.GetItem) ||
+             udt.Symbol.OperatorMethods.ContainsKey(Semantic.DunderNames.GetItem)))
+        {
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    objExpr,
+                    IdentifierName("GetItem")))
+                .AddArgumentListArguments(Argument(index));
+        }
+
         var elementAccess = ElementAccessExpression(objExpr)
             .AddArgumentListArguments(Argument(index));
 
         // String indexing: C# string[int] returns char, but Sharpy types it as str.
         // Wrap with .ToString() to bridge the type gap.
-        var objectType = GetExpressionSemanticType(indexAccess.Object);
         if (objectType == Semantic.SemanticType.Str)
         {
             return InvocationExpression(
