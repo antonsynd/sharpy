@@ -1,0 +1,16 @@
+# Test: list.count() and list.index() return int, usable in arithmetic
+def main():
+    nums: list[int] = [10, 20, 30, 20, 40]
+
+    # count returns int
+    c: int = nums.count(20)
+    print(c)
+    print(c + 1)
+
+    # index returns int
+    i: int = nums.index(30)
+    print(i)
+    print(i * 2)
+
+    # count of missing element
+    print(nums.count(99))
