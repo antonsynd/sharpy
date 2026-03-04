@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 namespace Sharpy
 {
     /// <summary>
@@ -115,6 +116,34 @@ namespace Sharpy
         }
 
         public OverflowError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// I/O error exception
+    /// </summary>
+    public class IOError : IOException
+    {
+        public IOError(string message) : base(message)
+        {
+        }
+
+        public IOError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// File not found error exception
+    /// </summary>
+    public class FileNotFoundError : FileNotFoundException
+    {
+        public FileNotFoundError(string message) : base(message)
+        {
+        }
+
+        public FileNotFoundError(string message, Exception innerException) : base(message, innerException)
         {
         }
     }
