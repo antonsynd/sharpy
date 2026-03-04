@@ -5,6 +5,80 @@ namespace Sharpy.Core.Tests;
 
 public class StrTests
 {
+    // ---- Optional formatting via Str(object) ----
+
+    [Fact]
+    public void Str_OptionalSomeInt_ReturnsInnerValue()
+    {
+        object boxed = Optional<int>.Some(42);
+        Builtins.Str(boxed).Should().Be("42");
+    }
+
+    [Fact]
+    public void Str_OptionalSomeBool_ReturnsPythonBool()
+    {
+        object boxed = Optional<bool>.Some(true);
+        Builtins.Str(boxed).Should().Be("True");
+    }
+
+    [Fact]
+    public void Str_OptionalSomeBoolFalse_ReturnsPythonFalse()
+    {
+        object boxed = Optional<bool>.Some(false);
+        Builtins.Str(boxed).Should().Be("False");
+    }
+
+    [Fact]
+    public void Str_OptionalNoneInt_ReturnsNone()
+    {
+        object boxed = Optional<int>.None;
+        Builtins.Str(boxed).Should().Be("None");
+    }
+
+    [Fact]
+    public void Str_OptionalNoneString_ReturnsNone()
+    {
+        object boxed = Optional<string>.None;
+        Builtins.Str(boxed).Should().Be("None");
+    }
+
+    [Fact]
+    public void Str_OptionalSomeString_ReturnsInnerString()
+    {
+        object boxed = Optional<string>.Some("hello");
+        Builtins.Str(boxed).Should().Be("hello");
+    }
+
+    [Fact]
+    public void Str_OptionalSomeDouble_FormatsLikePython()
+    {
+        object boxed = Optional<double>.Some(3.14);
+        Builtins.Str(boxed).Should().Be("3.14");
+    }
+
+    [Fact]
+    public void Str_OptionalSomeWholeDouble_HasTrailingDotZero()
+    {
+        object boxed = Optional<double>.Some(5.0);
+        Builtins.Str(boxed).Should().Be("5.0");
+    }
+
+    [Fact]
+    public void Str_NestedOptionalSome_FormatsInnerValue()
+    {
+        // Optional<Optional<int>> with Some(Some(42))
+        object boxed = Optional<Optional<int>>.Some(Optional<int>.Some(42));
+        // The inner Optional<int> is itself formatted via TryFormat -> "42"
+        Builtins.Str(boxed).Should().Be("42");
+    }
+
+    [Fact]
+    public void Str_NestedOptionalInnerNone_ReturnsNone()
+    {
+        object boxed = Optional<Optional<int>>.Some(Optional<int>.None);
+        Builtins.Str(boxed).Should().Be("None");
+    }
+
     [Fact]
     public void Str_Char_ReturnsCharAsString()
     {

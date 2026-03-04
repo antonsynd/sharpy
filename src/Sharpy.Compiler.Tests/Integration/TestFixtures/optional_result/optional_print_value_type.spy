@@ -1,0 +1,22 @@
+# Test: print() on optional value types uses Str() formatting (#273)
+def get_value() -> int?:
+    return Some(42)
+
+def get_none() -> int?:
+    return None()
+
+def get_bool() -> bool?:
+    return Some(True)
+
+def get_float() -> float?:
+    return Some(3.14)
+
+def main():
+    x: int? = get_value()
+    y: int? = get_none()
+    z: bool? = get_bool()
+    w: float? = get_float()
+    print(x)
+    print(y)
+    print(z)
+    print(w)

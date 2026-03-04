@@ -16,9 +16,9 @@ namespace Sharpy
                 return "None";
             }
 
-            if (x is IOptional opt)
+            if (Optional.TryFormat(x, out var optStr))
             {
-                return opt.IsNone ? "None" : Str(opt.BoxedValue!);
+                return optStr;
             }
 
             if (x is bool b)

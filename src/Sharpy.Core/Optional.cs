@@ -1,23 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace Sharpy
 {
     /// <summary>
-    /// Non-generic interface for detecting Optional values at runtime (e.g., in print/str).
-    /// </summary>
-    public interface IOptional
-    {
-        bool IsSome { get; }
-        bool IsNone { get; }
-        object? BoxedValue { get; }
-    }
-
-    /// <summary>
     /// A safe tagged union for optional values. T? desugars to Optional[T].
     /// This is a struct - no heap allocation for returning optional values.
     /// </summary>
-    public readonly struct Optional<T> : System.IEquatable<Optional<T>>, IOptional
+    public readonly struct Optional<T> : System.IEquatable<Optional<T>>
     {
         private readonly T _value;
         private readonly bool _hasValue;
@@ -35,9 +26,6 @@ namespace Sharpy
         // Properties
         public bool IsSome => _hasValue;
         public bool IsNone => !_hasValue;
-
-        // IOptional implementation
-        object? IOptional.BoxedValue => _hasValue ? (object?)_value : null;
 
         // Methods
         public T Unwrap() =>
@@ -96,6 +84,8 @@ namespace Sharpy
     /// </summary>
     public static class Optional
     {
+        private static readonly Type OptionalGenericDef = typeof(Optional<>);
+
         public static Optional<T> Some<T>(T value) => Optional<T>.Some(value);
 
         /// <summary>
@@ -109,5 +99,33 @@ namespace Sharpy
         /// </summary>
         public static Optional<T> From<T>(T? value) where T : struct
             => value.HasValue ? Optional<T>.Some(value.Value) : Optional<T>.None;
+
+        /// <summary>
+        /// Detect and format an Optional value at runtime using reflection.
+        /// Avoids the boxing caused by the former IOptional interface approach.
+        /// </summary>
+        /// <param name="obj">A boxed object that may be an Optional&lt;T&gt;.</param>
+        /// <param name="result">The formatted string if obj is an Optional.</param>
+        /// <returns>True if obj was an Optional and was formatted; false otherwise.</returns>
+        internal static bool TryFormat(object obj, out string result)
+        {
+            var type = obj.GetType();
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == OptionalGenericDef)
+            {
+                var hasValue = (bool)type.GetProperty("IsSome").GetValue(obj);
+                if (!hasValue)
+                {
+                    result = "None";
+                    return true;
+                }
+
+                var innerValue = type.GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(obj);
+                result = Builtins.Str(innerValue!);
+                return true;
+            }
+
+            result = null!;
+            return false;
+        }
     }
 }
