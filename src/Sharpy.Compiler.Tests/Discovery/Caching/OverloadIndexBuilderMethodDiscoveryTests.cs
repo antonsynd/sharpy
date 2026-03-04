@@ -72,7 +72,7 @@ public class OverloadIndexBuilderMethodDiscoveryTests
         var dictType = builtins.Types.FirstOrDefault(t => t.Name.StartsWith("Dict"));
         // Dict type comes from System.Collections.Generic, not Sharpy.Core assembly
         // so it should not be in the discovered types. This is expected.
-        // The BuiltinMethodDefinitions fallback handles dict methods.
+        // Dict is registered with System.Collections.Generic.Dictionary as CLR type.
         if (dictType != null)
         {
             var methodNames = dictType.Methods.Select(m => m.Name).Distinct().ToList();
@@ -100,7 +100,7 @@ public class OverloadIndexBuilderMethodDiscoveryTests
         Assert.Contains("symmetric_difference", methodNames);
         // Note: CLR names IsSubset/IsSuperset reverse-mangle to is_subset/is_superset,
         // but the Sharpy API expects issubset/issuperset. This is a known naming gap
-        // handled by BuiltinMethodDefinitions fallback.
+        // which is a known naming gap from CLR reverse-mangling.
         Assert.Contains("is_subset", methodNames);
         Assert.Contains("is_superset", methodNames);
         Assert.Contains("copy", methodNames);
@@ -143,8 +143,8 @@ public class OverloadIndexBuilderMethodDiscoveryTests
     }
 
     [Fact]
-    public void CacheFormatVersion_Is5()
+    public void CacheFormatVersion_Is6()
     {
-        Assert.Equal(5, _index.CacheFormatVersion);
+        Assert.Equal(6, _index.CacheFormatVersion);
     }
 }

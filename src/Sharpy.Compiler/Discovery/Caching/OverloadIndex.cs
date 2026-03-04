@@ -9,7 +9,7 @@ internal class OverloadIndex
 {
     public AssemblyIdentity Identity { get; set; } = new();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public int CacheFormatVersion { get; set; } = 5;
+    public int CacheFormatVersion { get; set; } = 6;
     public Dictionary<string, ModuleOverloads> Modules { get; set; } = new();
 }
 

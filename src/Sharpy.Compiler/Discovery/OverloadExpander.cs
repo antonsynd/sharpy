@@ -4,8 +4,8 @@ namespace Sharpy.Compiler.Discovery;
 
 /// <summary>
 /// Expands a single <see cref="FunctionSignature"/> with default parameters into multiple
-/// overload signatures — one per valid parameter count. This matches the hand-coded
-/// BuiltinMethodDefinitions format where each overload is a separate FunctionSymbol.
+/// overload signatures — one per valid parameter count. Each overload is a separate
+/// FunctionSymbol with the exact parameter list (no HasDefault flags).
 /// </summary>
 /// <remarks>
 /// Some methods have return types that vary by overload (e.g., dict.get with 1 param
@@ -65,10 +65,25 @@ internal static class OverloadExpander
         // Generate overloads from required-only up to all params
         for (var paramCount = firstDefaultIndex; paramCount <= totalParams; paramCount++)
         {
+            // Strip HasDefault/DefaultValue from expanded parameters since each
+            // overload is now a distinct signature with exactly the right param count.
+            // Keeping HasDefault would cause the TypeChecker to treat them as optional,
+            // leading to ambiguous overload resolution.
+            var expandedParams = signature.Parameters.Take(paramCount)
+                .Select(p => new ParameterSignature
+                {
+                    Name = p.Name,
+                    Type = p.Type,
+                    HasDefault = false,
+                    DefaultValue = null,
+                    IsVariadic = p.IsVariadic,
+                })
+                .ToList();
+
             var overload = new FunctionSignature
             {
                 Name = signature.Name,
-                Parameters = signature.Parameters.Take(paramCount).ToList(),
+                Parameters = expandedParams,
                 ReturnType = GetReturnType(signature.ReturnType, typeName, signature.Name, paramCount),
                 TypeParameters = signature.TypeParameters,
                 MethodToken = signature.MethodToken,

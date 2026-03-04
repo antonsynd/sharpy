@@ -163,7 +163,7 @@ internal class CachedModuleDiscovery
 
         // Convert operator methods from discovery as marker-only stubs.
         // Validators only check for key presence, not signatures, so we strip
-        // parameters/return types to match BuiltinMethodDefinitions.MakeDunderDict format.
+        // parameters/return types to marker-only stubs that validators expect.
         var operatorMethods = NormalizeToDunderStubs(typeInfo.OperatorMethods);
 
         // Convert protocol methods from discovery as marker-only stubs (same rationale).
@@ -248,8 +248,8 @@ internal class CachedModuleDiscovery
     /// <summary>
     /// Converts discovered dunder methods (operators or protocols) to marker-only stubs.
     /// Each stub retains only Name, Kind, and AccessLevel — Parameters, ReturnType, and
-    /// TypeParameters are left at their defaults (empty/null). This matches the format
-    /// produced by BuiltinMethodDefinitions.MakeDunderDict, which validators expect.
+    /// TypeParameters are left at their defaults (empty/null). Validators only check
+    /// for key presence, not the actual method signatures.
     /// </summary>
     private static Dictionary<string, List<FunctionSymbol>> NormalizeToDunderStubs(
         Dictionary<string, List<FunctionSignature>> discovered)
@@ -393,6 +393,17 @@ internal class CachedModuleDiscovery
                 return new OptionalType
                 {
                     UnderlyingType = ConvertTypeSignature(signature.TypeArguments[0], sharedTypeParams)
+                };
+            }
+
+            // Handle tuple[T0, T1, ...] -> TupleType
+            if (signature.Name == "tuple" && signature.TypeArguments.Count > 0)
+            {
+                return new TupleType
+                {
+                    ElementTypes = signature.TypeArguments
+                        .Select(ta => ConvertTypeSignature(ta, sharedTypeParams))
+                        .ToList()
                 };
             }
 

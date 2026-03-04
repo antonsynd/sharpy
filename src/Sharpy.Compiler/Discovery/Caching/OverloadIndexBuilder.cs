@@ -28,7 +28,7 @@ internal class OverloadIndexBuilder
         {
             Identity = identity,
             CreatedAt = DateTime.UtcNow,
-            CacheFormatVersion = 5
+            CacheFormatVersion = 6
         };
 
         // Find all module classes decorated with [SharpyModule]
@@ -397,19 +397,72 @@ internal class OverloadIndexBuilder
             ClrTypeName = clrType.AssemblyQualifiedName ?? clrType.FullName ?? clrType.Name
         };
 
-        if (semanticType is GenericType genericType)
+        // For generic CLR types, recurse via CreateTypeSignature using CLR generic arguments
+        // to preserve GenericParameterPosition on nested type parameters.
+        if (clrType.IsGenericType)
         {
+            var clrTypeArgs = clrType.GetGenericArguments();
+
+            if (semanticType is OptionalType)
+            {
+                // Emit Optional as a generic TypeSignature so ConvertTypeSignature
+                // can reconstruct it as OptionalType via its "Optional" handling.
+                signature.Name = "Optional";
+                signature.IsGeneric = true;
+                signature.TypeArguments = clrTypeArgs
+                    .Select(CreateTypeSignature)
+                    .ToList();
+            }
+            else if (semanticType is TupleType)
+            {
+                signature.Name = "tuple";
+                signature.IsGeneric = true;
+                signature.TypeArguments = clrTypeArgs
+                    .Select(CreateTypeSignature)
+                    .ToList();
+            }
+            else if (semanticType is GenericType)
+            {
+                signature.IsGeneric = true;
+                signature.TypeArguments = clrTypeArgs
+                    .Select(CreateTypeSignature)
+                    .ToList();
+            }
+        }
+        else if (semanticType is GenericType genericType)
+        {
+            // Non-generic CLR types mapped to GenericType (e.g., arrays mapped to list[T]).
+            // Use the semantic type arguments since CLR generic args aren't available.
             signature.IsGeneric = true;
             signature.TypeArguments = genericType.TypeArguments
-                .Select(t => new TypeSignature
-                {
-                    Name = t.GetDisplayName(),
-                    ClrTypeName = string.Empty
-                })
+                .Select(CreateTypeSignatureFromSemantic)
                 .ToList();
         }
 
         return signature;
+    }
+
+    /// <summary>
+    /// Creates a TypeSignature from a SemanticType. Used for type arguments of generic,
+    /// optional, and tuple types where we already have a mapped SemanticType.
+    /// </summary>
+    private TypeSignature CreateTypeSignatureFromSemantic(SemanticType semanticType)
+    {
+        if (semanticType is TypeParameterType typeParam)
+        {
+            return new TypeSignature
+            {
+                Name = typeParam.Name,
+                IsGenericParameter = true,
+                ClrTypeName = string.Empty
+            };
+        }
+
+        return new TypeSignature
+        {
+            Name = semanticType.GetDisplayName(),
+            ClrTypeName = string.Empty
+        };
     }
 
     private string CreateMethodToken(MethodInfo method)

@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Discovery;
 
 /// <summary>
 /// Verifies that discovered protocol and operator stubs are normalized to marker-only format,
-/// matching the format produced by BuiltinMethodDefinitions.MakeDunderDict.
+/// where validators only check for key presence, not actual method signatures.
 /// </summary>
 public class DiscoveryStubNormalizationTests : IDisposable
 {

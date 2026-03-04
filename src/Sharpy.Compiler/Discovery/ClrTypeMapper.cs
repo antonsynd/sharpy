@@ -25,6 +25,12 @@ internal class ClrTypeMapper
 
     private SemanticType MapTypeInternal(Type clrType)
     {
+        // Handle generic type parameters (e.g., T in List<T>)
+        if (clrType.IsGenericParameter)
+        {
+            return new TypeParameterType { Name = clrType.Name };
+        }
+
         // Check PrimitiveCatalog first for primitive types
         var primitiveInfo = PrimitiveCatalog.GetByClrType(clrType);
         if (primitiveInfo != null)
@@ -176,6 +182,70 @@ internal class ClrTypeMapper
             return new TaskType
             {
                 ResultType = MapClrTypeToSemanticType(typeArgs[0])
+            };
+        }
+
+        // Sharpy.Optional<T>
+        if (genericDef.FullName == "Sharpy.Optional`1")
+        {
+            return new OptionalType
+            {
+                UnderlyingType = MapClrTypeToSemanticType(typeArgs[0])
+            };
+        }
+
+        // Sharpy.DictItemsView<K, V>
+        if (genericDef.FullName == "Sharpy.DictItemsView`2")
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.DictItemsView,
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0]),
+                    MapClrTypeToSemanticType(typeArgs[1])
+                }
+            };
+        }
+
+        // Sharpy.DictKeyView<K, V>
+        if (genericDef.FullName == "Sharpy.DictKeyView`2")
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.DictKeyView,
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0]),
+                    MapClrTypeToSemanticType(typeArgs[1])
+                }
+            };
+        }
+
+        // Sharpy.DictValuesView<K, V>
+        if (genericDef.FullName == "Sharpy.DictValuesView`2")
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.DictValuesView,
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0]),
+                    MapClrTypeToSemanticType(typeArgs[1])
+                }
+            };
+        }
+
+        // KeyValuePair<K, V> -> tuple[K, V]
+        if (genericDef.FullName == "System.Collections.Generic.KeyValuePair`2")
+        {
+            return new TupleType
+            {
+                ElementTypes = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0]),
+                    MapClrTypeToSemanticType(typeArgs[1])
+                }
             };
         }
 
