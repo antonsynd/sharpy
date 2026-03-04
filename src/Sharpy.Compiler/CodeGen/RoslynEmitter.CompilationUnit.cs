@@ -292,8 +292,15 @@ internal partial class RoslynEmitter
                 // from system import Math -> using Math = global::System.Math;
                 // Emit per-name type aliases with global:: prefix to avoid ambiguity
                 // when the emitted code's namespace (e.g. Sharpy.Math) shadows .NET types.
+                // Skip generic types — C# cannot alias open generic types (e.g., IEquatable<T>),
+                // and the base class list already uses fully-qualified names.
                 foreach (var importedName in fromImport.Names)
                 {
+                    // Skip generic CLR types — using alias can't reference open generics
+                    var symbol = _context.LookupSymbol(importedName.Name);
+                    if (symbol is TypeSymbol { IsGeneric: true })
+                        continue;
+
                     var csharpName = importedName.AsName ?? SimpleToPascalCase(importedName.Name);
                     var qualifiedName = $"global::{namespaceName}.{SimpleToPascalCase(importedName.Name)}";
                     yield return UsingDirective(
