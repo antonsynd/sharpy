@@ -9,7 +9,7 @@ internal class OverloadIndex
 {
     public AssemblyIdentity Identity { get; set; } = new();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public int CacheFormatVersion { get; set; } = 3;
+    public int CacheFormatVersion { get; set; } = 4;
     public Dictionary<string, ModuleOverloads> Modules { get; set; } = new();
 }
 
@@ -34,6 +34,9 @@ internal class DiscoveredTypeInfo
     public bool IsException { get; set; }
     public string? BaseTypeName { get; set; }
     public string TypeKind { get; set; } = "Class";
+    public List<FunctionSignature> Methods { get; set; } = new();
+    public Dictionary<string, List<FunctionSignature>> OperatorMethods { get; set; } = new();
+    public Dictionary<string, List<FunctionSignature>> ProtocolMethods { get; set; } = new();
 }
 
 /// <summary>

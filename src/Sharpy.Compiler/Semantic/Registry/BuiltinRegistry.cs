@@ -41,6 +41,10 @@ internal class BuiltinRegistry
 
     private void LoadBuiltins()
     {
+        // Load Sharpy.Core assembly first so discovery data is available for RegisterType
+        var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
+        _discovery.LoadAssembly(sharpyCoreAssembly);
+
         // Register primitives from PrimitiveCatalog using the defined set of names
         foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
         {
@@ -113,11 +117,7 @@ internal class BuiltinRegistry
 
     private void LoadBuiltinFunctions()
     {
-        // Load Sharpy.Core assembly and discover all builtin functions automatically
-        var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
-        _discovery.LoadAssembly(sharpyCoreAssembly);
-
-        // Get all functions from the "builtins" module
+        // Get all functions from the "builtins" module (assembly already loaded in LoadBuiltins)
         var builtinFunctions = _discovery.GetModuleFunctions("builtins");
 
         // Register them in our internal dictionary
@@ -146,6 +146,21 @@ internal class BuiltinRegistry
             ? Enumerable.Range(0, typeParamCount).Select(i => new TypeParameterDef { Name = $"T{i}" }).ToList()
             : new List<TypeParameterDef>();
 
+        // Try discovery-backed method population first
+        var discovered = _discovery.GetTypeByName(sharpyName);
+
+        var methods = discovered?.Methods.Count > 0
+            ? discovered.Methods
+            : BuiltinMethodDefinitions.GetMethods(sharpyName, typeParams);
+
+        var operatorMethods = discovered?.OperatorMethods.Count > 0
+            ? discovered.OperatorMethods
+            : BuiltinMethodDefinitions.GetOperatorMethods(sharpyName, typeParams);
+
+        var protocolMethods = discovered?.ProtocolMethods.Count > 0
+            ? discovered.ProtocolMethods
+            : BuiltinMethodDefinitions.GetProtocolMethods(sharpyName, typeParams);
+
         var typeSymbol = new TypeSymbol
         {
             Name = sharpyName,
@@ -155,9 +170,9 @@ internal class BuiltinRegistry
             TypeParameters = typeParams,
             AccessLevel = AccessLevel.Public,
             IsCovariant = BuiltinMethodDefinitions.IsCovariant(sharpyName),
-            Methods = BuiltinMethodDefinitions.GetMethods(sharpyName, typeParams),
-            OperatorMethods = BuiltinMethodDefinitions.GetOperatorMethods(sharpyName, typeParams),
-            ProtocolMethods = BuiltinMethodDefinitions.GetProtocolMethods(sharpyName, typeParams),
+            Methods = methods,
+            OperatorMethods = operatorMethods,
+            ProtocolMethods = protocolMethods,
         };
 
         BuiltinMethodDefinitions.PopulateMethodOverloads(typeSymbol);

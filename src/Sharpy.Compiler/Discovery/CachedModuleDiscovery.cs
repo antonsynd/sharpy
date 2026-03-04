@@ -131,6 +131,29 @@ internal class CachedModuleDiscovery
             _ => TypeKind.Class
         };
 
+        // Convert methods from discovery
+        var methods = typeInfo.Methods.Count > 0
+            ? typeInfo.Methods.Select(sig => ConvertToFunctionSymbol(sig, typeInfo.Name)).ToList()
+            : new List<FunctionSymbol>();
+
+        // Convert operator methods from discovery
+        var operatorMethods = new Dictionary<string, List<FunctionSymbol>>();
+        foreach (var (dunderName, signatures) in typeInfo.OperatorMethods)
+        {
+            operatorMethods[dunderName] = signatures
+                .Select(sig => ConvertToFunctionSymbol(sig, typeInfo.Name))
+                .ToList();
+        }
+
+        // Convert protocol methods from discovery
+        var protocolMethods = new Dictionary<string, List<FunctionSymbol>>();
+        foreach (var (dunderName, signatures) in typeInfo.ProtocolMethods)
+        {
+            protocolMethods[dunderName] = signatures
+                .Select(sig => ConvertToFunctionSymbol(sig, typeInfo.Name))
+                .ToList();
+        }
+
         return new TypeSymbol
         {
             Name = typeInfo.Name,
@@ -138,8 +161,43 @@ internal class CachedModuleDiscovery
             TypeKind = typeKind,
             ClrType = clrType,
             AccessLevel = AccessLevel.Public,
-            IsAbstract = clrType?.IsAbstract == true && !clrType.IsInterface
+            IsAbstract = clrType?.IsAbstract == true && !clrType.IsInterface,
+            Methods = methods,
+            OperatorMethods = operatorMethods,
+            ProtocolMethods = protocolMethods,
         };
+    }
+
+    /// <summary>
+    /// Get a fully-populated TypeSymbol for a specific builtin type name,
+    /// with methods, operators, and protocols populated from discovery.
+    /// Returns null if the type is not found in the discovery index.
+    /// </summary>
+    public TypeSymbol? GetTypeByName(string sharpyName)
+    {
+        foreach (var index in _loadedIndices.Values)
+        {
+            foreach (var moduleOverloads in index.Modules.Values)
+            {
+                // For generic types like List`1, match by stripping the generic arity suffix
+                var typeInfo = moduleOverloads.Types.FirstOrDefault(t =>
+                {
+                    var name = t.Name;
+                    // Strip generic arity suffix (e.g., List`1 -> List)
+                    var backtickIndex = name.IndexOf('`');
+                    if (backtickIndex >= 0)
+                        name = name[..backtickIndex];
+                    return string.Equals(name, sharpyName, StringComparison.OrdinalIgnoreCase);
+                });
+
+                if (typeInfo != null && (typeInfo.Methods.Count > 0 || typeInfo.OperatorMethods.Count > 0 || typeInfo.ProtocolMethods.Count > 0))
+                {
+                    return ConvertToTypeSymbol(typeInfo);
+                }
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

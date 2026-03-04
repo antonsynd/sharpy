@@ -28,7 +28,7 @@ internal class OverloadIndexBuilder
         {
             Identity = identity,
             CreatedAt = DateTime.UtcNow,
-            CacheFormatVersion = 3
+            CacheFormatVersion = 4
         };
 
         // Find all module classes decorated with [SharpyModule]
@@ -88,7 +88,7 @@ internal class OverloadIndexBuilder
 
             var isException = typeof(Exception).IsAssignableFrom(type);
 
-            moduleOverloads.Types.Add(new DiscoveredTypeInfo
+            var typeInfo = new DiscoveredTypeInfo
             {
                 Name = type.Name,
                 Namespace = type.Namespace ?? string.Empty,
@@ -96,7 +96,158 @@ internal class OverloadIndexBuilder
                 IsException = isException,
                 BaseTypeName = type.BaseType?.Name,
                 TypeKind = typeKind
-            });
+            };
+
+            DiscoverTypeMethods(type, typeInfo);
+            DiscoverTypeOperators(type, typeInfo);
+            DiscoverTypeProtocols(type, typeInfo);
+
+            moduleOverloads.Types.Add(typeInfo);
+        }
+    }
+
+    /// <summary>
+    /// Inherited Object methods to exclude from instance method discovery.
+    /// </summary>
+    private static readonly HashSet<string> ExcludedObjectMethods = new()
+    {
+        "GetHashCode", "Equals", "ToString", "GetType"
+    };
+
+    /// <summary>
+    /// Maps CLR operator method names to Python dunder names.
+    /// </summary>
+    private static readonly Dictionary<string, string> ClrOperatorToDunder = new()
+    {
+        ["op_Addition"] = "__add__",
+        ["op_Subtraction"] = "__sub__",
+        ["op_Multiply"] = "__mul__",
+        ["op_Division"] = "__truediv__",
+        ["op_Modulus"] = "__mod__",
+        ["op_Equality"] = "__eq__",
+        ["op_Inequality"] = "__ne__",
+        ["op_LessThan"] = "__lt__",
+        ["op_GreaterThan"] = "__gt__",
+        ["op_LessThanOrEqual"] = "__le__",
+        ["op_GreaterThanOrEqual"] = "__ge__",
+        ["op_BitwiseAnd"] = "__and__",
+        ["op_BitwiseOr"] = "__or__",
+        ["op_ExclusiveOr"] = "__xor__",
+    };
+
+    /// <summary>
+    /// Discovers public instance methods on a type and stores them as FunctionSignatures.
+    /// Filters out property accessors, operator methods, and inherited Object methods.
+    /// </summary>
+    private void DiscoverTypeMethods(Type type, DiscoveredTypeInfo typeInfo)
+    {
+        var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(m => !m.IsSpecialName)
+            .Where(m => !m.Name.StartsWith("get_") && !m.Name.StartsWith("set_"))
+            .Where(m => !ExcludedObjectMethods.Contains(m.Name))
+            .ToList();
+
+        var methodGroups = methods.GroupBy(m => GetFunctionName(m));
+
+        foreach (var group in methodGroups)
+        {
+            foreach (var method in group)
+            {
+                try
+                {
+                    var signature = CreateFunctionSignature(method);
+                    typeInfo.Methods.Add(signature);
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
+                {
+                    _logger.LogDebug($"Skipping {type.Name}.{method.Name}: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Discovers CLR operators on a type and maps them to dunder names.
+    /// </summary>
+    private void DiscoverTypeOperators(Type type, DiscoveredTypeInfo typeInfo)
+    {
+        var operators = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Where(m => m.IsSpecialName && m.Name.StartsWith("op_"))
+            .ToList();
+
+        foreach (var op in operators)
+        {
+            if (!ClrOperatorToDunder.TryGetValue(op.Name, out var dunderName))
+                continue;
+
+            try
+            {
+                var signature = CreateFunctionSignature(op);
+                signature.Name = dunderName;
+
+                if (!typeInfo.OperatorMethods.TryGetValue(dunderName, out var signatures))
+                {
+                    signatures = new List<FunctionSignature>();
+                    typeInfo.OperatorMethods[dunderName] = signatures;
+                }
+                signatures.Add(signature);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
+            {
+                _logger.LogDebug($"Skipping operator {type.Name}.{op.Name}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Discovers protocol implementations on a type by checking interface implementations
+    /// and specific patterns (indexers, Contains method, etc.).
+    /// </summary>
+    private void DiscoverTypeProtocols(Type type, DiscoveredTypeInfo typeInfo)
+    {
+        var interfaces = type.GetInterfaces();
+
+        // ISized -> __len__
+        if (interfaces.Any(i => i.FullName == "Sharpy.ISized"))
+            AddProtocolStub(typeInfo, "__len__");
+
+        // IBoolConvertible -> __bool__
+        if (interfaces.Any(i => i.FullName == "Sharpy.IBoolConvertible"))
+            AddProtocolStub(typeInfo, "__bool__");
+
+        // IReverseEnumerable<T> -> __reversed__
+        if (interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Sharpy.IReverseEnumerable`1"))
+            AddProtocolStub(typeInfo, "__reversed__");
+
+        // IEnumerable<T> -> __iter__
+        if (interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
+            AddProtocolStub(typeInfo, "__iter__");
+
+        // Indexer property (parameterized this[]) -> __getitem__ / __setitem__
+        var indexers = type.GetProperties()
+            .Where(p => p.GetIndexParameters().Length > 0)
+            .ToList();
+
+        if (indexers.Any(p => p.GetGetMethod() != null))
+            AddProtocolStub(typeInfo, "__getitem__");
+
+        if (indexers.Any(p => p.GetSetMethod() != null))
+            AddProtocolStub(typeInfo, "__setitem__");
+
+        // Contains method -> __contains__
+        var containsMethod = type.GetMethod("Contains", BindingFlags.Public | BindingFlags.Instance);
+        if (containsMethod != null)
+            AddProtocolStub(typeInfo, "__contains__");
+    }
+
+    private static void AddProtocolStub(DiscoveredTypeInfo typeInfo, string dunderName)
+    {
+        if (!typeInfo.ProtocolMethods.ContainsKey(dunderName))
+        {
+            typeInfo.ProtocolMethods[dunderName] = new List<FunctionSignature>
+            {
+                new FunctionSignature { Name = dunderName }
+            };
         }
     }
 
