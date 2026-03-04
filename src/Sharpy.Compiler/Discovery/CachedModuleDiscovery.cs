@@ -191,6 +191,19 @@ internal class CachedModuleDiscovery
     }
 
     /// <summary>
+    /// Explicit mapping from Sharpy type names to CLR type names in the discovery index.
+    /// Eliminates case-insensitive matching by making the naming contract explicit.
+    /// Only types whose Sharpy name differs from the CLR name need entries here.
+    /// </summary>
+    private static readonly Dictionary<string, string> SharpyToClrNameMap = new()
+    {
+        ["list"] = "List",
+        ["dict"] = "Dict",
+        ["set"] = "Set",
+        ["tuple"] = "ValueTuple",
+    };
+
+    /// <summary>
     /// Get a fully-populated TypeSymbol for a specific builtin type name,
     /// with methods, operators, and protocols populated from discovery.
     /// Returns null if the type is not found in the discovery index.
@@ -209,6 +222,9 @@ internal class CachedModuleDiscovery
     /// </summary>
     public TypeSymbol? GetTypeByName(string sharpyName, TypeParameterType[]? sharedTypeParams)
     {
+        // Translate Sharpy name to expected CLR name; fall back to the Sharpy name itself
+        var clrName = SharpyToClrNameMap.TryGetValue(sharpyName, out var mapped) ? mapped : sharpyName;
+
         foreach (var lazy in _loadedIndices.Values)
         {
             var index = lazy.Value;
@@ -222,7 +238,7 @@ internal class CachedModuleDiscovery
                     var backtickIndex = name.IndexOf('`');
                     if (backtickIndex >= 0)
                         name = name[..backtickIndex];
-                    return string.Equals(name, sharpyName, StringComparison.OrdinalIgnoreCase);
+                    return string.Equals(name, clrName, StringComparison.Ordinal);
                 });
 
                 if (typeInfo != null && (typeInfo.Methods.Count > 0 || typeInfo.OperatorMethods.Count > 0 || typeInfo.ProtocolMethods.Count > 0))
