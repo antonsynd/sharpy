@@ -580,7 +580,6 @@ public sealed record FunctionType : SemanticType
         }
 
         return ReturnType.Equals(other.ReturnType)
-            && OptionalParameterCount == other.OptionalParameterCount
             && SkipArgumentValidation == other.SkipArgumentValidation;
     }
 
@@ -592,7 +591,6 @@ public sealed record FunctionType : SemanticType
             hash.Add(param);
         }
         hash.Add(ReturnType);
-        hash.Add(OptionalParameterCount);
         hash.Add(SkipArgumentValidation);
         return hash.ToHashCode();
     }
