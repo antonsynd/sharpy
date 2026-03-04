@@ -191,6 +191,7 @@ class ClaudeCodeBackend(Backend):
                     exit_code=-1,
                     duration_seconds=duration,
                     rate_limited=False,
+                    timed_out=True,
                     error_message=(
                         f"Execution timed out after {duration:.1f}s "
                         f"(limit: {config.timeout_seconds:.0f}s). "

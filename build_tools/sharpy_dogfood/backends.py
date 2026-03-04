@@ -48,6 +48,27 @@ _INFRASTRUCTURE_ERROR_PATTERNS: list[str] = [
 ]
 
 
+# Known error patterns that indicate a timeout (not a code issue).
+_TIMEOUT_ERROR_PATTERNS: list[str] = [
+    "timed out",
+    "timeout",
+    "deadline exceeded",
+]
+
+
+def _is_timeout_error(error_message: str) -> bool:
+    """Check if an error message indicates a timeout.
+
+    Args:
+        error_message: The error string to inspect.
+
+    Returns:
+        True if the error matches a known timeout pattern.
+    """
+    lower = error_message.lower()
+    return any(pattern in lower for pattern in _TIMEOUT_ERROR_PATTERNS)
+
+
 def _is_infrastructure_error(error_message: str) -> bool:
     """Check if an error message indicates an infrastructure problem.
 
@@ -85,6 +106,9 @@ class ExecutionResult:
     ) -> "ExecutionResult":
         """Convert a shared BackendResponse to ExecutionResult."""
         error_msg = response.error_message or ""
+        # Prefer the structured timed_out field from BackendResponse.
+        # Fall back to string matching for older or third-party backends.
+        timed_out = response.timed_out or _is_timeout_error(error_msg)
         return cls(
             success=response.success,
             output=response.output,
@@ -92,7 +116,7 @@ class ExecutionResult:
             duration_seconds=response.duration_seconds,
             backend=backend_name,
             rate_limited=response.rate_limited,
-            timed_out="timed out" in error_msg.lower(),
+            timed_out=timed_out,
             infrastructure_error=_is_infrastructure_error(error_msg),
         )
 

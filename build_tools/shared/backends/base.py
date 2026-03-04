@@ -75,6 +75,7 @@ class BackendResponse:
         exit_code: Process exit code (0 = success)
         duration_seconds: Execution time in seconds
         rate_limited: Whether this request was rate limited
+        timed_out: Whether the execution was terminated due to timeout
         error_message: Human-readable error description (if any)
     """
 
@@ -84,6 +85,7 @@ class BackendResponse:
     exit_code: int = 0
     duration_seconds: float = 0.0
     rate_limited: bool = False
+    timed_out: bool = False
     error_message: Optional[str] = None
 
 
