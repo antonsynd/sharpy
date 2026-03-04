@@ -13,8 +13,6 @@ internal class OverloadIndexCache
 {
     private readonly string _cacheDirectory;
     private readonly ICompilerLogger _logger;
-    private const int MaxRetries = 3;
-    private const int RetryDelayMs = 100;
     internal const int CurrentCacheFormatVersion = 6;
 
     // Using camelCase for JSON serialization to reduce file size and follow common conventions.
@@ -63,7 +61,7 @@ internal class OverloadIndexCache
 
     /// <summary>
     /// Try to load a cached index for the given assembly identity.
-    /// Retries on file access conflicts from parallel processes.
+    /// Best-effort: returns null on any I/O failure rather than blocking.
     /// </summary>
     public OverloadIndex? TryLoad(AssemblyIdentity identity)
     {
@@ -73,52 +71,48 @@ internal class OverloadIndexCache
         if (!File.Exists(cachePath))
             return null;
 
-        for (var attempt = 0; attempt < MaxRetries; attempt++)
+        try
         {
-            try
+            using var fileStream = new FileStream(cachePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
+            var index = JsonSerializer.Deserialize<OverloadIndex>(gzipStream, JsonOptions);
+
+            // Reject caches from older format versions
+            if (index?.CacheFormatVersion != CurrentCacheFormatVersion)
             {
-                using var fileStream = new FileStream(cachePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
-                var index = JsonSerializer.Deserialize<OverloadIndex>(gzipStream, JsonOptions);
-
-                // Reject caches from older format versions
-                if (index?.CacheFormatVersion != CurrentCacheFormatVersion)
-                {
-                    TryDeleteFile(cachePath);
-                    return null;
-                }
-
-                // Verify the identity matches
-                if (index.Identity.Equals(identity))
-                {
-                    return index;
-                }
-
-                // Cache is stale, delete it
                 TryDeleteFile(cachePath);
                 return null;
             }
-            catch (IOException) when (attempt < MaxRetries - 1)
+
+            // Verify the identity matches
+            if (index.Identity.Equals(identity))
             {
-                // File is locked by another process, wait and retry
-                Thread.Sleep(RetryDelayMs * (attempt + 1));
+                return index;
             }
-            catch (Exception ex)
-            {
-                // Cache file is corrupted, incompatible, or inaccessible
-                _logger.LogDebug($"Failed to load cache from '{cachePath}': {ex.GetType().Name} - {ex.Message}");
-                TryDeleteFile(cachePath);
-                return null;
-            }
+
+            // Cache is stale, delete it
+            TryDeleteFile(cachePath);
+            return null;
         }
-
-        return null;
+        catch (IOException ex)
+        {
+            // File locked by another process — skip rather than block
+            _logger.LogDebug($"Cache load skipped (file locked): {ex.Message}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            // Cache file is corrupted, incompatible, or inaccessible
+            _logger.LogDebug($"Failed to load cache from '{cachePath}': {ex.GetType().Name} - {ex.Message}");
+            TryDeleteFile(cachePath);
+            return null;
+        }
     }
 
     /// <summary>
     /// Save an index to the cache.
     /// Uses atomic write (write to temp file, then rename) to prevent corruption.
-    /// Retries on file access conflicts from parallel processes.
+    /// Best-effort: skips saving on any I/O failure rather than blocking.
     /// </summary>
     public void Save(OverloadIndex index)
     {
@@ -129,42 +123,29 @@ internal class OverloadIndexCache
         // Clean up old cache files for this assembly (different versions/hashes older than 7 days)
         CleanupOldCaches(index.Identity.Name, cacheKey);
 
-        for (var attempt = 0; attempt < MaxRetries; attempt++)
+        try
         {
-            try
+            // Write to a temporary file first
+            using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var gzipStream = new GZipStream(fileStream, CompressionLevel.Optimal))
             {
-                // Write to a temporary file first
-                using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                using (var gzipStream = new GZipStream(fileStream, CompressionLevel.Optimal))
-                {
-                    JsonSerializer.Serialize(gzipStream, index, JsonOptions);
-                }
-
-                // Atomically move the temp file to the final location
-                // File.Move with overwrite handles the case where another process wrote the file
-                File.Move(tempPath, cachePath, overwrite: true);
-                return; // Success
+                JsonSerializer.Serialize(gzipStream, index, JsonOptions);
             }
-            catch (IOException) when (attempt < MaxRetries - 1)
-            {
-                // File is locked by another process, wait and retry
-                Thread.Sleep(RetryDelayMs * (attempt + 1));
-            }
-            catch (Exception ex)
-            {
-                // Clean up temp file on error
-                TryDeleteFile(tempPath);
 
-                // Log but don't fail - caching is optional
-                _logger.LogDebug($"Failed to save cache (attempt {attempt + 1}/{MaxRetries}): {ex.Message}");
-
-                if (attempt >= MaxRetries - 1)
-                {
-                    // Only warn user on final failure, and make the message less alarming
-                    // since cache failures are non-critical
-                    _logger.LogWarning($"Cache save failed after {MaxRetries} attempts: {ex.Message}", 0, 0);
-                }
-            }
+            // Atomically move the temp file to the final location
+            File.Move(tempPath, cachePath, overwrite: true);
+        }
+        catch (IOException ex)
+        {
+            // File locked by another process — skip rather than block
+            TryDeleteFile(tempPath);
+            _logger.LogDebug($"Cache save skipped (file locked): {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            // Clean up temp file on error
+            TryDeleteFile(tempPath);
+            _logger.LogDebug($"Cache save failed: {ex.Message}");
         }
     }
 
