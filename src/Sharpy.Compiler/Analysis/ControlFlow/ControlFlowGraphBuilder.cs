@@ -212,6 +212,28 @@ internal class ControlFlowGraphBuilder
     private void AddStatement(Statement stmt)
     {
         _currentBlock.AddStatement(stmt);
+
+        if (!_currentBlock.ContainsAwait && ContainsAwaitExpression(stmt))
+        {
+            _currentBlock.ContainsAwait = true;
+        }
+    }
+
+    /// <summary>
+    /// Recursively scans an AST node tree for AwaitExpression nodes.
+    /// </summary>
+    private static bool ContainsAwaitExpression(Node node)
+    {
+        if (node is AwaitExpression)
+            return true;
+
+        foreach (var child in node.GetChildNodes())
+        {
+            if (ContainsAwaitExpression(child))
+                return true;
+        }
+
+        return false;
     }
 
     private void BuildReturn(ReturnStatement stmt)
