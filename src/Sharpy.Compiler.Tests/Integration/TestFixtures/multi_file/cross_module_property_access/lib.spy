@@ -1,0 +1,13 @@
+class Item:
+    _name: str
+    _count: int
+
+    def __init__(self, name: str, count: int):
+        self._name = name
+        self._count = count
+
+    property get name(self) -> str:
+        return self._name
+
+    property get count(self) -> int:
+        return self._count

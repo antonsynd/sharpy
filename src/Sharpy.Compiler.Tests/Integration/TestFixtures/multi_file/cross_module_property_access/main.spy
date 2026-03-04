@@ -1,0 +1,6 @@
+from lib import Item
+
+def main():
+    item = Item("apple", 5)
+    print(item.name)
+    print(item.count)
