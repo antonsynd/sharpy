@@ -1,2 +1,2 @@
-test
-missing
+caught IOError
+caught FileNotFoundError

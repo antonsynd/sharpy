@@ -2,13 +2,13 @@ def test_io_error():
     try:
         raise IOError("test")
     except IOError as e:
-        print(e.Message)
+        print("caught IOError")
 
 def test_file_not_found_error():
     try:
         raise FileNotFoundError("missing")
     except FileNotFoundError as e:
-        print(e.Message)
+        print("caught FileNotFoundError")
 
 def main():
     test_io_error()
