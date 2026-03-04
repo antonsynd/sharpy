@@ -1,7 +1,7 @@
 # Test type(X) → typeof(X) in decorator arguments
 # Uses DebuggerTypeProxy which accepts a Type parameter
 
-@debugger_type_proxy(type(str))
+@system.diagnostics.debugger_type_proxy(type(str))
 class MyList:
     items: list[str]
 
