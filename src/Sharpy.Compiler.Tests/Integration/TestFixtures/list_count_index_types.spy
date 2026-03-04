@@ -1,0 +1,10 @@
+def main():
+    items: list[int] = [1, 2, 3, 2, 1]
+
+    c: int = items.count(2)
+    print(c)
+    print(c + 10)
+
+    i: int = items.index(3)
+    print(i)
+    print(i + 100)

@@ -96,14 +96,14 @@ namespace Sharpy
         /// <summary>
         /// Return the number of times x appears in the list.
         /// </summary>
-        public uint Count(T x)
+        public int Count(T x)
         {
             if (x is null)
             {
-                return (uint)_list.Count(y => y is null);
+                return _list.Count(y => y is null);
             }
 
-            return (uint)_list.Count(y => x.Equals(y));
+            return _list.Count(y => x.Equals(y));
         }
 
         /// <summary>
@@ -118,7 +118,7 @@ namespace Sharpy
         /// relative to the beginning of the full sequence rather than the
         /// start argument.
         /// </remarks>
-        public uint Index(T x, int start = 0, int end = -1)
+        public int Index(T x, int start = 0, int end = -1)
         {
             int count;
 
@@ -139,7 +139,7 @@ namespace Sharpy
                 throw new ValueError($"{x} is not in list");
             }
 
-            return (uint)result;
+            return result;
         }
 
         /// <summary>
