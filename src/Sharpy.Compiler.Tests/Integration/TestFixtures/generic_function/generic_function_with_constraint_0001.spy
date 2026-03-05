@@ -1,0 +1,16 @@
+def repeat[T](value: T, count: int) -> list[T]:
+    result: list[T] = []
+    i: int = 0
+    while i < count:
+        result.append(value)
+        i = i + 1
+    return result
+
+def main():
+    ints: list[int] = repeat[int](7, 3)
+    for x in ints:
+        print(x)
+
+    strs: list[str] = repeat[str]("hi", 2)
+    for s in strs:
+        print(s)

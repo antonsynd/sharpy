@@ -1,0 +1,12 @@
+def make_list[T](a: T, b: T, c: T) -> list[T]:
+    result: list[T] = [a, b, c]
+    return result
+
+def main():
+    nums: list[int] = make_list[int](1, 2, 3)
+    for n in nums:
+        print(n)
+
+    words: list[str] = make_list[str]("a", "b", "c")
+    for w in words:
+        print(w)

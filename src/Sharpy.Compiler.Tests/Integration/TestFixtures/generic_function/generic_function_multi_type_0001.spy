@@ -1,0 +1,12 @@
+def first[A, B](a: A, b: B) -> A:
+    return a
+
+def second[A, B](a: A, b: B) -> B:
+    return b
+
+def main():
+    x: int = first[int, str](42, "hello")
+    print(x)
+
+    y: str = second[int, str](42, "hello")
+    print(y)
