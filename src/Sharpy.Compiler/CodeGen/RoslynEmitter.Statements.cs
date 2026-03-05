@@ -370,7 +370,7 @@ internal partial class RoslynEmitter
                     {
                         readExpr = InvocationExpression(
                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                IdentifierName(varName), IdentifierName("Unwrap")))
+                                IdentifierName(varName), IdentifierName(ProtocolConstants.Unwrap)))
                             .WithArgumentList(ArgumentList());
                     }
                 }
@@ -1665,8 +1665,8 @@ internal partial class RoslynEmitter
     private StatementSyntax GenerateWithDunderProtocol(WithItem item, StatementSyntax innermost, ContextManagerKind cmKind)
     {
         bool isAsync = cmKind == ContextManagerKind.AsyncDunderProtocol;
-        var enterMethod = isAsync ? "AenterAsync" : "Enter";
-        var exitMethod = isAsync ? "AexitAsync" : "Exit";
+        var enterMethod = isAsync ? ProtocolConstants.AenterAsync : ProtocolConstants.Enter;
+        var exitMethod = isAsync ? ProtocolConstants.AexitAsync : ProtocolConstants.Exit;
 
         var contextExpr = GenerateExpression(item.ContextExpression);
         var ctxVarName = GenerateTempVarName("ctx");

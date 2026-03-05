@@ -141,7 +141,7 @@ internal partial class RoslynEmitter
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         expr,
-                        IdentifierName("Unwrap")))
+                        IdentifierName(ProtocolConstants.Unwrap)))
                     .WithArgumentList(ArgumentList());
             }
         }

@@ -275,7 +275,7 @@ internal partial class RoslynEmitter
                 .WithBody(Block(bodyStatements));
         }
 
-        var property = PropertyDeclaration(returnType, "IsTrue")
+        var property = PropertyDeclaration(returnType, ProtocolConstants.IsTrue)
             .WithModifiers(modifiers)
             .WithAccessorList(AccessorList(SingletonList(getter)));
 
@@ -333,7 +333,7 @@ internal partial class RoslynEmitter
                 .WithBody(Block(bodyStatements));
         }
 
-        var property = PropertyDeclaration(returnType, "Count")
+        var property = PropertyDeclaration(returnType, ProtocolConstants.Count)
             .WithModifiers(modifiers)
             .WithAccessorList(AccessorList(SingletonList(getter)));
 

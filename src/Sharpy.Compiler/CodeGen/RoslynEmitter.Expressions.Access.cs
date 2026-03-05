@@ -320,7 +320,7 @@ internal partial class RoslynEmitter
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             InvocationExpression(
                                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                    safeObj, IdentifierName("Unwrap")))
+                                    safeObj, IdentifierName(ProtocolConstants.Unwrap)))
                                 .WithArgumentList(ArgumentList()),
                             IdentifierName(methodName)))
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
@@ -632,7 +632,7 @@ internal partial class RoslynEmitter
                 var trueExpr = (ExpressionSyntax)MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                     InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            safeObj, IdentifierName("Unwrap")))
+                            safeObj, IdentifierName(ProtocolConstants.Unwrap)))
                         .WithArgumentList(ArgumentList()),
                     member);
 
@@ -696,7 +696,7 @@ internal partial class RoslynEmitter
             {
                 result = InvocationExpression(
                     MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression, result, IdentifierName("Unwrap")))
+                        SyntaxKind.SimpleMemberAccessExpression, result, IdentifierName(ProtocolConstants.Unwrap)))
                     .WithArgumentList(ArgumentList());
             }
         }

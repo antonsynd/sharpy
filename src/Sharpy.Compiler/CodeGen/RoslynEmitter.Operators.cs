@@ -551,7 +551,7 @@ internal partial class RoslynEmitter
         var isTrueAccess = MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
             IdentifierName("value"),
-            IdentifierName("IsTrue"));
+            IdentifierName(ProtocolConstants.IsTrue));
 
         var body = Block(ReturnStatement(isTrueAccess));
 
@@ -575,7 +575,7 @@ internal partial class RoslynEmitter
         var isTrueAccess = MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
             IdentifierName("value"),
-            IdentifierName("IsTrue"));
+            IdentifierName(ProtocolConstants.IsTrue));
         var negation = PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, isTrueAccess);
         var body = Block(ReturnStatement(negation));
 

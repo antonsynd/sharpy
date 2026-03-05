@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Registry;
 
@@ -76,7 +77,7 @@ public static class ProtocolRegistry
             DunderName: DunderNames.Len,
             Kind: ProtocolKind.Container,
             SharpyCoreInterface: "ISized",
-            InterfaceMethodName: "Count",
+            InterfaceMethodName: ProtocolConstants.Count,
             ClrMethodName: "get_Count",  // Maps to Count property in .NET
             ExpectedParamCount: 1,  // Just self
             ExpectedReturnType: "int"  // Sharpy uses int; codegen handles uint conversion
@@ -163,7 +164,7 @@ public static class ProtocolRegistry
             DunderName: DunderNames.Bool,
             Kind: ProtocolKind.Conversion,
             SharpyCoreInterface: "IBoolConvertible",
-            InterfaceMethodName: "IsTrue",
+            InterfaceMethodName: ProtocolConstants.IsTrue,
             ClrMethodName: null,
             ExpectedParamCount: 1,  // Just self
             ExpectedReturnType: "bool"
