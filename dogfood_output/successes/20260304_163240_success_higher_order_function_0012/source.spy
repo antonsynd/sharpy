@@ -1,0 +1,73 @@
+# Higher-order functions demonstration
+# Functions that accept and return other functions
+
+def apply(func: (int) -> int, x: int) -> int:
+    return func(x)
+
+def compose(f: (int) -> int, g: (int) -> int) -> (int) -> int:
+    return lambda x: f(g(x))
+
+def make_multiplier(factor: int) -> (int) -> int:
+    return lambda x: x * factor
+
+def make_adder(n: int) -> (int) -> int:
+    return lambda x: x + n
+
+def filter_positive(pred: (int) -> bool) -> (int) -> bool:
+    # Returns a function that checks both condition and positivity
+    return lambda x: pred(x) and x > 0
+
+def reduce(func: (int, int) -> int, items: list[int], initial: int) -> int:
+    result = initial
+    for item in items:
+        result = func(result, item)
+    return result
+
+def main():
+    # Test simple function application
+    double: (int) -> int = lambda n: n * 2
+    result1 = apply(double, 5)
+    print(result1)
+    
+    # Test function composition
+    add_three: (int) -> int = lambda n: n + 3
+    composed = compose(double, add_three)
+    result2 = composed(4)
+    print(result2)
+    
+    # Test closure - function factory
+    times_five = make_multiplier(5)
+    result3 = times_five(7)
+    print(result3)
+    
+    times_ten = make_multiplier(10)
+    result4 = times_ten(3)
+    print(result4)
+    
+    # Test adder factory
+    add_ten = make_adder(10)
+    result5 = add_ten(15)
+    print(result5)
+    
+    # Test function as return value with filtering
+    is_even: (int) -> bool = lambda n: n % 2 == 0
+    even_positive = filter_positive(is_even)
+    print(even_positive(8))
+    print(even_positive(-4))
+    
+    # Test reduce with different operations
+    numbers: list[int] = [1, 2, 3, 4, 5]
+    
+    sum_result = reduce(lambda a, b: a + b, numbers, 0)
+    print(sum_result)
+    
+    product_result = reduce(lambda a, b: a * b, numbers, 1)
+    print(product_result)
+    
+    max_result = reduce(lambda a, b: a if a > b else b, numbers, 0)
+    print(max_result)
+    
+    # Test chaining higher-order functions
+    transform: (int) -> int = compose(make_multiplier(3), make_adder(2))
+    result6 = transform(4)
+    print(result6)

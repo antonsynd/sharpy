@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-04T13:32:39.235922",
+  "generated_code": "# Test: Type narrowing with optional types in a class\nclass OptionalProcessor:\n    total: int\n    valid_count: int\n    \n    def __init__(self):\n        self.total = 0\n        self.valid_count = 0\n    \n    def process_value(self, v: int?) -> None:\n        # Outside if block, v is int?\n        if v is not None:\n            # Inside if block, v is narrowed to int - no .unwrap() needed\n            self.total += v\n            self.valid_count += 1\n        # Back outside, v is int? again\n    \n    def average(self) -> float:\n        if self.valid_count == 0:\n            return 0.0\n        return float(self.total) / float(self.valid_count)\n\ndef main():\n    processor = OptionalProcessor()\n    \n    # Create values separately and process them one by one\n    val1: int? = 10\n    val2: int? = None()\n    val3: int? = 25\n    val4: int? = None()\n    val5: int? = 15\n    \n    processor.process_value(val1)\n    processor.process_value(val2)\n    processor.process_value(val3)\n    processor.process_value(val4)\n    processor.process_value(val5)\n    \n    print(processor.valid_count)\n    print(processor.total)\n    print(processor.average())\n",
+  "expected_output": "3\n50\n16.666666666666668\n",
+  "actual_output": "3\n50\n16.666666666666668",
+  "feature_focus": "type_narrowing",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 347.6304581165314,
+  "execution_duration": 4.791102409362793,
+  "source_files": null
+}

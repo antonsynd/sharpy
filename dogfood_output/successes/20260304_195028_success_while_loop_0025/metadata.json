@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-04T19:46:44.268661",
+  "generated_code": "def main():\n    value: int = 1\n    iterations: int = 0\n    \n    while value < 100:\n        value *= 2\n        iterations += 1\n    \n    print(value)\n    print(iterations)\n",
+  "expected_output": "128\n7\n",
+  "actual_output": "128\n7",
+  "feature_focus": "while_loop",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 214.11678957939148,
+  "execution_duration": 4.730820655822754,
+  "source_files": null
+}

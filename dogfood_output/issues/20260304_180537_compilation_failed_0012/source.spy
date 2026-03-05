@@ -1,0 +1,58 @@
+# Main entry point - orchestrates all modules
+from geometry import Point, Rectangle, Circle
+from geometry import FillStyle
+from graphics import ShapeGroup, Renderer, create_sample_shapes
+
+def analyze_shapes(shapes: list[Shape]) -> None:
+    total: float = 0.0
+    for s in shapes:
+        total = total + s.area()
+    print(total)
+
+def main():
+    # Test 1: Create and use Point struct
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+    dist: float = p1.distance_to(p2)
+    print(dist)
+
+    # Test 2: Create rectangles with different fill styles
+    rect: Rectangle = Rectangle(10.0, 5.0, 0.0, 0.0)
+    rect.fill = FillStyle.SOLID
+    print(rect.area())
+    print(rect.perimeter())
+    print(rect.describe())
+
+    # Test 3: Create circle
+    circ: Circle = Circle(3.0, 3.0, 2.0)
+    print(circ.area())
+    print(circ.draw())
+
+    # Test 4: Use ShapeGroup from graphics module
+    shapes: ShapeGroup = ShapeGroup()
+    r1: Rectangle = Rectangle(5.0, 2.0, 0.0, 0.0)
+    c1: Circle = Circle(1.0, 1.0, 1.0)
+    shapes.add(r1)
+    shapes.add(c1)
+    print(shapes.total_area())
+    print(shapes.total_perimeter())
+
+    # Test 5: Use Renderer static methods
+    drawing: str = Renderer.render_drawing(rect)
+    print(drawing)
+    print(Renderer.render_drawing(circ))
+
+    # Test 6: Test scaling via interface
+    original_width: float = rect.width
+    Renderer.scale_shape(rect, 2.0)
+    print(rect.width)
+    print(rect.area())
+
+    # Test 7: Test create_sample_shapes
+    sample_r1: Rectangle
+    sample_c: Circle
+    sample_r2: Rectangle
+    sample_r1, sample_c, sample_r2 = create_sample_shapes()
+    print(sample_r1.area())
+    print(sample_c.perimeter())
+    print(sample_r2.fill.name)

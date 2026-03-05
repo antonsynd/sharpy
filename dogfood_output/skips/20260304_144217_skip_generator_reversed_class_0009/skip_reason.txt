@@ -1,0 +1,44 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type '' has no member 'start'
+  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:3:9
+    |
+  3 |         self.start = start
+    |         ^^^^^^^^^^
+    |
+
+error[SPY0203]: Type '' has no member 'end'
+  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:4:9
+    |
+  4 |         self.end = end
+    |         ^^^^^^^^
+    |
+
+error[SPY0203]: Type '' has no member 'start'
+  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:7:13
+    |
+  7 |         i = self.start
+    |             ^^^^^^^^^^
+    |
+
+error[SPY0203]: Type '' has no member 'end'
+  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:8:19
+    |
+  8 |         while i < self.end:
+    |                   ^^^^^^^^
+    |
+
+error[SPY0203]: Type '' has no member 'end'
+  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:13:13
+    |
+ 13 |         i = self.end - 1
+    |             ^^^^^^^^
+    |
+
+error[SPY0203]: Type '' has no member 'start'
+  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:14:20
+    |
+ 14 |         while i >= self.start:
+    |                    ^^^^^^^^^^
+    |
+

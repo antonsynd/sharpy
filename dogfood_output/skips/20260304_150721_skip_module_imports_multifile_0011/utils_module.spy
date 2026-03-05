@@ -1,0 +1,33 @@
+# Utility functions for shape operations
+from types_module import IDrawable, IMeasurable, Point
+from shapes_module import Circle, Rectangle
+
+# Process any drawable object
+def process_drawable(d: IDrawable) -> str:
+    return d.draw()
+
+# Calculate total area of measurable shapes
+def total_area(shapes: list[IMeasurable]) -> float:
+    total: float = 0.0
+    for s in shapes:
+        total = total + s.area()
+    return total
+
+# Create a circle at origin
+def circle_at_origin(radius: float) -> Circle:
+    origin: Point = Point(0.0, 0.0)
+    return Circle(origin, radius)
+
+# Create a rectangle with given size
+def rectangle_at(x: float, y: float, w: float, h: float) -> Rectangle:
+    corner: Point = Point(x, y)
+    return Rectangle(corner, w, h)
+
+# Check if shape is measurable
+def is_measurable(d: IDrawable) -> bool:
+    # In real code would use isinstance
+    return True
+
+# Get shape info as tuple
+def get_shape_info(s: IMeasurable) -> tuple[str, float]:
+    return (s.draw(), s.area())

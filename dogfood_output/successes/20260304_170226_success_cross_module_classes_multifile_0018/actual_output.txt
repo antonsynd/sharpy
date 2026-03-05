@@ -1,0 +1,8 @@
+Buddy
+Whiskers
+Woof!
+Meow!
+Buddy is 3 years old, a Golden Retriever
+Whiskers is 2 years old, Orange fur
+Buddy is 3 years old, a Golden Retriever and says Woof!
+Whiskers is 2 years old, Orange fur and says Meow!

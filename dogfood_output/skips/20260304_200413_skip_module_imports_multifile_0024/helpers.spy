@@ -1,0 +1,14 @@
+# Helper functions that use other modules
+
+import models
+
+def create_person(name: str, age: int) -> models.Person:
+    return models.Person(name, age)
+
+def create_point(x: float, y: float) -> models.Point:
+    return models.Point(x, y)
+
+from utils import square
+
+def sum_of_squares(a: int, b: int) -> int:
+    return square(a) + square(b)

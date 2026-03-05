@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0246]: The type or namespace name 'StaticmethodAttribute' could not be found (are you missing a using directive or an assembly reference?)
+  --> types.cs:34:10
+    |
+ 34 | 
+    | ^
+    |
+

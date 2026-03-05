@@ -1,0 +1,64 @@
+from idservice import DataService
+
+@abstract
+class Entity:
+    _id: int
+
+    property init id: int
+
+    @abstract
+    def compute(self) -> int:
+        ...
+
+class Actor(Entity):
+    _name: str
+    _health: int
+
+    property init name: str
+    property init health: int
+
+    def __init__(self, name: str, health: int = 100):
+        self._id = DataService.generate_id()
+        self._name = name
+        self._health = health
+
+    def compute(self) -> int:
+        return self._health * 10
+
+class Player(Actor):
+    _score: int
+
+    property init score: int = 0
+
+    def __init__(self, name: str, health: int = 100):
+        super().__init__(name, health)
+        self._score = 0
+
+    def compute(self) -> int:
+        base = super().compute()
+        return base + self._score
+
+    def level_up(self) -> None:
+        self._health += 20
+
+@abstract
+class Item:
+    _weight: float
+
+    property init weight: float
+
+    @abstract
+    def get_description(self) -> str:
+        ...
+
+class Weapon(Item):
+    _damage: int
+
+    property init damage: int
+
+    def __init__(self, damage: int, weight: float):
+        self._damage = damage
+        self._weight = weight
+
+    def get_description(self) -> str:
+        return f"Weapon: dmg={self._damage}, wgt={self._weight}"

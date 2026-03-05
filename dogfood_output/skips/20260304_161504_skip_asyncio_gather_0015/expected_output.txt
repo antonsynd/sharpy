@@ -1,0 +1,6 @@
+Success: Fetched: api.example.com
+Error (fetch): Timeout: slow.api.com
+Computed: 25.0
+Error (compute): Negative value
+Stored successfully
+Error (store): Empty key

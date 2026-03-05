@@ -1,0 +1,109 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Type errors:
+error[SPY0202]: Unknown type 'Ok' in positional pattern
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:65:14
+    |
+ 65 |         case Ok(v):
+    |              ^^^^^
+    |
+
+error[SPY0202]: Unknown type 'Err' in positional pattern
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:67:14
+    |
+ 67 |         case Err(e):
+    |              ^^^^^^
+    |
+
+error[SPY0202]: Unknown type 'Ok' in positional pattern
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:77:14
+    |
+ 77 |         case Ok(s):
+    |              ^^^^^
+    |
+
+error[SPY0202]: Unknown type 'Err' in positional pattern
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:79:14
+    |
+ 79 |         case Err(code):
+    |              ^^^^^^^^^
+    |
+
+error[SPY0202]: Unknown type 'Ok' in positional pattern
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:95:14
+    |
+ 95 |         case Ok(val):
+    |              ^^^^^^^
+    |
+
+error[SPY0222]: Type 'int !str' does not support operator '+' with operand of type 'int'
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:96:23
+    |
+ 96 |             return Ok(val + offset)
+    |                       ^^^^^^^^^^^^
+    |
+
+error[SPY0202]: Unknown type 'Err' in positional pattern
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:97:14
+    |
+ 97 |         case Err(e):
+    |              ^^^^^^
+    |
+
+error[SPY0220]: Argument type 'int !str' is not compatible with Result Error type 'str'
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:98:24
+    |
+ 98 |             return Err(e)
+    |                        ^
+    |
+
+error[SPY0202]: Type 'Ok' not found
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:65:14
+    |
+ 65 |         case Ok(v):
+    |              ^^
+    |
+
+error[SPY0202]: Type 'Err' not found. Did you mean 'str'?
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:67:14
+    |
+ 67 |         case Err(e):
+    |              ^^^
+    |
+
+error[SPY0202]: Type 'Ok' not found
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:77:14
+    |
+ 77 |         case Ok(s):
+    |              ^^
+    |
+
+error[SPY0202]: Type 'Err' not found. Did you mean 'str'?
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:79:14
+    |
+ 79 |         case Err(code):
+    |              ^^^
+    |
+
+error[SPY0202]: Type 'Ok' not found
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:95:14
+    |
+ 95 |         case Ok(val):
+    |              ^^
+    |
+
+error[SPY0202]: Type 'Err' not found. Did you mean 'str'?
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:97:14
+    |
+ 97 |         case Err(e):
+    |              ^^^
+    |
+
+Validation errors:
+error[SPY0266]: Function 'process_chain' must return a value of type 'int !str' in all code paths
+  --> /tmp/tmp_qko06ab/dogfood_test.spy:90:1
+    |
+ 90 | def process_chain(n: int, offset: int) -> int !str:
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

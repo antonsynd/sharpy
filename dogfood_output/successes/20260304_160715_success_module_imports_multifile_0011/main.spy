@@ -1,0 +1,27 @@
+# Main entry point - demonstrates module imports
+
+from utils import greet, repeat, GREETING_PREFIX
+from math_ops import add, multiply, factorial, PI
+
+def main():
+    # Test utility functions
+    message: str = greet("World")
+    print(message)
+    
+    repeated: str = repeat("ha", 3)
+    print(repeated)
+    
+    print(GREETING_PREFIX)
+    
+    # Test math functions
+    sum_result: int = add(5, 3)
+    print(sum_result)
+    
+    product: int = multiply(4, 7)
+    print(product)
+    
+    fact: int = factorial(5)
+    print(fact)
+    
+    # Float value must have decimal
+    print(PI)

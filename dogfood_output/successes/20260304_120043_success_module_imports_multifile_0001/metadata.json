@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-04T11:45:58.515379",
+  "generated_code": "from types import ValueType, CalcResult\nfrom operations import Operation, ConstOp, AddOp, MulOp, classify_value, execute_all\n\ndef main():\n    ops: list[Operation] = [ConstOp(10.0), AddOp(5.0), MulOp(2.0)]\n    count: int = len(ops)\n    print(count)\n    final: CalcResult = execute_all(ops, 0.0)\n    val: float = final.value\n    print(val)\n    status: str = final.status\n    print(status)\n    vtype: ValueType = classify_value(val)\n    vnum: int = vtype.value\n    print(vnum)\n",
+  "expected_output": "3\n30.0\ncompleted\n2\n",
+  "actual_output": "3\n30.0\ncompleted\n2",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 857.6651320457458,
+  "execution_duration": 4.9294445514678955,
+  "source_files": {
+    "types.spy": "# Type definitions\nenum ValueType:\n    LOW = 1\n    MEDIUM = 2\n    HIGH = 3\n\nclass CalcResult:\n    value: float\n    status: str\n    \n    def __init__(self, value: float, status: str):\n        self.value = value\n        self.status = status\n",
+    "operations.spy": "from types import ValueType, CalcResult\n\n@abstract\nclass Operation:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    @abstract\n    def execute(self, input_val: float) -> float: ...\n\nclass ConstOp(Operation):\n    const_value: float\n    \n    def __init__(self, value: float):\n        super().__init__(\"Const\")\n        self.const_value = value\n    \n    @override\n    def execute(self, input_val: float) -> float:\n        return self.const_value\n\nclass AddOp(Operation):\n    addend: float\n    \n    def __init__(self, value: float):\n        super().__init__(\"Add\")\n        self.addend = value\n    \n    @override\n    def execute(self, input_val: float) -> float:\n        return input_val + self.addend\n\nclass MulOp(Operation):\n    factor: float\n    \n    def __init__(self, value: float):\n        super().__init__(\"Mul\")\n        self.factor = value\n    \n    @override\n    def execute(self, input_val: float) -> float:\n        return input_val * self.factor\n\ndef classify_value(val: float) -> ValueType:\n    if val < 10.0:\n        return ValueType.LOW\n    elif val < 100.0:\n        return ValueType.MEDIUM\n    else:\n        return ValueType.HIGH\n\ndef execute_all(ops: list[Operation], initial: float) -> CalcResult:\n    result: float = initial\n    for op in ops:\n        result = op.execute(result)\n    return CalcResult(result, \"completed\")\n",
+    "main.spy": "from types import ValueType, CalcResult\nfrom operations import Operation, ConstOp, AddOp, MulOp, classify_value, execute_all\n\ndef main():\n    ops: list[Operation] = [ConstOp(10.0), AddOp(5.0), MulOp(2.0)]\n    count: int = len(ops)\n    print(count)\n    final: CalcResult = execute_all(ops, 0.0)\n    val: float = final.value\n    print(val)\n    status: str = final.status\n    print(status)\n    vtype: ValueType = classify_value(val)\n    vnum: int = vtype.value\n    print(vnum)\n"
+  }
+}

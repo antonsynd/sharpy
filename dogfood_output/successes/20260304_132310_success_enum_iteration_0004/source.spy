@@ -1,0 +1,34 @@
+# Test enum iteration with accumulation and filtering
+enum LogLevel:
+    DEBUG = 0
+    INFO = 1
+    WARN = 3
+    ERROR = 5
+    FATAL = 10
+
+def main():
+    # Accumulate all level values
+    total: int = 0
+    for level in LogLevel:
+        total += level.value
+    
+    # Find levels above threshold
+    threshold: int = 2
+    count: int = 0
+    names: list[str] = []
+    for level in LogLevel:
+        if level.value >= threshold:
+            count += 1
+            names.append(level.name)
+    
+    # Find the name with shortest length
+    shortest: str = names[0]
+    for name in names:
+        if len(name) < len(shortest):
+            shortest = name
+    
+    print(total)
+    print(count)
+    print(shortest)
+    for n in names:
+        print(n)

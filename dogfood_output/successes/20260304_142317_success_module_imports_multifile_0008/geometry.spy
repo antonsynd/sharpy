@@ -1,0 +1,15 @@
+from base_math import PI, square
+
+def circle_area(radius: float) -> float:
+    return PI * square(radius)
+
+class Rectangle:
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float):
+        self.width = w
+        self.height = h
+
+    def area(self) -> float:
+        return self.width * self.height

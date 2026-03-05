@@ -1,0 +1,23 @@
+# String utility module with helper functions and class
+
+def reverse_string(s: str) -> str:
+    """Reverse a string character by character."""
+    result: str = ""
+    for c in s:
+        result = str(c) + result
+    return result
+
+def is_palindrome(s: str) -> bool:
+    """Check if string reads the same forwards and backwards."""
+    return s == reverse_string(s)
+
+class StringManipulator:
+    """Class that manipulates strings using module functions."""
+    text: str
+
+    def __init__(self, text: str):
+        self.text = text
+
+    def get_reversed(self) -> str:
+        """Return reversed text using module function."""
+        return reverse_string(self.text)

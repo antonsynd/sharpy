@@ -1,0 +1,24 @@
+# Math utility module with numeric functions and Point class
+
+def factorial(n: int) -> int:
+    """Calculate factorial of n (n!)."""
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+def square(x: float) -> float:
+    """Return the square of x."""
+    return x * x
+
+class Point:
+    """2D point with x, y coordinates."""
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_squared(self) -> float:
+        """Return squared distance from origin."""
+        return square(self.x) + square(self.y)

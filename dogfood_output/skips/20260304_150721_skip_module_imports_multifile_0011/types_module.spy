@@ -1,0 +1,37 @@
+# Module defining shared types: interfaces, enums, and structs
+
+# Enum for shape categories
+enum ShapeType:
+    CIRCLE = 1
+    RECTANGLE = 2
+    TRIANGLE = 3
+
+# Interface for drawable objects
+interface IDrawable:
+    def draw(self) -> str: ...
+
+# Interface for measurable objects
+interface IMeasurable:
+    def area(self) -> float: ...
+
+# Interface for objects with detailed info
+interface IDescribable:
+    def describe(self) -> str: ...
+
+# Struct for 2D point (value type)
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_to_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5
+
+# Type alias for shape identifier
+type ShapeId = int
+
+# Constants
+const PI_APPROX: float = 3.14159

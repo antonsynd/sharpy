@@ -1,0 +1,12 @@
+User ID:
+1001
+User name:
+alice
+User status before:
+Pending
+User status after:
+Active
+Product name:
+Widget
+Product center X:
+50.0

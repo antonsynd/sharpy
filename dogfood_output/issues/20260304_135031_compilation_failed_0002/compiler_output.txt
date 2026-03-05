@@ -1,0 +1,14 @@
+warning[SPY0451]: Local variable 'primary' is assigned but never used
+  --> /tmp/tmp18ej8op9/main.spy:40:5
+    |
+ 40 |     primary: list[Color] = get_primary_colors()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Shape' is never used
+  --> /tmp/tmp18ej8op9/main.spy:3:30
+    |
+  3 | from shapes import Drawable, Shape, Circle, Rectangle
+    |                              ^^^^^
+    |
+

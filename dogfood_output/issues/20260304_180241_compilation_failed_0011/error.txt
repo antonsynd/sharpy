@@ -1,0 +1,37 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'cache' does not exist in the current context
+  --> /tmp/tmp0oggx7wz/math_utils.spy:12:13
+    |
+ 12 |     
+    |     ^
+    |
+
+error[CS0103]: The name 'cache' does not exist in the current context
+  --> /tmp/tmp0oggx7wz/math_utils.spy:13:20
+    |
+ 13 |     sentence: str = "the quick brown fox"
+    |                    ^
+    |
+
+error[CS0103]: The name 'cache' does not exist in the current context
+  --> /tmp/tmp0oggx7wz/math_utils.spy:18:9
+    |
+ 18 |     print(factorial(n))
+    |         ^
+    |
+
+error[CS0103]: The name 'result_1' does not exist in the current context
+  --> /tmp/tmp0oggx7wz/math_utils.spy:18:20
+    |
+ 18 |     print(factorial(n))
+    |                    ^
+    |
+
+error[CS0103]: The name 'result_1' does not exist in the current context
+  --> /tmp/tmp0oggx7wz/math_utils.spy:19:16
+    |
+ 19 |     
+    |     ^
+    |
+

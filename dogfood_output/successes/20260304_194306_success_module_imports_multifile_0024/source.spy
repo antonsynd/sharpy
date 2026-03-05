@@ -1,0 +1,35 @@
+# Main entry point - demonstrates complex module imports
+
+from math_utils import square, cube, factorial, PI
+from string_utils import reverse, is_palindrome, count_vowels, GREETING
+from data_types import Point, Rectangle, create_default_point
+
+def main():
+    # Test math_utils imports
+    print("Math tests:")
+    print(square(5))
+    print(cube(3))
+    print(factorial(5))
+    print(PI)
+    
+    # Test string_utils imports
+    print("\nString tests:")
+    test_str: str = "radar"
+    print(reverse(test_str))
+    print(is_palindrome(test_str))
+    print(is_palindrome("hello"))
+    print(count_vowels("Hello World"))
+    print(GREETING)
+    
+    # Test data_types imports
+    print("\nData type tests:")
+    p1: Point = Point(3.0, 4.0)
+    print(p1)
+    print(p1.distance_from_origin())
+    
+    p2: Point = create_default_point()
+    print(p2)
+    
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    print(rect.area())
+    print(rect.perimeter())

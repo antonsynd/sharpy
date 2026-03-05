@@ -1,0 +1,32 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Import resolution errors:
+error[SPY0301]: Module 'helpers' has no exported symbol 'create_person' (in main.spy)
+  --> /tmp/tmp4795_k54/main.spy:5:21
+    |
+  5 | from helpers import create_person, create_point, sum_of_squares
+    |                     ^^^^^^^^^^^^^
+    |
+
+error[SPY0301]: Module 'helpers' has no exported symbol 'create_point' (in main.spy)
+  --> /tmp/tmp4795_k54/main.spy:5:36
+    |
+  5 | from helpers import create_person, create_point, sum_of_squares
+    |                                    ^^^^^^^^^^^^
+    |
+
+Type errors:
+error[SPY0200]: Undefined identifier 'create_person'
+  --> /tmp/tmp4795_k54/main.spy:20:18
+    |
+ 20 |     p2: Person = create_person("Bob", 25)
+    |                  ^^^^^^^^^^^^^
+    |
+
+error[SPY0200]: Undefined identifier 'create_point'
+  --> /tmp/tmp4795_k54/main.spy:40:18
+    |
+ 40 |     pt2: Point = create_point(5.0, 12.0)
+    |                  ^^^^^^^^^^^^
+    |
+

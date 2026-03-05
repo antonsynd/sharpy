@@ -1,0 +1,40 @@
+# Test: Calculator with positional-only parameters
+class Calculator:
+    def compute(self, x: int, y: int, /, operation: str) -> int:
+        # x and y are positional-only (before /)
+        # operation is a regular positional-or-keyword parameter
+        if operation == "add":
+            return x + y
+        elif operation == "multiply":
+            return x * y
+        elif operation == "subtract":
+            return x - y
+        else:
+            return 0
+
+def process_values(calc: Calculator, values: list[int], op: str) -> int:
+    total: int = 0
+    for v in values:
+        total = calc.compute(total, v, op)
+    return total
+
+def main():
+    calc: Calculator = Calculator()
+    
+    # Test positional-only params with keyword arg
+    result1: int = calc.compute(10, 5, operation="subtract")
+    print(result1)
+    
+    # Test positional-only params with positional arg
+    result2: int = calc.compute(7, 3, "add")
+    print(result2)
+    
+    # Test with function using positional-only
+    nums: list[int] = [1, 2, 3, 4]
+    total: int = process_values(calc, nums, "add")
+    print(total)
+    
+    # Chain operations
+    temp: int = calc.compute(4, 2, "multiply")
+    final: int = calc.compute(temp, 3, "add")
+    print(final)

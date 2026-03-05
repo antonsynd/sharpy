@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Counter' has no member 'count'
+  --> /tmp/tmpj66mr9i4/main.spy:19:11
+    |
+ 19 |     print(counter.count)
+    |           ^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Counter' has no member 'count'
+  --> /tmp/tmpj66mr9i4/main.spy:24:11
+    |
+ 24 |     print(counter.count)
+    |           ^^^^^^^^^^^^^
+    |
+

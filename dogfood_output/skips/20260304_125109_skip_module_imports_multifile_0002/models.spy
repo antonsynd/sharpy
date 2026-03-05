@@ -1,0 +1,35 @@
+# Core domain models with interfaces, abstract classes, enums, and structs
+
+interface ISerializable:
+    def serialize(self) -> str:
+        ...
+
+enum Priority:
+    LOW = 0
+    MEDIUM = 1
+    HIGH = 2
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x_val: float, y_val: float):
+        self.x = x_val
+        self.y = y_val
+
+@abstract
+class Entity:
+    _entity_id: int
+
+    def __init__(self, id: int):
+        self._entity_id = id
+
+    property get entity_id: int = 0
+
+    @abstract
+    def get_entity_type(self) -> str:
+        ...
+
+    @virtual
+    def get_summary(self) -> str:
+        return f"ID:{self._entity_id}"

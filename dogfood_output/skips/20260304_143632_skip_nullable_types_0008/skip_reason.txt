@@ -1,0 +1,65 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0260]: Cannot return 'None' from function expecting 'str?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpcu189paw/dogfood_test.spy:12:9
+    |
+ 12 |         return None
+    |         ^^^^^^^^^^^
+    |
+
+error[SPY0260]: Cannot return 'None' from function expecting 'T?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpcu189paw/dogfood_test.spy:23:9
+    |
+ 23 |         return None
+    |         ^^^^^^^^^^^
+    |
+
+error[SPY0260]: Cannot return 'None' from function expecting 'int?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpcu189paw/dogfood_test.spy:43:9
+    |
+ 43 |         return None
+    |         ^^^^^^^^^^^
+    |
+
+error[SPY0260]: Cannot return 'None' from function expecting 'int?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpcu189paw/dogfood_test.spy:51:9
+    |
+ 51 |         return None
+    |         ^^^^^^^^^^^
+    |
+
+error[SPY0260]: Cannot return 'None' from function expecting 'int?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpcu189paw/dogfood_test.spy:59:9
+    |
+ 59 |         return None
+    |         ^^^^^^^^^^^
+    |
+
+error[SPY0260]: Cannot return 'None' from function expecting 'int?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpcu189paw/dogfood_test.spy:81:5
+    |
+ 81 |     return None
+    |     ^^^^^^^^^^^
+    |
+
+error[SPY0229]: Cannot assign 'None' to 'int?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpcu189paw/dogfood_test.spy:89:20
+    |
+ 89 |     result: int? = None
+    |                    ^^^^
+    |
+
+error[SPY0229]: Cannot assign 'None' to 'str?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpcu189paw/dogfood_test.spy:126:18
+     |
+ 126 |     val2: str? = None
+     |                  ^^^^
+     |
+
+error[SPY0229]: Cannot assign 'None' to 'str?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmpcu189paw/dogfood_test.spy:128:18
+     |
+ 128 |     val4: str? = None
+     |                  ^^^^
+     |
+

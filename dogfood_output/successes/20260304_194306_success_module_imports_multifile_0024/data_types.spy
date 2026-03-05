@@ -1,0 +1,32 @@
+# Data types module
+
+class Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return f"Point({self.x}, {self.y})"
+
+    def distance_from_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5
+
+class Rectangle:
+    width: float
+    height: float
+
+    def __init__(self, width: float, height: float):
+        self.width = width
+        self.height = height
+
+    def area(self) -> float:
+        return self.width * self.height
+
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+def create_default_point() -> Point:
+    return Point(0.0, 0.0)

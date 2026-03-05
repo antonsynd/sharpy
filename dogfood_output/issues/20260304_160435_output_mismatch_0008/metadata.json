@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-04T15:57:49.022126",
+  "generated_code": "# Complex if/else test: Polymorphic grading system with nested conditionals\ntype Score = int\ntype Percentage = float\n\n@abstract\nclass Evaluator:\n    threshold: int\n\n    @abstract\n    def evaluate(self, score: Score) -> str: ...\n\n    @virtual\n    def is_passing(self, score: Score) -> bool:\n        return score >= self.threshold\n\nclass StandardEvaluator(Evaluator):\n    def __init__(self):\n        self.threshold = 60\n\n    @override\n    def evaluate(self, score: Score) -> str:\n        if score >= 90:\n            return \"A\"\n        elif score >= 80:\n            return \"B\"\n        elif score >= 70:\n            return \"C\"\n        elif score >= 60:\n            return \"D\"\n        else:\n            return \"F\"\n\nclass StrictEvaluator(Evaluator):\n    bonus_threshold: int\n\n    def __init__(self):\n        self.threshold = 70\n        self.bonus_threshold = 95\n\n    @override\n    def evaluate(self, score: Score) -> str:\n        if score >= self.bonus_threshold:\n            return \"A+\"\n        elif score >= 85:\n            return \"A\"\n        elif score >= self.threshold:\n            return \"B\"\n        else:\n            return \"C\"\n\n    @override\n    def is_passing(self, score: Score) -> bool:\n        adjusted: int = score + 5\n        return adjusted >= self.threshold\n\ndef calculate_average(scores: list[Score]) -> Percentage:\n    total: int = 0\n    count: int = 0\n    for s in scores:\n        total += s\n        count += 1\n    if count == 0:\n        return 0.0\n    return total / count\n\ndef main():\n    standard: StandardEvaluator = StandardEvaluator()\n    strict: StrictEvaluator = StrictEvaluator()\n    scores: list[Score] = [45, 62, 78, 88, 94]\n    evaluators: list[Evaluator] = [standard, strict]\n    \n    for evaluator in evaluators:\n        eval_type: str = \"Standard\" if isinstance(evaluator, StandardEvaluator) else \"Strict\"\n        print(eval_type)\n        \n        for s in scores:\n            grade: str = evaluator.evaluate(s)\n            status: str = \"PASS\" if evaluator.is_passing(s) else \"FAIL\"\n            \n            if grade in [\"A\", \"A+\"]:\n                if status == \"PASS\":\n                    print(grade)\n                else:\n                    print(\"ERROR\")\n            elif grade in [\"B\", \"C\"]:\n                print(grade)\n            else:\n                result: Score = s\n                if result > 0:\n                    print(grade)\n        \n        avg: Percentage = calculate_average(scores)\n        if avg > 70.0:\n            print(avg)\n        elif avg > 50.0 and avg <= 70.0:\n            print(\"MED\")\n        else:\n            print(\"LOW\")\n        \n        if eval_type == \"Strict\":\n            print(\"END\")\n",
+  "expected_output": "Standard\nF\nD\nC\nB\nA\nA\n73.4\nStrict\nC\nB\nB\nA\nA+\n73.4\nEND\n",
+  "actual_output": "Standard\nF\nD\nC\nB\nA\n73.4\nStrict\nC\nC\nB\nA\nA\n73.4\nEND",
+  "error_message": "AI verification backend failure",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "if_else_simple",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 89.78848338127136,
+  "compilation_duration": null,
+  "execution_duration": 5.069547891616821,
+  "source_files": null
+}

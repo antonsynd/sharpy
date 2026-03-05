@@ -1,0 +1,47 @@
+class BaseItem:
+    value: float
+    
+    def __init__(self, val: float):
+        self.value = val
+    
+    @virtual
+    property get adjusted(self) -> float:
+        return self.value
+
+class MultiplierItem(BaseItem):
+    factor: float
+    
+    def __init__(self, val: float, mult: float):
+        super().__init__(val)
+        self.factor = mult
+    
+    @override
+    property get adjusted(self) -> float:
+        return self.value * self.factor
+
+class OffsetItem(BaseItem):
+    offset: float
+    
+    def __init__(self, val: float, off: float):
+        super().__init__(val)
+        self.offset = off
+    
+    @override
+    property get adjusted(self) -> float:
+        return self.value + self.offset
+
+def transform(item: BaseItem) -> float:
+    result = item.adjusted * 2.0
+    return result
+
+def main():
+    base = BaseItem(10.0)
+    mult = MultiplierItem(10.0, 2.0)
+    offset = OffsetItem(10.0, 5.0)
+    
+    print(base.adjusted)
+    print(mult.adjusted)
+    print(offset.adjusted)
+    print(transform(base))
+    print(transform(mult))
+    print(transform(offset))

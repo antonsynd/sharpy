@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1729]: 'DogfoodTest.Task' does not contain a constructor that takes 2 arguments
+  --> /tmp/tmplw7hmek1/dogfood_test.spy:16:36
+    |
+ 16 |         self._tasks.append(Task(name, priority))
+    |                                    ^
+    |
+

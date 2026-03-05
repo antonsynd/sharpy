@@ -1,0 +1,23 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0102]: Expected newline, got Identifier
+  --> /tmp/tmpf5xkrxu2/dogfood_test.spy:6:13
+    |
+  6 |     @static species: str = "Animal"
+    |             ^^^^^^^
+    |
+
+error[SPY0102]: Expected newline, got Identifier
+  --> /tmp/tmpf5xkrxu2/dogfood_test.spy:7:13
+    |
+  7 |     @static instance_count: int = 0
+    |             ^^^^^^^^^^^^^^
+    |
+
+error[SPY0102]: Expected newline, got Identifier
+  --> /tmp/tmpf5xkrxu2/dogfood_test.spy:23:13
+    |
+ 23 |     @static species: str = "Canine"
+    |             ^^^^^^^
+    |
+

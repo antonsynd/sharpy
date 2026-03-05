@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-04T15:14:50.970203",
+  "generated_code": "# Test try/except/else with class-based data validation and processing\n# The else block runs only when try succeeds, with access to modified values\n\nclass DataProcessor:\n    _data: list[int]\n    _total: int\n    \n    def __init__(self):\n        self._data = []\n        self._total = 0\n    \n    def add_value(self, value: int) -> None:\n        self._data.append(value)\n        self._total += value\n    \n    def get_average(self) -> float:\n        if len(self._data) == 0:\n            return 0.0\n        return self._total / len(self._data)\n    \n    def process_batch(self, values: list[int]) -> str:\n        success_count = 0\n        processed: list[int] = []\n        \n        for val in values:\n            try:\n                # Simulate potential failure for negative values\n                if val < 0:\n                    raise ValueError(\"negative value\")\n                self.add_value(val)\n                processed.append(val)\n            except ValueError:\n                # Skip invalid values\n                pass\n            else:\n                # Only count if no exception was raised\n                success_count += 1\n        \n        if success_count > 0:\n            return f\"processed {success_count} values, avg={self.get_average()}\"\n        else:\n            return \"no valid values\"\n\ndef safe_divide(a: float, b: float) -> float:\n    result: float = 0.0\n    try:\n        result = a / b\n    except ZeroDivisionError:\n        return 0.0\n    else:\n        # else runs only when division succeeds\n        return result * 2.0  # Double the result in else block\n\ndef main():\n    processor = DataProcessor()\n    \n    # Test 1: Process mix of valid and invalid values\n    result1 = processor.process_batch([10, 20, -5, 30, -10, 40])\n    print(result1)\n    \n    # Test 2: Process all invalid values\n    result2 = processor.process_batch([-1, -2, -3])\n    print(result2)\n    \n    # Test 3: Safe division - success path\n    print(safe_divide(10.0, 2.0))\n    \n    # Test 4: Safe division - exception path\n    print(safe_divide(5.0, 0.0))\n",
+  "expected_output": "processed 4 values, avg=25.0\nno valid values\n10.0\n0.0\n",
+  "actual_output": "processed 4 values, avg=25.0\nno valid values\n10.0\ninf",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "try_except_else",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 139.87037348747253,
+  "compilation_duration": null,
+  "execution_duration": 4.895723819732666,
+  "source_files": null
+}

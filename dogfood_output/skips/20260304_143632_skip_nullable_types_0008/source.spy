@@ -1,0 +1,170 @@
+# Complex nullable types test with data processing pipeline
+# Tests nullable return types, field types, type narrowing, and generics
+
+class DataSource:
+    @static
+    def fetch_raw() -> str?:
+        result: str? = "42"
+        return result
+
+    @static
+    def fetch_invalid() -> str?:
+        return None
+
+class Processor[T]:
+    data: T?
+
+    def __init__(self, value: T?):
+        self.data = value
+
+    def process(self, transform: (T) -> T) -> T?:
+        if self.data is not None:
+            return transform(self.data)
+        return None
+
+    def get_or_default(self, default_value: T) -> T:
+        return self.unwrap_or(default_value)
+
+    def unwrap_or(self, default_value: T) -> T:
+        if self.data is not None:
+            return self.data
+        return default_value
+
+@abstract
+class Transformer:
+    @abstract
+    def transform(self, input_value: str) -> int?: ...
+
+class SafeTransformer(Transformer):
+    @override
+    def transform(self, input_value: str) -> int?:
+        if input_value == "42":
+            return 42
+        return None
+
+class DoubleTransformer(SafeTransformer):
+    @override
+    def transform(self, input_value: str) -> int?:
+        result: int? = super().transform(input_value)
+        if result is not None:
+            return result * 2
+        return None
+
+class Validator:
+    @static
+    def validate_int(value: int?, predicate: (int) -> bool) -> int?:
+        if value is not None:
+            if predicate(value):
+                return value
+        return None
+
+class NestedOptional[T]:
+    inner: T?
+
+    def __init__(self, value: T?):
+        self.inner = value
+
+    def get_inner(self) -> T?:
+        return self.inner
+
+def parse_positive_int(text: str) -> int?:
+    if text == "1":
+        return 10
+    elif text == "2":
+        return 20
+    elif text == "3":
+        return 30
+    elif text == "4":
+        return 40
+    elif text == "5":
+        return 50
+    return None
+
+def is_positive(n: int) -> bool:
+    return n > 0
+
+def main():
+    # Test 1: Basic nullable operations
+    source_processor: Processor[str] = Processor("hello")
+    result: int? = None
+
+    raw: str? = DataSource.fetch_raw()
+    if raw is not None:
+        transformer: DoubleTransformer = DoubleTransformer()
+        parsed: int? = transformer.transform(raw)
+        if parsed is not None:
+            processor: Processor[int] = Processor(parsed)
+            doubled: int? = processor.process(lambda x: x * 2)
+            validated: int? = Validator.validate_int(doubled, is_positive)
+            if validated is not None:
+                mapped: int = validated + 5
+                result = mapped
+
+    if result is not None:
+        print(result)
+    else:
+        print(-1)
+
+    # Test 2: Null coalescing operator
+    invalid_source: str? = DataSource.fetch_invalid()
+    fallback_result: str = invalid_source ?? "fallback"
+    print(fallback_result)
+
+    # Test 3: Map chaining - using direct operations
+    chained_val: int = 0
+    if result is not None:
+        first: int = result * 3
+        chained_val = first - 10
+    print(chained_val)
+
+    # Test 4: List of optionals with manual iteration
+    sum_val: int = 0
+    found_count: int = 0
+
+    # Process each optional value manually
+    val1: str? = "2"
+    val2: str? = None
+    val3: str? = "4"
+    val4: str? = None
+    val5: str? = "6"
+
+    found_count = found_count + 1
+    if val1 is not None:
+        parsed: int? = parse_positive_int(val1)
+        if parsed is not None:
+            sum_val = sum_val + parsed
+
+    found_count = found_count + 1
+    if val2 is not None:
+        parsed2: int? = parse_positive_int(val2)
+        if parsed2 is not None:
+            sum_val = sum_val + parsed2
+
+    found_count = found_count + 1
+    if val3 is not None:
+        parsed3: int? = parse_positive_int(val3)
+        if parsed3 is not None:
+            sum_val = sum_val + parsed3
+
+    found_count = found_count + 1
+    if val4 is not None:
+        parsed4: int? = parse_positive_int(val4)
+        if parsed4 is not None:
+            sum_val = sum_val + parsed4
+
+    found_count = found_count + 1
+    if val5 is not None:
+        parsed5: int? = parse_positive_int(val5)
+        if parsed5 is not None:
+            sum_val = sum_val + parsed5
+
+    print(sum_val)
+    print(found_count)
+
+    # Test 5: Nested optional
+    nested: NestedOptional[int] = NestedOptional(99)
+    inner: int? = nested.get_inner()
+    if inner is not None:
+        print(inner)
+    else:
+        print(0)

@@ -1,0 +1,26 @@
+from entities import Actor, Player, Weapon, Item, Entity
+
+class ActorFactory:
+    @static
+    def create_actor(name: str) -> Actor:
+        return Actor(name)
+
+    @static
+    def create_player(name: str, health: int) -> Player:
+        return Player(name, health)
+
+class ItemFactory:
+    _item_count: int = 0
+
+    @static
+    def create_weapon(damage: int, weight: float) -> Weapon:
+        ItemFactory._item_count += 1
+        return Weapon(damage, weight)
+
+    @static
+    def get_count() -> int:
+        return ItemFactory._item_count
+
+    @static
+    def reset() -> None:
+        ItemFactory._item_count = 0

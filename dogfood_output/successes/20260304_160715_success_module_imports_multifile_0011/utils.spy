@@ -1,0 +1,14 @@
+# Utility module
+
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+def repeat(text: str, times: int) -> str:
+    result: str = ""
+    i: int = 0
+    while i < times:
+        result = result + text
+        i += 1
+    return result
+
+const GREETING_PREFIX: str = "Welcome"

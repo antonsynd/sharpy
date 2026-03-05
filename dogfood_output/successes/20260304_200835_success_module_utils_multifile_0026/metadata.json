@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-04T20:04:13.419968",
+  "generated_code": "# Main entry point - tests multi-file module imports\nfrom string_utils import reverse_string, is_palindrome, StringManipulator\nfrom math_utils import factorial, square, Point\n\ndef main():\n    # Test string utilities: reverse\n    test_string: str = \"hello\"\n    print(reverse_string(test_string))\n\n    # Test palindrome check\n    print(is_palindrome(\"racecar\"))\n\n    # Test class from string_utils module\n    manipulator = StringManipulator(\"world\")\n    print(manipulator.get_reversed())\n\n    # Test math utilities: factorial\n    print(factorial(5))\n\n    # Test class from math_utils module\n    point = Point(3.0, 4.0)\n    print(point.distance_squared())\n",
+  "expected_output": "olleh\nTrue\ndlrow\n120\n25.0\n",
+  "actual_output": "olleh\nTrue\ndlrow\n120\n25.0",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 246.24508380889893,
+  "execution_duration": 4.886343240737915,
+  "source_files": {
+    "string_utils.spy": "# String utility module with helper functions and class\n\ndef reverse_string(s: str) -> str:\n    \"\"\"Reverse a string character by character.\"\"\"\n    result: str = \"\"\n    for c in s:\n        result = str(c) + result\n    return result\n\ndef is_palindrome(s: str) -> bool:\n    \"\"\"Check if string reads the same forwards and backwards.\"\"\"\n    return s == reverse_string(s)\n\nclass StringManipulator:\n    \"\"\"Class that manipulates strings using module functions.\"\"\"\n    text: str\n\n    def __init__(self, text: str):\n        self.text = text\n\n    def get_reversed(self) -> str:\n        \"\"\"Return reversed text using module function.\"\"\"\n        return reverse_string(self.text)\n",
+    "math_utils.spy": "# Math utility module with numeric functions and Point class\n\ndef factorial(n: int) -> int:\n    \"\"\"Calculate factorial of n (n!).\"\"\"\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n\ndef square(x: float) -> float:\n    \"\"\"Return the square of x.\"\"\"\n    return x * x\n\nclass Point:\n    \"\"\"2D point with x, y coordinates.\"\"\"\n    x: float\n    y: float\n\n    def __init__(self, x: float, y: float):\n        self.x = x\n        self.y = y\n\n    def distance_squared(self) -> float:\n        \"\"\"Return squared distance from origin.\"\"\"\n        return square(self.x) + square(self.y)\n",
+    "main.spy": "# Main entry point - tests multi-file module imports\nfrom string_utils import reverse_string, is_palindrome, StringManipulator\nfrom math_utils import factorial, square, Point\n\ndef main():\n    # Test string utilities: reverse\n    test_string: str = \"hello\"\n    print(reverse_string(test_string))\n\n    # Test palindrome check\n    print(is_palindrome(\"racecar\"))\n\n    # Test class from string_utils module\n    manipulator = StringManipulator(\"world\")\n    print(manipulator.get_reversed())\n\n    # Test math utilities: factorial\n    print(factorial(5))\n\n    # Test class from math_utils module\n    point = Point(3.0, 4.0)\n    print(point.distance_squared())\n"
+  }
+}

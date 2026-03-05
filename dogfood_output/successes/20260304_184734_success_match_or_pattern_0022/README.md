@@ -1,0 +1,115 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-03-04T18:41:26.722962
+**Feature Focus:** match_or_pattern
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: Match alternative logic using if-elif chains
+# Replaces or-patterns with if-elif chains for enum and int classification
+enum Priority:
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    CRITICAL = 4
+
+enum Status:
+    PENDING = 0
+    ACTIVE = 1
+    CLOSED = 2
+    ARCHIVED = 3
+
+type Level = int
+
+class Alert:
+    code: Level
+    message: str
+
+    def __init__(self, c: Level, m: str):
+        self.code = c
+        self.message = m
+
+def get_priority_label(p: Priority) -> str:
+    # Using if-elif instead of or-pattern
+    if p == Priority.LOW or p == Priority.MEDIUM:
+        return "normal"
+    elif p == Priority.HIGH or p == Priority.CRITICAL:
+        return "urgent"
+    else:
+        return "unknown"
+
+def process_status(s: Status) -> int:
+    # Using if-elif instead of or-pattern
+    if s == Status.PENDING or s == Status.ACTIVE:
+        return 100
+    elif s == Status.CLOSED or s == Status.ARCHIVED:
+        return 200
+    else:
+        return 0
+
+def classify_level(l: Level) -> str:
+    # Using if-elif with range checks instead of or-pattern
+    if l == 1 or l == 2:
+        return "low"
+    elif l == 3 or l == 4 or l == 5:
+        return "medium"
+    elif l == 6 or l == 7 or l == 8 or l == 9:
+        return "high"
+    else:
+        return "extreme"
+
+def dispatch(a: Alert) -> str:
+    # Using if-elif instead of match with or-pattern
+    if a.code == 10 or a.code == 20:
+        return "log"
+    elif a.code == 30 or a.code == 40 or a.code == 50:
+        return "email"
+    else:
+        return "pager"
+
+def main():
+    # Test priority labels
+    print(get_priority_label(Priority.LOW))
+    print(get_priority_label(Priority.CRITICAL))
+    
+    # Test status processing
+    print(process_status(Status.PENDING))
+    print(process_status(Status.ARCHIVED))
+    
+    # Test level classification
+    print(classify_level(2))
+    print(classify_level(5))
+    
+    # Test alert dispatch
+    warning = Alert(40, "threshold exceeded")
+    print(dispatch(warning))
+
+```
+
+## Output
+
+```
+normal
+urgent
+100
+200
+low
+medium
+email
+```
+
+## Timing
+
+- Generation: 351.25s
+- Execution: 4.80s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

@@ -1,0 +1,111 @@
+# Test: Complex match guards with class hierarchies, enums, and properties
+# Guards evaluate expressions involving method calls, boolean logic, and state checks
+
+enum Priority:
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+
+class Task:
+    _name: str
+    priority: Priority
+    _completed: bool
+
+    def __init__(self, name: str, priority: Priority):
+        self._name = name
+        self.priority = priority
+        self._completed = False
+
+    property get name(self) -> str:
+        return self._name
+
+    property get is_completed(self) -> bool:
+        return self._completed
+
+    def mark_complete(self) -> None:
+        self._completed = True
+
+    def mark_incomplete(self) -> None:
+        self._completed = False
+
+    @virtual
+    def get_effort(self) -> int:
+        return 1
+
+class ComplexTask(Task):
+    subtasks: list[str]
+
+    def __init__(self, name: str, priority: Priority):
+        super().__init__(name, priority)
+        self.subtasks = []
+
+    def add_subtask(self, subtask: str) -> None:
+        self.subtasks.append(subtask)
+
+    @override
+    def get_effort(self) -> int:
+        return 1 + len(self.subtasks)
+
+def should_escalate(t: Task) -> bool:
+    return t.priority == Priority.MEDIUM and not t.is_completed
+
+def classify_task(t: Task) -> str:
+    # Get values once to avoid repeated calculations
+    effort: int = t.get_effort()
+    priority: Priority = t.priority
+    is_done: bool = t.is_completed
+    
+    match t:
+        case _ if is_done and effort > 5:
+            return "completed_heavy"
+        case _ if is_done:
+            return "completed_simple"
+        case _ if should_escalate(t):
+            # Escalate MEDIUM incomplete tasks
+            return "escalate"
+        case _ if priority == Priority.HIGH and effort > 3:
+            return "high_complex"
+        case _ if priority == Priority.HIGH:
+            return "high_simple"
+        case _ if effort >= 4:
+            return "heavy_work"
+        case _ if priority == Priority.LOW:
+            return "low_priority"
+        case _:
+            return "standard"
+
+def main():
+    # Simple tasks
+    simple_high = Task("Simple API", Priority.HIGH)
+    simple_med = Task("Review docs", Priority.MEDIUM)
+    simple_low = Task("Tidy up", Priority.LOW)
+    simple_low.mark_complete()
+
+    # Complex tasks
+    complex_high = ComplexTask("Rewrite engine", Priority.HIGH)
+    complex_high.add_subtask("Plan")
+    complex_high.add_subtask("Code")
+    complex_high.add_subtask("Test")
+
+    print(classify_task(simple_high))
+    print(classify_task(simple_med))
+    print(classify_task(complex_high))
+
+    # Complete and reclassify
+    complex_high.mark_complete()
+    print(classify_task(complex_high))
+
+    # Make it heavy work again
+    complex_high.mark_incomplete()
+    complex_high.add_subtask("Deploy")
+    complex_high.add_subtask("Monitor")
+    print(classify_task(complex_high))
+
+    print(classify_task(simple_low))
+
+    # Medium task with enough work to matter
+    complex_med = ComplexTask("Refactor module", Priority.MEDIUM)
+    complex_med.add_subtask("Audit")
+    complex_med.add_subtask("Migrate")
+    complex_med.add_subtask("Verify")
+    print(classify_task(complex_med))

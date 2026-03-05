@@ -1,0 +1,21 @@
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_to_origin(self) -> float:
+        return pow(self.x * self.x + self.y * self.y, 0.5)
+
+def format_area(area: float) -> str:
+    return f"Area: {area:.2f}"
+
+def get_color_name(c: Color) -> str:
+    return c.name

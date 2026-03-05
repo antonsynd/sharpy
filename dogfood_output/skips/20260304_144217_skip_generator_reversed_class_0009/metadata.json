@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-04T14:36:32.134561",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0203]: Type '' has no member 'start'\n  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:3:9\n    |\n  3 |         self.start = start\n    |         ^^^^^^^^^^\n    |\n\nerror[SPY0203]: Type '' has no member 'end'\n  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:4:9\n    |\n  4 |         self.end = end\n    |         ^^^^^^^^\n    |\n\nerror[SPY0203]: Type '' has no member 'start'\n  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:7:13\n    |\n  7 |         i = self.start\n    |             ^^^^^^^^^^\n    |\n\nerror[SPY0203]: Type '' has no member 'end'\n  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:8:19\n    |\n  8 |         while i < self.end:\n    |                   ^^^^^^^^\n    |\n\nerror[SPY0203]: Type '' has no member 'end'\n  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:13:13\n    |\n 13 |         i = self.end - 1\n    |             ^^^^^^^^\n    |\n\nerror[SPY0203]: Type '' has no member 'start'\n  --> /tmp/tmp_bhs7vj_/dogfood_test.spy:14:20\n    |\n 14 |         while i >= self.start:\n    |                    ^^^^^^^^^^\n    |\n\n",
+  "generated_code": "class ReverseRange:\n    def __init__(self, start: int, end: int):\n        self.start = start\n        self.end = end\n\n    def __iter__(self) -> int:\n        i = self.start\n        while i < self.end:\n            yield i\n            i += 1\n\n    def __reversed__(self) -> int:\n        i = self.end - 1\n        while i >= self.start:\n            yield i\n            i -= 1\n\n\ndef main():\n    rr = ReverseRange(1, 5)\n    \n    print(\"Forward:\")\n    for n in rr:\n        print(n)\n    \n    print(\"Reverse:\")\n    for n in reversed(rr):\n        print(n)\n",
+  "expected_output": "Forward:\n1\n2\n3\n4\nReverse:\n4\n3\n2\n1\n",
+  "feature_focus": "generator_reversed_class",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 329.4664669036865,
+  "source_files": null,
+  "validation_output": null
+}

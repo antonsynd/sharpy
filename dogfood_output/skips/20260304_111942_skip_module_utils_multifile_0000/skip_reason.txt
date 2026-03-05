@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Rectangle' has no member 'area'
+  --> /tmp/tmp_23xel31/main.spy:36:11
+    |
+ 36 |     print(rect.area)
+    |           ^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'TaskProcessor' has no member 'process_count'
+  --> /tmp/tmp_23xel31/main.spy:47:11
+    |
+ 47 |     print(processor.process_count)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

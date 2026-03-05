@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-04T15:27:03.323774",
+  "generated_code": "# Test event with lambda subscription\ndelegate IntTransformer(x: int) -> int\n\nclass EventSource:\n    event on_transform: IntTransformer\n\n    def trigger(self, value: int) -> None:\n        handler = self.on_transform\n        if handler is not None:\n            result = handler.invoke(value)\n            print(result)\n\ndef main():\n    source = EventSource()\n    source.on_transform += lambda x: x * x\n    source.trigger(5)\n",
+  "expected_output": "25\n",
+  "actual_output": "25",
+  "feature_focus": "event_with_lambda_subscribe",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 74.94560980796814,
+  "execution_duration": 4.979220628738403,
+  "source_files": null
+}

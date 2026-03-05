@@ -1,0 +1,13 @@
+class Vehicle:
+    brand: str
+    
+    def __init__(self, brand: str):
+        self.brand = brand
+    
+    @virtual
+    def describe(self) -> str:
+        return "Vehicle: " + self.brand
+    
+    @virtual
+    def move(self) -> str:
+        return "Moving..."

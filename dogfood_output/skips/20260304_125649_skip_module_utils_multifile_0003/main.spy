@@ -1,0 +1,32 @@
+# Main entry point - demonstrates module_utils functionality
+from text_utils import TextProcessor, normalize
+from data_utils import DataFormatter, format_number
+
+def main():
+    # Test 1: Text normalization via module function
+    raw = " HELLO WORLD "
+    normalized = normalize(raw)
+    print(normalized)
+
+    # Test 2: Number formatting utility
+    num = format_number(42, 5)
+    print(num)
+
+    # Test 3: DataFormatter with inheritance
+    formatter = DataFormatter("[", "]")
+    result = formatter.process("test")
+    print(result)
+
+    # Test 4: Virtual getter method from base class
+    print(formatter.get_prefix())
+
+    # Test 5: Polymorphic dispatch through base type
+    base: TextProcessor = DataFormatter("<", ">")
+    print(base.process("data"))
+</expected>
+
+hello world
+00042
+[test]
+[
+<data>

@@ -1,0 +1,86 @@
+# Main entry point - advanced pattern matching and feature integration
+
+from data_models import Priority, Point, Task, SimpleTask, ComplexTask
+from operations import (
+    safe_divide,
+    parse_priority,
+    create_task_processor,
+    multiply_by,
+    execute_task_safe,
+    TaskExecutor
+)
+
+def analyze_shape(value: object) -> str:
+    return match value:
+        case int() as n if n > 0:
+            f"Positive integer: {n}"
+        case int() as n if n < 0:
+            f"Negative integer: {n}"
+        case float() as f if f >= 0.0:
+            f"Non-negative float: {f}"
+        case float() as f:
+            f"Negative float: {f}"
+        case str() as s if len(s) > 5:
+            f"Long string: {s}"
+        case str() as s:
+            f"Short string: {s}"
+        case _:
+            "Unknown type"
+
+def process_task_by_priority(task: Task) -> str:
+    return match task.priority:
+        case Priority.LOW:
+            "Low priority - defer"
+        case Priority.MEDIUM:
+            "Medium priority - standard processing"
+        case Priority.HIGH:
+            "High priority - expedite"
+        case Priority.CRITICAL:
+            f"Critical priority - execute immediately! ID: {task.id}"
+        case _:
+            "Unknown priority"
+
+def main():
+    # Test enum and struct
+    p: Point = Point(3.0, 4.0)
+    print(p.distance_from_origin())
+
+    # Test result types
+    result1: float !str = safe_divide(10.0, 2.0)
+    result2: float !str = safe_divide(10.0, 0.0)
+    print(result1.unwrap())
+    print(result2.unwrap_or(0.0))
+
+    # Test partial application
+    double: (float) -> float = multiply_by(2.0)
+    triple: (float) -> float = multiply_by(3.0)
+    print(double(5.0))
+    print(triple(4.0))
+
+    # Test higher-order functions
+    processor: (Task) -> str = create_task_processor("COMPLETED")
+    simple: SimpleTask = SimpleTask(1, "Test", Priority.HIGH)
+    print(processor(simple))
+
+    # Test pattern matching with types and guards
+    print(analyze_shape(42))
+    print(analyze_shape(-5))
+    print(analyze_shape(3.14))
+    print(analyze_shape(-2.5))
+    print(analyze_shape("hello world"))
+    print(analyze_shape("hi"))
+
+    # Test priority parsing
+    parsed: Priority !str = parse_priority("critical")
+    if parsed is not None:
+        print("Parsed critical")
+
+    # Test task processing with pattern matching
+    critical_task: ComplexTask = ComplexTask(99, Priority.CRITICAL)
+    critical_task.add_subtask("subtask1")
+    critical_task.add_subtask("subtask2")
+    print(process_task_by_priority(critical_task))
+
+    # Test generic executor
+    executor: TaskExecutor[SimpleTask] = TaskExecutor[SimpleTask]("SimpleTask")
+    print(executor.execute(simple))

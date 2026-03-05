@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Shapes.FillStyle' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Shapes.FillStyle' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4s9ye9rp/main.spy:58:55
+    |
+ 58 |     print(sample_r2.fill.name)
+    |                               ^
+    |
+

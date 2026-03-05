@@ -1,0 +1,15 @@
+olleh
+True
+False
+4
+120
+0
+1
+1
+2
+3
+5
+13
+21
+True
+False

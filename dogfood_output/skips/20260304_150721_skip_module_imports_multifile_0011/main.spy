@@ -1,0 +1,42 @@
+# Main entry point demonstrating cross-module imports
+from types_module import ShapeType, Point, PI_APPROX, ShapeId
+from shapes_module import Circle, Rectangle, Triangle, Shape
+from utils_module import process_drawable, total_area, circle_at_origin, rectangle_at, get_shape_info
+
+def main():
+    # Print the PI constant from types_module
+    print(PI_APPROX)
+
+    # Create shapes using utilities and direct construction
+    c: Circle = circle_at_origin(5.0)
+    r: Rectangle = rectangle_at(0.0, 0.0, 10.0, 20.0)
+    t: Triangle = Triangle(Point(0.0, 0.0), Point(5.0, 0.0), Point(2.5, 4.33))
+
+    # Test enum value
+    st: ShapeType = c.shape_type
+    print(st)
+
+    # Process drawables using interface
+    d1: str = process_drawable(c)
+    print(d1)
+    d2: str = process_drawable(r)
+    print(d2)
+
+    # Get areas
+    a1: float = c.area()
+    print(a1)
+    a2: float = r.area()
+    print(a2)
+
+    # Calculate total area
+    measurables: list[IMeasurable] = [c, r]
+    ta: float = total_area(measurables)
+    print(ta)
+
+    # Test tuple unpacking from cross-module function
+    info: tuple[str, float] = get_shape_info(c)
+    desc: str = ""
+    area_val: float = 0.0
+    desc, area_val = info
+    print(desc)
+    print(area_val)

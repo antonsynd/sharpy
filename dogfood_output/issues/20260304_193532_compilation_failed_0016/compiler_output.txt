@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'IMeasurable' is never used
+  --> /tmp/tmpvsj4ntd9/advanced_shapes.spy:2:59
+    |
+  2 | from shapes import Shape, Rectangle, IMeasurable, IScalable
+    |                                                           ^
+    |
+
+warning[SPY0452]: Imported name 'IMeasurable' is never used
+  --> /tmp/tmpvsj4ntd9/main.spy:2:38
+    |
+  2 | from shapes import Shape, Rectangle, IMeasurable, IScalable
+    |                                      ^^^^^^^^^^^
+    |
+

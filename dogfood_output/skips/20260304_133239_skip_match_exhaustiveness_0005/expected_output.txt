@@ -1,0 +1,8 @@
+-45
+Literal(42)
+Var(x)
+Addition
+42
+10
+7
+positive

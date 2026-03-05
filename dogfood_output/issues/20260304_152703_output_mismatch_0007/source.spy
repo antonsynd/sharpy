@@ -1,0 +1,23 @@
+# Main entry point demonstrating cross-module inheritance and interface implementation
+
+from types_module import Point, Status
+from derived_module import Rectangle, Circle, Actor
+
+def main():
+    origin = Point(0.0, 0.0)
+
+    r = Rectangle(origin, 10.0, 5.0)
+    print(r.desc())
+    print(r.area())
+
+    c = Circle(origin, 3.0)
+    print(c.desc())
+    print(c.area())
+
+    a1 = Actor(Status.ACTIVE)
+    print(a1.get_info())
+
+    a2 = Actor(Status.PENDING)
+    print(a2.get_info())
+
+    print(Status.INACTIVE)

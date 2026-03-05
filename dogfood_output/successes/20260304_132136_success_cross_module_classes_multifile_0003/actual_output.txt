@@ -1,0 +1,3 @@
+Vehicle: Generic
+Car: Toyota with 4 wheels
+Car: Toyota with 4 wheels - Driving on 4 wheels

@@ -1,0 +1,60 @@
+# Transformations module - geometric transformations
+from geometry import Point
+
+# Use delegate instead of type alias for function types
+delegate TransformFunc(p: Point) -> Point
+
+# Translation transform
+def translate(dx: float, dy: float) -> TransformFunc:
+    def do_translate(p: Point) -> Point:
+        return Point(p.x + dx, p.y + dy)
+    return do_translate
+
+# Scale transform
+def scale(sx: float, sy: float) -> TransformFunc:
+    def do_scale(p: Point) -> Point:
+        return Point(p.x * sx, p.y * sy)
+    return do_scale
+
+# Rotation transform (90, 180, 270 degrees)
+def rotate(angle_degrees: float) -> TransformFunc:
+    def do_rotate(p: Point) -> Point:
+        radians: float = angle_degrees * 3.14159 / 180.0
+        cos_a: float = 0.0
+        sin_a: float = 0.0
+        
+        # Handle common angles
+        if angle_degrees == 90.0:
+            cos_a = 0.0
+            sin_a = 1.0
+        elif angle_degrees == 180.0:
+            cos_a = -1.0
+            sin_a = 0.0
+        elif angle_degrees == 270.0:
+            cos_a = 0.0
+            sin_a = -1.0
+        elif angle_degrees == 360.0 or angle_degrees == 0.0:
+            cos_a = 1.0
+            sin_a = 0.0
+        else:
+            # Rough approximations for 45 deg
+            cos_a = 0.707
+            sin_a = 0.707
+            
+        new_x: float = p.x * cos_a - p.y * sin_a
+        new_y: float = p.x * sin_a + p.y * cos_a
+        return Point(new_x, new_y)
+    return do_rotate
+
+# Higher-order function that composes transformations
+def compose(t1: TransformFunc, t2: TransformFunc) -> TransformFunc:
+    def composed(p: Point) -> Point:
+        return t2(t1(p))
+    return composed
+
+# Apply transform to a shape's position
+def apply_to_shape(shape, transform: TransformFunc) -> tuple[float, float]:
+    # Access shape.position tuple directly
+    pt: Point = Point(shape.position[0], shape.position[1])
+    new_pt: Point = transform(pt)
+    return (new_pt.x, new_pt.y)

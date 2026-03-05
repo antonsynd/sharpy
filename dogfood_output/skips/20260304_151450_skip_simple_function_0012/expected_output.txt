@@ -1,0 +1,15 @@
+Factorial of 5:
+120
+Processing values:
+255
+12
+21.25
+Range check for 45:
+double_digit
+Complex function result:
+count: 3
+sum: 486
+average: 162
+first_large: 150
+Pattern match on optional:
+42

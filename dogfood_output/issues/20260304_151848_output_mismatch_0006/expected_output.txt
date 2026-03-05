@@ -1,0 +1,4 @@
+processed 4 values, avg=25.0
+no valid values
+10.0
+0.0

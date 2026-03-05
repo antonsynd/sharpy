@@ -1,0 +1,84 @@
+# Core geometry module - shapes and interfaces
+interface IShape:
+    def area(self) -> float: ...
+    def perimeter(self) -> float: ...
+
+class Shape:
+    position: tuple[float, float]
+
+    def __init__(self, pos: tuple[float, float]):
+        self.position = pos
+
+    @virtual
+    def area(self) -> float:
+        return 0.0
+
+    @virtual
+    def perimeter(self) -> float:
+        return 0.0
+
+    @virtual
+    def __str__(self) -> str:
+        x: float = self.position[0]
+        y: float = self.position[1]
+        return f"Shape at ({x}, {y})"
+
+class Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_to(self, other: Point) -> float:
+        dx: float = self.x - other.x
+        dy: float = self.y - other.y
+        return (dx * dx + dy * dy) ** 0.5
+
+    def __str__(self) -> str:
+        return f"Point({self.x}, {self.y})"
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, pos: tuple[float, float], width: float, height: float):
+        super().__init__(pos)
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+    @override
+    def __str__(self) -> str:
+        x: float = self.position[0]
+        y: float = self.position[1]
+        return f"Rectangle({self.width} x {self.height}) at ({x}, {y})"
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, pos: tuple[float, float], radius: float):
+        super().__init__(pos)
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self.radius
+
+    @override
+    def __str__(self) -> str:
+        x: float = self.position[0]
+        y: float = self.position[1]
+        return f"Circle(r={self.radius}) at ({x}, {y})"

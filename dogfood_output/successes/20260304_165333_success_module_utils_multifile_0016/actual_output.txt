@@ -1,0 +1,9 @@
+Sharpy Modules
+50
+0
+100
+Hello, World!
+True
+False
+10
+3/4 = 0.75

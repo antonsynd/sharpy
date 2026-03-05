@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-04T20:20:44.056137",
+  "generated_code": "# Test float variables with division behaviors, comparison chaining, and augmented assignments\n\ndef calculate_weighted_average(a: float, b: float, weight: float) -> float:\n    # Test float division vs floor division\n    weighted_sum: float = a * weight + b * (1.0 - weight)\n    \n    # Test comparison chaining with floats\n    if 0.0 < weight < 1.0:\n        return weighted_sum / 2.0\n    return weighted_sum\n\ndef main():\n    # Float variable declarations with various initializers\n    x: float = 10.0\n    y: float = 3.0\n    \n    # Test augmented assignment with floats\n    x += 5.5      # 15.5\n    x -= 2.0      # 13.5\n    x *= 2.0      # 27.0\n    x /= 3.0      # 9.0\n    print(x)\n    \n    # Test division and floor division\n    div_result: float = y / 2.0      # 1.5 (float division)\n    floor_result: float = y // 2.0   # 1.0 (floor division, but stored as float)\n    print(div_result)\n    print(floor_result)\n    \n    # Test comparison chaining\n    z: float = 0.75\n    result: float = calculate_weighted_average(10.0, 20.0, z)\n    print(result)\n    \n    # Float redeclaration with expression using previous value\n    z: float = z + 0.25   # z_1 = 0.75 + 0.25 = 1.0\n    print(z)\n",
+  "expected_output": "9.0\n1.5\n1.0\n12.5\n1.0\n",
+  "actual_output": "9.0\n1.5\n1.0\n6.25\n1.0",
+  "error_message": "AI verification response was ambiguous or empty",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "float_variables",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 103.77396488189697,
+  "compilation_duration": null,
+  "execution_duration": 4.937494277954102,
+  "source_files": null
+}

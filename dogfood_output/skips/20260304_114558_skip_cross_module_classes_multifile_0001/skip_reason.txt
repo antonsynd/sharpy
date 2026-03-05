@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot pass argument of type 'Player' to parameter of type 'Entity'
+  --> /tmp/tmpbzpv278u/main.spy:36:17
+    |
+ 36 |     manager.add(player)
+    |                 ^^^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'Actor' to parameter of type 'Entity'
+  --> /tmp/tmpbzpv278u/main.spy:37:17
+    |
+ 37 |     manager.add(actor)
+    |                 ^^^^^
+    |
+

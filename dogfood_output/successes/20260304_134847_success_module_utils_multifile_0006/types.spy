@@ -1,0 +1,23 @@
+# Module providing type definitions: enums, interfaces, and structs
+
+interface IMeasurable:
+    def get_area(self) -> float: ...
+
+interface ISortable[T]:
+    def compare(self, a: T, b: T) -> int: ...
+
+enum ShapeType:
+    CIRCLE = 1
+    RECTANGLE = 2
+    TRIANGLE = 3
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return "(" + str(self.x) + ", " + str(self.y) + ")"

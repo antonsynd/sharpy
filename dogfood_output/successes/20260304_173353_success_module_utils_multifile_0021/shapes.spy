@@ -1,0 +1,51 @@
+interface IDrawable:
+    def draw(self) -> str: ...
+
+@abstract
+class Shape(IDrawable):
+    color: str
+
+    def __init__(self, color: str):
+        self.color = color
+
+    def draw(self) -> str:
+        return f"Drawing {self.color} shape"
+
+    @abstract
+    def get_area(self) -> float: ...
+
+    @virtual
+    def describe(self) -> str:
+        return "A shape"
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, color: str, radius: float):
+        super().__init__(color)
+        self.radius = radius
+
+    @override
+    def get_area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def describe(self) -> str:
+        return f"A {self.color} circle with radius {self.radius}"
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, color: str, width: float, height: float):
+        super().__init__(color)
+        self.width = width
+        self.height = height
+
+    @override
+    def get_area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def describe(self) -> str:
+        return f"A {self.color} rectangle {self.width}x{self.height}"

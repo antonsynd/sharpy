@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-04T11:19:42.307025",
+  "generated_code": "# Testing complex list literal patterns with inheritance and type aliases\n\ntype StringList = list[str]\ntype IntList = list[int]\n\nclass DataSource:\n    @virtual\n    def get_values(self) -> list[int]:\n        return [1, 2, 3]\n\nclass FilteredSource(DataSource):\n    threshold: int\n    \n    def __init__(self, threshold: int):\n        self.threshold = threshold\n    \n    @override\n    def get_values(self) -> list[int]:\n        base_values: list[int] = super().get_values()\n        return [x for x in base_values if x > self.threshold]\n\nclass StringTransformer:\n    property prefix: str\n    \n    def __init__(self, prefix: str):\n        self.prefix = prefix\n    \n    def transform(self, items: list[str]) -> list[str]:\n        result: list[str] = []\n        for item in items:\n            if len(item) > 0:\n                result.append(f\"{self.prefix}{item}\")\n        return result\n\nclass ListProcessor:\n    def process(self, items: list[int]) -> list[int]:\n        return [x * 2 for x in items]\n\ndef merge_lists[T](a: list[T], b: list[T]) -> list[T]:\n    return [*a, *b]\n\ndef main():\n    # Test list literals in various contexts\n    empty: list[int] = []\n    singleton: list[str] = [\"hello\"]\n    words: StringList = [\"cat\", \"dog\", \"fish\"]\n    \n    print(len(empty))\n    print(singleton[0])\n    \n    # Test with class instances\n    source: DataSource = FilteredSource(2)\n    values: list[int] = source.get_values()\n    print(len(values))\n    \n    # Test with concrete class (not through interface)\n    processor: ListProcessor = ListProcessor()\n    processed: list[int] = processor.process([5, 10, 15])\n    print(sum(processed))\n    \n    # Test transformation\n    transformer: StringTransformer = StringTransformer(\"prefix_\")\n    transformed: list[str] = transformer.transform(words)\n    for i in range(len(transformed)):\n        print(transformed[i])\n    \n    # Test merge with spread\n    merged: list[int] = merge_lists([1, 2], [3, 4])\n    print(sum(merged))\n",
+  "expected_output": "0\nhello\n1\n60\nprefix_cat\nprefix_dog\nprefix_fish\n10\n",
+  "actual_output": "0\nhello\n1\n60\nprefix_cat\nprefix_dog\nprefix_fish\n10",
+  "feature_focus": "list_literal",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 579.1099951267242,
+  "execution_duration": 5.058788776397705,
+  "source_files": null
+}

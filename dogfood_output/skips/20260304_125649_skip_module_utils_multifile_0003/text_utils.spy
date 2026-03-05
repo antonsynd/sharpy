@@ -1,0 +1,18 @@
+# Text processing utilities module
+
+class TextProcessor:
+    _prefix: str
+
+    def __init__(self, prefix: str) -> None:
+        self._prefix = prefix
+
+    @virtual
+    def get_prefix(self) -> str:
+        return self._prefix
+
+    @virtual
+    def process(self, text: str) -> str:
+        return self._prefix + text
+
+def normalize(text: str) -> str:
+    return text.strip().lower()

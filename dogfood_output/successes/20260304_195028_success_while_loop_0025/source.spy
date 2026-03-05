@@ -1,0 +1,10 @@
+def main():
+    value: int = 1
+    iterations: int = 0
+    
+    while value < 100:
+        value *= 2
+        iterations += 1
+    
+    print(value)
+    print(iterations)

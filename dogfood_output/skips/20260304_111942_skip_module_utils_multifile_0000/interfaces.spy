@@ -1,0 +1,22 @@
+# Service interfaces module
+
+interface ITrackable:
+    def get_timestamp(self) -> long:
+        ...
+
+    def update_timestamp(self, new_time: long):
+        ...
+
+interface IMeasurable:
+    def get_measurements(self) -> list[float]:
+        ...
+
+    def compute_average(self) -> float:
+        ...
+
+interface IValidatable:
+    def is_valid(self) -> bool:
+        ...
+
+    def validate(self) -> list[str]:
+        ...

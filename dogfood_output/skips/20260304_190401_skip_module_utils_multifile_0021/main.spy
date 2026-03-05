@@ -1,0 +1,66 @@
+# Main entry point - tests complex multi-file interactions
+from geometry import Point, Rectangle, Circle, Shape
+from transforms import translate, scale, rotate, compose, apply_to_shape, TransformFunc
+from utils import Color, format_number, ShapeCollection, sum_areas
+
+def is_large_shape(s: Shape) -> bool:
+    return s.area() > 50.0
+
+def main():
+    # Create shapes with initial positions
+    rect: Rectangle = Rectangle((0.0, 0.0), 10.0, 5.0)
+    circle: Circle = Circle((5.0, 5.0), 3.0)
+    
+    print("Initial shapes:")
+    print(str(rect))
+    print(str(circle))
+    
+    # Test areas
+    rect_area: float = rect.area()
+    print(f"Rect area: {rect_area}")
+    
+    circle_area: float = circle.area()
+    print(f"Circle area: {format_number(circle_area, 2)}")
+    
+    # Create a point and transform it
+    p1: Point = Point(1.0, 2.0)
+    print(f"Point: {p1}")
+    
+    # Apply translation
+    move_right: TransformFunc = translate(5.0, 0.0)
+    moved: Point = move_right(p1)
+    print(f"After translate(5, 0): ({moved.x}, {moved.y})")
+    
+    # Compose transformations
+    double_size: TransformFunc = scale(2.0, 2.0)
+    transform: TransformFunc = compose(move_right, double_size)
+    transformed: Point = transform(p1)
+    print(f"After compose: ({transformed.x}, {transformed.y})")
+    
+    # Rotate a point 90 degrees
+    rot90: TransformFunc = rotate(90.0)
+    rotated: Point = rot90(Point(1.0, 0.0))
+    print(f"Rotated (1,0) 90 deg: ({format_number(rotated.x, 1)}, {format_number(rotated.y, 1)})")
+    
+    # Apply transform to shape position
+    new_pos: tuple[float, float] = apply_to_shape(rect, move_right)
+    print(f"Rect moved to: ({new_pos[0]}, {new_pos[1]})")
+    
+    # Test enum usage
+    favorite: Color = Color.Green
+    print(f"Favorite color: {favorite.value}")
+    
+    # Test ShapeCollection
+    shapes: ShapeCollection = ShapeCollection("My Shapes")
+    shapes.add(rect)
+    shapes.add(circle)
+    total: float = shapes.total_area()
+    print(f"Total area: {format_number(total, 2)}")
+    
+    # Iterate through shapes
+    count: int = 0
+    for s in shapes:
+        count = count + 1
+        print(f"Shape {count}: area={format_number(s.area(), 1)}")
+    
+    print(f"Collection size: {shapes.get_count()}")

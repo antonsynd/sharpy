@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-04T16:39:15.411551",
+  "generated_code": "class BaseItem:\n    value: float\n    \n    def __init__(self, val: float):\n        self.value = val\n    \n    @virtual\n    property get adjusted(self) -> float:\n        return self.value\n\nclass MultiplierItem(BaseItem):\n    factor: float\n    \n    def __init__(self, val: float, mult: float):\n        super().__init__(val)\n        self.factor = mult\n    \n    @override\n    property get adjusted(self) -> float:\n        return self.value * self.factor\n\nclass OffsetItem(BaseItem):\n    offset: float\n    \n    def __init__(self, val: float, off: float):\n        super().__init__(val)\n        self.offset = off\n    \n    @override\n    property get adjusted(self) -> float:\n        return self.value + self.offset\n\ndef transform(item: BaseItem) -> float:\n    result = item.adjusted * 2.0\n    return result\n\ndef main():\n    base = BaseItem(10.0)\n    mult = MultiplierItem(10.0, 2.0)\n    offset = OffsetItem(10.0, 5.0)\n    \n    print(base.adjusted)\n    print(mult.adjusted)\n    print(offset.adjusted)\n    print(transform(base))\n    print(transform(mult))\n    print(transform(offset))\n",
+  "expected_output": "10.0\n20.0\n15.0\n20.0\n40.0\n30.0\n",
+  "actual_output": "10.0\n20.0\n15.0\n20.0\n40.0\n30.0",
+  "feature_focus": "property_inheritance",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 317.7522647380829,
+  "execution_duration": 4.851106643676758,
+  "source_files": null
+}

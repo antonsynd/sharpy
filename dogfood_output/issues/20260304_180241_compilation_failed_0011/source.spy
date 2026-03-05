@@ -1,0 +1,28 @@
+from string_utils import reverse, is_palindrome, word_count
+from math_utils import factorial, fibonacci, is_prime
+
+def main():
+    # Test string utilities
+    text: str = "hello"
+    print(reverse(text))
+    
+    palindrome: str = "radar"
+    print(is_palindrome(palindrome))
+    print(is_palindrome(text))
+    
+    sentence: str = "the quick brown fox"
+    print(word_count(sentence))
+    
+    # Test math utilities
+    n: int = 5
+    print(factorial(n))
+    
+    # Fibonacci sequence
+    i: int = 0
+    while i < 8:
+        print(fibonacci(i))
+        i += 1
+    
+    # Prime checking
+    print(is_prime(17))
+    print(is_prime(18))

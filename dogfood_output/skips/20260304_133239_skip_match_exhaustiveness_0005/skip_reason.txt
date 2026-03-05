@@ -1,0 +1,44 @@
+Repeated identical compiler error (likely compiler bug): Compilation errors:
+
+error[SPY0104]: Expected Colon, got LeftParen
+  --> /tmp/tmpn9xpmxmf/dogfood_test.spy:29:26
+    |
+ 29 |         case Expr.Literal(v):
+    |                          ^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpn9xpmxmf/dogfood_test.spy:31:9
+    |
+ 31 |         case Expr.Variable(n):
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpn9xpmxmf/dogfood_test.spy:33:9
+    |
+ 33 |         case Expr.Add(l, r):
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpn9xpmxmf/dogfood_test.spy:35:9
+    |
+ 35 |         case Expr.Multiply(l, r):
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmpn9xpmxmf/dogfood_test.spy:37:9
+    |
+ 37 |         case Expr.Negate(op):
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Dedent
+  --> /tmp/tmpn9xpmxmf/dogfood_test.spy:40:1
+    |
+ 40 | def describe(expr: Expr) -> str:
+    | ^
+    |
+

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-04T18:41:26.722962",
+  "generated_code": "# Test: Match alternative logic using if-elif chains\n# Replaces or-patterns with if-elif chains for enum and int classification\nenum Priority:\n    LOW = 1\n    MEDIUM = 2\n    HIGH = 3\n    CRITICAL = 4\n\nenum Status:\n    PENDING = 0\n    ACTIVE = 1\n    CLOSED = 2\n    ARCHIVED = 3\n\ntype Level = int\n\nclass Alert:\n    code: Level\n    message: str\n\n    def __init__(self, c: Level, m: str):\n        self.code = c\n        self.message = m\n\ndef get_priority_label(p: Priority) -> str:\n    # Using if-elif instead of or-pattern\n    if p == Priority.LOW or p == Priority.MEDIUM:\n        return \"normal\"\n    elif p == Priority.HIGH or p == Priority.CRITICAL:\n        return \"urgent\"\n    else:\n        return \"unknown\"\n\ndef process_status(s: Status) -> int:\n    # Using if-elif instead of or-pattern\n    if s == Status.PENDING or s == Status.ACTIVE:\n        return 100\n    elif s == Status.CLOSED or s == Status.ARCHIVED:\n        return 200\n    else:\n        return 0\n\ndef classify_level(l: Level) -> str:\n    # Using if-elif with range checks instead of or-pattern\n    if l == 1 or l == 2:\n        return \"low\"\n    elif l == 3 or l == 4 or l == 5:\n        return \"medium\"\n    elif l == 6 or l == 7 or l == 8 or l == 9:\n        return \"high\"\n    else:\n        return \"extreme\"\n\ndef dispatch(a: Alert) -> str:\n    # Using if-elif instead of match with or-pattern\n    if a.code == 10 or a.code == 20:\n        return \"log\"\n    elif a.code == 30 or a.code == 40 or a.code == 50:\n        return \"email\"\n    else:\n        return \"pager\"\n\ndef main():\n    # Test priority labels\n    print(get_priority_label(Priority.LOW))\n    print(get_priority_label(Priority.CRITICAL))\n    \n    # Test status processing\n    print(process_status(Status.PENDING))\n    print(process_status(Status.ARCHIVED))\n    \n    # Test level classification\n    print(classify_level(2))\n    print(classify_level(5))\n    \n    # Test alert dispatch\n    warning = Alert(40, \"threshold exceeded\")\n    print(dispatch(warning))\n",
+  "expected_output": "normal\nurgent\n100\n200\nlow\nmedium\nemail\n",
+  "actual_output": "normal\nurgent\n100\n200\nlow\nmedium\nemail",
+  "feature_focus": "match_or_pattern",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 351.25075912475586,
+  "execution_duration": 4.802159309387207,
+  "source_files": null
+}

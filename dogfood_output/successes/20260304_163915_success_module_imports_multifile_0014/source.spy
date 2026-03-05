@@ -1,0 +1,22 @@
+# Main module importing from shapes
+
+from shapes import Circle, Rectangle, create_circle, create_rectangle
+
+def main():
+    # Test 1: Import class directly and instantiate
+    c: Circle = Circle(5.0)
+    print(c.area())
+    
+    # Test 2: Use imported factory function
+    r: Rectangle = create_rectangle(10.0, 5.0)
+    print(r.area())
+    
+    # Test 3: Cross-module inheritance - base class access
+    print(c.name)
+    
+    # Test 4: Another factory function
+    c2: Circle = create_circle(2.5)
+    print(c2.area())
+    
+    # Test 5: Verify rectangle name inheritance works
+    print(r.name)

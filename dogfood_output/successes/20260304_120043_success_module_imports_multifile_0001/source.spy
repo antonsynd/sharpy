@@ -1,0 +1,15 @@
+from types import ValueType, CalcResult
+from operations import Operation, ConstOp, AddOp, MulOp, classify_value, execute_all
+
+def main():
+    ops: list[Operation] = [ConstOp(10.0), AddOp(5.0), MulOp(2.0)]
+    count: int = len(ops)
+    print(count)
+    final: CalcResult = execute_all(ops, 0.0)
+    val: float = final.value
+    print(val)
+    status: str = final.status
+    print(status)
+    vtype: ValueType = classify_value(val)
+    vnum: int = vtype.value
+    print(vnum)

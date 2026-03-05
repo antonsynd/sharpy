@@ -1,0 +1,17 @@
+from base_math import PI, cube
+from geometry import circle_area, Rectangle
+
+def main():
+    # From base_math - constant
+    print(PI)
+
+    # From base_math - function
+    print(cube(3.0))
+
+    # From geometry (which internally imports from base_math)
+    print(circle_area(2.0))
+
+    # From geometry - class
+    rect = Rectangle(4.0, 5.0)
+    print(rect.area())
+    print(rect.width)

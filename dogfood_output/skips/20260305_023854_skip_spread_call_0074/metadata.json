@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-05T02:36:40.200849",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0103]: Expected end of statement, got Identifier\n  --> /tmp/tmpvwavhyvm/dogfood_test.spy:1:9\n    |\n  1 | Request timed out. (request_id=req_b8da5248ae16)\n    |         ^^^^^\n    |\n\n",
+  "generated_code": "Request timed out. (request_id=req_b8da5248ae16)\n",
+  "expected_output": null,
+  "feature_focus": "spread_call",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 114.8705666065216,
+  "source_files": null,
+  "validation_output": null
+}

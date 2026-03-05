@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-03-04T16:37:14.494277",
+  "generated_code": "# Main module importing from shapes\n\nfrom shapes import Circle, Rectangle, create_circle, create_rectangle\n\ndef main():\n    # Test 1: Import class directly and instantiate\n    c: Circle = Circle(5.0)\n    print(c.area())\n    \n    # Test 2: Use imported factory function\n    r: Rectangle = create_rectangle(10.0, 5.0)\n    print(r.area())\n    \n    # Test 3: Cross-module inheritance - base class access\n    print(c.name)\n    \n    # Test 4: Another factory function\n    c2: Circle = create_circle(2.5)\n    print(c2.area())\n    \n    # Test 5: Verify rectangle name inheritance works\n    print(r.name)\n",
+  "expected_output": "78.53975\n50.0\nCircle\n19.6349375\nRectangle\n",
+  "actual_output": "78.53975\n50.0\nCircle\n19.6349375\nRectangle",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 107.54946088790894,
+  "execution_duration": 4.781175374984741,
+  "source_files": {
+    "shapes.spy": "# Shape module with inheritance and interfaces\n\ninterface IDrawable:\n    def draw(self) -> str: ...\n\nclass Shape:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    @virtual\n    def area(self) -> float:\n        return 0.0\n    \n    description: str = \"Base shape\"\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, radius: float):\n        super().__init__(\"Circle\")\n        self.radius = radius\n    \n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, width: float, height: float):\n        super().__init__(\"Rectangle\")\n        self.width = width\n        self.height = height\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n\ndef create_circle(radius: float) -> Circle:\n    return Circle(radius)\n\ndef create_rectangle(width: float, height: float) -> Rectangle:\n    return Rectangle(width, height)\n",
+    "main.spy": "# Main module importing from shapes\n\nfrom shapes import Circle, Rectangle, create_circle, create_rectangle\n\ndef main():\n    # Test 1: Import class directly and instantiate\n    c: Circle = Circle(5.0)\n    print(c.area())\n    \n    # Test 2: Use imported factory function\n    r: Rectangle = create_rectangle(10.0, 5.0)\n    print(r.area())\n    \n    # Test 3: Cross-module inheritance - base class access\n    print(c.name)\n    \n    # Test 4: Another factory function\n    c2: Circle = create_circle(2.5)\n    print(c2.area())\n    \n    # Test 5: Verify rectangle name inheritance works\n    print(r.name)\n"
+  }
+}

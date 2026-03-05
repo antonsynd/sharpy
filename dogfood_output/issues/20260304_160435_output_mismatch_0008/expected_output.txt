@@ -1,0 +1,16 @@
+Standard
+F
+D
+C
+B
+A
+A
+73.4
+Strict
+C
+B
+B
+A
+A+
+73.4
+END

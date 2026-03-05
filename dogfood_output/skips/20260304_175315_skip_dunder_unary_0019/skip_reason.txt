@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'SignedNumber' has no member 'unwrap'
+  --> /tmp/tmpdk2zqili/dogfood_test.spy:107:15
+     |
+ 107 |         print(maybe_num.unwrap().value)
+     |               ^^^^^^^^^^^^^^^^
+     |
+

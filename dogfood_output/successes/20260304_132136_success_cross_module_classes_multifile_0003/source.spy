@@ -1,0 +1,15 @@
+from vehicles import Vehicle
+from cars import Car
+
+def process_vehicle(v: Vehicle) -> str:
+    desc: str = v.describe()
+    mov: str = v.move()
+    return desc + " - " + mov
+
+def main():
+    v = Vehicle("Generic")
+    c = Car("Toyota", 4)
+    
+    print(v.describe())
+    print(c.describe())
+    print(process_vehicle(c))

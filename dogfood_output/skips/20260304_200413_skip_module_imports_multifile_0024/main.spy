@@ -1,0 +1,42 @@
+# Main entry point - demonstrates various import patterns
+
+import utils
+from models import Person, Point
+from helpers import create_person, create_point, sum_of_squares
+
+def main():
+    # Test importing entire module
+    greeting: str = utils.greet("World")
+    print(greeting)
+    
+    # Test constants from module
+    print(utils.PI)
+    
+    # Test class imports from models
+    p1: Person = Person("Alice", 30)
+    print(p1.describe())
+    
+    # Test class via helpers (which creates objects)
+    p2: Person = create_person("Bob", 25)
+    print(p2.describe())
+    
+    # Test Point class
+    pt: Point = Point(3.0, 4.0)
+    print(pt)
+    
+    # Test distance calculation
+    dist: float = pt.distance_from_origin()
+    print(dist)
+    
+    # Test helper function that uses imported utils internally
+    result: int = sum_of_squares(3, 4)
+    print(result)
+    
+    # Test area calculation
+    area: float = utils.calculate_area(2.0)
+    print(area)
+    
+    # Test Point from helper
+    pt2: Point = create_point(5.0, 12.0)
+    dist2: float = pt2.distance_from_origin()
+    print(dist2)

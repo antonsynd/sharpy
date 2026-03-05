@@ -1,0 +1,12 @@
+# Utility functions and constants
+
+const PI: float = 3.14159
+
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+def square(x: int) -> int:
+    return x * x
+
+def calculate_area(radius: float) -> float:
+    return PI * radius * radius

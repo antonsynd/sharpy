@@ -1,0 +1,56 @@
+# Main entry point - demonstrates cross-module class usage
+from shapes import Shape, Rectangle, IMeasurable, IScalable
+from utils import ShapeType, Point, calculate_average, PI
+from advanced_shapes import Circle, Square, Triangle
+
+def process_shape(shape: Shape) -> None:
+    print(shape.describe())
+    print(f"  Area: {shape.area()}")
+    print(f"  Perimeter: {shape.perimeter()}")
+
+def main():
+    origin: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+    p3: Point = Point(6.0, 0.0)
+
+    rect: Rectangle = Rectangle("MyBox", 4.0, 5.0)
+    circle: Circle = Circle("MyWheel", origin, 3.0)
+    square: Square = Square("MyTile", 2.5)
+    triangle: Triangle = Triangle("MyTri", origin, p2, p3)
+
+    print(f"Point distance squared: {origin.distance_to(p2)}")
+    print(f"PI constant: {PI}")
+
+    print("---Rectangle---")
+    process_shape(rect)
+
+    print("---Circle---")
+    process_shape(circle)
+    print(f" ShapeType: {circle.get_shape_type().name}")
+    print(f" Enum value: {circle.get_shape_type().value}")
+
+    print("---Square---")
+    process_shape(square)
+
+    print("---Triangle---")
+    process_shape(triangle)
+
+    scalable: IScalable = square
+    print(f"Square side before scale: {square.side}")
+    scalable.scale(2.0)
+    print(f"Square side after scale: {square.side}")
+    print(f"Square area after scale: {square.area()}")
+
+    areas: list[float] = [rect.area(), circle.area(), square.area()]
+    avg: float = calculate_average(areas)
+    print(f"Average area: {avg}")
+
+    print("Enum members:")
+    for st in ShapeType:
+        print(f"  {st.name} = {st.value}")
+
+    shapes: list[Shape] = [rect, circle, square]
+    total_perimeter: float = 0.0
+    for s in shapes:
+        total_perimeter = total_perimeter + s.perimeter()
+    print(f"Total perimeter of {len(shapes)} shapes: {total_perimeter}")

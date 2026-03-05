@@ -1,0 +1,11 @@
+class DataService:
+    _counter: int = 0
+
+    @static
+    def generate_id() -> int:
+        DataService._counter += 1
+        return DataService._counter
+
+    @static
+    def reset() -> None:
+        DataService._counter = 0

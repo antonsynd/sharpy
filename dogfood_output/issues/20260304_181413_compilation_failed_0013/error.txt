@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0106]: The modifier 'virtual' is not valid for this item
+  --> utils.cs:17:31
+    |
+ 17 |     # Create a product directly
+    |                               ^
+    |
+

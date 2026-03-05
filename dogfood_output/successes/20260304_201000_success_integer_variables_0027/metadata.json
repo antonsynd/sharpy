@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-04T20:08:35.825920",
+  "generated_code": "# Test: Integer variable arithmetic with mixed operations\n# Demonstrates accumulation pattern with positive/negative values\ndef main():\n    total: int = 100\n    offset: int = -25\n    divisor: int = 7\n    \n    # Accumulate with negative offset\n    total += offset\n    \n    # Floor division and modulo\n    quotient: int = total // divisor\n    remainder: int = total % divisor\n    \n    print(total)\n    print(quotient)\n    print(remainder)\n",
+  "expected_output": "75\n10\n5\n",
+  "actual_output": "75\n10\n5",
+  "feature_focus": "integer_variables",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 74.42625546455383,
+  "execution_duration": 4.799199342727661,
+  "source_files": null
+}

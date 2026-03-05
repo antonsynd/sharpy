@@ -1,0 +1,74 @@
+# Utility module with enums and generic functions
+from geometry import Point, Shape
+
+# Color enum
+enum Color:
+    Red = 1
+    Green = 2
+    Blue = 3
+    Yellow = 4
+
+# Mathematical constants
+const PI: float = 3.14159
+const E: float = 2.71828
+
+# Format number with specified decimal places
+def format_number(n: float, decimals: int) -> str:
+    if decimals == 0:
+        return str(int(n))
+    elif decimals == 1:
+        return f"{n:.1f}"
+    elif decimals == 2:
+        return f"{n:.2f}"
+    else:
+        return f"{n:.3f}"
+
+# Sum areas of all shapes in list
+def sum_areas(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for s in shapes:
+        total = total + s.area()
+    return total
+
+# Delegate for shape predicate
+delegate ShapeFilter(s: Shape) -> bool
+
+# Filter shapes by predicate
+def filter_shapes(shapes: list[Shape], predicate: ShapeFilter) -> list[Shape]:
+    result: list[Shape] = []
+    for s in shapes:
+        if predicate(s):
+            result.append(s)
+    return result
+
+# Point transformation using delegate
+delegate PointFunc(p: Point) -> float
+
+# Map function over points
+def map_point(points: list[Point], fn: PointFunc) -> list[float]:
+    result: list[float] = []
+    for p in points:
+        result.append(fn(p))
+    return result
+
+# Generic collection class
+class ShapeCollection:
+    items: list[Shape]
+    _name: str
+
+    def __init__(self, name: str):
+        self.items = []
+        self._name = name
+
+    def add(self, shape: Shape) -> None:
+        self.items.append(shape)
+
+    def total_area(self) -> float:
+        return sum_areas(self.items)
+
+    def get_count(self) -> int:
+        return len(self.items)
+
+    def __iter__(self):
+        for s in self.items:
+            yield s

@@ -1,0 +1,34 @@
+from module_utils import square, gcd, is_prime, Counter, Stats
+
+def main() -> None:
+    # Test square function
+    print(square(5))
+    print(square(10))
+    
+    # Test GCD
+    print(gcd(48, 18))
+    print(gcd(56, 98))
+    
+    # Test prime checking
+    print(is_prime(2))
+    print(is_prime(17))
+    print(is_prime(25))
+    
+    # Test Counter class
+    counter: Counter = Counter()
+    print(counter.count)
+    print(counter.increment())
+    print(counter.increment())
+    print(counter.increment())
+    counter.reset()
+    print(counter.count)
+    
+    # Test Stats class
+    values: list[int] = [3, 7, 2, 9, 4]
+    stats: Stats = Stats(values)
+    print(stats.sum())
+    print(stats.max_value())
+    
+    # Test float average - cast to ensure float
+    avg: float = stats.average()
+    print(avg)

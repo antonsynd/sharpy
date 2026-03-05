@@ -1,0 +1,40 @@
+from shapes import IDrawable, Circle, Rectangle
+from utils import Color, Point, format_area, get_color_name
+from collections import Container, Counter
+
+def draw_any(drawable: IDrawable) -> str:
+    return drawable.draw()
+
+def main():
+    circle: Circle = Circle("red", 5.0)
+    rect: Rectangle = Rectangle("blue", 3.0, 4.0)
+
+    generic_draw: str = draw_any(circle)
+    print(generic_draw)
+
+    desc: str = rect.describe()
+    print(desc)
+
+    circle_area: float = circle.get_area()
+    print(format_area(circle_area))
+
+    rect_area: float = rect.get_area()
+    print(format_area(rect_area))
+
+    color: Color = Color.GREEN
+    color_name: str = get_color_name(color)
+    print(f"Color: {color_name}")
+
+    point: Point = Point(3.0, 4.0)
+    dist: float = point.distance_to_origin()
+    print(f"Distance: {dist}")
+
+    container: Container[str] = Container[str]()
+    container.add("first")
+    container.add("second")
+    count: int = container.get_count()
+    print(f"Count: {count}")
+
+    counter: Counter = Counter(10)
+    new_val: int = counter.increment()
+    print(f"Value: {new_val}")

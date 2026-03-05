@@ -1,0 +1,25 @@
+--- Test 1: Basic event ---
+[Sub1] Got: Hello
+[Sub1] Got: World
+Count: 2
+
+--- Test 2: Logging source ---
+[Sub2] Got: Test
+[Sub2] Got: Message
+Processing: Test
+Triggering: Test
+Processing: Message
+Triggering: Message
+
+--- Test 3: Filtered source ---
+[Sub3] Got: Allowed
+[Sub3] Got: Also good
+Blocked: This is blocked message
+
+--- Test 4: Multiple subscribers ---
+A: Broadcast
+B: Broadcast
+
+--- Test 5: Unsubscribe ---
+[Listener] Got: First
+Only received: 1 message(s)

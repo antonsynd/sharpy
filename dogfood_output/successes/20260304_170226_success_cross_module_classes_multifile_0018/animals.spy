@@ -1,0 +1,21 @@
+# Base animal module providing the Animal class hierarchy
+
+@abstract
+class Animal:
+    name: str
+    age: int
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+    @virtual
+    def speak(self) -> str:
+        return "Some generic sound"
+
+    @virtual
+    def info(self) -> str:
+        return f"{self.name} is {self.age} years old"
+
+    def describe(self) -> str:
+        return f"{self.info()} and says {self.speak()}"

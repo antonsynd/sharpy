@@ -1,0 +1,16 @@
+# Test event with lambda subscription
+delegate IntTransformer(x: int) -> int
+
+class EventSource:
+    event on_transform: IntTransformer
+
+    def trigger(self, value: int) -> None:
+        handler = self.on_transform
+        if handler is not None:
+            result = handler.invoke(value)
+            print(result)
+
+def main():
+    source = EventSource()
+    source.on_transform += lambda x: x * x
+    source.trigger(5)

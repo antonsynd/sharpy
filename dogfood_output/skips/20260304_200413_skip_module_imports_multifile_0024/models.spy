@@ -1,0 +1,26 @@
+# Data models
+
+class Point:
+    property x: float
+    property y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return f"Point({self.x}, {self.y})"
+
+    def distance_from_origin(self) -> float:
+        return (self.x ** 2.0 + self.y ** 2.0) ** 0.5
+
+class Person:
+    property name: str
+    property age: int
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+    def describe(self) -> str:
+        return f"{self.name} is {self.age} years old"

@@ -1,0 +1,27 @@
+class Container[T]:
+    items: list[T]
+
+    def __init__(self):
+        self.items = []
+
+    def add(self, item: T) -> None:
+        self.items.append(item)
+
+    def get_count(self) -> int:
+        return len(self.items)
+
+    def get_all(self) -> list[T]:
+        return self.items.copy()
+
+class Counter:
+    value: int
+
+    def __init__(self, start: int = 0):
+        self.value = start
+
+    def increment(self) -> int:
+        self.value += 1
+        return self.value
+
+    def get_value(self) -> int:
+        return self.value

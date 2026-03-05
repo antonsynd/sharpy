@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-04T19:51:45.111865",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0103]: Expected end of statement, got Identifier\n  --> /tmp/tmphcxf3sds/dogfood_test.spy:1:6\n    |\n  1 | peer closed connection without sending complete message body (incomplete chunked read) (request_id=req_1f169275c3b4)\n    |      ^^^^^^\n    |\n\n",
+  "generated_code": "peer closed connection without sending complete message body (incomplete chunked read) (request_id=req_1f169275c3b4)\n",
+  "expected_output": null,
+  "feature_focus": "spread_set",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 442.1422801017761,
+  "source_files": null,
+  "validation_output": null
+}
