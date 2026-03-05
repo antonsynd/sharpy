@@ -316,6 +316,7 @@ public static class DiagnosticCodes
         public const string UnsupportedExpressionType = "SPY0518";
         public const string UnsupportedOperator = "SPY0519";
         public const string NameCollision = "SPY0520";
+        // Reserved: SPY0521 (TypeReExportNotSupported) — for future type re-export support
         public const string TypeReExportNotSupported = "SPY0521";
         public const string MemberNameCollision = "SPY0522";
         public const string InternalGeneratedCSharpParseError = "SPY0599";
