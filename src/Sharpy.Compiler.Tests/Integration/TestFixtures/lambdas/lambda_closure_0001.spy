@@ -1,0 +1,11 @@
+# Lambda that closes over outer variables
+def main():
+    x: int = 10
+    add_x: (int) -> int = lambda n: int: x + n
+    print(add_x(5))
+    print(add_x(20))
+
+    name: str = "world"
+    greet: (str) -> str = lambda greeting: str: greeting + ", " + name + "!"
+    print(greet("Hello"))
+    print(greet("Hi"))
