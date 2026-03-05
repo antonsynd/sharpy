@@ -1,0 +1,5 @@
+# Test: import with alias syntax produces correct error for nonexistent module
+import nonexistent_module as nm
+
+def main():
+    pass

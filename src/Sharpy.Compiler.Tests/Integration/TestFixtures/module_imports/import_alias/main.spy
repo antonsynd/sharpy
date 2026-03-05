@@ -1,0 +1,7 @@
+import utils as u
+
+def main():
+    a: int = u.double_it(5)
+    print(a)
+    b: int = u.triple_it(4)
+    print(b)

@@ -1,0 +1,5 @@
+# Test: bare import of nonexistent module produces error
+import missing_module
+
+def main():
+    pass

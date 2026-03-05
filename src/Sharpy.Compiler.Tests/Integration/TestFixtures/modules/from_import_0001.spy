@@ -1,0 +1,5 @@
+# Test: from-import with multiple names from nonexistent module
+from nonexistent_module import foo, bar
+
+def main():
+    pass

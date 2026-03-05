@@ -1,0 +1,6 @@
+from shapes import Circle
+
+def main():
+    c: Circle = Circle(5.0)
+    print(c)
+    print(c.area())

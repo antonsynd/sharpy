@@ -1,0 +1,7 @@
+from helpers import add, greet
+
+def main():
+    result: int = add(3, 4)
+    print(result)
+    message: str = greet("World")
+    print(message)
