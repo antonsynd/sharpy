@@ -1,0 +1,9 @@
+acquire a
+using a
+release a
+acquire b
+using b
+release b
+acquire c
+using c
+release c

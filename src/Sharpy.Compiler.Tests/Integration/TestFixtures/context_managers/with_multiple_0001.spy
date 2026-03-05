@@ -1,0 +1,18 @@
+class Token:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __enter__(self) -> Token:
+        print(f"acquire {self.name}")
+        return self
+
+    def __exit__(self):
+        print(f"release {self.name}")
+
+def main():
+    names: list[str] = ["a", "b", "c"]
+    for name in names:
+        with Token(name) as t:
+            print(f"using {t.name}")

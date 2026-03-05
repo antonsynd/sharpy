@@ -1,0 +1,32 @@
+class FileWriter:
+    path: str
+    is_open: bool
+
+    def __init__(self, path: str):
+        self.path = path
+        self.is_open = False
+
+    def __enter__(self) -> FileWriter:
+        self.is_open = True
+        print(f"opened {self.path}")
+        return self
+
+    def __exit__(self):
+        self.is_open = False
+        print(f"closed {self.path}")
+
+    def write(self, data: str):
+        if self.is_open:
+            print(f"wrote: {data}")
+        else:
+            print("error: not open")
+
+def main():
+    writer: FileWriter = FileWriter("test.txt")
+    writer.write("before open")
+
+    with writer:
+        writer.write("hello")
+        writer.write("world")
+
+    writer.write("after close")

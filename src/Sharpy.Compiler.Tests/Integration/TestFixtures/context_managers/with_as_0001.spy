@@ -1,0 +1,21 @@
+class Counter:
+    count: int
+
+    def __init__(self):
+        self.count = 0
+
+    def __enter__(self) -> Counter:
+        self.count = self.count + 1
+        print(f"opened (count={self.count})")
+        return self
+
+    def __exit__(self):
+        print(f"closed (count={self.count})")
+
+def main():
+    with Counter() as c:
+        print(f"using counter: {c.count}")
+
+    # with statement without as
+    with Counter():
+        print("no binding needed")

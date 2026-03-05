@@ -1,0 +1,18 @@
+class Resource:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __enter__(self) -> Resource:
+        print(f"enter {self.name}")
+        return self
+
+    def __exit__(self):
+        print(f"exit {self.name}")
+
+def main():
+    with Resource("outer") as outer:
+        print(f"in {outer.name}")
+        with Resource("inner") as inner:
+            print(f"in {inner.name}")

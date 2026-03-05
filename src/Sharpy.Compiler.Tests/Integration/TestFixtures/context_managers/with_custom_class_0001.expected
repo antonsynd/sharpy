@@ -1,0 +1,6 @@
+error: not open
+opened test.txt
+wrote: hello
+wrote: world
+closed test.txt
+error: not open
