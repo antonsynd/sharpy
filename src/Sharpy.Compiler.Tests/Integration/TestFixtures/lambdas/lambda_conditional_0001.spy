@@ -1,0 +1,9 @@
+# Lambda with ternary/conditional expression body
+def main():
+    abs_val: (int) -> int = lambda x: int: x if x >= 0 else -x
+    print(abs_val(5))
+    print(abs_val(-3))
+
+    max_val: (int, int) -> int = lambda a: int, b: int: a if a > b else b
+    print(max_val(3, 7))
+    print(max_val(10, 2))

@@ -1,0 +1,14 @@
+# Basic lambda assignment and invocation
+def main():
+    # Simple typed lambda
+    f: (int) -> int = lambda x: int: x + 1
+    print(f(5))
+
+    # String lambda
+    g: (str) -> str = lambda s: str: s + "!"
+    print(g("hello"))
+
+    # Boolean lambda
+    h: (int) -> bool = lambda x: int: x > 0
+    print(h(5))
+    print(h(-1))

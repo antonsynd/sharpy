@@ -1,0 +1,7 @@
+# Lambda with no parameters
+def main():
+    f: () -> int = lambda: 42
+    print(f())
+
+    g: () -> str = lambda: "constant"
+    print(g())

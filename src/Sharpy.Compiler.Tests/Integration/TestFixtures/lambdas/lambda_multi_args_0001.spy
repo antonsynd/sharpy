@@ -1,0 +1,7 @@
+# Lambda with multiple typed args
+def main():
+    add: (int, int) -> int = lambda x: int, y: int: x + y
+    print(add(3, 4))
+
+    concat: (str, str, str) -> str = lambda a: str, b: str, c: str: a + b + c
+    print(concat("a", "b", "c"))

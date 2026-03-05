@@ -1,0 +1,17 @@
+# Lambda passed directly as function argument
+def apply_twice(f: (int) -> int, x: int) -> int:
+    return f(f(x))
+
+def transform_all(f: (int) -> int, items: list[int]) -> list[int]:
+    result: list[int] = []
+    for item in items:
+        result.append(f(item))
+    return result
+
+def main():
+    print(apply_twice(lambda x: int: x + 3, 10))
+
+    nums: list[int] = [1, 2, 3, 4]
+    doubled: list[int] = transform_all(lambda x: int: x * 2, nums)
+    for n in doubled:
+        print(n)

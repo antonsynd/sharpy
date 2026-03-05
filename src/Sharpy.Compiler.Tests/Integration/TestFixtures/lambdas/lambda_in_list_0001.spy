@@ -1,0 +1,5 @@
+# Lambda stored in collections and iterated
+def main():
+    ops: list[(int) -> int] = [lambda x: int: x + 1, lambda x: int: x * 2, lambda x: int: x * x]
+    for op in ops:
+        print(op(3))
