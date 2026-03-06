@@ -58,6 +58,10 @@ _NON_CODE_ERROR_PATTERNS = [
     re.compile(r"^Connection error", re.IGNORECASE),
     re.compile(r"^Error:", re.IGNORECASE),
     re.compile(r"^Sorry", re.IGNORECASE),
+    re.compile(r"Request timed out", re.IGNORECASE),
+    re.compile(r"request_id=req_"),
+    re.compile(r"rate limit", re.IGNORECASE),
+    re.compile(r"overloaded", re.IGNORECASE),
 ]
 
 _MIN_CODE_LENGTH = 20
@@ -85,7 +89,7 @@ def _is_valid_code_response(text: str) -> tuple[bool, str]:
         )
 
     for pattern in _NON_CODE_ERROR_PATTERNS:
-        if pattern.match(text.strip()):
+        if pattern.search(text.strip()):
             return False, f"Response looks like an error message: {text[:80]!r}"
 
     if not any(indicator in text for indicator in _CODE_INDICATORS):
@@ -1743,6 +1747,35 @@ class DogfoodOrchestrator:
                     return MultifileGenerationResult(
                         success=False,
                         skip_reason=f"Failed to parse multi-file response after {attempt} attempts",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
+            # Check if any extracted file's content looks like an error response
+            error_file = None
+            for fname, fcode in files.items():
+                is_valid, invalid_reason = _is_valid_code_response(fcode)
+                if not is_valid:
+                    error_file = (fname, invalid_reason)
+                    break
+            if error_file:
+                fname, invalid_reason = error_file
+                print(
+                    f"  File {fname} looks like an error response: {invalid_reason}",
+                    file=sys.stderr,
+                )
+                last_error = f"File {fname} contains error response: {invalid_reason}"
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return MultifileGenerationResult(
+                        success=False,
+                        skip_reason=f"Error response in extracted file after {attempt} attempts: {invalid_reason}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
                         attempts=attempt,
