@@ -981,22 +981,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Cross-module fallback for enum detection. Checks if the expression's semantic type
-    /// is a UserDefinedType whose Symbol has Enum TypeKind, even when IsEnumInstance's
-    /// symbol table lookup fails (e.g., for chained member access on imported types).
-    /// </summary>
-    private bool IsEnumTypeFromSemanticInfo(Expression expr)
-    {
-        var semType = GetExpressionSemanticType(expr);
-        if (semType is Semantic.UserDefinedType udt && udt.Symbol != null)
-        {
-            return udt.Symbol.TypeKind == Semantic.TypeKind.Enum;
-        }
-
-        return false;
-    }
-
-    /// <summary>
     /// Collects all identifier names referenced in an expression.
     /// Used for dependency analysis to determine if a variable declaration
     /// should be a module-level field or a local variable in Main.

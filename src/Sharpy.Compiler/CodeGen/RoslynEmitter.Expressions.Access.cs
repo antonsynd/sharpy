@@ -569,9 +569,7 @@ internal partial class RoslynEmitter
         var obj = GenerateExpression(memberAccess.Object);
 
         // Handle special .value and .name properties for enum instances.
-        // IsEnumInstance checks SemanticInfo and symbol table. As a cross-module fallback,
-        // also check if SemanticInfo records the member access target type as an enum-kinded type.
-        if (memberAccess.Member is "value" or "name" && (IsEnumInstance(memberAccess.Object) || IsEnumTypeFromSemanticInfo(memberAccess.Object)))
+        if (memberAccess.Member is "value" or "name" && IsEnumInstance(memberAccess.Object))
         {
             if (memberAccess.Member == "value")
             {
