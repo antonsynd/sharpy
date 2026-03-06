@@ -203,6 +203,18 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "or `event add name(self, handler: DelegateType):` / "
         "`event remove name(self, handler: DelegateType):` for function-style events.",
     ),
+    (
+        r"does not contain a constructor that takes",
+        "Structs without an explicit `__init__` only have a parameterless constructor. "
+        "Add an `__init__` method to the struct with the desired parameters: "
+        "`def __init__(self, x: int, y: int): self.x = x; self.y = y`.",
+    ),
+    (
+        r"is not valid for this item",
+        "Some decorators are not valid on struct members. "
+        "`@virtual` and `@override` cannot be used on struct methods because structs are sealed value types. "
+        "Remove these decorators from struct methods.",
+    ),
 ]
 
 
@@ -270,7 +282,16 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Function-style event accessors**: Function-style events have `event add name(self, handler: DelegateType):` and `event remove name(self, handler: DelegateType):` — both are required if using function-style.
 - **Custom decorator arguments**: Only compile-time constants allowed as decorator arguments: strings, ints, floats, bools, `None`, enum member access (`Color.RED`), and `type(X)`. Variable references or function calls are rejected (SPY0425).
 - **Built-in decorator no-args**: `@abstract`, `@virtual`, `@override`, `@static`, `@final`, `@private`, `@protected`, `@internal` never take arguments. Adding parentheses with arguments to these is an error (SPY0322).
-- **Decorator name mangling**: Custom decorator names are mangled from snake_case to PascalCase: `@my_custom_attr` → `[MyCustomAttr]`. Dotted names like `@system.serializable` → `[System.Serializable]`."""
+- **Decorator name mangling**: Custom decorator names are mangled from snake_case to PascalCase: `@my_custom_attr` → `[MyCustomAttr]`. Dotted names like `@system.serializable` → `[System.Serializable]`.
+- **Struct constructors**: Structs without an explicit `__init__` only have a parameterless constructor. To accept arguments, define `__init__` explicitly:
+  ```
+  struct Point:
+      x: float
+      y: float
+      def __init__(self, x: float, y: float):
+          self.x = x
+          self.y = y
+  ```"""
 
 ENTRY_POINT_SECTION = """\
 ## CRITICAL: Program Entry Point Requirement
@@ -665,7 +686,11 @@ FORBIDDEN_FEATURES_SECTION = """\
 - **NO event raise from outside class**: Events can ONLY be raised inside the declaring class via `?.invoke()`. Outside code can only use `+=` (subscribe) and `-=` (unsubscribe).
 - **NO direct event assignment**: Do NOT write `obj.on_click = handler`. Use `obj.on_click += handler` to subscribe.
 - **NO non-constant decorator arguments**: Custom decorator arguments must be compile-time constants (string, int, float, bool, None, enum access, `type(X)`). Variable expressions are rejected (SPY0425).
-- **NO arguments on built-in decorators**: `@abstract(something)` or `@virtual(args)` is forbidden (SPY0322). Built-in decorators like `@abstract`, `@virtual`, `@override`, `@static`, `@final`, `@private`, `@protected`, `@internal` take NO arguments."""
+- **NO arguments on built-in decorators**: `@abstract(something)` or `@virtual(args)` is forbidden (SPY0322). Built-in decorators like `@abstract`, `@virtual`, `@override`, `@static`, `@final`, `@private`, `@protected`, `@internal` take NO arguments.
+- **NO `hex()`, `oct()`, `bin()` builtins**: These conversion functions are not available. Use string formatting instead.
+- **NO `sum()` builtin**: `sum()` is not available. Use a loop or `reduce()` to sum values.
+- **NO `@virtual` or `@override` on struct methods**: Structs are sealed value types — their methods cannot be virtual or overridden.
+- **NO list comprehensions**: `[x for x in ...]` is not supported. Use a loop with `.append()` instead."""
 
 NAMING_RULES_SECTION = """\
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
@@ -1837,12 +1862,33 @@ def extract_expected_from_xml(response: str) -> Optional[str]:
 def extract_multifile_from_xml(response: str) -> Optional[dict[str, str]]:
     """Extract multiple files from XML-style <code file="name.spy">...</code> tags.
 
+    Handles common malformations: missing closing tags, extra whitespace,
+    case-insensitive tag matching.
+
     Returns a dictionary mapping filename to code content, or None if
     no valid multi-file XML structure is found.
     """
-    # Match <code file="filename.spy"> ... </code>
+    # Try strict extraction first: matched <code file="...">...</code> pairs
     pattern = r'<code\s+file="([a-zA-Z_][a-zA-Z0-9_]*\.spy)"\s*>\s*\n?(.*?)</code>'
-    matches = re.findall(pattern, response, re.DOTALL)
+    matches = re.findall(pattern, response, re.DOTALL | re.IGNORECASE)
+
+    if not matches:
+        # Fallback: handle missing closing tags by extracting content between
+        # consecutive opening tags or until end of response
+        open_pattern = r'<code\s+file="([a-zA-Z_][a-zA-Z0-9_]*\.spy)"\s*>\s*\n?'
+        openers = list(re.finditer(open_pattern, response, re.IGNORECASE))
+        if openers:
+            matches = []
+            for i, m in enumerate(openers):
+                start = m.end()
+                if i + 1 < len(openers):
+                    end = openers[i + 1].start()
+                else:
+                    end = len(response)
+                content = response[start:end]
+                # Strip any trailing </code> that might be present
+                content = re.sub(r'\s*</code>\s*$', '', content, flags=re.IGNORECASE)
+                matches.append((m.group(1), content))
 
     if not matches:
         return None
@@ -1893,10 +1939,12 @@ def extract_code_block(response: str) -> Optional[str]:
 
 
 def extract_multifile_code(response: str) -> Optional[dict[str, str]]:
-    """Extract multiple files from a response, trying XML tags first, then markers.
+    """Extract multiple files from a response, trying multiple strategies.
 
-    Attempts XML-style <code file="name.spy">...</code> extraction first.
-    Falls back to === FILE: name.spy === marker extraction for backward compatibility.
+    Extraction methods tried in order:
+    1. XML-style <code file="name.spy">...</code> tags
+    2. === FILE: name.spy === marker extraction
+    3. Fenced code blocks with filename comments (```python\\n# filename.spy\\n...```)
 
     Args:
         response: The AI response potentially containing multiple files.
@@ -1905,14 +1953,26 @@ def extract_multifile_code(response: str) -> Optional[dict[str, str]]:
         Dictionary mapping filename to code content, or None if parsing fails.
         Returns None if no valid multi-file structure is found.
     """
-    # Try XML extraction first
+    # Method 1: XML extraction
     xml_files = extract_multifile_from_xml(response)
     if xml_files is not None:
         return xml_files
 
-    # Fall back to === FILE: ... === marker extraction
-    import re
+    # Method 2: === FILE: ... === marker extraction
+    marker_files = _extract_multifile_from_markers(response)
+    if marker_files is not None:
+        return marker_files
 
+    # Method 3: Fenced code blocks with filename comments
+    fenced_files = _extract_multifile_from_fenced_blocks(response)
+    if fenced_files is not None:
+        return fenced_files
+
+    return None
+
+
+def _extract_multifile_from_markers(response: str) -> Optional[dict[str, str]]:
+    """Extract files using === FILE: name.spy === markers."""
     # First, try to extract from code blocks
     code_block_pattern = r"```(?:python|sharpy)?\s*\n(.*?)```"
     code_blocks = re.findall(code_block_pattern, response, re.DOTALL)
@@ -1957,6 +2017,46 @@ def extract_multifile_code(response: str) -> Optional[dict[str, str]]:
     if len(files) < 2:
         return None
 
+    if "main.spy" not in files:
+        return None
+
+    return files
+
+
+def _extract_multifile_from_fenced_blocks(response: str) -> Optional[dict[str, str]]:
+    """Extract files from fenced code blocks with filename comments.
+
+    Matches patterns like:
+        ```python
+        # filename.spy
+        def main():
+            ...
+        ```
+    """
+    # Match fenced code blocks
+    block_pattern = r"```(?:python|sharpy)?\s*\n(.*?)```"
+    blocks = re.findall(block_pattern, response, re.DOTALL)
+
+    if not blocks:
+        return None
+
+    files: dict[str, str] = {}
+    # Pattern for filename comment at the start of a block
+    filename_comment = re.compile(
+        r"^\s*#\s*([a-zA-Z_][a-zA-Z0-9_]*\.spy)\s*\n", re.IGNORECASE
+    )
+
+    for block in blocks:
+        m = filename_comment.match(block)
+        if m:
+            filename = m.group(1).lower()
+            code = block[m.end():].strip()
+            if code:
+                files[filename] = code
+
+    # Validate: must have at least 2 files and one must be main.spy
+    if len(files) < 2:
+        return None
     if "main.spy" not in files:
         return None
 
