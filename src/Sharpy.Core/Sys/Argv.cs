@@ -84,5 +84,49 @@ namespace Sharpy
         /// In Sharpy, this is simplified to just return the current directory.
         /// </summary>
         public static string[] Path => (string[])_path.Clone();
+
+        /// <summary>
+        /// An integer giving the maximum value a variable of type int can take.
+        /// </summary>
+        public static int Maxsize => int.MaxValue;
+
+        /// <summary>
+        /// Return the size of an object in bytes (best effort estimation).
+        /// </summary>
+        public static int Getsizeof(object? obj)
+        {
+            if (obj == null)
+            {
+                return 16; // Approximate overhead for null reference
+            }
+
+            if (obj is string s)
+            {
+                return 40 + s.Length * 2; // Approximate: object header + chars
+            }
+
+            if (obj is int)
+            {
+                return 28; // Approximate boxed int size
+            }
+
+            if (obj is double)
+            {
+                return 24; // Approximate boxed double size
+            }
+
+            if (obj is bool)
+            {
+                return 24;
+            }
+
+            if (obj is long)
+            {
+                return 24;
+            }
+
+            // Default estimation for unknown objects
+            return 64;
+        }
     }
 }
