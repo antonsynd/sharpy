@@ -79,6 +79,16 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, ContextManagerKind> _contextManagerKinds =
         new(ReferenceEqualityComparer.Instance);
 
+    // Track all reference locations for each symbol (for find-references and rename).
+    // Key is Symbol (reference-equality), value is list of (FilePath, Line, Column, Span) tuples.
+    // The FilePath may be null for the main file in single-file compilation.
+    private readonly ConcurrentDictionary<Symbol, ConcurrentBag<SymbolReference>> _symbolReferences = new();
+
+    /// <summary>
+    /// The file path of the current compilation unit, used to tag symbol references.
+    /// </summary>
+    public string? CurrentFilePath { get; set; }
+
     public void SetExpressionType(Expression expr, SemanticType type)
     {
         _expressionTypes[expr] = type;
@@ -92,6 +102,7 @@ public class SemanticInfo : ISemanticQuery
     public void SetIdentifierSymbol(Identifier id, Symbol symbol)
     {
         _identifierSymbols[id] = symbol;
+        RecordReference(symbol, id);
     }
 
     public Symbol? GetIdentifierSymbol(Identifier id)
@@ -294,7 +305,34 @@ public class SemanticInfo : ISemanticQuery
     {
         return _contextManagerKinds.TryGetValue(contextExpr, out var kind) ? kind : null;
     }
+
+    // === Symbol Reference Tracking ===
+
+    private void RecordReference(Symbol symbol, Node node)
+    {
+        if (node.Span == null) return;
+
+        var reference = new SymbolReference(CurrentFilePath, node.Span.Value, node.LineStart, node.ColumnStart);
+        var bag = _symbolReferences.GetOrAdd(symbol, _ => new ConcurrentBag<SymbolReference>());
+        bag.Add(reference);
+    }
+
+    /// <summary>
+    /// Gets all recorded reference locations for a symbol.
+    /// Returns an empty list if no references have been recorded.
+    /// </summary>
+    public IReadOnlyList<SymbolReference> GetReferences(Symbol symbol)
+    {
+        return _symbolReferences.TryGetValue(symbol, out var bag)
+            ? bag.ToArray()
+            : Array.Empty<SymbolReference>();
+    }
 }
+
+/// <summary>
+/// Records a single location where a symbol is referenced.
+/// </summary>
+public record SymbolReference(string? FilePath, Text.TextSpan Span, int Line, int Column);
 
 /// <summary>
 /// Describes how a with-item's context expression implements the context manager protocol.

@@ -47,4 +47,10 @@ public interface ISemanticQuery
     /// Returns null if no type arguments were inferred.
     /// </summary>
     List<SemanticType>? GetInferredTypeArguments(FunctionCall call);
+
+    /// <summary>
+    /// Gets all recorded reference locations for a symbol.
+    /// Returns an empty list if no references have been recorded.
+    /// </summary>
+    IReadOnlyList<SymbolReference> GetReferences(Symbol symbol);
 }
