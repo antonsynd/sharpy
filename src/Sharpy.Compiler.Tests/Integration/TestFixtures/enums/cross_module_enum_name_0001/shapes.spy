@@ -1,0 +1,7 @@
+from types import FillStyle
+
+class Shape:
+    fill: FillStyle
+
+    def __init__(self, fill: FillStyle):
+        self.fill = fill

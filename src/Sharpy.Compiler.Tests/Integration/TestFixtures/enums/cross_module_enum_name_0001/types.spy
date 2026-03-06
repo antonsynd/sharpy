@@ -1,0 +1,4 @@
+enum FillStyle:
+    SOLID = 1
+    DASHED = 2
+    DOTTED = 3

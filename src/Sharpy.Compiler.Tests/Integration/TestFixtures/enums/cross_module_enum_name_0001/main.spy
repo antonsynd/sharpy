@@ -1,0 +1,11 @@
+from shapes import Shape
+from types import FillStyle
+
+def main():
+    s = Shape(FillStyle.DASHED)
+    # Access .name through a variable
+    fill_val = s.fill
+    print(fill_val.name)
+    # Direct chained access
+    print(s.fill.name)
+    print(s.fill.value)

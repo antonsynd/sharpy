@@ -952,6 +952,16 @@ internal partial class RoslynEmitter
                 var lookedUp = _context.LookupSymbol(udt.Name);
                 if (lookedUp is TypeSymbol ts && ts.TypeKind == Semantic.TypeKind.Enum)
                     return true;
+
+                // Handle qualified names (e.g., "types.FillStyle") by looking up the last segment
+                var dotIndex = udt.Name.LastIndexOf('.');
+                if (dotIndex >= 0)
+                {
+                    var simpleName = udt.Name.Substring(dotIndex + 1);
+                    lookedUp = _context.LookupSymbol(simpleName);
+                    if (lookedUp is TypeSymbol ts2 && ts2.TypeKind == Semantic.TypeKind.Enum)
+                        return true;
+                }
             }
         }
 
@@ -965,6 +975,22 @@ internal partial class RoslynEmitter
             {
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Cross-module fallback for enum detection. Checks if the expression's semantic type
+    /// is a UserDefinedType whose Symbol has Enum TypeKind, even when IsEnumInstance's
+    /// symbol table lookup fails (e.g., for chained member access on imported types).
+    /// </summary>
+    private bool IsEnumTypeFromSemanticInfo(Expression expr)
+    {
+        var semType = GetExpressionSemanticType(expr);
+        if (semType is Semantic.UserDefinedType udt && udt.Symbol != null)
+        {
+            return udt.Symbol.TypeKind == Semantic.TypeKind.Enum;
         }
 
         return false;
