@@ -191,6 +191,180 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return the Least Common Multiple of integers a and b.
+        /// </summary>
+        public static long Lcm(long a, long b)
+        {
+            if (a == 0 || b == 0)
+            {
+                return 0;
+            }
+
+            a = System.Math.Abs(a);
+            b = System.Math.Abs(b);
+            return a / Gcd(a, b) * b;
+        }
+
+        /// <summary>
+        /// Determine whether two floating point numbers are close in value.
+        /// </summary>
+        public static bool Isclose(double a, double b, double rel_tol = 1e-9, double abs_tol = 0.0)
+        {
+            if (rel_tol < 0.0 || abs_tol < 0.0)
+            {
+                throw new ValueError("tolerances must be non-negative");
+            }
+
+            if (a == b)
+            {
+                return true;
+            }
+
+            if (double.IsInfinity(a) || double.IsInfinity(b))
+            {
+                return false;
+            }
+
+            double diff = System.Math.Abs(a - b);
+            return diff <= System.Math.Max(rel_tol * System.Math.Max(System.Math.Abs(a), System.Math.Abs(b)), abs_tol);
+        }
+
+        /// <summary>
+        /// Return the number of ways to choose k items from n items without repetition and without order.
+        /// </summary>
+        public static long Comb(int n, int k)
+        {
+            if (n < 0 || k < 0 || k > n)
+            {
+                return 0;
+            }
+
+            if (k == 0 || k == n)
+            {
+                return 1;
+            }
+
+            // Optimize by using smaller k
+            if (k > n - k)
+            {
+                k = n - k;
+            }
+
+            long result = 1;
+            for (int i = 0; i < k; i++)
+            {
+                result = result * (n - i) / (i + 1);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Return the number of ways to choose k items from n items without repetition and with order.
+        /// </summary>
+        public static long Perm(int n, int k)
+        {
+            if (n < 0 || k < 0 || k > n)
+            {
+                return 0;
+            }
+
+            long result = 1;
+            for (int i = 0; i < k; i++)
+            {
+                result *= (n - i);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Return an accurate floating point sum of values in the iterable using Kahan summation.
+        /// </summary>
+        public static double Fsum(System.Collections.Generic.IEnumerable<double> iterable)
+        {
+            double sum = 0.0;
+            double c = 0.0;
+            foreach (double x in iterable)
+            {
+                double y = x - c;
+                double t = sum + y;
+                c = (t - sum) - y;
+                sum = t;
+            }
+
+            return sum;
+        }
+
+        /// <summary>
+        /// Return the product of all the elements in the input iterable.
+        /// The default start value for the product is 1.
+        /// </summary>
+        public static int Prod(System.Collections.Generic.IEnumerable<int> iterable, int start = 1)
+        {
+            int result = start;
+            foreach (int x in iterable)
+            {
+                result *= x;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Return the product of all the elements in the input iterable (double overload).
+        /// </summary>
+        public static double Prod(System.Collections.Generic.IEnumerable<double> iterable, double start = 1.0)
+        {
+            double result = start;
+            foreach (double x in iterable)
+            {
+                result *= x;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Return the Euclidean distance, sqrt(x*x + y*y).
+        /// </summary>
+        public static double Hypot(double x, double y) => System.Math.Sqrt(x * x + y * y);
+
+        /// <summary>
+        /// Return e raised to the power x, minus 1. More accurate than exp(x) - 1 for small x.
+        /// </summary>
+        public static double Expm1(double x)
+        {
+            // For small x, use Taylor series for better accuracy
+            if (System.Math.Abs(x) < 1e-5)
+            {
+                return x + 0.5 * x * x + x * x * x / 6.0;
+            }
+
+            return System.Math.Exp(x) - 1.0;
+        }
+
+        /// <summary>
+        /// Return the natural logarithm of 1+x (base e). More accurate than log(1+x) for small x.
+        /// </summary>
+        public static double Log1p(double x)
+        {
+            // For small x, use the series expansion for better accuracy
+            if (System.Math.Abs(x) < 1e-4)
+            {
+                double x2 = x * x;
+                return x - x2 / 2.0 + x2 * x / 3.0 - x2 * x2 / 4.0;
+            }
+
+            return System.Math.Log(1.0 + x);
+        }
+
+        /// <summary>
+        /// Return the IEEE 754-style remainder of x with respect to y.
+        /// </summary>
+        public static double Remainder(double x, double y) => System.Math.IEEERemainder(x, y);
+
+        /// <summary>
         /// Return the factorial of n. Raises ValueError if n is negative or OverflowException if n is too large (n > 20).
         /// </summary>
         public static long Factorial(int n)
