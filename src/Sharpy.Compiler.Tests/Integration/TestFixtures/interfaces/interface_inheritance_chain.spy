@@ -1,0 +1,27 @@
+# Test that interface methods are recognized through the full inheritance chain.
+# Middle and Leaf don't directly implement IScalable, but inherit it from Base.
+
+interface IScalable:
+    def scale(self, factor: int) -> str: ...
+
+class Base(IScalable):
+    def scale(self, factor: int) -> str:
+        return f"Base scaling by {factor}"
+
+class Middle(Base):
+    @override
+    def scale(self, factor: int) -> str:
+        return f"Middle scaling by {factor}"
+
+class Leaf(Middle):
+    @override
+    def scale(self, factor: int) -> str:
+        return f"Leaf scaling by {factor}"
+
+def main():
+    b: IScalable = Base()
+    m: IScalable = Middle()
+    l: IScalable = Leaf()
+    print(b.scale(2))
+    print(m.scale(3))
+    print(l.scale(4))
