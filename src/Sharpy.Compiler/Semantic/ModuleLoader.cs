@@ -322,6 +322,7 @@ internal class ModuleLoader
                     Kind = SymbolKind.Variable,
                     Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
                     IsConstant = varDecl.IsConst,
+                    IsStatic = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static),
                     AccessLevel = GetAccessLevel(varDecl.Name),
                     DeclarationLine = varDecl.LineStart,
                     DeclarationColumn = varDecl.ColumnStart
@@ -342,6 +343,21 @@ internal class ModuleLoader
             }
         }
 
+        // Build MethodOverloads dictionary for non-dunder methods
+        var methodOverloads = new Dictionary<string, List<FunctionSymbol>>();
+        foreach (var m in methods)
+        {
+            if (!DunderDetector.IsDunderMethod(m.Name))
+            {
+                if (!methodOverloads.TryGetValue(m.Name, out var overloadList))
+                {
+                    overloadList = new List<FunctionSymbol>();
+                    methodOverloads[m.Name] = overloadList;
+                }
+                overloadList.Add(m);
+            }
+        }
+
         var classSymbol = new TypeSymbol
         {
             Name = classDef.Name,
@@ -357,7 +373,8 @@ internal class ModuleLoader
             UnresolvedInterfaceNames = unresolvedInterfaces,
             Fields = fields,
             Methods = methods,
-            Constructors = ctors
+            Constructors = ctors,
+            MethodOverloads = methodOverloads
         };
 
         if (unresolvedBase != null)
@@ -386,6 +403,7 @@ internal class ModuleLoader
                     Kind = SymbolKind.Variable,
                     Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
                     IsConstant = varDecl.IsConst,
+                    IsStatic = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static),
                     AccessLevel = GetAccessLevel(varDecl.Name),
                     DeclarationLine = varDecl.LineStart,
                     DeclarationColumn = varDecl.ColumnStart
@@ -406,6 +424,21 @@ internal class ModuleLoader
             }
         }
 
+        // Build MethodOverloads dictionary for non-dunder methods
+        var methodOverloads = new Dictionary<string, List<FunctionSymbol>>();
+        foreach (var m in methods)
+        {
+            if (!DunderDetector.IsDunderMethod(m.Name))
+            {
+                if (!methodOverloads.TryGetValue(m.Name, out var overloadList))
+                {
+                    overloadList = new List<FunctionSymbol>();
+                    methodOverloads[m.Name] = overloadList;
+                }
+                overloadList.Add(m);
+            }
+        }
+
         return new TypeSymbol
         {
             Name = structDef.Name,
@@ -419,7 +452,8 @@ internal class ModuleLoader
             UnresolvedInterfaceNames = structDef.BaseClasses.Select(b => b.Name).ToList(),
             Fields = fields,
             Methods = methods,
-            Constructors = ctors
+            Constructors = ctors,
+            MethodOverloads = methodOverloads
         };
     }
 

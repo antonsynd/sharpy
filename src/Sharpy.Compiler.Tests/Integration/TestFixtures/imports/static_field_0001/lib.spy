@@ -1,0 +1,9 @@
+class Constants:
+    @static
+    PI: float = 3.14159
+
+    @static
+    MAX_VALUE: int = 100
+
+    @static
+    default_value: int = 42

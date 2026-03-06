@@ -1,0 +1,6 @@
+from lib import Constants
+
+def main():
+    print(Constants.PI)
+    print(Constants.MAX_VALUE)
+    print(Constants.default_value)
