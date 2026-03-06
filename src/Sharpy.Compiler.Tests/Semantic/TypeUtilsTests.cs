@@ -58,6 +58,17 @@ public class TypeUtilsTests
         Assert.Equal(expected, TypeUtils.IsInteger(type));
     }
 
+    [Fact]
+    public void IsInteger_ForClrIntegerSingletons_ReturnsTrue()
+    {
+        Assert.True(TypeUtils.IsInteger(SemanticType.SByte));
+        Assert.True(TypeUtils.IsInteger(SemanticType.Byte));
+        Assert.True(TypeUtils.IsInteger(SemanticType.Short));
+        Assert.True(TypeUtils.IsInteger(SemanticType.UShort));
+        Assert.True(TypeUtils.IsInteger(SemanticType.UInt));
+        Assert.True(TypeUtils.IsInteger(SemanticType.ULong));
+    }
+
     [Theory]
     [InlineData("float", false)]
     [InlineData("double", false)]
@@ -65,6 +76,12 @@ public class TypeUtilsTests
     {
         var type = GetBuiltinType(typeName);
         Assert.Equal(expected, TypeUtils.IsInteger(type));
+    }
+
+    [Fact]
+    public void IsInteger_ForDecimal_ReturnsFalse()
+    {
+        Assert.False(TypeUtils.IsInteger(SemanticType.Decimal));
     }
 
     [Fact]
