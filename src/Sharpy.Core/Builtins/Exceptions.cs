@@ -189,4 +189,32 @@ namespace Sharpy
         {
         }
     }
+
+    /// <summary>
+    /// Not a directory error exception — raised when a directory operation is attempted on a non-directory
+    /// </summary>
+    public class NotADirectoryError : IOException
+    {
+        public NotADirectoryError(string message) : base(message)
+        {
+        }
+
+        public NotADirectoryError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// OS error exception — general operating system error
+    /// </summary>
+    public class OSError : Exception
+    {
+        public OSError(string message) : base(message)
+        {
+        }
+
+        public OSError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
 }
