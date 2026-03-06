@@ -247,27 +247,22 @@ public static class PrimitiveCatalog
         if (promoted == null)
             return null;
 
-        // Return the matching SemanticType singleton for common types,
-        // or create a BuiltinType for less common numeric types
+        // Return the matching SemanticType singleton — all CLR numeric types have singletons
         return promoted.ClrType switch
         {
-            // Common types - use SemanticType singletons
             Type t when t == typeof(int) => SemanticType.Int,
             Type t when t == typeof(long) => SemanticType.Long,
             Type t when t == typeof(float) => SemanticType.Float32,  // C# float -> Sharpy float32
             Type t when t == typeof(double) => SemanticType.Double,  // C# double -> Sharpy float/double
-            // Less common types - create BuiltinType instances
-            // (these are used less frequently in promotion, so creating instances is acceptable)
-            Type t when t == typeof(sbyte) => new BuiltinType { Name = "sbyte", ClrType = typeof(sbyte) },
-            Type t when t == typeof(byte) => new BuiltinType { Name = "byte", ClrType = typeof(byte) },
-            Type t when t == typeof(short) => new BuiltinType { Name = "short", ClrType = typeof(short) },
-            Type t when t == typeof(ushort) => new BuiltinType { Name = "ushort", ClrType = typeof(ushort) },
-            Type t when t == typeof(uint) => new BuiltinType { Name = "uint", ClrType = typeof(uint) },
-            Type t when t == typeof(ulong) => new BuiltinType { Name = "ulong", ClrType = typeof(ulong) },
-            Type t when t == typeof(decimal) => new BuiltinType { Name = "decimal", ClrType = typeof(decimal) },
-            // For null ClrType (void), this shouldn't happen in numeric promotion
+            Type t when t == typeof(sbyte) => SemanticType.SByte,
+            Type t when t == typeof(byte) => SemanticType.Byte,
+            Type t when t == typeof(short) => SemanticType.Short,
+            Type t when t == typeof(ushort) => SemanticType.UShort,
+            Type t when t == typeof(uint) => SemanticType.UInt,
+            Type t when t == typeof(ulong) => SemanticType.ULong,
+            Type t when t == typeof(decimal) => SemanticType.Decimal,
             null => SemanticType.Unknown,
-            _ => new BuiltinType { Name = promoted.SharpyName, ClrType = promoted.ClrType }
+            _ => SemanticType.Unknown
         };
     }
 

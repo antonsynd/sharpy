@@ -62,6 +62,14 @@ public abstract record SemanticType : ITypeInfo
     public static readonly SemanticType Float = new BuiltinType { Name = "float", ClrType = typeof(double) };
     public static readonly SemanticType Double = new BuiltinType { Name = "double", ClrType = typeof(double) };
     public static readonly SemanticType Float32 = new BuiltinType { Name = "float32", ClrType = typeof(float) };
+    // CLR numeric types without direct Sharpy syntax — used by PrimitiveCatalog promotion and CLR interop
+    public static readonly SemanticType SByte = new BuiltinType { Name = "int8", ClrType = typeof(sbyte) };
+    public static readonly SemanticType Byte = new BuiltinType { Name = "uint8", ClrType = typeof(byte) };
+    public static readonly SemanticType Short = new BuiltinType { Name = "int16", ClrType = typeof(short) };
+    public static readonly SemanticType UShort = new BuiltinType { Name = "uint16", ClrType = typeof(ushort) };
+    public static readonly SemanticType UInt = new BuiltinType { Name = "uint32", ClrType = typeof(uint) };
+    public static readonly SemanticType ULong = new BuiltinType { Name = "uint64", ClrType = typeof(ulong) };
+    public static readonly SemanticType Decimal = new BuiltinType { Name = "decimal", ClrType = typeof(decimal) };
     public static readonly SemanticType Bool = new BuiltinType { Name = "bool", ClrType = typeof(bool) };
     public static readonly SemanticType Str = new BuiltinType { Name = "str", ClrType = typeof(string) };
     public static readonly SemanticType Object = new UserDefinedType { Name = "object" };
