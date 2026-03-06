@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Services;
@@ -10,15 +11,9 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Threading:</b> This type is not thread-safe. It uses <see cref="Dictionary{TKey,TValue}"/>
-/// internally, so concurrent reads and writes will cause data corruption. Each compilation
-/// creates its own instance. In <see cref="Project.ProjectCompiler"/>, a single shared instance
-/// is used because files are processed sequentially in dependency order.
-/// </para>
-/// <para>
-/// For parallel per-file analysis (e.g., an LSP server), create one <see cref="SemanticInfo"/>
-/// per file. The shared <see cref="SemanticBinding"/> and <see cref="SymbolTable"/> are
-/// thread-safe and can be accessed concurrently.
+/// <b>Threading:</b> Dictionary fields use <see cref="ConcurrentDictionary{TKey,TValue}"/>
+/// for thread safety. HashSet fields are not concurrent but are only accessed during
+/// single-threaded analysis phases. Each compilation creates its own instance.
 /// </para>
 /// </remarks>
 public class SemanticInfo : ISemanticQuery
@@ -28,35 +23,35 @@ public class SemanticInfo : ISemanticQuery
     // in different files should be cached separately even if they have the same structure)
 
     // Map expressions to their resolved types
-    private readonly Dictionary<Expression, SemanticType> _expressionTypes =
+    private readonly ConcurrentDictionary<Expression, SemanticType> _expressionTypes =
         new(ReferenceEqualityComparer.Instance);
 
     // Map identifiers to their symbols
-    private readonly Dictionary<Identifier, Symbol> _identifierSymbols =
+    private readonly ConcurrentDictionary<Identifier, Symbol> _identifierSymbols =
         new(ReferenceEqualityComparer.Instance);
 
     // Map function calls to resolved function symbols
-    private readonly Dictionary<FunctionCall, FunctionSymbol> _callTargets =
+    private readonly ConcurrentDictionary<FunctionCall, FunctionSymbol> _callTargets =
         new(ReferenceEqualityComparer.Instance);
 
     // Map type annotations to resolved semantic types
-    private readonly Dictionary<TypeAnnotation, SemanticType> _typeAnnotations =
+    private readonly ConcurrentDictionary<TypeAnnotation, SemanticType> _typeAnnotations =
         new(ReferenceEqualityComparer.Instance);
 
     // Map expressions to their narrowed types (for type narrowing after is not None / isinstance checks)
     // This captures the narrowed type at each specific usage of an identifier within a narrowing context
-    private readonly Dictionary<Expression, SemanticType> _narrowedExpressionTypes =
+    private readonly ConcurrentDictionary<Expression, SemanticType> _narrowedExpressionTypes =
         new(ReferenceEqualityComparer.Instance);
 
     // Map generic function calls to their inferred type arguments
     // Used by codegen to emit explicit type arguments in generated C#
-    private readonly Dictionary<FunctionCall, List<SemanticType>> _inferredTypeArguments =
+    private readonly ConcurrentDictionary<FunctionCall, List<SemanticType>> _inferredTypeArguments =
         new(ReferenceEqualityComparer.Instance);
 
     // Map member access expressions to their resolved symbols (type owner + member).
     // Used to communicate TypeChecker's resolution to codegen so it doesn't re-resolve.
     // Covers: ClassName.FIELD (static/const), ClassName.method (static), self.static_field.
-    private readonly Dictionary<MemberAccess, (TypeSymbol Owner, Symbol Member)> _memberAccessResolutions =
+    private readonly ConcurrentDictionary<MemberAccess, (TypeSymbol Owner, Symbol Member)> _memberAccessResolutions =
         new(ReferenceEqualityComparer.Instance);
 
     // Track functions that contain yield statements (generators)
@@ -67,7 +62,7 @@ public class SemanticInfo : ISemanticQuery
 
     // Map patterns to their resolved union case type symbols
     // Used when a PositionalPattern or MemberAccessPattern matches a union case
-    private readonly Dictionary<Pattern, TypeSymbol> _patternUnionCases =
+    private readonly ConcurrentDictionary<Pattern, TypeSymbol> _patternUnionCases =
         new(ReferenceEqualityComparer.Instance);
 
     // Track expressions whose type was set to UnknownType due to a user error
@@ -78,7 +73,7 @@ public class SemanticInfo : ISemanticQuery
 
     // Map with-item context expressions to their context manager kind
     // (Disposable, DunderProtocol, or AsyncDisposable/AsyncDunderProtocol)
-    private readonly Dictionary<Expression, ContextManagerKind> _contextManagerKinds =
+    private readonly ConcurrentDictionary<Expression, ContextManagerKind> _contextManagerKinds =
         new(ReferenceEqualityComparer.Instance);
 
     public void SetExpressionType(Expression expr, SemanticType type)
