@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OmniSharp.Extensions.LanguageServer.Server;
 using Sharpy.Compiler;
@@ -27,6 +27,11 @@ public class Program
                 .WithHandler<TextDocumentSyncHandler>()
                 .WithHandler<SharplyHoverHandler>()
                 .WithHandler<SharplyDefinitionHandler>()
+                .WithHandler<SharplyCompletionHandler>()
+                .WithHandler<SharplyReferencesHandler>()
+                .WithHandler<SharplyRenameHandler>()
+                .WithHandler<SharplyDocumentSymbolHandler>()
+                .WithHandler<SharplySignatureHelpHandler>()
         ).ConfigureAwait(false);
 
         await server.WaitForExit.ConfigureAwait(false);

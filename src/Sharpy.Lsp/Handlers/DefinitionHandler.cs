@@ -77,11 +77,13 @@ internal sealed class SharplyDefinitionHandler : DefinitionHandlerBase
 
             var method = udt.Symbol.Methods.Find(m =>
                 string.Equals(m.Name, memberName, StringComparison.Ordinal));
-            if (method != null) return method;
+            if (method != null)
+                return method;
 
             var field = udt.Symbol.Fields.Find(f =>
                 string.Equals(f.Name, memberName, StringComparison.Ordinal));
-            if (field != null) return field;
+            if (field != null)
+                return field;
         }
 
         return null;

@@ -22,7 +22,8 @@ internal sealed class DiagnosticPublisher
 
     public void PublishDiagnostics(string uri, SemanticResult result, SourceText? sourceText)
     {
-        if (_server == null) return;
+        if (_server == null)
+            return;
 
         var lspDiagnostics = ConvertDiagnostics(result.Diagnostics, sourceText);
 

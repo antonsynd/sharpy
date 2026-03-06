@@ -42,7 +42,8 @@ internal static class SymbolFormatter
 
         for (var i = 0; i < f.Parameters.Count; i++)
         {
-            if (i > 0) sb.Append(", ");
+            if (i > 0)
+                sb.Append(", ");
             var p = f.Parameters[i];
             sb.Append(p.Name);
             if (p.Type != null)

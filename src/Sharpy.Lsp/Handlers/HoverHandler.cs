@@ -58,34 +58,34 @@ internal sealed class SharplyHoverHandler : HoverHandlerBase
         switch (node)
         {
             case Identifier id:
-            {
-                var symbol = query.GetIdentifierSymbol(id);
-                if (symbol != null)
-                    return SymbolFormatter.FormatSymbol(symbol);
+                {
+                    var symbol = query.GetIdentifierSymbol(id);
+                    if (symbol != null)
+                        return SymbolFormatter.FormatSymbol(symbol);
 
-                // Fall back to type info
-                var type = query.GetEffectiveType(id);
-                if (type != null)
-                    return $"{id.Name}: {SymbolFormatter.FormatTypeInfo(type)}";
+                    // Fall back to type info
+                    var type = query.GetEffectiveType(id);
+                    if (type != null)
+                        return $"{id.Name}: {SymbolFormatter.FormatTypeInfo(type)}";
 
-                return null;
-            }
+                    return null;
+                }
 
             case FunctionCall call:
-            {
-                var target = query.GetCallTarget(call);
-                if (target != null)
-                    return SymbolFormatter.FormatSymbol(target);
-                break;
-            }
+                {
+                    var target = query.GetCallTarget(call);
+                    if (target != null)
+                        return SymbolFormatter.FormatSymbol(target);
+                    break;
+                }
 
             case Expression expr:
-            {
-                var type = query.GetEffectiveType(expr);
-                if (type != null)
-                    return SymbolFormatter.FormatTypeInfo(type);
-                break;
-            }
+                {
+                    var type = query.GetEffectiveType(expr);
+                    if (type != null)
+                        return SymbolFormatter.FormatTypeInfo(type);
+                    break;
+                }
         }
 
         return null;

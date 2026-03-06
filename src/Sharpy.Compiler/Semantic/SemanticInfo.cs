@@ -310,7 +310,8 @@ public class SemanticInfo : ISemanticQuery
 
     private void RecordReference(Symbol symbol, Node node)
     {
-        if (node.Span == null) return;
+        if (node.Span == null)
+            return;
 
         var reference = new SymbolReference(CurrentFilePath, node.Span.Value, node.LineStart, node.ColumnStart);
         var bag = _symbolReferences.GetOrAdd(symbol, _ => new ConcurrentBag<SymbolReference>());
