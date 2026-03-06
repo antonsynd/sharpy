@@ -1,0 +1,10 @@
+from enums_a import UserStatus
+from enums_b import TaskStatus
+
+def main():
+    a = UserStatus.ACTIVE
+    b = TaskStatus.PENDING
+    print(a.name)
+    print(a.value)
+    print(b.name)
+    print(b.value)
