@@ -147,4 +147,19 @@ namespace Sharpy
         {
         }
     }
+
+    /// <summary>
+    /// Lookup error exception (base class for KeyError, IndexError in Python;
+    /// used directly for codec/encoding lookup failures).
+    /// </summary>
+    public class LookupError : Exception
+    {
+        public LookupError(string message) : base(message)
+        {
+        }
+
+        public LookupError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
 }
