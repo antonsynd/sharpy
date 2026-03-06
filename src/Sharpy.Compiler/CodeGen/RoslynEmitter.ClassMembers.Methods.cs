@@ -471,7 +471,8 @@ internal partial class RoslynEmitter
             current = _context.SemanticBinding.GetBaseType(current) ?? current.BaseType;
         }
 
-        // No base class method found — check ALL interfaces (abstract or default)
+        // No base class method found — check only DIRECT interfaces (not inherited ones,
+        // since base classes synthesize abstract methods for inherited interface methods)
         var interfaceRefs = _context.SemanticBinding.GetInterfaces(_currentTypeSymbol)
             ?? (IReadOnlyList<Semantic.InterfaceReference>)_currentTypeSymbol.Interfaces;
         var interfaces = interfaceRefs.Select(r => r.Definition).ToList();
