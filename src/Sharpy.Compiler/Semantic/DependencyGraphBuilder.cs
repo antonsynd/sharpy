@@ -1,8 +1,9 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Utilities;
 
-namespace Sharpy.Compiler.Project;
+namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
 /// Builder for constructing a <see cref="DependencyGraph"/> during compilation.

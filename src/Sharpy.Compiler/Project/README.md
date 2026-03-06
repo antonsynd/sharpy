@@ -8,7 +8,7 @@ This directory contains components for multi-file project compilation.
   - `.cs` (main), `.Initialization.cs`, `.Parsing.cs`, `.Phases.cs`, `.CodeGen.cs`, `.IncrementalCache.cs`, `.Utilities.cs`
 - `SpyProject.cs` - Project configuration and file discovery
 - `DependencyGraph.cs` - Immutable dependency graph for build ordering
-- `DependencyGraphBuilder.cs` - Thread-safe builder for dependency graph
+- `DependencyGraphBuilder.cs` - Thread-safe builder for dependency graph (moved to `Semantic/`)
 - `IncrementalCompilationCache.cs` - File hash and symbol caching for incremental builds
 
 ## ProjectCompiler

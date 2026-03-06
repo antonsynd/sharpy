@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Utilities;
 using Xunit;
 
