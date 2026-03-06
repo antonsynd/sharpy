@@ -179,19 +179,19 @@ internal partial class RoslynEmitter
         {
             switch (decorator.Name)
             {
-                case "private":
+                case DecoratorNames.Private:
                     tokens.Add(Token(SyntaxKind.PrivateKeyword));
                     hasAccessModifier = true;
                     break;
-                case "protected":
+                case DecoratorNames.Protected:
                     tokens.Add(Token(SyntaxKind.ProtectedKeyword));
                     hasAccessModifier = true;
                     break;
-                case "internal":
+                case DecoratorNames.Internal:
                     tokens.Add(Token(SyntaxKind.InternalKeyword));
                     hasAccessModifier = true;
                     break;
-                case "public":
+                case DecoratorNames.Public:
                     tokens.Add(Token(SyntaxKind.PublicKeyword));
                     hasAccessModifier = true;
                     break;
@@ -995,19 +995,19 @@ internal partial class RoslynEmitter
         {
             switch (decorator.Name)
             {
-                case "private":
+                case DecoratorNames.Private:
                     tokens.Add(Token(SyntaxKind.PrivateKeyword));
                     hasAccessModifier = true;
                     break;
-                case "protected":
+                case DecoratorNames.Protected:
                     tokens.Add(Token(SyntaxKind.ProtectedKeyword));
                     hasAccessModifier = true;
                     break;
-                case "internal":
+                case DecoratorNames.Internal:
                     tokens.Add(Token(SyntaxKind.InternalKeyword));
                     hasAccessModifier = true;
                     break;
-                case "public":
+                case DecoratorNames.Public:
                     tokens.Add(Token(SyntaxKind.PublicKeyword));
                     hasAccessModifier = true;
                     break;
