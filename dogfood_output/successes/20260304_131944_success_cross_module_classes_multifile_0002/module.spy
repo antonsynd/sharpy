@@ -1,9 +1,0 @@
-# Module with a simple class to be imported
-class MyClass:
-    _value: int
-
-    def __init__(self, value: int):
-        self._value = value
-
-    def get_value(self) -> int:
-        return self._value

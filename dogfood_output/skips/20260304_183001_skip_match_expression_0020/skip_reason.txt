@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0103]: Expected end of statement, got For
-  --> /tmp/tmp1l46t4rb/dogfood_test.spy:88:5
-    |
- 88 |     for s in shapes:
-    |     ^^^
-    |
-

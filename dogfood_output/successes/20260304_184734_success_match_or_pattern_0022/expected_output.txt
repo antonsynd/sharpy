@@ -1,7 +1,0 @@
-normal
-urgent
-100
-200
-low
-medium
-email

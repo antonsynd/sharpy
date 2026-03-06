@@ -1,8 +1,0 @@
-[L1] 10 -> 20 (delta: 10)
-skipped: 20 -> 22
-[L1] 20 -> 30 (delta: 10)
-[L2] 20 -> 30 (delta: 10)
-[L2] 30 -> 40 (delta: 10)
-[L1] 40 -> 60 (delta: 20)
-L1 logs: 3
-L2 logs: 2

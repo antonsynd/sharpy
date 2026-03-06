@@ -1,6 +1,0 @@
-19
-3
-Warn
-Warn
-Error
-Fatal

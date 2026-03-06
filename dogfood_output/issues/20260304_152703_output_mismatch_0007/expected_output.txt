@@ -1,7 +1,0 @@
-Rectangle(10.0, 5.0)
-50.0
-Circle(3.0)
-28.27
-Actor: Active
-Actor: Pending
-Inactive

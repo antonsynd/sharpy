@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0506]: 'AdvancedShapes.Square.Scale(double)': cannot override inherited member 'Shapes.Rectangle.Scale(double)' because it is not marked virtual, abstract, or override
-  --> /tmp/tmpvsj4ntd9/advanced_shapes.spy:45:30
-    |
- 45 |     avg: float = calculate_average(areas)
-    |                              ^
-    |
-

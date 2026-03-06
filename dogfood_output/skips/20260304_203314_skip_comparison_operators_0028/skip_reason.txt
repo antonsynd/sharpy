@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0103]: Expected end of statement, got Identifier
-  --> /tmp/tmprz7gjojk/dogfood_test.spy:1:9
-    |
-  1 | Request timed out. (request_id=req_0472cb32c151)
-    |         ^^^^^
-    |
-

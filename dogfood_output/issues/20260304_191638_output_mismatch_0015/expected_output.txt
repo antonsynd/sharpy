@@ -1,7 +1,0 @@
-2
-5
-4
-10
-True
-False
-False

@@ -1,6 +1,0 @@
-# Main entry point - imports and uses class from another module
-from module import MyClass
-
-def main():
-    obj: MyClass = MyClass(42)
-    print(obj.get_value())

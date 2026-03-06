@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0103]: The name 'Hex' does not exist in the current context
-  --> /tmp/tmp18ej8op9/colors.spy:11:70
-    |
- 11 |     # Create shapes
-    |                    ^
-    |
-

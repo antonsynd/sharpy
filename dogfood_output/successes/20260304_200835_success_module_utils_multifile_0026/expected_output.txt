@@ -1,5 +1,0 @@
-olleh
-True
-dlrow
-120
-25.0

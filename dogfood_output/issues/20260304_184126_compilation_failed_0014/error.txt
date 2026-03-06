@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0266]: Cannot implicitly convert type 'uint' to 'int'. An explicit conversion exists (are you missing a cast?)
-  --> /tmp/tmp2jb9bz4k/dogfood_test.spy:32:23
-    |
- 32 |         idx: int = self.items.index(item)
-    |                       ^
-    |
-

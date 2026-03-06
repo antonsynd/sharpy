@@ -1,7 +1,0 @@
-Drawing button at (10, 20)
-Button[1]
-Panel[3]
-MainPanel
-5.0
-Button
-Button Cancel clicked
