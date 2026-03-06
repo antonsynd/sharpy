@@ -1,4 +1,4 @@
-using System.Collections.Frozen;
+using System.Collections.Immutable;
 
 namespace Sharpy.Compiler.Shared;
 
@@ -25,7 +25,7 @@ internal static class DecoratorNames
     /// All decorator names that map to C# modifier keywords.
     /// These built-in decorators must not accept arguments.
     /// </summary>
-    public static readonly FrozenSet<string> KnownModifierDecorators = new[]
+    public static readonly ImmutableHashSet<string> KnownModifierDecorators = new[]
     {
         Virtual,
         Static,
@@ -36,5 +36,5 @@ internal static class DecoratorNames
         Protected,
         Private,
         Internal,
-    }.ToFrozenSet();
+    }.ToImmutableHashSet();
 }

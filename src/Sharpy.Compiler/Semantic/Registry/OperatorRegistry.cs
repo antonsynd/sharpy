@@ -1,4 +1,4 @@
-using System.Collections.Frozen;
+using System.Collections.Immutable;
 
 namespace Sharpy.Compiler.Semantic.Registry;
 
@@ -19,27 +19,27 @@ public enum OperatorKind
 /// </summary>
 public static class OperatorRegistry
 {
-    private static readonly FrozenSet<string> BinaryArithmeticOps = new[]
+    private static readonly ImmutableHashSet<string> BinaryArithmeticOps = new[]
     {
         DunderNames.Add, DunderNames.Sub, DunderNames.Mul, DunderNames.Div, DunderNames.Mod
-    }.ToFrozenSet();
+    }.ToImmutableHashSet();
 
-    private static readonly FrozenSet<string> BinaryBitwiseOps = new[]
+    private static readonly ImmutableHashSet<string> BinaryBitwiseOps = new[]
     {
         DunderNames.And, DunderNames.Or, DunderNames.Xor, DunderNames.LShift, DunderNames.RShift
-    }.ToFrozenSet();
+    }.ToImmutableHashSet();
 
-    private static readonly FrozenSet<string> ComparisonOps = new[]
+    private static readonly ImmutableHashSet<string> ComparisonOps = new[]
     {
         DunderNames.Eq, DunderNames.Ne, DunderNames.Lt, DunderNames.Le, DunderNames.Gt, DunderNames.Ge
-    }.ToFrozenSet();
+    }.ToImmutableHashSet();
 
-    private static readonly FrozenSet<string> UnaryOps = new[]
+    private static readonly ImmutableHashSet<string> UnaryOps = new[]
     {
         DunderNames.Pos, DunderNames.Neg, DunderNames.Invert
-    }.ToFrozenSet();
+    }.ToImmutableHashSet();
 
-    private static readonly FrozenDictionary<string, OperatorKind> AllOperatorDunders;
+    private static readonly ImmutableDictionary<string, OperatorKind> AllOperatorDunders;
 
     static OperatorRegistry()
     {
@@ -52,7 +52,7 @@ public static class OperatorRegistry
             dict[op] = OperatorKind.Comparison;
         foreach (var op in UnaryOps)
             dict[op] = OperatorKind.Unary;
-        AllOperatorDunders = dict.ToFrozenDictionary();
+        AllOperatorDunders = dict.ToImmutableDictionary();
     }
 
     /// <summary>

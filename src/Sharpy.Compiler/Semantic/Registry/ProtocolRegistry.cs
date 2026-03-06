@@ -1,4 +1,4 @@
-using System.Collections.Frozen;
+using System.Collections.Immutable;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Registry;
@@ -43,13 +43,13 @@ public record ProtocolInfo(
 /// </summary>
 public static class ProtocolRegistry
 {
-    private static readonly FrozenDictionary<string, ProtocolInfo> _protocols;
+    private static readonly ImmutableDictionary<string, ProtocolInfo> _protocols;
 
     static ProtocolRegistry()
     {
         var protocols = new Dictionary<string, ProtocolInfo>();
         RegisterAllProtocols(protocols);
-        _protocols = protocols.ToFrozenDictionary();
+        _protocols = protocols.ToImmutableDictionary();
     }
 
     private static void Register(Dictionary<string, ProtocolInfo> protocols, ProtocolInfo info)

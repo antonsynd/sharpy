@@ -1,4 +1,4 @@
-using System.Collections.Frozen;
+using System.Collections.Immutable;
 
 namespace Sharpy.Compiler.Semantic.Registry;
 
@@ -38,16 +38,16 @@ public static class PrimitiveCatalog
         bool IsSigned
     );
 
-    private static readonly FrozenDictionary<string, PrimitiveInfo> _bySharpyName;
-    private static readonly FrozenDictionary<Type, PrimitiveInfo> _byClrType;
+    private static readonly ImmutableDictionary<string, PrimitiveInfo> _bySharpyName;
+    private static readonly ImmutableDictionary<Type, PrimitiveInfo> _byClrType;
 
     static PrimitiveCatalog()
     {
         var byName = new Dictionary<string, PrimitiveInfo>();
         var byClr = new Dictionary<Type, PrimitiveInfo>();
         RegisterAll(byName, byClr);
-        _bySharpyName = byName.ToFrozenDictionary();
-        _byClrType = byClr.ToFrozenDictionary();
+        _bySharpyName = byName.ToImmutableDictionary();
+        _byClrType = byClr.ToImmutableDictionary();
     }
 
     private static void Register(Dictionary<string, PrimitiveInfo> byName, Dictionary<Type, PrimitiveInfo> byClr, PrimitiveInfo info)
