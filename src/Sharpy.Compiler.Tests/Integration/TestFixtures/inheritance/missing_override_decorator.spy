@@ -1,0 +1,12 @@
+@abstract
+class Animal:
+    @abstract
+    def speak(self) -> str:
+        ...
+
+class Dog(Animal):
+    def speak(self) -> str:
+        return "Woof"
+
+def main():
+    pass

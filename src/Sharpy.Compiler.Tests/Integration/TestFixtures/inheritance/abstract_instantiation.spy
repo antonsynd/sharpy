@@ -1,0 +1,7 @@
+@abstract
+class Shape:
+    def area(self) -> float:
+        ...
+
+def main():
+    s: Shape = Shape()
