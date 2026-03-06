@@ -1,0 +1,42 @@
+{
+    "Function Definition": {
+        "prefix": "def",
+        "body": ["def ${1:name}(${2:params})${3: -> ${4:type}}:", "    ${0:pass}"],
+        "description": "Define a function"
+    },
+    "Class Definition": {
+        "prefix": "class",
+        "body": ["class ${1:Name}:", "    def __init__(self${2:, ${3:params}}):", "        ${0:pass}"],
+        "description": "Define a class"
+    },
+    "If Statement": {
+        "prefix": "if",
+        "body": ["if ${1:condition}:", "    ${0:pass}"],
+        "description": "If statement"
+    },
+    "For Loop": {
+        "prefix": "for",
+        "body": ["for ${1:item} in ${2:iterable}:", "    ${0:pass}"],
+        "description": "For loop"
+    },
+    "Match Statement": {
+        "prefix": "match",
+        "body": ["match ${1:value}:", "    case ${2:pattern}:", "        ${0:pass}"],
+        "description": "Match statement"
+    },
+    "Try/Except": {
+        "prefix": "try",
+        "body": ["try:", "    ${1:pass}", "except ${2:Exception} as ${3:e}:", "    ${0:pass}"],
+        "description": "Try/except block"
+    },
+    "With Statement": {
+        "prefix": "with",
+        "body": ["with ${1:context_manager} as ${2:var}:", "    ${0:pass}"],
+        "description": "With statement"
+    },
+    "Async Function": {
+        "prefix": "async def",
+        "body": ["async def ${1:name}(${2:params})${3: -> ${4:type}}:", "    ${0:pass}"],
+        "description": "Define an async function"
+    }
+}

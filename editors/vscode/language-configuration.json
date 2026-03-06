@@ -27,5 +27,20 @@
   },
   "folding": {
     "offSide": true
-  }
+  },
+  "onEnterRules": [
+    {
+      "beforeText": "^\\s*.*:\\s*(#.*)?$",
+      "action": {
+        "indent": "indent"
+      }
+    },
+    {
+      "beforeText": "^\\s*(pass|return|break|continue|raise)\\b.*$",
+      "action": {
+        "indent": "outdent"
+      }
+    }
+  ],
+  "wordPattern": "(-?\\d*\\.\\d\\w*)|([^\\`\\~\\!\\@\\#\\%\\^\\&\\*\\(\\)\\-\\=\\+\\[\\{\\]\\}\\\\\\|\\;\\:\\'\\\"\\,\\.\\<\\>\\/\\?\\s]+)"
 }
