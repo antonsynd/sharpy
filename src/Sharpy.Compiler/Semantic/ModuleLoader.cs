@@ -343,21 +343,6 @@ internal class ModuleLoader
             }
         }
 
-        // Build MethodOverloads dictionary for non-dunder methods
-        var methodOverloads = new Dictionary<string, List<FunctionSymbol>>();
-        foreach (var m in methods)
-        {
-            if (!DunderDetector.IsDunderMethod(m.Name))
-            {
-                if (!methodOverloads.TryGetValue(m.Name, out var overloadList))
-                {
-                    overloadList = new List<FunctionSymbol>();
-                    methodOverloads[m.Name] = overloadList;
-                }
-                overloadList.Add(m);
-            }
-        }
-
         var classSymbol = new TypeSymbol
         {
             Name = classDef.Name,
@@ -374,7 +359,7 @@ internal class ModuleLoader
             Fields = fields,
             Methods = methods,
             Constructors = ctors,
-            MethodOverloads = methodOverloads
+            MethodOverloads = TypeSymbol.BuildMethodOverloads(methods)
         };
 
         if (unresolvedBase != null)
@@ -424,21 +409,6 @@ internal class ModuleLoader
             }
         }
 
-        // Build MethodOverloads dictionary for non-dunder methods
-        var methodOverloads = new Dictionary<string, List<FunctionSymbol>>();
-        foreach (var m in methods)
-        {
-            if (!DunderDetector.IsDunderMethod(m.Name))
-            {
-                if (!methodOverloads.TryGetValue(m.Name, out var overloadList))
-                {
-                    overloadList = new List<FunctionSymbol>();
-                    methodOverloads[m.Name] = overloadList;
-                }
-                overloadList.Add(m);
-            }
-        }
-
         return new TypeSymbol
         {
             Name = structDef.Name,
@@ -453,7 +423,7 @@ internal class ModuleLoader
             Fields = fields,
             Methods = methods,
             Constructors = ctors,
-            MethodOverloads = methodOverloads
+            MethodOverloads = TypeSymbol.BuildMethodOverloads(methods)
         };
     }
 
