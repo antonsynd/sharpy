@@ -32,6 +32,17 @@ public class Program
                 .WithHandler<SharplyRenameHandler>()
                 .WithHandler<SharplyDocumentSymbolHandler>()
                 .WithHandler<SharplySignatureHelpHandler>()
+                // Phase 3 handlers
+                .WithHandler<SharplySemanticTokensHandler>()
+                .WithHandler<SharplyCodeActionHandler>()
+                .WithHandler<SharplyFormattingHandler>()
+                .WithHandler<SharplyFoldingRangeHandler>()
+                .WithHandler<FileWatcherHandler>()
+                // Phase 4 handlers
+                .WithHandler<SharplyWorkspaceSymbolHandler>()
+                .WithHandler<SharplyInlayHintHandler>()
+                .WithHandler<SharplyDocumentHighlightHandler>()
+                .WithHandler<SharplyCodeLensHandler>()
         ).ConfigureAwait(false);
 
         await server.WaitForExit.ConfigureAwait(false);
