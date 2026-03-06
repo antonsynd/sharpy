@@ -1,0 +1,5 @@
+def main():
+    try:
+        x: int = 1
+    except Exception as e:
+        raise ValueError("oops") from e
