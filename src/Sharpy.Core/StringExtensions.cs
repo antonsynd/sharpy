@@ -925,7 +925,7 @@ namespace Sharpy
                     i++;
                 }
 
-                result.append(s.Substring(start, i - start));
+                result.Append(s.Substring(start, i - start));
             }
 
             return result;
@@ -949,11 +949,11 @@ namespace Sharpy
 
             while ((index = s.IndexOf(sep, start, StringComparison.Ordinal)) >= 0)
             {
-                result.append(s.Substring(start, index - start));
+                result.Append(s.Substring(start, index - start));
                 start = index + sep.Length;
             }
 
-            result.append(s.Substring(start));
+            result.Append(s.Substring(start));
             return result;
         }
 
@@ -978,7 +978,7 @@ namespace Sharpy
             if (maxsplit == 0)
             {
                 var single = new List<string>();
-                single.append(s);
+                single.Append(s);
                 return single;
             }
 
@@ -989,12 +989,12 @@ namespace Sharpy
 
             while (splits < maxsplit && (index = s.IndexOf(sep, start, StringComparison.Ordinal)) >= 0)
             {
-                result.append(s.Substring(start, index - start));
+                result.Append(s.Substring(start, index - start));
                 start = index + sep.Length;
                 splits++;
             }
 
-            result.append(s.Substring(start));
+            result.Append(s.Substring(start));
             return result;
         }
 
@@ -1042,7 +1042,7 @@ namespace Sharpy
             if (maxsplit == 0)
             {
                 var single = new List<string>();
-                single.append(s);
+                single.Append(s);
                 return single;
             }
 
@@ -1065,7 +1065,7 @@ namespace Sharpy
             var result = new List<string>();
             foreach (var part in parts)
             {
-                result.append(part);
+                result.Append(part);
             }
 
             return result;
@@ -1546,14 +1546,14 @@ namespace Sharpy
         /// Return a translation table usable for <see cref="Translate"/>.
         /// Python: <c>str.maketrans(x, y)</c>
         /// </summary>
-        public static Dict<char, string> Maketrans(string x, string y)
+        public static Dict<char, string?> Maketrans(string x, string y)
         {
             if (x.Length != y.Length)
             {
                 throw new ValueError("the first two maketrans arguments must have equal length");
             }
 
-            var table = new Dict<char, string>();
+            var table = new Dict<char, string?>();
             for (int i = 0; i < x.Length; i++)
             {
                 table[x[i]] = y[i].ToString();
@@ -1567,14 +1567,14 @@ namespace Sharpy
         /// Characters in <paramref name="z"/> are mapped to deletion (null).
         /// Python: <c>str.maketrans(x, y, z)</c>
         /// </summary>
-        public static Dict<char, string> Maketrans(string x, string y, string z)
+        public static Dict<char, string?> Maketrans(string x, string y, string z)
         {
             if (x.Length != y.Length)
             {
                 throw new ValueError("the first two maketrans arguments must have equal length");
             }
 
-            var table = new Dict<char, string>();
+            var table = new Dict<char, string?>();
             for (int i = 0; i < x.Length; i++)
             {
                 table[x[i]] = y[i].ToString();
@@ -1594,7 +1594,7 @@ namespace Sharpy
         /// <c>null</c> are deleted.
         /// Python: <c>str.translate(table)</c>
         /// </summary>
-        public static string Translate(this string s, Dict<char, string> table)
+        public static string Translate(this string s, Dict<char, string?> table)
         {
             var sb = new StringBuilder(s.Length);
 
