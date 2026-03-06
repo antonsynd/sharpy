@@ -1,0 +1,2 @@
+def main():
+    f: (int) -> str = lambda x: x + 1
