@@ -9,6 +9,12 @@ namespace Sharpy.Compiler.Semantic;
 internal static class TypeUtils
 {
     /// <summary>
+    /// Check if a type is numeric or Unknown (to avoid cascading errors).
+    /// </summary>
+    public static bool IsNumericOrUnknown(SemanticType type)
+        => type is UnknownType || IsNumeric(type);
+
+    /// <summary>
     /// Check if a type is numeric (int, long, float, double, decimal).
     /// </summary>
     public static bool IsNumeric(SemanticType type)

@@ -144,7 +144,7 @@ internal class TypeInferenceService
     private SemanticType? TryInferBuiltinBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
     {
         // Integer types for bitwise operations
-        if (IsIntegerType(left) && IsIntegerType(right))
+        if (TypeUtils.IsInteger(left) && TypeUtils.IsInteger(right))
         {
             var bitwiseResult = op switch
             {
@@ -161,7 +161,7 @@ internal class TypeInferenceService
         }
 
         // Numeric types (includes integers for arithmetic operations)
-        if (IsNumericType(left) && IsNumericType(right))
+        if (TypeUtils.IsNumeric(left) && TypeUtils.IsNumeric(right))
         {
             return op switch
             {
@@ -204,8 +204,8 @@ internal class TypeInferenceService
         // String repetition: str * int or int * str
         if (op == BinaryOperator.Multiply)
         {
-            if ((left == SemanticType.Str && IsIntegerType(right)) ||
-                (IsIntegerType(left) && right == SemanticType.Str))
+            if ((left == SemanticType.Str && TypeUtils.IsInteger(right)) ||
+                (TypeUtils.IsInteger(left) && right == SemanticType.Str))
                 return SemanticType.Str;
         }
 
@@ -466,11 +466,11 @@ internal class TypeInferenceService
     private SemanticType? TryInferBuiltinUnaryOp(UnaryOperator op, SemanticType operand)
     {
         // Bitwise not on integers
-        if (IsIntegerType(operand) && op == UnaryOperator.BitwiseNot)
+        if (TypeUtils.IsInteger(operand) && op == UnaryOperator.BitwiseNot)
             return operand;
 
         // Numeric unary operators
-        if (IsNumericType(operand))
+        if (TypeUtils.IsNumeric(operand))
         {
             return op switch
             {
@@ -778,19 +778,6 @@ internal class TypeInferenceService
 
     #region Helper Methods
 
-    private static bool IsNumericType(SemanticType type)
-    {
-        return type == SemanticType.Int ||
-               type == SemanticType.Long ||
-               type == SemanticType.Float ||
-               type == SemanticType.Float32 ||
-               type == SemanticType.Double;
-    }
-
-    private static bool IsIntegerType(SemanticType type)
-    {
-        return type == SemanticType.Int || type == SemanticType.Long;
-    }
 
     private static SemanticType InferPowerResultType(SemanticType left, SemanticType right)
     {
@@ -798,7 +785,7 @@ internal class TypeInferenceService
         // - Both integer types → use numeric promotion (int**int→int, int**long→long, etc.)
         //   Math.Pow returns double, but we cast back to the promoted integer type
         // - Any float involvement → Double
-        if (IsIntegerType(left) && IsIntegerType(right))
+        if (TypeUtils.IsInteger(left) && TypeUtils.IsInteger(right))
             return InferNumericResultType(left, right);
         return SemanticType.Double;
     }

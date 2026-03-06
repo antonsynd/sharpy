@@ -401,12 +401,12 @@ internal class OperatorValidator : SemanticValidatorBase
             {
                 // Arithmetic - supported by int, float, etc.
                 DunderNames.Add or DunderNames.Sub or DunderNames.Mul or DunderNames.Div or DunderNames.Mod
-                    => IsNumericType(type),
+                    => TypeUtils.IsNumeric(type),
                 // Bitwise - supported by int
                 DunderNames.And or DunderNames.Or or DunderNames.Xor or DunderNames.LShift or DunderNames.RShift
                     => type == SemanticType.Int || type == SemanticType.Long,
                 // Unary
-                DunderNames.Neg or DunderNames.Pos => IsNumericType(type),
+                DunderNames.Neg or DunderNames.Pos => TypeUtils.IsNumeric(type),
                 DunderNames.Invert => type == SemanticType.Int || type == SemanticType.Long,
                 // Comparison - supported by all primitives
                 DunderNames.Eq or DunderNames.Ne or DunderNames.Lt or DunderNames.Le or DunderNames.Gt or DunderNames.Ge => true,
@@ -462,15 +462,6 @@ internal class OperatorValidator : SemanticValidatorBase
         }
 
         return false;
-    }
-
-    private bool IsNumericType(SemanticType type)
-    {
-        return type == SemanticType.Int
-            || type == SemanticType.Long
-            || type == SemanticType.Float
-            || type == SemanticType.Float32
-            || type == SemanticType.Double;
     }
 
     private bool IsPrimitiveType(SemanticType type)

@@ -1101,7 +1101,7 @@ internal partial class TypeChecker
             case RelationalPattern relational:
                 {
                     var valueType = CheckExpression(relational.Value);
-                    if (!IsNumericType(scrutineeType) && scrutineeType is not UnknownType)
+                    if (!TypeUtils.IsNumericOrUnknown(scrutineeType))
                     {
                         AddError(
                             $"Relational patterns require a numeric scrutinee type, got '{scrutineeType.GetDisplayName()}'",

@@ -705,14 +705,6 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Check if a type is numeric (int, long, float, double, etc.).
-    /// Delegates to PrimitiveCatalog for exhaustive primitive type checking.
-    /// Note: Also allows Unknown types to avoid cascading errors.
-    /// </summary>
-    private static bool IsNumericType(SemanticType type)
-        => type is UnknownType || PrimitiveCatalog.IsNumeric(type);
-
-    /// <summary>
     /// Extract narrowed types from a conditional expression
     /// </summary>
 
