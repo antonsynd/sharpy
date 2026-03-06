@@ -1212,7 +1212,7 @@ internal partial class RoslynEmitter
         // isinstance(var, Type) or isinstance(obj.member, Type)
         if (expr is FunctionCall call
             && call.Function is Identifier funcName
-            && funcName.Name == "isinstance"
+            && funcName.Name == BuiltinFunctionNames.IsInstance
             && call.Arguments.Length == 2
             && call.Arguments[1] is Identifier typeId)
         {

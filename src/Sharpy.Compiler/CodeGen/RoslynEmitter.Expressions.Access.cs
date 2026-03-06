@@ -77,7 +77,7 @@ internal partial class RoslynEmitter
             // isinstance(expr, Type) → expr is Type
             // Must intercept BEFORE argument evaluation because the second argument
             // is a type identifier, not a value expression.
-            if (funcName.Name == "isinstance"
+            if (funcName.Name == BuiltinFunctionNames.IsInstance
                 && call.Arguments.Length == 2
                 && call.Arguments[1] is Identifier typeId)
             {
@@ -1382,7 +1382,7 @@ internal partial class RoslynEmitter
         // global::System.Threading.Tasks.Task
         var taskTypeName = MakeGlobalQualifiedName("System", "Threading", "Tasks", "Task");
 
-        if (functionName == "gather")
+        if (functionName == BuiltinFunctionNames.Gather)
         {
             // Task.WhenAll(...)
             var whenAllAccess = MemberAccessExpression(
@@ -1398,7 +1398,7 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SeparatedList(args)));
         }
 
-        if (functionName == "sleep")
+        if (functionName == BuiltinFunctionNames.Sleep)
         {
             // Task.Delay(TimeSpan.FromSeconds(seconds))
             var delayAccess = MemberAccessExpression(
