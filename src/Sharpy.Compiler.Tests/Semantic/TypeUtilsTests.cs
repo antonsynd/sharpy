@@ -213,29 +213,6 @@ public class TypeUtilsTests
         Assert.False(TypeUtils.AreEquivalent(SemanticType.Int, SemanticType.Str));
     }
 
-    [Fact]
-    public void GetCommonType_SameTypes_ReturnsSameType()
-    {
-        var common = TypeUtils.GetCommonType(SemanticType.Int, SemanticType.Int);
-        Assert.Equal(SemanticType.Int, common);
-    }
-
-    [Fact]
-    public void GetCommonType_IntAndLong_ReturnsLong()
-    {
-        var common = TypeUtils.GetCommonType(SemanticType.Int, SemanticType.Long);
-        Assert.Equal(SemanticType.Long, common);
-    }
-
-    [Fact]
-    public void GetCommonType_IntAndFloat_ReturnsDouble()
-    {
-        // Note: Sharpy's float maps to C# double
-        var common = TypeUtils.GetCommonType(SemanticType.Int, SemanticType.Float);
-        // Float in Sharpy is double, so GetCommonType returns Double
-        Assert.Equal(SemanticType.Double, common);
-    }
-
     // ========================================
     // TupleType Equality Tests
     // ========================================

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
@@ -792,18 +793,7 @@ internal class TypeInferenceService
 
     private static SemanticType InferNumericResultType(SemanticType left, SemanticType right)
     {
-        // Type promotion rules:
-        // - double > float32 > long > int
-        // - Mixed integer/float produces float
-        if (left == SemanticType.Double || right == SemanticType.Double)
-            return SemanticType.Double;
-        if (left == SemanticType.Float || right == SemanticType.Float)
-            return SemanticType.Double; // Sharpy float maps to double
-        if (left == SemanticType.Float32 || right == SemanticType.Float32)
-            return SemanticType.Float32;
-        if (left == SemanticType.Long || right == SemanticType.Long)
-            return SemanticType.Long;
-        return SemanticType.Int;
+        return PrimitiveCatalog.GetPromotedType(left, right) ?? left;
     }
 
     private Type? GetClrType(SemanticType type)

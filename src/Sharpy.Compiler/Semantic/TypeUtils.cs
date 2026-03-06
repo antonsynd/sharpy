@@ -184,49 +184,6 @@ internal static class TypeUtils
     }
 
     /// <summary>
-    /// Get the common type of two types for binary operations.
-    /// Returns null if types are not compatible.
-    /// </summary>
-    public static SemanticType? GetCommonType(SemanticType a, SemanticType b)
-    {
-        // Same type
-        if (a.Equals(b))
-            return a;
-
-        // Numeric widening: int -> long -> float -> double
-        if (IsNumeric(a) && IsNumeric(b))
-        {
-            // Double is the widest
-            if (a is BuiltinType { ClrType: var aClr } && b is BuiltinType { ClrType: var bClr })
-            {
-                if (aClr == typeof(double) || bClr == typeof(double))
-                    return SemanticType.Double;
-                if (aClr == typeof(float) || bClr == typeof(float))
-                    return SemanticType.Float;
-                if (aClr == typeof(long) || bClr == typeof(long))
-                    return SemanticType.Long;
-                return SemanticType.Int;
-            }
-        }
-
-        // Nullable handling
-        if (a is NullableType nullableA)
-        {
-            var commonInner = GetCommonType(nullableA.UnderlyingType, b);
-            if (commonInner != null)
-                return new NullableType { UnderlyingType = commonInner };
-        }
-        if (b is NullableType nullableB)
-        {
-            var commonInner = GetCommonType(a, nullableB.UnderlyingType);
-            if (commonInner != null)
-                return new NullableType { UnderlyingType = commonInner };
-        }
-
-        return null;
-    }
-
-    /// <summary>
     /// Maps a ComparisonOperator to its corresponding BinaryOperator.
     /// </summary>
     public static Parser.Ast.BinaryOperator ComparisonOperatorToBinaryOperator(Parser.Ast.ComparisonOperator op)
