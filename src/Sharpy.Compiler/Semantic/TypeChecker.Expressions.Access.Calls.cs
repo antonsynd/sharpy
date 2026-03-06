@@ -697,6 +697,12 @@ internal partial class TypeChecker
     {
         var objectType = _semanticInfo.GetExpressionType(memberAccess.Object);
 
+        // Unwrap nullable/optional types for null-conditional method calls
+        if (objectType is NullableType nt)
+            objectType = nt.UnderlyingType;
+        else if (objectType is OptionalType ot)
+            objectType = ot.UnderlyingType;
+
         TypeSymbol? typeSymbol = null;
         List<SemanticType>? typeArgs = null;
 
