@@ -1,0 +1,40 @@
+# Test that interface method implementations are virtual and can be overridden by subclasses
+
+interface IScalable:
+    def scale(self, factor: int) -> int: ...
+
+class Base(IScalable):
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def scale(self, factor: int) -> int:
+        return self.value * factor
+
+class Derived(Base):
+    offset: int
+
+    def __init__(self, value: int, offset: int):
+        super().__init__(value)
+        self.offset = offset
+
+    @override
+    def scale(self, factor: int) -> int:
+        return self.value * factor + self.offset
+
+def main():
+    b = Base(10)
+    d = Derived(10, 5)
+
+    print(b.scale(3))
+    print(d.scale(3))
+
+    # Polymorphic call through base type
+    base_ref: Base = Derived(10, 5)
+    print(base_ref.scale(3))
+
+    # EXPECTED OUTPUT:
+    # 30
+    # 35
+    # 35

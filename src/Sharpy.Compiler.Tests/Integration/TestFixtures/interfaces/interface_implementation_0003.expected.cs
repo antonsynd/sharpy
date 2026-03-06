@@ -24,7 +24,7 @@ public static partial class InterfaceImplementation0003
     {
         public int Fee;
         public int TotalProcessed;
-        public bool ProcessPayment(int amount)
+        public virtual bool ProcessPayment(int amount)
         {
 #line 19 "interface_implementation_0003.spy"
             this.TotalProcessed = this.TotalProcessed + amount;
@@ -32,13 +32,13 @@ public static partial class InterfaceImplementation0003
             return true;
         }
 
-        public int GetFee()
+        public virtual int GetFee()
         {
 #line 23 "interface_implementation_0003.spy"
             return this.Fee;
         }
 
-        public bool ProcessRefund(int amount)
+        public virtual bool ProcessRefund(int amount)
         {
 #line 26 "interface_implementation_0003.spy"
             this.TotalProcessed = this.TotalProcessed - amount;
@@ -58,13 +58,13 @@ public static partial class InterfaceImplementation0003
     public class CashProcessor : IPaymentProcessor
     {
         public int Fee;
-        public bool ProcessPayment(int amount)
+        public virtual bool ProcessPayment(int amount)
         {
 #line 36 "interface_implementation_0003.spy"
             return true;
         }
 
-        public int GetFee()
+        public virtual int GetFee()
         {
 #line 39 "interface_implementation_0003.spy"
             return this.Fee;

@@ -109,6 +109,20 @@ internal partial class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
         }
 
+        // Add virtual keyword for methods that implement an interface method in a non-sealed class.
+        // Without virtual, subclasses cannot use @override on these methods.
+        if (_currentTypeSymbol != null
+            && _currentTypeSymbol.TypeKind == Semantic.TypeKind.Class
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword))
+            && !func.Decorators.Any(d => d.Name == DecoratorNames.Final)
+            && ImplementsInterfaceMethod(func.Name))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
+        }
+
         // Primary mechanism: Method is static if it doesn't have 'self' parameter (Pythonic)
         // @static decorator is valid but OPTIONAL/redundant
         bool hasSelfParameter = func.Parameters.Any(p =>
@@ -458,6 +472,28 @@ internal partial class RoslynEmitter
         }
 
         // No base class method found — check ALL interfaces (abstract or default)
+        var interfaceRefs = _context.SemanticBinding.GetInterfaces(_currentTypeSymbol)
+            ?? (IReadOnlyList<Semantic.InterfaceReference>)_currentTypeSymbol.Interfaces;
+        var interfaces = interfaceRefs.Select(r => r.Definition).ToList();
+        foreach (var iface in interfaces)
+        {
+            if (iface.Methods.Any(m => m.Name == methodName))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks whether the given method name matches a method declared in any interface
+    /// implemented by the current type. Used to add 'virtual' to interface implementations
+    /// so that subclasses can override them.
+    /// </summary>
+    private bool ImplementsInterfaceMethod(string methodName)
+    {
+        if (_currentTypeSymbol == null)
+            return false;
+
         var interfaceRefs = _context.SemanticBinding.GetInterfaces(_currentTypeSymbol)
             ?? (IReadOnlyList<Semantic.InterfaceReference>)_currentTypeSymbol.Interfaces;
         var interfaces = interfaceRefs.Select(r => r.Definition).ToList();

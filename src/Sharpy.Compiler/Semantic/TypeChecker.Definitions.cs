@@ -174,6 +174,20 @@ internal partial class TypeChecker
                 // Check if the base owner is an interface - interface methods are implicitly abstract
                 bool isInterfaceMethod = baseOwner?.TypeKind == TypeKind.Interface;
 
+                // Also check if the base class method implements an interface method,
+                // which makes it implicitly virtual in the generated C#
+                if (!isInterfaceMethod && baseOwner != null)
+                {
+                    foreach (var iface in GetInterfaces(baseOwner))
+                    {
+                        if (iface.Methods.Any(m => m.Name == functionDef.Name))
+                        {
+                            isInterfaceMethod = true;
+                            break;
+                        }
+                    }
+                }
+
                 if (!isInterfaceMethod)
                 {
                     // Base method exists but is not virtual/abstract/override

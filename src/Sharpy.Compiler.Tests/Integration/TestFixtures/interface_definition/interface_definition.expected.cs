@@ -18,13 +18,13 @@ public static partial class InterfaceDefinition
     public class Circle : IDrawable
     {
         public int Radius;
-        public string Draw()
+        public virtual string Draw()
         {
 #line 14 "interface_definition.spy"
             return "Drawing Circle";
         }
 
-        public int Area()
+        public virtual int Area()
         {
 #line 17 "interface_definition.spy"
             return 3 * this.Radius * this.Radius;
@@ -41,13 +41,13 @@ public static partial class InterfaceDefinition
     {
         public int Width;
         public int Height;
-        public string Draw()
+        public virtual string Draw()
         {
 #line 28 "interface_definition.spy"
             return "Drawing Rectangle";
         }
 
-        public int Area()
+        public virtual int Area()
         {
 #line 31 "interface_definition.spy"
             return this.Width * this.Height;
