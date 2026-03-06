@@ -1,0 +1,337 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Sharpy",
+  "scopeName": "source.sharpy",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#decorators" },
+    { "include": "#strings" },
+    { "include": "#fstrings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#builtins" },
+    { "include": "#constants" },
+    { "include": "#operators" },
+    { "include": "#function-definitions" },
+    { "include": "#class-definitions" },
+    { "include": "#type-annotations" },
+    { "include": "#function-calls" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.sharpy",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "decorators": {
+      "patterns": [
+        {
+          "name": "meta.decorator.sharpy",
+          "match": "(@)(\\w+)",
+          "captures": {
+            "1": { "name": "punctuation.definition.decorator.sharpy" },
+            "2": { "name": "entity.name.function.decorator.sharpy" }
+          }
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.triple.double.sharpy",
+          "begin": "\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.quoted.triple.single.sharpy",
+          "begin": "'''",
+          "end": "'''",
+          "patterns": [
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.quoted.double.sharpy",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.quoted.single.sharpy",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            { "include": "#string-escapes" }
+          ]
+        }
+      ]
+    },
+    "fstrings": {
+      "patterns": [
+        {
+          "name": "string.interpolated.triple.sharpy",
+          "begin": "f\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            { "include": "#fstring-interpolation" },
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.interpolated.sharpy",
+          "begin": "f\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#fstring-interpolation" },
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.interpolated.single.triple.sharpy",
+          "begin": "f'''",
+          "end": "'''",
+          "patterns": [
+            { "include": "#fstring-interpolation" },
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.interpolated.single.sharpy",
+          "begin": "f'",
+          "end": "'",
+          "patterns": [
+            { "include": "#fstring-interpolation" },
+            { "include": "#string-escapes" }
+          ]
+        }
+      ]
+    },
+    "fstring-interpolation": {
+      "patterns": [
+        {
+          "name": "meta.interpolation.sharpy",
+          "begin": "\\{",
+          "end": "\\}",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.interpolation.begin.sharpy" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.interpolation.end.sharpy" }
+          },
+          "patterns": [
+            { "include": "source.sharpy" }
+          ]
+        }
+      ]
+    },
+    "string-escapes": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.sharpy",
+          "match": "\\\\(x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{1,3}|[\\\\\"'abfnrtv0])"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.sharpy",
+          "match": "\\b0[xX][0-9a-fA-F](_?[0-9a-fA-F])*\\b"
+        },
+        {
+          "name": "constant.numeric.binary.sharpy",
+          "match": "\\b0[bB][01](_?[01])*\\b"
+        },
+        {
+          "name": "constant.numeric.octal.sharpy",
+          "match": "\\b0[oO][0-7](_?[0-7])*\\b"
+        },
+        {
+          "name": "constant.numeric.float.sharpy",
+          "match": "\\b[0-9](_?[0-9])*\\.([0-9](_?[0-9])*)?([eE][+-]?[0-9](_?[0-9])*)?\\b|\\b[0-9](_?[0-9])*[eE][+-]?[0-9](_?[0-9])*\\b"
+        },
+        {
+          "name": "constant.numeric.integer.sharpy",
+          "match": "\\b[0-9](_?[0-9])*\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.flow.sharpy",
+          "match": "\\b(if|elif|else|for|while|match|case|try|except|finally|with|break|continue|return|pass|raise|yield|await)\\b"
+        },
+        {
+          "name": "keyword.control.import.sharpy",
+          "match": "\\b(import|from|as)\\b"
+        },
+        {
+          "name": "storage.type.class.sharpy",
+          "match": "\\b(class|struct|interface|enum|union)\\b"
+        },
+        {
+          "name": "storage.type.function.sharpy",
+          "match": "\\b(def|async|lambda)\\b"
+        },
+        {
+          "name": "storage.type.sharpy",
+          "match": "\\b(type|const|auto)\\b"
+        },
+        {
+          "name": "keyword.other.sharpy",
+          "match": "\\b(delegate|event|property|del|to|maybe|super|self)\\b"
+        },
+        {
+          "name": "keyword.operator.logical.sharpy",
+          "match": "\\b(and|or|not|is|in)\\b"
+        },
+        {
+          "name": "keyword.reserved.sharpy",
+          "match": "\\b(defer|do)\\b"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.sharpy",
+          "match": "\\b(print|len|range|input|int|str|float|bool|list|dict|set|tuple|type|isinstance|issubclass|abs|min|max|sum|any|all|sorted|reversed|enumerate|zip|map|filter|hash|id|repr|chr|ord|hex|bin|oct|round|pow|divmod|format|iter|next|super|open|assert)\\b"
+        },
+        {
+          "name": "support.type.builtin.sharpy",
+          "match": "\\b(int|long|float|float32|double|bool|str|bytes|object)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.sharpy",
+          "match": "\\b(True|False|None)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.pipe.sharpy",
+          "match": "\\|>"
+        },
+        {
+          "name": "keyword.operator.walrus.sharpy",
+          "match": ":="
+        },
+        {
+          "name": "keyword.operator.nullcoalesce.sharpy",
+          "match": "\\?\\?=?"
+        },
+        {
+          "name": "keyword.operator.nullconditional.sharpy",
+          "match": "\\?\\."
+        },
+        {
+          "name": "keyword.operator.arrow.sharpy",
+          "match": "->"
+        },
+        {
+          "name": "keyword.operator.ellipsis.sharpy",
+          "match": "\\.\\.\\."
+        },
+        {
+          "name": "keyword.operator.comparison.sharpy",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.assignment.augmented.sharpy",
+          "match": "\\+=|-=|\\*\\*=|\\*=|//=|/=|%=|&=|\\|=|\\^=|<<=|>>="
+        },
+        {
+          "name": "keyword.operator.assignment.sharpy",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.arithmetic.sharpy",
+          "match": "\\*\\*|//|\\+|-|\\*|/|%"
+        },
+        {
+          "name": "keyword.operator.bitwise.sharpy",
+          "match": "<<|>>|&|\\||\\^|~"
+        }
+      ]
+    },
+    "function-definitions": {
+      "patterns": [
+        {
+          "name": "meta.function.sharpy",
+          "match": "\\b(def)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.function.sharpy" },
+            "2": { "name": "entity.name.function.sharpy" }
+          }
+        },
+        {
+          "name": "meta.function.async.sharpy",
+          "match": "\\b(async)\\s+(def)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.function.sharpy" },
+            "2": { "name": "storage.type.function.sharpy" },
+            "3": { "name": "entity.name.function.sharpy" }
+          }
+        }
+      ]
+    },
+    "class-definitions": {
+      "patterns": [
+        {
+          "name": "meta.class.sharpy",
+          "match": "\\b(class|struct|interface|enum|union)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.class.sharpy" },
+            "2": { "name": "entity.name.type.sharpy" }
+          }
+        }
+      ]
+    },
+    "type-annotations": {
+      "patterns": [
+        {
+          "name": "meta.type.annotation.sharpy",
+          "match": ":\\s*([a-zA-Z_][a-zA-Z0-9_]*(\\[.*?\\])?)(\\?)?",
+          "captures": {
+            "1": { "name": "support.type.sharpy" },
+            "3": { "name": "keyword.operator.optional.sharpy" }
+          }
+        }
+      ]
+    },
+    "function-calls": {
+      "patterns": [
+        {
+          "name": "meta.function-call.sharpy",
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+          "captures": {
+            "1": { "name": "entity.name.function.call.sharpy" }
+          }
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.sharpy",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    }
+  }
+}
