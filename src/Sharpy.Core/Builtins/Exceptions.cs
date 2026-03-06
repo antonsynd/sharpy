@@ -162,4 +162,46 @@ namespace Sharpy
         {
         }
     }
+
+    /// <summary>
+    /// File exists error — raised when trying to create a file that already exists.
+    /// </summary>
+    public class FileExistsError : IOException
+    {
+        public FileExistsError(string message) : base(message)
+        {
+        }
+
+        public FileExistsError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Permission error — raised when an operation lacks sufficient access rights.
+    /// </summary>
+    public class PermissionError : UnauthorizedAccessException
+    {
+        public PermissionError(string message) : base(message)
+        {
+        }
+
+        public PermissionError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Is a directory error — raised when a file operation is attempted on a directory.
+    /// </summary>
+    public class IsADirectoryError : IOException
+    {
+        public IsADirectoryError(string message) : base(message)
+        {
+        }
+
+        public IsADirectoryError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
 }
