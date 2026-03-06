@@ -2,6 +2,7 @@ extern alias SharpyRT;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Registry;
 

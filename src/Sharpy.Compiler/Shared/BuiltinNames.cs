@@ -1,4 +1,4 @@
-namespace Sharpy.Compiler.Semantic;
+namespace Sharpy.Compiler.Shared;
 
 /// <summary>
 /// Compile-time constants for Python builtin function names.

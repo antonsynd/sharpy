@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Discovery;
 

@@ -1,7 +1,7 @@
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
-using static Sharpy.Compiler.Semantic.BuiltinNames;
+using static Sharpy.Compiler.Shared.BuiltinNames;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
