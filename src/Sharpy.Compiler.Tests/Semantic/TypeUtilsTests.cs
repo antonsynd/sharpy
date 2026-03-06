@@ -7,6 +7,29 @@ namespace Sharpy.Compiler.Tests.Semantic;
 public class TypeUtilsTests
 {
     [Theory]
+    [InlineData("int")]
+    [InlineData("long")]
+    [InlineData("float")]
+    [InlineData("double")]
+    public void IsNumericOrUnknown_ForNumericTypes_ReturnsTrue(string typeName)
+    {
+        var type = GetBuiltinType(typeName);
+        Assert.True(TypeUtils.IsNumericOrUnknown(type));
+    }
+
+    [Fact]
+    public void IsNumericOrUnknown_ForUnknownType_ReturnsTrue()
+    {
+        Assert.True(TypeUtils.IsNumericOrUnknown(SemanticType.Unknown));
+    }
+
+    [Fact]
+    public void IsNumericOrUnknown_ForNonNumericType_ReturnsFalse()
+    {
+        Assert.False(TypeUtils.IsNumericOrUnknown(SemanticType.Str));
+    }
+
+    [Theory]
     [InlineData("int", true)]
     [InlineData("long", true)]
     [InlineData("float", true)]

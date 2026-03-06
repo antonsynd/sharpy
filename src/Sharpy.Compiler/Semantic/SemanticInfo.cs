@@ -55,9 +55,11 @@ public class SemanticInfo : ISemanticQuery
         new(ReferenceEqualityComparer.Instance);
 
     // Track functions that contain yield statements (generators)
+    // THREADING: single-threaded access only — not wrapped in ConcurrentDictionary
     private readonly HashSet<FunctionDef> _generatorFunctions = new(ReferenceEqualityComparer.Instance);
 
     // Track member access expressions that resolve to events (for codegen to emit +=/-= correctly)
+    // THREADING: single-threaded access only — not wrapped in ConcurrentDictionary
     private readonly HashSet<Expression> _eventAccessNodes = new(ReferenceEqualityComparer.Instance);
 
     // Map patterns to their resolved union case type symbols
@@ -68,6 +70,7 @@ public class SemanticInfo : ISemanticQuery
     // Track expressions whose type was set to UnknownType due to a user error
     // (i.e., a diagnostic was already emitted for the node). This distinguishes
     // expected error-recovery Unknown types from unexpected ones (compiler bugs).
+    // THREADING: single-threaded access only — not wrapped in ConcurrentDictionary
     private readonly HashSet<Expression> _errorRecoveryNodes =
         new(ReferenceEqualityComparer.Instance);
 
