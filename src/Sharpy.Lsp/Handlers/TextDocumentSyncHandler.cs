@@ -52,11 +52,12 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         var uri = request.TextDocument.Uri.ToString();
         var version = request.TextDocument.Version ?? 0;
 
-        // Full sync mode: the last content change contains the full document
         var changes = request.ContentChanges.ToArray();
         if (changes.Length > 0)
         {
-            var text = changes[^1].Text;
+            var currentDoc = _workspace.GetDocument(uri);
+            var currentText = currentDoc?.Text ?? string.Empty;
+            var text = ApplyIncrementalChanges(currentText, changes);
             _workspace.UpdateDocument(uri, text, version);
         }
 
@@ -84,7 +85,7 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         return new TextDocumentSyncRegistrationOptions
         {
             DocumentSelector = TextDocumentSelector.ForPattern("**/*.spy"),
-            Change = TextDocumentSyncKind.Full,
+            Change = TextDocumentSyncKind.Incremental,
             Save = new SaveOptions { IncludeText = false }
         };
     }
@@ -94,5 +95,55 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         var sourceText = _workspace.GetSourceText(uri);
         _diagnosticPublisher.PublishDiagnostics(uri, result, sourceText);
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Applies incremental text changes to a document. Each change has an optional Range
+    /// (for partial updates) or null Range (for full replacement).
+    /// </summary>
+    private static string ApplyIncrementalChanges(
+        string currentText,
+        TextDocumentContentChangeEvent[] changes)
+    {
+        var text = currentText;
+        foreach (var change in changes)
+        {
+            if (change.Range != null)
+            {
+                var startOffset = GetOffset(text, change.Range.Start);
+                var endOffset = GetOffset(text, change.Range.End);
+                text = string.Concat(text.AsSpan(0, startOffset), change.Text, text.AsSpan(endOffset));
+            }
+            else
+            {
+                // Full document replacement (no range = full sync fallback)
+                text = change.Text;
+            }
+        }
+        return text;
+    }
+
+    /// <summary>
+    /// Converts an LSP Position (0-based line/character) to a string offset.
+    /// </summary>
+    private static int GetOffset(string text, Position position)
+    {
+        var offset = 0;
+        var line = 0;
+
+        while (line < position.Line && offset < text.Length)
+        {
+            if (text[offset] == '\n')
+            {
+                line++;
+            }
+            offset++;
+        }
+
+        // Add character offset within the target line
+        offset += position.Character;
+
+        // Clamp to text length
+        return System.Math.Min(offset, text.Length);
     }
 }
