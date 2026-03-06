@@ -17,6 +17,7 @@ The shared backends provide:
 """
 
 import asyncio
+import os
 import sys
 import time
 from dataclasses import dataclass
@@ -233,6 +234,13 @@ class ClaudeBackend:
                 "ANTHROPIC_AUTH_TOKEN": "freecc",
                 "ANTHROPIC_BASE_URL": "http://localhost:8082",
             }
+            # Forward NVIDIA NIM configuration if present in the environment
+            nvidia_api_key = os.environ.get("NVIDIA_NIM_API_KEY")
+            if nvidia_api_key:
+                extra_env["NVIDIA_NIM_API_KEY"] = nvidia_api_key
+            model = os.environ.get("MODEL")
+            if model:
+                extra_env["MODEL"] = model
 
         # Create the shared backend with heartbeat callback
         self._shared_backend = SharedClaudeBackend(
