@@ -131,10 +131,10 @@ public class OverloadIndexBuilderTypeTests
         var exceptionTypes = builtins.Types.Where(t => t.IsException).ToList();
         // Most exception types directly extend Exception, but some (IOError, FileNotFoundError,
         // FileExistsError, IsADirectoryError) extend IOException, FileNotFoundException,
-        // or UnauthorizedAccessException
+        // UnauthorizedAccessException, or ValueError (JSONDecodeError)
         var allowedBaseTypes = new HashSet<string?>
         {
-            "Exception", "IOException", "FileNotFoundException", "UnauthorizedAccessException"
+            "Exception", "IOException", "FileNotFoundException", "UnauthorizedAccessException", "ValueError"
         };
         foreach (var exType in exceptionTypes)
         {
