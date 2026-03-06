@@ -402,12 +402,12 @@ internal class OperatorValidator : SemanticValidatorBase
                 // Arithmetic - supported by int, float, etc.
                 DunderNames.Add or DunderNames.Sub or DunderNames.Mul or DunderNames.Div or DunderNames.Mod
                     => TypeUtils.IsNumeric(type),
-                // Bitwise - supported by int
+                // Bitwise - supported by all integer types
                 DunderNames.And or DunderNames.Or or DunderNames.Xor or DunderNames.LShift or DunderNames.RShift
-                    => type == SemanticType.Int || type == SemanticType.Long,
+                    => TypeUtils.IsInteger(type),
                 // Unary
                 DunderNames.Neg or DunderNames.Pos => TypeUtils.IsNumeric(type),
-                DunderNames.Invert => type == SemanticType.Int || type == SemanticType.Long,
+                DunderNames.Invert => TypeUtils.IsInteger(type),
                 // Comparison - supported by all primitives
                 DunderNames.Eq or DunderNames.Ne or DunderNames.Lt or DunderNames.Le or DunderNames.Gt or DunderNames.Ge => true,
                 _ => false
