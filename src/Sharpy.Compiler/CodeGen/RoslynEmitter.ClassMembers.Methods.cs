@@ -494,9 +494,7 @@ internal partial class RoslynEmitter
         if (_currentTypeSymbol == null)
             return false;
 
-        var interfaceRefs = _context.SemanticBinding.GetInterfaces(_currentTypeSymbol)
-            ?? (IReadOnlyList<Semantic.InterfaceReference>)_currentTypeSymbol.Interfaces;
-        var interfaces = interfaceRefs.Select(r => r.Definition).ToList();
+        var interfaces = Semantic.TypeSymbol.GetAllInterfaces(_currentTypeSymbol, _context.SemanticBinding);
         foreach (var iface in interfaces)
         {
             if (iface.Methods.Any(m => m.Name == methodName))
