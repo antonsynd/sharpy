@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+
 namespace Sharpy
 {
     /// <summary>
@@ -202,6 +203,29 @@ namespace Sharpy
 
         public IsADirectoryError(string message, Exception innerException) : base(message, innerException)
         {
+        }
+    }
+
+    /// <summary>
+    /// Raised when argument parsing fails.
+    /// </summary>
+    public class ArgumentError : Exception
+    {
+        public ArgumentError(string message) : base(message)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Raised to signal program exit (e.g., after --help).
+    /// </summary>
+    public class SystemExit : Exception
+    {
+        public int Code { get; }
+
+        public SystemExit(int code) : base("SystemExit: " + code)
+        {
+            Code = code;
         }
     }
 }

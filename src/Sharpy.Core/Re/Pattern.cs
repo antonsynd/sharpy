@@ -32,8 +32,9 @@ namespace Sharpy
         {
             string target = ApplyEndpos(s, endpos);
             var m = _regex.Match(target, pos);
-            if (!m.Success) return null;
-            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos);
+            if (!m.Success)
+                return null;
+            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos, _regex);
         }
 
         /// <summary>
@@ -43,8 +44,9 @@ namespace Sharpy
         {
             string target = ApplyEndpos(s, endpos);
             var m = _regex.Match(target, pos);
-            if (!m.Success || m.Index != pos) return null;
-            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos);
+            if (!m.Success || m.Index != pos)
+                return null;
+            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos, _regex);
         }
 
         /// <summary>
@@ -54,8 +56,9 @@ namespace Sharpy
         {
             string target = ApplyEndpos(s, endpos);
             var m = _regex.Match(target, pos);
-            if (!m.Success || m.Index != pos || m.Length != target.Length - pos) return null;
-            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos);
+            if (!m.Success || m.Index != pos || m.Length != target.Length - pos)
+                return null;
+            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos, _regex);
         }
 
         /// <summary>
@@ -71,7 +74,8 @@ namespace Sharpy
 
             foreach (System.Text.RegularExpressions.Match m in matches)
             {
-                if (m.Index < pos) continue;
+                if (m.Index < pos)
+                    continue;
 
                 if (!hasGroups)
                 {
@@ -110,8 +114,9 @@ namespace Sharpy
 
             foreach (System.Text.RegularExpressions.Match m in matches)
             {
-                if (m.Index < pos) continue;
-                result.Append(new ReMatch(m, s, PatternStr, pos, actualEndpos));
+                if (m.Index < pos)
+                    continue;
+                result.Append(new ReMatch(m, s, PatternStr, pos, actualEndpos, _regex));
             }
 
             return result;
@@ -161,7 +166,8 @@ namespace Sharpy
 
         private static string ApplyEndpos(string s, int endpos)
         {
-            if (endpos < 0 || endpos >= s.Length) return s;
+            if (endpos < 0 || endpos >= s.Length)
+                return s;
             return s.Substring(0, endpos);
         }
 

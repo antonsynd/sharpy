@@ -66,7 +66,7 @@ namespace Sharpy
         public override string ToString()
         {
             var parts = new System.Collections.Generic.List<string>();
-            foreach (string key in _values)
+            foreach (string key in _values.Keys())
             {
                 object? val = _values[key];
                 string valueStr;

@@ -188,7 +188,7 @@ namespace Sharpy
         // ===== File/Directory Info =====
 
         /// <summary>Check if a path exists (file or directory).</summary>
-        public static bool Path_exists(string path)
+        public static bool PathExists(string path)
         {
             return File.Exists(path) || Directory.Exists(path);
         }
@@ -216,9 +216,9 @@ namespace Sharpy
             yield return (top, dirnames, filenames);
 
             // Recursively walk subdirectories
-            for (int i = 0; i < ((System.Collections.Generic.ICollection<string>)dirnames).Count; i++)
+            foreach (string dirname in dirnames)
             {
-                var subdir = System.IO.Path.Combine(top, dirnames[i]);
+                var subdir = System.IO.Path.Combine(top, dirname);
                 foreach (var entry in Walk(subdir))
                 {
                     yield return entry;

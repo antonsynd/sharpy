@@ -9,6 +9,7 @@ namespace Sharpy
     public sealed class ReMatch
     {
         private readonly System.Text.RegularExpressions.Match _match;
+        private readonly Regex? _compiledRegex;
 
         /// <summary>The input string.</summary>
         public string String { get; }
@@ -22,13 +23,14 @@ namespace Sharpy
         /// <summary>The end position of the search.</summary>
         public int Endpos { get; }
 
-        internal ReMatch(System.Text.RegularExpressions.Match match, string input, string pattern, int pos, int endpos)
+        internal ReMatch(System.Text.RegularExpressions.Match match, string input, string pattern, int pos, int endpos, Regex? compiledRegex = null)
         {
             _match = match;
             String = input;
             Pattern = pattern;
             Pos = pos;
             Endpos = endpos;
+            _compiledRegex = compiledRegex;
         }
 
         /// <summary>
@@ -123,8 +125,8 @@ namespace Sharpy
 
         private string[] GetGroupNames()
         {
-            // Build from the regex; we can introspect group names from the pattern
-            var regex = new Regex(RePatternTranslator.Translate(Pattern));
+            // Use cached regex if available, otherwise compile once
+            var regex = _compiledRegex ?? new Regex(RePatternTranslator.Translate(Pattern));
             var names = regex.GetGroupNames();
             // Filter out numeric-only names (those are unnamed groups)
             var named = new System.Collections.Generic.List<string>();

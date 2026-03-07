@@ -190,7 +190,8 @@ namespace Sharpy
             // Check required arguments
             foreach (var argDef in _arguments)
             {
-                if (argDef.Action == "help") continue;
+                if (argDef.Action == "help")
+                    continue;
 
                 if (argDef.Required && !seen.Contains(argDef.Dest))
                 {
@@ -534,7 +535,8 @@ namespace Sharpy
 
         private static object? GetDefaultForAction(string action, object? defaultValue)
         {
-            if (defaultValue != null) return defaultValue;
+            if (defaultValue != null)
+                return defaultValue;
 
             switch (action)
             {
@@ -564,29 +566,6 @@ namespace Sharpy
             public string? Nargs { get; set; }
             public List<string>? Choices { get; set; }
             public bool IsOptional { get; set; }
-        }
-    }
-
-    /// <summary>
-    /// Raised when argument parsing fails.
-    /// </summary>
-    public class ArgumentError : Exception
-    {
-        public ArgumentError(string message) : base(message)
-        {
-        }
-    }
-
-    /// <summary>
-    /// Raised to signal program exit (e.g., after --help).
-    /// </summary>
-    public class SystemExit : Exception
-    {
-        public int Code { get; }
-
-        public SystemExit(int code) : base("SystemExit: " + code)
-        {
-            Code = code;
         }
     }
 }
