@@ -1,0 +1,37 @@
+# Score manager with dict literals, filtering, and spread merging
+class ScoreManager:
+    scores: dict[str, int]
+    
+    def __init__(self):
+        # Dict literal with initial scores
+        self.scores = {
+            "math": 75,
+            "science": 85,
+            "history": 65
+        }
+    
+    def get_passing(self, cutoff: int) -> dict[str, int]:
+        passing: dict[str, int] = {}
+        for subject in self.scores:
+            if self.scores[subject] >= cutoff:
+                passing[subject] = self.scores[subject]
+        return passing
+    
+    def merge_defaults(self) -> dict[str, int]:
+        # Dict literal with spread operator for merging
+        defaults: dict[str, int] = {"english": 70, "art": 80}
+        return {**defaults, **self.scores}
+
+def main():
+    manager = ScoreManager()
+    
+    # Filter to passing scores (>= 70)
+    passing: dict[str, int] = manager.get_passing(70)
+    print(len(passing))
+    print(passing.get("science", 0))
+    print(passing.get("history", 0))
+    
+    # Merge with default scores using spread
+    combined: dict[str, int] = manager.merge_defaults()
+    print(len(combined))
+    print(combined.get("english", 0))

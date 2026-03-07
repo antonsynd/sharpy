@@ -1,0 +1,6 @@
+def main():
+    # Sum integers from 5 to 9 using range(start, end)
+    total: int = 0
+    for n in range(5, 10):
+        total += n
+    print(total)

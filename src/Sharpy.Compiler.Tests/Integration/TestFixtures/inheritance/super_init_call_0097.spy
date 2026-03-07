@@ -1,0 +1,32 @@
+# Test super().__init__() with multi-level inheritance and computed parameters
+class Point:
+    x: float
+    y: float
+    
+    def __init__(self, x_val: float, y_val: float):
+        self.x = x_val
+        self.y = y_val
+
+class Rectangle(Point):
+    width: float
+    height: float
+    
+    def __init__(self, origin_x: float, origin_y: float, w: float, h: float):
+        super().__init__(origin_x, origin_y)
+        self.width = w
+        self.height = h
+    
+    def area(self) -> float:
+        return self.width * self.height
+
+class Square(Rectangle):
+    def __init__(self, origin_x: float, origin_y: float, side: float):
+        super().__init__(origin_x, origin_y, side, side)
+
+def main():
+    s: Square = Square(10.0, 20.0, 5.0)
+    print(s.x)
+    print(s.y)
+    print(s.width)
+    print(s.height)
+    print(s.area())

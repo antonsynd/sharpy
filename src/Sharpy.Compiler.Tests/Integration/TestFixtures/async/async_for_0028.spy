@@ -1,0 +1,27 @@
+# Test: Async for with filtering and accumulation pattern
+# Processes async data stream, filters evens, accumulates sum
+
+async def data_stream() -> int:
+    # Simulate async data source yielding varied values
+    yield 5
+    yield 12
+    yield 7
+    yield 8
+    yield 15
+    yield 6
+
+async def main():
+    total: int = 0
+    count: int = 0
+    
+    # Process stream: filter evens and accumulate
+    async for value in data_stream():
+        if value % 2 == 0:
+            total += value
+            count += 1
+            print(f"{value}")
+        else:
+            print(f"skip")
+    
+    print(f"{count}")
+    print(f"{total}")
