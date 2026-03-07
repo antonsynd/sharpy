@@ -1,1 +1,1 @@
-TODO: open() returns object instead of TextFile. See #320
+TODO: TypeChecker with-statement does not recognize IDisposable on .NET types. See #319

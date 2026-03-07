@@ -1,1 +1,1 @@
-TODO: Codegen emits unqualified using alias for stdlib modules. See #319
+TODO: Codegen emits Sharpy.JSON instead of Sharpy.Json (UpperCaseAcronyms in SimpleToPascalCase). See #319

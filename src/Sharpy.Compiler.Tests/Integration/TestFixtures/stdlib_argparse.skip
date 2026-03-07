@@ -1,1 +1,1 @@
-TODO: Codegen emits unqualified using alias for stdlib modules. See #319
+TODO: Type-only modules (no functions) not resolvable by ImportResolver.TryResolveNetModule. See #319
