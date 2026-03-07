@@ -107,6 +107,33 @@ internal class ClrTypeMapper
             return SemanticType.Int;
         }
 
+        // Sharpy.TextFile -> UserDefinedType with IDisposable
+        if (clrType.FullName == "Sharpy.TextFile")
+        {
+            var disposableSymbol = new TypeSymbol
+            {
+                Name = "IDisposable",
+                Kind = SymbolKind.Type,
+                TypeKind = TypeKind.Interface
+            };
+            var textFileSymbol = new TypeSymbol
+            {
+                Name = "TextFile",
+                Kind = SymbolKind.Type,
+                TypeKind = TypeKind.Class,
+                ClrType = clrType,
+                Interfaces = new List<InterfaceReference>
+                {
+                    new InterfaceReference { Definition = disposableSymbol }
+                }
+            };
+            return new UserDefinedType
+            {
+                Name = "TextFile",
+                Symbol = textFileSymbol
+            };
+        }
+
         // Fallback to object for unknown types
         return SemanticType.Object;
     }
