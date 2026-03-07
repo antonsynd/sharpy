@@ -1,7 +1,7 @@
 
 namespace Sharpy
 {
-    internal static partial class Itertools
+    public static partial class Itertools
     {
         public static Iterator<T> Repeat<T>(T elem)
         {
