@@ -3,6 +3,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser.Ast;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
@@ -13,18 +14,6 @@ namespace Sharpy.Lsp.Handlers;
 /// </summary>
 internal sealed class SharplyRenameHandler : RenameHandlerBase
 {
-    // Keep in sync with Lexer.Keywords (src/Sharpy.Compiler/Lexer/Lexer.cs).
-    // "self" is a contextual keyword, not a lexer keyword, but must be blocked for rename.
-    private static readonly HashSet<string> SharplyKeywords = new(StringComparer.Ordinal)
-    {
-        "def", "class", "struct", "interface", "enum", "union", "if", "else", "elif",
-        "while", "for", "in", "return", "break", "continue", "pass", "try", "except",
-        "finally", "raise", "assert", "with", "import", "from", "as", "auto", "const",
-        "lambda", "type", "match", "case", "async", "await", "yield", "property", "event",
-        "delegate", "del", "to", "maybe", "super", "defer", "do", "True", "False", "None",
-        "and", "or", "not", "is", "self"
-    };
-
     private readonly SharplyWorkspace _workspace;
     private readonly CompilerApi _api;
 
@@ -45,7 +34,7 @@ internal sealed class SharplyRenameHandler : RenameHandlerBase
         var newName = request.NewName;
 
         // Validate new name
-        if (string.IsNullOrWhiteSpace(newName) || SharplyKeywords.Contains(newName))
+        if (string.IsNullOrWhiteSpace(newName) || Lexer.KeywordNames.Contains(newName))
             return null;
 
         if (!IsValidIdentifier(newName))
