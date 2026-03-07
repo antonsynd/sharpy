@@ -1,1 +1,1 @@
-TODO: Codegen emits Sharpy.JSON instead of Sharpy.Json (UpperCaseAcronyms in SimpleToPascalCase). See #319
+Sharpy.Core JsonSerializer doesn't handle List<T> serialization (runtime TypeError)

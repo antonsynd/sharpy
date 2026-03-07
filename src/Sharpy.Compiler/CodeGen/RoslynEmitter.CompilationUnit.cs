@@ -421,12 +421,17 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Check if a module name corresponds to a Sharpy stdlib (.NET) module
-    /// by looking up the module symbol in the symbol table.
+    /// Check if a module name corresponds to a Sharpy stdlib (.NET) module.
+    /// Checks both the SemanticBinding registry (populated during import resolution)
+    /// and the symbol table (for import statements that register module symbols).
     /// </summary>
     private bool IsStdlibModule(string moduleName)
     {
-        // For dotted names like "os.path", look up the top-level part
+        // Check SemanticBinding first (works for both import and from-import)
+        if (_context.SemanticBinding.IsNetModule(moduleName))
+            return true;
+
+        // Fallback: check symbol table (works for import statements)
         var topLevel = moduleName.Split('.')[0];
         var symbol = _context.LookupSymbol(topLevel);
         return symbol is ModuleSymbol { IsNetModule: true };
@@ -441,8 +446,17 @@ internal partial class RoslynEmitter
     private static string ConvertStdlibModuleToFullyQualified(string moduleName)
     {
         var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        var className = string.Concat(parts.Select(SimpleToPascalCase));
+        // Stdlib classes use simple PascalCase (e.g., Json, Os, Re) — not the
+        // UpperCaseAcronyms logic used for user module names (which would produce JSON).
+        var className = string.Concat(parts.Select(StdlibToPascalCase));
         return $"global::Sharpy.{className}";
+    }
+
+    private static string StdlibToPascalCase(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return name;
+        return char.ToUpperInvariant(name[0]) + name[1..];
     }
 
 
