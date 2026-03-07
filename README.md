@@ -3,22 +3,9 @@
 [![.NET 10 Build](https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml/badge.svg)](https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml)
 ![.NET](https://img.shields.io/badge/.NET-10.0-blue)
 
-**A modern, statically-typed Pythonic language for .NET**
+**A statically-typed Pythonic language for .NET**
 
-Sharpy combines Python's elegant syntax with .NET's type safety and performance. Write Python-like code that compiles to CIL and runs on the .NET runtime.
-
-### Key Features
-
-| | |
-|---|---|
-| **Pythonic Syntax** | Python-style classes, functions, decorators, comprehensions, f-strings |
-| **Static Typing** | Full type inference, generics, type narrowing, |
-| **Null Safety** | Nullable types (`T \| None`), null-conditional (`?.`), null-coalescing (`??`) |
-| **Tagged Unions** | True optional type (`T?`), result type (`T !Exception`) |
-| **.NET Interop** | Import and use .NET types directly; `snake_case` auto-maps to `PascalCase` |
-| **Zero Runtime Overhead** | Compiles to idiomatic C# via Roslyn - no interpreter, no reflection |
-
-## Quick Example
+Sharpy starts with Python's syntax and adds static typing, null safety, tagged unions, and seamless .NET interop — then compiles to idiomatic C# via Roslyn with zero runtime overhead.
 
 ```python
 # hello.spy
@@ -31,56 +18,63 @@ def main():
 ```
 
 ```bash
-$ dotnet run --project src/Sharpy.Cli -- run hello.spy
+$ sharpyc run hello.spy
 Hello, World!
 ```
 
-## Language Tour
+## What Sharpy Adds
 
-### Types and Inference
+### Static Typing with Full Inference
+
+Types are checked at compile time. Inside functions, the compiler infers types so you rarely need to write them — but module-level declarations require annotations.
 
 ```python
-# Type inference inside functions
 def main():
-    x: int = 42           # Explicit type
-    y = 42                # Inferred as int
-    pi = 3.14159          # Inferred as float (double)
+    x = 42          # Inferred as int
+    pi = 3.14159    # Inferred as float (double)
+    name = "hello"  # Inferred as str
 
-# Module-level requires type annotations
+# Module-level requires annotations
 counter: int = 0
 ```
 
-### Classes and Inheritance
+### Null Safety
+
+Non-nullable by default. Nullable types are explicit, and the compiler tracks nullability through control flow.
 
 ```python
-@abstract
-class Shape:
-    name: str
+def process(calc: Calculator?, a: int, b: int) -> int:
+    result: int? = calc?.add(a, b)  # Null-conditional
+    return result ?? 0              # Null coalescing
 
-    def __init__(self, name: str):
-        self.name = name
+def check(x: int?) -> None:
+    if x is not None:
+        print(x + 10)  # Narrowed to int — no unwrap needed
+```
 
-    @abstract
-    def area(self) -> float: ...
+### Optional and Result Types
 
-class Circle(Shape):
-    radius: float
+Tagged unions for safe error handling — no exceptions required.
 
-    def __init__(self, radius: float):
-        super().__init__("Circle")
-        self.radius = radius
+```python
+def find_user(name: str) -> str?:
+    if name == "Alice":
+        return Some("alice@example.com")
+    return None()
 
-    @override
-    def area(self) -> float:
-        return 3.14 * self.radius * self.radius
+def safe_divide(a: int, b: int) -> int !str:
+    if b == 0:
+        return Err("division by zero")
+    return Ok(a / b)
 
 def main():
-    c = Circle(4.0)
-    print(c.name)     # Circle
-    print(c.area())   # 50.24
+    print(find_user("Alice").unwrap_or("not found"))  # alice@example.com
+    print(safe_divide(10, 3).unwrap_or(0))            # 3
 ```
 
 ### Interfaces
+
+No duck typing — implement interfaces explicitly.
 
 ```python
 interface IDrawable:
@@ -100,128 +94,9 @@ class Circle(IDrawable):
         return 3 * self.radius * self.radius
 ```
 
-### Generics
-
-```python
-class Cell[T]:
-    value: T
-
-    def __init__(self, initial: T):
-        self.value = initial
-
-    def get(self) -> T:
-        return self.value
-
-    def set(self, new_value: T):
-        self.value = new_value
-
-def identity[T](x: T) -> T:
-    return x
-
-def main():
-    c = Cell[int](10)
-    print(c.get())         # 10
-    print(identity("hello"))  # hello
-```
-
-### Collections and Comprehensions
-
-```python
-def main():
-    numbers: list[int] = [1, 2, 3, 4, 5]
-    mapping: dict[str, float] = {"pi": 3.14, "e": 2.718}
-    unique: set[str] = {"x", "y", "z"}
-
-    # List comprehension
-    doubled: list[int] = [x * 2 for x in range(5)]
-
-    # Dict comprehension
-    squares: dict[int, int] = {x: x * x for x in range(5)}
-
-    # Set comprehension
-    evens: set[int] = {x for x in range(10) if x % 2 == 0}
-
-    # Spread operators
-    combined: list[int] = [*numbers, 6, 7, 8]
-```
-
-### Optional and Result Types
-
-```python
-# Optional type - safe tagged union
-def find_user(name: str) -> str?:
-    if name == "Alice":
-        return Some("alice@example.com")
-
-    return None()
-
-# Result type - Rust-style error handling
-def safe_divide(a: int, b: int) -> int !str:
-    if b == 0:
-        return Err("division by zero")
-
-    return Ok(a / b)
-
-def main():
-    email: str? = find_user("Alice")
-    print(email.unwrap_or("not found"))  # alice@example.com
-
-    result: int !str = safe_divide(10, 3)
-    print(result.unwrap_or(0))           # 3
-```
-
-### Null Safety and Type Narrowing
-
-Works with optional types too.
-
-```python
-def process_value(calc: Calculator?, a: int, b: int) -> int:
-    result: int? = calc?.add(a, b)  # Null-conditional
-    return result ?? 0              # Null coalescing
-
-def check_value(x: int?) -> None:
-    if x is not None:
-        print(x + 10)  # Narrowed to int - no unwrap needed
-```
-
-### Pattern Matching
-
-```python
-enum Color:
-    RED = 0
-    GREEN = 1
-    BLUE = 2
-
-def describe(value: int):
-    match value:
-        case 1:
-            print("one")
-        case 42:
-            print("forty-two")
-        case x if x > 100:
-            print(f"big: {x}")
-        case _:
-            print("other")
-```
-
-### Generators
-
-```python
-def fibonacci(n: int) -> int:
-    a = 0
-    b = 1
-    i = 0
-    while i < n:
-        yield a
-        a, b = b, a + b
-        i += 1
-
-def main():
-    for x in fibonacci(8):
-        print(x)  # 0, 1, 1, 2, 3, 5, 8, 13
-```
-
 ### Structs (Value Types)
+
+True value semantics — copies on assignment, allocated on the stack.
 
 ```python
 struct Point:
@@ -234,36 +109,32 @@ struct Point:
 
 def main():
     p1 = Point(10, 20)
-    p2 = p1              # Copy - value semantics
+    p2 = p1       # Copy — value semantics
     p2.x = 99
-    print(p1.x)          # 10 - original unchanged
+    print(p1.x)   # 10 — original unchanged
 ```
 
-### Enums
+### Generics
+
+Type-safe generics on classes and functions with bracket syntax.
 
 ```python
-enum TrafficLight:
-    RED = 0
-    YELLOW = 1
-    GREEN = 2
+class Cell[T]:
+    value: T
 
-def main():
-    current: TrafficLight = TrafficLight.RED
-    print(current == TrafficLight.RED)  # True
-```
+    def __init__(self, initial: T):
+        self.value = initial
 
-### Named Tuples
+    def get(self) -> T:
+        return self.value
 
-```python
-type Point = tuple[x: float, y: float]
-
-def main():
-    p: Point = (x=1.0, y=2.0)
-    print(p.x)  # 1.0
-    print(p.y)  # 2.0
+def identity[T](x: T) -> T:
+    return x
 ```
 
 ### Properties
+
+First-class property declarations — no `@property` boilerplate.
 
 ```python
 class Person:
@@ -273,42 +144,36 @@ class Person:
     def __init__(self, name: str, age: int):
         self.name = name
         self.age = age
-
-def main():
-    p = Person("Alice", 30)
-    print(p.name)  # Alice
-    p.name = "Bob"
-    print(p.name)  # Bob
 ```
 
-### Lambdas and Higher-Order Functions
+### Named Tuples
+
+Lightweight named types via type aliases.
 
 ```python
-def main():
-    double: (int) -> int = lambda x: x * 2
-    is_even: (int) -> bool = lambda x: x % 2 == 0
+type Point = tuple[x: float, y: float]
 
-    numbers: list[int] = [1, 2, 3, 4, 5]
-    evens: list[int] = list(filter(is_even, numbers))
-    doubled: list[int] = list(map(double, evens))
+def main():
+    p: Point = (x=1.0, y=2.0)
+    print(p.x)  # 1.0
 ```
 
-### Exception Handling
+### Pattern Matching with Guards
 
 ```python
-def safe_divide(a: int, b: int) -> str:
-    try:
-        result = a / b
-    except Exception:
-        return "error"
-    else:
-        return f"result: {result}"
-
-def main():
-    print(safe_divide(10, 2))  # result: 5
+def describe(value: int):
+    match value:
+        case 1:
+            print("one")
+        case x if x > 100:
+            print(f"big: {x}")
+        case _:
+            print("other")
 ```
 
 ### .NET Interop
+
+Import .NET types directly. `snake_case` calls auto-map to `PascalCase` .NET methods.
 
 ```python
 from system.io import StringWriter
@@ -332,35 +197,47 @@ def main():
     print(t.result)  # 42
 ```
 
-### Dunder Methods
+## Familiar Python
+
+Classes, inheritance, decorators, comprehensions, f-strings, generators, lambdas, dunder methods, `try`/`except`, `match`, `enum` — they all work as you'd expect. Sharpy is designed so that valid Sharpy code *reads* like Python.
 
 ```python
-class Vector:
-    x: int
-    y: int
+@abstract
+class Shape:
+    name: str
 
-    def __init__(self, x: int, y: int):
-        self.x = x
-        self.y = y
+    def __init__(self, name: str):
+        self.name = name
 
-    def __add__(self, other: Vector) -> Vector:
-        return Vector(self.x + other.x, self.y + other.y)
+    @abstract
+    def area(self) -> float: ...
 
-    def __str__(self) -> str:
-        return f"({self.x}, {self.y})"
+class Circle(Shape):
+    radius: float
 
-    def __eq__(self, other: Vector) -> bool:
-        return self.x == other.x and self.y == other.y
+    def __init__(self, radius: float):
+        super().__init__("Circle")
+        self.radius = radius
 
-    def __len__(self) -> int:
-        return 2
+    @override
+    def area(self) -> float:
+        return 3.14 * self.radius * self.radius
+
+def fibonacci(n: int) -> int:
+    a, b = 0, 1
+    i = 0
+    while i < n:
+        yield a
+        a, b = b, a + b
+        i += 1
 
 def main():
-    a = Vector(1, 2)
-    b = Vector(3, 4)
-    c = a + b
-    print(c)        # (4, 6)
-    print(len(a))   # 2
+    c = Circle(4.0)
+    print(f"{c.name}: {c.area()}")  # Circle: 50.24
+
+    doubled = [x * 2 for x in range(5)]
+    evens = {x for x in range(10) if x % 2 == 0}
+    squares = {x: x * x for x in range(5)}
 ```
 
 ## Getting Started
