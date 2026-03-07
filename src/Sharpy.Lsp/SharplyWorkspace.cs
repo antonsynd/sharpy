@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using Microsoft.Extensions.Logging;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Project;
@@ -19,6 +20,7 @@ internal sealed class DocumentState : IDisposable
     public SourceText? CachedSourceText { get; private set; }
 
     private readonly SemaphoreSlim _analysisSemaphore = new(1, 1);
+    private readonly object _stateLock = new();
     private CancellationTokenSource? _pendingCts;
 
     public DocumentState(string uri, string text, int version)
@@ -30,23 +32,45 @@ internal sealed class DocumentState : IDisposable
 
     public void Update(string text, int version)
     {
-        Text = text;
-        Version = version;
-        CachedAnalysis = null;
-        CachedSourceText = null;
+        lock (_stateLock)
+        {
+            Text = text;
+            Version = version;
+            CachedAnalysis = null;
+            CachedSourceText = null;
+        }
+    }
+
+    /// <summary>
+    /// Returns a consistent snapshot of Text and CachedSourceText.
+    /// </summary>
+    public (string Text, SourceText? CachedSourceText) GetTextSnapshot()
+    {
+        lock (_stateLock)
+        {
+            return (Text, CachedSourceText);
+        }
     }
 
     public async Task<SemanticResult> GetOrRunAnalysisAsync(CompilerApi api, CancellationToken ct)
     {
-        if (CachedAnalysis != null)
-            return CachedAnalysis;
+        lock (_stateLock)
+        {
+            if (CachedAnalysis != null)
+                return CachedAnalysis;
+        }
 
         await _analysisSemaphore.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            // Double-check after acquiring lock
-            if (CachedAnalysis != null)
-                return CachedAnalysis;
+            string text;
+            lock (_stateLock)
+            {
+                // Double-check after acquiring lock
+                if (CachedAnalysis != null)
+                    return CachedAnalysis;
+                text = Text;
+            }
 
             // Cancel any previous pending analysis
             if (_pendingCts != null)
@@ -56,14 +80,16 @@ internal sealed class DocumentState : IDisposable
             }
             _pendingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
-            var text = Text;
             var result = await Task.Run(
                 () => api.Analyze(text, _pendingCts.Token),
                 _pendingCts.Token
             ).ConfigureAwait(false);
 
-            CachedAnalysis = result;
-            CachedSourceText = new SourceText(text, Uri);
+            lock (_stateLock)
+            {
+                CachedAnalysis = result;
+                CachedSourceText = new SourceText(text, Uri);
+            }
             return result;
         }
         finally
@@ -88,6 +114,7 @@ internal sealed class SharplyWorkspace : IDisposable
 {
     private readonly ConcurrentDictionary<string, DocumentState> _documents = new();
     private readonly CompilerApi _api;
+    private readonly ILogger<SharplyWorkspace> _logger;
 
     // Debounce timers per document
     private readonly ConcurrentDictionary<string, Timer> _debounceTimers = new();
@@ -106,9 +133,10 @@ internal sealed class SharplyWorkspace : IDisposable
     /// </summary>
     public event Func<string, SemanticResult, Task>? DocumentAnalyzed;
 
-    public SharplyWorkspace(CompilerApi api)
+    public SharplyWorkspace(CompilerApi api, ILogger<SharplyWorkspace> logger)
     {
         _api = api;
+        _logger = logger;
     }
 
     public void OpenDocument(string uri, string text, int version)
@@ -159,7 +187,8 @@ internal sealed class SharplyWorkspace : IDisposable
     {
         if (_documents.TryGetValue(uri, out var state))
         {
-            return state.CachedSourceText ?? new SourceText(state.Text, uri);
+            var (text, cachedSourceText) = state.GetTextSnapshot();
+            return cachedSourceText ?? new SourceText(text, uri);
         }
         return null;
     }
@@ -193,9 +222,9 @@ internal sealed class SharplyWorkspace : IDisposable
                 }
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Project loading is best-effort; don't crash the server
+            _logger.LogWarning(ex, "Failed to load project from {WorkspaceRoot}", workspaceRoot);
         }
     }
 
@@ -306,28 +335,35 @@ internal sealed class SharplyWorkspace : IDisposable
             oldTimer.Dispose();
         }
 
-        var timer = new Timer(_ => _ = RunAnalysisAsync(uri),
+        var timer = new Timer(_ => FireAndForgetAnalysis(uri),
             null, DebounceDelay, Timeout.InfiniteTimeSpan);
         _debounceTimers[uri] = timer;
     }
 
-    private async Task RunAnalysisAsync(string uri)
+    // Timer callbacks require void return; the full try-catch ensures no exceptions escape.
+#pragma warning disable VSTHRD100
+    private async void FireAndForgetAnalysis(string uri)
+#pragma warning restore VSTHRD100
     {
         try
         {
             var result = await GetAnalysisAsync(uri).ConfigureAwait(false);
             if (result != null)
             {
-                DocumentAnalyzed?.Invoke(uri, result);
+                var handler = DocumentAnalyzed;
+                if (handler != null)
+                {
+                    await handler(uri, result).ConfigureAwait(false);
+                }
             }
         }
         catch (OperationCanceledException)
         {
             // Expected when document changes rapidly
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Log but don't crash the server
+            _logger.LogError(ex, "Error analyzing document {Uri}", uri);
         }
     }
 

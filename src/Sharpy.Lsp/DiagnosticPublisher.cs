@@ -15,6 +15,15 @@ internal sealed class DiagnosticPublisher
 {
     private ILanguageServerFacade? _server;
 
+    public DiagnosticPublisher()
+    {
+    }
+
+    public DiagnosticPublisher(ILanguageServerFacade server)
+    {
+        _server = server;
+    }
+
     public void SetServer(ILanguageServerFacade server)
     {
         _server = server;

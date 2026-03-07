@@ -26,8 +26,7 @@ public class SymbolFormatterTests
 
         var result = SymbolFormatter.FormatSymbol(symbol);
 
-        result.Should().Contain("class MyClass");
-        result.Should().StartWith("(class)");
+        result.Should().Be("(class) MyClass");
     }
 
     [Fact]
@@ -37,8 +36,7 @@ public class SymbolFormatterTests
 
         var result = SymbolFormatter.FormatSymbol(symbol);
 
-        result.Should().Contain("struct Point");
-        result.Should().StartWith("(struct)");
+        result.Should().Be("(struct) Point");
     }
 
     [Fact]
@@ -48,8 +46,7 @@ public class SymbolFormatterTests
 
         var result = SymbolFormatter.FormatSymbol(symbol);
 
-        result.Should().Contain("interface Drawable");
-        result.Should().StartWith("(interface)");
+        result.Should().Be("(interface) Drawable");
     }
 
     [Fact]

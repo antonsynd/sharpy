@@ -125,6 +125,7 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
 
     /// <summary>
     /// Converts an LSP Position (0-based line/character) to a string offset.
+    /// Handles both \n and \r\n line endings.
     /// </summary>
     private static int GetOffset(string text, Position position)
     {
@@ -133,11 +134,20 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
 
         while (line < position.Line && offset < text.Length)
         {
-            if (text[offset] == '\n')
+            if (text[offset] == '\r' && offset + 1 < text.Length && text[offset + 1] == '\n')
             {
+                offset += 2;
                 line++;
             }
-            offset++;
+            else if (text[offset] == '\n')
+            {
+                offset++;
+                line++;
+            }
+            else
+            {
+                offset++;
+            }
         }
 
         // Add character offset within the target line

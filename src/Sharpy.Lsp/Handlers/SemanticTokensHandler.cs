@@ -43,6 +43,21 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
         SemanticTokenModifier.Readonly,     // bit 4
     ];
 
+    // Token type indices — must match order of TokenTypes array above.
+    private const int TFunction = 0;
+    private const int TClass = 1;
+    private const int TStruct = 2;
+    private const int TInterface = 3;
+    private const int TEnum = 4;
+    private const int TEnumMember = 5;
+    private const int TParameter = 6;
+    private const int TVariable = 7;
+    private const int TDecorator = 8;
+    private const int TType = 9;
+    private const int TProperty = 10;
+    private const int TMethod = 11;
+    private const int TKeyword = 12;
+
     private const int ModDeclaration = 1 << 0;
     private const int ModDefinition = 1 << 1;
     private const int ModStatic = 1 << 2;
@@ -130,28 +145,28 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case ClassDef c:
-                PushNameToken(tokens, c.LineStart, c.ColumnStart, c.Name.Length, 1, ModDeclaration | ModDefinition);
+                PushNameToken(tokens, c.LineStart, c.ColumnStart, c.Name.Length, TClass, ModDeclaration | ModDefinition);
                 CollectDecorators(c.Decorators, tokens);
                 CollectTokens(c.Body, analysis, tokens);
                 break;
 
             case StructDef s:
-                PushNameToken(tokens, s.LineStart, s.ColumnStart, s.Name.Length, 2, ModDeclaration | ModDefinition);
+                PushNameToken(tokens, s.LineStart, s.ColumnStart, s.Name.Length, TStruct, ModDeclaration | ModDefinition);
                 CollectDecorators(s.Decorators, tokens);
                 CollectTokens(s.Body, analysis, tokens);
                 break;
 
             case InterfaceDef i:
-                PushNameToken(tokens, i.LineStart, i.ColumnStart, i.Name.Length, 3, ModDeclaration | ModDefinition);
+                PushNameToken(tokens, i.LineStart, i.ColumnStart, i.Name.Length, TInterface, ModDeclaration | ModDefinition);
                 CollectDecorators(i.Decorators, tokens);
                 CollectTokens(i.Body, analysis, tokens);
                 break;
 
             case EnumDef e:
-                PushNameToken(tokens, e.LineStart, e.ColumnStart, e.Name.Length, 4, ModDeclaration | ModDefinition);
+                PushNameToken(tokens, e.LineStart, e.ColumnStart, e.Name.Length, TEnum, ModDeclaration | ModDefinition);
                 foreach (var member in e.Members)
                 {
-                    PushNameToken(tokens, member.LineStart, member.ColumnStart, member.Name.Length, 5, ModDeclaration);
+                    PushNameToken(tokens, member.LineStart, member.ColumnStart, member.Name.Length, TEnumMember, ModDeclaration);
                 }
                 break;
 
@@ -159,12 +174,12 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
                 var varMods = ModDeclaration;
                 if (v.IsConst)
                     varMods |= ModReadonly;
-                PushNameToken(tokens, v.LineStart, v.ColumnStart, v.Name.Length, 7, varMods);
+                PushNameToken(tokens, v.LineStart, v.ColumnStart, v.Name.Length, TVariable, varMods);
                 CollectDecorators(v.Decorators, tokens);
                 break;
 
             case PropertyDef p:
-                PushNameToken(tokens, p.LineStart, p.ColumnStart, p.Name.Length, 10, ModDeclaration);
+                PushNameToken(tokens, p.LineStart, p.ColumnStart, p.Name.Length, TProperty, ModDeclaration);
                 CollectDecorators(p.Decorators, tokens);
                 CollectTokens(p.Body, analysis, tokens);
                 break;
@@ -216,8 +231,8 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
         if (HasDecorator(f.Decorators, "static"))
             mods |= ModStatic;
 
-        // Function name — use Method (11) when inside a class, Function (0) at top level
-        PushNameToken(tokens, f.LineStart, f.ColumnStart, f.Name.Length, 0, mods);
+        // Function name — use Method when inside a class, Function at top level
+        PushNameToken(tokens, f.LineStart, f.ColumnStart, f.Name.Length, TFunction, mods);
 
         CollectDecorators(f.Decorators, tokens);
 
@@ -226,7 +241,7 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
         {
             if (param.Name == "self" || param.Name == "cls")
                 continue;
-            PushNameToken(tokens, param.LineStart, param.ColumnStart, param.Name.Length, 6, ModDeclaration);
+            PushNameToken(tokens, param.LineStart, param.ColumnStart, param.Name.Length, TParameter, ModDeclaration);
         }
 
         CollectTokens(f.Body, analysis, tokens);
@@ -242,7 +257,7 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
             var name = dec.Name;
             if (name.Length > 0)
             {
-                PushNameToken(tokens, dec.LineStart, dec.ColumnStart, name.Length + 1, 8, 0); // +1 for @
+                PushNameToken(tokens, dec.LineStart, dec.ColumnStart, name.Length + 1, TDecorator, 0); // +1 for @
             }
         }
     }
@@ -275,12 +290,6 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
             length,
             tokenType,
             modifiers));
-    }
-
-    private static int CompareTokensByPosition(RawToken a, RawToken b)
-    {
-        var lineCmp = a.Line.CompareTo(b.Line);
-        return lineCmp != 0 ? lineCmp : a.Col.CompareTo(b.Col);
     }
 
     /// <summary>

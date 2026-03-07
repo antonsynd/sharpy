@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Sharpy.Compiler;
 using Sharpy.Lsp;
 using Xunit;
@@ -12,7 +13,7 @@ public class WorkspaceTests : IDisposable
 
     public WorkspaceTests()
     {
-        _workspace = new SharplyWorkspace(_api);
+        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
     }
 
     [Fact]

@@ -76,6 +76,6 @@ internal static class SymbolFormatter
             TypeKind.Delegate => "delegate",
             _ => "type"
         };
-        return $"({keyword}) {keyword} {t.Name}";
+        return $"({keyword}) {t.Name}";
     }
 }
