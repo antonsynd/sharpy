@@ -35,11 +35,11 @@ internal sealed class SharplyFormattingHandler : DocumentFormattingHandlerBase
         var insertSpaces = request.Options.InsertSpaces;
         var indentStr = insertSpaces ? new string(' ', tabSize) : "\t";
 
-        // Tokenize to get Indent/Dedent positions
-        var lineIndentLevels = BuildIndentMap(text);
+        // Tokenize to get Indent/Dedent positions and multi-line string ranges
+        var (lineIndentLevels, tokens) = BuildIndentMap(text);
 
         // Find lines inside multi-line strings (these should not be re-indented)
-        var multiLineStringLines = FindMultiLineStringLines(text);
+        var multiLineStringLines = FindMultiLineStringLines(tokens);
 
         var lines = text.Split('\n');
         var formatted = new List<string>();
@@ -93,8 +93,9 @@ internal sealed class SharplyFormattingHandler : DocumentFormattingHandlerBase
 
     /// <summary>
     /// Tokenizes the source and builds a map of 1-based line number to indent level.
+    /// Also returns the token list for reuse by other analyses.
     /// </summary>
-    private static Dictionary<int, int> BuildIndentMap(string source)
+    private static (Dictionary<int, int> LineIndent, System.Collections.Generic.List<Token> Tokens) BuildIndentMap(string source)
     {
         var lexer = new Compiler.Lexer.Lexer(source);
         System.Collections.Generic.List<Token> tokens;
@@ -105,7 +106,7 @@ internal sealed class SharplyFormattingHandler : DocumentFormattingHandlerBase
         catch (Exception)
         {
             // If lexing fails (e.g., invalid syntax), return empty map (no reformatting).
-            return new Dictionary<int, int>();
+            return (new Dictionary<int, int>(), new System.Collections.Generic.List<Token>());
         }
 
         var lineIndent = new Dictionary<int, int>();
@@ -135,85 +136,42 @@ internal sealed class SharplyFormattingHandler : DocumentFormattingHandlerBase
             }
         }
 
-        return lineIndent;
+        return (lineIndent, tokens);
     }
 
     /// <summary>
-    /// Finds lines that are inside multi-line (triple-quoted) strings.
-    /// These lines should not be re-indented.
+    /// Finds lines that are inside multi-line strings by examining lexer tokens.
+    /// A string token that spans multiple lines indicates a triple-quoted string;
+    /// interior lines (excluding the first) should not be re-indented.
     /// </summary>
-    private static HashSet<int> FindMultiLineStringLines(string source)
+    private static HashSet<int> FindMultiLineStringLines(System.Collections.Generic.List<Token> tokens)
     {
         var result = new HashSet<int>();
-        var lines = source.Split('\n');
 
-        var inTripleQuote = false;
-        char tripleQuoteChar = '"';
-
-        for (var i = 0; i < lines.Length; i++)
+        foreach (var token in tokens)
         {
-            var line = lines[i].TrimEnd('\r');
-            var lineNum = i + 1; // 1-based
+            if (token.Type != TokenType.String && token.Type != TokenType.FStringText)
+                continue;
 
-            var j = 0;
-            while (j < line.Length)
+            // Count newlines in the token value to determine the end line.
+            // The token's Value includes the full string content including quotes.
+            var startLine = token.Line;
+            var lineCount = 0;
+            var value = token.Value;
+            for (var i = 0; i < value.Length; i++)
             {
-                if (!inTripleQuote)
-                {
-                    // Look for triple quote start
-                    if (j + 2 < line.Length &&
-                        (line[j] == '"' || line[j] == '\'') &&
-                        line[j + 1] == line[j] &&
-                        line[j + 2] == line[j])
-                    {
-                        inTripleQuote = true;
-                        tripleQuoteChar = line[j];
-                        j += 3;
-                        continue;
-                    }
-                    // Skip single-quoted strings
-                    if (line[j] == '"' || line[j] == '\'')
-                    {
-                        var quote = line[j];
-                        j++;
-                        while (j < line.Length && line[j] != quote)
-                        {
-                            if (line[j] == '\\')
-                                j++; // skip escaped char
-                            j++;
-                        }
-                        if (j < line.Length)
-                            j++; // skip closing quote
-                        continue;
-                    }
-                    // Skip comments
-                    if (line[j] == '#')
-                        break;
-                }
-                else
-                {
-                    // Inside triple quote — mark this line as inside multi-line string
-                    result.Add(lineNum);
-
-                    // Look for closing triple quote
-                    if (j + 2 < line.Length &&
-                        line[j] == tripleQuoteChar &&
-                        line[j + 1] == tripleQuoteChar &&
-                        line[j + 2] == tripleQuoteChar)
-                    {
-                        inTripleQuote = false;
-                        j += 3;
-                        continue;
-                    }
-                }
-
-                j++;
+                if (value[i] == '\n')
+                    lineCount++;
             }
 
-            // If still in triple quote at end of line, mark it
-            if (inTripleQuote)
+            if (lineCount == 0)
+                continue;
+
+            // Mark all lines spanned by this multi-line string token
+            var endLine = startLine + lineCount;
+            for (var line = startLine; line <= endLine; line++)
             {
-                result.Add(lineNum);
+                result.Add(line);
             }
         }
 
