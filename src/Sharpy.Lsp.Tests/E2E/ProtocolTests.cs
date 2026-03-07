@@ -205,6 +205,49 @@ public class ProtocolTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task RapidDidChange_ProducesLatestDiagnostics()
+    {
+        await _client.InitializeAsync();
+
+        var uri = "file:///test_cancel.spy";
+
+        // Open with valid code
+        await _client.DidOpenAsync(uri, "def main():\n    x: int = 1\n    print(x)");
+
+        // Wait for initial diagnostics
+        await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+
+        // Send rapid successive changes — only the final state matters
+        for (var i = 2; i <= 5; i++)
+        {
+            await _client.DidChangeAsync(uri, $"def main():\n    x: int = {i}\n    print(x)", i);
+        }
+
+        // The last diagnostics we receive should be for valid code (zero diagnostics)
+        JsonNode? lastNotification = null;
+        while (true)
+        {
+            try
+            {
+                lastNotification = await _client.WaitForNotificationAsync(
+                    "textDocument/publishDiagnostics",
+                    TimeSpan.FromSeconds(5));
+            }
+            catch (TimeoutException)
+            {
+                break;
+            }
+        }
+
+        lastNotification.Should().NotBeNull("should receive at least one diagnostic notification after changes");
+        var diagnostics = lastNotification!["diagnostics"]?.AsArray();
+        diagnostics.Should().NotBeNull();
+        diagnostics!.Count.Should().Be(0, "final valid code should produce no diagnostics");
+    }
+
+    [Fact]
     public async Task Shutdown_RespondsSuccessfully()
     {
         await _client.InitializeAsync();

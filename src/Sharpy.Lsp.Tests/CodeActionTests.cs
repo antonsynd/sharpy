@@ -205,23 +205,18 @@ public class CodeActionTests : IDisposable
     }
 
     [Fact]
-    public async Task NamingConvention_FallbackToMessageParsing()
+    public async Task NamingConvention_NoStructuredData_ReturnsNoAction()
     {
-        // No structured data — should parse the suggestion from the message
+        // No structured data — no suggestion can be extracted
         var diag = MakeDiagnostic(
             DiagnosticCodes.Validation.NamingConventionWarning,
-            "Variable 'myVariable' should use snake_case; consider 'my_variable'",
+            "Variable 'myVariable' should use snake_case",
             line: 0, startCol: 0, endCol: 10);
 
         var result = await GetCodeActionsAsync("myVariable: int = 1\ndef main():\n    print(myVariable)", diag);
 
         result.Should().NotBeNull();
-        var actions = result!.ToList();
-        actions.Should().ContainSingle();
-
-        var action = actions[0].CodeAction;
-        action.Should().NotBeNull();
-        action!.Title.Should().Be("Rename to 'my_variable'");
+        result!.Should().BeEmpty("no structured data means no suggestion available");
     }
 
     [Fact]
@@ -241,13 +236,13 @@ public class CodeActionTests : IDisposable
     }
 
     [Fact]
-    public async Task NamingConvention_StructuredDataPreferredOverMessage()
+    public async Task NamingConvention_StructuredDataUsedForSuggestion()
     {
-        // Data has a different suggestion than the message
+        // Structured data carries the suggestion
         var data = JObject.FromObject(new { suggestedName = "correct_name" });
         var diag = MakeDiagnostic(
             DiagnosticCodes.Validation.NamingConventionWarning,
-            "consider 'wrong_name'",
+            "Variable 'wrongName' has naming issues",
             line: 0, startCol: 0, endCol: 10,
             data: data);
 
@@ -256,8 +251,7 @@ public class CodeActionTests : IDisposable
         result.Should().NotBeNull();
         var action = result!.First().CodeAction;
         action.Should().NotBeNull();
-        action!.Title.Should().Be("Rename to 'correct_name'",
-            "structured data should take precedence over message parsing");
+        action!.Title.Should().Be("Rename to 'correct_name'");
     }
 
     #endregion
