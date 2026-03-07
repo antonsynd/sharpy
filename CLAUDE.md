@@ -34,6 +34,7 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 | Compiler | `src/Sharpy.Compiler/` | Lexer, Parser, Semantic, CodeGen |
 | Stdlib | `src/Sharpy.Core/` | Runtime library (partial class pattern in `Partial.{Type}/`) |
 | CLI | `src/Sharpy.Cli/` | Command-line interface (`sharpyc`, uses `System.CommandLine`) |
+| LSP | `src/Sharpy.Lsp/` | Language Server Protocol server (OmniSharp-based) |
 | Tests | `src/*.Tests/` | Unit and integration tests |
 | Specs | `docs/language_specification/` | Authoritative language specification |
 | Build Tools | `build_tools/` | Python-based build automation and dogfooding tools |
@@ -50,6 +51,7 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 6. **Always verify Python behavior first** — run `python3 -c "..."` before implementing Python semantics
 7. **Language spec is authoritative** — check `docs/language_specification/` before implementing; change implementation to match spec, not the other way around
 8. **TODO/BUG/FIXME comments must have GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment in code, always create a corresponding GitHub issue first (via `gh issue create`) and reference it in the comment (e.g., `// TODO(#123): ...`). This makes deferred work visible at the project level, not buried in code.
+9. **Warnings are errors** — `TreatWarningsAsErrors` is enabled solution-wide via `Directory.Build.props`
 
 ## Semantic Analysis Pipeline
 
@@ -130,6 +132,8 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 400**: `ControlFlowValidator` — CFG-based unreachable code, missing returns
 - **Order 405**: `ExhaustivenessValidator` — Match statement exhaustiveness checks
 - **Order 410**: `PropertyValidator` — Property validation
+- **Order 412**: `EventValidator` — Event validation
+- **Order 415**: `VarianceValidator` — Variance validation
 - **Order 420**: `UnusedVariableValidator` — Unused variable warnings
 - **Order 430**: `UnusedImportValidator` — Unused import warnings
 - **Order 450**: `AccessValidator` — Private/protected member access
@@ -155,7 +159,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 16 partial classes (~13,700 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
+The `RoslynEmitter` is split into 16 partial classes (~13,690 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -327,7 +331,7 @@ dotnet test --filter "DisplayName~test_name"               # By test name
 
 Location: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
 
-**Single-file tests**: `.spy` + `.expected` (exact stdout match) or `.spy` + `.error` (substring match in error)
+**Single-file tests**: `.spy` + `.expected` (exact stdout match) or `.spy` + `.error` (substring match in error; line ending with `@line:col` also verifies diagnostic location)
 
 **Multi-file tests**: A subdirectory with multiple `.spy` files and a `main.spy` entry point, plus `main.expected` or `main.error`.
 

@@ -23,14 +23,14 @@ Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files com
 | Lexer | `Compiler/Lexer/Lexer*.cs` (4 partials), `Token.cs` | Indentation-aware tokenization |
 | Parser | `Compiler/Parser/Parser*.cs` (6 partials), `Ast/*.cs` | Immutable AST records |
 | Semantic | `Compiler/Semantic/{NameResolver,TypeResolver,TypeChecker}.cs` | 5 ordered passes—see below |
-| CodeGen | `Compiler/CodeGen/RoslynEmitter*.cs` (12 partials) | **SyntaxFactory only**—no string templating |
+| CodeGen | `Compiler/CodeGen/RoslynEmitter*.cs` (16 partials) | **SyntaxFactory only**—no string templating |
 
 ### Semantic Pass Order (Critical)
 1. `NameResolver.ResolveDeclarations()` → symbol table
 2. `NameResolver.ResolveInheritance()` → base classes
 3. `ImportResolver` → module loading
 4. `TypeResolver` → type annotations
-5. `TypeChecker` (8 partials) → inference + `ValidationPipeline`
+5. `TypeChecker` (10 partials) → inference + `ValidationPipeline`
 
 **Key structures:** `SemanticInfo` (AST→type via `ReferenceEqualityComparer`), `SymbolTable`, `SemanticBinding`
 
@@ -109,6 +109,7 @@ Lexer → Parser → Semantic → Validation → CodeGen → Tests
 | `src/Sharpy.Compiler/` | Compiler pipeline |
 | `src/Sharpy.Core/` | Runtime stdlib (`Partial.{Type}/` directories) |
 | `src/Sharpy.Cli/` | CLI (`System.CommandLine`) |
+| `src/Sharpy.Lsp/` | Language Server Protocol server (OmniSharp-based) |
 | `src/Sharpy.Compiler.Tests/` | Unit + integration tests (774 `.spy` fixtures) |
 | `docs/language_specification/` | **Authoritative** spec (100+ files) |
 | `.github/agents/` | Domain-specific AI agents |
