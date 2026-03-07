@@ -1,23 +1,19 @@
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Sharpy.Compiler.Lexer;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Handlers;
 
 /// <summary>
 /// Handles textDocument/formatting requests.
-/// Normalizes indentation to consistent 4-space width based on Python-like block structure.
+/// Uses the Lexer's Indent/Dedent tokens to determine correct indentation levels,
+/// then re-indents each line according to the user's tab size/spaces preference.
 /// </summary>
 internal sealed class SharplyFormattingHandler : DocumentFormattingHandlerBase
 {
     private readonly SharplyWorkspace _workspace;
-
-    // Keywords that decrease indent when they appear at the start of a line
-    private static readonly HashSet<string> DedentKeywords = new(StringComparer.Ordinal)
-    {
-        "elif", "else", "except", "finally", "case"
-    };
 
     public SharplyFormattingHandler(SharplyWorkspace workspace)
     {
@@ -39,9 +35,14 @@ internal sealed class SharplyFormattingHandler : DocumentFormattingHandlerBase
         var insertSpaces = request.Options.InsertSpaces;
         var indentStr = insertSpaces ? new string(' ', tabSize) : "\t";
 
+        // Tokenize to get Indent/Dedent positions
+        var lineIndentLevels = BuildIndentMap(text);
+
+        // Find lines inside multi-line strings (these should not be re-indented)
+        var multiLineStringLines = FindMultiLineStringLines(text);
+
         var lines = text.Split('\n');
         var formatted = new List<string>();
-        var indentLevel = 0;
 
         for (var i = 0; i < lines.Length; i++)
         {
@@ -55,33 +56,24 @@ internal sealed class SharplyFormattingHandler : DocumentFormattingHandlerBase
                 continue;
             }
 
-            // Check if this line starts with a dedent keyword
-            var firstWord = GetFirstWord(trimmed);
-            if (DedentKeywords.Contains(firstWord) && indentLevel > 0)
+            // Lines inside multi-line strings: preserve as-is
+            if (multiLineStringLines.Contains(i + 1)) // tokens use 1-based lines
             {
-                indentLevel--;
+                formatted.Add(line);
+                continue;
             }
 
-            // Handle pass at current level (don't change indent for pass itself)
-            var formattedLine = string.Concat(Enumerable.Repeat(indentStr, indentLevel)) + trimmed;
+            // Apply indent level from token stream
+            var level = lineIndentLevels.TryGetValue(i + 1, out var l) ? l : 0;
+            var formattedLine = string.Concat(Enumerable.Repeat(indentStr, level)) + trimmed;
             formatted.Add(formattedLine);
-
-            // Check if this line ends with colon (increases indent for next line)
-            var withoutComment = StripTrailingComment(trimmed);
-            if (withoutComment.EndsWith(':'))
-            {
-                indentLevel++;
-            }
         }
 
-        // Build the formatted text
         var formattedText = string.Join("\n", formatted);
 
-        // If nothing changed, return null (no edits needed)
         if (formattedText == text)
             return Task.FromResult<TextEditContainer?>(null);
 
-        // Replace the entire document
         var lastLine = lines.Length - 1;
         var lastCol = lines[lastLine].TrimEnd('\r').Length;
 
@@ -99,34 +91,133 @@ internal sealed class SharplyFormattingHandler : DocumentFormattingHandlerBase
         return Task.FromResult<TextEditContainer?>(new TextEditContainer(edits));
     }
 
-    private static string GetFirstWord(string trimmedLine)
+    /// <summary>
+    /// Tokenizes the source and builds a map of 1-based line number to indent level.
+    /// </summary>
+    private static Dictionary<int, int> BuildIndentMap(string source)
     {
-        var end = 0;
-        while (end < trimmedLine.Length && char.IsLetterOrDigit(trimmedLine[end]) || end < trimmedLine.Length && trimmedLine[end] == '_')
+        var lexer = new Compiler.Lexer.Lexer(source);
+        System.Collections.Generic.List<Token> tokens;
+        try
         {
-            end++;
+            tokens = lexer.TokenizeAll();
         }
-        return trimmedLine[..end];
-    }
-
-    private static string StripTrailingComment(string line)
-    {
-        // Simple heuristic: find # not inside a string
-        var inSingleQuote = false;
-        var inDoubleQuote = false;
-        for (var i = 0; i < line.Length; i++)
+        catch
         {
-            var c = line[i];
-            if (c == '\'' && !inDoubleQuote)
-                inSingleQuote = !inSingleQuote;
-            else if (c == '"' && !inSingleQuote)
-                inDoubleQuote = !inDoubleQuote;
-            else if (c == '#' && !inSingleQuote && !inDoubleQuote)
+            // If lexing fails completely, return empty map (no reformatting)
+            return new Dictionary<int, int>();
+        }
+
+        var lineIndent = new Dictionary<int, int>();
+        var currentIndent = 0;
+
+        foreach (var token in tokens)
+        {
+            switch (token.Type)
             {
-                return line[..i].TrimEnd();
+                case TokenType.Indent:
+                    currentIndent++;
+                    break;
+                case TokenType.Dedent:
+                    if (currentIndent > 0)
+                        currentIndent--;
+                    break;
+                case TokenType.Newline:
+                case TokenType.Eof:
+                    break;
+                default:
+                    // Record the indent level for the first real token on each line
+                    if (!lineIndent.ContainsKey(token.Line))
+                    {
+                        lineIndent[token.Line] = currentIndent;
+                    }
+                    break;
             }
         }
-        return line.TrimEnd();
+
+        return lineIndent;
+    }
+
+    /// <summary>
+    /// Finds lines that are inside multi-line (triple-quoted) strings.
+    /// These lines should not be re-indented.
+    /// </summary>
+    private static HashSet<int> FindMultiLineStringLines(string source)
+    {
+        var result = new HashSet<int>();
+        var lines = source.Split('\n');
+
+        var inTripleQuote = false;
+        char tripleQuoteChar = '"';
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].TrimEnd('\r');
+            var lineNum = i + 1; // 1-based
+
+            var j = 0;
+            while (j < line.Length)
+            {
+                if (!inTripleQuote)
+                {
+                    // Look for triple quote start
+                    if (j + 2 < line.Length &&
+                        (line[j] == '"' || line[j] == '\'') &&
+                        line[j + 1] == line[j] &&
+                        line[j + 2] == line[j])
+                    {
+                        inTripleQuote = true;
+                        tripleQuoteChar = line[j];
+                        j += 3;
+                        continue;
+                    }
+                    // Skip single-quoted strings
+                    if (line[j] == '"' || line[j] == '\'')
+                    {
+                        var quote = line[j];
+                        j++;
+                        while (j < line.Length && line[j] != quote)
+                        {
+                            if (line[j] == '\\')
+                                j++; // skip escaped char
+                            j++;
+                        }
+                        if (j < line.Length)
+                            j++; // skip closing quote
+                        continue;
+                    }
+                    // Skip comments
+                    if (line[j] == '#')
+                        break;
+                }
+                else
+                {
+                    // Inside triple quote — mark this line as inside multi-line string
+                    result.Add(lineNum);
+
+                    // Look for closing triple quote
+                    if (j + 2 < line.Length &&
+                        line[j] == tripleQuoteChar &&
+                        line[j + 1] == tripleQuoteChar &&
+                        line[j + 2] == tripleQuoteChar)
+                    {
+                        inTripleQuote = false;
+                        j += 3;
+                        continue;
+                    }
+                }
+
+                j++;
+            }
+
+            // If still in triple quote at end of line, mark it
+            if (inTripleQuote)
+            {
+                result.Add(lineNum);
+            }
+        }
+
+        return result;
     }
 
     protected override DocumentFormattingRegistrationOptions CreateRegistrationOptions(
