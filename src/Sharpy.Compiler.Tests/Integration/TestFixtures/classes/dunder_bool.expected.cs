@@ -11,7 +11,7 @@ public static partial class DunderBool
     public class Truthy : Sharpy.IBoolConvertible
     {
         public int Value;
-        public bool IsTrue
+        public virtual bool IsTrue
         {
             get
             {

@@ -274,6 +274,20 @@ internal partial class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
         }
 
+        // Add virtual keyword for synthesized protocol properties in non-sealed classes.
+        // Without virtual, subclasses cannot use @override on __bool__.
+        // Must run after abstract check since abstract and virtual are mutually exclusive in C#.
+        if (!isAbstract
+            && _currentTypeSymbol != null
+            && _currentTypeSymbol.TypeKind == Semantic.TypeKind.Class
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword))
+            && !func.Decorators.Any(d => d.Name == DecoratorNames.Final))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
+        }
+
         // Build getter: abstract properties use semicolon, concrete use body
         AccessorDeclarationSyntax getter;
         if (isAbstract)
@@ -329,6 +343,20 @@ internal partial class RoslynEmitter
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
         {
             modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
+        }
+
+        // Add virtual keyword for synthesized protocol properties in non-sealed classes.
+        // Without virtual, subclasses cannot use @override on __len__.
+        // Must run after abstract check since abstract and virtual are mutually exclusive in C#.
+        if (!isAbstract
+            && _currentTypeSymbol != null
+            && _currentTypeSymbol.TypeKind == Semantic.TypeKind.Class
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword))
+            && !func.Decorators.Any(d => d.Name == DecoratorNames.Final))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
         }
 
         // Build getter: abstract properties use semicolon, concrete use body

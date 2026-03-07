@@ -17,7 +17,7 @@ public static partial class DunderLen
             this.Items.Append(item);
         }
 
-        public int Count
+        public virtual int Count
         {
             get
             {

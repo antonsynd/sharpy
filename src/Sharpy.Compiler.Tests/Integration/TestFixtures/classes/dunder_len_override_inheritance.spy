@@ -1,0 +1,26 @@
+class Container:
+    _count: int
+
+    def __init__(self):
+        self._count = 0
+
+    def __len__(self) -> int:
+        return self._count
+
+class FilteredContainer(Container):
+    _excluded: int
+
+    def __init__(self, total: int, excluded: int):
+        super().__init__()
+        self._count = total
+        self._excluded = excluded
+
+    @override
+    def __len__(self) -> int:
+        return self._count - self._excluded
+
+def main():
+    c = Container()
+    print(len(c))
+    fc = FilteredContainer(10, 3)
+    print(len(fc))

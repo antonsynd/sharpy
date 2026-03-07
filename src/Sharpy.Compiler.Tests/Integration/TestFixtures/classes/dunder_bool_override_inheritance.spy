@@ -1,0 +1,29 @@
+class Resource:
+    _active: bool
+
+    def __init__(self, active: bool):
+        self._active = active
+
+    def __bool__(self) -> bool:
+        return self._active
+
+class ConnectionPool(Resource):
+    _size: int
+
+    def __init__(self, active: bool, size: int):
+        super().__init__(active)
+        self._size = size
+
+    @override
+    def __bool__(self) -> bool:
+        return self._active and self._size > 0
+
+def main():
+    r = Resource(True)
+    print(bool(r))
+    c1 = ConnectionPool(True, 5)
+    print(bool(c1))
+    c2 = ConnectionPool(True, 0)
+    print(bool(c2))
+    c3 = ConnectionPool(False, 5)
+    print(bool(c3))
