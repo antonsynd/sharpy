@@ -84,6 +84,8 @@ public class DiagnosticBag
     private readonly object _lock = new();
     private readonly HashSet<string> _suppressedWarnings;
     private readonly bool _warningsAsErrors;
+    private int _errorCount;
+    private int _warningCount;
 
     /// <summary>
     /// Tracks diagnostics that have already been added, using (Code, Line, Column, Message?, SpanStart, SpanLength) as the key.
@@ -137,6 +139,11 @@ public class DiagnosticBag
                 return; // Skip duplicate
 
             _diagnostics.Add(diagnostic);
+
+            if (diagnostic.IsError)
+                _errorCount++;
+            else if (diagnostic.IsWarning)
+                _warningCount++;
         }
     }
 
@@ -241,7 +248,7 @@ public class DiagnosticBag
         {
             lock (_lock)
             {
-                return _diagnostics.Any(d => d.IsError);
+                return _errorCount > 0;
             }
         }
     }
@@ -252,7 +259,7 @@ public class DiagnosticBag
         {
             lock (_lock)
             {
-                return _diagnostics.Count(d => d.IsError);
+                return _errorCount;
             }
         }
     }
@@ -263,7 +270,7 @@ public class DiagnosticBag
         {
             lock (_lock)
             {
-                return _diagnostics.Count(d => d.Severity == CompilerDiagnosticSeverity.Warning);
+                return _warningCount;
             }
         }
     }
@@ -299,6 +306,8 @@ public class DiagnosticBag
             _diagnostics.Clear();
             _seenDiagnostics.Clear();
             _rootCauseIdentifiers.Clear();
+            _errorCount = 0;
+            _warningCount = 0;
         }
     }
 
