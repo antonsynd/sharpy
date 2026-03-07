@@ -28,7 +28,7 @@ public class Program
                     services.AddSingleton<SharplyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
                 })
-                .OnInitialize((server, request, token) =>
+                .OnInitialize(async (server, request, token) =>
                 {
                     var rootUri = request.RootUri;
                     if (rootUri is not null)
@@ -45,12 +45,11 @@ public class Program
                             ChangeNotifications = true,
                         };
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
                         // ServerSettings may not be fully initialized during OnInitialize.
+                        await Console.Error.WriteLineAsync($"[Warning] Workspace capability setup failed: {ex.Message}").ConfigureAwait(false);
                     }
-
-                    return Task.CompletedTask;
                 })
                 .OnInitialized((server, request, response, token) =>
                 {
