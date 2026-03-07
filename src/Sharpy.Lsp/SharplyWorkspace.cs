@@ -323,7 +323,7 @@ internal sealed class SharplyWorkspace : IDisposable
 
     private static string FilePathToUri(string filePath)
     {
-        var fullPath = Path.GetFullPath(filePath);
+        var fullPath = System.IO.Path.GetFullPath(filePath);
         return new Uri(fullPath).ToString();
     }
 
