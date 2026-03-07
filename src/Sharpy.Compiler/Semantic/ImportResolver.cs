@@ -123,7 +123,8 @@ internal class ImportResolver
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
-                            IsErrorRecovery = moduleInfo.IsErrorRecovery
+                            IsErrorRecovery = moduleInfo.IsErrorRecovery,
+                            IsNetModule = moduleInfo.IsNetModule
                         };
                         symbolTable.TryDefine(aliasedModule);
                     }
@@ -138,7 +139,8 @@ internal class ImportResolver
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
-                            IsErrorRecovery = moduleInfo.IsErrorRecovery
+                            IsErrorRecovery = moduleInfo.IsErrorRecovery,
+                            IsNetModule = moduleInfo.IsNetModule
                         };
 
                         ModuleSymbol currentModule = leafModule;
@@ -150,7 +152,8 @@ internal class ImportResolver
                                 Kind = SymbolKind.Module,
                                 FilePath = "",
                                 Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } },
-                                IsErrorRecovery = moduleInfo.IsErrorRecovery
+                                IsErrorRecovery = moduleInfo.IsErrorRecovery,
+                                IsNetModule = moduleInfo.IsNetModule
                             };
                             currentModule = parentModule;
                         }
