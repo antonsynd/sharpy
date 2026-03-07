@@ -1,12 +1,14 @@
 import * as path from "path";
 import {
   commands,
+  debug,
   ExtensionContext,
   StatusBarAlignment,
   StatusBarItem,
   window,
   workspace,
 } from "vscode";
+import { SharpyDebugConfigProvider } from "./debugConfigProvider";
 import {
   LanguageClient,
   LanguageClientOptions,
@@ -78,6 +80,13 @@ export async function activate(context: ExtensionContext): Promise<void> {
   statusBarItem.tooltip = "Sharpy Language Server is starting...";
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
+
+  context.subscriptions.push(
+    debug.registerDebugConfigurationProvider(
+      "sharpy",
+      new SharpyDebugConfigProvider()
+    )
+  );
 
   context.subscriptions.push(
     commands.registerCommand("sharpy.restartServer", async () => {
