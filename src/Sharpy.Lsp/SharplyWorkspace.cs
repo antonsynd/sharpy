@@ -100,8 +100,14 @@ internal sealed class DocumentState : IDisposable
 
     public void Dispose()
     {
-        _pendingCts?.Cancel();
-        _pendingCts?.Dispose();
+        CancellationTokenSource? cts;
+        lock (_stateLock)
+        {
+            cts = _pendingCts;
+            _pendingCts = null;
+        }
+        cts?.Cancel();
+        cts?.Dispose();
         _analysisSemaphore.Dispose();
     }
 }

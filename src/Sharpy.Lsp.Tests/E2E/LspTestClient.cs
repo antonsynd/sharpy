@@ -478,7 +478,7 @@ public sealed class LspTestClient : IAsyncDisposable
             dir = System.IO.Path.GetDirectoryName(dir);
         }
 
-        // Fallback to known path
-        return "/Users/anton/Documents/github/sharpy";
+        throw new InvalidOperationException(
+            "Could not locate repo root. Ensure the test assembly is built inside the sharpy repository.");
     }
 }

@@ -21,7 +21,7 @@ internal sealed class SharplyCodeActionHandler : CodeActionHandlerBase
         _workspace = workspace;
     }
 
-    public override async Task<CommandOrCodeActionContainer?> Handle(
+    public override Task<CommandOrCodeActionContainer?> Handle(
         CodeActionParams request,
         CancellationToken ct)
     {
@@ -58,7 +58,7 @@ internal sealed class SharplyCodeActionHandler : CodeActionHandlerBase
             }
         }
 
-        return new CommandOrCodeActionContainer(actions);
+        return Task.FromResult<CommandOrCodeActionContainer?>(new CommandOrCodeActionContainer(actions));
     }
 
     private static CommandOrCodeAction CreateRemoveImportAction(
