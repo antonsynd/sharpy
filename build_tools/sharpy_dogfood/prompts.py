@@ -215,6 +215,23 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "`@virtual` and `@override` cannot be used on struct methods because structs are sealed value types. "
         "Remove these decorators from struct methods.",
     ),
+    (
+        r"SPY0907.*FunctionCall",
+        "If using overloaded methods (same name, different signatures), try using different "
+        "method names as a workaround (e.g., process_int(x: int) and process_str(s: str)). "
+        "Otherwise, simplify the code to avoid complex type inference.",
+    ),
+    (
+        r"SPY0237.*map",
+        "The compiler cannot infer map()'s type parameters. Use explicit syntax: "
+        "map[InputType, OutputType](lambda x: ..., items). For example: "
+        "map[int, str](lambda x: str(x), numbers).",
+    ),
+    (
+        r"SPY0101.*event",
+        "'event' is a reserved keyword in Sharpy (used for event declarations). "
+        "Use a different identifier name like 'evt', 'e', or 'event_data'.",
+    ),
 ]
 
 
@@ -291,7 +308,11 @@ BEHAVIORAL_RULES_SECTION = """\
       def __init__(self, x: float, y: float):
           self.x = x
           self.y = y
-  ```"""
+  ```
+- **Method overloading edge cases**: Sharpy supports method overloading (multiple methods with the same name, different signatures), but overloaded virtual/override methods may trigger ICE (SPY0907). If you encounter SPY0907 on overloaded methods, try using different method names as a workaround (e.g., `process_int()` and `process_str()`).
+- **Enum cross-module caution**: When accessing `.name` or `.value` on enum members imported from another module, ensure the enum is properly imported and the member access matches the PascalCase-mangled name. If unsure, prefer `str(member)` over `.name` and avoid `.value` for cross-module enums.
+- **Expected output accuracy**: Double-check ALL arithmetic in expected output. Trace each computation step-by-step. Common mistakes: area/perimeter formulas, order of operations, integer vs float division, off-by-one in loops. When in doubt, keep computations simple.
+- **`map()` type inference**: The compiler may not infer `map()`'s output type parameter. If you get SPY0237, use explicit type arguments: `map[int, str](lambda x: str(x), items)`."""
 
 ENTRY_POINT_SECTION = """\
 ## CRITICAL: Program Entry Point Requirement
