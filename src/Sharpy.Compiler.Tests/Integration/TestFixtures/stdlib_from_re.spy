@@ -1,0 +1,6 @@
+# Test from-import re module: sub
+from re import sub
+
+def main():
+    result: str = sub("\\d+", "NUM", "a1b2c3")
+    print(result)

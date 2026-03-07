@@ -1,0 +1,6 @@
+# Test from-import sys module: getsizeof
+from sys import getsizeof
+
+def main():
+    size: int = getsizeof(42)
+    print(size > 0)

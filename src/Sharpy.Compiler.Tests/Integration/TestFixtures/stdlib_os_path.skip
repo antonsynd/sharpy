@@ -1,1 +1,1 @@
-TODO: Overload resolution picks 4-arg Join instead of 2-arg for os.path.join. See #319
+#329: Overload resolution picks wrong OsPath.Join overload

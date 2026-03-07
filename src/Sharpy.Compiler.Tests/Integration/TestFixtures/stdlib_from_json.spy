@@ -1,0 +1,7 @@
+# Test from-import json module: dumps
+from json import dumps
+
+def main():
+    print(dumps(42))
+    print(dumps("hello"))
+    print(dumps(True))

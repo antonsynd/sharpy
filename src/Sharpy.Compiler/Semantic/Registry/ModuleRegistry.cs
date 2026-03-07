@@ -125,6 +125,27 @@ internal class ModuleRegistry
     }
 
     /// <summary>
+    /// Get types exported by a module (e.g., ArgumentParser from argparse).
+    /// </summary>
+    public List<TypeSymbol> GetModuleTypes(string moduleName)
+    {
+        try
+        {
+            return _discovery.GetModuleTypes(moduleName);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning($"Module '{moduleName}' not found: {ex.Message}", 0, 0);
+            return new List<TypeSymbol>();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning($"Error getting types for module '{moduleName}': {ex.Message}", 0, 0);
+            return new List<TypeSymbol>();
+        }
+    }
+
+    /// <summary>
     /// Get all loaded module names.
     /// </summary>
     public IEnumerable<string> GetLoadedModules()

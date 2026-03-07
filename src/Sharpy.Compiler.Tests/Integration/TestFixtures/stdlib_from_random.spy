@@ -1,0 +1,8 @@
+# Test from-import random module: seed, randint
+from random import seed, randint
+
+def main():
+    seed(42)
+    val: int = randint(1, 100)
+    print(val > 0)
+    print(val <= 100)

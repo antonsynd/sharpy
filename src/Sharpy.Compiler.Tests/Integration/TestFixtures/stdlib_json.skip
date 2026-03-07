@@ -1,1 +1,1 @@
-Sharpy.Core JsonSerializer doesn't handle List<T> serialization (runtime TypeError)
+#330: Sharpy.Core JsonSerializer doesn't handle List<T> serialization

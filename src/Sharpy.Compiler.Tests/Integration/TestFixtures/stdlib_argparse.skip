@@ -1,1 +1,1 @@
-TODO: Type-only modules (no functions) not resolvable by ImportResolver.TryResolveNetModule. See #319
+#327: Type-only modules - DeriveModuleNameFromNamespace maps Sharpy namespace types to "builtins"
