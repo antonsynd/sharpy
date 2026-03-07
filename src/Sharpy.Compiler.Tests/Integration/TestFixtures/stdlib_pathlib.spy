@@ -1,0 +1,10 @@
+# Test pathlib module: Path creation and / operator
+from pathlib import Path
+
+def main():
+    p: Path = Path("a") / "b"
+    print(p)
+    p2: Path = Path("/usr/local/bin")
+    print(p2.name)
+    print(p2.parent)
+    print(p2.stem)

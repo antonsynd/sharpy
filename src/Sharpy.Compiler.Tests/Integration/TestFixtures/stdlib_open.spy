@@ -1,0 +1,12 @@
+# Test open() builtin with context manager for file I/O
+def main():
+    path: str = "__test_stdlib_open_tmp.txt"
+
+    # Write to file using with statement
+    with open(path, "w") as f:
+        f.write("hello world")
+
+    # Read from file using with statement
+    with open(path, "r") as f:
+        content: str = f.read()
+    print(content)

@@ -1,0 +1,1 @@
+TODO: open() returns object instead of TextFile. See #320

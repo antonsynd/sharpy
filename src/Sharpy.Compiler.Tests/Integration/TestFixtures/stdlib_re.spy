@@ -1,0 +1,17 @@
+# Test re module: search, match, sub
+import re
+
+def main():
+    # re.search finds first match anywhere in string
+    m: re.ReMatch? = re.search("\\d+", "hello 42 world")
+    if m is not None:
+        print(m.group())
+
+    # re.match only matches at start of string
+    m2: re.ReMatch? = re.match("hello", "hello world")
+    if m2 is not None:
+        print(m2.group())
+
+    # re.sub replaces all matches
+    result: str = re.sub("\\d+", "NUM", "a1b2c3")
+    print(result)

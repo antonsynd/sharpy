@@ -1,0 +1,6 @@
+# Test os module: getcwd returns a non-empty string
+import os
+
+def main():
+    cwd: str = os.getcwd()
+    print(len(cwd) > 0)
