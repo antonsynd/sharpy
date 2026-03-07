@@ -1,0 +1,28 @@
+class Base:
+    def __init__(self):
+        pass
+
+    @virtual
+    def process(self, x: int) -> str:
+        return f"Base int: {x}"
+
+    @virtual
+    def process(self, s: str) -> str:
+        return f"Base str: {s}"
+
+class Child(Base):
+    @override
+    def process(self, x: int) -> str:
+        return f"Child int: {x * 2}"
+
+    @override
+    def process(self, s: str) -> str:
+        return f"Child str: {s.upper()}"
+
+def main():
+    b: Base = Base()
+    c: Base = Child()
+    print(b.process(5))
+    print(b.process("hello"))
+    print(c.process(5))
+    print(c.process("hello"))

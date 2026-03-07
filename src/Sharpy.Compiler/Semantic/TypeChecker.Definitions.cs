@@ -373,6 +373,15 @@ internal partial class TypeChecker
                     if (idx >= 0)
                         _currentClass.Methods[idx] = updatedSymbol;
 
+                    // Also update MethodOverloads so ResolveUserMethodOverload
+                    // reads resolved return types instead of stale Unknown.
+                    if (_currentClass.MethodOverloads.TryGetValue(functionDef.Name, out var overloadList))
+                    {
+                        var overloadIdx = overloadList.IndexOf(functionSymbol);
+                        if (overloadIdx >= 0)
+                            overloadList[overloadIdx] = updatedSymbol;
+                    }
+
                     // Also update OperatorMethods/ProtocolMethods if the method appears there
                     foreach (var kvp in _currentClass.OperatorMethods)
                     {
