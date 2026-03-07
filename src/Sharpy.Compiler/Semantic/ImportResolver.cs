@@ -237,6 +237,10 @@ internal class ImportResolver
             // Try synthetic modules (e.g., asyncio)
             moduleInfo ??= TryResolveSyntheticModule(importAlias.Name);
 
+            // Track .NET module names for codegen to emit correct using directives
+            if (moduleInfo is { IsNetModule: true })
+                _semanticBinding.MarkAsNetModule(importAlias.Name);
+
             // If not found in .NET assemblies, try .spy file
             if (moduleInfo == null)
             {
@@ -298,6 +302,10 @@ internal class ImportResolver
 
         // Try synthetic modules (e.g., asyncio)
         moduleInfo ??= TryResolveSyntheticModule(fromImport.Module);
+
+        // Track .NET module names for codegen to emit correct using directives
+        if (moduleInfo is { IsNetModule: true })
+            _semanticBinding.MarkAsNetModule(fromImport.Module);
 
         // If not found in .NET assemblies or synthetic modules, try .spy file
         if (moduleInfo == null)
@@ -717,11 +725,12 @@ internal class ImportResolver
 
         _logger.LogDebug($"Resolving .NET module: {moduleName}");
 
-        // Get functions from the module
+        // Get functions and types from the module
         var functions = _moduleRegistry.GetModuleFunctions(moduleName);
-        if (functions.Count == 0)
+        var types = _moduleRegistry.GetModuleTypes(moduleName);
+        if (functions.Count == 0 && types.Count == 0)
         {
-            _logger.LogWarning($".NET module '{moduleName}' has no exported functions", lineStart ?? 0, columnStart ?? 0);
+            _logger.LogWarning($".NET module '{moduleName}' has no exported functions or types", lineStart ?? 0, columnStart ?? 0);
             return null;
         }
 
@@ -739,9 +748,14 @@ internal class ImportResolver
             moduleInfo.ExportedSymbols[function.Name] = function;
         }
 
+        foreach (var type in types)
+        {
+            moduleInfo.ExportedSymbols[type.Name] = type;
+        }
+
         _moduleLoader.CacheModule(cacheKey, moduleInfo);
 
-        _logger.LogInfo($"Loaded .NET module '{moduleName}' with {functions.Count} functions");
+        _logger.LogInfo($"Loaded .NET module '{moduleName}' with {functions.Count} functions and {types.Count} types");
 
         return moduleInfo;
     }

@@ -82,6 +82,9 @@ public class SemanticBinding
     // Maps FromImportStatement nodes to their re-exported symbols
     private readonly ConcurrentDictionary<FromImportStatement, Dictionary<string, Symbol>> _reExportedSymbols = new();
 
+    // Tracks which import module names refer to .NET stdlib modules
+    private readonly ConcurrentDictionary<string, bool> _netModuleNames = new();
+
     // Phase-gating freeze flags - prevent mutations after a phase completes
     private bool _inheritanceFrozen;
     private bool _variableTypesFrozen;
@@ -313,6 +316,18 @@ public class SemanticBinding
     /// </summary>
     public Dictionary<string, Symbol>? GetReExportedSymbols(FromImportStatement stmt)
         => _reExportedSymbols.TryGetValue(stmt, out var symbols) ? symbols : null;
+
+    /// <summary>
+    /// Marks a module name as a .NET stdlib module for codegen to emit correct using directives.
+    /// </summary>
+    public void MarkAsNetModule(string moduleName)
+        => _netModuleNames[moduleName] = true;
+
+    /// <summary>
+    /// Checks if a module name was marked as a .NET stdlib module during import resolution.
+    /// </summary>
+    public bool IsNetModule(string moduleName)
+        => _netModuleNames.ContainsKey(moduleName);
 
     #endregion
 }
