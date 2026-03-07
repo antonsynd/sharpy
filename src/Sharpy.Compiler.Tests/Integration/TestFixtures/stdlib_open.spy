@@ -3,10 +3,10 @@ def main():
     path: str = "__test_stdlib_open_tmp.txt"
 
     # Write to file using with statement
-    with open(path, "w") as f:
-        f.write("hello world")
+    with open(path, "w") as wf:
+        wf.write("hello world")
 
     # Read from file using with statement
-    with open(path, "r") as f:
-        content: str = f.read()
-    print(content)
+    with open(path, "r") as rf:
+        content: str = rf.read()
+        print(content)

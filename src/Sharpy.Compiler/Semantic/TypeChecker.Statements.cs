@@ -1519,7 +1519,13 @@ internal partial class TypeChecker
             return false;
         }
 
-        // All other types (builtins, functions, tuples, etc.) are not disposable
+        // Builtin types with a CLR backing type (e.g., TextFile from open())
+        if (type is BuiltinType bt && bt.ClrType != null)
+        {
+            return typeof(System.IDisposable).IsAssignableFrom(bt.ClrType);
+        }
+
+        // All other types (builtins without CLR type, functions, tuples, etc.) are not disposable
         return false;
     }
 
