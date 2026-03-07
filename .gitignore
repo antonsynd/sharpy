@@ -51,6 +51,7 @@ _site/
 # Custom package files and dirs
 __resources/
 *.png
+!editors/vscode/icons/*.png
 *.gv
 *.dot
 **/.DS_Store

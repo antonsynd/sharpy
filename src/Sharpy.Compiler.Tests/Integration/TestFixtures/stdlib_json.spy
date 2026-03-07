@@ -1,0 +1,12 @@
+# Test json module: dumps and loads
+import json
+
+def main():
+    # Serialize primitives
+    print(json.dumps(42))
+    print(json.dumps("hello"))
+    print(json.dumps(True))
+    print(json.dumps(None))
+
+    # Serialize a list
+    print(json.dumps([1, 2, 3]))

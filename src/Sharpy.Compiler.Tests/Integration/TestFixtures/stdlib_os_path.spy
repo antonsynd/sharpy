@@ -1,0 +1,10 @@
+# Test os.path module: join, basename, dirname, isabs
+import os.path
+
+def main():
+    joined: str = os.path.join("a", "b")
+    print(joined)
+    print(os.path.basename("/usr/local/bin"))
+    print(os.path.dirname("/usr/local/bin"))
+    print(os.path.isabs("/usr/local"))
+    print(os.path.isabs("relative"))

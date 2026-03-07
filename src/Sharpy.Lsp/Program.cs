@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Server;
 using Sharpy.Compiler;
 using Sharpy.Lsp.Handlers;
@@ -10,6 +11,9 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
+        // Store the workspace root URI from initialization for use in OnInitialized.
+        Uri? workspaceRootUri = null;
+
         var server = await LanguageServer.From(options =>
             options
                 .WithInput(Console.OpenStandardInput())
@@ -23,6 +27,41 @@ public class Program
                     services.AddSingleton<CompilerApi>();
                     services.AddSingleton<SharplyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
+                })
+                .OnInitialize((server, request, token) =>
+                {
+                    var rootUri = request.RootUri;
+                    if (rootUri is not null)
+                        workspaceRootUri = rootUri.ToUri();
+
+                    // Declare workspace folder support so clients send folder notifications.
+                    try
+                    {
+                        var caps = server.ServerSettings.Capabilities;
+                        caps.Workspace ??= new OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities.WorkspaceServerCapabilities();
+                        caps.Workspace.WorkspaceFolders = new DidChangeWorkspaceFolderRegistrationOptions.StaticOptions
+                        {
+                            Supported = true,
+                            ChangeNotifications = true,
+                        };
+                    }
+                    catch (Exception)
+                    {
+                        // ServerSettings may not be fully initialized during OnInitialize.
+                    }
+
+                    return Task.CompletedTask;
+                })
+                .OnInitialized((server, request, response, token) =>
+                {
+                    var rootPath = workspaceRootUri?.LocalPath ?? request.RootPath;
+                    if (rootPath != null)
+                    {
+                        var workspace = server.Services.GetRequiredService<SharplyWorkspace>();
+                        workspace.LoadProject(rootPath);
+                    }
+
+                    return Task.CompletedTask;
                 })
                 .WithHandler<TextDocumentSyncHandler>()
                 .WithHandler<SharplyHoverHandler>()

@@ -1,3 +1,4 @@
+using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
@@ -137,19 +138,9 @@ internal sealed class SharplyCodeActionHandler : CodeActionHandlerBase
         DocumentUri uri,
         Diagnostic diag)
     {
-        // Try to extract a suggested name from the diagnostic message.
-        // Typical message: "Variable 'myVar' should use snake_case naming convention; consider 'my_var'"
-        var message = diag.Message ?? "";
-        var considerIndex = message.IndexOf("consider '", StringComparison.Ordinal);
-        if (considerIndex < 0)
-            return null;
+        // Extract suggested name from structured diagnostic data
+        var suggestedName = ExtractSuggestedNameFromData(diag.Data);
 
-        var nameStart = considerIndex + "consider '".Length;
-        var nameEnd = message.IndexOf('\'', nameStart);
-        if (nameEnd < 0)
-            return null;
-
-        var suggestedName = message[nameStart..nameEnd];
         if (string.IsNullOrEmpty(suggestedName))
             return null;
 
@@ -168,6 +159,17 @@ internal sealed class SharplyCodeActionHandler : CodeActionHandlerBase
             Diagnostics = new Container<Diagnostic>(diag),
             Edit = edit
         });
+    }
+
+    private static string? ExtractSuggestedNameFromData(JToken? data)
+    {
+        if (data is JObject obj && obj.TryGetValue("suggestedName", out var token))
+        {
+            var value = token.Value<string>();
+            if (!string.IsNullOrEmpty(value))
+                return value;
+        }
+        return null;
     }
 
     public override Task<CodeAction> Handle(CodeAction request, CancellationToken ct)

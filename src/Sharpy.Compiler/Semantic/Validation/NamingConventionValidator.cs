@@ -246,6 +246,31 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
     }
 
     /// <summary>
+    /// Collapses consecutive underscores in a name to single underscores.
+    /// Preserves leading/trailing underscore patterns (e.g., _foo__bar -> _foo_bar).
+    /// </summary>
+    private static string CollapseConsecutiveUnderscores(string name)
+    {
+        var sb = new System.Text.StringBuilder(name.Length);
+        var lastWasUnderscore = false;
+        foreach (var ch in name)
+        {
+            if (ch == '_')
+            {
+                if (!lastWasUnderscore)
+                    sb.Append(ch);
+                lastWasUnderscore = true;
+            }
+            else
+            {
+                sb.Append(ch);
+                lastWasUnderscore = false;
+            }
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Checks a single name for consecutive underscores and emits SPY0453 if found.
     /// Skips dunder names and backtick-escaped literals.
     /// </summary>
@@ -277,11 +302,15 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
 
         if (NameFormDetector.HasConsecutiveUnderscores(body))
         {
-            AddWarning(_context,
+            var suggestedName = CollapseConsecutiveUnderscores(name);
+            var data = new Dictionary<string, string> { { "suggestedName", suggestedName } };
+            _context.Diagnostics.AddWarning(
                 $"Identifier '{name}' contains consecutive underscores, which may cause name mangling collisions. Use backtick escaping or rename.",
-                line, column,
+                span, line, column,
+                _context.CurrentFilePath,
                 code: DiagnosticCodes.Validation.NamingConventionWarning,
-                span: span);
+                phase: CompilerPhase.Validation,
+                data: data);
         }
     }
 }

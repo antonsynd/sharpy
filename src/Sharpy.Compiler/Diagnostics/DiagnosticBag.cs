@@ -42,7 +42,8 @@ public record CompilerDiagnostic(
     string? FilePath = null,
     string? Code = null,
     CompilerPhase Phase = CompilerPhase.Unknown,
-    TextSpan? Span = null
+    TextSpan? Span = null,
+    IReadOnlyDictionary<string, string>? Data = null
 )
 {
     public bool IsError => Severity == CompilerDiagnosticSeverity.Error;
@@ -187,12 +188,13 @@ public class DiagnosticBag
     }
 
     public void AddWarning(string message, TextSpan? span, int? line = null, int? column = null,
-        string? filePath = null, string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+        string? filePath = null, string? code = null, CompilerPhase phase = CompilerPhase.Unknown,
+        IReadOnlyDictionary<string, string>? data = null)
     {
         if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
             return;
         var severity = _warningsAsErrors ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning;
-        Add(new CompilerDiagnostic(message, severity, line, column, filePath, code, phase, span));
+        Add(new CompilerDiagnostic(message, severity, line, column, filePath, code, phase, span, data));
     }
 
     public void AddWarning(string message, ILocatable locatable, string? filePath = null,
@@ -233,11 +235,38 @@ public class DiagnosticBag
         }
     }
 
-    public bool HasErrors => _diagnostics.Any(d => d.IsError);
+    public bool HasErrors
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _diagnostics.Any(d => d.IsError);
+            }
+        }
+    }
 
-    public int ErrorCount => _diagnostics.Count(d => d.IsError);
+    public int ErrorCount
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _diagnostics.Count(d => d.IsError);
+            }
+        }
+    }
 
-    public int WarningCount => _diagnostics.Count(d => d.Severity == CompilerDiagnosticSeverity.Warning);
+    public int WarningCount
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _diagnostics.Count(d => d.Severity == CompilerDiagnosticSeverity.Warning);
+            }
+        }
+    }
 
     public IReadOnlyList<CompilerDiagnostic> GetAll()
     {

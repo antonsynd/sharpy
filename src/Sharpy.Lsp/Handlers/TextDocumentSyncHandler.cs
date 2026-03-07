@@ -4,6 +4,8 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
+using Sharpy.Compiler;
+using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Lsp.Handlers;
 
@@ -85,11 +87,60 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         };
     }
 
-    private Task OnDocumentAnalyzedAsync(string uri, Compiler.SemanticResult result)
+    private Task OnDocumentAnalyzedAsync(string uri, SemanticResult result)
     {
         var sourceText = _workspace.GetSourceText(uri);
         _diagnosticPublisher.PublishDiagnostics(uri, result, sourceText);
+
+        // Populate dependency graph from import statements
+        if (result.Ast != null)
+        {
+            RecordImportDependencies(uri, result.Ast);
+        }
+
         return Task.CompletedTask;
+    }
+
+    private void RecordImportDependencies(string currentUri, Module ast)
+    {
+        foreach (var stmt in ast.Body)
+        {
+            switch (stmt)
+            {
+                case ImportStatement importStmt:
+                    foreach (var alias in importStmt.Names)
+                    {
+                        var importedUri = ResolveModuleToUri(alias.Name);
+                        if (importedUri != null)
+                        {
+                            _workspace.RecordDependency(importedUri, currentUri);
+                        }
+                    }
+                    break;
+
+                case FromImportStatement fromStmt:
+                    var moduleUri = ResolveModuleToUri(fromStmt.ResolvedModulePath ?? fromStmt.Module);
+                    if (moduleUri != null)
+                    {
+                        _workspace.RecordDependency(moduleUri, currentUri);
+                    }
+                    break;
+            }
+        }
+    }
+
+    private string? ResolveModuleToUri(string moduleName)
+    {
+        // Convert module.submodule to module/submodule.spy path and check workspace
+        var relativePath = moduleName.Replace('.', '/') + ".spy";
+        foreach (var docUri in _workspace.GetAllDocumentUris())
+        {
+            if (docUri.EndsWith(relativePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return docUri;
+            }
+        }
+        return null;
     }
 
     /// <summary>

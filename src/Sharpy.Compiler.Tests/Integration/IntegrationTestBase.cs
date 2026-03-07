@@ -102,6 +102,9 @@ public abstract class IntegrationTestBase
             var semanticBinding = new SemanticBinding();
             var moduleRegistry = new ModuleRegistry(logger);
 
+            // Load Sharpy.Core into ModuleRegistry so stdlib imports (os, json, re, etc.) resolve
+            moduleRegistry.LoadReference(SharpyCoreReference.Location);
+
             var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
             nameResolver.ResolveDeclarations(module);
 

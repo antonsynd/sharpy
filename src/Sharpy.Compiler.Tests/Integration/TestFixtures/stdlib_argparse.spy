@@ -1,0 +1,6 @@
+# Test argparse module: ArgumentParser creation and parse_args
+from argparse import ArgumentParser
+
+def main():
+    parser: ArgumentParser = ArgumentParser(description="test program")
+    print(type(parser).__name__)

@@ -8,11 +8,13 @@
   "engines": {
     "vscode": "^1.85.0"
   },
+  "icon": "icons/sharpy-icon.png",
   "categories": [
     "Programming Languages"
   ],
   "activationEvents": [
-    "onLanguage:sharpy"
+    "onLanguage:sharpy",
+    "onDebugResolve:sharpy"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -73,6 +75,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show parameter names at call sites."
+        },
+        "sharpy.debug.dotnetPath": {
+          "type": "string",
+          "default": "dotnet",
+          "description": "Path to the dotnet executable used for debugging."
         }
       }
     },
@@ -90,6 +97,27 @@
       {
         "language": "sharpy",
         "path": "./snippets/sharpy.json"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "sharpy",
+        "label": "Sharpy",
+        "languages": [
+          "sharpy"
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Sharpy: Run File",
+            "description": "Compile and run the current .spy file",
+            "body": {
+              "type": "sharpy",
+              "request": "launch",
+              "name": "Run Sharpy File",
+              "program": "^\"\\${file}\""
+            }
+          }
+        ]
       }
     ]
   },
