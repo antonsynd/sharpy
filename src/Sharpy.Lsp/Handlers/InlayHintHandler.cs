@@ -55,57 +55,156 @@ internal sealed class SharplyInlayHintHandler : InlayHintsHandlerBase
             if (stmt is VariableDeclaration varDecl && varDecl.Type == null)
             {
                 var lspLine = System.Math.Max(0, varDecl.LineStart - 1);
-                if (lspLine < range.Start.Line || lspLine > range.End.Line)
-                    continue;
-
-                var symbol = analysis.SymbolTable?.Lookup(varDecl.Name);
-                var inferredType = (symbol as VariableSymbol)?.Type;
-
-                if (inferredType != null && inferredType is not UnknownType && inferredType is not VoidType)
+                if (lspLine >= range.Start.Line && lspLine <= range.End.Line)
                 {
-                    var col = System.Math.Max(0, varDecl.ColumnStart - 1) + varDecl.Name.Length;
-                    hints.Add(new InlayHint
+                    var symbol = analysis.SymbolTable?.Lookup(varDecl.Name);
+                    var inferredType = (symbol as VariableSymbol)?.Type;
+
+                    if (inferredType != null && inferredType is not UnknownType && inferredType is not VoidType)
                     {
-                        Position = new Position(lspLine, col),
-                        Label = new StringOrInlayHintLabelParts($": {inferredType.GetDisplayName()}"),
-                        Kind = InlayHintKind.Type,
-                        PaddingLeft = false,
-                        PaddingRight = true
-                    });
+                        var col = System.Math.Max(0, varDecl.ColumnStart - 1) + varDecl.Name.Length;
+                        hints.Add(new InlayHint
+                        {
+                            Position = new Position(lspLine, col),
+                            Label = new StringOrInlayHintLabelParts($": {inferredType.GetDisplayName()}"),
+                            Kind = InlayHintKind.Type,
+                            PaddingLeft = false,
+                            PaddingRight = true
+                        });
+                    }
                 }
+
+                // Check initializer for function calls
+                if (varDecl.InitialValue != null)
+                    CollectCallHintsFromExpression(varDecl.InitialValue, analysis, range, hints);
             }
 
-            // Function calls -> show parameter names
-            if (stmt is ExpressionStatement exprStmt && exprStmt.Expression is FunctionCall call)
+            // Expression statements with function calls -> show parameter names
+            if (stmt is ExpressionStatement exprStmt)
             {
-                AddParameterHints(call, analysis, range, hints);
+                CollectCallHintsFromExpression(exprStmt.Expression, analysis, range, hints);
+            }
+
+            // Return statements may contain function calls
+            if (stmt is ReturnStatement returnStmt && returnStmt.Value != null)
+            {
+                CollectCallHintsFromExpression(returnStmt.Value, analysis, range, hints);
             }
 
             // Recurse into compound statements
-            if (stmt is FunctionDef funcDef)
+            switch (stmt)
             {
-                CollectInlayHints(funcDef.Body, analysis, range, hints);
+                case FunctionDef funcDef:
+                    CollectInlayHints(funcDef.Body, analysis, range, hints);
+                    break;
+                case ClassDef classDef:
+                    CollectInlayHints(classDef.Body, analysis, range, hints);
+                    break;
+                case StructDef structDef:
+                    CollectInlayHints(structDef.Body, analysis, range, hints);
+                    break;
+                case IfStatement ifStmt:
+                    CollectInlayHints(ifStmt.ThenBody, analysis, range, hints);
+                    foreach (var elif in ifStmt.ElifClauses)
+                        CollectInlayHints(elif.Body, analysis, range, hints);
+                    if (ifStmt.ElseBody.Length > 0)
+                        CollectInlayHints(ifStmt.ElseBody, analysis, range, hints);
+                    break;
+                case WhileStatement whileStmt:
+                    CollectInlayHints(whileStmt.Body, analysis, range, hints);
+                    break;
+                case ForStatement forStmt:
+                    CollectInlayHints(forStmt.Body, analysis, range, hints);
+                    if (forStmt.ElseBody.Length > 0)
+                        CollectInlayHints(forStmt.ElseBody, analysis, range, hints);
+                    break;
+                case TryStatement tryStmt:
+                    CollectInlayHints(tryStmt.Body, analysis, range, hints);
+                    foreach (var handler in tryStmt.Handlers)
+                        CollectInlayHints(handler.Body, analysis, range, hints);
+                    if (tryStmt.ElseBody.Length > 0)
+                        CollectInlayHints(tryStmt.ElseBody, analysis, range, hints);
+                    if (tryStmt.FinallyBody.Length > 0)
+                        CollectInlayHints(tryStmt.FinallyBody, analysis, range, hints);
+                    break;
+                case WithStatement withStmt:
+                    CollectInlayHints(withStmt.Body, analysis, range, hints);
+                    break;
+                case MatchStatement matchStmt:
+                    foreach (var matchCase in matchStmt.Cases)
+                        CollectInlayHints(matchCase.Body, analysis, range, hints);
+                    break;
             }
-            else if (stmt is ClassDef classDef)
-            {
-                CollectInlayHints(classDef.Body, analysis, range, hints);
-            }
-            else if (stmt is IfStatement ifStmt)
-            {
-                CollectInlayHints(ifStmt.ThenBody, analysis, range, hints);
-                foreach (var elif in ifStmt.ElifClauses)
-                    CollectInlayHints(elif.Body, analysis, range, hints);
-                if (ifStmt.ElseBody.Length > 0)
-                    CollectInlayHints(ifStmt.ElseBody, analysis, range, hints);
-            }
-            else if (stmt is WhileStatement whileStmt)
-            {
-                CollectInlayHints(whileStmt.Body, analysis, range, hints);
-            }
-            else if (stmt is ForStatement forStmt)
-            {
-                CollectInlayHints(forStmt.Body, analysis, range, hints);
-            }
+        }
+    }
+
+    /// <summary>
+    /// Recursively walks an expression tree to find FunctionCall nodes
+    /// and add parameter name hints for each.
+    /// </summary>
+    private static void CollectCallHintsFromExpression(
+        Expression expr,
+        Compiler.SemanticResult analysis,
+        LspRange range,
+        List<InlayHint> hints)
+    {
+        if (expr is FunctionCall call)
+        {
+            AddParameterHints(call, analysis, range, hints);
+            // Recurse into arguments (they may contain nested calls)
+            foreach (var arg in call.Arguments)
+                CollectCallHintsFromExpression(arg, analysis, range, hints);
+            // Recurse into the function expression itself (e.g., obj.method())
+            CollectCallHintsFromExpression(call.Function, analysis, range, hints);
+            return;
+        }
+
+        if (expr is BinaryOp binExpr)
+        {
+            CollectCallHintsFromExpression(binExpr.Left, analysis, range, hints);
+            CollectCallHintsFromExpression(binExpr.Right, analysis, range, hints);
+            return;
+        }
+
+        if (expr is UnaryOp unaryExpr)
+        {
+            CollectCallHintsFromExpression(unaryExpr.Operand, analysis, range, hints);
+            return;
+        }
+
+        if (expr is MemberAccess memberAccess)
+        {
+            CollectCallHintsFromExpression(memberAccess.Object, analysis, range, hints);
+            return;
+        }
+
+        if (expr is IndexAccess indexExpr)
+        {
+            CollectCallHintsFromExpression(indexExpr.Object, analysis, range, hints);
+            CollectCallHintsFromExpression(indexExpr.Index, analysis, range, hints);
+            return;
+        }
+
+        if (expr is ConditionalExpression condExpr)
+        {
+            CollectCallHintsFromExpression(condExpr.Test, analysis, range, hints);
+            CollectCallHintsFromExpression(condExpr.ThenValue, analysis, range, hints);
+            CollectCallHintsFromExpression(condExpr.ElseValue, analysis, range, hints);
+            return;
+        }
+
+        if (expr is TupleLiteral tupleExpr)
+        {
+            foreach (var element in tupleExpr.Elements)
+                CollectCallHintsFromExpression(element, analysis, range, hints);
+            return;
+        }
+
+        if (expr is ListLiteral listExpr)
+        {
+            foreach (var element in listExpr.Elements)
+                CollectCallHintsFromExpression(element, analysis, range, hints);
+            return;
         }
     }
 
