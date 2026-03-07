@@ -53,4 +53,11 @@ public interface ISemanticQuery
     /// Returns an empty list if no references have been recorded.
     /// </summary>
     IReadOnlyList<SymbolReference> GetReferences(Symbol symbol);
+
+    /// <summary>
+    /// Finds all recorded references for a symbol matched by name and declaring file path.
+    /// Used for cross-file reference queries where the caller has a symbol instance from
+    /// a different compilation (and thus reference equality won't match).
+    /// </summary>
+    IReadOnlyList<SymbolReference> FindReferencesBySymbolIdentity(string symbolName, string? declaringFilePath);
 }

@@ -334,6 +334,20 @@ public class SemanticInfo : ISemanticQuery
             ? list
             : Array.Empty<SymbolReference>();
     }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<SymbolReference> FindReferencesBySymbolIdentity(string symbolName, string? declaringFilePath)
+    {
+        foreach (var (symbol, refs) in _symbolReferences)
+        {
+            if (symbol.Name == symbolName &&
+                string.Equals(symbol.DeclaringFilePath, declaringFilePath, StringComparison.Ordinal))
+            {
+                return refs;
+            }
+        }
+        return Array.Empty<SymbolReference>();
+    }
 }
 
 /// <summary>

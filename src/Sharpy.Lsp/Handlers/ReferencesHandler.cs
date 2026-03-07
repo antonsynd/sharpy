@@ -71,15 +71,53 @@ internal sealed class SharplyReferencesHandler : ReferencesHandlerBase
             });
         }
 
-        // Get all references
+        // Get references from current file
         var references = analysis.SemanticQuery.GetReferences(symbol);
+        AddReferenceLocations(locations, references, symbol.Name, uri);
+
+        // Collect references from other workspace files
+        var allUris = _workspace.GetAllDocumentUris();
+        foreach (var otherUri in allUris)
+        {
+            if (string.Equals(otherUri, uri, StringComparison.Ordinal))
+                continue;
+
+            try
+            {
+                var otherAnalysis = await _workspace.GetAnalysisAsync(otherUri, ct).ConfigureAwait(false);
+                if (otherAnalysis?.SemanticQuery == null)
+                    continue;
+
+                var crossRefs = otherAnalysis.SemanticQuery.FindReferencesBySymbolIdentity(
+                    symbol.Name, symbol.DeclaringFilePath);
+                AddReferenceLocations(locations, crossRefs, symbol.Name, otherUri);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch
+            {
+                // Skip files that fail to analyze
+            }
+        }
+
+        return new LocationContainer(locations);
+    }
+
+    private static void AddReferenceLocations(
+        System.Collections.Generic.List<Location> locations,
+        IReadOnlyList<Compiler.Semantic.SymbolReference> references,
+        string symbolName,
+        string fallbackUri)
+    {
         foreach (var refLoc in references)
         {
             var refLine = System.Math.Max(0, refLoc.Line - 1);
             var refCol = System.Math.Max(0, refLoc.Column - 1);
-            var refEnd = refCol + symbol.Name.Length;
+            var refEnd = refCol + symbolName.Length;
 
-            var refFilePath = refLoc.FilePath ?? uri;
+            var refFilePath = refLoc.FilePath ?? fallbackUri;
             var refUri = refFilePath.StartsWith("file://", StringComparison.Ordinal)
                 ? DocumentUri.From(refFilePath)
                 : DocumentUri.FromFileSystemPath(refFilePath);
@@ -92,8 +130,6 @@ internal sealed class SharplyReferencesHandler : ReferencesHandlerBase
                     new Position(refLine, refEnd))
             });
         }
-
-        return new LocationContainer(locations);
     }
 
     protected override ReferenceRegistrationOptions CreateRegistrationOptions(
