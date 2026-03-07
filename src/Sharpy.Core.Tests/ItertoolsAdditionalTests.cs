@@ -16,7 +16,8 @@ namespace Sharpy.Tests
             foreach (long n in Itertools.Count())
             {
                 result.Add(n);
-                if (result.Count == 5) break;
+                if (result.Count == 5)
+                    break;
             }
 
             Assert.Equal(new long[] { 0, 1, 2, 3, 4 }, result);
@@ -29,7 +30,8 @@ namespace Sharpy.Tests
             foreach (long n in Itertools.Count(10, 3))
             {
                 result.Add(n);
-                if (result.Count == 4) break;
+                if (result.Count == 4)
+                    break;
             }
 
             Assert.Equal(new long[] { 10, 13, 16, 19 }, result);
@@ -42,7 +44,8 @@ namespace Sharpy.Tests
             foreach (long n in Itertools.Count(5, -1))
             {
                 result.Add(n);
-                if (result.Count == 4) break;
+                if (result.Count == 4)
+                    break;
             }
 
             Assert.Equal(new long[] { 5, 4, 3, 2 }, result);
@@ -381,7 +384,8 @@ namespace Sharpy.Tests
             foreach (var (key, group) in Itertools.Groupby(data))
             {
                 int count = 0;
-                foreach (int _ in group) count++;
+                foreach (int _ in group)
+                    count++;
                 groups.Add((key, count));
             }
 
