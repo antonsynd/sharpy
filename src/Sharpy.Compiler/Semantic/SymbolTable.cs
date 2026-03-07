@@ -136,6 +136,40 @@ public class SymbolTable
     }
 
     /// <summary>
+    /// Collects all visible symbols by walking the scope chain from the current scope
+    /// up through all parent scopes. Later definitions shadow earlier ones.
+    /// Used for LSP completion and workspace symbol queries.
+    /// </summary>
+    public IEnumerable<Symbol> GetVisibleSymbols()
+    {
+        var seen = new HashSet<string>();
+        var scope = CurrentScope;
+        while (scope != null)
+        {
+            foreach (var symbol in scope.GetAllSymbols())
+            {
+                if (seen.Add(symbol.Name))
+                    yield return symbol;
+            }
+            scope = scope.Parent;
+        }
+    }
+
+    /// <summary>
+    /// Returns all visible symbols filtered by type. Walks the scope chain
+    /// from the current scope up through all parent scopes.
+    /// Used for LSP completion with kind filtering.
+    /// </summary>
+    public IEnumerable<T> GetVisibleSymbolsOfKind<T>() where T : Symbol
+    {
+        foreach (var symbol in GetVisibleSymbols())
+        {
+            if (symbol is T typed)
+                yield return typed;
+        }
+    }
+
+    /// <summary>
     /// Removes a symbol from the scope chain.
     /// Used during incremental compilation to invalidate stale cached symbols.
     /// </summary>

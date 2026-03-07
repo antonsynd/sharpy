@@ -6,19 +6,18 @@
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>sharpyc</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.CommandLine" Version="2.0.3" />
+    <InternalsVisibleTo Include="Sharpy.Lsp.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.9" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sharpy.Compiler\Sharpy.Compiler.csproj" />
-    <ProjectReference Include="..\Sharpy.Core\Sharpy.Core.csproj">
-      <Aliases>SharpyRT</Aliases>
-    </ProjectReference>
-    <ProjectReference Include="..\Sharpy.Lsp\Sharpy.Lsp.csproj" />
   </ItemGroup>
 
 </Project>

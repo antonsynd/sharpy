@@ -282,6 +282,13 @@ class Program
             HandleExplainCommand(code, list);
         });
 
+        // === LSP Command ===
+        var lspCommand = new Command("lsp", "Start the Sharpy Language Server (stdio transport)");
+        lspCommand.SetAction(async (parseResult, cancellationToken) =>
+        {
+            await Sharpy.Lsp.Program.Main(Array.Empty<string>()).ConfigureAwait(false);
+        });
+
         // === Add all commands to root ===
         rootCommand.Subcommands.Add(buildCommand);
         rootCommand.Subcommands.Add(runCommand);
@@ -289,6 +296,7 @@ class Program
         rootCommand.Subcommands.Add(emitCommand);
         rootCommand.Subcommands.Add(cacheCommand);
         rootCommand.Subcommands.Add(explainCommand);
+        rootCommand.Subcommands.Add(lspCommand);
 
         return rootCommand.Parse(args).Invoke();
     }

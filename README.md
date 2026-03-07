@@ -423,6 +423,24 @@ sharpy/
 └── build_tools/                 # Build automation and dogfooding tools
 ```
 
+## Editor Support
+
+Sharpy includes a Language Server Protocol (LSP) server for IDE integration.
+
+### VSCode
+
+Install the **Sharpy** extension from the marketplace or build from `editors/vscode/`.
+
+### Other Editors
+
+Any editor supporting LSP can connect to the Sharpy language server:
+
+```bash
+sharpyc lsp
+```
+
+See [docs/tooling/editor-integration.md](docs/tooling/editor-integration.md) for configuration guides for Neovim, Emacs, Sublime Text, Helix, and Zed.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
