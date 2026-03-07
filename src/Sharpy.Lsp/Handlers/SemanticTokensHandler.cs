@@ -44,25 +44,25 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
     ];
 
     // Token type indices — must match order of TokenTypes array above.
-    private const int TFunction = 0;
-    private const int TClass = 1;
-    private const int TStruct = 2;
-    private const int TInterface = 3;
-    private const int TEnum = 4;
-    private const int TEnumMember = 5;
-    private const int TParameter = 6;
-    private const int TVariable = 7;
-    private const int TDecorator = 8;
-    private const int TType = 9;
-    private const int TProperty = 10;
-    private const int TMethod = 11;
-    private const int TKeyword = 12;
+    internal const int TFunction = 0;
+    internal const int TClass = 1;
+    internal const int TStruct = 2;
+    internal const int TInterface = 3;
+    internal const int TEnum = 4;
+    internal const int TEnumMember = 5;
+    internal const int TParameter = 6;
+    internal const int TVariable = 7;
+    internal const int TDecorator = 8;
+    internal const int TType = 9;
+    internal const int TProperty = 10;
+    internal const int TMethod = 11;
+    internal const int TKeyword = 12;
 
-    private const int ModDeclaration = 1 << 0;
-    private const int ModDefinition = 1 << 1;
-    private const int ModStatic = 1 << 2;
-    private const int ModAsync = 1 << 3;
-    private const int ModReadonly = 1 << 4;
+    internal const int ModDeclaration = 1 << 0;
+    internal const int ModDefinition = 1 << 1;
+    internal const int ModStatic = 1 << 2;
+    internal const int ModAsync = 1 << 3;
+    internal const int ModReadonly = 1 << 4;
 
     public SharplySemanticTokensHandler(SharplyWorkspace workspace)
     {
@@ -122,7 +122,7 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
         return Task.FromResult(new SemanticTokensDocument(RegistrationOptions.Legend));
     }
 
-    private static void CollectTokens(
+    internal static void CollectTokens(
         IEnumerable<Statement> statements,
         SemanticResult analysis,
         System.Collections.Generic.List<RawToken> tokens)
@@ -295,5 +295,5 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
     /// <summary>
     /// A collected token before delta-encoding. Stored with 0-based line/col.
     /// </summary>
-    private readonly record struct RawToken(int Line, int Col, int Length, int TokenType, int Modifiers);
+    internal readonly record struct RawToken(int Line, int Col, int Length, int TokenType, int Modifiers);
 }
