@@ -749,6 +749,15 @@ public static class DiagnosticExplanations
             "Mark the field as @static if it should be shared across instances:\nclass Config:\n    @static\n    timeout: int = 30\n\n" +
             "Or use an instance:\ndef main():\n    c = Config()\n    t = c.timeout");
 
+        Add(dict, DiagnosticCodes.Semantic.MaybeOnUnconstrainedTypeParameter,
+            "'maybe' on unconstrained generic type parameter",
+            "Semantic",
+            "The 'maybe' operator cannot be used with an unconstrained generic type parameter because " +
+            "Optional.From<T> has separate overloads for reference types (where T : class) and value types " +
+            "(where T : struct). When T is unconstrained, the compiler cannot determine which overload to use.",
+            "def wrap[T](value: T | None) -> T?:\n    return maybe value  # error: T is unconstrained",
+            "Constrain the type parameter or use a different pattern to handle the optional value.");
+
         // ── Semantic errors: Import (SPY0300-SPY0319) ───────────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleNotFound, "Module not found", "Semantic",
