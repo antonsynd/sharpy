@@ -143,6 +143,13 @@ public partial class Lexer
         { "is", TokenType.Is },
     };
 
+    private static readonly IReadOnlySet<string> _keywordNames = new HashSet<string>(Keywords.Keys) { "self" };
+
+    /// <summary>
+    /// All Sharpy keyword names, including the contextual keyword "self".
+    /// </summary>
+    public static IReadOnlySet<string> KeywordNames => _keywordNames;
+
     public Lexer(string source, ICompilerLogger? logger = null, int startLine = 1, int startColumn = 1,
         CancellationToken cancellationToken = default, bool preserveTrivia = false)
     {
