@@ -34,14 +34,17 @@ public class DocumentHighlightTests : IDisposable
     }
 
     [Fact]
-    public async Task FunctionName_HighlightsAtCallSiteAsync()
+    public async Task FunctionName_HighlightsAtDefinitionAsync()
     {
+        // "def foo():" - 'foo' is at line 0, col 4
+        // "    foo()" - call to foo at line 3, col 4
         var source = "def foo():\n    pass\n\ndef main():\n    foo()";
         // Position on 'foo' at call site (line 4, col 4 in 0-based)
         var highlights = await GetHighlightsAsync(source, 4, 4);
 
         if (highlights is not null)
         {
+            // If the handler resolves the symbol, we expect at least a Write highlight
             highlights.Count().Should().BeGreaterThanOrEqualTo(1);
         }
         // null is acceptable if FindNodeAtPosition can't resolve the node

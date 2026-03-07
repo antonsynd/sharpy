@@ -39,8 +39,7 @@ public class CodeLensTests : IDisposable
         var lenses = await GetCodeLensesAsync(source);
 
         lenses.Should().NotBeNull();
-        var refLenses = lenses!.Where(l =>
-            l.Command != null && l.Command.Title != null && l.Command.Title.Contains("reference")).ToList();
+        var refLenses = lenses!.Where(l => l.Command?.Title?.Contains("reference") == true).ToList();
         refLenses.Should().NotBeEmpty();
     }
 
@@ -51,21 +50,21 @@ public class CodeLensTests : IDisposable
         var lenses = await GetCodeLensesAsync(source);
 
         lenses.Should().NotBeNull();
-        var runLenses = lenses!.Where(l => l.Command != null && l.Command.Title == "Run").ToList();
+        var runLenses = lenses!.Where(l => l.Command?.Title == "Run").ToList();
         runLenses.Should().ContainSingle();
     }
 
     [Fact]
     public async Task MainFunction_ShowsReferenceAndRunLensAsync()
     {
+        // main() should show both reference count and Run lens
         var source = "def main():\n    print(\"hello\")";
         var lenses = await GetCodeLensesAsync(source);
 
         lenses.Should().NotBeNull();
         lenses!.Count().Should().BeGreaterThanOrEqualTo(2);
         lenses.Should().Contain(l => l.Command != null && l.Command.Title == "Run");
-        lenses.Should().Contain(l =>
-            l.Command != null && l.Command.Title != null && l.Command.Title.Contains("reference"));
+        lenses.Should().Contain(l => l.Command != null && l.Command.Title != null && l.Command.Title.Contains("reference"));
     }
 
     [Fact]
@@ -75,8 +74,7 @@ public class CodeLensTests : IDisposable
         var lenses = await GetCodeLensesAsync(source);
 
         lenses.Should().NotBeNull();
-        var refLenses = lenses!.Where(l =>
-            l.Command != null && l.Command.Title != null && l.Command.Title.Contains("reference")).ToList();
+        var refLenses = lenses!.Where(l => l.Command?.Title?.Contains("reference") == true).ToList();
         refLenses.Should().NotBeEmpty();
     }
 
