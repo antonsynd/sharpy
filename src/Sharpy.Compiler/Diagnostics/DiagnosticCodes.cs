@@ -175,6 +175,7 @@ public static class DiagnosticCodes
         public const string CircularInheritance = "SPY0288";
         // TODO(#237): SPY0289 reserved for future use
         public const string InstanceFieldViaTypeName = "SPY0290";
+        public const string MaybeOnUnconstrainedTypeParameter = "SPY0291";
 
         // Import errors (SPY0300-SPY0319)
         public const string ModuleNotFound = "SPY0300";

@@ -664,6 +664,16 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        if (nullable.UnderlyingType is TypeParameterType typeParam)
+        {
+            AddError(
+                $"'maybe' cannot be used with unconstrained generic type parameter '{typeParam.Name}'. The type parameter must be constrained to either a reference type or value type.",
+                maybeExpr.LineStart, maybeExpr.ColumnStart,
+                code: DiagnosticCodes.Semantic.MaybeOnUnconstrainedTypeParameter,
+                span: maybeExpr.Span);
+            return SemanticType.Unknown;
+        }
+
         return new OptionalType { UnderlyingType = nullable.UnderlyingType };
     }
 

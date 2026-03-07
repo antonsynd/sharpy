@@ -1,0 +1,5 @@
+def wrap[T](value: T | None) -> T?:
+    return maybe value
+
+def main():
+    print(wrap(42))
