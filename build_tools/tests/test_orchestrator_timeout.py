@@ -137,9 +137,7 @@ class TestTimeoutSkipPath:
 
         import json
 
-        metadata = json.loads(
-            (result.skip_dir / "metadata.json").read_text()
-        )
+        metadata = json.loads((result.skip_dir / "metadata.json").read_text())
         assert metadata["backend_used"] == "copilot"
         assert metadata["feature_focus"] == "simple_function"
         assert metadata["complexity"] == "simple"

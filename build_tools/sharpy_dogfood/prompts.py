@@ -1887,7 +1887,7 @@ def extract_multifile_from_xml(response: str) -> Optional[dict[str, str]]:
                     end = len(response)
                 content = response[start:end]
                 # Strip any trailing </code> that might be present
-                content = re.sub(r'\s*</code>\s*$', '', content, flags=re.IGNORECASE)
+                content = re.sub(r"\s*</code>\s*$", "", content, flags=re.IGNORECASE)
                 matches.append((m.group(1), content))
 
     if not matches:
@@ -2050,7 +2050,7 @@ def _extract_multifile_from_fenced_blocks(response: str) -> Optional[dict[str, s
         m = filename_comment.match(block)
         if m:
             filename = m.group(1).lower()
-            code = block[m.end():].strip()
+            code = block[m.end() :].strip()
             if code:
                 files[filename] = code
 

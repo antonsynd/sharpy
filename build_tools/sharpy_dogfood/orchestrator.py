@@ -1929,7 +1929,10 @@ class DogfoodOrchestrator:
                         file=sys.stderr,
                     )
 
-            print("  All files validated successfully (compiler + Python)", file=sys.stderr)
+            print(
+                "  All files validated successfully (compiler + Python)",
+                file=sys.stderr,
+            )
             return MultifileGenerationResult(
                 success=True,
                 files=files,

@@ -280,7 +280,7 @@ def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
     install_bin_dir.mkdir(parents=True, exist_ok=True)
 
     # Locate the built compiler
-    cli_bin_dir = CLI_DIR / "bin" / build_type / "net9.0"
+    cli_bin_dir = CLI_DIR / "bin" / build_type / "net10.0"
 
     if not cli_bin_dir.exists():
         get_logger().error(
