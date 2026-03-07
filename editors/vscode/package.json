@@ -8,6 +8,7 @@
   "engines": {
     "vscode": "^1.85.0"
   },
+  "icon": "icons/sharpy-icon.png",
   "categories": [
     "Programming Languages"
   ],
