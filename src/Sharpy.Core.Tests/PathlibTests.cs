@@ -283,6 +283,120 @@ namespace Sharpy.Core.Tests
             Assert.Equal("file.md", p.Name);
         }
 
+        // ===== Rename =====
+
+        [Fact]
+        public void Rename_RenamesFile()
+        {
+            var src = Sub("rename_src.txt");
+            System.IO.File.WriteAllText(src, "content");
+            var dst = Sub("rename_dst.txt");
+            var result = new Path(src).Rename(dst);
+            Assert.False(System.IO.File.Exists(src));
+            Assert.True(System.IO.File.Exists(dst));
+            Assert.Equal(dst, result.ToString());
+            Assert.Equal("content", System.IO.File.ReadAllText(dst));
+        }
+
+        [Fact]
+        public void Rename_ThrowsOnNonexistent()
+        {
+            Assert.Throws<FileNotFoundError>(() => new Path(Sub("nonexistent.txt")).Rename(Sub("dst.txt")));
+        }
+
+        // ===== Replace =====
+
+        [Fact]
+        public void Replace_ReplacesExistingTarget()
+        {
+            var src = Sub("replace_src.txt");
+            var dst = Sub("replace_dst.txt");
+            System.IO.File.WriteAllText(src, "new content");
+            System.IO.File.WriteAllText(dst, "old content");
+            var result = new Path(src).Replace(dst);
+            Assert.False(System.IO.File.Exists(src));
+            Assert.True(System.IO.File.Exists(dst));
+            Assert.Equal(dst, result.ToString());
+            Assert.Equal("new content", System.IO.File.ReadAllText(dst));
+        }
+
+        [Fact]
+        public void Replace_WorksWhenTargetDoesNotExist()
+        {
+            var src = Sub("replace_src2.txt");
+            var dst = Sub("replace_dst2.txt");
+            System.IO.File.WriteAllText(src, "data");
+            var result = new Path(src).Replace(dst);
+            Assert.False(System.IO.File.Exists(src));
+            Assert.True(System.IO.File.Exists(dst));
+            Assert.Equal(dst, result.ToString());
+        }
+
+        // ===== RelativeTo =====
+
+        [Fact]
+        public void RelativeTo_ComputesRelativePath()
+        {
+            var child = new Path(System.IO.Path.Combine(_tempDir, "a", "b"));
+            var relative = child.RelativeTo(_tempDir);
+            var expected = System.IO.Path.Combine("a", "b");
+            Assert.Equal(expected, relative.ToString());
+        }
+
+        [Fact]
+        public void RelativeTo_ThrowsWhenNotRelative()
+        {
+            Assert.Throws<ValueError>(() => new Path("/completely/different").RelativeTo("/other/base"));
+        }
+
+        [Fact]
+        public void RelativeTo_SamePath_ReturnsDot()
+        {
+            var p = new Path(_tempDir);
+            var result = p.RelativeTo(_tempDir);
+            Assert.Equal(".", result.ToString());
+        }
+
+        // ===== Parts =====
+
+        [Fact]
+        public void Parts_ReturnsComponents()
+        {
+            var p = new Path("/usr/local/bin");
+            var parts = p.Parts;
+            Assert.Equal("/", parts[0]);
+            Assert.Equal("usr", parts[1]);
+            Assert.Equal("local", parts[2]);
+            Assert.Equal("bin", parts[3]);
+        }
+
+        [Fact]
+        public void Parts_RelativePath()
+        {
+            var p = new Path("a/b/c");
+            var parts = p.Parts;
+            Assert.Equal(3, ((ICollection<string>)parts).Count);
+            Assert.Equal("a", parts[0]);
+            Assert.Equal("b", parts[1]);
+            Assert.Equal("c", parts[2]);
+        }
+
+        // ===== Anchor =====
+
+        [Fact]
+        public void Anchor_AbsolutePath()
+        {
+            var p = new Path("/usr/local");
+            Assert.Equal("/", p.Anchor);
+        }
+
+        [Fact]
+        public void Anchor_RelativePath_IsEmpty()
+        {
+            var p = new Path("relative/path");
+            Assert.Equal("", p.Anchor);
+        }
+
         // ===== Equality =====
 
         [Fact]

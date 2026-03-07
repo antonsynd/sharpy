@@ -120,6 +120,9 @@ namespace Sharpy
         /// <summary>The root of the path (e.g., "/" on Unix).</summary>
         public string Root => System.IO.Path.GetPathRoot(_path) ?? "";
 
+        /// <summary>The concatenation of drive and root (e.g., "/" on Unix, "C:\" on Windows).</summary>
+        public string Anchor => Root;
+
         /// <summary>Whether the path is absolute.</summary>
         public bool IsAbsolute => System.IO.Path.IsPathRooted(_path);
 

@@ -187,6 +187,34 @@ namespace Sharpy
 
         // ===== File/Directory Info =====
 
+        /// <summary>Get file or directory status, similar to Python's os.stat().</summary>
+        public static StatResult Stat(string path)
+        {
+            if (File.Exists(path))
+            {
+                var info = new FileInfo(path);
+                return new StatResult(
+                    stSize: info.Length,
+                    stMtime: new DateTimeOffset(info.LastWriteTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.LastWriteTimeUtc).Millisecond / 1000.0,
+                    stCtime: new DateTimeOffset(info.CreationTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.CreationTimeUtc).Millisecond / 1000.0,
+                    stAtime: new DateTimeOffset(info.LastAccessTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.LastAccessTimeUtc).Millisecond / 1000.0,
+                    stMode: (int)info.Attributes
+                );
+            }
+            if (Directory.Exists(path))
+            {
+                var info = new DirectoryInfo(path);
+                return new StatResult(
+                    stSize: 0,
+                    stMtime: new DateTimeOffset(info.LastWriteTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.LastWriteTimeUtc).Millisecond / 1000.0,
+                    stCtime: new DateTimeOffset(info.CreationTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.CreationTimeUtc).Millisecond / 1000.0,
+                    stAtime: new DateTimeOffset(info.LastAccessTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.LastAccessTimeUtc).Millisecond / 1000.0,
+                    stMode: (int)info.Attributes
+                );
+            }
+            throw new FileNotFoundError("No such file or directory: '" + path + "'");
+        }
+
         /// <summary>Check if a path exists (file or directory).</summary>
         public static bool PathExists(string path)
         {
@@ -224,6 +252,36 @@ namespace Sharpy
                     yield return entry;
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Result of os.stat(), similar to Python's os.stat_result.
+    /// </summary>
+    public sealed class StatResult
+    {
+        /// <summary>Size in bytes (0 for directories).</summary>
+        public long StSize { get; }
+
+        /// <summary>Time of last modification (Unix timestamp).</summary>
+        public double StMtime { get; }
+
+        /// <summary>Time of creation (Unix timestamp).</summary>
+        public double StCtime { get; }
+
+        /// <summary>Time of last access (Unix timestamp).</summary>
+        public double StAtime { get; }
+
+        /// <summary>File mode / attributes.</summary>
+        public int StMode { get; }
+
+        public StatResult(long stSize, double stMtime, double stCtime, double stAtime, int stMode)
+        {
+            StSize = stSize;
+            StMtime = stMtime;
+            StCtime = stCtime;
+            StAtime = stAtime;
+            StMode = stMode;
         }
     }
 }

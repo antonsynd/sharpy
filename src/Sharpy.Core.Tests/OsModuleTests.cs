@@ -231,6 +231,69 @@ namespace Sharpy.Core.Tests
             Assert.True(env.Count > 0);
         }
 
+        // ===== PathExists =====
+
+        [Fact]
+        public void PathExists_TrueForFile()
+        {
+            var path = Sub("exists_file.txt");
+            System.IO.File.WriteAllText(path, "data");
+            Assert.True(Os.PathExists(path));
+        }
+
+        [Fact]
+        public void PathExists_TrueForDirectory()
+        {
+            var path = Sub("exists_dir");
+            System.IO.Directory.CreateDirectory(path);
+            Assert.True(Os.PathExists(path));
+        }
+
+        [Fact]
+        public void PathExists_FalseForNonexistent()
+        {
+            Assert.False(Os.PathExists(Sub("nonexistent_path")));
+        }
+
+        // ===== Stat =====
+
+        [Fact]
+        public void Stat_ReturnsFileSize()
+        {
+            var path = Sub("stat_file.txt");
+            System.IO.File.WriteAllText(path, "hello");
+            var result = Os.Stat(path);
+            Assert.True(result.StSize > 0);
+        }
+
+        [Fact]
+        public void Stat_ReturnsTimestamps()
+        {
+            var path = Sub("stat_time.txt");
+            System.IO.File.WriteAllText(path, "data");
+            var result = Os.Stat(path);
+            // Timestamps should be reasonable (after year 2020 = 1577836800)
+            Assert.True(result.StMtime > 1577836800);
+            Assert.True(result.StCtime > 1577836800);
+            Assert.True(result.StAtime > 1577836800);
+        }
+
+        [Fact]
+        public void Stat_WorksForDirectories()
+        {
+            var path = Sub("stat_dir");
+            System.IO.Directory.CreateDirectory(path);
+            var result = Os.Stat(path);
+            Assert.Equal(0, result.StSize);
+            Assert.True(result.StMtime > 1577836800);
+        }
+
+        [Fact]
+        public void Stat_ThrowsOnNonexistent()
+        {
+            Assert.Throws<FileNotFoundError>(() => Os.Stat(Sub("nonexistent_stat")));
+        }
+
         // ===== Walk =====
 
         [Fact]
