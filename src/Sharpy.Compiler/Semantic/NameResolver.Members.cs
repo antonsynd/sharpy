@@ -14,6 +14,12 @@ internal partial class NameResolver
         var existingSymbol = _symbolTable.Lookup(functionDef.Name, searchParents: false);
         if (existingSymbol != null)
         {
+            // If this function was already registered by the pre-pass, skip it
+            if (existingSymbol is FunctionSymbol && existingSymbol.DeclarationSpan == functionDef.Span)
+            {
+                return;
+            }
+
             // Allow shadowing builtins (which have no source location)
             // This matches Python behavior where user code can shadow builtins
             bool isBuiltin = existingSymbol.DeclarationLine == null;

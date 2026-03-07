@@ -1,0 +1,10 @@
+class Foo:
+    def bar(self) -> int:
+        return helper(42)
+
+def helper(x: int) -> int:
+    return x * 2
+
+def main():
+    f = Foo()
+    print(f.bar())

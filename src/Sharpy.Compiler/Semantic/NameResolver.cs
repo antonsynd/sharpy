@@ -50,6 +50,19 @@ internal partial class NameResolver
     {
         _logger.LogInfo("Starting name resolution pass 1: Declarations");
 
+        // Pre-pass: register all module-level function signatures so that classes
+        // defined before a function can reference it (forward function references).
+        // This matches Python's behavior where all top-level names are available
+        // throughout the module regardless of definition order.
+        foreach (var statement in module.Body)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (statement is FunctionDef functionDef)
+            {
+                ResolveFunctionDeclaration(functionDef);
+            }
+        }
+
         foreach (var statement in module.Body)
         {
             cancellationToken.ThrowIfCancellationRequested();
