@@ -254,5 +254,7 @@ namespace Sharpy
         public static Type DequeType => typeof(Deque<>);
         public static Type CounterType => typeof(Counter<>);
         public static Type DefaultDictType => typeof(DefaultDict<,>);
+        public static Type OrderedDictType => typeof(OrderedDict<,>);
+        public static Type ChainMapType => typeof(ChainMap<,>);
     }
 }
