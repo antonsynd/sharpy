@@ -1,0 +1,7 @@
+def main():
+    in_range = lambda v: 10 <= v and v <= 50
+    out_of_range = lambda v: v < 0 or v > 100
+    print(in_range(25))
+    print(in_range(5))
+    print(out_of_range(-1))
+    print(out_of_range(50))

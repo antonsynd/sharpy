@@ -193,9 +193,19 @@ internal partial class TypeChecker
     /// <summary>
     /// Infer placeholder types from a binary operation body (e.g., __placeholder_0 * 2).
     /// Uses the non-placeholder operand's type to infer the placeholder type.
+    /// For logical operators (and/or), recursively processes sub-expressions.
     /// </summary>
     private void InferParamTypesFromBinaryOp(BinaryOp binOp, Dictionary<string, int> unknownParams, List<SemanticType> paramTypes)
     {
+        // For logical operators (and/or), the operands may be ComparisonChains or
+        // nested BinaryOps rather than simple identifiers. Recurse into each side.
+        if (binOp.Operator is BinaryOperator.And or BinaryOperator.Or)
+        {
+            InferParamTypesFromSubExpression(binOp.Left, unknownParams, paramTypes);
+            InferParamTypesFromSubExpression(binOp.Right, unknownParams, paramTypes);
+            return;
+        }
+
         var leftIsPlaceholder = binOp.Left is Identifier leftId && unknownParams.ContainsKey(leftId.Name);
         var rightIsPlaceholder = binOp.Right is Identifier rightId && unknownParams.ContainsKey(rightId.Name);
 
@@ -223,6 +233,26 @@ internal partial class TypeChecker
         {
             // (_ op _) — both placeholders, can't infer without more context
             // Leave as Unknown; will need explicit type annotation
+        }
+    }
+
+    /// <summary>
+    /// Recursively infer parameter types from a sub-expression within a logical
+    /// and/or chain. Dispatches to the appropriate handler based on expression type.
+    /// </summary>
+    private void InferParamTypesFromSubExpression(Expression expr, Dictionary<string, int> unknownParams, List<SemanticType> paramTypes)
+    {
+        switch (expr)
+        {
+            case ComparisonChain chain:
+                InferParamTypesFromComparison(chain, unknownParams, paramTypes);
+                break;
+            case BinaryOp nestedBinOp:
+                InferParamTypesFromBinaryOp(nestedBinOp, unknownParams, paramTypes);
+                break;
+            case UnaryOp unaryOp:
+                InferParamTypesFromUnaryOp(unaryOp, unknownParams, paramTypes);
+                break;
         }
     }
 
