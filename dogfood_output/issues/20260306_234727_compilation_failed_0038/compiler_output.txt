@@ -1,0 +1,28 @@
+warning[SPY0452]: Imported name 'DigitalProduct' is never used
+  --> /tmp/tmpvkwbohkp/orders.spy:4:36
+    |
+  4 | from products import DigitalProduct, PhysicalProduct, Product, StatusTracker
+    |                                    ^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'PhysicalProduct' is never used
+  --> /tmp/tmpvkwbohkp/orders.spy:4:52
+    |
+  4 | from products import DigitalProduct, PhysicalProduct, Product, StatusTracker
+    |                                                    ^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'OrderStatus' is never used
+  --> /tmp/tmpvkwbohkp/main.spy:3:19
+    |
+  3 | from types import OrderStatus
+    |                   ^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'StatusTracker' is never used
+  --> /tmp/tmpvkwbohkp/main.spy:4:64
+    |
+  4 | from products import DigitalProduct, PhysicalProduct, Product, StatusTracker
+    |                                                                ^^^^^^^^^^^^^
+    |
+

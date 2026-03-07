@@ -1,0 +1,37 @@
+class Formatter:
+    prefix: str
+    suffix: str
+    
+    def __init__(self, prefix: str = "", suffix: str = ""):
+        self.prefix = prefix
+        self.suffix = suffix
+    
+    def format(self, text: str) -> str:
+        return self.prefix + text + self.suffix
+    
+    def format_lines(self, lines: list[str]) -> list[str]:
+        result: list[str] = []
+        for line in lines:
+            result.append(self.format(line))
+        return result
+
+def truncate(text: str, max_length: int) -> str:
+    if len(text) <= max_length:
+        return text
+    return text[0:max_length - 3] + "..."
+
+def repeat_char(char: str, n: int) -> str:
+    result: str = ""
+    i: int = 0
+    while i < n:
+        result += char
+        i += 1
+    return result
+
+def pad_center(text: str, width: int) -> str:
+    if len(text) >= width:
+        return text
+    spaces: int = width - len(text)
+    left: int = spaces // 2
+    right: int = spaces - left
+    return repeat_char(" ", left) + text + repeat_char(" ", right)

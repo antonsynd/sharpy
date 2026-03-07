@@ -1,0 +1,8 @@
+>> hello <<
+>> one <<
+>> two <<
+>> three <<
+hello...
+hello world
+'   test   '
+[done]

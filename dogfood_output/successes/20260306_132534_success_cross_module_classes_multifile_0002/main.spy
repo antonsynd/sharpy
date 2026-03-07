@@ -1,0 +1,22 @@
+# Main entry point - demonstrates cross-module class usage
+
+from geometry import Point, Box
+from shapes import create_square, ColoredBox
+
+def main():
+    # Create base classes from geometry module
+    p1 = Point(0, 0)
+    p2 = Point(10, 20)
+    
+    b = Box(p1, p2)
+    print(b.width())
+    print(b.height())
+    print(b.area())
+    
+    # Use function from shapes module that returns geometry type
+    sq = create_square(Point(5, 5), 3)
+    print(sq.area())
+    
+    # Use ColoredBox class that extends geometry.Box
+    cb = ColoredBox(Point(1, 1), Point(4, 3), "Blue")
+    print(cb)

@@ -1,0 +1,17 @@
+15.0
+22.360679774997898
+27.5
+21.5
+Widget present: button
+No widget found
+panel_1
+window_2
+True
+False
+True
+True
+False
+True
+small
+large
+medium

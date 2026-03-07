@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0513]: 'Primitives.ShapeBase.Perimeter()' is abstract but it is contained in non-abstract type 'Primitives.ShapeBase'
+  --> /tmp/tmpqe5uy0k0/primitives.spy:39:32
+    |
+ 39 | 
+    | ^
+    |
+

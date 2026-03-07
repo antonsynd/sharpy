@@ -1,0 +1,6 @@
+Hello World
+3
+[test]
+25.0
+Result: 30.0
+10.0

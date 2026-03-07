@@ -1,0 +1,4 @@
+Rectangle with area 20.0
+Circle with area 28.274309999999996
+Rectangle with area 6.0
+Total: 54.27431

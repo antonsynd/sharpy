@@ -1,0 +1,16 @@
+5.0
+Point(3.0, 4.0)
+3.0
+Point3D(1.0, 2.0, 2.0)
+3.14159
+True
+78.53975
+Drawing a circle with radius 5.0
+10.0
+24.0
+20.0
+Drawing a 4.0 x 6.0 rectangle
+A round shape with constant radius
+28.274309999999996
+113.09723999999999
+2.71828

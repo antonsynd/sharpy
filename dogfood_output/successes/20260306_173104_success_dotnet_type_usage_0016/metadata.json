@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T17:24:42.057844",
+  "generated_code": "class Schedule:\n    start_day: int\n    \n    def __init__(self, day: int):\n        self.start_day = day\n    \n    def days_later(self, days: int) -> int:\n        return self.start_day + days\n\ndef main():\n    s = Schedule(15)\n    print(s.start_day)\n    \n    future_day = s.days_later(45)\n    print(future_day)\n    \n    # Calculate some date-related values using basic math\n    days_in_year = 365\n    day_of_year = 365\n    print(day_of_year)\n    \n    # Check if leap year (simplified: 2024 is a leap year)\n    year = 2024\n    is_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)\n    print(is_leap)\n",
+  "expected_output": "15\n60\n365\nTrue\n",
+  "actual_output": "15\n60\n365\nTrue",
+  "feature_focus": "dotnet_type_usage",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 366.1700119972229,
+  "execution_duration": 4.461517095565796,
+  "source_files": null
+}

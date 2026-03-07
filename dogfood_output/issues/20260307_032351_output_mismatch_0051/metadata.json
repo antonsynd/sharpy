@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-07T03:11:17.931742",
+  "generated_code": "type ConfigKey = str\n\n@abstract\nclass ConfigSource:\n    @virtual\n    def get_value(self, key: ConfigKey) -> str?:\n        return None()\n\n    @virtual\n    def has_key(self, key: ConfigKey) -> bool:\n        return False\n\nclass EnvironmentConfig(ConfigSource):\n    prefix: str\n\n    def __init__(self):\n        self.prefix = \"\"\n\n    def set_prefix(self, prefix: str) -> None:\n        self.prefix = prefix\n\n    @override\n    def get_value(self, key: ConfigKey) -> str?:\n        full_key = self.prefix + key\n        if full_key == \"APP_NAME\":\n            return \"TestApp\"\n        if full_key == \"VERSION\":\n            return \"2.0.0\"\n        return None()\n\n    @override\n    def has_key(self, key: ConfigKey) -> bool:\n        result = self.get_value(key)\n        return result is not None\n\nclass InMemoryConfig(ConfigSource):\n    data: dict[str, str]\n\n    def __init__(self):\n        self.data = {}\n\n    def add_data(self, data: dict[str, str]) -> None:\n        for k in data.keys():\n            self.data[k] = data[k]\n\n    def set(self, key: ConfigKey, value: str) -> None:\n        self.data[key] = value\n\n    @override\n    def get_value(self, key: ConfigKey) -> str?:\n        if key in self.data:\n            return self.data[key]\n        return None()\n\n    @override\n    def has_key(self, key: ConfigKey) -> bool:\n        return key in self.data\n\nclass ChainedConfig(ConfigSource):\n    sources: list[ConfigSource]\n\n    def __init__(self):\n        self.sources = []\n\n    def add_source(self, source: ConfigSource) -> None:\n        self.sources.append(source)\n\n    @override\n    def get_value(self, key: ConfigKey) -> str?:\n        i = 0\n        while i < len(self.sources):\n            value = self.sources[i].get_value(key)\n            if value is not None:\n                return value\n            i += 1\n        return None()\n\n    @override\n    def has_key(self, key: ConfigKey) -> bool:\n        i = 0\n        while i < len(self.sources):\n            if self.sources[i].has_key(key):\n                return True\n            i += 1\n        return False\n\ndef main():\n    # Create layered configuration sources\n    env: EnvironmentConfig = EnvironmentConfig()\n    env.set_prefix(\"APP_\")\n\n    memory: InMemoryConfig = InMemoryConfig()\n\n    # Populate in-memory config\n    memory.set(\"timeout\", \"30\")\n    memory.set(\"retries\", \"3\")\n\n    # Chain: env first, fallback to memory\n    chained: ChainedConfig = ChainedConfig()\n    chained.add_source(env)\n    chained.add_source(memory)\n\n    # Query various keys\n    keys: list[str] = [\"APP_NAME\", \"timeout\", \"missing\", \"VERSION\"]\n    for key in keys:\n        if chained.has_key(key):\n            print(chained.get_value(key))\n        else:\n            print(f\"Key {key} not found\")\n\n    print(memory.has_key(\"retries\"))\n\n    # Test fallback with null coalescing\n    debug: str = chained.get_value(\"debug\") ?? \"disabled\"\n    print(debug)\n",
+  "expected_output": "TestApp\n30\nKey missing not found\n2.0.0\nTrue\ndisabled\n",
+  "actual_output": "Key APP_NAME not found\n30\nKey missing not found\nKey VERSION not found\nTrue\ndisabled",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "class_inheritance",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 697.6612031459808,
+  "compilation_duration": null,
+  "execution_duration": 4.645589351654053,
+  "source_files": null
+}

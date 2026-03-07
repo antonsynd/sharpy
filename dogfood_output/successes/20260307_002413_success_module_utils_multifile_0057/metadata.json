@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-03-07T00:22:59.438185",
+  "generated_code": "# Main entry point - tests string utility module functions\nfrom module_utils import reverse_string, is_palindrome, StringAnalyzer\n\ndef main():\n    # Test 1: reverse_string function\n    rev: str = reverse_string(\"hello\")\n    print(rev)\n    \n    # Test 2: is_palindrome with palindrome\n    print(is_palindrome(\"radar\"))\n    \n    # Test 3: is_palindrome with non-palindrome  \n    print(is_palindrome(\"hello\"))\n    \n    # Test 4: StringAnalyzer.get_length()\n    analyzer = StringAnalyzer(\"Hello World\")\n    print(analyzer.get_length())\n    \n    # Test 5: StringAnalyzer.count_vowels() - uses module-level is_vowel helper\n    print(analyzer.count_vowels())\n",
+  "expected_output": "olleh\nTrue\nFalse\n11\n3\n",
+  "actual_output": "olleh\nTrue\nFalse\n11\n3",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 61.3050217628479,
+  "execution_duration": 4.735812664031982,
+  "source_files": {
+    "module_utils.spy": "# String utility module providing common string operations\n# This module tests: module imports, module-level functions,\n# helper functions, and utility classes with methods\n\ndef is_vowel(ch: str) -> bool:\n    return ch == \"a\" or ch == \"e\" or ch == \"i\" or ch == \"o\" or ch == \"u\" or ch == \"A\" or ch == \"E\" or ch == \"I\" or ch == \"O\" or ch == \"U\"\n\ndef reverse_string(s: str) -> str:\n    result: str = \"\"\n    i: int = len(s) - 1\n    while i >= 0:\n        c: str = str(s[i])\n        result = result + c\n        i = i - 1\n    return result\n\ndef is_palindrome(s: str) -> bool:\n    rev: str = reverse_string(s)\n    return s == rev\n\nclass StringAnalyzer:\n    text: str\n    \n    def __init__(self, text: str):\n        self.text = text\n    \n    def get_length(self) -> int:\n        return len(self.text)\n    \n    def count_vowels(self) -> int:\n        count: int = 0\n        for c in self.text:\n            ch: str = str(c)\n            if is_vowel(ch):\n                count = count + 1\n        return count\n",
+    "main.spy": "# Main entry point - tests string utility module functions\nfrom module_utils import reverse_string, is_palindrome, StringAnalyzer\n\ndef main():\n    # Test 1: reverse_string function\n    rev: str = reverse_string(\"hello\")\n    print(rev)\n    \n    # Test 2: is_palindrome with palindrome\n    print(is_palindrome(\"radar\"))\n    \n    # Test 3: is_palindrome with non-palindrome  \n    print(is_palindrome(\"hello\"))\n    \n    # Test 4: StringAnalyzer.get_length()\n    analyzer = StringAnalyzer(\"Hello World\")\n    print(analyzer.get_length())\n    \n    # Test 5: StringAnalyzer.count_vowels() - uses module-level is_vowel helper\n    print(analyzer.count_vowels())\n"
+  }
+}

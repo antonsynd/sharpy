@@ -1,0 +1,23 @@
+# Module providing concrete shape implementations
+# Tests: Cross-module inheritance and interface implementation
+
+from definitions import Priority, Point, IMeasurable, BaseShape
+
+class Rectangle(BaseShape, IMeasurable):
+    width: float
+    height: float
+    
+    def __init__(self, width: float, height: float, priority: Priority):
+        super().__init__(priority)
+        self.width = width
+        self.height = height
+    
+    @override
+    def describe(self) -> str:
+        return "Rectangle"
+    
+    def area(self) -> float:
+        return self.width * self.height
+    
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)

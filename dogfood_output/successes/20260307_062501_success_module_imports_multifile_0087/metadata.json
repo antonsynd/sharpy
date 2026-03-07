@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-07T06:22:13.476491",
+  "generated_code": "# Entry point demonstrating cross-module imports and operations\nfrom data_structures import IntStack\nfrom operations import sum_stack, clone_stack\n\ndef main():\n    # Create and populate stack\n    stack: IntStack = IntStack()\n    stack.push(5)\n    stack.push(10)\n    stack.push(15)\n\n    print(stack.size())\n\n    # Clone the stack (preserves original)\n    cloned: IntStack = clone_stack(stack)\n\n    # Sum the original (empties it)\n    total: int = sum_stack(stack)\n    print(total)\n    print(stack.size())\n\n    # Verify clone still has values\n    print(cloned.size())\n    print(cloned.pop())\n",
+  "expected_output": "3\n30\n0\n3\n15\n",
+  "actual_output": "3\n30\n0\n3\n15",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 152.42985939979553,
+  "execution_duration": 4.64058518409729,
+  "source_files": {
+    "data_structures.spy": "# Module providing integer stack data structure\nclass IntStack:\n    _items: list[int]\n\n    def __init__(self):\n        self._items = []\n\n    def push(self, value: int) -> None:\n        self._items.append(value)\n\n    def pop(self) -> int:\n        return self._items.pop()\n\n    def size(self) -> int:\n        return len(self._items)\n",
+    "operations.spy": "# Module providing operations on stacks\nfrom data_structures import IntStack\n\ndef sum_stack(s: IntStack) -> int:\n    total: int = 0\n    while s.size() > 0:\n        total += s.pop()\n    return total\n\ndef clone_stack(s: IntStack) -> IntStack:\n    result: IntStack = IntStack()\n    temp: list[int] = []\n    # Copy to temp while emptying\n    while s.size() > 0:\n        temp.append(s.pop())\n    # Restore original and fill clone (in reverse order)\n    i: int = len(temp) - 1\n    while i >= 0:\n        val: int = temp[i]\n        s.push(val)\n        result.push(val)\n        i -= 1\n    return result\n",
+    "main.spy": "# Entry point demonstrating cross-module imports and operations\nfrom data_structures import IntStack\nfrom operations import sum_stack, clone_stack\n\ndef main():\n    # Create and populate stack\n    stack: IntStack = IntStack()\n    stack.push(5)\n    stack.push(10)\n    stack.push(15)\n\n    print(stack.size())\n\n    # Clone the stack (preserves original)\n    cloned: IntStack = clone_stack(stack)\n\n    # Sum the original (empties it)\n    total: int = sum_stack(stack)\n    print(total)\n    print(stack.size())\n\n    # Verify clone still has values\n    print(cloned.size())\n    print(cloned.pop())\n"
+  }
+}

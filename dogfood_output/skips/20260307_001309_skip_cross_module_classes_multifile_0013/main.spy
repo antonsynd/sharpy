@@ -1,0 +1,59 @@
+# Main entry point - demonstrates cross-module class usage
+from shapes import Shape, IDrawable, IMeasurable
+from primitives import Color, Point, Circle, Rectangle
+from factories import create_red_circle, create_blue_square, total_measurement, count_by_color
+
+def main():
+    # Create shapes using factories
+    c1 = create_red_circle(2.0)
+    c2 = Circle("green_circle", Point(3.0, 4.0), 3.0, Color.GREEN)
+    r1 = create_blue_square(4.0)
+
+    # Test enum value - print enum member
+    red_value: int = Color.RED.value
+    print(red_value)
+
+    # Test inheritance - use lists with specific types
+    circles: list[Circle] = []
+    circles.append(c1)
+    circles.append(c2)
+
+    # Print circle names via get_name (virtual method)
+    for c in circles:
+        print(c.get_name())
+
+    # Test draw on circles
+    for c in circles:
+        print(c.draw())
+
+    # Test interface polymorphism - IMeasurable with calculation
+    # Use specific type lists since invariant generics don't allow subtyping
+    circle_measurables: list[IMeasurable] = []
+    circle_measurables.append(c1)
+    circle_measurables.append(c2)
+    
+    rect_measurables: list[IMeasurable] = []
+    rect_measurables.append(r1)
+
+    # Calculate totals separately per type and sum
+    circle_totals = total_measurement(circle_measurables)
+    rect_totals = total_measurement(rect_measurables)
+    
+    total_a: float = circle_totals[0] + rect_totals[0]
+    total_p: float = circle_totals[1] + rect_totals[1]
+    print(total_a)
+    print(total_p)
+
+    # Test abstract method dispatch (describe) for circles
+    for c in circles:
+        print(c.describe())
+
+    # Test on rectangles
+    rect_list: list[Rectangle] = []
+    rect_list.append(r1)
+    for r in rect_list:
+        print(r.describe())
+
+    # Test color counting with specific color
+    red_count = count_by_color(circles, Color.RED)
+    print(red_count)

@@ -1,0 +1,28 @@
+# Creature implementations that inherit from animals module
+from animals import Animal, Pet
+
+class Dog(Pet):
+    breed: str
+    
+    def __init__(self, name: str, owner: str, breed: str):
+        super().__init__(name, owner)
+        self.breed = breed
+    
+    @override
+    def speak(self) -> str:
+        return "Woof!"
+    
+    @override
+    def describe(self) -> str:
+        return f"{self.name} the {self.breed}"
+
+class Cat(Pet):
+    def __init__(self, name: str, owner: str):
+        super().__init__(name, owner)
+    
+    @override
+    def speak(self) -> str:
+        return "Meow!"
+
+def make_speak(animal: Animal) -> str:
+    return animal.speak()

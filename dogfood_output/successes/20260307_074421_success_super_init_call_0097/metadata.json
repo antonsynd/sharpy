@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T07:42:44.511304",
+  "generated_code": "# Test super().__init__() with multi-level inheritance and computed parameters\nclass Point:\n    x: float\n    y: float\n    \n    def __init__(self, x_val: float, y_val: float):\n        self.x = x_val\n        self.y = y_val\n\nclass Rectangle(Point):\n    width: float\n    height: float\n    \n    def __init__(self, origin_x: float, origin_y: float, w: float, h: float):\n        super().__init__(origin_x, origin_y)\n        self.width = w\n        self.height = h\n    \n    def area(self) -> float:\n        return self.width * self.height\n\nclass Square(Rectangle):\n    def __init__(self, origin_x: float, origin_y: float, side: float):\n        super().__init__(origin_x, origin_y, side, side)\n\ndef main():\n    s: Square = Square(10.0, 20.0, 5.0)\n    print(s.x)\n    print(s.y)\n    print(s.width)\n    print(s.height)\n    print(s.area())\n",
+  "expected_output": "10.0\n20.0\n5.0\n5.0\n25.0\n",
+  "actual_output": "10.0\n20.0\n5.0\n5.0\n25.0",
+  "feature_focus": "super_init_call",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 87.2840223312378,
+  "execution_duration": 4.445627927780151,
+  "source_files": null
+}

@@ -1,0 +1,157 @@
+# Issue Report: compilation_failed
+
+**Timestamp:** 2026-03-06T19:07:23.321950
+**Type:** compilation_failed
+**Feature Focus:** delegate_declaration
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Complex delegate declarations test: variance + generics + interfaces + events
+# Tests covariant and contravariant delegates, multi-type params, and chains
+
+# Generic delegate with variance annotations - standard Contravariant/Co pattern
+delegate Mapper[in T, out R](input: T) -> R
+
+# Delegate with multiple type parameters (invariant)
+delegate Merger[T](left: T, right: T) -> T
+
+# Delegate for event handling - no params, void return
+delegate Action() -> None
+delegate Action1[T](arg: T) -> None
+
+# Interface using generic delegates
+interface ITransformer[T, R]:
+    def transform(self, input: T, mapper: Mapper[T, R]) -> R: ...
+
+# Interface with event using delegate
+interface IObservable:
+    event on_change: Action
+
+# Class implementing interface with generic delegate
+class StringTransformer(ITransformer[str, int]):
+    def transform(self, input: str, mapper: Mapper[str, int]) -> int:
+        return mapper(input)
+
+# Another implementation with different types
+class IntDoubler(ITransformer[int, int]):
+    def transform(self, input: int, mapper: Mapper[int, int]) -> int:
+        return mapper(input)
+
+# Observable class implementing event interface
+class Counter(IObservable):
+    _value: int
+    event on_change: Action
+
+    def __init__(self, start: int):
+        self._value = start
+
+    property get value(self) -> int:
+        return self._value
+
+    def increment(self) -> None:
+        self._value += 1
+        self.on_change?.invoke()
+
+    def reset(self) -> None:
+        self._value = 0
+        self.on_change?.invoke()
+
+# Function using generic delegate with constraints via interface
+def apply_transform[T, R](input: T, transformer: ITransformer[T, R], mapper: Mapper[T, R]) -> R:
+    return transformer.transform(input, mapper)
+
+# Function returning a generic delegate
+def make_adder(offset: int) -> Mapper[int, int]:
+    return lambda x: x + offset
+
+# Function composing two generic delegates
+def compose_mappers[A, B, C](first: Mapper[A, B], second: Mapper[B, C]) -> Mapper[A, C]:
+    return lambda x: second(first(x))
+
+# Struct holding a delegate
+struct Operation:
+    func: Mapper[int, int]
+    base_val: int
+
+    def execute(self) -> int:
+        return self.func(self.base_val)
+
+def main():
+    # Test 1: Mapper delegate with contravariant input and covariant output
+    length_mapper: Mapper[str, int] = lambda s: len(s)
+    transformer = StringTransformer()
+    result1: int = transformer.transform("hello", length_mapper)
+    print(result1)
+
+    # Test 2: Chain multiple delegates
+    add5: Mapper[int, int] = make_adder(5)
+    add10: Mapper[int, int] = make_adder(10)
+    chained: Mapper[int, int] = compose_mappers(add5, add10)
+    print(chained(3))
+
+    # Test 3: Generic delegate with Merger - combining values
+    concat_strings: Merger[str] = lambda a, b: a + "-" + b
+    merged: str = concat_strings("foo", "bar")
+    print(merged)
+
+    # Test 4: Apply transform using interface
+    int_doubler = IntDoubler()
+    double_mapper: Mapper[int, int] = lambda n: n * 2
+    result4: int = apply_transform(21, int_doubler, double_mapper)
+    print(result4)
+
+    # Test 5: Struct with delegate field
+    op: Operation = Operation(lambda x: x * x, 7)
+    print(op.execute())
+
+    # Test 6: Event with Action delegate - subscribe and trigger
+    counter = Counter(5)
+    # Use Action for lambda with capture-like pattern
+    handler: Action = lambda: None  # just a placeholder
+    counter.on_change += handler
+    counter.increment()  # Triggers event, prints "changed!"
+    print(counter.value)
+
+    # Test 7: Delegate variable reassignment
+    current_mapper: Mapper[int, int] = lambda x: x
+    current_mapper = lambda x: x + 100
+    print(current_mapper(5))
+
+```
+
+## Error
+
+```
+Assembly compilation failed:
+
+error[CS1729]: 'DogfoodTest.Operation' does not contain a constructor that takes 2 arguments
+  --> /tmp/tmp6n0j_rvl/dogfood_test.spy:96:28
+    |
+ 96 |     op: Operation = Operation(lambda x: x * x, 7)
+    |                            ^
+    |
+
+error[CS0201]: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
+  --> /tmp/tmp6n0j_rvl/dogfood_test.spy:102:32
+     |
+ 102 |     handler: Action = lambda: None  # just a placeholder
+     |                                ^
+     |
+
+
+```
+
+## Generated C#
+
+```csharp
+Generated C# code written to: /tmp/tmp6n0j_rvl/dogfood_test.cs
+
+```
+
+## Timing
+
+- Generation: 350.45s
+- Execution: 4.68s

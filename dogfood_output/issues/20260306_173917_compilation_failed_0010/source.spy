@@ -1,0 +1,23 @@
+from shapes import Shape
+from shapes_extended import Rectangle, Circle
+from utils import calculate_total_area, describe_shape, create_shapes
+
+def main():
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    print(rect.area())
+    
+    circle: Circle = Circle(2.0)
+    print(circle.area())
+    
+    shape: Shape = rect
+    print(shape.area())
+    
+    description: str = describe_shape(circle)
+    print(description)
+    
+    shapes: list[Shape] = create_shapes()
+    total: float = calculate_total_area(shapes)
+    print(total)
+    
+    shapes.append(circle)
+    print(len(shapes))

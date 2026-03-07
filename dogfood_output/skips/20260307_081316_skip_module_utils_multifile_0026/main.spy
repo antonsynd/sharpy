@@ -1,0 +1,65 @@
+# Main entry point - demonstrates module system
+from module_utils import APP_NAME, VERSION, Rectangle, Circle, Counter, format_shape, process_optional, process_result
+from math_utils import square, cube, factorial, clamp, average, MathOp, apply_op
+from string_utils import reverse, count_vowels, is_palindrome, truncate, pad_left
+
+def main():
+    # Constants
+    print(APP_NAME)
+    print(VERSION)
+    
+    # Shapes and polymorphism
+    rect: Rectangle = Rectangle(3.0, 4.0)
+    circle: Circle = Circle(5.0)
+    print(format_shape(rect))
+    print(f"Rect area: {rect.area()}")
+    print(f"Rect perimeter: {rect.perimeter()}")
+    print(format_shape(circle))
+    print(f"Circle area: {circle.area()}")
+    print(f"Circle perimeter: {circle.perimeter()}")
+    
+    # Counter with properties
+    counter: Counter = Counter(10)
+    val1: int = counter.value
+    print(val1)
+    print(counter.increment())
+    print(counter.increment())
+    print(counter.increment())
+    counter.reset()
+    val2: int = counter.value
+    print(val2)
+    
+    # Optional processing
+    opt1: int? = Some(42)
+    opt2: int? = None()
+    print(process_optional(opt1))
+    print(process_optional(opt2))
+    
+    # Result processing
+    ok_res: int !str = Ok(100)
+    err_res: int !str = Err("error")
+    print(process_result(ok_res))
+    print(process_result(err_res))
+    
+    # Math utilities
+    print(factorial(5))
+    print(square(4.0))
+    print(cube(3.0))
+    print(clamp(150.0, 0.0, 100.0))
+    nums: list[float] = [1.0, 2.0, 3.0, 4.0, 5.0]
+    print(average(nums))
+    
+    # Enum operations
+    print(apply_op(10.0, 5.0, MathOp.ADD))
+    print(apply_op(10.0, 5.0, MathOp.SUB))
+    print(apply_op(10.0, 5.0, MathOp.MUL))
+    print(apply_op(10.0, 5.0, MathOp.DIV))
+    
+    # String utilities
+    text: str = "Hello, World!"
+    print(reverse(text))
+    print(count_vowels(text))
+    print(is_palindrome("racecar"))
+    print(is_palindrome("hello"))
+    print(truncate("This is a long message", 10))
+    print(pad_left("42", 5, "0"))

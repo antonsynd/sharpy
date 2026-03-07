@@ -1,0 +1,60 @@
+# Shape classes demonstrating inheritance across modules
+from utils import Counter
+
+@abstract
+class Shape:
+    # Read-only auto-property with default
+    property get id: int = 0
+    _counter: Counter
+
+    def __init__(self):
+        self._counter = Counter(100)
+        self.id = self._counter.value
+
+    @abstract
+    def area(self) -> float: ...
+
+    @abstract
+    def perimeter(self) -> float: ...
+
+    def __str__(self) -> str:
+        return f"Shape(id={self.id})"
+
+class Rectangle(Shape):
+    _width: float
+    _height: float
+
+    def __init__(self, width: float, height: float):
+        super().__init__()
+        self._width = width
+        self._height = height
+        self._counter.increment()
+
+    def area(self) -> float:
+        return self._width * self._height
+
+    def perimeter(self) -> float:
+        return 2.0 * (self._width + self._height)
+
+    @override
+    def __str__(self) -> str:
+        return f"Rectangle(w={self._width}, h={self._height}, area={self.area()})"
+
+class Circle(Shape):
+    _radius: float
+    _pi: float
+
+    def __init__(self, radius: float):
+        super().__init__()
+        self._radius = radius
+        self._pi = 3.14159
+
+    def area(self) -> float:
+        return self._pi * self._radius * self._radius
+
+    def perimeter(self) -> float:
+        return 2.0 * self._pi * self._radius
+
+    @override
+    def __str__(self) -> str:
+        return f"Circle(r={self._radius}, area={self.area()})"

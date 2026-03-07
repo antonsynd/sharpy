@@ -1,0 +1,36 @@
+# Main entry point - demonstrates cross-module imports and polymorphism
+from types_module import IShape, ShapeType
+from shapes_module import Rectangle, Square, Point
+from utils_module import get_type_name, calc_area, create_point, create_unit_square, process_shape, Dimensions
+
+def main():
+    # Create shapes using constructors from shapes_module
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    sq: Square = Square(4.0)
+
+    # Test polymorphism - process_shape accepts IShape interface
+    # Rectangle area: 5.0 * 3.0 = 15.0
+    print(process_shape(rect))
+
+    # Square area: 4.0 * 4.0 = 16.0
+    print(process_shape(sq))
+
+    # Test enum usage across modules
+    st: ShapeType = rect.shape_type
+    print(get_type_name(st))
+
+    # Test struct from utils_module
+    dims: Dimensions = Dimensions(6.0, 2.0)
+    print(calc_area(dims))
+
+    # Test struct and factory functions from utils_module
+    pt: Point = create_point(10.0, 20.0)
+    print(pt.x)
+
+    # Test concrete class method via interface
+    # Rectangle.format() is available because Rectangle implements IPrintable
+    # But we need to cast or use the concrete type to access it
+    print(rect.format())
+
+    # Test Square perimeter: 4.0 * 4.0 = 16.0
+    print(sq.perimeter())

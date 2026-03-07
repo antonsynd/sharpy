@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T23:28:54.188727",
+  "generated_code": "# Test: Logical operators with short-circuit evaluation and validation chains\nclass Validator:\n    property check_count: int = 0\n    \n    def __init__(self):\n        self.check_count = 0\n    \n    def is_positive(self, x: int) -> bool:\n        self.check_count = self.check_count + 1\n        return x > 0\n    \n    def is_even(self, x: int) -> bool:\n        self.check_count = self.check_count + 1\n        return x % 2 == 0\n\ndef classify(n: int) -> str:\n    # Chained comparisons with logical operators\n    if n > 0 and n < 10:\n        return \"small positive\"\n    elif n < 0 or n > 100:\n        return \"out of range\"\n    elif not (n == 42):\n        return \"not the answer\"\n    else:\n        return \"valid\"\n\ndef main():\n    v = Validator()\n    \n    # Short-circuit: is_even not called when is_positive fails\n    result1 = v.is_positive(-5) and v.is_even(-5)\n    print(v.check_count)\n    print(result1)\n    \n    # Reset - both should be called\n    v.check_count = 0\n    result2 = v.is_positive(8) and v.is_even(8)\n    print(v.check_count)\n    print(result2)\n    \n    # OR short-circuit: second not evaluated if first succeeds\n    v.check_count = 0\n    result3 = v.is_positive(5) or v.is_even(5)\n    print(v.check_count)\n    \n    # NOT and complex expressions\n    print(classify(5))\n    print(classify(-10))\n    print(classify(42))\n    print(classify(50))\n",
+  "expected_output": "1\nFalse\n2\nTrue\n1\nsmall positive\nout of range\nvalid\nnot the answer\n",
+  "actual_output": "1\nFalse\n2\nTrue\n1\nsmall positive\nout of range\nvalid\nnot the answer",
+  "feature_focus": "logical_operators",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 116.06654739379883,
+  "execution_duration": 4.701383590698242,
+  "source_files": null
+}

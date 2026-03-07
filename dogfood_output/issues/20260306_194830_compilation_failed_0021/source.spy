@@ -1,0 +1,36 @@
+# Main entry point testing module imports and inheritance
+from math_utils import Drawable, average
+from shapes import Rectangle, Square
+
+@static
+def describe_shape(shape: Drawable) -> str:
+    return f"Area: {shape.area()}"
+
+def main():
+    # Test basic rectangle
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    print(rect.area())
+    print(rect.perimeter())
+    
+    # Test square with overridden area
+    sq: Square = Square(4.0)
+    print(sq.area())
+    print(sq.perimeter())
+    
+    # Test static field access
+    unit_square: Square = Square.get_unit()
+    print(unit_square.area())
+    
+    # Test polymorphic dispatch through drawable interface
+    shapes: list[Drawable] = [rect, sq]
+    areas: list[float] = []
+    for s in shapes:
+        areas.append(s.area())
+    
+    # Calculate average area using math_utils function
+    avg: float = average(areas)
+    print(avg)
+    
+    # Test describe function with polymorphic dispatch
+    description: str = describe_shape(sq)
+    print(description)

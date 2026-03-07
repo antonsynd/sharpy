@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T21:40:30.899725",
+  "generated_code": "class Rating:\n    score: int\n\n    def __init__(self, s: int):\n        self.score = s\n\n    def __lt__(self, other: object) -> bool:\n        if isinstance(other, Rating):\n            r: Rating = other\n            return self.score < r.score\n        return False\n\n    def __le__(self, other: object) -> bool:\n        if isinstance(other, Rating):\n            r: Rating = other\n            return self.score <= r.score\n        return False\n\n    def __gt__(self, other: object) -> bool:\n        if isinstance(other, Rating):\n            r: Rating = other\n            return self.score > r.score\n        return False\n\n    def __ge__(self, other: object) -> bool:\n        if isinstance(other, Rating):\n            r: Rating = other\n            return self.score >= r.score\n        return False\n\ndef main():\n    a: Rating = Rating(10)\n    b: Rating = Rating(50)\n    c: Rating = Rating(90)\n    \n    print(a < b < c)\n    \n    if a <= b < c:\n        print(\"ordered\")\n    \n    print(b >= a)\n    print(b <= c)\n",
+  "expected_output": "True\nordered\nTrue\nTrue\n",
+  "actual_output": "True\nordered\nTrue\nTrue",
+  "feature_focus": "dunder_comparison",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 451.0183050632477,
+  "execution_duration": 5.396957874298096,
+  "source_files": null
+}

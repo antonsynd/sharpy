@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T13:19:56.792881",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0107]: Invalid type annotation target\n  --> /tmp/tmpe5s4m_js/dogfood_test.spy:9:19\n    |\n  9 |         self.value: int = 0\n    |                   ^\n    |\n\n",
+  "generated_code": "# Test auto-event with multiple subscribers using a counter class\ndelegate EventHandler(sender: object, args: EventArgs)\n\nclass EventArgs:\n    pass\n\nclass Counter:\n    def __init__(self) -> None:\n        self.value: int = 0\n\nclass Button:\n    # Auto-event - compiler generates backing field and accessors\n    event on_click: EventHandler\n    \n    def click(self) -> None:\n        # Raise event using thread-safe ?.invoke()\n        self.on_click?.invoke(self, EventArgs())\n\ndef handler1(sender: object, args: EventArgs) -> None:\n    print(\"Handler1 called\")\n\ndef handler2(sender: object, args: EventArgs) -> None:\n    print(\"Handler2 called\")\n\ndef main() -> None:\n    button: Button = Button()\n    \n    # Subscribe multiple handlers\n    button.on_click += handler1\n    button.on_click += handler2\n    \n    # Trigger event\n    print(\"First click:\")\n    button.click()\n    \n    # Unsubscribe one handler\n    button.on_click -= handler1\n    print(\"Second click (after unsubscribe):\")\n    button.click()\n    \n    # Test with mutable counter object\n    button2: Button = Button()\n    counter: Counter = Counter()\n    \n    def increment(sender: object, args: EventArgs) -> None:\n        counter.value += 1\n    \n    button2.on_click += increment\n    \n    print(\"Before click:\")\n    print(counter.value)\n    \n    button2.click()\n    \n    print(\"After click:\")\n    print(counter.value)\n",
+  "expected_output": "First click:\nHandler1 called\nHandler2 called\nSecond click (after unsubscribe):\nHandler2 called\nBefore click:\n0\nAfter click:\n1\n",
+  "feature_focus": "event_auto",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 125.62250447273254,
+  "source_files": null,
+  "validation_output": null
+}

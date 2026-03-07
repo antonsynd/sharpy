@@ -1,0 +1,9 @@
+Origin: (0.0, 0.0)
+Circle with radius 5.0
+Circle with radius 3.0
+Circle area: 78.54
+Circle perimeter: 31.42
+Rectangle 4.0 x 6.0
+Drawing Green shape
+Distance: 5.0
+Non-zero colors: 3

@@ -1,0 +1,45 @@
+# Utility module providing helper classes and functions
+# Provides: Text utilities, numeric helpers, and a factory pattern
+
+class TextFormatter:
+    _prefix: str
+
+    def __init__(self, prefix: str):
+        self._prefix = prefix
+
+    def format(self, message: str) -> str:
+        return f"[{self._prefix}] {message}"
+
+    def get_prefix(self) -> str:
+        return self._prefix
+
+class Counter:
+    _count: int
+
+    def __init__(self, start: int = 0):
+        self._count = start
+
+    def increment(self) -> int:
+        self._count += 1
+        return self._count
+
+    def reset(self) -> None:
+        self._count = 0
+
+    def get_value(self) -> int:
+        return self._count
+
+def calculate_average(values: list[int]) -> float:
+    if len(values) == 0:
+        return 0.0
+    total: int = 0
+    for v in values:
+        total += v
+    return total / len(values)
+
+def clamp_value(value: int, min_val: int, max_val: int) -> int:
+    if value < min_val:
+        return min_val
+    if value > max_val:
+        return max_val
+    return value

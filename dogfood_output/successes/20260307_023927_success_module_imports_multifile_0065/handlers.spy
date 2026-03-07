@@ -1,0 +1,30 @@
+# Event handlers module importing from notifier
+
+from notifier import Notifier, EmailNotifier
+
+class NotificationManager:
+    notifiers: list[Notifier]
+    sent_count: int
+    
+    def __init__(self):
+        self.notifiers = []
+        self.sent_count = 0
+    
+    def add(self, notifier: Notifier) -> None:
+        self.notifiers.append(notifier)
+    
+    def broadcast(self, message: str) -> int:
+        success: int = 0
+        for n in self.notifiers:
+            if n.send(message):
+                success += 1
+        self.sent_count += success
+        return success
+    
+    def get_summary(self) -> str:
+        return f"Total sent: {self.sent_count} to {len(self.notifiers)} notifiers"
+
+def create_manager_with_defaults() -> NotificationManager:
+    manager: NotificationManager = NotificationManager()
+    manager.add(EmailNotifier("alerts", "alerts@example.com"))
+    return manager

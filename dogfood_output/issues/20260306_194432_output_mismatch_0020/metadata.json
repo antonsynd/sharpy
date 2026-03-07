@@ -1,0 +1,22 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-06T19:42:56.968606",
+  "generated_code": "# Main entry point - demonstrates cross-module imports\n\nfrom text_utils import TextProcessor, truncate_text\nfrom data_utils import DataAnalyzer, calc_sum, create_label\n\ndef main():\n    # Test text_utils module\n    sample: str = \"hello world from sharpy\"\n    processor = TextProcessor(sample)\n    print(processor.word_count())\n    \n    # Test data_utils using imported text_utils\n    values: list[int] = [10, 20, 30, 40]\n    analyzer = DataAnalyzer(sample, values)\n    print(analyzer.summary())\n    \n    # Test standalone functions from both modules\n    truncated: str = truncate_text(\"very long text here\", 8)\n    print(truncated)\n    \n    total: int = calc_sum(values)\n    print(total)\n    \n    label: str = create_label(\"Result\", total)\n    print(label)\n",
+  "expected_output": "3\nWords: 5, Avg: 25.0\nvery lon...\n100\nResult Number: 100\n",
+  "actual_output": "4\nWords: 4, Avg: 25.0\nvery lon...\n100\nResult Number: 100",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 71.57616448402405,
+  "compilation_duration": null,
+  "execution_duration": 4.744724750518799,
+  "source_files": {
+    "text_utils.spy": "# Text processing utilities module\n\nclass TextProcessor:\n    _text: str\n    \n    def __init__(self, text: str):\n        self._text = text\n    \n    def get_words(self) -> list[str]:\n        return self._text.split(\" \")\n    \n    def word_count(self) -> int:\n        return len(self.get_words())\n    \n    def to_upper(self) -> str:\n        return self._text.upper()\n\ndef format_number(n: int) -> str:\n    return f\"Number: {n}\"\n\ndef truncate_text(text: str, max_len: int) -> str:\n    if len(text) <= max_len:\n        return text\n    return text[0:max_len] + \"...\"\n",
+    "data_utils.spy": "# Data processing utilities - imports from text_utils\n\nfrom text_utils import TextProcessor, format_number\n\nclass DataAnalyzer:\n    _processor: TextProcessor\n    _values: list[int]\n    \n    def __init__(self, text: str, values: list[int]):\n        self._processor = TextProcessor(text)\n        self._values = values\n    \n    def summary(self) -> str:\n        word_count = self._processor.word_count()\n        total = 0\n        for v in self._values:\n            total += v\n        avg = total / len(self._values) if len(self._values) > 0 else 0.0\n        return f\"Words: {word_count}, Avg: {avg:.1f}\"\n    \n    def process_text(self) -> str:\n        return self._processor.to_upper()\n\ndef calc_sum(values: list[int]) -> int:\n    total: int = 0\n    for v in values:\n        total += v\n    return total\n\ndef create_label(prefix: str, num: int) -> str:\n    return prefix + \" \" + format_number(num)\n",
+    "main.spy": "# Main entry point - demonstrates cross-module imports\n\nfrom text_utils import TextProcessor, truncate_text\nfrom data_utils import DataAnalyzer, calc_sum, create_label\n\ndef main():\n    # Test text_utils module\n    sample: str = \"hello world from sharpy\"\n    processor = TextProcessor(sample)\n    print(processor.word_count())\n    \n    # Test data_utils using imported text_utils\n    values: list[int] = [10, 20, 30, 40]\n    analyzer = DataAnalyzer(sample, values)\n    print(analyzer.summary())\n    \n    # Test standalone functions from both modules\n    truncated: str = truncate_text(\"very long text here\", 8)\n    print(truncated)\n    \n    total: int = calc_sum(values)\n    print(total)\n    \n    label: str = create_label(\"Result\", total)\n    print(label)\n"
+  }
+}

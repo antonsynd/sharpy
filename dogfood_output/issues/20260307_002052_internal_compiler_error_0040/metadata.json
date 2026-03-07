@@ -1,0 +1,18 @@
+{
+  "issue_type": "internal_compiler_error",
+  "timestamp": "2026-03-07T00:16:38.127370",
+  "generated_code": "class Base:\n    @virtual\n    def process(self, x: int) -> str:\n        return f\"Base int: {x}\"\n    \n    @virtual\n    def process(self, s: str) -> str:\n        return f\"Base str: {s}\"\n\nclass Child(Base):\n    @override\n    def process(self, x: int) -> str:\n        return f\"Child int: {x * 2}\"\n    \n    @override\n    def process(self, s: str) -> str:\n        return f\"Child str: {s.upper()}\"\n\ndef test_overload_virtual(obj: Base) -> None:\n    print(obj.process(5))\n    print(obj.process(\"hello\"))\n\ndef main():\n    b: Base = Base()\n    c: Base = Child()\n    \n    test_overload_virtual(b)\n    test_overload_virtual(c)\n",
+  "expected_output": "Base int: 5\nBase str: hello\nChild int: 10\nChild str: HELLO\n",
+  "actual_output": null,
+  "error_message": "Internal compiler error: Compilation errors:\n\nerror[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.\n  --> /tmp/tmpdsfe09oo/dogfood_test.spy:21:11\n    |\n 21 |     print(obj.process(\"hello\"))\n    |           ^^^^^^^^^^^^^^^^^^^^\n    |\n\nerror[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.\n  --> /tmp/tmpdsfe09oo/dogfood_test.spy:20:11\n    |\n 20 |     print(obj.process(5))\n    |           ^^^^^^^^^^^^^^\n    |\n\n",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "overloading_with_inheritance",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 249.05559468269348,
+  "compilation_duration": null,
+  "execution_duration": null,
+  "source_files": null
+}

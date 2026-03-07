@@ -1,0 +1,20 @@
+from shapes import IDrawable
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return f"Point({self.x}, {self.y})"
+
+def calculate_area(shape: IDrawable) -> float:
+    return shape.area()

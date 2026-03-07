@@ -1,0 +1,8 @@
+MyProc
+Result: 42
+7
+High
+5.0
+0.0
+MyProc [3]
+3

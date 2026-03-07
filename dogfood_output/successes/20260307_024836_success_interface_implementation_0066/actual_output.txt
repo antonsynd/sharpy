@@ -1,0 +1,4 @@
+ID: 1, Type: Product
+Widget ($9.99)
+ID: 2, Type: Service
+Support

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T03:48:27.915548",
+  "generated_code": "# Test: Named tuple types with bounds calculation and unpacking\n# Tests named tuple construction, field access, function returns, and unpacking\n\ntype Point = tuple[x: int, y: int]\n\ndef translate_point(p: Point, dx: int, dy: int) -> Point:\n    return (x=p.x + dx, y=p.y + dy)\n\ndef get_bounds(points: list[Point]) -> tuple[min_x: int, max_x: int, min_y: int, max_y: int]:\n    if len(points) == 0:\n        return (min_x=0, max_x=0, min_y=0, max_y=0)\n    \n    result_min_x: int = points[0].x\n    result_max_x: int = points[0].x\n    result_min_y: int = points[0].y\n    result_max_y: int = points[0].y\n    \n    for pt in points:\n        if pt.x < result_min_x:\n            result_min_x = pt.x\n        if pt.x > result_max_x:\n            result_max_x = pt.x\n        if pt.y < result_min_y:\n            result_min_y = pt.y\n        if pt.y > result_max_y:\n            result_max_y = pt.y\n    \n    return (min_x=result_min_x, max_x=result_max_x, min_y=result_min_y, max_y=result_max_y)\n\ndef main():\n    # Create points using named tuple construction\n    p1: Point = (x=10, y=20)\n    p2: Point = (x=30, y=40)\n    p3: Point = (x=5, y=50)\n    \n    # Translate p1 by (5, -5) to get (15, 15)\n    t1: Point = translate_point(p1, 5, -5)\n    print(t1.x)\n    print(t1.y)\n    \n    # Compute bounds of all points\n    points: list[Point] = [p1, p2, p3, t1]\n    bounds = get_bounds(points)\n    \n    # Unpack the bounds tuple\n    min_x_val, max_x_val, min_y_val, max_y_val = bounds\n    print(min_x_val)\n    print(max_x_val)\n    print(min_y_val)\n    print(max_y_val)\n    \n    print(len(points))\n",
+  "expected_output": "15\n15\n5\n30\n15\n50\n4\n",
+  "actual_output": "15\n15\n5\n30\n15\n50\n4",
+  "feature_focus": "tuple_types",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 223.84085130691528,
+  "execution_duration": 4.794931173324585,
+  "source_files": null
+}

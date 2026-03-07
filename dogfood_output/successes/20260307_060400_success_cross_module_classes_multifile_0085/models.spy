@@ -1,0 +1,48 @@
+@virtual
+class Person:
+    first_name: str
+    last_name: str
+
+    def __init__(self, first: str, last: str):
+        self.first_name = first
+        self.last_name = last
+
+    @virtual
+    def describe(self) -> str:
+        return f"Person: {self.first_name} {self.last_name}"
+
+
+class Employee(Person):
+    employee_id: int
+
+    def __init__(self, first: str, last: str, emp_id: int):
+        super().__init__(first, last)
+        self.employee_id = emp_id
+
+    @override
+    def describe(self) -> str:
+        return f"Employee: {self.first_name} {self.last_name} (ID: {self.employee_id})"
+
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+
+class Product:
+    _name: str
+    _price: float
+
+    def __init__(self, name: str, price: float):
+        self._name = name
+        self._price = price
+
+    property get name(self) -> str:
+        return self._name
+
+    property get price(self) -> str:
+        return str(self._price) + " USD"

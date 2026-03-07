@@ -1,0 +1,28 @@
+class Base:
+    @virtual
+    def process(self, x: int) -> str:
+        return f"Base int: {x}"
+    
+    @virtual
+    def process(self, s: str) -> str:
+        return f"Base str: {s}"
+
+class Child(Base):
+    @override
+    def process(self, x: int) -> str:
+        return f"Child int: {x * 2}"
+    
+    @override
+    def process(self, s: str) -> str:
+        return f"Child str: {s.upper()}"
+
+def test_overload_virtual(obj: Base) -> None:
+    print(obj.process(5))
+    print(obj.process("hello"))
+
+def main():
+    b: Base = Base()
+    c: Base = Child()
+    
+    test_overload_virtual(b)
+    test_overload_virtual(c)

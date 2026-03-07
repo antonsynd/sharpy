@@ -1,0 +1,21 @@
+# utils.spy - Utility functions and constants for geometry
+
+PI: float = 3.14159
+
+def circle_area(radius: float) -> float:
+    return PI * radius * radius
+
+def circle_perimeter(radius: float) -> float:
+    return 2.0 * PI * radius
+
+def rectangle_area(width: float, height: float) -> float:
+    return width * height
+
+def rectangle_perimeter(width: float, height: float) -> float:
+    return 2.0 * (width + height)
+
+def sum_areas(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for s in shapes:
+        total += s.area()
+    return total

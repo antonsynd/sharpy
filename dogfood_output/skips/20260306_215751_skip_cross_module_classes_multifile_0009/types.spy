@@ -1,0 +1,23 @@
+# Core types module - enums, interfaces, and structs
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+interface IMeasurable:
+    # Properties must be declared in interface to be accessible
+    property get area(self) -> float
+    def describe(self) -> str
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_to(self, other: Point) -> float:
+        dx: float = self.x - other.x
+        dy: float = self.y - other.y
+        return (dx * dx + dy * dy) ** 0.5

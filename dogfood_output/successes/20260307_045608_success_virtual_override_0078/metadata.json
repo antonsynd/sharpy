@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T04:54:26.068564",
+  "generated_code": "# Test: Multi-level inheritance with virtual method chaining\n# Shows polymorphic dispatch through iteration\n\nclass Animal:\n    species: str\n\n    def __init__(self, species: str):\n        self.species = species\n\n    @virtual\n    def info(self) -> str:\n        return f\"species={self.species}\"\n\nclass Mammal(Animal):\n    has_fur: bool\n\n    def __init__(self, species: str, has_fur: bool):\n        super().__init__(species)\n        self.has_fur = has_fur\n\n    @override\n    def info(self) -> str:\n        base = super().info()\n        fur_status = \"yes\" if self.has_fur else \"no\"\n        return f\"{base}, fur={fur_status}\"\n\nclass Cat(Mammal):\n    name: str\n\n    def __init__(self, name: str):\n        super().__init__(\"feline\", True)\n        self.name = name\n\n    @override\n    def info(self) -> str:\n        base = super().info()\n        return f\"{base}, name={self.name}\"\n\ndef main():\n    creatures: list[Animal] = []\n    creatures.append(Animal(\"unknown\"))\n    creatures.append(Mammal(\"canine\", True))\n    creatures.append(Cat(\"Whiskers\"))\n\n    for creature in creatures:\n        print(creature.info())\n",
+  "expected_output": "species=unknown\nspecies=canine, fur=yes\nspecies=feline, fur=yes, name=Whiskers\n",
+  "actual_output": "species=unknown\nspecies=canine, fur=yes\nspecies=feline, fur=yes, name=Whiskers",
+  "feature_focus": "virtual_override",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 92.2673704624176,
+  "execution_duration": 4.5827085971832275,
+  "source_files": null
+}

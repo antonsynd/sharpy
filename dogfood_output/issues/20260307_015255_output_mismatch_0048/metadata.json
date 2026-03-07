@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-07T01:47:28.811844",
+  "generated_code": "# Property inheritance: RPG item system with virtual computed methods\n# Tests method override, polymorphic access, and control flow in derived methods\n\n@abstract\nclass Item:\n    property name: str\n    _base_value: int\n\n    def __init__(self, name: str, base_value: int):\n        self.name = name\n        self._base_value = base_value\n\n    @abstract\n    def value(self) -> int: ...\n\nclass Weapon(Item):\n    damage: int\n    durability: int\n\n    def __init__(self, name: str, base_value: int, damage: int, durability: int):\n        super().__init__(name, base_value)\n        self.damage = damage\n        self.durability = durability\n\n    @override\n    def value(self) -> int:\n        quality_factor: int = self.damage * self.durability\n        bonus: int = 0\n        if quality_factor > 1000:\n            bonus = 50\n        elif quality_factor > 500:\n            bonus = 20\n        return self._base_value + (quality_factor // 100) + bonus\n\nclass Potion(Item):\n    healing: int\n    potency: float\n\n    def __init__(self, name: str, base_value: int, healing: int, potency: float):\n        super().__init__(name, base_value)\n        self.healing = healing\n        self.potency = potency\n\n    @override\n    def value(self) -> int:\n        scaled: float = self.healing * self.potency\n        if scaled > 100.0:\n            return self._base_value + 75\n        return self._base_value + int(scaled // 2.0)\n\nclass Scroll(Item):\n    magic_level: int\n\n    def __init__(self, name: str, base_value: int, magic_level: int):\n        super().__init__(name, base_value)\n        self.magic_level = magic_level\n\n    @override\n    def value(self) -> int:\n        total: int = self._base_value\n        i: int = 0\n        while i < self.magic_level:\n            total = total + 10\n            i = i + 1\n        return total\n\ndef inventory_value(items: list[Item]) -> int:\n    result: int = 0\n    for item in items:\n        result = result + item.value()\n    return result\n\ndef main():\n    sword = Weapon(\"Fire Blade\", 100, 25, 90)\n    axe = Weapon(\"Rusty Axe\", 50, 15, 40)\n    potion = Potion(\"Healing Elixir\", 30, 80, 1.2)\n    scroll = Scroll(\"Teleport\", 200, 5)\n\n    print(sword.name)\n    print(sword.value())\n    print(axe.value())\n    print(potion.value())\n    print(scroll.value())\n\n    all_items: list[Item] = [sword, axe, potion, scroll]\n    print(inventory_value(all_items))\n",
+  "expected_output": "Fire Blade\n275\n110\n78\n250\n713\n",
+  "actual_output": "Fire Blade\n172\n76\n78\n250\n576",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "property_inheritance",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 252.77219462394714,
+  "compilation_duration": null,
+  "execution_duration": 4.967540740966797,
+  "source_files": null
+}

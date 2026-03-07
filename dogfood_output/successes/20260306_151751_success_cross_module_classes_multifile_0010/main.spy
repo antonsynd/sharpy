@@ -1,0 +1,13 @@
+# Main entry point - tests cross-module class inheritance and polymorphic dispatch
+
+from vehicle_base import Vehicle
+from vehicle_impl import Car, Bicycle, VehiclePrinter
+
+def main():
+    sedan = Car("Toyota", "Camry")
+    road_bike = Bicycle("Trek")
+    
+    print(sedan.description())
+    print(road_bike.wheel_count())
+    VehiclePrinter.print_info(sedan)
+    VehiclePrinter.print_info(road_bike)

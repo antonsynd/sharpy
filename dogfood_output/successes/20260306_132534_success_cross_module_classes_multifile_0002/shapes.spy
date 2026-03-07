@@ -1,0 +1,18 @@
+# Shapes module - extends geometry with colored boxes
+
+from geometry import Point, Box
+
+def create_square(corner: Point, size: int) -> Box:
+    br = Point(corner.x + size, corner.y + size)
+    return Box(corner, br)
+
+class ColoredBox(Box):
+    color: str
+    
+    def __init__(self, tl: Point, br: Point, color: str):
+        super().__init__(tl, br)
+        self.color = color
+    
+    @override
+    def __str__(self) -> str:
+        return self.color + " box " + str(self.width()) + "x" + str(self.height())

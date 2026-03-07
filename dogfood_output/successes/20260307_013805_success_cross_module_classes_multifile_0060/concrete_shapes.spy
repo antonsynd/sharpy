@@ -1,0 +1,43 @@
+from utils import Point
+from base_shapes import Shape
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, pos: Point, radius: float):
+        super().__init__(pos, "Circle")
+        self.radius = radius
+    
+    @override
+    def compute_area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    @override
+    def scale(self, factor: float) -> None:
+        self.radius = self.radius * factor
+    
+    @override
+    def draw(self) -> str:
+        return f"Circle(r={self.radius:0.1f})"
+
+class Rectangle(Shape):
+    width: float
+    height: float
+    
+    def __init__(self, pos: Point, width: float, height: float):
+        super().__init__(pos, "Rectangle")
+        self.width = width
+        self.height = height
+    
+    @override
+    def compute_area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def scale(self, factor: float) -> None:
+        self.width = self.width * factor
+        self.height = self.height * factor
+    
+    @override
+    def draw(self) -> str:
+        return f"Rectangle({self.width:0.1f}x{self.height:0.1f})"

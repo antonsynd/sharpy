@@ -1,0 +1,25 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Type errors:
+error[SPY0220]: Cannot assign type 'object' to variable of type 'Dimension'
+  --> /tmp/tmpfvaot4nh/dogfood_test.spy:21:9
+    |
+ 21 |         d: Dimension = other
+    |         ^^^^^^^^^^^^^^^^^^^^
+    |
+
+Validation errors:
+error[SPY0322]: Decorators cannot be applied to module-level variable declarations. '@static' on 'widget_counter' is only valid inside a class or struct body.
+  --> /tmp/tmpfvaot4nh/dogfood_test.spy:66:1
+    |
+ 66 | @static
+    | ^^^^^^^
+    |
+
+error[SPY0455]: Class 'Dimension' defines '__eq__(self, other: object)' but not '__hash__'. The .NET equality contract requires both. Define '__hash__(self) -> int'.
+  --> /tmp/tmpfvaot4nh/dogfood_test.spy:18:5
+    |
+ 18 |     def __eq__(self, other: object) -> bool:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

@@ -1,0 +1,33 @@
+# main.spy
+# Entry point demonstrating cross-module inheritance and interfaces
+
+from geometry_base import Point, Color, IGeometry, Shape
+from shapes import Circle, Rectangle
+from utils import describe_shape, calculate_total_area, color_from_string
+
+def main():
+    origin: Point = Point(0.0, 0.0)
+    red: Color = color_from_string("red")
+    green: Color = color_from_string("green")
+
+    circle: Circle = Circle(red, origin, 5.0)
+    rect: Rectangle = Rectangle(green, origin, 4.0, 6.0)
+
+    # Use IGeometry interface for individual descriptions
+    desc1: str = describe_shape(circle)
+    desc2: str = describe_shape(rect)
+    print(desc1)
+    print(desc2)
+
+    print(circle.display_name())
+    print(circle.get_color_name())
+    print(rect.display_name())
+    print(rect.get_color_name())
+
+    # Use list[Shape] due to generic invariance
+    shapes: list[Shape] = []
+    shapes.append(circle)
+    shapes.append(rect)
+
+    total: float = calculate_total_area(shapes)
+    print(total)

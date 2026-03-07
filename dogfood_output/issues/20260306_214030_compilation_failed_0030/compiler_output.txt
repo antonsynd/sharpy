@@ -1,0 +1,28 @@
+warning[SPY0452]: Imported name 'IShape' is never used
+  --> /tmp/tmpif1dwwms/main.spy:2:25
+    |
+  2 | from definitions import IShape, ITransformable, ShapeType, Point
+    |                         ^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ITransformable' is never used
+  --> /tmp/tmpif1dwwms/main.spy:2:33
+    |
+  2 | from definitions import IShape, ITransformable, ShapeType, Point
+    |                                 ^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Pair' is never used
+  --> /tmp/tmpif1dwwms/main.spy:4:19
+    |
+  4 | from utils import Pair, process_shape, create_pair
+    |                   ^^^^
+    |
+
+warning[SPY0452]: Imported name 'create_pair' is never used
+  --> /tmp/tmpif1dwwms/main.spy:4:40
+    |
+  4 | from utils import Pair, process_shape, create_pair
+    |                                        ^^^^^^^^^^^
+    |
+

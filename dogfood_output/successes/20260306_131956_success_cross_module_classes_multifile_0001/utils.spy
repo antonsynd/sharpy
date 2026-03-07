@@ -1,0 +1,25 @@
+# Utility module - structs and utility functions
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_from_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5
+
+def normalize(value: float, min_val: float, max_val: float) -> float:
+    if max_val == min_val:
+        return 0.0
+    return (value - min_val) / (max_val - min_val)
+
+class GeometryUtils:
+    @static
+    def is_unit_square(s: Point) -> bool:
+        return s.x == 1.0 and s.y == 1.0
+
+    @static
+    def midpoint(a: Point, b: Point) -> Point:
+        return Point((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)

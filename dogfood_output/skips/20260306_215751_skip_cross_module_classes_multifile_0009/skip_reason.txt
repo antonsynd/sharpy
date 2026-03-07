@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'IMeasurable' has no member 'area'
+  --> /tmp/tmpwz1f15ro/main.spy:7:42
+    |
+  7 |     return s.describe() + " area=" + str(s.area)
+    |                                          ^^^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'Shape' to parameter of type 'IMeasurable'
+  --> /tmp/tmpwz1f15ro/main.spy:26:29
+    |
+ 26 |         print(process_shape(s))
+    |                             ^
+    |
+

@@ -1,0 +1,42 @@
+# Utilities module with structs, enums, and helper functions
+
+# 2D point struct - value type
+struct Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    def distance_from_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5
+
+# Color enum for shape styling
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+    YELLOW = 4
+
+# Shape category enum
+enum ShapeCategory:
+    BASIC = 0
+    COMPLEX = 1
+    COMPOSITE = 2
+
+# Calculate total area of shapes (using base Shape type)
+def calculate_total_area(shapes: list) -> float:
+    total: float = 0.0
+    for s in shapes:
+        total = total + s.area()
+    return total
+
+# Get category name from enum
+def get_category_name(cat: ShapeCategory) -> str:
+    if cat == ShapeCategory.BASIC:
+        return "Basic"
+    elif cat == ShapeCategory.COMPLEX:
+        return "Complex"
+    else:
+        return "Composite"

@@ -1,0 +1,64 @@
+# Shape module - base classes, interfaces, enums, and implementations
+from utils import Point, normalize
+
+enum ShapeType:
+    PLANE = 1
+    SOLID = 2
+
+interface IDrawable:
+    @abstract
+    def draw(self) -> str: ...
+
+    @abstract
+    def area(self) -> float: ...
+
+class Shape:
+    _id: int
+    _category: ShapeType
+
+    def __init__(self, id: int, category: ShapeType):
+        self._id = id
+        self._category = category
+
+    @virtual
+    def describe(self) -> str:
+        return f"Shape #{self._id}"
+
+    def category(self) -> ShapeType:
+        return self._category
+
+class Rectangle(Shape, IDrawable):
+    width: float
+    height: float
+
+    def __init__(self, id: int, w: float, h: float):
+        self.width = w
+        self.height = h
+        super().__init__(id, ShapeType.PLANE)
+
+    def draw(self) -> str:
+        return f"Drawing Rectangle {self.width} x {self.height}"
+
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def describe(self) -> str:
+        return f"Rectangle {super().describe()}"
+
+class Circle(Shape, IDrawable):
+    radius: float
+
+    def __init__(self, id: int, r: float):
+        self.radius = r
+        super().__init__(id, ShapeType.PLANE)
+
+    def draw(self) -> str:
+        return f"Drawing Circle r={self.radius}"
+
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def describe(self) -> str:
+        return f"Circle {super().describe()}"

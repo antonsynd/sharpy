@@ -1,0 +1,16 @@
+# Main entry point - test cross-module imports and inheritance
+from inventory import Product
+from warehouse import Warehouse
+
+
+def main():
+    w = Warehouse(10)
+    p1 = Product("Widget", 25.0, 4)
+    p2 = Product("Gadget", 50.0, 2)
+
+    print(w.get_count())
+    w.add_item(p1)
+    w.add_item(p2)
+    print(p1.get_description())
+    print(w.get_count())
+    print(w.get_inventory_value())

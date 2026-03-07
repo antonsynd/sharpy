@@ -1,0 +1,6 @@
+Email to alerts@example.com: System maintenance scheduled
+Email to support@example.com: System maintenance scheduled
+SMS to +1-555-0123: System maintenance scheduled
+Sent to 3 recipients
+Total sent: 3 to 3 notifiers
+Default: default

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T05:21:16.018393",
+  "generated_code": "# Test: Enum definition with filtering, iteration, and property access\n# Demonstrates LogLevel enum with value comparisons, name/value properties,\n# and selective processing based on configured threshold.\n\nenum LogLevel:\n    DEBUG = 1\n    INFO = 2\n    WARNING = 3\n    ERROR = 4\n\ndef get_label(level: LogLevel) -> str:\n    if level == LogLevel.DEBUG:\n        return \"Detailed\"\n    elif level == LogLevel.INFO:\n        return \"Notice\"\n    elif level == LogLevel.WARNING:\n        return \"Caution\"\n    else:\n        return \"Critical\"\n\ndef should_log(config_level: LogLevel, message_level: LogLevel) -> bool:\n    return message_level.value >= config_level.value\n\ndef main():\n    config: LogLevel = LogLevel.WARNING\n    \n    for level in LogLevel:\n        if should_log(config, level):\n            label = get_label(level)\n            print(level.name)\n            print(label)\n            print(level.value)\n",
+  "expected_output": "Warning\nCaution\n3\nError\nCritical\n4\n",
+  "actual_output": "Warning\nCaution\n3\nError\nCritical\n4",
+  "feature_focus": "enum_definition",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 334.7087609767914,
+  "execution_duration": 4.779706716537476,
+  "source_files": null
+}

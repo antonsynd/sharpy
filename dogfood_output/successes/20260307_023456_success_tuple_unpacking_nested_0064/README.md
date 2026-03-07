@@ -1,0 +1,132 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-03-07T02:32:49.872163
+**Feature Focus:** tuple_unpacking_nested
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: Deep nested tuple unpacking with coordinate data
+# Validates unpacking of 3-level nested tuples without complex tuple literals
+
+class Pixel:
+    pid: int
+    coord: tuple[int, int]
+    rgb: tuple[int, int, int]
+    
+    def __init__(self, pid: int, x: int, y: int, r: int, g: int, b: int):
+        self.pid = pid
+        self.coord = (x, y)
+        self.rgb = (r, g, b)
+    
+    def get_data(self) -> tuple[int, tuple[int, int], tuple[int, int, int]]:
+        return (self.pid, self.coord, self.rgb)
+
+def swap_values(a: int, b: int) -> tuple[int, int]:
+    # Returns swapped values as a tuple
+    return (b, a)
+
+def main():
+    # Create pixel object
+    p = Pixel(1, 10, 20, 255, 128, 64)
+    
+    # Get nested tuple data: (id, (x, y), (r, g, b))
+    data = p.get_data()
+    
+    # Deep nested unpacking: level 1 = id, level 2 = coord pair, level 3 = rgb triple
+    id_val, coord, rgb = data
+    
+    # Further unpack the nested tuples
+    x, y = coord
+    r, g, b = rgb
+    
+    print(id_val)
+    print(x)
+    print(y)
+    print(r)
+    print(g)
+    print(b)
+    
+    # Test nested unpacking directly from returned tuple (stored in variable first)
+    # Note: direct assignment like "pid, (px, py), (pr, pg, pb) = p.get_data()" 
+    # won't parse - must use intermediate variable
+    result = p.get_data()
+    pid, position, colors = result
+    px, py = position
+    pr, pg, pb = colors
+    
+    print(pid)
+    print(px)
+    print(py)
+    print(pr)
+    print(pg)
+    print(pb)
+    
+    # Test variable swapping using a helper function
+    a: int = 100
+    b: int = 200
+    
+    # Use helper that returns tuple instead of direct tuple literal
+    swapped = swap_values(a, b)
+    a, b = swapped
+    
+    print(a)
+    print(b)
+    
+    # Test with nested positions using swap helper
+    x1: int = 1
+    y1: int = 2
+    x2: int = 3
+    y2: int = 4
+    
+    # Swap pairs using helper functions
+    swapped1 = swap_values(x1, x2)
+    x1, x2 = swapped1
+    
+    swapped2 = swap_values(y1, y2)
+    y1, y2 = swapped2
+    
+    print(x1)
+    print(y1)
+    print(x2)
+    print(y2)
+
+```
+
+## Output
+
+```
+1
+10
+20
+255
+128
+64
+1
+10
+20
+255
+128
+64
+200
+100
+3
+4
+1
+2
+```
+
+## Timing
+
+- Generation: 105.88s
+- Execution: 4.72s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

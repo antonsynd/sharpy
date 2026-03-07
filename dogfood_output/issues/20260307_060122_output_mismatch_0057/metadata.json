@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-07T05:58:20.176539",
+  "generated_code": "# Test: Nullable types with user profile processing pipeline\n# Tests: null coalescing (??), null conditional (?.), type narrowing,\n#         nullable fields in classes, and chained operations\n\nclass UserProfile:\n    name: str\n    age: int?\n    email: str?\n    backup_email: str?\n    \n    def __init__(self, name: str):\n        self.name = name\n        self.age = None()\n        self.email = None()\n        self.backup_email = None()\n    \n    def get_primary_contact(self) -> str:\n        # Null coalescing chain\n        return self.email ?? self.backup_email ?? \"no_contact@example.com\"\n    \n    def get_display_age(self) -> int:\n        # Type narrowing with is not None\n        if self.age is not None:\n            return self.age\n        return 0\n\ndef create_profile_with_age(name: str, age: int) -> UserProfile:\n    profile = UserProfile(name)\n    profile.age = Some(age)\n    return profile\n\ndef process_profile(profile: UserProfile) -> str:\n    # Multiple nullable operations in one expression\n    age_display: str = \"unknown\"\n    if profile.age is not None:\n        age_display = str(profile.age)\n    \n    # Build display string using null coalescing\n    display: str = f\"{profile.name} ({age_display})\"\n    \n    # Access potentially nullable with fallback\n    contact: str = profile.email ?? \"N/A\"\n    display = display + f\" - {contact}\"\n    \n    return display\n\ndef main():\n    # Create profiles with different combinations of nullable fields\n    alice = create_profile_with_age(\"Alice\", 30)\n    \n    # Direct field access and modification\n    bob = UserProfile(\"Bob\")\n    bob.age = Some(25)\n    bob.email = Some(\"bob@test.com\")\n    \n    # Profile with minimal data\n    carol = UserProfile(\"Carol\")\n    \n    # Test null coalescing chains\n    print(alice.get_primary_contact())\n    \n    # Test type narrowing in method\n    print(alice.get_display_age())\n    \n    # Test with full processing\n    print(process_profile(alice))\n    print(process_profile(bob))\n    print(process_profile(carol))\n    \n    # Test with only backup email set\n    dave = UserProfile(\"Dave\")\n    dave.backup_email = Some(\"dave_backup@test.com\")\n    print(dave.get_primary_contact())\n",
+  "expected_output": "no_contact@example.com\n30\nAlice (30) - N/A\nBob (25) - bob@test.com\nCarol (0) - N/A\ndave_backup@test.com\n",
+  "actual_output": "no_contact@example.com\n30\nAlice (30) - N/A\nBob (25) - bob@test.com\nCarol (unknown) - N/A\ndave_backup@test.com",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "nullable_types",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 99.68495035171509,
+  "compilation_duration": null,
+  "execution_duration": 4.758556127548218,
+  "source_files": null
+}

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T07:56:44.976308",
+  "generated_code": "# Score manager with dict literals, filtering, and spread merging\nclass ScoreManager:\n    scores: dict[str, int]\n    \n    def __init__(self):\n        # Dict literal with initial scores\n        self.scores = {\n            \"math\": 75,\n            \"science\": 85,\n            \"history\": 65\n        }\n    \n    def get_passing(self, cutoff: int) -> dict[str, int]:\n        passing: dict[str, int] = {}\n        for subject in self.scores:\n            if self.scores[subject] >= cutoff:\n                passing[subject] = self.scores[subject]\n        return passing\n    \n    def merge_defaults(self) -> dict[str, int]:\n        # Dict literal with spread operator for merging\n        defaults: dict[str, int] = {\"english\": 70, \"art\": 80}\n        return {**defaults, **self.scores}\n\ndef main():\n    manager = ScoreManager()\n    \n    # Filter to passing scores (>= 70)\n    passing: dict[str, int] = manager.get_passing(70)\n    print(len(passing))\n    print(passing.get(\"science\", 0))\n    print(passing.get(\"history\", 0))\n    \n    # Merge with default scores using spread\n    combined: dict[str, int] = manager.merge_defaults()\n    print(len(combined))\n    print(combined.get(\"english\", 0))\n",
+  "expected_output": "2\n85\n0\n5\n70\n",
+  "actual_output": "2\n85\n0\n5\n70",
+  "feature_focus": "dict_literal",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 481.66315937042236,
+  "execution_duration": 4.671075105667114,
+  "source_files": null
+}

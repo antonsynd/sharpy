@@ -1,0 +1,33 @@
+# Entry point - demonstrates complex cross-module interactions
+
+from types import OrderStatus
+from products import DigitalProduct, PhysicalProduct, Product, StatusTracker
+from orders import Order, OrderItem
+
+def main():
+    # Create products
+    ebook: DigitalProduct = DigitalProduct("Programming Guide", 50.0, "ABC-123")
+    laptop: PhysicalProduct = PhysicalProduct("Laptop", 1000.0, 2.5)
+    mouse: Product = Product("Mouse", 25.0)
+    
+    # Test polymorphic pricing
+    print(ebook.get_price())
+    print(laptop.get_price())
+    print(mouse.get_price())
+    
+    # Create order with items
+    order: Order = Order(1001)
+    order.add_item(OrderItem(ebook, 2))
+    order.add_item(OrderItem(laptop, 1))
+    order.add_item(OrderItem(mouse, 2))
+    
+    # Print order total
+    print(order.total())
+    
+    # Test status progression
+    print(order.get_status().value)
+    order.advance_status()
+    print(order.get_status().value)
+    
+    # Test interface method
+    print(order.log_entry())

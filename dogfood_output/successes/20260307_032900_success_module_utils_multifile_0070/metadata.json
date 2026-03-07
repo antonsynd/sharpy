@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-03-07T03:27:42.279132",
+  "generated_code": "# Main entry point demonstrating module imports and usage\nfrom module_utils import Calculator, square, average\n\ndef main():\n    calc = Calculator(100)\n    print(calc.get_total())\n    \n    new_total: int = calc.add(50)\n    print(new_total)\n    \n    calc.subtract(25)\n    print(calc.get_total())\n    \n    result: int = square(7)\n    print(result)\n    \n    scores: list[int] = [85, 90, 78, 92, 88]\n    avg: float = average(scores)\n    print(avg)\n",
+  "expected_output": "100\n150\n125\n49\n86.6\n",
+  "actual_output": "100\n150\n125\n49\n86.6",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 65.14306616783142,
+  "execution_duration": 4.69964075088501,
+  "source_files": {
+    "module_utils.spy": "# Utility module providing mathematical helper functions\n# and a utility class for calculations\n\nclass Calculator:\n    _total: int\n    \n    def __init__(self, initial: int = 0):\n        self._total = initial\n    \n    def add(self, value: int) -> int:\n        self._total = self._total + value\n        return self._total\n    \n    def subtract(self, value: int) -> int:\n        self._total = self._total - value\n        return self._total\n    \n    def get_total(self) -> int:\n        return self._total\n\ndef square(x: int) -> int:\n    return x * x\n\ndef average(values: list[int]) -> float:\n    if len(values) == 0:\n        return 0.0\n    total: int = 0\n    for v in values:\n        total = total + v\n    return float(total) / float(len(values))\n",
+    "main.spy": "# Main entry point demonstrating module imports and usage\nfrom module_utils import Calculator, square, average\n\ndef main():\n    calc = Calculator(100)\n    print(calc.get_total())\n    \n    new_total: int = calc.add(50)\n    print(new_total)\n    \n    calc.subtract(25)\n    print(calc.get_total())\n    \n    result: int = square(7)\n    print(result)\n    \n    scores: list[int] = [85, 90, 78, 92, 88]\n    avg: float = average(scores)\n    print(avg)\n"
+  }
+}

@@ -1,0 +1,28 @@
+# Calculator module with shape operations
+from types import Color, IMeasurable, Point
+from shapes import Rectangle, Circle, Triangle, Shape
+
+# Work with individual IMeasurable items, not lists of interface type
+# due to generic invariance
+def calculate_total_area(items: list[Shape]) -> float:
+    total: float = 0.0
+    for item in items:
+        # Access area through the IMeasurable interface
+        total += item.area
+    return total
+
+def find_largest_shape(items: list[Shape]) -> IMeasurable:
+    largest: IMeasurable = items[0]
+    max_area: float = largest.area
+    for item in items:
+        if item.area > max_area:
+            max_area = item.area
+            largest = item
+    return largest
+
+def count_by_color(items: list[Shape], target: Color) -> int:
+    count: int = 0
+    for item in items:
+        if item.get_color().value == target.value:
+            count += 1
+    return count

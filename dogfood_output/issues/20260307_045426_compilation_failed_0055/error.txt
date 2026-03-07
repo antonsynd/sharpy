@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'ShapesCore.ShapeType' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'ShapesCore.ShapeType' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpq8qj5ki5/main.spy:37:61
+    |
+ 37 |     print(circle.get_shape_type().value)
+    |                                         ^
+    |
+

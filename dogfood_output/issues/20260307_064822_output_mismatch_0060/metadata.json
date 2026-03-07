@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-07T06:43:50.358545",
+  "generated_code": "# Star unpacking demonstration with proper Sharpy semantics\n# Tests: spread operators, rest patterns, and collection merging\n\ndef sum_variadic(base: int, extras: list[int]) -> int:\n    total: int = base\n    for val in extras:\n        total += val\n    return total\n\ndef merge_lists(lists: list[list[int]]) -> list[int]:\n    result: list[int] = []\n    for lst in lists:\n        result.extend(lst)\n    return result\n\ndef process_with_defaults(items: list[int], defaults: list[int]) -> int:\n    if len(items) > 0:\n        return items[0]\n    elif len(defaults) > 0:\n        # Get first default without rest unpacking\n        first: int = defaults[0]\n        return first\n    raise ValueError(\"empty\")\n\nclass SafeList:\n    items: list[int]\n    \n    def __init__(self, initial: list[int]):\n        self.items = initial\n    \n    def first(self, defaults: list[int]) -> int:\n        return process_with_defaults(self.items, defaults)\n    \n    def merge(self, others: list[list[int]]) -> list[int]:\n        all_lists: list[list[int]] = [self.items]\n        all_lists.extend(others)\n        return merge_lists(all_lists)\n\ndef main():\n    # Test rest patterns with fixed-size lists\n    all_items: list[int] = [10, 20, 30, 40, 50]\n    first_elem: int = all_items[0]\n    # Use slice for middle elements instead of rest pattern\n    middle: list[int] = all_items[1:4]\n    last_elem: int = all_items[4]\n    print(first_elem)\n    for item in middle:\n        print(item)\n    print(last_elem)\n    \n    # Spread list into another list\n    nums1: list[int] = [1, 2, 3]\n    nums2: list[int] = [4, 5, 6]\n    combined: list[int] = [*nums1, *nums2]\n    for n in combined:\n        print(n)\n    \n    # Test spread with variadic-style function using list\n    extras: list[int] = [4, 5, 6]\n    result: int = sum_variadic(10, extras)\n    print(result)\n    \n    # Rest pattern with slice instead of starred unpacking\n    left: int = all_items[0]\n    rest: list[int] = all_items[1:]\n    print(left)\n    for r in rest:\n        print(r)\n    \n    # Test method with list unpacking\n    nums: SafeList = SafeList([100, 200, 300])\n    defaults: list[int] = [999, 888]\n    result2: int = nums.first(defaults)\n    print(result2)\n",
+  "expected_output": "10\n20\n30\n40\n50\n1\n2\n3\n4\n5\n6\n25\n10\n20\n30\n40\n50\n100\n999\n999\n",
+  "actual_output": "10\n20\n30\n40\n50\n1\n2\n3\n4\n5\n6\n25\n10\n20\n30\n40\n50\n100",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "star_unpacking",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 223.31470704078674,
+  "compilation_duration": null,
+  "execution_duration": 4.92569899559021,
+  "source_files": null
+}

@@ -1,0 +1,41 @@
+# Main entry point - demonstrates cross-module class usage
+from types import Color, Point, IDrawable, IMeasurable
+from shapes import Rectangle, Circle
+
+def process_shape(shape: IDrawable) -> str:
+    return shape.draw()
+
+def calculate_total_area(shapes: list[IMeasurable]) -> float:
+    total: float = 0.0
+    for shape in shapes:
+        total += shape.area()
+    return total
+
+def main():
+    # Test enum from types module
+    c: Color = Color.RED
+    print(c.name)
+    print(c.value)
+    
+    # Test struct from types module
+    p: Point = Point(3.0, 4.0)
+    print(p.x)
+    print(p.y)
+    
+    # Test classes from shapes module with cross-module types
+    rect: Rectangle = Rectangle("Box", 5.0, 3.0, Color.BLUE)
+    circ: Circle = Circle("Wheel", 2.0, Color.GREEN)
+    
+    # Virtual method dispatch
+    print(rect.describe())
+    print(circ.describe())
+    
+    # Interface methods
+    shapes: list[IMeasurable] = list()
+    shapes.append(rect)
+    shapes.append(circ)
+    
+    total: float = calculate_total_area(shapes)
+    # Round to 3 decimal places for consistent output
+    rounded: float = round(total, 3)
+    print(rounded)

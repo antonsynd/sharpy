@@ -1,0 +1,28 @@
+from utils import Point
+
+enum ShapeType:
+    CIRCLE = 1
+    RECTANGLE = 2
+    POLYGON = 3
+
+@abstract
+class Shape:
+    position: Point
+    _name: str
+    
+    def __init__(self, pos: Point, name: str):
+        self.position = pos
+        self._name = name
+    
+    @virtual
+    def get_name(self) -> str:
+        return self._name
+    
+    @abstract
+    def compute_area(self) -> float
+    
+    @abstract
+    def scale(self, factor: float) -> None
+    
+    @abstract
+    def draw(self) -> str

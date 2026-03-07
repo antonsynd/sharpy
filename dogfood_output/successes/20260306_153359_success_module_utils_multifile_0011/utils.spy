@@ -1,0 +1,30 @@
+# Module: utils - Basic utility functions and classes
+
+def clamp(value: int, min_val: int, max_val: int) -> int:
+    """Clamp value to range [min_val, max_val]."""
+    if value < min_val:
+        return min_val
+    if value > max_val:
+        return max_val
+    return value
+
+class Counter:
+    """A simple counter with increment/decrement operations."""
+    _value: int
+
+    def __init__(self):
+        self._value = 0
+
+    @virtual
+    def get_value(self) -> int:
+        return self._value
+
+    @virtual
+    def increment(self) -> int:
+        self._value += 1
+        return self._value
+
+    @virtual
+    def decrement(self) -> int:
+        self._value -= 1
+        return self._value

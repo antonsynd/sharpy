@@ -1,0 +1,30 @@
+# Module defining shape abstractions and interfaces
+
+interface IShape:
+    def area(self) -> float: ...
+    def perimeter(self) -> float: ...
+
+interface IMeasurable:
+    def get_measurements(self) -> list[float]: ...
+
+@abstract
+class Shape:
+    name: str
+    
+    def __init__(self, shape_name: str):
+        self.name = shape_name
+    
+    @virtual
+    def describe(self) -> str:
+        return f"Shape: {self.name}"
+    
+    @abstract
+    def calculate(self) -> float: ...
+    
+    def __str__(self) -> str:
+        return f"[{self.name}]"
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3

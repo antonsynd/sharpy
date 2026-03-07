@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-06T22:23:19.469973",
+  "generated_code": "# Test function-style properties with computed values and validation\nclass BankAccount:\n    _balance: float\n    _minimum: float\n    \n    def __init__(self, initial_balance: float, minimum_balance: float = 0.0):\n        self._balance = initial_balance\n        self._minimum = minimum_balance\n    \n    property get balance(self) -> float:\n        # Computed property with logging information\n        if self._balance < self._minimum:\n            print(f\"WARNING: Balance below minimum\")\n        return self._balance\n    \n    property set balance(self, value: float):\n        # Setter with validation\n        if value < 0.0:\n            print(\"ERROR: Cannot set negative balance\")\n        else:\n            self._balance = value\n            print(f\"Balance updated to {value}\")\n    \n    property get is_low(self) -> bool:\n        # Computed boolean property\n        return self._balance < self._minimum\n    \n    property get status(self) -> str:\n        # Computed string property\n        if self._balance >= 1000.0:\n            return \"premium\"\n        elif self._balance >= 100.0:\n            return \"standard\"\n        else:\n            return \"basic\"\n\ndef main():\n    account = BankAccount(500.0, 50.0)\n    \n    # Test getter\n    current = account.balance\n    print(current)\n    \n    # Test low balance check\n    print(account.is_low)\n    \n    # Trigger low balance\n    account.balance = 25.0\n    \n    # Check status\n    print(account.status)\n    print(account.is_low)\n    \n    # Upgrade to premium\n    account.balance = 1500.0\n    print(account.status)\n    \n    # Try invalid set\n    account.balance = -100.0\n    \n    # Final check\n    final = account.balance\n    print(final)\n",
+  "expected_output": "500.0\nFalse\nBalance updated to 25.0\nbasic\nTrue\nBalance updated to 1500.0\npremium\nERROR: Cannot set negative balance\n1500.0\n",
+  "actual_output": "500.0\nFalse\nBalance updated to 25\nbasic\nTrue\nBalance updated to 1500\npremium\nERROR: Cannot set negative balance\n1500.0",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "function_style_property",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 90.82340574264526,
+  "compilation_duration": null,
+  "execution_duration": 5.649884462356567,
+  "source_files": null
+}

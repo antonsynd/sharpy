@@ -1,0 +1,74 @@
+# Module: data_structures - Generic collection types with comparison support
+
+@abstract
+class Collection[T]:
+    _items: list[T]
+    _count: int
+
+    def __init__(self):
+        self._items = []
+        self._count = 0
+
+    @virtual
+    def add(self, item: T) -> None:
+        self._items.append(item)
+        self._count = self._count + 1
+
+    @virtual
+    def size(self) -> int:
+        return self._count
+
+    @abstract
+    def remove(self) -> T:
+        ...
+
+class Stack[T](Collection[T]):
+    def __init__(self):
+        super().__init__()
+
+    @override
+    def remove(self) -> T:
+        if self._count == 0:
+            raise IndexError("Stack is empty")
+        item: T = self._items.pop()
+        self._count = self._count - 1
+        return item
+
+    def peek(self) -> T:
+        if self._count == 0:
+            raise IndexError("Stack is empty")
+        return self._items[self._count - 1]
+
+class Queue[T](Collection[T]):
+    def __init__(self):
+        super().__init__()
+
+    @override
+    def remove(self) -> T:
+        if self._count == 0:
+            raise IndexError("Queue is empty")
+        item: T = self._items.pop(0)
+        self._count = self._count - 1
+        return item
+
+    def front(self) -> T:
+        if self._count == 0:
+            raise IndexError("Queue is empty")
+        return self._items[0]
+
+class ComparableItem:
+    value: int
+    name: str
+
+    def __init__(self, value: int, name: str):
+        self.value = value
+        self.name = name
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ComparableItem):
+            return False
+        other_item: ComparableItem = other
+        return self.value == other_item.value
+
+    def __str__(self) -> str:
+        return self.name

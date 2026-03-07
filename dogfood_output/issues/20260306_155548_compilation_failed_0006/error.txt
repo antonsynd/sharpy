@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0540]: 'Factories.ShapeGenerator.IEnumerable.GetEnumerator()': containing type does not implement interface 'IEnumerable'
+  --> /tmp/tmpd0c44rac/factories.spy:39:40
+    |
+ 39 |     # Print total area of all shapes
+    |                                     ^
+    |
+

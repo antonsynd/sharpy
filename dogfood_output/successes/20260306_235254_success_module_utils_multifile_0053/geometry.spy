@@ -1,0 +1,25 @@
+# Geometry module providing basic geometric types
+# Tests cross-module class usage and composition
+
+class Point:
+    x: int
+    y: int
+    
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+    
+    def distance_squared(self) -> int:
+        return self.x * self.x + self.y * self.y
+
+class Circle:
+    center: Point
+    radius: int
+    
+    def __init__(self, center: Point, radius: int):
+        self.center = center
+        self.radius = radius
+    
+    def area(self) -> float:
+        # Using 3.0 as approximation of pi
+        return 3.0 * float(self.radius * self.radius)

@@ -1,0 +1,42 @@
+# Main entry point demonstrating cross-module class usage
+from shapes import Shape, Rectangle, Circle, IColorable, IMeasurable
+from utils import Point, Color, ShapeCategory, calculate_total_area, get_category_name
+from factories import RectangleFactory, CircleFactory, create_point_at, IShapeFactory
+
+def main():
+    # Test 1: Create shapes and use virtual methods
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    circ: Circle = Circle(2.0)
+    print(rect.describe())
+    print(circ.describe())
+    
+    # Test 2: Interface implementation across modules
+    rect.set_color("Green")
+    print(rect.get_color())
+    print(rect.get_dimensions())
+    
+    # Test 3: Struct usage (value type)
+    p1: Point = create_point_at(3.0, 4.0)
+    print(p1.distance_from_origin())
+    
+    # Test 4: Enum usage
+    cat: ShapeCategory = ShapeCategory.COMPLEX
+    print(get_category_name(cat))
+    
+    # Iterate over colors
+    c: Color = Color.RED
+    print(c.name)
+    
+    # Test 5: Factory pattern with interface
+    factory: IShapeFactory = RectangleFactory(10.0, 5.0)
+    new_shape: Shape = factory.create_shape()
+    print(new_shape.describe())
+    print(factory.get_factory_name())
+    
+    # Test 6: Polymorphic collection
+    s1: Shape = Rectangle(2.0, 3.0)
+    s2: Shape = Circle(1.0)
+    s3: Shape = Rectangle(4.0, 4.0)
+    shapes: list = [s1, s2, s3]
+    total: float = calculate_total_area(shapes)
+    print(total)

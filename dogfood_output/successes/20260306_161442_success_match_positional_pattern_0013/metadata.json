@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T16:06:57.224112",
+  "generated_code": "class Point:\n    x: int\n    y: int\n\n    def __init__(self, x: int, y: int):\n        self.x = x\n        self.y = y\n\nclass Size:\n    width: int\n    height: int\n\n    def __init__(self, width: int, height: int):\n        self.width = width\n        self.height = height\n\ndef classify_point(p: Point) -> str:\n    match p:\n        case Point(0, 0):\n            return \"origin\"\n        case Point(0, _):\n            return \"y-axis\"\n        case Point(_, 0):\n            return \"x-axis\"\n        case _:\n            return \"quadrant\"\n\ndef describe_size(s: Size) -> str:\n    match s:\n        case Size(w, h):\n            area: int = w * h\n            return f\"size {w}x{h}, area {area}\"\n        case _:\n            return \"unknown\"\n\ndef analyze_shape(p: Point, s: Size) -> str:\n    match p:\n        case Point(x, y):\n            match s:\n                case Size(w, h):\n                    if x == w and y == h:\n                        return \"point matches size\"\n                    else:\n                        return f\"point ({x},{y}) vs size {w}x{h}\"\n                case _:\n                    return \"no size\"\n        case _:\n            return \"no point\"\n\ndef main():\n    # Test classify_point\n    print(classify_point(Point(0, 0)))\n    print(classify_point(Point(0, 5)))\n    print(classify_point(Point(3, 0)))\n    print(classify_point(Point(2, 3)))\n\n    # Test describe_size with binding\n    print(describe_size(Size(10, 20)))\n\n    # Test analyze_shape\n    print(analyze_shape(Point(5, 5), Size(5, 5)))\n    print(analyze_shape(Point(2, 3), Size(4, 6)))\n",
+  "expected_output": "origin\ny-axis\nx-axis\nquadrant\nsize 10x20, area 200\npoint matches size\npoint (2,3) vs size 4x6\n",
+  "actual_output": "origin\ny-axis\nx-axis\nquadrant\nsize 10x20, area 200\npoint matches size\npoint (2,3) vs size 4x6",
+  "feature_focus": "match_positional_pattern",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 455.0406789779663,
+  "execution_duration": 4.6932995319366455,
+  "source_files": null
+}

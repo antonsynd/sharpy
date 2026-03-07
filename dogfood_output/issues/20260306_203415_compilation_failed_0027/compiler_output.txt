@@ -1,0 +1,7 @@
+warning[SPY0452]: Imported name 'Dimensions' is never used
+  --> /tmp/tmpxq4mu2hj/main.spy:2:27
+    |
+  2 | from models import Color, Dimensions
+    |                           ^^^^^^^^^^
+    |
+

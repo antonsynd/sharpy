@@ -1,0 +1,52 @@
+# Math utilities module
+def square(x: float) -> float:
+    return x * x
+
+def cube(x: float) -> float:
+    return x * x * x
+
+def factorial(n: int) -> int:
+    result: int = 1
+    i: int = 2
+    while i <= n:
+        result = result * i
+        i = i + 1
+    return result
+
+def clamp(value: float, min_val: float, max_val: float) -> float:
+    if value < min_val:
+        return min_val
+    elif value > max_val:
+        return max_val
+    else:
+        return value
+
+def average(nums: list[float]) -> float:
+    total: float = 0.0
+    for n in nums:
+        total = total + n
+    if len(nums) > 0:
+        return total / len(nums)
+    else:
+        return 0.0
+
+enum MathOp:
+    ADD = 1
+    SUB = 2
+    MUL = 3
+    DIV = 4
+
+def apply_op(a: float, b: float, op: MathOp) -> float:
+    if op == MathOp.ADD:
+        return a + b
+    elif op == MathOp.SUB:
+        return a - b
+    elif op == MathOp.MUL:
+        return a * b
+    elif op == MathOp.DIV:
+        if b != 0.0:
+            return a / b
+        else:
+            return 0.0
+    else:
+        return 0.0

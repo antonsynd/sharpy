@@ -1,0 +1,36 @@
+# Services module demonstrating cross-module inheritance and interface implementation
+from models import BaseEntity, Status, IIdentifiable
+from types import Point
+
+class UserService(BaseEntity, IIdentifiable):
+    _user_id: int
+    _status: Status
+
+    def __init__(self, name: str, user_id: int):
+        super().__init__(name)
+        self._user_id = user_id
+        self._status = Status.PENDING
+
+    def get_id(self) -> str:
+        return f"{self._name}-{self._user_id}"
+
+    @override
+    def validate(self) -> bool:
+        return self._user_id > 0
+
+    def get_status(self) -> Status:
+        return self._status
+
+class ProductService(BaseEntity, IIdentifiable):
+    _product_id: int
+
+    def __init__(self, name: str, product_id: int):
+        super().__init__(name)
+        self._product_id = product_id
+
+    def get_id(self) -> str:
+        return f"{self._name}-{self._product_id}"
+
+    @override
+    def validate(self) -> bool:
+        return self._product_id > 100

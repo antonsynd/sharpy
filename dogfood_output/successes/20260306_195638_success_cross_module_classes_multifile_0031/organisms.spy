@@ -1,0 +1,22 @@
+interface ILiving:
+    def is_alive(self) -> bool: ...
+
+@abstract
+class Organism(ILiving):
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def introduce(self) -> str:
+        return "I am " + self.name
+    
+    @abstract
+    def get_type(self) -> str: ...
+    
+    def is_alive(self) -> bool:
+        return True
+
+def classify(entity: Organism) -> str:
+    return entity.get_type() + ": " + entity.name

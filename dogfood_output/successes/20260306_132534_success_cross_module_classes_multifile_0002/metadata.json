@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-06T13:22:12.594607",
+  "generated_code": "# Main entry point - demonstrates cross-module class usage\n\nfrom geometry import Point, Box\nfrom shapes import create_square, ColoredBox\n\ndef main():\n    # Create base classes from geometry module\n    p1 = Point(0, 0)\n    p2 = Point(10, 20)\n    \n    b = Box(p1, p2)\n    print(b.width())\n    print(b.height())\n    print(b.area())\n    \n    # Use function from shapes module that returns geometry type\n    sq = create_square(Point(5, 5), 3)\n    print(sq.area())\n    \n    # Use ColoredBox class that extends geometry.Box\n    cb = ColoredBox(Point(1, 1), Point(4, 3), \"Blue\")\n    print(cb)\n",
+  "expected_output": "10\n20\n200\n9\nBlue box 3x2\n",
+  "actual_output": "10\n20\n200\n9\nBlue box 3x2",
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 186.38593697547913,
+  "execution_duration": 4.503433704376221,
+  "source_files": {
+    "geometry.spy": "# Geometry module - base geometric classes\n\nclass Point:\n    x: int\n    y: int\n    \n    def __init__(self, x: int, y: int):\n        self.x = x\n        self.y = y\n\nclass Box:\n    top_left: Point\n    bottom_right: Point\n    \n    def __init__(self, tl: Point, br: Point):\n        self.top_left = tl\n        self.bottom_right = br\n    \n    def width(self) -> int:\n        return self.bottom_right.x - self.top_left.x\n    \n    def height(self) -> int:\n        return self.bottom_right.y - self.top_left.y\n    \n    def area(self) -> int:\n        return self.width() * self.height()\n",
+    "shapes.spy": "# Shapes module - extends geometry with colored boxes\n\nfrom geometry import Point, Box\n\ndef create_square(corner: Point, size: int) -> Box:\n    br = Point(corner.x + size, corner.y + size)\n    return Box(corner, br)\n\nclass ColoredBox(Box):\n    color: str\n    \n    def __init__(self, tl: Point, br: Point, color: str):\n        super().__init__(tl, br)\n        self.color = color\n    \n    @override\n    def __str__(self) -> str:\n        return self.color + \" box \" + str(self.width()) + \"x\" + str(self.height())\n",
+    "main.spy": "# Main entry point - demonstrates cross-module class usage\n\nfrom geometry import Point, Box\nfrom shapes import create_square, ColoredBox\n\ndef main():\n    # Create base classes from geometry module\n    p1 = Point(0, 0)\n    p2 = Point(10, 20)\n    \n    b = Box(p1, p2)\n    print(b.width())\n    print(b.height())\n    print(b.area())\n    \n    # Use function from shapes module that returns geometry type\n    sq = create_square(Point(5, 5), 3)\n    print(sq.area())\n    \n    # Use ColoredBox class that extends geometry.Box\n    cb = ColoredBox(Point(1, 1), Point(4, 3), \"Blue\")\n    print(cb)\n"
+  }
+}

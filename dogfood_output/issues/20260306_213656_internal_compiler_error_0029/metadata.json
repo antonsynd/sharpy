@@ -1,0 +1,18 @@
+{
+  "issue_type": "internal_compiler_error",
+  "timestamp": "2026-03-06T21:32:26.932591",
+  "generated_code": "# Test partial application with bound methods and lambda-based operator sections\nclass ValueAdder:\n    offset: int\n\n    def __init__(self, offset: int):\n        self.offset = offset\n\n    def add(self, value: int) -> int:\n        return self.offset + value\n\ndef main():\n    adder = ValueAdder(100)\n\n    # Partial application: create a function that adds 100 to any value\n    # Using lambda since operator sections with _ in boolean expressions have limitations\n    add_hundred = lambda x: adder.add(x)\n\n    # Lambda-based operator section: check if value is within range [100, 150]\n    in_range = lambda v: 100 <= v and v <= 150\n\n    # Test filtering with partial application-like functions\n    values: list[int] = [25, 50, 55, 60]\n    accepted: list[int] = []\n\n    for v in values:\n        result = add_hundred(v)\n        if in_range(result):\n            accepted.append(v)\n\n    print(accepted)\n    print(add_hundred(42))\n    print(in_range(120))\n    print(in_range(200))\n",
+  "expected_output": "[25, 50]\n142\nTrue\nFalse\n",
+  "actual_output": null,
+  "error_message": "Internal compiler error: Compilation errors:\n\nerror[SPY0907]: Internal: type inference produced UnknownType for 'in_range()' without a corresponding error diagnostic. This is a compiler bug.\n  --> /tmp/tmp5c6kn8fi/dogfood_test.spy:27:12\n    |\n 27 |         if in_range(result):\n    |            ^^^^^^^^^^^^^^^^\n    |\n\nerror[SPY0907]: Internal: type inference produced UnknownType for 'in_range()' without a corresponding error diagnostic. This is a compiler bug.\n  --> /tmp/tmp5c6kn8fi/dogfood_test.spy:33:11\n    |\n 33 |     print(in_range(200))\n    |           ^^^^^^^^^^^^^\n    |\n\nerror[SPY0907]: Internal: type inference produced UnknownType for 'in_range()' without a corresponding error diagnostic. This is a compiler bug.\n  --> /tmp/tmp5c6kn8fi/dogfood_test.spy:32:11\n    |\n 32 |     print(in_range(120))\n    |           ^^^^^^^^^^^^^\n    |\n\n",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "partial_application",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 257.04412603378296,
+  "compilation_duration": null,
+  "execution_duration": null,
+  "source_files": null
+}

@@ -1,0 +1,7 @@
+AND gate (all inputs must be true)
+OR gate (at least one input true)
+NOT gate (inverts input)
+False
+True
+False
+True

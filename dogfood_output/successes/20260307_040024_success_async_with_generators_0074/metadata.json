@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T03:57:55.607174",
+  "generated_code": "class DataStreamer:\n    \"\"\"Streams integer batches synchronously\"\"\"\n    _values: list[int]\n\n    def __init__(self, values: list[int]):\n        self._values = values\n\n    def __iter__(self) -> int:\n        \"\"\"Generator yielding individual values\"\"\"\n        for v in self._values:\n            yield v\n\n    def generate_batches(self, batch_size: int) -> list[int]:\n        \"\"\"Generator yielding batches of values\"\"\"\n        current: list[int] = []\n        count = 0\n        for v in self._values:\n            current.append(v)\n            count += 1\n            if count == batch_size:\n                yield current\n                current = []\n                count = 0\n        if len(current) > 0:\n            yield current\n\ndef sum_batches(streamer: DataStreamer) -> tuple[int, int]:\n    \"\"\"Process all batches and return (total_sum, batch_count)\"\"\"\n    total = 0\n    batches = 0\n    for batch in streamer.generate_batches(3):\n        batch_total = 0\n        for val in batch:\n            batch_total += val\n        total += batch_total\n        batches += 1\n    return (total, batches)\n\ndef main():\n    data: list[int] = [10, 20, 30, 40, 50, 60, 70, 80]\n    streamer = DataStreamer(data)\n    result = sum_batches(streamer)\n    total_sum, batch_count = result\n    print(total_sum)\n    print(batch_count)\n    # Verify with single element batches\n    streamer2 = DataStreamer([5, 10])\n    result2 = sum_batches(streamer2)\n    print(result2[0])\n",
+  "expected_output": "360\n3\n15\n",
+  "actual_output": "360\n3\n15",
+  "feature_focus": "async_with_generators",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 132.895281791687,
+  "execution_duration": 4.888174533843994,
+  "source_files": null
+}

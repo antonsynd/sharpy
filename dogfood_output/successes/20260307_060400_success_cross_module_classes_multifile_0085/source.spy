@@ -1,0 +1,19 @@
+from models import Person, Employee, Point, Product
+from utils import Company, GeometryUtil, Store
+
+
+def main():
+    emp: Employee = Employee("Alice", "Smith", 12345)
+    comp: Company = Company(emp)
+    print(comp.get_employee_info())
+
+    pt: Point = Point(3.0, 4.0)
+    dist: float = GeometryUtil.distance_from_origin(pt)
+    print(f"Distance: {dist}")
+
+    prod1: Product = Product("Laptop", 999.99)
+    prod2: Product = Product("Mouse", 29.99)
+    store: Store = Store()
+    store.add_product(prod1)
+    store.add_product(prod2)
+    print(store.get_product_list())

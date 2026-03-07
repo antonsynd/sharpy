@@ -1,0 +1,17 @@
+# Geometry utility functions and constants
+
+const PI: float = 3.14159
+
+def square(x: float) -> float:
+    return x * x
+
+def absolute_value(x: float) -> float:
+    if x < 0.0:
+        return -x
+    return x
+
+def sum_of_floats(values: list[float]) -> float:
+    total: float = 0.0
+    for v in values:
+        total = total + v
+    return total

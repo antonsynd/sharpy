@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T05:47:00.987473",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0104]: Expected Colon, got LeftParen\n  --> /tmp/tmpd0bve804/dogfood_test.spy:9:23\n    |\n  9 |         case Task.Done(result):\n    |                       ^\n    |\n\nerror[SPY0100]: Unexpected token: Case\n  --> /tmp/tmpd0bve804/dogfood_test.spy:11:9\n    |\n 11 |         case Task.Running(progress):\n    |         ^^^^\n    |\n\nerror[SPY0100]: Unexpected token: Case\n  --> /tmp/tmpd0bve804/dogfood_test.spy:13:9\n    |\n 13 |         case Task.Idle:\n    |         ^^^^\n    |\n\nerror[SPY0100]: Unexpected token: Dedent\n  --> /tmp/tmpd0bve804/dogfood_test.spy:15:1\n    |\n 15 | \n    | ^\n    |\n\n",
+  "generated_code": "union Task[T]:\n    case Idle()\n    case Running(progress: int)\n    case Done(result: T)\n\ndef main():\n    t: Task[int] = Task.Done(100)\n    match t:\n        case Task.Done(result):\n            print(result)\n        case Task.Running(progress):\n            print(progress)\n        case Task.Idle:\n            print(0)\n",
+  "expected_output": "100\n",
+  "feature_focus": "union_generic",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 664.0399432182312,
+  "source_files": null,
+  "validation_output": null
+}

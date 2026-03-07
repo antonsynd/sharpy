@@ -1,0 +1,17 @@
+from geometry_utils import Rectangle
+from shape_manager import ShapeManager
+
+def main():
+    # Test direct module class usage
+    r1: Rectangle = Rectangle(3, 4)
+    print(r1.area())
+    print(r1.perimeter())
+    
+    # Test manager class that imports from another module
+    manager: ShapeManager = ShapeManager()
+    manager.add_rectangle(2, 5)
+    manager.add_rectangle(4, 6)
+    
+    print(manager.total_area())
+    print(manager.total_perimeter())
+    print(len(manager.rectangles))

@@ -1,0 +1,9 @@
+sequence active
+10
+30
+60
+100
+150
+sequence closed
+total
+150

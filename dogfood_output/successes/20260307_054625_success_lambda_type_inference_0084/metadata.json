@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T05:44:04.743481",
+  "generated_code": "# Lambda type inference with arithmetic expression\ndef apply(f: (int) -> int, x: int) -> int:\n    return f(x)\n\ndef main():\n    r = apply(lambda n: n * n + 1, 4)\n    print(r)\n",
+  "expected_output": "17\n",
+  "actual_output": "17",
+  "feature_focus": "lambda_type_inference",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 130.1040976047516,
+  "execution_duration": 4.626128435134888,
+  "source_files": null
+}

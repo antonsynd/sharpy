@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T13:15:27.100086",
+  "generated_code": "# Test nullable types with null conditional and coalescing operators\nclass Config:\n    host: str?\n    port: int?\n    timeout: float?\n\n    def __init__(self, host: str?, port: int?, timeout: float?):\n        self.host = host\n        self.port = port\n        self.timeout = timeout\n\ndef resolve_config(config: Config?) -> str:\n    # Use null conditional and coalescing to provide defaults\n    host: str = config?.host ?? \"localhost\"\n    port: int = config?.port ?? 8080\n    timeout: float = config?.timeout ?? 30.0\n    return f\"{host}:{port} (timeout: {timeout}s)\"\n\ndef main():\n    # Test with complete config\n    full: Config = Config(\"api.example.com\", Some(443), Some(5.0))\n    print(resolve_config(full))\n\n    # Test with partial config\n    partial: Config = Config(None(), Some(3000), None())\n    print(resolve_config(partial))\n\n    # Test with None config\n    empty: Config? = None()\n    print(resolve_config(empty))\n",
+  "expected_output": "api.example.com:443 (timeout: 5.0s)\nlocalhost:3000 (timeout: 30.0s)\nlocalhost:8080 (timeout: 30.0s)\n",
+  "actual_output": "api.example.com:443 (timeout: 5.0s)\nlocalhost:3000 (timeout: 30.0s)\nlocalhost:8080 (timeout: 30.0s)",
+  "feature_focus": "nullable_types",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 72.4851975440979,
+  "execution_duration": 4.653492450714111,
+  "source_files": null
+}

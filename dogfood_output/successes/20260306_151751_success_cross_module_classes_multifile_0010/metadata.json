@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-06T15:11:58.660073",
+  "generated_code": "# Main entry point - tests cross-module class inheritance and polymorphic dispatch\n\nfrom vehicle_base import Vehicle\nfrom vehicle_impl import Car, Bicycle, VehiclePrinter\n\ndef main():\n    sedan = Car(\"Toyota\", \"Camry\")\n    road_bike = Bicycle(\"Trek\")\n    \n    print(sedan.description())\n    print(road_bike.wheel_count())\n    VehiclePrinter.print_info(sedan)\n    VehiclePrinter.print_info(road_bike)\n",
+  "expected_output": "Car: Toyota Camry\n2\nCar: Toyota Camry (4 wheels)\nGeneric Trek (2 wheels)\n",
+  "actual_output": "Car: Toyota Camry\n2\nCar: Toyota Camry (4 wheels)\nGeneric Trek (2 wheels)",
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 337.7012736797333,
+  "execution_duration": 4.646978855133057,
+  "source_files": {
+    "vehicle_base.spy": "# Module: vehicle_base\n# Defines base vehicle class with virtual methods for cross-module inheritance testing\n\nclass Vehicle:\n    brand: str\n    \n    def __init__(self, brand: str):\n        self.brand = brand\n    \n    @virtual\n    def description(self) -> str:\n        return f\"Generic {self.brand}\"\n    \n    @virtual\n    def wheel_count(self) -> int:\n        return 0\n",
+    "vehicle_impl.spy": "# Module: vehicle_impl\n# Concrete vehicle implementations that inherit from base class in another module\n\nfrom vehicle_base import Vehicle\n\nclass Car(Vehicle):\n    model: str\n    \n    def __init__(self, brand: str, model: str):\n        super().__init__(brand)\n        self.model = model\n    \n    @override\n    def description(self) -> str:\n        return f\"Car: {self.brand} {self.model}\"\n    \n    @override\n    def wheel_count(self) -> int:\n        return 4\n\nclass Bicycle(Vehicle):\n    def __init__(self, brand: str):\n        super().__init__(brand)\n    \n    @override\n    def wheel_count(self) -> int:\n        return 2\n\nclass VehiclePrinter:\n    def print_info(v: Vehicle) -> None:\n        print(f\"{v.description()} ({v.wheel_count()} wheels)\")\n",
+    "main.spy": "# Main entry point - tests cross-module class inheritance and polymorphic dispatch\n\nfrom vehicle_base import Vehicle\nfrom vehicle_impl import Car, Bicycle, VehiclePrinter\n\ndef main():\n    sedan = Car(\"Toyota\", \"Camry\")\n    road_bike = Bicycle(\"Trek\")\n    \n    print(sedan.description())\n    print(road_bike.wheel_count())\n    VehiclePrinter.print_info(sedan)\n    VehiclePrinter.print_info(road_bike)\n"
+  }
+}

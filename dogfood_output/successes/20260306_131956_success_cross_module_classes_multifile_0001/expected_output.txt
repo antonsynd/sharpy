@@ -1,0 +1,9 @@
+1
+Plane
+5.0
+Rectangle Shape #101
+Circle Shape #202
+Drawing Rectangle 5.0 x 3.0, Area=15.00
+Drawing Circle r=2.5, Area=19.63
+5.0
+10.0

@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Models.Color' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'Models.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpxq4mu2hj/main.spy:23:47
+    |
+ 23 |     print(c.color.value)
+    |                         ^
+    |
+
+error[CS1061]: 'Models.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Models.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpxq4mu2hj/main.spy:33:47
+    |
+ 33 |     print(s.color.name)
+    |                        ^
+    |
+

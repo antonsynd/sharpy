@@ -1,0 +1,32 @@
+# Main entry point - exercises cross-module imports and polymorphism
+from types import Color, Point, IMeasurable
+from shapes import Rectangle, Circle, Triangle, Shape
+from calculator import calculate_total_area, find_largest_shape, count_by_color
+
+def process_shape(s: IMeasurable) -> str:
+    return s.describe() + " area=" + str(s.area)
+
+def main():
+    origin: Point = Point(0.0, 0.0)
+    corner: Point = Point(10.0, 10.0)
+    rect: Rectangle = Rectangle(5.0, 3.0, origin)
+    circle: Circle = Circle(2.5, corner)
+    triangle: Triangle = Triangle(4.0, 6.0)
+
+    # Use list[Shape] directly due to generic invariance
+    shapes: list[Shape] = [rect, circle, triangle]
+
+    total: float = calculate_total_area(shapes)
+    print(total)
+
+    largest: IMeasurable = find_largest_shape(shapes)
+    print(largest.describe())
+
+    for s in shapes:
+        print(process_shape(s))
+
+    color_count: int = count_by_color(shapes, Color.RED)
+    print(color_count)
+
+    color_count2: int = count_by_color(shapes, Color.GREEN)
+    print(color_count2)

@@ -1,0 +1,36 @@
+# Main entry point demonstrating complex cross-module imports and polymorphism
+from models import BaseEntity, Status, IIdentifiable, get_module_info
+from types import Point, Calculator, format_id
+from services import UserService, ProductService
+
+def main():
+    # Test 1: Module function import
+    info: str = get_module_info()
+    print(info)
+
+    # Test 2: Cross-module inheritance + interface implementation
+    user: UserService = UserService("User", 100)
+    print(user.get_id())
+
+    # Test 3: Method access for status (using getter method instead of property)
+    current_status: Status = user.get_status()
+    print(current_status)
+
+    # Test 4: Another service class
+    product: ProductService = ProductService("Widget", 500)
+    print(product.get_id())
+
+    # Test 5: Struct creation and field access
+    point: Point = Point(10.0, 20.0)
+    print(point.x)
+
+    # Test 6: Static method from another module
+    scaled: float = Calculator.scale(5.0, 2.0)
+    print(scaled)
+
+    # Test 7-9: Polymorphism through base class references
+    entities: list[BaseEntity] = [user, product]
+    entity: BaseEntity
+    for entity in entities:
+        result: bool = entity.validate()
+        print(result)

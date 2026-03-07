@@ -1,0 +1,7 @@
+Point 1: (1.0, 2.0)
+Point 2: (3.0, 4.0)
+Circle at Circle((1.0, 2.0)) with radius 5.0
+Rect at Rect((3.0, 4.0)) area=12.0
+Circle color: Blue
+Rect color: Red
+Circle style: Dotted

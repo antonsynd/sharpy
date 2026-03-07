@@ -1,0 +1,7 @@
+# Lambda type inference with arithmetic expression
+def apply(f: (int) -> int, x: int) -> int:
+    return f(x)
+
+def main():
+    r = apply(lambda n: n * n + 1, 4)
+    print(r)

@@ -1,0 +1,54 @@
+# Main entry point - demonstrates cross-module imports, inheritance, polymorphism
+from shapes import Shape, Rectangle, Circle, ShapeType, IDrawable
+from utils import Point, Dimensions, distance, format_area, GeometryConstants
+
+def process_drawable(item: IDrawable) -> str:
+    return item.draw()
+
+def test_polymorphism() -> None:
+    print("=== Polymorphism Test ===")
+    rect: Rectangle = Rectangle("MyRect", 5.0, 3.0)
+    circ: Circle = Circle("MyCircle", 2.5)
+    
+    # Test shape polymorphism via list
+    shapes: list[Shape] = []
+    shapes.append(rect)
+    shapes.append(circ)
+    
+    for shape in shapes:
+        print(format_area(shape.name, shape.area()))
+    
+    # Test IDrawable interface - add items individually to avoid variance issue
+    drawables: list[IDrawable] = []
+    drawables.append(rect)
+    drawables.append(circ)
+    
+    for drawable in drawables:
+        print(process_drawable(drawable))
+
+def test_structs() -> None:
+    print("=== Struct Test ===")
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+    dist: float = distance(p1, p2)
+    print(f"Distance from {p1} to {p2} is {dist:.2f}")
+    
+    dims: Dimensions = Dimensions(800.0, 600.0)
+    print(f"Screen aspect ratio: {dims.aspect_ratio():.4f}")
+
+def test_enums_constants() -> None:
+    print("=== Enums and Constants Test ===")
+    rect_type: ShapeType = ShapeType.RECTANGLE
+    print(f"Rectangle type name: {rect_type.name}")
+    print(f"Rectangle type value: {rect_type.value}")
+    
+    circle_type: ShapeType = ShapeType.CIRCLE
+    print(f"Circle type value: {circle_type.value}")
+    
+    print(f"PI constant: {GeometryConstants.PI}")
+    print(f"Golden ratio: {GeometryConstants.GOLDEN_RATIO}")
+
+def main():
+    test_polymorphism()
+    test_structs()
+    test_enums_constants()

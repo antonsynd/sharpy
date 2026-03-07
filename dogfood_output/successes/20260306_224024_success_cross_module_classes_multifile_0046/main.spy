@@ -1,0 +1,20 @@
+# Main entry point demonstrating cross-module polymorphism
+from animals import Animal, Pet, create_pet
+from creatures import Dog, Cat, make_speak
+
+def main():
+    # Create instances - calls constructors that chain across modules
+    my_dog = Dog("Rex", "Alice", "German Shepherd")
+    my_cat = Cat("Whiskers", "Bob")
+    generic_pet = create_pet("Fish", "Carol")
+    
+    # Test polymorphic dispatch - different modules, same interface
+    print(my_dog.speak())
+    print(my_cat.speak())
+    print(make_speak(my_dog))
+    
+    # Test inherited parent methods
+    print(generic_pet.describe())
+    
+    # Test overridden methods in subclasses
+    print(my_dog.describe())

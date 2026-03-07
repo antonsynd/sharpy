@@ -1,0 +1,47 @@
+# Main driver - exercises cross-module inheritance, interfaces, enums, generics, events
+
+from shapes import Circle, Rectangle, Color, ShapeAnalyzer, AreaComputer
+from geometry import Point, BoundingBox, transform_point, PointTransformer
+from collections import TypedCollection, EventArgs
+
+class EventLogger[T]:
+    count: int
+    
+    def __init__(self):
+        self.count = 0
+    
+    def on_logged(self, sender: object, item: T) -> None:
+        self.count = self.count + 1
+
+def main():
+    # Test 1: Event with TypedCollection[int]
+    int_collection: TypedCollection[int] = TypedCollection[int]()
+    int_logger: EventLogger[int] = EventLogger[int]()
+    int_collection.on_item_added += int_logger.on_logged
+    int_collection.add(10)
+    int_collection.add(20)
+    print(int_logger.count)
+    
+    # Test 2: Cross-module shape inheritance
+    circle: Circle = Circle(5.0, Color.RED)
+    rect: Rectangle = Rectangle(4.0, 6.0, Color.BLUE)
+    print(circle.area())
+    print(rect.area())
+    
+    # Test 3: Interface dispatch and polymorphism
+    print(ShapeAnalyzer.compute_with_callback(circle, lambda s: s.area()))
+    
+    # Test 4: Struct usage from another module
+    origin: Point = Point(0.0, 0.0)
+    target: Point = Point(3.0, 4.0)
+    print(origin.x + target.y)
+    
+    # Test 5: Bounding box with embedded points and computed property
+    bbox: BoundingBox = BoundingBox(0.0, 0.0, 10.0, 10.0)
+    print(bbox.area)
+    
+    # Test 6: Generic invocation with different types
+    str_collection: TypedCollection[str] = TypedCollection[str]()
+    str_collection.add("hello")
+    str_collection.add("world")
+    print(str_collection.count())

@@ -1,0 +1,74 @@
+# Module implementing concrete shape types using shapes module
+from shapes import Shape, IDrawable, IMeasurable
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+class Circle(Shape, IDrawable, IMeasurable):
+    _center: Point
+    _radius: float
+    _color: Color
+
+    def __init__(self, name: str, center: Point, radius: float, color: Color):
+        super().__init__(name)
+        self._center = center
+        self._radius = radius
+        self._color = color
+
+    @override
+    def draw(self) -> str:
+        return "Circle"
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self._radius * self._radius
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self._radius
+
+    @override
+    def describe(self) -> str:
+        return self._name + "_circle_" + str(self._radius)
+
+    # Properties use auto-property syntax
+    property center_x: float
+
+    property center_y: float
+
+    property color: Color
+
+class Rectangle(Shape, IDrawable, IMeasurable):
+    _width: float
+    _height: float
+
+    def __init__(self, name: str, width: float, height: float):
+        super().__init__(name)
+        self._width = width
+        self._height = height
+
+    @override
+    def draw(self) -> str:
+        return "Rectangle"
+
+    @override
+    def area(self) -> float:
+        return self._width * self._height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self._width + self._height)
+
+    @override
+    def describe(self) -> str:
+        return self._name + "_rect"

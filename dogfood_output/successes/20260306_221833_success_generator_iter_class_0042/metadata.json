@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T22:16:31.355544",
+  "generated_code": "# Generator __iter__ class with step range\nclass StepRange:\n    start: int\n    end: int\n    step: int\n    \n    def __init__(self, start: int, end: int, step: int):\n        self.start = start\n        self.end = end\n        self.step = step\n    \n    def __iter__(self) -> int:\n        current: int = self.start\n        while current < self.end:\n            yield current\n            current += self.step\n\ndef main():\n    r = StepRange(10, 30, 7)\n    \n    for val in r:\n        print(val)\n    \n    print(\"---\")\n    \n    for val in r:\n        print(val)\n",
+  "expected_output": "10\n17\n24\n---\n10\n17\n24\n",
+  "actual_output": "10\n17\n24\n---\n10\n17\n24",
+  "feature_focus": "generator_iter_class",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 110.22130870819092,
+  "execution_duration": 5.52458381652832,
+  "source_files": null
+}

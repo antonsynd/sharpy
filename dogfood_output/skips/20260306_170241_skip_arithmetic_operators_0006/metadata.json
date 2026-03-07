@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T16:55:09.331693",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0100]: Unexpected token: Less\n  --> /tmp/tmp09430qo9/dogfood_test.spy:78:1\n    |\n 78 | </expected>\n    | ^\n    |\n\n",
+  "generated_code": "# Test arithmetic operators with medium complexity\n# Testing basic operators, augmented assignments, and operator precedence\n\ndef main():\n    # Basic arithmetic operations\n    a: int = 15\n    b: int = 4\n    \n    # Addition\n    result: int = a + b\n    print(result)\n    \n    # Subtraction\n    result = a - b\n    print(result)\n    \n    # Multiplication\n    result = a * b\n    print(result)\n    \n    # Float division\n    float_result: float = a / b\n    print(float_result)\n    \n    # Floor division\n    result = a // b\n    print(result)\n    \n    # Modulo\n    result = a % b\n    print(result)\n    \n    # Exponentiation\n    result = a ** 2\n    print(result)\n    \n    # Negative numbers\n    neg: int = -10\n    result = -neg\n    print(result)\n    \n    # Operator precedence\n    result = 2 + 3 * 4\n    print(result)\n    \n    result = (2 + 3) * 4\n    print(result)\n    \n    # Augmented assignments\n    x: int = 10\n    x += 5\n    print(x)\n    \n    x -= 3\n    print(x)\n    \n    x *= 2\n    print(x)\n    \n    x //= 4\n    print(x)\n    \n    # Comparison operators\n    print(a > b)\n    print(a < b)\n    print(a == 15)\n    print(a != b)\n    print(a >= 15)\n    print(a <= 15)\n    \n    # Chained comparisons\n    y: int = 7\n    print(5 < y < 10)\n    \n    # Mixed float and int\n    mixed: float = 5.0 + 3\n    print(mixed)\n</expected>\n19\n11\n60\n3.75\n3\n3\n225\n10\n14\n20\n15\n12\n24\n6\nTrue\nFalse\nTrue\nTrue\nTrue\nTrue\nTrue\n8.0\n",
+  "expected_output": null,
+  "feature_focus": "arithmetic_operators",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 447.69504284858704,
+  "source_files": null,
+  "validation_output": null
+}

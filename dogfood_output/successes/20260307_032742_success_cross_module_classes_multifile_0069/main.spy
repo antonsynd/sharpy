@@ -1,0 +1,19 @@
+from shapes import Shape, IMeasurable
+from entities import Circle, Rectangle
+
+def main():
+    c: Circle = Circle("my_circle", 2.0)
+    r: Rectangle = Rectangle("my_rect", 3.0, 4.0)
+    
+    # Test inheritance - overridden methods
+    print(c.area())
+    print(r.area())
+    
+    # Test polymorphism through base class reference
+    shapes: list[Shape] = [c, r]
+    for s in shapes:
+        print(s.describe())
+    
+    # Test interface implementation
+    m: IMeasurable = c
+    print(m.measure())

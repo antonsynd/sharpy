@@ -1,0 +1,29 @@
+Assembly compilation failed:
+
+error[CS0513]: 'ModuleShapes.Shape.Draw()' is abstract but it is contained in non-abstract type 'ModuleShapes.Shape'
+  --> /tmp/tmp599jqegm/module_shapes.spy:32:32
+    |
+ 32 |     areas = compute_areas(shapes)
+    |                                ^
+    |
+
+error[CS0246]: The type or namespace name 'Transform<>' could not be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp599jqegm/module_utils.spy:30:74
+    |
+ 30 |     shapes.append(r2)
+    |                      ^
+    |
+
+error[CS1061]: 'ModuleShapes.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'ModuleShapes.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp599jqegm/module_shapes.spy:25:31
+    |
+ 25 | 
+    | ^
+    |
+
+error[CS0103]: The name 'Int' does not exist in the current context
+  --> /tmp/tmp599jqegm/module_utils.spy:41:31
+
+error[CS0021]: Cannot apply indexing with [] to an expression of type 'method group'
+  --> /tmp/tmp599jqegm/module_utils.spy:41:16
+

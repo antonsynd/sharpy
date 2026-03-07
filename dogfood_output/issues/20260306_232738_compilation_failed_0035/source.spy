@@ -1,0 +1,20 @@
+from vehicles import Vehicle
+from car_types import Car, Truck
+from fleet import Fleet
+
+def main():
+    fleet: Fleet = Fleet()
+    sedan: Car = Car("Toyota", "Camry", 2023, 4)
+    coupe: Car = Car("Honda", "Civic", 2022, 2)
+    pickup: Truck = Truck("Ford", "F-150", 2023, 6.5)
+    
+    fleet.add_vehicle(sedan)
+    fleet.add_vehicle(coupe)
+    fleet.add_vehicle(pickup)
+    
+    print("Fleet size: " + str(fleet.count()))
+    print(sedan.vehicle_type())
+    print(pickup.vehicle_type())
+    print(fleet.summary())
+    print("---")
+    fleet.print_inventory()

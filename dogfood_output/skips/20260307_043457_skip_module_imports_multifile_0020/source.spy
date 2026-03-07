@@ -1,0 +1,65 @@
+# Main entry point - imports from all modules and demonstrates complex functionality
+from math_utils import Shape, Rectangle, Circle, calculate_total_area, max_value
+from formatter import format_shape_info, create_shapes_report
+from stats import analyze_shapes, generate_circles
+from data import Color, Size, Config, create_named_range
+from utils import color_to_string, parse_size, check_range, Counter
+
+def main():
+    # Initialize counter
+    Counter.reset()
+    
+    # Test 1: Create various shapes
+    shapes: list[Shape] = []
+    shapes.append(Rectangle(5.0, 3.0))
+    shapes.append(Rectangle(4.0, 6.0))
+    shapes.append(Circle(2.0))
+    shapes.append(Circle(3.5))
+    
+    # Get counter value after operations
+    iterations: int = Counter.increment()
+    
+    # Test 2: Format shapes using formatter module
+    reports: list[str] = create_shapes_report(shapes)
+    for report in reports:
+        print(f"Report {iterations}: {report}")
+    
+    # Test 3: Stats analysis
+    stats: dict[str, float] = analyze_shapes(shapes)
+    print(f"Total area: {stats['total']:.2f}")
+    print(f"Max area: {stats['max']:.2f}")
+    print(f"Average area: {stats['average']:.2f}")
+    print(f"Count: {int(stats['count'])}")
+    
+    # Test 4: Generate circles using stats module
+    radii: list[float] = [1.0, 2.0, 3.0]
+    circles: list[Circle] = generate_circles(radii)
+    print(f"Generated {len(circles)} circles")
+    
+    # Test 5: Enum usage from data module
+    color: Color = Color.BLUE
+    print(f"Selected color: {color_to_string(color)}")
+    
+    # Test 6: Parse size using utils
+    parsed: Size = parse_size(20)
+    print(f"Parsed size: {parsed.name}")
+    
+    # Test 7: Create named tuple using data module
+    range_info = create_named_range("temperature", 0.0, 100.0)
+    print(f"Range name: {range_info[0]}")
+    
+    # Test 8: Check values in range
+    test_value: float = 50.0
+    in_range: bool = check_range(test_value, Config.DEFAULT_MIN, Config.DEFAULT_MAX)
+    print(f"Value {test_value} in range: {in_range}")
+    
+    # Test 9: Config access
+    print(f"Config: {get_config_str()}")
+    
+    # Test 10: Calculate max and total using imported functions
+    values: list[float] = [5.0, 10.0, 3.0, 8.0]
+    maximum: float = max_value(values)
+    print(f"Maximum: {maximum:.1f}")
+    
+    # Final counter
+    print(f"Operations: {Counter.get()}")

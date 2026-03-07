@@ -1,0 +1,37 @@
+Assembly compilation failed:
+
+error[CS0534]: 'Shapes.Rectangle' does not implement inherited abstract member 'Shapes.Shape.Perimeter()'
+  --> /tmp/tmp__jmf4pw/shapes.spy:26:18
+    |
+ 26 |     # Test Point struct from types
+    |                  ^
+    |
+
+error[CS0534]: 'Shapes.Circle' does not implement inherited abstract member 'Shapes.Shape.Perimeter()'
+  --> /tmp/tmp__jmf4pw/shapes.spy:34:18
+    |
+ 34 |     print(f"Average: {avg}")
+    |                  ^
+    |
+
+error[CS0246]: The type or namespace name 'StaticmethodAttribute' could not be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp__jmf4pw/utils.spy:29:10
+    |
+ 29 | 
+    | ^
+    |
+
+error[CS1061]: 'Types.Status' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Types.Status' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp__jmf4pw/utils.spy:46:79
+    |
+ 46 |     print("Processing Rectangle:")
+    |                                   ^
+    |
+
+error[CS1061]: 'Types.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Types.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp__jmf4pw/shapes.spy:21:85
+    |
+ 21 | 
+    | ^
+    |
+

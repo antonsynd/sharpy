@@ -1,0 +1,40 @@
+# Module providing concrete shape implementations
+
+from geometry_base import Color, IMeasurable, IDisplayable, ShapeBase
+from point_utils import Point
+
+class Circle(ShapeBase, IMeasurable, IDisplayable):
+    _center: Point
+    _radius: float
+    
+    def __init__(self, center: Point, radius: float, color: Color):
+        super().__init__(color)
+        self._center = center
+        self._radius = radius
+    
+    @override
+    def area(self) -> float:
+        return 3.14159 * self._radius * self._radius
+    
+    @override
+    def display(self) -> str:
+        return "Circle(r=" + str(self._radius) + ")"
+
+class Rectangle(ShapeBase, IMeasurable, IDisplayable):
+    _top_left: Point
+    _width: float
+    _height: float
+    
+    def __init__(self, top_left: Point, width: float, height: float, color: Color):
+        super().__init__(color)
+        self._top_left = top_left
+        self._width = width
+        self._height = height
+    
+    @override
+    def area(self) -> float:
+        return self._width * self._height
+    
+    @override
+    def display(self) -> str:
+        return "Rectangle(" + str(self._width) + "x" + str(self._height) + ")"

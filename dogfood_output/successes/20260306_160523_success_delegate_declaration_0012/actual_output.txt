@@ -1,0 +1,18 @@
+Evens:
+2
+4
+6
+8
+10
+Upper:
+HELLO
+Is 5 positive:
+True
+Is -3 positive:
+False
+Double 3*4:
+24
+Triple 2*5:
+30
+Odds count:
+5

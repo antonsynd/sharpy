@@ -1,0 +1,21 @@
+from shapes import IDrawable
+
+class Container[T]:
+    items: list[T]
+
+    def __init__(self):
+        self.items = []
+
+    def add(self, item: T) -> None:
+        self.items.append(item)
+
+    def count(self) -> int:
+        return len(self.items)
+
+    def get_first(self) -> T?:
+        if len(self.items) > 0:
+            return Some(self.items[0])
+        return None()
+
+def create_filter(min_area: float) -> (IDrawable) -> bool:
+    return lambda s: s.area() > min_area

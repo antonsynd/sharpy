@@ -1,0 +1,22 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-06T19:51:03.392512",
+  "generated_code": "# Main entry point - test cross-module imports and inheritance\nfrom inventory import Product\nfrom warehouse import Warehouse\n\n\ndef main():\n    w = Warehouse(10)\n    p1 = Product(\"Widget\", 25.0, 4)\n    p2 = Product(\"Gadget\", 50.0, 2)\n\n    print(w.get_count())\n    w.add_item(p1)\n    w.add_item(p2)\n    print(p1.get_description())\n    print(w.get_count())\n    print(w.get_inventory_value())\n",
+  "expected_output": "0\nWidget (Qty: 4)\n2\n200.0\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS1061]: 'Warehouse' does not contain a definition for '_Items' and no accessible extension method '_Items' accepting a first argument of type 'Warehouse' could be found (are you missing a using directive or an assembly reference?)\n  --> /tmp/tmpbi8tkchc/warehouse.spy:13:46\n    |\n 13 |     w.add_item(p2)\n    |                   ^\n    |\n\nerror[CS1061]: 'Warehouse' does not contain a definition for '_Items' and no accessible extension method '_Items' accepting a first argument of type 'Warehouse' could be found (are you missing a using directive or an assembly reference?)\n  --> /tmp/tmpbi8tkchc/warehouse.spy:14:18\n    |\n 14 |     print(p1.get_description())\n    |                  ^\n    |\n\nerror[CS1061]: 'Warehouse' does not contain a definition for '_Items' and no accessible extension method '_Items' accepting a first argument of type 'Warehouse' could be found (are you missing a using directive or an assembly reference?)\n  --> /tmp/tmpbi8tkchc/warehouse.spy:19:49\n\nerror[CS1061]: 'Warehouse' does not contain a definition for '_Items' and no accessible extension method '_Items' accepting a first argument of type 'Warehouse' could be found (are you missing a using directive or an assembly reference?)\n  --> /tmp/tmpbi8tkchc/warehouse.spy:23:42\n\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 238.3377640247345,
+  "compilation_duration": null,
+  "execution_duration": 4.2584192752838135,
+  "source_files": {
+    "inventory.spy": "# Inventory module - base classes for items\n@abstract\nclass Item:\n    _name: str\n    _price: float\n\n    def __init__(self, name: str, price: float):\n        self._name = name\n        self._price = price\n\n    @property get name(self) -> str:\n        return self._name\n\n    @abstract\n    def get_category(self) -> str: ...\n\n    @virtual\n    def get_description(self) -> str:\n        return self._name\n\n\nclass Product(Item):\n    _quantity: int\n\n    def __init__(self, name: str, price: float, qty: int):\n        super().__init__(name, price)\n        self._quantity = qty\n\n    @override\n    def get_category(self) -> str:\n        return \"Product\"\n\n    @override\n    def get_description(self) -> str:\n        return self._name + \" (Qty: \" + str(self._quantity) + \")\"\n\n    def total_value(self) -> float:\n        return self._price * float(self._quantity)\n",
+    "warehouse.spy": "# Warehouse module - storage and inventory management\nfrom inventory import Item, Product\n\n\nclass Warehouse:\n    _capacity: int\n\n    def __init__(self, capacity: int):\n        self._items: list[Item] = list[Item]()\n        self._capacity = capacity\n\n    def add_item(self, item: Item) -> bool:\n        if len(self._items) < self._capacity:\n            self._items.append(item)\n            return True\n        return False\n\n    def get_count(self) -> int:\n        return len(self._items)\n\n    def get_inventory_value(self) -> float:\n        total: float = 0.0\n        for item in self._items:\n            if isinstance(item, Product):\n                prod: Product = item\n                total = total + prod.total_value()\n        return total\n",
+    "main.spy": "# Main entry point - test cross-module imports and inheritance\nfrom inventory import Product\nfrom warehouse import Warehouse\n\n\ndef main():\n    w = Warehouse(10)\n    p1 = Product(\"Widget\", 25.0, 4)\n    p2 = Product(\"Gadget\", 50.0, 2)\n\n    print(w.get_count())\n    w.add_item(p1)\n    w.add_item(p2)\n    print(p1.get_description())\n    print(w.get_count())\n    print(w.get_inventory_value())\n"
+  }
+}

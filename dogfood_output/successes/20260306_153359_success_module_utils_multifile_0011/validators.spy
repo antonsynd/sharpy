@@ -1,0 +1,28 @@
+# Module: validators - Validation utilities that extend utils
+from utils import clamp, Counter
+
+def validate_score(score: int) -> int:
+    """Validate a score is within 0-100 range."""
+    return clamp(score, 0, 100)
+
+class ValidatedCounter(Counter):
+    """Counter with min/max bounds enforcement."""
+    min_value: int
+    max_value: int
+
+    def __init__(self, min_val: int, max_val: int):
+        super().__init__()
+        self.min_value = min_val
+        self.max_value = max_val
+
+    @override
+    def increment(self) -> int:
+        if self.get_value() < self.max_value:
+            return super().increment()
+        return self.get_value()
+
+    @override
+    def decrement(self) -> int:
+        if self.get_value() > self.min_value:
+            return super().decrement()
+        return self.get_value()

@@ -1,0 +1,43 @@
+# Main entry point
+from geometry import ShapeColor, Point, Rectangle
+from shapes import Circle, Triangle
+from utils import create_random_color, ShapeStatistics, process_drawables
+
+def main():
+    # Create a colored circle
+    center: Point = Point(5.0, 3.0)
+    circle: Circle = Circle(center, 2.5, ShapeColor.RED)
+
+    print(circle.color_name())
+    print(circle.area())
+    print(circle.describe())
+
+    # Create a triangle
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(4.0, 0.0)
+    p3: Point = Point(2.0, 3.0)
+    tri: Triangle = Triangle(p1, p2, p3, ShapeColor.BLUE)
+    print(tri.describe())
+    print(tri.area())
+
+    # Use utils module
+    ShapeStatistics.increment_count()
+    ShapeStatistics.increment_count()
+    print(ShapeStatistics.get_count())
+
+    # Create drawables and process them
+    d1: Circle = Circle(Point(0.0, 0.0), 1.0, create_random_color(0))
+    d2: Circle = Circle(Point(1.0, 1.0), 2.0, create_random_color(1))
+    drawables: list[Circle] = [d1, d2]
+
+    descriptions: list[str] = process_drawables(drawables)
+    for desc in descriptions:
+        print(desc)
+
+    # Use struct from geometry module
+    rect: Rectangle = Rectangle(5.0, 10.0)
+    print(rect.area())
+
+    # Scale a circle and check area
+    big_circle: Circle = circle.scale(2.0)
+    print(big_circle.area())

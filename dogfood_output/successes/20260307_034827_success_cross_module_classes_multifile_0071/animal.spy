@@ -1,0 +1,17 @@
+# Animal module - defines base class with virtual methods
+# Module name matches filename: 'animal'
+
+@abstract
+class Animal:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def speak(self) -> str:
+        return "..."
+    
+    @virtual
+    def describe(self) -> str:
+        return "Animal: " + self.name

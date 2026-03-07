@@ -1,0 +1,34 @@
+union Event:
+    case Login(user_id: int)
+    case Logout(user_id: int, duration: int)
+    case Purchase(amount: float)
+
+def classify_event(event: Event, threshold: float) -> str:
+    match event:
+        case Login(uid) if uid > 100:
+            result = "VIP login"
+        case Login(uid) if uid > 0:
+            result = "Regular login"
+        case Logout(uid, dur) if dur > 3600:
+            result = "Long session"
+        case Logout(uid, dur) if dur > 0:
+            result = "Short session"
+        case Purchase(amt) if amt >= threshold:
+            result = "High value"
+        case Purchase(amt) if amt > 0.0:
+            result = "Low value"
+        case _:
+            result = "Unknown"
+    return result
+
+def main():
+    e1: Event = Event.Login(42)
+    e2: Event = Event.Login(150)
+    e3: Event = Event.Logout(1, 7200)
+    e4: Event = Event.Purchase(250.0)
+    e5: Event = Event.Purchase(50.0)
+    print(classify_event(e1, 100.0))
+    print(classify_event(e2, 100.0))
+    print(classify_event(e3, 100.0))
+    print(classify_event(e4, 100.0))
+    print(classify_event(e5, 100.0))

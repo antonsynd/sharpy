@@ -1,0 +1,22 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-06T18:33:30.820934",
+  "generated_code": "# Main entry point using cross-module classes\nfrom shapes import Rectangle, Square\nfrom utils import describe_shape, sum_areas\n\ndef main():\n    r = Rectangle(\"rect\", 10.0, 5.0)\n    s = Square(\"square\", 4.0)\n    \n    print(describe_shape(r))\n    print(describe_shape(s))\n    \n    shapes = [r, s]\n    total = sum_areas(shapes)\n    print(total)\n",
+  "expected_output": "rect: area=50.0, perim=30.0\nsquare: area=16.0, perim=16.0\n66.0\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS1503]: Argument 1: cannot convert from 'Sharpy.List<Shapes.Rectangle>' to 'Sharpy.List<Shapes.Shape>'\n  --> /tmp/tmp9njfsl1z/main.spy:13:30\n    |\n 13 |     total = sum_areas(shapes)\n    |                              ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 274.3125092983246,
+  "compilation_duration": null,
+  "execution_duration": 4.261233329772949,
+  "source_files": {
+    "shapes.spy": "# Cross-module class definitions - Shape hierarchy\nclass Shape:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    @virtual\n    def area(self) -> float:\n        return 0.0\n    \n    @virtual\n    def perimeter(self) -> float:\n        return 0.0\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, name: str, width: float, height: float):\n        super().__init__(name)\n        self.width = width\n        self.height = height\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    @override\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)\n\nclass Square(Rectangle):\n    def __init__(self, name: str, side: float):\n        super().__init__(name, side, side)\n",
+    "utils.spy": "# Utility module importing Shape classes\nfrom shapes import Shape\n\ndef describe_shape(s: Shape) -> str:\n    return s.name + \": area=\" + str(s.area()) + \", perim=\" + str(s.perimeter())\n\ndef sum_areas(shapes: list[Shape]) -> float:\n    total: float = 0.0\n    for s in shapes:\n        total = total + s.area()\n    return total\n",
+    "main.spy": "# Main entry point using cross-module classes\nfrom shapes import Rectangle, Square\nfrom utils import describe_shape, sum_areas\n\ndef main():\n    r = Rectangle(\"rect\", 10.0, 5.0)\n    s = Square(\"square\", 4.0)\n    \n    print(describe_shape(r))\n    print(describe_shape(s))\n    \n    shapes = [r, s]\n    total = sum_areas(shapes)\n    print(total)\n"
+  }
+}

@@ -1,0 +1,6 @@
+Rectangle(Green)
+Area: 20.0, Perimeter: 18.0
+Circle(r=2.0)
+Area: 12.56636, Perimeter: 12.56636
+Red
+Total area: 32.56636

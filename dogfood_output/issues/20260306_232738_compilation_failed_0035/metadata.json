@@ -1,0 +1,23 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-06T23:22:43.132795",
+  "generated_code": "from vehicles import Vehicle\nfrom car_types import Car, Truck\nfrom fleet import Fleet\n\ndef main():\n    fleet: Fleet = Fleet()\n    sedan: Car = Car(\"Toyota\", \"Camry\", 2023, 4)\n    coupe: Car = Car(\"Honda\", \"Civic\", 2022, 2)\n    pickup: Truck = Truck(\"Ford\", \"F-150\", 2023, 6.5)\n    \n    fleet.add_vehicle(sedan)\n    fleet.add_vehicle(coupe)\n    fleet.add_vehicle(pickup)\n    \n    print(\"Fleet size: \" + str(fleet.count()))\n    print(sedan.vehicle_type())\n    print(pickup.vehicle_type())\n    print(fleet.summary())\n    print(\"---\")\n    fleet.print_inventory()\n",
+  "expected_output": "Fleet size: 3\nCar\nTruck\nCars: 2, Trucks: 1\n---\n4-door Toyota Camry\n2-door Honda Civic\nFord F-150 with 6.5 ft bed\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0534]: 'CarTypes.Car' does not implement inherited abstract member 'Vehicles.Vehicle.Describe()'\n  --> car_types.cs:13:18\n    |\n 13 |     fleet.add_vehicle(pickup)\n    |                  ^\n    |\n\nerror[CS0534]: 'CarTypes.Truck' does not implement inherited abstract member 'Vehicles.Vehicle.Describe()'\n  --> /tmp/tmpbitysh9s/car_types.spy:14:18\n    |\n 14 |     \n    |     ^\n    |\n\n",
+  "compiler_output": "warning[SPY0452]: Imported name 'Vehicle' is never used\n  --> /tmp/tmpbitysh9s/main.spy:1:22\n    |\n  1 | from vehicles import Vehicle\n    |                      ^^^^^^^\n    |\n\n",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 265.21059918403625,
+  "compilation_duration": null,
+  "execution_duration": 4.424642324447632,
+  "source_files": {
+    "vehicles.spy": "@abstract\nclass Vehicle:\n    \"\"\"Abstract base class for vehicles.\"\"\"\n    make: str\n    model: str\n    year: int\n\n    def __init__(self, make: str, model: str, year: int):\n        self.make = make\n        self.model = model\n        self.year = year\n\n    @abstract\n    def describe(self) -> str:\n        ...\n\n    def display_name(self) -> str:\n        return self.make + \" \" + self.model\n",
+    "car_types.spy": "from vehicles import Vehicle\n\nclass Car(Vehicle):\n    doors: int\n    trunk_capacity: float\n\n    def __init__(self, make: str, model: str, year: int, doors: int):\n        super().__init__(make, model, year)\n        self.doors = doors\n        self.trunk_capacity = 15.5\n\n    def vehicle_type(self) -> str:\n        return \"Car\"\n\n    def describe(self) -> str:\n        return str(self.doors) + \"-door \" + self.display_name()\n\nclass Truck(Vehicle):\n    bed_length: float\n    towing_capacity: int\n\n    def __init__(self, make: str, model: str, year: int, bed_length: float):\n        super().__init__(make, model, year)\n        self.bed_length = bed_length\n        self.towing_capacity = 5000\n\n    def vehicle_type(self) -> str:\n        return \"Truck\"\n\n    def describe(self) -> str:\n        return self.display_name() + \" with \" + str(self.bed_length) + \" ft bed\"\n",
+    "fleet.spy": "from vehicles import Vehicle\nfrom car_types import Car, Truck\n\nclass Fleet:\n    \"\"\"Manages a collection of vehicles.\"\"\"\n    vehicles: list[Vehicle]\n\n    def __init__(self):\n        self.vehicles = []\n\n    def add_vehicle(self, vehicle: Vehicle):\n        self.vehicles.append(vehicle)\n\n    def count(self) -> int:\n        return len(self.vehicles)\n\n    def summary(self) -> str:\n        car_count: int = 0\n        truck_count: int = 0\n        for v in self.vehicles:\n            if isinstance(v, Car):\n                car_count = car_count + 1\n            elif isinstance(v, Truck):\n                truck_count = truck_count + 1\n        return \"Cars: \" + str(car_count) + \", Trucks: \" + str(truck_count)\n\n    def print_inventory(self):\n        for v in self.vehicles:\n            print(v.describe())\n",
+    "main.spy": "from vehicles import Vehicle\nfrom car_types import Car, Truck\nfrom fleet import Fleet\n\ndef main():\n    fleet: Fleet = Fleet()\n    sedan: Car = Car(\"Toyota\", \"Camry\", 2023, 4)\n    coupe: Car = Car(\"Honda\", \"Civic\", 2022, 2)\n    pickup: Truck = Truck(\"Ford\", \"F-150\", 2023, 6.5)\n    \n    fleet.add_vehicle(sedan)\n    fleet.add_vehicle(coupe)\n    fleet.add_vehicle(pickup)\n    \n    print(\"Fleet size: \" + str(fleet.count()))\n    print(sedan.vehicle_type())\n    print(pickup.vehicle_type())\n    print(fleet.summary())\n    print(\"---\")\n    fleet.print_inventory()\n"
+  }
+}

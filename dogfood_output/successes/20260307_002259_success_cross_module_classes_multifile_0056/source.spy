@@ -1,0 +1,23 @@
+# Main entry point - tests cross-module class inheritance
+
+from shapes import Shape, Rectangle, Circle, total_area
+
+def create_shapes() -> list[Shape]:
+    """Create a collection of shapes."""
+    shapes: list[Shape] = []
+    shapes.append(Rectangle(4.0, 5.0))   # Area = 20.0
+    shapes.append(Circle(3.0))            # Area ~ 28.27
+    shapes.append(Rectangle(2.0, 3.0))    # Area = 6.0
+    return shapes
+
+def main():
+    # Create shapes polymorphically
+    shapes = create_shapes()
+    
+    # Print individual shape info
+    for s in shapes:
+        print(s.describe())
+    
+    # Print total area
+    total = total_area(shapes)
+    print(f"Total: {total}")

@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'UtilsTypes.Status' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'UtilsTypes.Status' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp270mb67_/utils_ops.spy:7:37
+    |
+  7 | def main():
+    |            ^
+    |
+

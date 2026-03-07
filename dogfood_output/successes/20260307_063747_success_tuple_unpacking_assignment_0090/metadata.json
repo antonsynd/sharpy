@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T06:33:06.773112",
+  "generated_code": "type Point = tuple[x: float, y: float]\n\n@abstract\nclass Shape:\n    @abstract\n    def get_bounds(self) -> tuple[min: float, max: float]:\n        ...\n\nclass Rectangle(Shape):\n    top_left: Point\n    bottom_right: Point\n\n    def __init__(self, tl: Point, br: Point):\n        self.top_left = tl\n        self.bottom_right = br\n\n    @override\n    def get_bounds(self) -> tuple[min: float, max: float]:\n        # Named tuple unpacking with field access\n        x1, y1 = self.top_left\n        x2, y2 = self.bottom_right\n        \n        min_val: float = x1\n        if x2 < min_val:\n            min_val = x2\n            \n        max_val: float = x2\n        if x1 > max_val:\n            max_val = x1\n            \n        return (min=min_val, max=max_val)\n\ndef main():\n    # Create named tuples\n    p1: Point = (x=0.0, y=10.0)\n    p2: Point = (x=5.0, y=5.0)\n    p3: Point = (x=3.0, y=4.0)\n    \n    # Test named tuple field access\n    print(p1.x)\n    print(p1.y)\n    \n    # Nested tuple unpacking from tuple of Points\n    nested: tuple[Point, Point] = (p1, p2)\n    (x1, y1), (x2, y2) = nested\n    print(x1)\n    print(y1)\n    print(x2)\n    print(y2)\n    \n    # Simple for loop with index-based tuple unpacking\n    points: list[Point] = [p1, p2, p3]\n    total_x: float = 0.0\n    \n    i: int = 0\n    for pt in points:\n        px, py = pt  # Unpack the point inside the loop\n        if i > 0:\n            total_x = total_x + px\n        i = i + 1\n    \n    print(total_x)\n    \n    # Star unpacking with list\n    coords: list[float] = [1.0, 2.0, 3.0, 4.0, 5.0]\n    first, *middle, last = coords\n    print(first)\n    print(float(len(middle)))\n    print(last)\n    \n    # Unpack return value from method\n    bounds = Rectangle(p2, p3).get_bounds()\n    min_b, max_b = bounds\n    print(min_b)\n    print(max_b)\n",
+  "expected_output": "0.0\n10.0\n0.0\n10.0\n5.0\n5.0\n8.0\n1.0\n3.0\n5.0\n3.0\n5.0\n",
+  "actual_output": "0.0\n10.0\n0.0\n10.0\n5.0\n5.0\n8.0\n1.0\n3.0\n5.0\n3.0\n5.0",
+  "feature_focus": "tuple_unpacking_assignment",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 264.7388753890991,
+  "execution_duration": 4.723283529281616,
+  "source_files": null
+}

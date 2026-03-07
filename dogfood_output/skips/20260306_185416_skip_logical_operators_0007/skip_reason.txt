@@ -1,0 +1,37 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0227]: Cannot infer type for 'None()' without a type annotation. Add a type annotation like 'x: int? = None()'
+  --> /tmp/tmprl2ujbb3/dogfood_test.spy:96:13
+    |
+ 96 |     if y is None() or (y is not None and y.unwrap() > 0):
+    |             ^^^^^^
+    |
+
+error[SPY0227]: Cannot infer type for 'None()' without a type annotation. Add a type annotation like 'x: int? = None()'
+  --> /tmp/tmprl2ujbb3/dogfood_test.spy:138:16
+     |
+ 138 |     if opt1 is None() and opt2 is None():
+     |                ^^^^^^
+     |
+
+error[SPY0227]: Cannot infer type for 'None()' without a type annotation. Add a type annotation like 'x: int? = None()'
+  --> /tmp/tmprl2ujbb3/dogfood_test.spy:138:35
+     |
+ 138 |     if opt1 is None() and opt2 is None():
+     |                                   ^^^^^^
+     |
+
+error[SPY0227]: Cannot infer type for 'None()' without a type annotation. Add a type annotation like 'x: int? = None()'
+  --> /tmp/tmprl2ujbb3/dogfood_test.spy:140:18
+     |
+ 140 |     elif opt1 is None() or opt2 is None():
+     |                  ^^^^^^
+     |
+
+error[SPY0227]: Cannot infer type for 'None()' without a type annotation. Add a type annotation like 'x: int? = None()'
+  --> /tmp/tmprl2ujbb3/dogfood_test.spy:140:36
+     |
+ 140 |     elif opt1 is None() or opt2 is None():
+     |                                    ^^^^^^
+     |
+

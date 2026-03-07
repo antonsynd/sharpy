@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T16:15:31.331813",
+  "generated_code": "enum ProcessingMode:\n    RAW = 0\n    FILTERED = 1\n    TRANSFORMED = 2\n\nclass DataStream:\n    _data: list[int]\n    _mode: ProcessingMode\n    \n    def __init__(self, items: list[int], mode: ProcessingMode):\n        self._data = items\n        self._mode = mode\n    \n    @virtual\n    def contents(self) -> int:\n        for item in self._data:\n            yield item\n    \n    @virtual\n    def process(self) -> int:\n        for item in self.contents():\n            yield item\n\nclass BoundedStream(DataStream):\n    _lower: int\n    _upper: int\n    \n    def __init__(self, items: list[int], lower: int, upper: int):\n        super().__init__(items, ProcessingMode.FILTERED)\n        self._lower = lower\n        self._upper = upper\n    \n    @override\n    def process(self) -> int:\n        for x in self.contents():\n            if self._lower <= x and x <= self._upper:\n                yield x\n\ndef classify_number(n: int) -> str:\n    match n:\n        case 0:\n            return \"zero\"\n        case _ if n < 0:\n            return \"negative\"\n        case _ if n % 2 == 0:\n            return \"even\"\n        case _:\n            return \"odd\"\n\ndef main():\n    values: list[int] = [0, 3, 5, -5, 8, 7, 15]\n    stream: BoundedStream = BoundedStream(values, -10, 30)\n    \n    count: int = 0\n    for val in stream.process():\n        category: str = classify_number(val)\n        print(f\"{val} is {category}\")\n        count += 1\n    \n    print(f\"count={count}\")\n    print(f\"mode={stream._mode.name}\")\n",
+  "expected_output": "0 is zero\n3 is odd\n5 is odd\n-5 is negative\n8 is even\n7 is odd\n15 is odd\ncount=7\nmode=Filtered\n",
+  "actual_output": "0 is zero\n3 is odd\n5 is odd\n-5 is negative\n8 is even\n7 is odd\n15 is odd\ncount=7\nmode=Filtered",
+  "feature_focus": "generator_basic",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 447.3007245063782,
+  "execution_duration": 4.749371528625488,
+  "source_files": null
+}

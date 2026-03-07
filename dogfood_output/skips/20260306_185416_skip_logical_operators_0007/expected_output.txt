@@ -1,0 +1,22 @@
+Editor Pro: expensive=True, desc=digital_other
+Movie: expensive=False, desc=large_video
+Demo: expensive=False, desc=small_digital
+Desk: expensive=True, desc=physical_other
+Pen: expensive=False, desc=shipping_unknown
+Editor Pro: medium_digital
+Movie: large_digital
+Demo: small_digital
+Desk: heavy_shipped
+Pen: shipping_unknown
+in_range
+short_circuit_passed
+a_and_c
+a_or_b
+not_b_and_c
+chained_comparison_true
+all_positive
+at_least_one_positive
+at_least_one_some
+at_least_one_none
+first_is_one
+Expensive count: 2

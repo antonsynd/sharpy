@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T23:17:27.298973",
+  "generated_code": "# Testing Optional unwrap and unwrap_or behavior\n# Verifies that unwrap() extracts values from Some()\n# and unwrap_or() provides safe defaults for None()\n\ndef safe_divide(numerator: float, denominator: float) -> float?:\n    if denominator == 0.0:\n        return None()\n    return Some(numerator / denominator)\n\ndef main():\n    # Create optional values\n    present: int? = Some(100)\n    absent: int? = None()\n    \n    # Direct unwrap on Some extracts the wrapped value\n    unwrapped: int = present.unwrap()\n    print(unwrapped)\n    \n    # unwrap_or on None returns the default value\n    default_val: int = absent.unwrap_or(42)\n    print(default_val)\n    \n    # unwrap_or on Some ignores the default and returns wrapped value\n    existing_val: int = present.unwrap_or(0)\n    print(existing_val)\n    \n    # Float optionals with safe_divide\n    valid_result = safe_divide(10.0, 2.0)\n    invalid_result = safe_divide(5.0, 0.0)\n    \n    # unwrap_or with float defaults\n    safe_div1: float = valid_result.unwrap_or(0.0)\n    safe_div2: float = invalid_result.unwrap_or(-1.0)\n    print(safe_div1)\n    print(safe_div2)\n    \n    # Chained unwrap_or on literal Some - assign to variable first\n    some15: int? = Some(15)\n    chained: int = some15.unwrap_or(99)\n    print(chained)\n",
+  "expected_output": "100\n42\n100\n5.0\n-1.0\n15\n",
+  "actual_output": "100\n42\n100\n5.0\n-1.0\n15",
+  "feature_focus": "optional_unwrap",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 231.05008602142334,
+  "execution_duration": 4.723604440689087,
+  "source_files": null
+}

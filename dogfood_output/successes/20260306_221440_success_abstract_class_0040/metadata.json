@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T22:09:06.026165",
+  "generated_code": "# Test: Abstract class with template method pattern\n# The base class defines an algorithm that uses abstract methods,\n# while concrete subclasses provide the specific implementations.\n\n@abstract\nclass DataProcessor:\n    @abstract\n    def read_data(self) -> list[int]: ...\n    \n    @abstract\n    def transform(self, data: list[int]) -> list[int]: ...\n    \n    def process(self) -> int:\n        result = 0\n        for x in self.transform(self.read_data()):\n            result = result + x\n        return result\n\nclass DoublingProcessor(DataProcessor):\n    _values: list[int]\n    \n    def __init__(self, values: list[int]):\n        self._values = values\n    \n    @override\n    def read_data(self) -> list[int]:\n        return self._values\n    \n    @override\n    def transform(self, data: list[int]) -> list[int]:\n        result: list[int] = []\n        i = 0\n        while i < len(data):\n            result.append(data[i] * 2)\n            i = i + 1\n        return result\n\ndef main():\n    p = DoublingProcessor([1, 2, 3, 4])\n    print(p.read_data()[0])\n    print(p.process())\n    print(p.process() * 2)\n",
+  "expected_output": "1\n20\n40\n",
+  "actual_output": "1\n20\n40",
+  "feature_focus": "abstract_class",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 322.58313369750977,
+  "execution_duration": 5.645266056060791,
+  "source_files": null
+}

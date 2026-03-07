@@ -1,0 +1,43 @@
+# Main entry point demonstrating cross-module class usage
+from shapes import Rectangle, Circle
+from containers import ShapeContainer, GroupedShapes
+from utils import Counter, StringBuilder
+
+def main():
+    # Test utility classes
+    counter: Counter = Counter(10)
+    counter.increment()
+    counter.increment()
+    print(counter.value)
+
+    sb: StringBuilder = StringBuilder()
+    sb.append("Hello")
+    sb.append("World")
+    print(sb.join(" "))
+
+    # Test shape classes
+    rect1: Rectangle = Rectangle(5.0, 3.0)
+    rect2: Rectangle = Rectangle(4.0, 6.0)
+    circle: Circle = Circle(2.5)
+
+    print(rect1.area())
+    print(rect1.perimeter())
+    print(str(rect1))
+    print(circle.area())
+    print(str(circle))
+
+    # Test container classes
+    container: ShapeContainer = ShapeContainer()
+    container.add(rect1)
+    container.add(circle)
+    print(container.get_count())
+    print(container.describe_all())
+
+    # Test grouped shapes
+    grouped: GroupedShapes = GroupedShapes()
+    grouped.add_shape(rect1)
+    grouped.add_shape(rect2)
+    grouped.add_shape(circle)
+    print(grouped.get_rectangle_count())
+    print(grouped.get_circle_count())
+    print(grouped.total_area())

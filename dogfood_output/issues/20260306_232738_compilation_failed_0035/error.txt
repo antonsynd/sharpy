@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0534]: 'CarTypes.Car' does not implement inherited abstract member 'Vehicles.Vehicle.Describe()'
+  --> car_types.cs:13:18
+    |
+ 13 |     fleet.add_vehicle(pickup)
+    |                  ^
+    |
+
+error[CS0534]: 'CarTypes.Truck' does not implement inherited abstract member 'Vehicles.Vehicle.Describe()'
+  --> /tmp/tmpbitysh9s/car_types.spy:14:18
+    |
+ 14 |     
+    |     ^
+    |
+

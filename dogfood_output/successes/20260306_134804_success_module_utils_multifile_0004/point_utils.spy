@@ -1,0 +1,20 @@
+# Utility module providing Point struct and helper functions
+
+struct Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    def distance_to(self, other: Point) -> float:
+        dx: float = self.x - other.x
+        dy: float = self.y - other.y
+        return (dx * dx + dy * dy) ** 0.5
+
+def create_point(x: float, y: float) -> Point:
+    return Point(x, y)
+
+def midpoint(p1: Point, p2: Point) -> Point:
+    return Point((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)

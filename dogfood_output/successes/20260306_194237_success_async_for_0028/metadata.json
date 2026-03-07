@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T19:40:45.543600",
+  "generated_code": "# Test: Async for with filtering and accumulation pattern\n# Processes async data stream, filters evens, accumulates sum\n\nasync def data_stream() -> int:\n    # Simulate async data source yielding varied values\n    yield 5\n    yield 12\n    yield 7\n    yield 8\n    yield 15\n    yield 6\n\nasync def main():\n    total: int = 0\n    count: int = 0\n    \n    # Process stream: filter evens and accumulate\n    async for value in data_stream():\n        if value % 2 == 0:\n            total += value\n            count += 1\n            print(f\"{value}\")\n        else:\n            print(f\"skip\")\n    \n    print(f\"{count}\")\n    print(f\"{total}\")\n",
+  "expected_output": "skip\n12\nskip\n8\nskip\n6\n3\n26\n",
+  "actual_output": "skip\n12\nskip\n8\nskip\n6\n3\n26",
+  "feature_focus": "async_for",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 102.00477576255798,
+  "execution_duration": 4.764713764190674,
+  "source_files": null
+}

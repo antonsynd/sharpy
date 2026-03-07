@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T07:36:50.908045",
+  "generated_code": "# Test: literal pattern matching with integers, strings, and wildcard\n# Categorizes status codes and commands using if-elif-else chains\ndef categorize_status(code: int) -> str:\n    if code == 200:\n        return \"OK\"\n    elif code == 201:\n        return \"Created\"\n    elif code == 404:\n        return \"Not Found\"\n    elif code == 500 or code == 502 or code == 503:\n        return \"Server Error\"\n    else:\n        return \"Unknown\"\n\ndef classify_command(cmd: str) -> str:\n    if cmd == \"start\":\n        return \"Starting service\"\n    elif cmd == \"stop\":\n        return \"Stopping service\"\n    elif cmd == \"restart\":\n        return \"Restarting service\"\n    else:\n        return f\"Unknown command: {cmd}\"\n\ndef main():\n    codes: list[int] = [200, 404, 500, 999]\n    for code in codes:\n        result = categorize_status(code)\n        print(f\"{code}: {result}\")\n    \n    commands: list[str] = [\"start\", \"restart\", \"unknown\"]\n    for cmd in commands:\n        print(classify_command(cmd))\n",
+  "expected_output": "200: OK\n404: Not Found\n500: Server Error\n999: Unknown\nStarting service\nRestarting service\nUnknown command: unknown\n",
+  "actual_output": "200: OK\n404: Not Found\n500: Server Error\n999: Unknown\nStarting service\nRestarting service\nUnknown command: unknown",
+  "feature_focus": "match_literal",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 99.76109385490417,
+  "execution_duration": 4.687356948852539,
+  "source_files": null
+}

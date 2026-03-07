@@ -1,0 +1,14 @@
+union Task[T]:
+    case Idle()
+    case Running(progress: int)
+    case Done(result: T)
+
+def main():
+    t: Task[int] = Task.Done(100)
+    match t:
+        case Task.Done(result):
+            print(result)
+        case Task.Running(progress):
+            print(progress)
+        case Task.Idle:
+            print(0)

@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'Status' is never used
+  --> /tmp/tmp270mb67_/utils_ops.spy:3:41
+    |
+  3 | from utils_core import Rectangle, Shape, ISizable
+    |                                         ^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ISizable' is never used
+  --> /tmp/tmp270mb67_/main.spy:3:42
+    |
+  3 | from utils_core import Rectangle, Shape, ISizable
+    |                                          ^^^^^^^^
+    |
+

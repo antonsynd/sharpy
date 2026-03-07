@@ -1,0 +1,56 @@
+# Concrete shape implementations
+from colors import Color, Style, ColorHelper, get_default_color
+from geometry import Point, Drawable, GeometryBase
+
+class Circle(GeometryBase, Drawable):
+    radius: float
+    color: Color
+    style: Style
+
+    def __init__(self, pos: Point, radius: float, color: Color = Color.RED):
+        super().__init__(pos)
+        self.radius = radius
+        self.color = color
+        self.style = Style.SOLID
+
+    def draw(self) -> str:
+        return f"Circle at {self.get_position_str()} with radius {self.radius}"
+
+    def set_color(self, new_color: Color) -> None:
+        self.color = new_color
+
+    def set_style(self, new_style: Style) -> None:
+        self.style = new_style
+
+    @override
+    def get_position_str(self) -> str:
+        base: str = super().get_position_str()
+        return f"Circle({base})"
+
+class Rect(GeometryBase, Drawable):
+    width: float
+    height: float
+    color: Color
+    style: Style
+
+    def __init__(self, pos: Point, width: float, height: float):
+        super().__init__(pos)
+        self.width = width
+        self.height = height
+        self.color = get_default_color()
+        self.style = Style.SOLID
+
+    def draw(self) -> str:
+        area: float = self.width * self.height
+        return f"Rect at {self.get_position_str()} area={area}"
+
+    def set_color(self, new_color: Color) -> None:
+        self.color = new_color
+
+    def set_style(self, new_style: Style) -> None:
+        self.style = new_style
+
+    @override
+    def get_position_str(self) -> str:
+        base: str = super().get_position_str()
+        return f"Rect({base})"

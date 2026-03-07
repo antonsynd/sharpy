@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T03:52:58.280891",
+  "generated_code": "# Test: Combined constructor chaining patterns - intra-class self() and inter-class super()\n# Demonstrates a hierarchy where base class has convenience constructors,\n# and derived class chains to base while also adding its own conveniences\n\nclass Point:\n    x: int\n    y: int\n\n    def __init__(self, x: int, y: int):\n        self.x = x\n        self.y = y\n\n    def __init__(self, value: int):\n        self.__init__(value, value)\n\n    def magnitude(self) -> float:\n        return (self.x ** 2 + self.y ** 2) ** 0.5\n\nclass ColoredPoint(Point):\n    color: str\n\n    def __init__(self, x: int, y: int, color: str):\n        super().__init__(x, y)\n        self.color = color\n\n    def __init__(self, x: int, y: int):\n        self.__init__(x, y, \"gray\")\n\n    def __init__(self, value: int):\n        self.__init__(value, value, \"red\")\n\ndef describe_point(p: Point) -> str:\n    return f\"({p.x}, {p.y})\"\n\ndef main():\n    # Test base class self-chaining\n    origin: Point = Point(0, 0)\n    diagonal: Point = Point(3)\n    print(describe_point(origin))\n    print(describe_point(diagonal))\n    print(diagonal.magnitude() to int)\n\n    # Test derived with super() and self-chaining\n    red_point: ColoredPoint = ColoredPoint(5)\n    gray_point: ColoredPoint = ColoredPoint(2, 3)\n    full_point: ColoredPoint = ColoredPoint(7, 8, \"blue\")\n    print(describe_point(red_point))\n    print(red_point.color)\n    print(describe_point(gray_point))\n    print(gray_point.color)\n    print(describe_point(full_point))\n    print(full_point.color)\n",
+  "expected_output": "(0, 0)\n(3, 3)\n4\n(5, 5)\nred\n(2, 3)\ngray\n(7, 8)\nblue\n",
+  "actual_output": "(0, 0)\n(3, 3)\n4\n(5, 5)\nred\n(2, 3)\ngray\n(7, 8)\nblue",
+  "feature_focus": "constructor_chaining",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 187.8772895336151,
+  "execution_duration": 4.658228158950806,
+  "source_files": null
+}

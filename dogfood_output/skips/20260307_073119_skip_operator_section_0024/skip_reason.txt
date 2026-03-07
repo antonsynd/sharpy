@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0237]: Type parameter 'TOut' cannot be inferred; no arguments provide type information. Use explicit syntax: map[TIn, TOut](...)
+  --> /tmp/tmps31vz1dd/dogfood_test.spy:5:14
+    |
+  5 |     result = map(lambda x: x / 10, values)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

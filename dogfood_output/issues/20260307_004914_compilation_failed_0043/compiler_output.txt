@@ -1,0 +1,14 @@
+warning[SPY0451]: Local variable 'result' is assigned but never used
+  --> /tmp/tmpmp48grnr/settings.spy:9:48
+    |
+  9 |     settings: Settings = Settings.get_instance()
+    |                                                ^
+    |
+
+warning[SPY0451]: Local variable 'settings' is assigned but never used
+  --> /tmp/tmpmp48grnr/main.spy:9:5
+    |
+  9 |     settings: Settings = Settings.get_instance()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

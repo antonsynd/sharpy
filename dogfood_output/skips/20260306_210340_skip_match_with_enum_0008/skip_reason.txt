@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0102]: Expected newline, got Case
+  --> /tmp/tmp79sxwo11/dogfood_test.spy:112:33
+     |
+ 112 |     result: str = match status: case TaskStatus.PENDING: "wait" case TaskStatus.RUNNING: "go" case _: "done"
+     |                                 ^^^^
+     |
+

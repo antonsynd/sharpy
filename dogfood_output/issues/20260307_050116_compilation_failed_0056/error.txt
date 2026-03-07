@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS0534]: 'EntitiesModule.Circle' does not implement inherited abstract member 'EntitiesModule.Shape.GetArea()'
+  --> /tmp/tmpr08eass7/entities_module.spy:19:18
+    |
+ 19 |     # Test interface implementation - IMeasurable
+    |                  ^
+    |
+
+error[CS0534]: 'EntitiesModule.Rectangle' does not implement inherited abstract member 'EntitiesModule.Shape.GetArea()'
+  --> /tmp/tmpr08eass7/entities_module.spy:30:18
+    |
+ 30 |     # Compute distance between two points
+    |                  ^
+    |
+
+error[CS1061]: 'TypesModule.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'TypesModule.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpr08eass7/entities_module.spy:19:71
+    |
+ 19 |     # Test interface implementation - IMeasurable
+    |                                                  ^
+    |
+

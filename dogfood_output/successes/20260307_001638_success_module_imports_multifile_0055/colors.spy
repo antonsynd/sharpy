@@ -1,0 +1,22 @@
+# Color and style definitions
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+enum Style:
+    SOLID = 1
+    DASHED = 2
+    DOTTED = 3
+
+class ColorHelper:
+    @static
+    def color_name(color: Color) -> str:
+        return color.name
+
+    @static
+    def style_name(style: Style) -> str:
+        return style.name
+
+def get_default_color() -> Color:
+    return Color.RED

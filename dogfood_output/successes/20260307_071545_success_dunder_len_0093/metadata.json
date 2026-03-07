@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T07:10:14.719414",
+  "generated_code": "# Testing __len__ with abstract base, inheritance\n@abstract\nclass Collection:\n    def __len__(self) -> int: ...\n\nclass CircularBuffer(Collection):\n    _capacity: int\n    _items: list[str]\n\n    def __init__(self, cap: int):\n        self._capacity = cap\n        self._items = []\n\n    def enqueue(self, item: str) -> None:\n        if len(self._items) >= self._capacity:\n            _ = self._items.pop(0)\n        self._items.append(item)\n\n    @override\n    def __len__(self) -> int:\n        return len(self._items)\n\nclass FilteredView:\n    _source: CircularBuffer\n    _max_visible: int?\n\n    def __init__(self, src: CircularBuffer, limit: int?):\n        self._source = src\n        self._max_visible = limit\n\n    def visible_count(self) -> int:\n        actual = len(self._source)\n        if self._max_visible is not None:\n            limit = self._max_visible\n            if actual > limit:\n                return limit\n        return actual\n\ndef main():\n    buf = CircularBuffer(5)\n    print(len(buf))\n    \n    buf.enqueue(\"a\")\n    buf.enqueue(\"b\")\n    buf.enqueue(\"c\")\n    print(len(buf))\n    \n    buf.enqueue(\"d\")\n    buf.enqueue(\"e\")\n    buf.enqueue(\"f\")\n    print(len(buf))\n    \n    view = FilteredView(buf, 3)\n    print(view.visible_count())\n    \n    unbounded: int? = None()\n    full_view = FilteredView(buf, unbounded)\n    print(full_view.visible_count())\n    \n    total = 0\n    while total < len(buf):\n        total += 1\n    print(total)\n",
+  "expected_output": "0\n3\n5\n3\n5\n5\n",
+  "actual_output": "0\n3\n5\n3\n5\n5",
+  "feature_focus": "dunder_len",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 309.98259568214417,
+  "execution_duration": 4.6975297927856445,
+  "source_files": null
+}

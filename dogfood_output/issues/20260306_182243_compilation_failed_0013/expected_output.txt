@@ -1,0 +1,7 @@
+Palette has 3 colors
+Drawing: Rectangle(10.0, 5.0)
+Drawing: Circle(radius=3.0)
+Paint needed: 4.330796
+Rectangle(10.0, 5.0)
+Circle(radius=3.0)
+Rectangle(5.0, 6.0)

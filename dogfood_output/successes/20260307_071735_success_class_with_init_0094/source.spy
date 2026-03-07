@@ -1,0 +1,21 @@
+class Product:
+    name: str
+    price: int
+    quantity: int
+
+    def __init__(self, n: str, p: int, q: int):
+        self.name = n
+        self.price = p
+        self.quantity = q
+
+    def total_value(self) -> int:
+        return self.price * self.quantity
+
+    def restock(self, amount: int) -> None:
+        self.quantity += amount
+
+def main():
+    item = Product("Widget", 25, 4)
+    print(item.total_value())
+    item.restock(2)
+    print(item.total_value())

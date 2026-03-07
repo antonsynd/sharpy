@@ -1,0 +1,36 @@
+from models import Person, Employee, Point, Product
+
+
+class Company:
+    _employee: Employee
+
+    def __init__(self, emp: Employee):
+        self._employee = emp
+
+    def get_employee_info(self) -> str:
+        return self._employee.describe()
+
+
+class GeometryUtil:
+    @static
+    def distance_from_origin(p: Point) -> float:
+        return (p.x ** 2.0 + p.y ** 2.0) ** 0.5
+
+
+class Store:
+    _inventory: list[Product]
+
+    def __init__(self):
+        self._inventory = []
+
+    def add_product(self, p: Product):
+        self._inventory.append(p)
+
+    def get_product_list(self) -> str:
+        result: str = ""
+        for i in range(len(self._inventory)):
+            p: Product = self._inventory[i]
+            result = result + p.name + " - " + p.price
+            if i < len(self._inventory) - 1:
+                result = result + ", "
+        return result

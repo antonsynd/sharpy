@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T18:59:46.477746",
+  "generated_code": "# Test break and continue in sequential data processing\nclass DataFilter:\n    values: list[int]\n    examined: int\n    \n    def __init__(self, data: list[int]):\n        self.values = data\n        self.examined = 0\n    \n    def find_first_qualified(self, minimum: int) -> int:\n        rejected: int = 0\n        selected: int = -1\n        \n        for value in self.values:\n            self.examined += 1\n            \n            if value < 0:\n                rejected += 1\n                continue\n            \n            if value > minimum:\n                selected = value\n                break\n        \n        print(rejected)\n        return selected\n\ndef main():\n    samples: list[int] = [-5, 10, -3, 25, 50]\n    analyzer = DataFilter(samples)\n    result = analyzer.find_first_qualified(20)\n    print(analyzer.examined)\n    print(result)\n",
+  "expected_output": "2\n4\n25\n",
+  "actual_output": "2\n4\n25",
+  "feature_focus": "break_continue",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 400.3297321796417,
+  "execution_duration": 4.517893552780151,
+  "source_files": null
+}

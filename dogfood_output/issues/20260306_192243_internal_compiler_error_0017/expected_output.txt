@@ -1,0 +1,7 @@
+stack: len=3, empty=False
+4
+0
+25
+4
+3
+72

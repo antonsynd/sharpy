@@ -1,0 +1,61 @@
+enum ProcessingMode:
+    RAW = 0
+    FILTERED = 1
+    TRANSFORMED = 2
+
+class DataStream:
+    _data: list[int]
+    _mode: ProcessingMode
+    
+    def __init__(self, items: list[int], mode: ProcessingMode):
+        self._data = items
+        self._mode = mode
+    
+    @virtual
+    def contents(self) -> int:
+        for item in self._data:
+            yield item
+    
+    @virtual
+    def process(self) -> int:
+        for item in self.contents():
+            yield item
+
+class BoundedStream(DataStream):
+    _lower: int
+    _upper: int
+    
+    def __init__(self, items: list[int], lower: int, upper: int):
+        super().__init__(items, ProcessingMode.FILTERED)
+        self._lower = lower
+        self._upper = upper
+    
+    @override
+    def process(self) -> int:
+        for x in self.contents():
+            if self._lower <= x and x <= self._upper:
+                yield x
+
+def classify_number(n: int) -> str:
+    match n:
+        case 0:
+            return "zero"
+        case _ if n < 0:
+            return "negative"
+        case _ if n % 2 == 0:
+            return "even"
+        case _:
+            return "odd"
+
+def main():
+    values: list[int] = [0, 3, 5, -5, 8, 7, 15]
+    stream: BoundedStream = BoundedStream(values, -10, 30)
+    
+    count: int = 0
+    for val in stream.process():
+        category: str = classify_number(val)
+        print(f"{val} is {category}")
+        count += 1
+    
+    print(f"count={count}")
+    print(f"mode={stream._mode.name}")

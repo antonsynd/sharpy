@@ -1,0 +1,9 @@
+Internal compiler error: Compilation errors:
+
+error[SPY0907]: Internal: type inference produced UnknownType for 'min_int()' without a corresponding error diagnostic. This is a compiler bug.
+  --> /tmp/tmpjhhevwl2/dogfood_test.spy:58:21
+    |
+ 58 |         self.used = min_int(self.used + count, self.capacity)
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

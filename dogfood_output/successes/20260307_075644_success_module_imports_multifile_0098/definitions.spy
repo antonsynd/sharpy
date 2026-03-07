@@ -1,0 +1,29 @@
+# Module providing base types for geometric shapes
+# Tests: enum, struct, interface, abstract class definitions
+
+enum Priority:
+    LOW = 1
+    HIGH = 2
+
+struct Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+interface IMeasurable:
+    def area(self) -> float: ...
+    
+    def perimeter(self) -> float: ...
+
+@abstract
+class BaseShape:
+    priority: Priority
+    
+    def __init__(self, priority: Priority):
+        self.priority = priority
+    
+    @abstract
+    def describe(self) -> str: ...

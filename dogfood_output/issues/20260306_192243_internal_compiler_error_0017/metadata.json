@@ -1,0 +1,18 @@
+{
+  "issue_type": "internal_compiler_error",
+  "timestamp": "2026-03-06T19:18:53.238282",
+  "generated_code": "# Test __len__ dunder method with container hierarchy and type-safe operations\n# Features: abstract base with __len__, concrete implementations, interface synthesis, integration with len() builtin\n\n@abstract\nclass Container:\n    @abstract\n    def __len__(self) -> int: ...\n\n    @virtual\n    def is_empty(self) -> bool:\n        return len(self) == 0\n\nclass Stack(Container):\n    items: list[int]\n\n    def __init__(self, initial: list[int]):\n        self.items = initial.copy()\n\n    @override\n    def __len__(self) -> int:\n        return len(self.items)\n\n    def push(self, item: int) -> None:\n        self.items.append(item)\n\n    def peek(self) -> int:\n        return self.items[len(self) - 1]\n\nstruct Queue:\n    buffer: list[str]\n    head: int\n\n    def __init__(self, items: list[str]):\n        self.buffer = items.copy()\n        self.head = 0\n\n    def __len__(self) -> int:\n        return len(self.buffer) - self.head\n\n    def dequeue(self) -> str:\n        idx: int = self.head\n        self.head += 1\n        return self.buffer[idx]\n\nclass Buffer(Container):\n    capacity: int\n    used: int\n\n    def __init__(self, cap: int):\n        self.capacity = cap\n        self.used = 0\n\n    @override\n    def __len__(self) -> int:\n        return self.used\n\n    def write(self, count: int) -> None:\n        self.used = min_int(self.used + count, self.capacity)\n\ndef min_int(a: int, b: int) -> int:\n    if a < b:\n        return a\n    return b\n\ndef analyze_stack(container: Stack, name: str) -> None:\n    length: int = len(container)\n    empty: bool = container.is_empty()\n    print(f\"{name}: len={length}, empty={empty}\")\n\ndef analyze_buffer(container: Buffer, name: str) -> None:\n    length: int = len(container)\n    empty: bool = container.is_empty()\n    print(f\"{name}: len={length}, empty={empty}\")\n\ndef main():\n    # Test Stack with abstract base\n    stack: Stack = Stack([10, 20, 30])\n    analyze_stack(stack, \"stack\")\n    \n    stack.push(40)\n    print(len(stack))\n    \n    # Test Buffer with abstract base\n    buffer: Buffer = Buffer(100)\n    print(len(buffer))\n    buffer.write(25)\n    print(len(buffer))\n    \n    # Test Queue (struct with __len__)\n    queue: Queue = Queue([\"a\", \"b\", \"c\", \"d\"])\n    print(len(queue))\n    queue.dequeue()\n    print(len(queue))\n    \n    # Combined lengths (Stack + Buffer + Queue)\n    combined: int = len(stack) + len(buffer) + len(queue)\n    print(combined)\n",
+  "expected_output": "stack: len=3, empty=False\n4\n0\n25\n4\n3\n72\n",
+  "actual_output": null,
+  "error_message": "Internal compiler error: Compilation errors:\n\nerror[SPY0907]: Internal: type inference produced UnknownType for 'min_int()' without a corresponding error diagnostic. This is a compiler bug.\n  --> /tmp/tmpjhhevwl2/dogfood_test.spy:58:21\n    |\n 58 |         self.used = min_int(self.used + count, self.capacity)\n    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\n",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "dunder_len",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 214.8582112789154,
+  "compilation_duration": null,
+  "execution_duration": null,
+  "source_files": null
+}

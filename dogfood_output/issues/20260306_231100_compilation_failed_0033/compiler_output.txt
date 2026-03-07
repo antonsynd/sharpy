@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'compute_checksum' is never used
+  --> /tmp/tmpg14_ln30/types_module.spy:4:38
+    |
+  4 | from types_module import Priority, Point2D, IIdentifiable
+    |                                      ^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IIdentifiable' is never used
+  --> /tmp/tmpg14_ln30/main.spy:4:45
+    |
+  4 | from types_module import Priority, Point2D, IIdentifiable
+    |                                             ^^^^^^^^^^^^^
+    |
+

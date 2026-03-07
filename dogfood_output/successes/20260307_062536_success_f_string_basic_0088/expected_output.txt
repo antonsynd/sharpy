@@ -1,0 +1,6 @@
+Item: Widget
+Quantity: 3 @ $12.5 each
+Subtotal: $37.5
+Tax (8%): $3.0
+Receipt #0042
+Total: $40.5

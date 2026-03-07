@@ -1,0 +1,50 @@
+# Test: Logical operators with short-circuit evaluation and validation chains
+class Validator:
+    property check_count: int = 0
+    
+    def __init__(self):
+        self.check_count = 0
+    
+    def is_positive(self, x: int) -> bool:
+        self.check_count = self.check_count + 1
+        return x > 0
+    
+    def is_even(self, x: int) -> bool:
+        self.check_count = self.check_count + 1
+        return x % 2 == 0
+
+def classify(n: int) -> str:
+    # Chained comparisons with logical operators
+    if n > 0 and n < 10:
+        return "small positive"
+    elif n < 0 or n > 100:
+        return "out of range"
+    elif not (n == 42):
+        return "not the answer"
+    else:
+        return "valid"
+
+def main():
+    v = Validator()
+    
+    # Short-circuit: is_even not called when is_positive fails
+    result1 = v.is_positive(-5) and v.is_even(-5)
+    print(v.check_count)
+    print(result1)
+    
+    # Reset - both should be called
+    v.check_count = 0
+    result2 = v.is_positive(8) and v.is_even(8)
+    print(v.check_count)
+    print(result2)
+    
+    # OR short-circuit: second not evaluated if first succeeds
+    v.check_count = 0
+    result3 = v.is_positive(5) or v.is_even(5)
+    print(v.check_count)
+    
+    # NOT and complex expressions
+    print(classify(5))
+    print(classify(-10))
+    print(classify(42))
+    print(classify(50))

@@ -1,0 +1,20 @@
+# Main entry point - tests string utility module functions
+from module_utils import reverse_string, is_palindrome, StringAnalyzer
+
+def main():
+    # Test 1: reverse_string function
+    rev: str = reverse_string("hello")
+    print(rev)
+    
+    # Test 2: is_palindrome with palindrome
+    print(is_palindrome("radar"))
+    
+    # Test 3: is_palindrome with non-palindrome  
+    print(is_palindrome("hello"))
+    
+    # Test 4: StringAnalyzer.get_length()
+    analyzer = StringAnalyzer("Hello World")
+    print(analyzer.get_length())
+    
+    # Test 5: StringAnalyzer.count_vowels() - uses module-level is_vowel helper
+    print(analyzer.count_vowels())

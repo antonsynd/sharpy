@@ -1,0 +1,89 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-03-06T14:24:43.630205
+**Feature Focus:** result_type
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+def main():
+    # Test basic Result creation with Ok and Err
+    success: int !str = Ok(42)
+    failure: int !str = Err("something went wrong")
+
+    # Test unwrap_or - safe fallback
+    val1 = success.unwrap_or(0)
+    val2 = failure.unwrap_or(0)
+    print(val1)
+    print(val2)
+
+    # Test map - transform success value
+    mapped = success.map(lambda x: x * 2)
+    mapped_or = mapped.unwrap_or(0)
+    print(mapped_or)
+
+    # Map on Err does nothing
+    mapped_err = failure.map(lambda x: x * 2)
+    fallback = mapped_err.unwrap_or(-1)
+    print(fallback)
+
+    # Test map_err - transform error value
+    success_mapped = success.map_err(lambda e: f"error: {e}")
+    failure_mapped = failure.map_err(lambda e: f"error: {e}")
+
+    # Get values back with unwrap_or
+    print(success_mapped.unwrap_or(-999))
+    print(failure_mapped.unwrap_or(-999))
+
+    # Test different Result types with str success
+    str_result: str !int = Ok("hello")
+    err_result: str !int = Err(404)
+    print(str_result.unwrap_or("default"))
+    print(err_result.unwrap_or("default"))
+
+    # Test Ok with float
+    float_result: float !str = Ok(3.14)
+    print(float_result.unwrap_or(0.0))
+
+    # Test chaining - assign to typed variable first, then chain
+    ok10: int !str = Ok(10)
+    chained = ok10.map(lambda x: x + 5).map(lambda x: x * 2)
+    print(chained.unwrap_or(0))
+
+    # Test Err stays Err through maps
+    err_start: int !str = Err("start")
+    err_chained = err_start.map(lambda x: x + 1).map(lambda x: x * 2)
+    print(err_chained.unwrap_or(-1))
+
+```
+
+## Output
+
+```
+42
+0
+84
+-1
+42
+-999
+hello
+default
+3.14
+30
+-1
+```
+
+## Timing
+
+- Generation: 241.71s
+- Execution: 4.70s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

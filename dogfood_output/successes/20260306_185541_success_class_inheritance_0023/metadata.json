@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T18:54:16.981615",
+  "generated_code": "# Test: Class inheritance with virtual methods and polymorphism\n# Tests: inheritance, @virtual/@override, method dispatch, constructor chaining\n\nclass Animal:\n    name: str\n    age: int\n    \n    def __init__(self, name: str, age: int):\n        self.name = name\n        self.age = age\n    \n    @virtual\n    def speak(self) -> str:\n        return \"Some sound\"\n    \n    @virtual\n    def describe(self) -> str:\n        return f\"{self.name} is {self.age} years old\"\n\nclass Dog(Animal):\n    breed: str\n    \n    def __init__(self, name: str, age: int, breed: str):\n        super().__init__(name, age)\n        self.breed = breed\n    \n    @override\n    def speak(self) -> str:\n        return \"Woof!\"\n    \n    @override\n    def describe(self) -> str:\n        base: str = super().describe()\n        return f\"{base}, breed: {self.breed}\"\n\nclass Cat(Animal):\n    lives: int\n    \n    def __init__(self, name: str, age: int, lives: int):\n        super().__init__(name, age)\n        self.lives = lives\n    \n    @override\n    def speak(self) -> str:\n        return \"Meow!\"\n    \n    @override\n    def describe(self) -> str:\n        return f\"{self.name} has {self.lives} lives left\"\n\ndef main():\n    # Create instances\n    generic: Animal = Animal(\"Creature\", 5)\n    buddy: Dog = Dog(\"Buddy\", 3, \"Golden Retriever\")\n    whiskers: Cat = Cat(\"Whiskers\", 4, 9)\n    \n    # Test polymorphism - store subclass in base type\n    animals: list[Animal] = [generic, buddy, whiskers]\n    \n    for animal in animals:\n        print(animal.speak())\n        print(animal.describe())\n",
+  "expected_output": "Some sound\nCreature is 5 years old\nWoof!\nBuddy is 3 years old, breed: Golden Retriever\nMeow!\nWhiskers has 9 lives left\n",
+  "actual_output": "Some sound\nCreature is 5 years old\nWoof!\nBuddy is 3 years old, breed: Golden Retriever\nMeow!\nWhiskers has 9 lives left",
+  "feature_focus": "class_inheritance",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 74.27922749519348,
+  "execution_duration": 4.499586582183838,
+  "source_files": null
+}

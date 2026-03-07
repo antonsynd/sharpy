@@ -1,0 +1,25 @@
+# Main entry point - tests utils and validators modules
+from utils import clamp, Counter
+from validators import validate_score, ValidatedCounter
+
+def main():
+    # Test clamp function directly
+    print(clamp(50, 0, 100))
+    print(clamp(150, 0, 100))
+
+    # Test validate_score (uses clamp internally)
+    print(validate_score(-10))
+
+    # Test base Counter class
+    c1 = Counter()
+    c1.increment()
+    print(c1.get_value())
+
+    # Test ValidatedCounter with bounds (0-3 max)
+    c2 = ValidatedCounter(0, 3)
+    c2.increment()
+    c2.increment()
+    c2.increment()
+    c2.increment()
+    # Should be blocked at max
+    print(c2.get_value())

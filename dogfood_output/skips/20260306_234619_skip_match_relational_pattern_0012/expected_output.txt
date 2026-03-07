@@ -1,0 +1,50 @@
+Standard Scale Results:
+Student95
+Score: 95
+Grade: A
+Performance: Exceptional
+Passing: True
+Student87
+Score: 87
+Grade: B
+Performance: Strong
+Passing: True
+Student72
+Score: 72
+Grade: C
+Performance: Developing
+Passing: True
+Student58
+Score: 58
+Grade: F
+Performance: Needs Support
+Passing: False
+Student45
+Score: 45
+Grade: F
+Performance: Needs Support
+Passing: False
+
+Curved Scale Results (curve=10):
+Student88
+Score: 88
+Grade: A
+Performance: Strong
+Passing: True
+Student78
+Score: 78
+Grade: B
+Performance: Adequate
+Passing: True
+Student55
+Score: 55
+Grade: C
+Performance: Needs Support
+Passing: True
+Student35
+Score: 35
+Grade: C
+Performance: Needs Support
+Passing: True
+
+In range 70-99

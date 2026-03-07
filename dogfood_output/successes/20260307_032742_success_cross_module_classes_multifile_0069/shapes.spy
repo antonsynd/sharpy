@@ -1,0 +1,16 @@
+interface IMeasurable:
+    def measure(self) -> float: ...
+
+class Shape:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def area(self) -> float:
+        return 0.0
+    
+    @virtual
+    def describe(self) -> str:
+        return "Shape"

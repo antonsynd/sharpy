@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-03-06T22:15:41.552266",
+  "generated_code": "# Main entry point - demonstrates cross-module imports and inheritance\n\nfrom math_utils import square, average, Shape, Circle, PI\n\ndef main():\n    # Test module-level function\n    val: float = 5.0\n    squared: float = square(val)\n    print(squared)\n    \n    # Test average function with list\n    scores: list[float] = [85.0, 90.0, 78.0, 92.0]\n    avg: float = average(scores)\n    print(avg)\n    \n    # Test constant import\n    print(PI)\n    \n    # Test class inheritance across modules\n    c: Circle = Circle(3.0)\n    area: float = c.area()\n    print(area)\n    \n    # Test polymorphism - Shape reference to Circle instance\n    s: Shape = Circle(2.0)\n    desc: str = s.describe()\n    print(desc)\n",
+  "expected_output": "25.0\n86.25\n3.14159\n28.27431\nCircle: area=12.56636\n",
+  "actual_output": "25.0\n86.25\n3.14159\n28.27431\nCircle: area=12.56636",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 34.26704692840576,
+  "execution_duration": 5.62516975402832,
+  "source_files": {
+    "math_utils.spy": "# Math utilities module with functions and a base class\n\nconst PI: float = 3.14159\n\ndef square(x: float) -> float:\n    return x * x\n\ndef average(values: list[float]) -> float:\n    total: float = 0.0\n    for v in values:\n        total = total + v\n    return total / float(len(values))\n\nclass Shape:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    @virtual\n    def area(self) -> float:\n        return 0.0\n    \n    def describe(self) -> str:\n        return self.name + \": area=\" + str(self.area())\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, radius: float):\n        super().__init__(\"Circle\")\n        self.radius = radius\n    \n    @override\n    def area(self) -> float:\n        return PI * square(self.radius)\n",
+    "main.spy": "# Main entry point - demonstrates cross-module imports and inheritance\n\nfrom math_utils import square, average, Shape, Circle, PI\n\ndef main():\n    # Test module-level function\n    val: float = 5.0\n    squared: float = square(val)\n    print(squared)\n    \n    # Test average function with list\n    scores: list[float] = [85.0, 90.0, 78.0, 92.0]\n    avg: float = average(scores)\n    print(avg)\n    \n    # Test constant import\n    print(PI)\n    \n    # Test class inheritance across modules\n    c: Circle = Circle(3.0)\n    area: float = c.area()\n    print(area)\n    \n    # Test polymorphism - Shape reference to Circle instance\n    s: Shape = Circle(2.0)\n    desc: str = s.describe()\n    print(desc)\n"
+  }
+}

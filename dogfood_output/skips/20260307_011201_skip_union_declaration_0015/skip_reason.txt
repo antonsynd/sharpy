@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0104]: Expected Colon, got LeftParen
+  --> /tmp/tmp2mpo10u6/dogfood_test.spy:9:26
+    |
+  9 |         case Shape.Circle(r):
+    |                          ^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmp2mpo10u6/dogfood_test.spy:11:9
+    |
+ 11 |         case Shape.Rectangle(w, h):
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmp2mpo10u6/dogfood_test.spy:13:9
+    |
+ 13 |         case Shape.Triangle(b, h):
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Dedent
+  --> /tmp/tmp2mpo10u6/dogfood_test.spy:16:1
+    |
+ 16 | def describe(shape: Shape) -> str:
+    | ^
+    |
+

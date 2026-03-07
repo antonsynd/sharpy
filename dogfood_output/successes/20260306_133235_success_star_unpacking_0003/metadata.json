@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T13:31:28.968220",
+  "generated_code": "# Test star unpacking with different positions and list sizes\ndef main():\n    # Star in middle: first and last, rest in middle\n    data: list[int] = [10, 20, 30, 40, 50]\n    a, *middle, b = data\n    print(a)\n    print(len(middle))\n    print(b)\n    \n    # Star at start: collect all but last element\n    *rest, last = data\n    print(len(rest))\n    print(last)\n    \n    # Star at end: skip first, collect rest\n    first, *others = data\n    print(first)\n    print(len(others))\n",
+  "expected_output": "10\n3\n50\n4\n50\n10\n4\n",
+  "actual_output": "10\n3\n50\n4\n50\n10\n4",
+  "feature_focus": "star_unpacking",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 56.71252775192261,
+  "execution_duration": 4.553863763809204,
+  "source_files": null
+}

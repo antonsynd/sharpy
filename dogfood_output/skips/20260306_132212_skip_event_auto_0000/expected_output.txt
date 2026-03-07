@@ -1,0 +1,9 @@
+First click:
+Handler1 called
+Handler2 called
+Second click (after unsubscribe):
+Handler2 called
+Before click:
+0
+After click:
+1

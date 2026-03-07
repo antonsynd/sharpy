@@ -1,0 +1,53 @@
+# Main entry point - demonstrates cross-module class usage
+from enums import Color, ShapeType
+from interfaces import IRenderable, IMeasurable
+from shapes import Shape, Circle, Rectangle, ShapeFactory
+from structs import Point, Size
+from utils import format_measurement, total_area, points_equal, color_info, ShapeAnalyzer
+
+def main():
+    # Test enum usage across modules
+    print(color_info(Color.RED))
+
+    # Create shapes using factory
+    circle: Circle = ShapeFactory.create_circle(5.0)
+    square: Rectangle = ShapeFactory.create_square(10.0)
+
+    # Test polymorphic behavior with interface types
+    renderables: list[IRenderable] = [circle, square]
+    r: IRenderable
+
+    # Virtual dispatch test - each render() should be called
+    for r in renderables:
+        print(r.render())
+
+    # Test struct usage
+    p1: Point = Point(3.0, 4.0)
+    p2: Point = Point(0.0, 0.0)
+    print(format_measurement(p1.distance_to(p2), "units"))
+
+    # Test size struct
+    size: Size = square.get_size()
+    print(format_measurement(size.diagonal(), "diagonal"))
+
+    # Test polymorphism through shape base class
+    shapes: list[Shape] = [circle, square]
+    s: Shape
+    for s in shapes:
+        print(s.describe())
+
+    # Test interface-based calculations
+    measurables: list[IMeasurable] = [circle, square]
+    total: float = total_area(measurables)
+    print(format_measurement(total, "sq units"))
+
+    # Test analyzer with cross-module isinstance
+    analyzer: ShapeAnalyzer = ShapeAnalyzer()
+    result1: str = analyzer.analyze(circle)
+    result2: str = analyzer.analyze(square)
+    print(result1)
+    print(result2)
+
+    # Show analyzer counts
+    print(analyzer.circles)
+    print(analyzer.rectangles)

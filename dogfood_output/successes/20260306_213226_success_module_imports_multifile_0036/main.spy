@@ -1,0 +1,51 @@
+# Main entry point - demonstrates complex module imports and interactions
+
+from shapes import Shape, Rectangle, Circle, IDrawable
+from core_types import Color, Point, ShapeType
+from utils import is_bright_color, create_origin, scale_point, ColorHelper, DEFAULT_COLOR
+
+# Implement IDrawable in a custom class
+class ColoredRectangle(Rectangle, IDrawable):
+    color: Color
+    
+    def __init__(self, width: float, height: float, color: Color):
+        super().__init__(width, height)
+        self.color = color
+    
+    def draw(self) -> str:
+        return f"Drawing {self.color.name} rectangle {self.width} x {self.height}"
+
+def main():
+    # Create shapes from shapes module
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    circle: Circle = Circle(2.5)
+    
+    # Test area calculations
+    print(rect.area())
+    print(circle.area())
+    
+    # Test virtual method from base class
+    print(rect.describe())
+    
+    # Test enum from core_types
+    color: Color = Color.GREEN
+    
+    # Test utility function from utils
+    bright: bool = is_bright_color(color)
+    print(bright)
+    
+    # Test struct from core_types and utility function
+    origin: Point = create_origin()
+    scaled: Point = scale_point(origin, 10.0)
+    print(scaled.distance_from_origin())
+    
+    # Test static class methods
+    count: int = ColorHelper.color_count()
+    print(count)
+    
+    # Test interface implementation across modules
+    drawable: IDrawable = ColoredRectangle(4.0, 2.0, Color.BLUE)
+    print(drawable.draw())
+    
+    # Test default color constant
+    print(DEFAULT_COLOR == Color.BLUE)

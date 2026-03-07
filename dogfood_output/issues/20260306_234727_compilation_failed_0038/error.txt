@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Types.OrderStatus' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'Types.OrderStatus' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpvkwbohkp/main.spy:28:57
+    |
+ 28 |     print(order.get_status().value)
+    |                                    ^
+    |
+
+error[CS1061]: 'Types.OrderStatus' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'Types.OrderStatus' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpvkwbohkp/main.spy:30:57
+    |
+ 30 |     print(order.get_status().value)
+    |                                    ^
+    |
+

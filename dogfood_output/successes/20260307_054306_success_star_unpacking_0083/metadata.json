@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T05:41:34.777159",
+  "generated_code": "# Test star unpacking with middle collection\ndef main():\n    scores: list[int] = [75, 82, 91, 88, 79]\n    first, *middle, last = scores\n    \n    print(first)\n    print(len(middle))\n    print(last)\n    print(sum(middle))\n",
+  "expected_output": "75\n3\n79\n261\n",
+  "actual_output": "75\n3\n79\n261",
+  "feature_focus": "star_unpacking",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 81.97716617584229,
+  "execution_duration": 4.599068641662598,
+  "source_files": null
+}

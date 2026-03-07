@@ -1,0 +1,5 @@
+Unhandled exception. Sharpy.ValueError: invalid literal for int() with base 10: 'a'
+   at Sharpy.Builtins.Int(String s)
+   at DogfoodTest.ParseNumber(String text, Int32 pos) in /tmp/tmpevibgew4/dogfood_test.spy:line 22
+   at DogfoodTest.ProcessWithFallback(String text) in /tmp/tmpevibgew4/dogfood_test.spy:line 27
+   at DogfoodTest.Main() in /tmp/tmpevibgew4/dogfood_test.spy:line 40

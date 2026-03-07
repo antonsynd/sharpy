@@ -1,0 +1,6 @@
+Task
+>>Task:process
+[0] start
+[12345@admin] login
+size=1024,auto,name=default
+9090

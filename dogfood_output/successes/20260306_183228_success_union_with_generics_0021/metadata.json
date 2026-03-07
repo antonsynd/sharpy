@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T18:22:43.173685",
+  "generated_code": "union Either[L, R]:\n    case Left(value: L)\n    case Right(value: R)\n\ndef classify(n: int) -> Either[str, int]:\n    if n < 0:\n        return Either.Left(\"negative\")\n    elif n == 0:\n        return Either.Left(\"zero\")\n    return Either.Right(n * 2)\n\ndef main():\n    values: list[int] = [-7, 0, 3, 5]\n    count: int = 0\n    for n in values:\n        result = classify(n)\n        match result:\n            case Left(msg):\n                print(msg)\n            case Right(val):\n                print(val)\n        count += 1\n    print(count)\n",
+  "expected_output": "negative\nzero\n6\n10\n4\n",
+  "actual_output": "negative\nzero\n6\n10\n4",
+  "feature_focus": "union_with_generics",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 570.5187270641327,
+  "execution_duration": 4.684161901473999,
+  "source_files": null
+}

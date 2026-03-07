@@ -1,0 +1,8 @@
+Fleet size: 3
+Car
+Truck
+Cars: 2, Trucks: 1
+---
+4-door Toyota Camry
+2-door Honda Civic
+Ford F-150 with 6.5 ft bed

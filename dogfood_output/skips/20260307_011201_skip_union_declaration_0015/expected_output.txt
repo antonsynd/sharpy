@@ -1,0 +1,9 @@
+Circle with radius 5.0
+78.53975
+Rectangle 4.0 x 6.0
+24.0
+Triangle base=3.0 height=4.0
+6.0
+True
+False
+3.0

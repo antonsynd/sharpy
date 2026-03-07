@@ -1,0 +1,35 @@
+# Main entry point - demonstrates complex imports and cross-module usage
+
+from shapes import Shape, Circle, Rectangle, IScalable
+from utils import Color, Point, calculate_total_area, format_color, create_origin
+
+def main():
+    # Create shapes
+    c: Circle = Circle(5.0)
+    r: Rectangle = Rectangle(3.0, 4.0)
+    
+    # Demonstrate polymorphism - virtual method dispatch
+    shapes: list[Shape] = [c, r]
+    print(c.describe())
+    print(r.describe())
+    
+    # Calculate and print total area
+    total: float = calculate_total_area(shapes)
+    print(total)
+    
+    # Demonstrate interface usage (scaling)
+    s: IScalable = c
+    s.scale(2.0)
+    print(c.area())
+    
+    # Demonstrate enum usage
+    color: Color = Color.GREEN
+    print(format_color(color))
+    
+    # Demonstrate struct usage
+    p: Point = Point(3.0, 4.0)
+    print(p.distance_from_origin())
+    
+    # Demonstrate another struct via import
+    origin: Point = create_origin()
+    print(origin.distance_from_origin())

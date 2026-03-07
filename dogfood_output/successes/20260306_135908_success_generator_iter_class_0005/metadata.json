@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T13:57:47.480907",
+  "generated_code": "# Test generator __iter__ in a class with transformation\nclass DoublingSequence:\n    values: list[int]\n    \n    def __init__(self, start: int, count: int):\n        self.values = []\n        i = 0\n        while i < count:\n            self.values.append(start + i)\n            i += 1\n    \n    def __iter__(self) -> int:\n        for v in self.values:\n            yield v * 2\n\ndef main():\n    seq = DoublingSequence(start=5, count=4)\n    for doubled in seq:\n        print(doubled)\n",
+  "expected_output": "10\n12\n14\n16\n",
+  "actual_output": "10\n12\n14\n16",
+  "feature_focus": "generator_iter_class",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 71.14848065376282,
+  "execution_duration": 4.74475884437561,
+  "source_files": null
+}

@@ -1,0 +1,7 @@
+warning[SPY0452]: Imported name 'format_color' is never used
+  --> /tmp/tmpr08eass7/entities_module.spy:3:44
+    |
+  3 | from entities_module import Circle, Rectangle
+    |                                            ^^
+    |
+

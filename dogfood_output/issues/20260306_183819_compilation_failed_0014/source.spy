@@ -1,0 +1,14 @@
+# Main entry point using cross-module classes
+from shapes import Rectangle, Square
+from utils import describe_shape, sum_areas
+
+def main():
+    r = Rectangle("rect", 10.0, 5.0)
+    s = Square("square", 4.0)
+    
+    print(describe_shape(r))
+    print(describe_shape(s))
+    
+    shapes = [r, s]
+    total = sum_areas(shapes)
+    print(total)

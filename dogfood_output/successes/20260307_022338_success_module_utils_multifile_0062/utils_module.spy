@@ -1,0 +1,31 @@
+# Utils module - provides utility functions and factory functions
+from types_module import IShape, ShapeType
+from shapes_module import Rectangle, Square, Point
+
+def get_type_name(t: ShapeType) -> str:
+    if t == ShapeType.Rectangle:
+        return "Rectangle"
+    elif t == ShapeType.Square:
+        return "Square"
+    else:
+        return "Circle"
+
+def create_point(x: float, y: float) -> Point:
+    return Point(x, y)
+
+def create_unit_square() -> Square:
+    return Square(1.0)
+
+def process_shape(s: IShape) -> float:
+    return s.area()
+
+struct Dimensions:
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float):
+        self.width = w
+        self.height = h
+
+def calc_area(dims: Dimensions) -> float:
+    return dims.width * dims.height

@@ -1,0 +1,19 @@
+Assembly compilation failed:
+
+error[CS0229]: Ambiguity between 'Settings.Version' and 'Version'
+  --> /tmp/tmpmp48grnr/main.spy:13:39
+    |
+ 13 |     print(VERSION)
+    |                   ^
+    |
+
+error[CS0149]: Method name expected
+  --> /tmp/tmpmp48grnr/settings.spy:30:45
+    |
+ 30 |     print(config1.get_config("user"))
+    |                                      ^
+    |
+
+error[CS0103]: The name 'configPrefix' does not exist in the current context
+  --> /tmp/tmpmp48grnr/settings.spy:39:16
+

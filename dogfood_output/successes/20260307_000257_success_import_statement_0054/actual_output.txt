@@ -1,0 +1,14 @@
+42
+False
+True
+85.5
+171.0
+True
+False
+0
+1
+2
+User-1
+Alice
+User-2
+Bob

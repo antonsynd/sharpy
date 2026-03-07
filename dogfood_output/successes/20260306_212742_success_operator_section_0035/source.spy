@@ -1,0 +1,29 @@
+# Test: Operator sections with map, filter, and arithmetic
+# Using explicit loops instead of filter/map for better type inference
+
+def main():
+    data: list[int] = [2, 5, 3, 8, 4, 9, 1, 6]
+    
+    # Filter values greater than 3
+    above: list[int] = []
+    for x in data:
+        if x > 3:
+            above.append(x)
+    
+    # Filter those less than 8
+    middle: list[int] = []
+    for x in above:
+        if x < 8:
+            middle.append(x)
+    
+    print(len(middle))
+    
+    # Double each value
+    transformed: list[int] = []
+    for x in middle:
+        transformed.append(x * 2)
+    
+    # Apply negation
+    for t in transformed:
+        negated: int = -t
+        print(negated)

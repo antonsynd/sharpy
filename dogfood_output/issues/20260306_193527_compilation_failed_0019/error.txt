@@ -1,0 +1,5 @@
+Assembly compilation failed:
+
+error[CS1061]: 'TypesModule.Priority' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'TypesModule.Priority' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpd5sslswq/utils_module.spy:46:41
+

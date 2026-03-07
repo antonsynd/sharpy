@@ -1,0 +1,16 @@
+0.0
+20.0
+Rectangle
+15.0
+Circle
+19.6349375
+Blue
+2
+0.0
+20.0
+Shape at (0.0, 0.0)
+Shape at (10.0, 20.0)
+Red
+Yellow
+3.14159
+8.0

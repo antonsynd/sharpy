@@ -1,0 +1,3 @@
+species=unknown
+species=canine, fur=yes
+species=feline, fur=yes, name=Whiskers

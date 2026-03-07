@@ -1,0 +1,23 @@
+# Main entry point importing from both modules
+
+from notifier import EmailNotifier, SmsNotifier, create_default_notifier
+from handlers import NotificationManager, create_manager_with_defaults
+
+def main():
+    # Create manager
+    manager: NotificationManager = create_manager_with_defaults()
+    
+    # Add custom notifiers
+    manager.add(EmailNotifier("support", "support@example.com"))
+    manager.add(SmsNotifier("urgent", "+1-555-0123"))
+    
+    # Broadcast message
+    sent: int = manager.broadcast("System maintenance scheduled")
+    print(f"Sent to {sent} recipients")
+    
+    # Get summary
+    print(manager.get_summary())
+    
+    # Test default notifier creation (returns Notifier, not EmailNotifier)
+    default_notifier: Notifier = create_default_notifier()
+    print(f"Default: {default_notifier.name}")

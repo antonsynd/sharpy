@@ -1,0 +1,9 @@
+78.53975
+10.0
+Circle 'Sun' with radius 5.0
+Shape summary
+5.0
+Red
+True
+128.53975
+2

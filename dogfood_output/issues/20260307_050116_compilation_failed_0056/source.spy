@@ -1,0 +1,41 @@
+# Main entry point - demonstrates cross-module imports and usage
+from types_module import Color, Point
+from entities_module import Circle, Rectangle
+from utils_module import create_origin, compute_distance_between
+
+def main():
+    # Create origin point
+    origin: Point = create_origin()
+    print(f"Origin: ({origin.x}, {origin.y})")
+    
+    # Create two circles with different positions
+    c1: Circle = Circle(Color.RED, Point(0.0, 0.0), 5.0)
+    c2: Circle = Circle(Color.BLUE, Point(3.0, 4.0), 3.0)
+    
+    # Print circle info using overridden describe method
+    print(c1.describe())
+    print(c2.describe())
+    
+    # Test interface implementation - IMeasurable
+    print(f"Circle area: {c1.get_area():.2f}")
+    print(f"Circle perimeter: {c1.get_perimeter():.2f}")
+    
+    # Create rectangle and test polymorphism
+    rect: Rectangle = Rectangle(Color.GREEN, Point(10.0, 10.0), 4.0, 6.0)
+    print(rect.describe())
+    
+    # Test IDrawable interface method
+    print(rect.draw())
+    
+    # Compute distance between two points
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+    dist: float = compute_distance_between(p1, p2)
+    print(f"Distance: {dist}")
+    
+    # Test enum iteration
+    count: int = 0
+    for c in Color:
+        if c.value > 0:
+            count = count + 1
+    print(f"Non-zero colors: {count}")

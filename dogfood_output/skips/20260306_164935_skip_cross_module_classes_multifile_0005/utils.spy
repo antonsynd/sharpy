@@ -1,0 +1,29 @@
+# Utility module with helper classes
+
+class Counter:
+    # Read-only auto-property with default (generates backing field)
+    property get value: int = 0
+
+    def __init__(self, start: int = 0):
+        self.value = start  # Sets the backing field
+
+    def increment(self) -> None:
+        self.value += 1
+
+    def decrement(self) -> None:
+        self.value -= 1
+
+    def reset(self) -> None:
+        self.value = 0
+
+class StringBuilder:
+    _parts: list[str]
+
+    def __init__(self):
+        self._parts = []
+
+    def append(self, part: str) -> None:
+        self._parts.append(part)
+
+    def join(self, separator: str) -> str:
+        return separator.join(self._parts)

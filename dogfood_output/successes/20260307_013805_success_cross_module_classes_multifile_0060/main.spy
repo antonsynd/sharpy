@@ -1,0 +1,34 @@
+from base_shapes import Shape, ShapeType
+from concrete_shapes import Circle, Rectangle
+from utils import Point, distance
+
+def describe(item: Shape) -> str:
+    name: str = item.get_name()
+    area: float = item.compute_area()
+    drawing: str = item.draw()
+    return f"{name}: area={area:0.2f}, {drawing}"
+
+def main():
+    origin: Point = Point(0.0, 0.0)
+    corner: Point = Point(3.0, 4.0)
+    
+    circle: Circle = Circle(origin, 5.0)
+    rect: Rectangle = Rectangle(corner, 4.0, 3.0)
+    
+    print(circle.get_name())
+    print(rect.get_name())
+    
+    dist: float = distance(circle.position, rect.position)
+    print(f"Distance: {dist:0.2f}")
+    
+    print(describe(circle))
+    print(describe(rect))
+    
+    circle.scale(2.0)
+    rect.scale(0.5)
+    
+    print(describe(circle))
+    print(describe(rect))
+    
+    print(ShapeType.CIRCLE.name)
+    print(ShapeType.RECTANGLE.value)

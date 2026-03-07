@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T22:51:49.429726",
+  "generated_code": "class Color:\n    red: int\n    green: int\n\n    def __init__(self, r: int, g: int):\n        self.red = r\n        self.green = g\n\n    def __eq__(self, other: object) -> bool:\n        match other:\n            case Color() as c:\n                return self.red == c.red and self.green == c.green\n            case _:\n                return False\n\n    def __hash__(self) -> int:\n        return self.red * 31 + self.green\n\ndef main():\n    c1 = Color(255, 100)\n    c2 = Color(255, 100)\n    c3 = Color(100, 255)\n    \n    print(c1 == c2)\n    print(c1 == c3)\n    \n    colors: set[Color] = set()\n    colors.add(c1)\n    colors.add(c2)\n    colors.add(c3)\n    \n    print(len(colors))\n    \n    # Sort for deterministic output since set iteration order is not guaranteed\n    reds: list[int] = []\n    for c in colors:\n        reds.append(c.red)\n    reds.sort()\n    for r in reds:\n        print(r)\n",
+  "expected_output": "True\nFalse\n2\n100\n255\n",
+  "actual_output": "True\nFalse\n2\n100\n255",
+  "feature_focus": "dunder_eq_hash",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 373.9588325023651,
+  "execution_duration": 5.440229415893555,
+  "source_files": null
+}

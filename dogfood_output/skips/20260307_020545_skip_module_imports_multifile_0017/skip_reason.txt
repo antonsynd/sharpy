@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot pass argument of type 'Rectangle' to parameter of type 'IDrawable'
+  --> /tmp/tmpsb3n8fy5/main.spy:23:22
+    |
+ 23 |     drawables.append(rect)
+    |                      ^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'Circle' to parameter of type 'IDrawable'
+  --> /tmp/tmpsb3n8fy5/main.spy:24:22
+    |
+ 24 |     drawables.append(circ)
+    |                      ^^^^
+    |
+

@@ -1,0 +1,22 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-06T18:13:05.736096",
+  "generated_code": "# Main entry point - demonstrates importing from multiple modules\nfrom shapes import Rectangle, Circle\nfrom utils import PI\n\ndef main():\n    print(PI)\n    \n    rect = Rectangle(5.0, 3.0)\n    circle = Circle(3.0)\n    \n    print(rect.area())\n    print(rect.perimeter())\n    print(circle.area())\n    print(circle.circumference())\n",
+  "expected_output": "3.14159\n15.0\n16.0\n28.27431\n18.84954\n",
+  "actual_output": "3.14159\n15.0\n8.0\n28.27431\n9.424769999999999",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 183.23606133460999,
+  "compilation_duration": null,
+  "execution_duration": 4.5834925174713135,
+  "source_files": {
+    "utils.spy": "# Utility module with mathematical helper functions and constants\n\nconst PI: float = 3.14159\n\ndef square(x: float) -> float:\n    return x * x\n\ndef double(x: float) -> float:\n    return x * 2.0\n",
+    "shapes.spy": "# Shape module - imports from utils for calculations\nfrom utils import PI, square, double\n\nclass Rectangle:\n    width: float\n    height: float\n    \n    def __init__(self, w: float, h: float):\n        self.width = w\n        self.height = h\n    \n    def area(self) -> float:\n        return self.width * self.height\n    \n    def perimeter(self) -> float:\n        return double(self.width) + double(self.height)\n\nclass Circle:\n    radius: float\n    \n    def __init__(self, r: float):\n        self.radius = r\n    \n    def area(self) -> float:\n        return PI * square(self.radius)\n    \n    def circumference(self) -> float:\n        return PI * double(self.radius)\n",
+    "main.spy": "# Main entry point - demonstrates importing from multiple modules\nfrom shapes import Rectangle, Circle\nfrom utils import PI\n\ndef main():\n    print(PI)\n    \n    rect = Rectangle(5.0, 3.0)\n    circle = Circle(3.0)\n    \n    print(rect.area())\n    print(rect.perimeter())\n    print(circle.area())\n    print(circle.circumference())\n"
+  }
+}

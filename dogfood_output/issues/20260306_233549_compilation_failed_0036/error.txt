@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Types.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Types.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpc44mh202/shapes.spy:20:78
+    |
+ 20 |     # Test struct from types module
+    |                                    ^
+    |
+

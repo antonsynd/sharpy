@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-06T21:57:51.824752",
+  "generated_code": "# Test: Simple positional pattern matching with tuples\n# Verifies that positional patterns correctly match tuple elements by position\n\ndef main():\n    coords: tuple[int, int] = (5, 0)\n    \n    match coords:\n        case (0, 0):\n            print(\"origin\")\n        case (x, 0):\n            print(f\"x_axis:{x}\")\n        case (0, y):\n            print(f\"y_axis:{y}\")\n        case (a, b):\n            print(f\"point:{a}:{b}\")\n",
+  "expected_output": "x_axis:5\n",
+  "actual_output": "x_axis:5",
+  "feature_focus": "match_positional_pattern",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 82.13936281204224,
+  "execution_duration": 5.248976945877075,
+  "source_files": null
+}

@@ -1,0 +1,8 @@
+15.0
+19.6349375
+Shape: Rectangle
+True
+0.0
+4
+Drawing Blue rectangle 4.0 x 2.0
+True

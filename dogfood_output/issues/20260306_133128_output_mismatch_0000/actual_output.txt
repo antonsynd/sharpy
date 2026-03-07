@@ -1,0 +1,12 @@
+Distance: 5.0
+Circle(5.0)
+Rectangle(4.0x3.0)
+Triangle
+Circle area: 78.5
+Rect area: 12.0
+Triangle area: -12.0
+Total area: 78.5
+Total perimeter: 61.4
+Shapes registered: 3
+Red shapes: 2
+Red occurrences: 3

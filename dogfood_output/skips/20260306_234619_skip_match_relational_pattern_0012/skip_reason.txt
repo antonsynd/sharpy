@@ -1,0 +1,44 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0100]: Unexpected token: Newline
+  --> /tmp/tmp4uej5j2r/dogfood_test.spy:21:24
+    |
+ 21 |             case >= 90:
+    |                        ^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmp4uej5j2r/dogfood_test.spy:23:13
+    |
+ 23 |             case >= 80:
+    |             ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmp4uej5j2r/dogfood_test.spy:25:13
+    |
+ 25 |             case >= 70:
+    |             ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmp4uej5j2r/dogfood_test.spy:27:13
+    |
+ 27 |             case >= 60:
+    |             ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmp4uej5j2r/dogfood_test.spy:29:13
+    |
+ 29 |             case _:
+    |             ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Dedent
+  --> /tmp/tmp4uej5j2r/dogfood_test.spy:36:1
+    |
+ 36 | class CurvedScale(GradingScale):
+    | ^
+    |
+

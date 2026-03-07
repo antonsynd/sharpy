@@ -1,0 +1,21 @@
+warning[SPY0452]: Imported name 'Shape' is never used
+  --> /tmp/tmp599jqegm/main.spy:2:53
+    |
+  2 | from module_shapes import Color, Rectangle, Circle, Shape, Measurable, Drawable
+    |                                                     ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Drawable' is never used
+  --> /tmp/tmp599jqegm/main.spy:2:72
+    |
+  2 | from module_shapes import Color, Rectangle, Circle, Shape, Measurable, Drawable
+    |                                                                        ^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'apply_transform' is never used
+  --> /tmp/tmp599jqegm/main.spy:3:48
+    |
+  3 | from module_utils import Dimension, LazyValue, apply_transform, compute_areas
+    |                                                ^^^^^^^^^^^^^^^
+    |
+

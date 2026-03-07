@@ -1,0 +1,30 @@
+Assembly compilation failed:
+
+error[CS0234]: The type or namespace name 'DescriptionAttribute' does not exist in the namespace 'System.ComponentModel' (are you missing an assembly reference?)
+  --> dogfood_test.cs:22:32
+    |
+ 22 |     priority: int = 100
+    |                        ^
+    |
+
+error[CS0234]: The type or namespace name 'DefaultPropertyAttribute' does not exist in the namespace 'System.ComponentModel' (are you missing an assembly reference?)
+  --> /tmp/tmpolrpkk52/dogfood_test.spy:20:28
+    |
+ 20 | class ConfigSection:
+    |                     ^
+    |
+
+error[CS1689]: Attribute 'System.Diagnostics.Conditional' is only valid on methods or attribute classes
+  --> /tmp/tmpolrpkk52/dogfood_test.spy:21:6
+    |
+ 21 |     name: str
+    |      ^
+    |
+
+error[CS0246]: The type or namespace name 'Error' could not be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpolrpkk52/dogfood_test.spy:26:55
+    |
+ 26 | 
+    | ^
+    |
+

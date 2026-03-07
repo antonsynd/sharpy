@@ -1,0 +1,25 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Type errors:
+error[SPY0237]: Type parameter 'TOut' cannot be inferred; no arguments provide type information. Use explicit syntax: map[TIn, TOut](...)
+  --> /tmp/tmpal8btttj/dogfood_test.spy:12:18
+    |
+ 12 |         for v in map(scale_fn, values):
+    |                  ^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0237]: Type parameter 'TOut' cannot be inferred; no arguments provide type information. Use explicit syntax: map[TIn, TOut](...)
+  --> /tmp/tmpal8btttj/dogfood_test.spy:36:14
+    |
+ 36 |     for v in map(negate, positives):
+    |              ^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+Validation errors:
+error[SPY0320]: Type 'object' is not iterable (missing '__iter__' method).
+  --> /tmp/tmpal8btttj/dogfood_test.spy:31:14
+    |
+ 31 |     for v in filter(is_positive, scaled):
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

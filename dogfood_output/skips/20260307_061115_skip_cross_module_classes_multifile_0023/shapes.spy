@@ -1,0 +1,73 @@
+# Cross-module shape hierarchy with inheritance, interface implementation, and enums
+
+interface Drawable:
+    @abstract
+    def draw(self) -> str: ...
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+    YELLOW = 4
+
+@abstract
+class Shape(Drawable):
+    color: Color
+    
+    def __init__(self, color: Color):
+        self.color = color
+    
+    @virtual
+    def area(self) -> float:
+        return 0.0
+    
+    @virtual
+    def describe(self) -> str:
+        return f"Shape with color {self.color.name}"
+    
+    @override
+    def draw(self) -> str:
+        return f"Drawing {self.describe()}"
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, radius: float, color: Color):
+        super().__init__(color)
+        self.radius = radius
+    
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    @override
+    def describe(self) -> str:
+        return f"Circle(radius={self.radius}, color={self.color.name})"
+
+class Rectangle(Shape):
+    width: float
+    height: float
+    
+    def __init__(self, width: float, height: float, color: Color):
+        super().__init__(color)
+        self.width = width
+        self.height = height
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def describe(self) -> str:
+        return f"Rectangle({self.width}x{self.height}, color={self.color.name})"
+
+delegate AreaComputer(shape: Shape) -> float
+
+class ShapeAnalyzer:
+    @static
+    def analyze(shape: Shape) -> str:
+        return f"Area of {shape.describe()}: {shape.area()}"
+    
+    @static
+    def compute_with_callback(shape: Shape, computer: AreaComputer) -> float:
+        return computer(shape)

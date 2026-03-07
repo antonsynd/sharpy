@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0506]: 'DogfoodTest.ConnectionPool.IsTrue': cannot override inherited member 'DogfoodTest.Resource.IsTrue' because it is not marked virtual, abstract, or override
+  --> /tmp/tmpshfcxt4i/dogfood_test.spy:79:30
+    |
+ 79 |         # Connection pool is "truthy" if at least half capacity is free
+    |                              ^
+    |
+

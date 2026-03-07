@@ -1,0 +1,21 @@
+warning[SPY0452]: Imported name 'Point' is never used
+  --> /tmp/tmpmghzq110/shapes.spy:4:52
+    |
+  4 | from shapes import Shape, Circle, Rectangle, ShapeFactory
+    |                                                    ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ShapeType' is never used
+  --> /tmp/tmpmghzq110/main.spy:2:26
+    |
+  2 | from enums import Color, ShapeType
+    |                          ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'points_equal' is never used
+  --> /tmp/tmpmghzq110/main.spy:6:51
+    |
+  6 | from utils import format_measurement, total_area, points_equal, color_info, ShapeAnalyzer
+    |                                                   ^^^^^^^^^^^^
+    |
+

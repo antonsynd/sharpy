@@ -1,0 +1,37 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Circle' has no member 'area'
+  --> /tmp/tmp4vbjym8g/main.spy:13:11
+    |
+ 13 |     print(c.area())
+    |           ^^^^^^
+    |
+
+error[SPY0203]: Type 'Rectangle' has no member 'area'
+  --> /tmp/tmp4vbjym8g/main.spy:14:11
+    |
+ 14 |     print(r.area())
+    |           ^^^^^^
+    |
+
+error[SPY0203]: Type 'Square' has no member 'area'
+  --> /tmp/tmp4vbjym8g/main.spy:15:11
+    |
+ 15 |     print(s.area())
+    |           ^^^^^^
+    |
+
+error[SPY0203]: Type 'Circle' has no member 'perimeter'
+  --> /tmp/tmp4vbjym8g/main.spy:18:11
+    |
+ 18 |     print(c.perimeter())
+    |           ^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Rectangle' has no member 'perimeter'
+  --> /tmp/tmp4vbjym8g/main.spy:19:11
+    |
+ 19 |     print(r.perimeter())
+    |           ^^^^^^^^^^^
+    |
+

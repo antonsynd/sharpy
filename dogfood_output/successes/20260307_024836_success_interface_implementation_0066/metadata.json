@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T02:39:27.260799",
+  "generated_code": "# Interface implementation with multiple interfaces, inheritance, and polymorphism\ninterface IIdentifiable:\n    property get id(self) -> int: ...\n    def get_type_name(self) -> str: ...\n\ninterface ISortable:\n    def compare_to(self, other: ISortable) -> int: ...\n\nclass EntityBase:\n    name: str\n\n    def __init__(self, n: str):\n        self.name = n\n\n    @virtual\n    def get_display_name(self) -> str:\n        return self.name\n\nclass Product(EntityBase, IIdentifiable, ISortable):\n    _id: int\n    price: float\n\n    def __init__(self, id: int, n: str, p: float):\n        super().__init__(n)\n        self._id = id\n        self.price = p\n\n    property get id(self) -> int:\n        return self._id\n\n    @override\n    def get_display_name(self) -> str:\n        return f\"{self.name} (${self.price})\"\n\n    def get_type_name(self) -> str:\n        return \"Product\"\n\n    def compare_to(self, other: ISortable) -> int:\n        return 0\n\nclass Service(EntityBase, IIdentifiable):\n    _id: int\n\n    def __init__(self, id: int, n: str):\n        super().__init__(n)\n        self._id = id\n\n    property get id(self) -> int:\n        return self._id\n\n    def get_type_name(self) -> str:\n        return \"Service\"\n\ndef show_info(item: IIdentifiable) -> None:\n    print(f\"ID: {item.id}, Type: {item.get_type_name()}\")\n\ndef main():\n    # FIX: Use list[EntityBase] instead of list[IIdentifiable]\n    # Generic collections are INVARIANT in Sharpy\n    items: list[EntityBase] = []\n    items.append(Product(1, \"Widget\", 9.99))\n    items.append(Service(2, \"Support\"))\n\n    for item in items:\n        # Access IIdentifiable through type-specific variables\n        if isinstance(item, Product):\n            p: Product = item\n            show_info(p)\n        if isinstance(item, Service):\n            s: Service = item\n            show_info(s)\n        \n        # Polymorphic dispatch through base class\n        print(item.get_display_name())\n",
+  "expected_output": "ID: 1, Type: Product\nWidget ($9.99)\nID: 2, Type: Service\nSupport\n",
+  "actual_output": "ID: 1, Type: Product\nWidget ($9.99)\nID: 2, Type: Service\nSupport",
+  "feature_focus": "interface_implementation",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 533.1158843040466,
+  "execution_duration": 4.796281099319458,
+  "source_files": null
+}

@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS1061]: 'T' does not contain a definition for 'Prepare' and no accessible extension method 'Prepare' accepting a first argument of type 'T' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpgal9nvrd/core.spy:38:28
+    |
+ 38 |     
+    |     ^
+    |
+
+error[CS1061]: 'Data.Priority' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'Data.Priority' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpgal9nvrd/plugins.spy:17:54
+    |
+ 17 |     manager.register(bin_plugin)
+    |                                 ^
+    |
+

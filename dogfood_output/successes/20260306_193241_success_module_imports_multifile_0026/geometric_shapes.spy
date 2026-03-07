@@ -1,0 +1,63 @@
+# Geometric shapes module with interface and classes
+interface Drawable:
+    def draw(self) -> str
+
+interface Scalable:
+    def scale(self, factor: float) -> float
+
+@abstract
+class GeometricShape:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    def get_name(self) -> str:
+        return self.name
+    
+    @abstract
+    def calculate_area(self) -> float:
+        ...
+
+class CircleShape(GeometricShape, Drawable, Scalable):
+    radius: float
+    
+    def __init__(self, radius: float):
+        super().__init__("Circle")
+        self.radius = radius
+    
+    @override
+    def calculate_area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    def draw(self) -> str:
+        return f"Drawing a circle with radius {self.radius}"
+    
+    def scale(self, factor: float) -> float:
+        self.radius = self.radius * factor
+        return self.radius
+
+class RectangleShape(GeometricShape, Drawable):
+    width: float
+    height: float
+    
+    def __init__(self, width: float, height: float):
+        super().__init__("Rectangle")
+        self.width = width
+        self.height = height
+    
+    @override
+    def calculate_area(self) -> float:
+        return self.width * self.height
+    
+    def draw(self) -> str:
+        return f"Drawing a {self.width} x {self.height} rectangle"
+    
+    def get_perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+enum ShapeType:
+    CIRCLE = 0
+    SQUARE = 1
+    TRIANGLE = 2
+    PENTAGON = 3

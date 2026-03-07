@@ -1,0 +1,36 @@
+import asyncio
+
+class ManagedSequence:
+    items: list[int]
+    active: bool
+    
+    def __init__(self):
+        self.items = [10, 20, 30, 40, 50]
+        self.active = False
+    
+    async def __aenter__(self) -> ManagedSequence:
+        self.active = True
+        print("sequence active")
+        return self
+    
+    async def __aexit__(self):
+        self.active = False
+        print("sequence closed")
+    
+    def fetch_values(self) -> int:
+        for item in self.items:
+            if self.active:
+                yield item
+
+async def main():
+    result: int = 0
+    
+    async with ManagedSequence() as seq:
+        # Generator yields while async context is held
+        for value in seq.fetch_values():
+            result += value
+            print(result)
+            await asyncio.sleep(0.01)
+    
+    print("total")
+    print(result)

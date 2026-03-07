@@ -1,0 +1,60 @@
+# Tagged union declaration with pattern matching for shapes
+union Shape:
+    case Circle(radius: float)
+    case Rectangle(width: float, height: float)
+    case Triangle(base: float, height: float)
+
+def area(shape: Shape) -> float:
+    return match shape:
+        case Shape.Circle(r):
+            3.14159 * r * r
+        case Shape.Rectangle(w, h):
+            w * h
+        case Shape.Triangle(b, h):
+            0.5 * b * h
+
+def describe(shape: Shape) -> str:
+    return match shape:
+        case Shape.Circle(r):
+            f"Circle with radius {r}"
+        case Shape.Rectangle(w, h):
+            f"Rectangle {w} x {h}"
+        case Shape.Triangle(b, h):
+            f"Triangle base={b} height={h}"
+
+def is_large(shape: Shape) -> bool:
+    return match shape:
+        case Shape.Circle(r):
+            r > 10.0
+        case Shape.Rectangle(w, h):
+            w * h > 100.0
+        case Shape.Triangle(b, h):
+            0.5 * b * h > 50.0
+
+def main():
+    # Create various shapes using union cases
+    circle: Shape = Shape.Circle(5.0)
+    rect: Shape = Shape.Rectangle(4.0, 6.0)
+    triangle: Shape = Shape.Triangle(3.0, 4.0)
+
+    # Print descriptions and areas
+    print(describe(circle))
+    print(area(circle))
+    print(describe(rect))
+    print(area(rect))
+    print(describe(triangle))
+    print(area(triangle))
+
+    # Large shape check
+    large_circle: Shape = Shape.Circle(15.0)
+    print(is_large(large_circle))
+    print(is_large(triangle))
+
+    # Scale test with different shapes in a list
+    shapes: list[Shape] = [
+        Shape.Circle(2.0),
+        Shape.Rectangle(3.0, 4.0),
+        Shape.Triangle(5.0, 6.0)
+    ]
+
+    print(len(shapes))

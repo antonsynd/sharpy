@@ -1,0 +1,9 @@
+Repeated identical compiler error (likely compiler bug): Compilation errors:
+
+error[SPY0101]: Expected identifier, got Event
+  --> /tmp/tmp9vh8rkys/dogfood_test.spy:6:20
+    |
+  6 | def classify_event(event: Event, threshold: float) -> str:
+    |                    ^^^^^
+    |
+

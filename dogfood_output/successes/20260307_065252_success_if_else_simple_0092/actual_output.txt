@@ -1,0 +1,6 @@
+emergency
+emergency_caution
+maintain
+standby
+proceed
+caution

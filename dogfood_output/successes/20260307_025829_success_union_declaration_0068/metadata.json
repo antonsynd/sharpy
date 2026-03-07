@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-07T02:50:26.556716",
+  "generated_code": "# Union declaration for HTTP response handling with semantic field names\nunion HttpResponse:\n    case Success(body: str, status_code: int)\n    case Redirect(location: str, permanent: bool)\n    case ClientError(message: str, code: int)\n    case ServerError(message: str, code: int)\n\ndef categorize(response: HttpResponse) -> str:\n    result: str = \"\"\n    match response:\n        case Success(body, status_code):\n            if status_code == 200:\n                result = \"ok\"\n            else:\n                result = \"created\"\n        case Redirect(loc, permanent):\n            if permanent:\n                result = \"moved_permanently\"\n            else:\n                result = \"found\"\n        case ClientError(msg, code):\n            result = \"client_fault\"\n        case ServerError(msg, code):\n            result = \"server_fault\"\n    return result\n\ndef main():\n    r1 = HttpResponse.Success(\"data\", 200)\n    r2 = HttpResponse.Success(\"created\", 201)\n    r3 = HttpResponse.Redirect(\"/new\", True)\n    r4 = HttpResponse.Redirect(\"/temp\", False)\n    r5 = HttpResponse.ClientError(\"bad request\", 400)\n    r6 = HttpResponse.ServerError(\"internal error\", 500)\n    print(categorize(r1))\n    print(categorize(r2))\n    print(categorize(r3))\n    print(categorize(r4))\n    print(categorize(r5))\n    print(categorize(r6))\n",
+  "expected_output": "ok\ncreated\nmoved_permanently\nfound\nclient_fault\nserver_fault\n",
+  "actual_output": "ok\ncreated\nmoved_permanently\nfound\nclient_fault\nserver_fault",
+  "feature_focus": "union_declaration",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 462.6290228366852,
+  "execution_duration": 4.568948984146118,
+  "source_files": null
+}

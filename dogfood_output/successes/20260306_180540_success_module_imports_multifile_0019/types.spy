@@ -1,0 +1,16 @@
+# Module providing data structures and type utilities
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+class Calculator:
+    @static
+    def scale(value: float, factor: float) -> float:
+        return value * factor
+
+def format_id(prefix: str, value: int) -> str:
+    return f"{prefix}-{value}"

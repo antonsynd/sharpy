@@ -1,0 +1,30 @@
+# Main entry point - demonstrates usage of utils module
+from utils import TextFormatter, Counter, calculate_average, clamp_value
+
+def main():
+    # Test TextFormatter class
+    formatter = TextFormatter("INFO")
+    formatted = formatter.format("System started")
+    print(formatted)
+
+    # Test Counter class with increment
+    counter = Counter(10)
+    print(counter.get_value())
+    counter.increment()
+    counter.increment()
+    print(counter.get_value())
+    counter.reset()
+    print(counter.get_value())
+
+    # Test calculate_average function
+    scores: list[int] = [85, 90, 78, 92, 88]
+    avg = calculate_average(scores)
+    print(avg)
+
+    # Test clamp_value function
+    result1 = clamp_value(150, 0, 100)
+    result2 = clamp_value(-10, 0, 100)
+    result3 = clamp_value(50, 0, 100)
+    print(result1)
+    print(result2)
+    print(result3)
