@@ -116,6 +116,186 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return a randomly-selected element from range(stop) or range(start, stop, step).
+        /// </summary>
+        public static int Randrange(int stop)
+        {
+            return Randrange(0, stop, 1);
+        }
+
+        /// <summary>
+        /// Return a randomly-selected element from range(start, stop).
+        /// </summary>
+        public static int Randrange(int start, int stop)
+        {
+            return Randrange(start, stop, 1);
+        }
+
+        /// <summary>
+        /// Return a randomly-selected element from range(start, stop, step).
+        /// </summary>
+        public static int Randrange(int start, int stop, int step)
+        {
+            if (step == 0)
+            {
+                throw new ValueError("zero step for randrange()");
+            }
+
+            int width = stop - start;
+
+            if (step == 1)
+            {
+                if (width <= 0)
+                {
+                    throw new ValueError($"empty range for randrange() ({start}, {stop}, {step})");
+                }
+
+                lock (_lock)
+                {
+                    return start + _random.Next(width);
+                }
+            }
+
+            int n;
+            if (step > 0)
+            {
+                n = (width + step - 1) / step;
+            }
+            else
+            {
+                n = (width + step + 1) / step;
+            }
+
+            if (n <= 0)
+            {
+                throw new ValueError($"empty range for randrange() ({start}, {stop}, {step})");
+            }
+
+            lock (_lock)
+            {
+                return start + step * _random.Next(n);
+            }
+        }
+
+        /// <summary>
+        /// Gaussian distribution. mu is the mean, and sigma is the standard deviation.
+        /// Uses the Box-Muller transform.
+        /// </summary>
+        public static double Gauss(double mu, double sigma)
+        {
+            double u1, u2;
+            lock (_lock)
+            {
+                u1 = _random.NextDouble();
+                u2 = _random.NextDouble();
+            }
+
+            // Box-Muller transform
+            double z0 = System.Math.Sqrt(-2.0 * System.Math.Log(u1)) * System.Math.Cos(2.0 * System.Math.PI * u2);
+            return mu + sigma * z0;
+        }
+
+        /// <summary>
+        /// Returns a non-negative integer with k random bits.
+        /// </summary>
+        public static int Getrandbits(int k)
+        {
+            if (k < 0)
+            {
+                throw new ValueError("number of bits must be non-negative");
+            }
+
+            if (k == 0)
+            {
+                return 0;
+            }
+
+            if (k > 30)
+            {
+                throw new ValueError("number of bits must be <= 30 for int return");
+            }
+
+            lock (_lock)
+            {
+                // Generate random bits by getting a random number in [0, 2^k)
+                return _random.Next(1 << k);
+            }
+        }
+
+        /// <summary>
+        /// Return a k sized list of elements chosen from the population with replacement,
+        /// optionally weighted.
+        /// </summary>
+        public static Sharpy.List<T> Choices<T>(IList<T> population, IList<double>? weights = null, int k = 1)
+        {
+            if (population == null || population.Count == 0)
+            {
+                throw new ValueError("Cannot choose from an empty population");
+            }
+
+            if (k < 0)
+            {
+                throw new ValueError("k must be non-negative");
+            }
+
+            if (weights != null && weights.Count != population.Count)
+            {
+                throw new ValueError("The number of weights does not match the population");
+            }
+
+            var result = new System.Collections.Generic.List<T>(k);
+
+            if (weights == null)
+            {
+                // Uniform selection
+                lock (_lock)
+                {
+                    for (int i = 0; i < k; i++)
+                    {
+                        result.Add(population[_random.Next(population.Count)]);
+                    }
+                }
+            }
+            else
+            {
+                // Build cumulative weights
+                var cumWeights = new double[weights.Count];
+                double total = 0;
+                for (int i = 0; i < weights.Count; i++)
+                {
+                    total += weights[i];
+                    cumWeights[i] = total;
+                }
+
+                if (total <= 0)
+                {
+                    throw new ValueError("Total of weights must be greater than zero");
+                }
+
+                lock (_lock)
+                {
+                    for (int i = 0; i < k; i++)
+                    {
+                        double r = _random.NextDouble() * total;
+                        // Binary search for the index
+                        int idx = System.Array.BinarySearch(cumWeights, r);
+                        if (idx < 0)
+                        {
+                            idx = ~idx;
+                        }
+                        if (idx >= population.Count)
+                        {
+                            idx = population.Count - 1;
+                        }
+                        result.Add(population[idx]);
+                    }
+                }
+            }
+
+            return new Sharpy.List<T>(result);
+        }
+
+        /// <summary>
         /// Return a k length list of unique elements chosen from the population sequence.
         /// </summary>
         public static Sharpy.List<T> Sample<T>(IList<T> population, int k)

@@ -84,5 +84,39 @@ namespace Sharpy
         /// In Sharpy, this is simplified to just return the current directory.
         /// </summary>
         public static string[] Path => (string[])_path.Clone();
+
+        /// <summary>
+        /// An integer giving the maximum value a variable of type int can take.
+        /// Equivalent to Python's sys.maxsize.
+        /// </summary>
+        public static int Maxsize => int.MaxValue;
+
+        /// <summary>
+        /// Return the size of an object in bytes. Best-effort estimate.
+        /// Returns -1 if the size cannot be determined.
+        /// </summary>
+        public static int Getsizeof(object? obj)
+        {
+            if (obj == null)
+            {
+                return 0;
+            }
+
+            var type = obj.GetType();
+
+            if (type.IsValueType)
+            {
+                try
+                {
+                    return System.Runtime.InteropServices.Marshal.SizeOf(type);
+                }
+                catch
+                {
+                    return -1;
+                }
+            }
+
+            return -1;
+        }
     }
 }
