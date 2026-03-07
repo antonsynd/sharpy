@@ -1,3 +1,4 @@
+using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -58,7 +59,7 @@ internal sealed class DiagnosticPublisher
     {
         var range = PositionConverter.DiagnosticToRange(diag, sourceText);
 
-        return new Diagnostic
+        var lspDiag = new Diagnostic
         {
             Range = range,
             Severity = ConvertSeverity(diag.Severity),
@@ -66,8 +67,13 @@ internal sealed class DiagnosticPublisher
             Source = "sharpy",
             Code = !string.IsNullOrEmpty(diag.Code)
                 ? new DiagnosticCode(diag.Code)
-                : default
+                : default,
+            Data = diag.Data is { Count: > 0 }
+                ? JObject.FromObject(diag.Data)
+                : null
         };
+
+        return lspDiag;
     }
 
     internal static DiagnosticSeverity ConvertSeverity(CompilerDiagnosticSeverity severity)
