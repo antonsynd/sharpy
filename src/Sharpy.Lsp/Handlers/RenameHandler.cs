@@ -13,6 +13,8 @@ namespace Sharpy.Lsp.Handlers;
 /// </summary>
 internal sealed class SharplyRenameHandler : RenameHandlerBase
 {
+    // Keep in sync with Lexer.Keywords (src/Sharpy.Compiler/Lexer/Lexer.cs).
+    // "self" is a contextual keyword, not a lexer keyword, but must be blocked for rename.
     private static readonly HashSet<string> SharplyKeywords = new(StringComparer.Ordinal)
     {
         "def", "class", "struct", "interface", "enum", "union", "if", "else", "elif",

@@ -138,22 +138,8 @@ internal sealed class SharplyCodeActionHandler : CodeActionHandlerBase
         DocumentUri uri,
         Diagnostic diag)
     {
-        // First try structured data from the diagnostic
+        // Extract suggested name from structured diagnostic data
         var suggestedName = ExtractSuggestedNameFromData(diag.Data);
-
-        // Fall back to message parsing for backwards compatibility
-        if (suggestedName == null)
-        {
-            var message = diag.Message ?? "";
-            var considerIndex = message.IndexOf("consider '", StringComparison.Ordinal);
-            if (considerIndex >= 0)
-            {
-                var nameStart = considerIndex + "consider '".Length;
-                var nameEnd = message.IndexOf('\'', nameStart);
-                if (nameEnd > nameStart)
-                    suggestedName = message[nameStart..nameEnd];
-            }
-        }
 
         if (string.IsNullOrEmpty(suggestedName))
             return null;

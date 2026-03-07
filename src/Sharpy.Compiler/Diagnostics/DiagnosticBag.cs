@@ -235,11 +235,38 @@ public class DiagnosticBag
         }
     }
 
-    public bool HasErrors => _diagnostics.Any(d => d.IsError);
+    public bool HasErrors
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _diagnostics.Any(d => d.IsError);
+            }
+        }
+    }
 
-    public int ErrorCount => _diagnostics.Count(d => d.IsError);
+    public int ErrorCount
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _diagnostics.Count(d => d.IsError);
+            }
+        }
+    }
 
-    public int WarningCount => _diagnostics.Count(d => d.Severity == CompilerDiagnosticSeverity.Warning);
+    public int WarningCount
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _diagnostics.Count(d => d.Severity == CompilerDiagnosticSeverity.Warning);
+            }
+        }
+    }
 
     public IReadOnlyList<CompilerDiagnostic> GetAll()
     {

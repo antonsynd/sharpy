@@ -102,9 +102,9 @@ internal sealed class SharplyFormattingHandler : DocumentFormattingHandlerBase
         {
             tokens = lexer.TokenizeAll();
         }
-        catch
+        catch (Exception)
         {
-            // If lexing fails completely, return empty map (no reformatting)
+            // If lexing fails (e.g., invalid syntax), return empty map (no reformatting).
             return new Dictionary<int, int>();
         }
 

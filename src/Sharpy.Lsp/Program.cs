@@ -34,6 +34,22 @@ public class Program
                     if (rootUri is not null)
                         workspaceRootUri = rootUri.ToUri();
 
+                    // Declare workspace folder support so clients send folder notifications.
+                    try
+                    {
+                        var caps = server.ServerSettings.Capabilities;
+                        caps.Workspace ??= new OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities.WorkspaceServerCapabilities();
+                        caps.Workspace.WorkspaceFolders = new DidChangeWorkspaceFolderRegistrationOptions.StaticOptions
+                        {
+                            Supported = true,
+                            ChangeNotifications = true,
+                        };
+                    }
+                    catch (Exception)
+                    {
+                        // ServerSettings may not be fully initialized during OnInitialize.
+                    }
+
                     return Task.CompletedTask;
                 })
                 .OnInitialized((server, request, response, token) =>
