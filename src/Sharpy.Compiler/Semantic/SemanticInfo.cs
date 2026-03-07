@@ -82,7 +82,9 @@ public class SemanticInfo : ISemanticQuery
     // Track all reference locations for each symbol (for find-references and rename).
     // Key is Symbol (reference-equality), value is list of (FilePath, Line, Column, Span) tuples.
     // The FilePath may be null for the main file in single-file compilation.
-    private readonly ConcurrentDictionary<Symbol, ConcurrentBag<SymbolReference>> _symbolReferences = new();
+    // THREADING: single-threaded write access only (populated during type checking).
+    // Read access is safe after analysis completes.
+    private readonly Dictionary<Symbol, List<SymbolReference>> _symbolReferences = new();
 
     /// <summary>
     /// The file path of the current compilation unit, used to tag symbol references.
@@ -314,8 +316,12 @@ public class SemanticInfo : ISemanticQuery
             return;
 
         var reference = new SymbolReference(CurrentFilePath, node.Span.Value, node.LineStart, node.ColumnStart);
-        var bag = _symbolReferences.GetOrAdd(symbol, _ => new ConcurrentBag<SymbolReference>());
-        bag.Add(reference);
+        if (!_symbolReferences.TryGetValue(symbol, out var list))
+        {
+            list = new List<SymbolReference>();
+            _symbolReferences[symbol] = list;
+        }
+        list.Add(reference);
     }
 
     /// <summary>
@@ -324,8 +330,8 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public IReadOnlyList<SymbolReference> GetReferences(Symbol symbol)
     {
-        return _symbolReferences.TryGetValue(symbol, out var bag)
-            ? bag.ToArray()
+        return _symbolReferences.TryGetValue(symbol, out var list)
+            ? list
             : Array.Empty<SymbolReference>();
     }
 }

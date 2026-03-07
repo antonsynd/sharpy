@@ -13,27 +13,15 @@ namespace Sharpy.Lsp;
 /// </summary>
 internal sealed class DiagnosticPublisher
 {
-    private ILanguageServerFacade? _server;
-
-    public DiagnosticPublisher()
-    {
-    }
+    private readonly ILanguageServerFacade _server;
 
     public DiagnosticPublisher(ILanguageServerFacade server)
     {
         _server = server;
     }
 
-    public void SetServer(ILanguageServerFacade server)
-    {
-        _server = server;
-    }
-
     public void PublishDiagnostics(string uri, SemanticResult result, SourceText? sourceText)
     {
-        if (_server == null)
-            return;
-
         var lspDiagnostics = ConvertDiagnostics(result.Diagnostics, sourceText);
 
         _server.TextDocument.PublishDiagnostics(new PublishDiagnosticsParams
@@ -45,7 +33,7 @@ internal sealed class DiagnosticPublisher
 
     public void ClearDiagnostics(string uri)
     {
-        _server?.TextDocument.PublishDiagnostics(new PublishDiagnosticsParams
+        _server.TextDocument.PublishDiagnostics(new PublishDiagnosticsParams
         {
             Uri = DocumentUri.From(uri),
             Diagnostics = new Container<Diagnostic>()

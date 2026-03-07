@@ -3,7 +3,6 @@ using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
 
 namespace Sharpy.Lsp.Handlers;
@@ -16,17 +15,13 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
 {
     private readonly SharplyWorkspace _workspace;
     private readonly DiagnosticPublisher _diagnosticPublisher;
-    private readonly ILanguageServerFacade _server;
 
     public TextDocumentSyncHandler(
         SharplyWorkspace workspace,
-        DiagnosticPublisher diagnosticPublisher,
-        ILanguageServerFacade server)
+        DiagnosticPublisher diagnosticPublisher)
     {
         _workspace = workspace;
         _diagnosticPublisher = diagnosticPublisher;
-        _diagnosticPublisher.SetServer(server);
-        _server = server;
 
         // Subscribe to analysis completion to publish diagnostics
         _workspace.DocumentAnalyzed += OnDocumentAnalyzedAsync;

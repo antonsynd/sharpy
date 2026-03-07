@@ -329,15 +329,18 @@ internal sealed class SharplyWorkspace : IDisposable
 
     private void ScheduleAnalysis(string uri)
     {
-        // Cancel and recreate debounce timer
-        if (_debounceTimers.TryRemove(uri, out var oldTimer))
-        {
-            oldTimer.Dispose();
-        }
-
-        var timer = new Timer(_ => FireAndForgetAnalysis(uri),
-            null, DebounceDelay, Timeout.InfiniteTimeSpan);
-        _debounceTimers[uri] = timer;
+        // Atomically replace the debounce timer to avoid race conditions
+        // between concurrent ScheduleAnalysis calls on the same URI.
+        _debounceTimers.AddOrUpdate(
+            uri,
+            _ => new Timer(_ => FireAndForgetAnalysis(uri),
+                null, DebounceDelay, Timeout.InfiniteTimeSpan),
+            (_, oldTimer) =>
+            {
+                oldTimer.Dispose();
+                return new Timer(_ => FireAndForgetAnalysis(uri),
+                    null, DebounceDelay, Timeout.InfiniteTimeSpan);
+            });
     }
 
     // Timer callbacks require void return; the full try-catch ensures no exceptions escape.
