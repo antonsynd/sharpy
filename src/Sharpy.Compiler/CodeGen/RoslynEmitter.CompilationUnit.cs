@@ -220,6 +220,14 @@ internal partial class RoslynEmitter
                         NameEquals(alias.AsName),
                         ParseName(namespaceName));
                 }
+                else if (IsStdlibModule(alias.Name))
+                {
+                    // import math as m -> using m = global::Sharpy.Math;
+                    var fullModuleClass = ConvertStdlibModuleToFullyQualified(alias.Name);
+                    yield return UsingDirective(
+                        NameEquals(alias.AsName),
+                        ParseName(fullModuleClass));
+                }
                 else
                 {
                     // import module as alias -> using alias = ProjectNamespace.Module;
@@ -244,6 +252,15 @@ internal partial class RoslynEmitter
                 {
                     // import system.io -> using System.IO;
                     yield return UsingDirective(ParseName(namespaceName));
+                }
+                else if (IsStdlibModule(alias.Name))
+                {
+                    // import math -> using math = global::Sharpy.Math;
+                    var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_"));
+                    var fullModuleClass = ConvertStdlibModuleToFullyQualified(alias.Name);
+                    yield return UsingDirective(
+                        NameEquals(sanitizedAlias),
+                        ParseName(fullModuleClass));
                 }
                 else
                 {
@@ -308,6 +325,15 @@ internal partial class RoslynEmitter
                         ParseName(qualifiedName));
                 }
             }
+        }
+        else if (IsStdlibModule(fromImport.Module))
+        {
+            // Generate using static for Sharpy stdlib module class
+            // e.g., "from math import sqrt" → "using static global::Sharpy.Math;"
+            // e.g., "from os.path import join" → "using static global::Sharpy.OsPath;"
+            var fullModuleClass = ConvertStdlibModuleToFullyQualified(fromImport.Module);
+            yield return UsingDirective(ParseName(fullModuleClass))
+                .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
         }
         else
         {
@@ -392,6 +418,31 @@ internal partial class RoslynEmitter
 
         var firstPart = moduleName.Split('.')[0].ToLowerInvariant();
         return netPrefixes.Contains(firstPart);
+    }
+
+    /// <summary>
+    /// Check if a module name corresponds to a Sharpy stdlib (.NET) module
+    /// by looking up the module symbol in the symbol table.
+    /// </summary>
+    private bool IsStdlibModule(string moduleName)
+    {
+        // For dotted names like "os.path", look up the top-level part
+        var topLevel = moduleName.Split('.')[0];
+        var symbol = _context.LookupSymbol(topLevel);
+        return symbol is ModuleSymbol { IsNetModule: true };
+    }
+
+    /// <summary>
+    /// Convert a Sharpy stdlib module name to a fully qualified C# class name.
+    /// e.g., "math" -> "global::Sharpy.Math", "os.path" -> "global::Sharpy.OsPath"
+    /// Stdlib module classes live in the Sharpy namespace with PascalCase names
+    /// where dotted parts are concatenated (no dots in the class name).
+    /// </summary>
+    private static string ConvertStdlibModuleToFullyQualified(string moduleName)
+    {
+        var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        var className = string.Concat(parts.Select(SimpleToPascalCase));
+        return $"global::Sharpy.{className}";
     }
 
 
