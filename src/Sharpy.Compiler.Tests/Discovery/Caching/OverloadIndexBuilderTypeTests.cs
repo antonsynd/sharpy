@@ -133,7 +133,7 @@ public class OverloadIndexBuilderTypeTests
         // extend intermediate .NET exception types (IOException, FileNotFoundException)
         var allowedBaseTypes = new HashSet<string?>
         {
-            "Exception", "IOException", "FileNotFoundException", "UnauthorizedAccessException"
+            "Exception", "IOException", "FileNotFoundException", "UnauthorizedAccessException", "ValueError"
         };
         foreach (var exType in exceptionTypes)
         {

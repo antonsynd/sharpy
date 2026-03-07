@@ -19,55 +19,55 @@ public class StringExtensionsAdditionalTests
     [Fact]
     public void Split_NoArgs_SplitsOnWhitespace()
     {
-        "a  b  c".Split().Should().Equal("a", "b", "c");
+        StringExtensions.Split("a  b  c").Should().Equal("a", "b", "c");
     }
 
     [Fact]
     public void Split_NoArgs_CollapsesConsecutiveWhitespace()
     {
-        "  hello   world  ".Split().Should().Equal("hello", "world");
+        StringExtensions.Split("  hello   world  ").Should().Equal("hello", "world");
     }
 
     [Fact]
     public void Split_NoArgs_EmptyString_ReturnsEmptyList()
     {
-        "".Split().Should().BeEmpty();
+        StringExtensions.Split("").Should().BeEmpty();
     }
 
     [Fact]
     public void Split_NoArgs_AllWhitespace_ReturnsEmptyList()
     {
-        "   ".Split().Should().BeEmpty();
+        StringExtensions.Split("   ").Should().BeEmpty();
     }
 
     [Fact]
     public void Split_WithSep_SplitsOnSeparator()
     {
-        "a,b,c".Split(",").Should().Equal("a", "b", "c");
+        StringExtensions.Split("a,b,c", ",").Should().Equal("a", "b", "c");
     }
 
     [Fact]
     public void Split_WithSep_ConsecutiveSeparators_PreservesEmptyStrings()
     {
-        "a,,b".Split(",").Should().Equal("a", "", "b");
+        StringExtensions.Split("a,,b", ",").Should().Equal("a", "", "b");
     }
 
     [Fact]
     public void Split_WithSep_EmptyString_ReturnsListWithEmptyString()
     {
-        "".Split(",").Should().Equal("");
+        StringExtensions.Split("", ",").Should().Equal("");
     }
 
     [Fact]
     public void Split_WithSep_SepOnly_ReturnsTwoEmptyStrings()
     {
-        ",".Split(",").Should().Equal("", "");
+        StringExtensions.Split(",", ",").Should().Equal("", "");
     }
 
     [Fact]
     public void Split_EmptySep_ThrowsValueError()
     {
-        var act = () => "hello".Split("");
+        var act = () => StringExtensions.Split("hello", "");
         act.Should().Throw<ValueError>();
     }
 
@@ -75,26 +75,26 @@ public class StringExtensionsAdditionalTests
     public void Split_WithMaxsplit_LimitsNumberOfSplits()
     {
         // Python: "a,b,c".split(",", 1) → ['a', 'b,c']
-        "a,b,c".Split(",", 1).Should().Equal("a", "b,c");
+        StringExtensions.Split("a,b,c", ",", 1).Should().Equal("a", "b,c");
     }
 
     [Fact]
     public void Split_MaxsplitZero_ReturnsWholeString()
     {
         // Python: "a,b,c".split(",", 0) → ['a,b,c']
-        "a,b,c".Split(",", 0).Should().Equal("a,b,c");
+        StringExtensions.Split("a,b,c", ",", 0).Should().Equal("a,b,c");
     }
 
     [Fact]
     public void Split_MaxsplitLargerThanOccurrences_SplitsAll()
     {
-        "a".Split(",", 5).Should().Equal("a");
+        StringExtensions.Split("a", ",", 5).Should().Equal("a");
     }
 
     [Fact]
     public void Split_NegativeMaxsplit_SplitsAll()
     {
-        "a,b,c".Split(",", -1).Should().Equal("a", "b", "c");
+        StringExtensions.Split("a,b,c", ",", -1).Should().Equal("a", "b", "c");
     }
 
     #endregion
@@ -148,53 +148,54 @@ public class StringExtensionsAdditionalTests
     [Fact]
     public void Replace_AllOccurrences()
     {
-        "hello".Replace("l", "r").Should().Be("herro");
+        // Built-in string.Replace handles this case identically
+        StringExtensions.Replace("hello", "l", "r").Should().Be("herro");
     }
 
     [Fact]
     public void Replace_WithCount_LimitsReplacements()
     {
         // Python: "aaa".replace("a", "b", 2) → "bba"
-        "aaa".Replace("a", "b", 2).Should().Be("bba");
+        StringExtensions.Replace("aaa", "a", "b", 2).Should().Be("bba");
     }
 
     [Fact]
     public void Replace_CountZero_NoChange()
     {
-        "aaa".Replace("a", "b", 0).Should().Be("aaa");
+        StringExtensions.Replace("aaa", "a", "b", 0).Should().Be("aaa");
     }
 
     [Fact]
     public void Replace_EmptyOld_InsertsEverywhere()
     {
         // Python: "aaa".replace("", "x") → "xaxaxax"
-        "aaa".Replace("", "x").Should().Be("xaxaxax");
+        StringExtensions.Replace("aaa", "", "x").Should().Be("xaxaxax");
     }
 
     [Fact]
     public void Replace_EmptyOld_EmptyString()
     {
         // Python: "".replace("", "x") → "x"
-        "".Replace("", "x").Should().Be("x");
+        StringExtensions.Replace("", "", "x").Should().Be("x");
     }
 
     [Fact]
     public void Replace_EmptyOld_WithCount()
     {
         // Python: "abc".replace("", "x", 2) → "xaxbc"
-        "abc".Replace("", "x", 2).Should().Be("xaxbc");
+        StringExtensions.Replace("abc", "", "x", 2).Should().Be("xaxbc");
     }
 
     [Fact]
     public void Replace_NotFound_NoChange()
     {
-        "hello".Replace("xyz", "abc").Should().Be("hello");
+        StringExtensions.Replace("hello", "xyz", "abc").Should().Be("hello");
     }
 
     [Fact]
     public void Replace_RemoveOccurrences()
     {
-        "hello".Replace("l", "", 1).Should().Be("helo");
+        StringExtensions.Replace("hello", "l", "", 1).Should().Be("helo");
     }
 
     #endregion

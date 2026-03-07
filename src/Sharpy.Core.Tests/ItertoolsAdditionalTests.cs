@@ -1,5 +1,3 @@
-// TODO: Temporarily disabled due to API mismatch with itertools implementation
-#if ITERTOOLS_ADDITIONAL_TESTS_ENABLED
 using Xunit;
 using FluentAssertions;
 using System.Linq;
@@ -38,7 +36,8 @@ public class ItertoolsAdditional_Tests
         var acc = new Sharpy.AccumulateIterator<int>(
             new[] { 1, 2, 3, 4, 5 }, null, default, false);
         var results = new System.Collections.Generic.List<int>();
-        while (acc.MoveNext()) results.Add(acc.Current);
+        while (acc.MoveNext())
+            results.Add(acc.Current);
         results.Should().Equal(1, 3, 6, 10, 15);
     }
 
@@ -48,7 +47,8 @@ public class ItertoolsAdditional_Tests
         var acc = new Sharpy.AccumulateIterator<int>(
             new[] { 1, 2, 3, 4, 5 }, (a, b) => a * b, default, false);
         var results = new System.Collections.Generic.List<int>();
-        while (acc.MoveNext()) results.Add(acc.Current);
+        while (acc.MoveNext())
+            results.Add(acc.Current);
         results.Should().Equal(1, 2, 6, 24, 120);
     }
 
@@ -58,7 +58,8 @@ public class ItertoolsAdditional_Tests
         var acc = new Sharpy.AccumulateIterator<int>(
             new[] { 1, 2, 3 }, null, 100, true);
         var results = new System.Collections.Generic.List<int>();
-        while (acc.MoveNext()) results.Add(acc.Current);
+        while (acc.MoveNext())
+            results.Add(acc.Current);
         results.Should().Equal(100, 101, 103, 106);
     }
 
@@ -77,7 +78,8 @@ public class ItertoolsAdditional_Tests
     {
         var dw = new Sharpy.DropwhileIterator<int>(x => x < 5, new[] { 1, 4, 6, 4, 1 });
         var results = new System.Collections.Generic.List<int>();
-        while (dw.MoveNext()) results.Add(dw.Current);
+        while (dw.MoveNext())
+            results.Add(dw.Current);
         results.Should().Equal(6, 4, 1);
     }
 
@@ -86,7 +88,8 @@ public class ItertoolsAdditional_Tests
     {
         var dw = new Sharpy.DropwhileIterator<int>(x => x > 100, new[] { 1, 2, 3 });
         var results = new System.Collections.Generic.List<int>();
-        while (dw.MoveNext()) results.Add(dw.Current);
+        while (dw.MoveNext())
+            results.Add(dw.Current);
         results.Should().Equal(1, 2, 3);
     }
 
@@ -95,7 +98,8 @@ public class ItertoolsAdditional_Tests
     {
         var dw = new Sharpy.DropwhileIterator<int>(x => x < 100, new[] { 1, 2, 3 });
         var results = new System.Collections.Generic.List<int>();
-        while (dw.MoveNext()) results.Add(dw.Current);
+        while (dw.MoveNext())
+            results.Add(dw.Current);
         results.Should().BeEmpty();
     }
 
@@ -106,7 +110,8 @@ public class ItertoolsAdditional_Tests
     {
         var tw = new Sharpy.TakewhileIterator<int>(x => x < 5, new[] { 1, 4, 6, 4, 1 });
         var results = new System.Collections.Generic.List<int>();
-        while (tw.MoveNext()) results.Add(tw.Current);
+        while (tw.MoveNext())
+            results.Add(tw.Current);
         results.Should().Equal(1, 4);
     }
 
@@ -115,7 +120,8 @@ public class ItertoolsAdditional_Tests
     {
         var tw = new Sharpy.TakewhileIterator<int>(x => x < 100, new[] { 1, 2, 3 });
         var results = new System.Collections.Generic.List<int>();
-        while (tw.MoveNext()) results.Add(tw.Current);
+        while (tw.MoveNext())
+            results.Add(tw.Current);
         results.Should().Equal(1, 2, 3);
     }
 
@@ -128,7 +134,8 @@ public class ItertoolsAdditional_Tests
             new[] { "A", "B", "C", "D", "E", "F" },
             new[] { true, false, true, false, true, true });
         var results = new System.Collections.Generic.List<string>();
-        while (c.MoveNext()) results.Add(c.Current);
+        while (c.MoveNext())
+            results.Add(c.Current);
         results.Should().Equal("A", "C", "E", "F");
     }
 
@@ -139,7 +146,8 @@ public class ItertoolsAdditional_Tests
             new[] { 1, 2, 3, 4, 5 },
             new[] { true, true });
         var results = new System.Collections.Generic.List<int>();
-        while (c.MoveNext()) results.Add(c.Current);
+        while (c.MoveNext())
+            results.Add(c.Current);
         results.Should().Equal(1, 2);
     }
 
@@ -150,7 +158,8 @@ public class ItertoolsAdditional_Tests
     {
         var ff = new Sharpy.FilterfalseIterator<int>(x => x % 2 != 0, new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 });
         var results = new System.Collections.Generic.List<int>();
-        while (ff.MoveNext()) results.Add(ff.Current);
+        while (ff.MoveNext())
+            results.Add(ff.Current);
         results.Should().Equal(0, 2, 4, 6, 8);
     }
 
@@ -163,7 +172,8 @@ public class ItertoolsAdditional_Tests
             new IEnumerable<string>[] { new[] { "A", "B" }, new[] { "x", "y", "z" } },
             "-");
         var results = new System.Collections.Generic.List<string[]>();
-        while (zl.MoveNext()) results.Add(zl.Current);
+        while (zl.MoveNext())
+            results.Add(zl.Current);
         results.Should().HaveCount(3);
         results[0].Should().Equal("A", "x");
         results[1].Should().Equal("B", "y");
@@ -177,7 +187,8 @@ public class ItertoolsAdditional_Tests
     {
         var pw = new Sharpy.PairwiseIterator<int>(new[] { 1, 2, 3, 4, 5 });
         var results = new System.Collections.Generic.List<(int, int)>();
-        while (pw.MoveNext()) results.Add(pw.Current);
+        while (pw.MoveNext())
+            results.Add(pw.Current);
         results.Should().Equal((1, 2), (2, 3), (3, 4), (4, 5));
     }
 
@@ -203,7 +214,8 @@ public class ItertoolsAdditional_Tests
         var p = new Sharpy.ProductIterator<string>(
             new IEnumerable<string>[] { new[] { "A", "B" }, new[] { "1", "2" } });
         var results = new System.Collections.Generic.List<string[]>();
-        while (p.MoveNext()) results.Add(p.Current);
+        while (p.MoveNext())
+            results.Add(p.Current);
         results.Should().HaveCount(4);
         results[0].Should().Equal("A", "1");
         results[1].Should().Equal("A", "2");
@@ -241,7 +253,8 @@ public class ItertoolsAdditional_Tests
     {
         var cwr = new Sharpy.CombinationsWithReplacementIterator<char>(new[] { 'A', 'B' }, 2);
         var results = new System.Collections.Generic.List<char[]>();
-        while (cwr.MoveNext()) results.Add(cwr.Current);
+        while (cwr.MoveNext())
+            results.Add(cwr.Current);
         results.Should().HaveCount(3);
         results[0].Should().Equal('A', 'A');
         results[1].Should().Equal('A', 'B');
@@ -264,4 +277,3 @@ public class ItertoolsAdditional_Tests
             .Should().Throw<Sharpy.ValueError>();
     }
 }
-#endif

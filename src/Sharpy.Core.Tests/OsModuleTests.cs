@@ -1,5 +1,3 @@
-// TODO: Temporarily disabled due to API mismatch with os implementation
-#if OS_MODULE_TESTS_ENABLED
 using System;
 using System.IO;
 using FluentAssertions;
@@ -33,11 +31,15 @@ public class OsModuleTests : IDisposable
     {
         foreach (var f in _tempFiles)
         {
-            try { File.Delete(f); } catch { }
+            try
+            { File.Delete(f); }
+            catch { }
         }
         foreach (var d in _tempDirs)
         {
-            try { Directory.Delete(d, true); } catch { }
+            try
+            { Directory.Delete(d, true); }
+            catch { }
         }
     }
 
@@ -249,13 +251,13 @@ public class OsModuleTests : IDisposable
         File.WriteAllText(System.IO.Path.Combine(root, "root.txt"), "");
         File.WriteAllText(System.IO.Path.Combine(root, "sub1", "a.txt"), "");
 
-        var entries = new System.Collections.Generic.List<(string, Sharpy.List<string>, Sharpy.List<string>)>();
+        var entries = new System.Collections.Generic.List<(string dirpath, Sharpy.List<string> dirnames, Sharpy.List<string> filenames)>();
         foreach (var entry in Os.Walk(root))
         {
             entries.Add(entry);
         }
 
-        entries.Should().HaveCountGreaterOrEqualTo(3);
+        entries.Should().HaveCountGreaterThanOrEqualTo(3);
         entries[0].dirpath.Should().Be(root);
         entries[0].dirnames.Should().Contain("sub1");
         entries[0].filenames.Should().Contain("root.txt");
@@ -264,7 +266,7 @@ public class OsModuleTests : IDisposable
     [Fact]
     public void Walk_Nonexistent_Yields_Nothing()
     {
-        var entries = new System.Collections.Generic.List<(string, Sharpy.List<string>, Sharpy.List<string>)>();
+        var entries = new System.Collections.Generic.List<(string dirpath, Sharpy.List<string> dirnames, Sharpy.List<string> filenames)>();
         foreach (var entry in Os.Walk("/tmp/nonexistent_" + Guid.NewGuid()))
         {
             entries.Add(entry);
@@ -298,4 +300,3 @@ public class OsModuleTests : IDisposable
         act.Should().Throw<FileNotFoundError>();
     }
 }
-#endif

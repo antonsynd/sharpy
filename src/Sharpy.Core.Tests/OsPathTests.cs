@@ -22,7 +22,9 @@ public class OsPathTests : IDisposable
     {
         foreach (var f in _tempFiles)
         {
-            try { File.Delete(f); } catch { }
+            try
+            { File.Delete(f); }
+            catch { }
         }
     }
 

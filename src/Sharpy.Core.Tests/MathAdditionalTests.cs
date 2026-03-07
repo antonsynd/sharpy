@@ -116,7 +116,8 @@ public class MathAdditional_Tests
     public void Fsum_AccurateSummation()
     {
         var values = new double[10];
-        for (int i = 0; i < 10; i++) values[i] = 0.1;
+        for (int i = 0; i < 10; i++)
+            values[i] = 0.1;
         Sharpy.Math.Fsum(values).Should().Be(1.0);
     }
 

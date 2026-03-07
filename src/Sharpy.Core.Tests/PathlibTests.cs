@@ -32,11 +32,15 @@ public class PathlibTests : IDisposable
     {
         foreach (var f in _tempFiles)
         {
-            try { File.Delete(f); } catch { }
+            try
+            { File.Delete(f); }
+            catch { }
         }
         foreach (var d in _tempDirs)
         {
-            try { Directory.Delete(d, true); } catch { }
+            try
+            { Directory.Delete(d, true); }
+            catch { }
         }
     }
 
