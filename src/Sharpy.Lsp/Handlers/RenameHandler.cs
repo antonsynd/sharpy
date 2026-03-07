@@ -79,19 +79,35 @@ internal sealed class SharplyRenameHandler : RenameHandlerBase
             AddEdit(edits, declUri, declLine, declCol, symbol.Name.Length, newName);
         }
 
-        // Edit all references
+        // Edit all references in current file
         var references = analysis.SemanticQuery.GetReferences(symbol);
-        foreach (var refLoc in references)
+        AddReferenceEdits(edits, references, symbol.Name, uri, newName);
+
+        // Edit references in other workspace files
+        var allUris = _workspace.GetAllDocumentUris();
+        foreach (var otherUri in allUris)
         {
-            var refLine = System.Math.Max(0, refLoc.Line - 1);
-            var refCol = System.Math.Max(0, refLoc.Column - 1);
+            if (string.Equals(otherUri, uri, StringComparison.Ordinal))
+                continue;
 
-            var refFilePath = refLoc.FilePath ?? uri;
-            var refUri = refFilePath.StartsWith("file://", StringComparison.Ordinal)
-                ? DocumentUri.From(refFilePath)
-                : DocumentUri.FromFileSystemPath(refFilePath);
+            try
+            {
+                var otherAnalysis = await _workspace.GetAnalysisAsync(otherUri, ct).ConfigureAwait(false);
+                if (otherAnalysis?.SemanticQuery == null)
+                    continue;
 
-            AddEdit(edits, refUri, refLine, refCol, symbol.Name.Length, newName);
+                var crossRefs = otherAnalysis.SemanticQuery.FindReferencesBySymbolIdentity(
+                    symbol.Name, symbol.DeclaringFilePath);
+                AddReferenceEdits(edits, crossRefs, symbol.Name, otherUri, newName);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch
+            {
+                // Skip files that fail to analyze
+            }
         }
 
         return new WorkspaceEdit
@@ -100,6 +116,27 @@ internal sealed class SharplyRenameHandler : RenameHandlerBase
                 kvp => kvp.Key,
                 kvp => kvp.Value as IEnumerable<TextEdit>)
         };
+    }
+
+    private static void AddReferenceEdits(
+        Dictionary<DocumentUri, System.Collections.Generic.IList<TextEdit>> edits,
+        IReadOnlyList<Compiler.Semantic.SymbolReference> references,
+        string symbolName,
+        string fallbackUri,
+        string newName)
+    {
+        foreach (var refLoc in references)
+        {
+            var refLine = System.Math.Max(0, refLoc.Line - 1);
+            var refCol = System.Math.Max(0, refLoc.Column - 1);
+
+            var refFilePath = refLoc.FilePath ?? fallbackUri;
+            var refUri = refFilePath.StartsWith("file://", StringComparison.Ordinal)
+                ? DocumentUri.From(refFilePath)
+                : DocumentUri.FromFileSystemPath(refFilePath);
+
+            AddEdit(edits, refUri, refLine, refCol, symbolName.Length, newName);
+        }
     }
 
     private static void AddEdit(
