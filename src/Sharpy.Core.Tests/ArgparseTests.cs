@@ -1,188 +1,381 @@
+using System;
+using System.Collections.Generic;
 using FluentAssertions;
 using Xunit;
 
-namespace Sharpy.Core.Tests;
-
-public class ArgparseTests
+namespace Sharpy.Tests
 {
-    // ===== Positional arguments =====
-
-    [Fact]
-    public void ParseArgs_PositionalArg_Parsed()
+    public class ArgparseTests
     {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("name");
-        var ns = p.ParseArgs(new List<string>(new[] { "hello" }));
-        ns.Get("name").Should().Be("hello");
-    }
+        #region Positional Arguments
 
-    [Fact]
-    public void ParseArgs_MultiplePositionals_ParsedInOrder()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("first");
-        p.AddArgument("second");
-        var ns = p.ParseArgs(new List<string>(new[] { "a", "b" }));
-        ns.Get("first").Should().Be("a");
-        ns.Get("second").Should().Be("b");
-    }
+        [Fact]
+        public void ParseArgs_SinglePositional_Parsed()
+        {
+            var parser = new ArgumentParser();
+            parser.AddArgument("filename");
+            var ns = parser.ParseArgs(new[] { "test.txt" });
+            Assert.Equal("test.txt", ns["filename"]);
+        }
 
-    // ===== Optional arguments =====
+        [Fact]
+        public void ParseArgs_MultiplePositionals_Parsed()
+        {
+            var parser = new ArgumentParser();
+            parser.AddArgument("source");
+            parser.AddArgument("dest");
+            var ns = parser.ParseArgs(new[] { "a.txt", "b.txt" });
+            Assert.Equal("a.txt", ns["source"]);
+            Assert.Equal("b.txt", ns["dest"]);
+        }
 
-    [Fact]
-    public void ParseArgs_LongFlag_Parsed()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("--name");
-        var ns = p.ParseArgs(new List<string>(new[] { "--name", "world" }));
-        ns.Get("name").Should().Be("world");
-    }
+        [Fact]
+        public void ParseArgs_PositionalWithType_Converted()
+        {
+            var parser = new ArgumentParser();
+            parser.AddArgument("count", type: "int");
+            var ns = parser.ParseArgs(new[] { "42" });
+            Assert.Equal(42, ns["count"]);
+        }
 
-    [Fact]
-    public void ParseArgs_ShortAndLongFlag_Parsed()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument(shortFlag: "-n", longFlag: "--name");
-        var ns = p.ParseArgs(new List<string>(new[] { "-n", "world" }));
-        ns.Get("name").Should().Be("world");
-    }
+        [Fact]
+        public void ParseArgs_MissingPositional_ThrowsArgumentError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddArgument("filename");
+            Assert.Throws<ArgumentError>(() => parser.ParseArgs(new string[0]));
+        }
 
-    [Fact]
-    public void ParseArgs_DefaultValue_Used()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("--count", @default: 5);
-        var ns = p.ParseArgs(new List<string>());
-        ns.Get("count").Should().Be(5);
-    }
+        #endregion
 
-    // ===== Actions =====
+        #region Optional Arguments
 
-    [Fact]
-    public void ParseArgs_StoreTrue_SetsTrue()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument(shortFlag: "-v", longFlag: "--verbose", action: "store_true");
-        var ns = p.ParseArgs(new List<string>(new[] { "-v" }));
-        ns.Get("verbose").Should().Be(true);
-    }
+        [Fact]
+        public void ParseArgs_LongOption_Parsed()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--name");
+            var ns = parser.ParseArgs(new[] { "--name", "test" });
+            Assert.Equal("test", ns["name"]);
+        }
 
-    [Fact]
-    public void ParseArgs_StoreTrue_DefaultFalse()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument(shortFlag: "-v", longFlag: "--verbose", action: "store_true");
-        var ns = p.ParseArgs(new List<string>());
-        ns.Get("verbose").Should().Be(false);
-    }
+        [Fact]
+        public void ParseArgs_ShortAndLongOption_Parsed()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--name", shortName: "-n");
+            var ns = parser.ParseArgs(new[] { "-n", "test" });
+            Assert.Equal("test", ns["name"]);
+        }
 
-    [Fact]
-    public void ParseArgs_StoreFalse_SetsFalse()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("--no-debug", action: "store_false");
-        var ns = p.ParseArgs(new List<string>(new[] { "--no-debug" }));
-        ns.Get("no_debug").Should().Be(false);
-    }
+        [Fact]
+        public void ParseArgs_OptionalWithDefault_UsesDefault()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--name", defaultValue: "default");
+            var ns = parser.ParseArgs(new string[0]);
+            Assert.Equal("default", ns["name"]);
+        }
 
-    [Fact]
-    public void ParseArgs_Count_IncrementsCount()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument(shortFlag: "-v", longFlag: "--verbose", action: "count");
-        var ns = p.ParseArgs(new List<string>(new[] { "-v", "-v", "-v" }));
-        ns.Get("verbose").Should().Be(3);
-    }
+        [Fact]
+        public void ParseArgs_OptionalWithType_Converted()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--count", type: "int");
+            var ns = parser.ParseArgs(new[] { "--count", "5" });
+            Assert.Equal(5, ns["count"]);
+        }
 
-    // ===== Type conversion =====
+        [Fact]
+        public void ParseArgs_RequiredOptional_Missing_ThrowsError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--name", required: true);
+            Assert.Throws<ArgumentError>(() => parser.ParseArgs(new string[0]));
+        }
 
-    [Fact]
-    public void ParseArgs_TypeInt_ConvertsToInt()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("--count", type: s => (object)int.Parse(s));
-        var ns = p.ParseArgs(new List<string>(new[] { "--count", "5" }));
-        ns.Get("count").Should().Be(5);
-    }
+        #endregion
 
-    // ===== Mixed positional and optional =====
+        #region Actions
 
-    [Fact]
-    public void ParseArgs_MixedArgs_ParsedCorrectly()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("filename");
-        p.AddArgument(shortFlag: "-v", longFlag: "--verbose", action: "store_true");
-        p.AddArgument("--count", @default: 1, type: s => (object)int.Parse(s));
-        var ns = p.ParseArgs(new List<string>(new[] { "myfile.txt", "-v", "--count", "3" }));
-        ns.Get("filename").Should().Be("myfile.txt");
-        ns.Get("verbose").Should().Be(true);
-        ns.Get("count").Should().Be(3);
-    }
+        [Fact]
+        public void ParseArgs_StoreTrue_SetsTrue()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--verbose", shortName: "-v", action: "store_true");
+            var ns = parser.ParseArgs(new[] { "-v" });
+            Assert.Equal(true, ns["verbose"]);
+        }
 
-    // ===== Namespace =====
+        [Fact]
+        public void ParseArgs_StoreTrue_DefaultFalse()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--verbose", action: "store_true");
+            var ns = parser.ParseArgs(new string[0]);
+            Assert.Equal(false, ns["verbose"]);
+        }
 
-    [Fact]
-    public void Namespace_Contains_ReturnsTrueForExisting()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("name");
-        var ns = p.ParseArgs(new List<string>(new[] { "hello" }));
-        ns.Contains("name").Should().BeTrue();
-        ns.Contains("missing").Should().BeFalse();
-    }
+        [Fact]
+        public void ParseArgs_StoreFalse_SetsFalse()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--no-feature", action: "store_false", dest: "feature");
+            var ns = parser.ParseArgs(new[] { "--no-feature" });
+            Assert.Equal(false, ns["feature"]);
+        }
 
-    [Fact]
-    public void Namespace_Indexer_Works()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("name");
-        var ns = p.ParseArgs(new List<string>(new[] { "hello" }));
-        ns["name"].Should().Be("hello");
-    }
+        [Fact]
+        public void ParseArgs_Count_CountsOccurrences()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--verbose", shortName: "-v", action: "count");
+            var ns = parser.ParseArgs(new[] { "-v", "-v", "-v" });
+            Assert.Equal(3, ns["verbose"]);
+        }
 
-    [Fact]
-    public void Namespace_GetTyped_Works()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("--count", type: s => (object)int.Parse(s));
-        var ns = p.ParseArgs(new List<string>(new[] { "--count", "5" }));
-        ns.Get<int>("count").Should().Be(5);
-    }
+        [Fact]
+        public void ParseArgs_Append_CollectsValues()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--item", action: "append");
+            var ns = parser.ParseArgs(new[] { "--item", "a", "--item", "b" });
+            var items = ns["item"] as List<object?>;
+            Assert.NotNull(items);
+            Assert.Equal(2, ((ICollection<object?>)items!).Count);
+            Assert.Equal("a", items![0]);
+            Assert.Equal("b", items[1]);
+        }
 
-    [Fact]
-    public void Namespace_ToString_MatchesPythonFormat()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("name");
-        p.AddArgument(shortFlag: "-v", longFlag: "--verbose", action: "store_true");
-        var ns = p.ParseArgs(new List<string>(new[] { "hello", "-v" }));
-        var str = ns.ToString();
-        str.Should().StartWith("Namespace(");
-        str.Should().EndWith(")");
-        str.Should().Contain("name='hello'");
-        str.Should().Contain("verbose=True");
-    }
+        #endregion
 
-    [Fact]
-    public void Namespace_Get_ThrowsAttributeError()
-    {
-        var p = new ArgumentParser(description: "test");
-        var ns = p.ParseArgs(new List<string>());
-        var act = () => ns.Get("nonexistent");
-        act.Should().Throw<AttributeError>();
-    }
+        #region Choices
 
-    // ===== Append action =====
+        [Fact]
+        public void ParseArgs_ValidChoice_Accepted()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var choices = new List<string>();
+            choices.Append("debug");
+            choices.Append("info");
+            choices.Append("warning");
+            parser.AddOptionalArgument("--level", choices: choices);
+            var ns = parser.ParseArgs(new[] { "--level", "info" });
+            Assert.Equal("info", ns["level"]);
+        }
 
-    [Fact]
-    public void ParseArgs_Append_CollectsValues()
-    {
-        var p = new ArgumentParser(description: "test");
-        p.AddArgument("--item", action: "append");
-        var ns = p.ParseArgs(new List<string>(new[] { "--item", "a", "--item", "b" }));
-        var items = (List<object?>)ns.Get("item");
-        items[0].Should().Be("a");
-        items[1].Should().Be("b");
+        [Fact]
+        public void ParseArgs_InvalidChoice_ThrowsError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var choices = new List<string>();
+            choices.Append("debug");
+            choices.Append("info");
+            parser.AddOptionalArgument("--level", choices: choices);
+            var ex = Assert.Throws<ArgumentError>(() => parser.ParseArgs(new[] { "--level", "error" }));
+            Assert.Contains("invalid choice", ex.Message);
+        }
+
+        #endregion
+
+        #region Nargs
+
+        [Fact]
+        public void ParseArgs_NargsStar_CollectsZeroOrMore()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddArgument("files", nargs: "*");
+            var ns = parser.ParseArgs(new[] { "a.txt", "b.txt" });
+            var files = ns["files"] as List<string>;
+            Assert.NotNull(files);
+            Assert.Equal(2, ((ICollection<string>)files!).Count);
+        }
+
+        [Fact]
+        public void ParseArgs_NargsStar_Empty_ReturnsEmptyList()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddArgument("files", nargs: "*");
+            var ns = parser.ParseArgs(new string[0]);
+            var files = ns["files"] as List<string>;
+            Assert.NotNull(files);
+            Assert.Empty(files!);
+        }
+
+        [Fact]
+        public void ParseArgs_NargsPlus_RequiresAtLeastOne()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddArgument("files", nargs: "+");
+            Assert.Throws<ArgumentError>(() => parser.ParseArgs(new string[0]));
+        }
+
+        [Fact]
+        public void ParseArgs_NargsQuestion_OptionalValue()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--output", nargs: "?", defaultValue: "stdout");
+            var ns = parser.ParseArgs(new[] { "--output" });
+            Assert.Equal("stdout", ns["output"]);
+        }
+
+        #endregion
+
+        #region Mixed Arguments
+
+        [Fact]
+        public void ParseArgs_MixedPositionalAndOptional_Parsed()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddArgument("filename");
+            parser.AddOptionalArgument("--verbose", shortName: "-v", action: "store_true");
+            parser.AddOptionalArgument("--count", type: "int", defaultValue: 1);
+
+            var ns = parser.ParseArgs(new[] { "test.txt", "-v", "--count", "5" });
+            Assert.Equal("test.txt", ns["filename"]);
+            Assert.Equal(true, ns["verbose"]);
+            Assert.Equal(5, ns["count"]);
+        }
+
+        [Fact]
+        public void ParseArgs_UnrecognizedArgument_ThrowsError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var ex = Assert.Throws<ArgumentError>(() => parser.ParseArgs(new[] { "--unknown" }));
+            Assert.Contains("unrecognized", ex.Message);
+        }
+
+        #endregion
+
+        #region Help
+
+        [Fact]
+        public void ParseArgs_Help_ThrowsSystemExit()
+        {
+            var parser = new ArgumentParser(description: "A test program");
+            parser.SetOutput(System.IO.TextWriter.Null);
+            Assert.Throws<SystemExit>(() => parser.ParseArgs(new[] { "--help" }));
+        }
+
+        [Fact]
+        public void FormatHelp_ContainsDescription()
+        {
+            var parser = new ArgumentParser(description: "A test program", prog: "myapp");
+            parser.AddArgument("input");
+            parser.AddOptionalArgument("--output", shortName: "-o", help: "output file");
+
+            string help = parser.FormatHelp();
+            Assert.Contains("A test program", help);
+            Assert.Contains("myapp", help);
+            Assert.Contains("input", help);
+            Assert.Contains("output file", help);
+        }
+
+        [Fact]
+        public void FormatHelp_ShowsHelpOption()
+        {
+            var parser = new ArgumentParser();
+            string help = parser.FormatHelp();
+            Assert.Contains("-h, --help", help);
+            Assert.Contains("show this help message and exit", help);
+        }
+
+        #endregion
+
+        #region Namespace
+
+        [Fact]
+        public void Namespace_Contains_Works()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--name", defaultValue: "test");
+            var ns = parser.ParseArgs(new string[0]);
+            Assert.True(ns.Contains("name"));
+            Assert.False(ns.Contains("missing"));
+        }
+
+        [Fact]
+        public void Namespace_Get_ReturnsTyped()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--count", type: "int", defaultValue: 5);
+            var ns = parser.ParseArgs(new string[0]);
+            Assert.Equal(5, ns.Get<int>("count"));
+        }
+
+        [Fact]
+        public void Namespace_Get_WrongType_ThrowsTypeError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--name", defaultValue: "test");
+            var ns = parser.ParseArgs(new string[0]);
+            Assert.Throws<TypeError>(() => ns.Get<int>("name"));
+        }
+
+        [Fact]
+        public void Namespace_MissingAttribute_ThrowsAttributeError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var ns = parser.ParseArgs(new string[0]);
+            Assert.Throws<AttributeError>(() => { var _ = ns["missing"]; });
+        }
+
+        [Fact]
+        public void Namespace_ToString_ShowsValues()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--name", defaultValue: "test");
+            parser.AddOptionalArgument("--verbose", action: "store_true");
+            var ns = parser.ParseArgs(new[] { "--verbose" });
+
+            string s = ns.ToString();
+            Assert.Contains("Namespace(", s);
+            Assert.Contains("name='test'", s);
+            Assert.Contains("verbose=True", s);
+        }
+
+        #endregion
+
+        #region Dest Normalization
+
+        [Fact]
+        public void ParseArgs_DashInName_NormalizedToUnderscore()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--my-flag", action: "store_true");
+            var ns = parser.ParseArgs(new[] { "--my-flag" });
+            Assert.Equal(true, ns["my_flag"]);
+        }
+
+        [Fact]
+        public void ParseArgs_CustomDest_UsesCustomDest()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddOptionalArgument("--output-file", dest: "output");
+            var ns = parser.ParseArgs(new[] { "--output-file", "out.txt" });
+            Assert.Equal("out.txt", ns["output"]);
+        }
+
+        #endregion
+
+        #region Type Conversion Errors
+
+        [Fact]
+        public void ParseArgs_InvalidInt_ThrowsArgumentError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddArgument("count", type: "int");
+            Assert.Throws<ArgumentError>(() => parser.ParseArgs(new[] { "abc" }));
+        }
+
+        [Fact]
+        public void ParseArgs_InvalidFloat_ThrowsArgumentError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddArgument("value", type: "float");
+            Assert.Throws<ArgumentError>(() => parser.ParseArgs(new[] { "abc" }));
+        }
+
+        #endregion
     }
 }

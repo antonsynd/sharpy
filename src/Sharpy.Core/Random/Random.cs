@@ -116,39 +116,23 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return a randomly selected integer from range(stop) or range(start, stop[, step]).
+        /// Return a randomly-selected element from range(stop) or range(start, stop, step).
         /// </summary>
         public static int Randrange(int stop)
         {
-            if (stop <= 0)
-            {
-                throw new ValueError("empty range for randrange()");
-            }
-
-            lock (_lock)
-            {
-                return _random.Next(stop);
-            }
+            return Randrange(0, stop, 1);
         }
 
         /// <summary>
-        /// Return a randomly selected integer from range(start, stop).
+        /// Return a randomly-selected element from range(start, stop).
         /// </summary>
         public static int Randrange(int start, int stop)
         {
-            if (start >= stop)
-            {
-                throw new ValueError("empty range for randrange()");
-            }
-
-            lock (_lock)
-            {
-                return _random.Next(start, stop);
-            }
+            return Randrange(start, stop, 1);
         }
 
         /// <summary>
-        /// Return a randomly selected integer from range(start, stop, step).
+        /// Return a randomly-selected element from range(start, stop, step).
         /// </summary>
         public static int Randrange(int start, int stop, int step)
         {
@@ -157,34 +141,48 @@ namespace Sharpy
                 throw new ValueError("zero step for randrange()");
             }
 
-            int width;
+            int width = stop - start;
+
+            if (step == 1)
+            {
+                if (width <= 0)
+                {
+                    throw new ValueError($"empty range for randrange() ({start}, {stop}, {step})");
+                }
+
+                lock (_lock)
+                {
+                    return start + _random.Next(width);
+                }
+            }
+
+            int n;
             if (step > 0)
             {
-                width = (stop - start + step - 1) / step;
+                n = (width + step - 1) / step;
             }
             else
             {
-                width = (start - stop - step - 1) / (-step);
+                n = (width + step + 1) / step;
             }
 
-            if (width <= 0)
+            if (n <= 0)
             {
-                throw new ValueError("empty range for randrange()");
+                throw new ValueError($"empty range for randrange() ({start}, {stop}, {step})");
             }
 
             lock (_lock)
             {
-                return start + _random.Next(width) * step;
+                return start + step * _random.Next(n);
             }
         }
 
         /// <summary>
-        /// Return a random floating point number N from a Gaussian distribution
-        /// with mean mu and standard deviation sigma.
+        /// Gaussian distribution. mu is the mean, and sigma is the standard deviation.
+        /// Uses the Box-Muller transform.
         /// </summary>
         public static double Gauss(double mu, double sigma)
         {
-            // Box-Muller transform
             double u1, u2;
             lock (_lock)
             {
@@ -192,12 +190,13 @@ namespace Sharpy
                 u2 = _random.NextDouble();
             }
 
-            double z = System.Math.Sqrt(-2.0 * System.Math.Log(u1)) * System.Math.Cos(2.0 * System.Math.PI * u2);
-            return mu + sigma * z;
+            // Box-Muller transform
+            double z0 = System.Math.Sqrt(-2.0 * System.Math.Log(u1)) * System.Math.Cos(2.0 * System.Math.PI * u2);
+            return mu + sigma * z0;
         }
 
         /// <summary>
-        /// Return a non-negative integer with k random bits.
+        /// Returns a non-negative integer with k random bits.
         /// </summary>
         public static int Getrandbits(int k)
         {
@@ -213,18 +212,18 @@ namespace Sharpy
 
             if (k > 30)
             {
-                throw new ValueError("number of bits must be <= 30");
+                throw new ValueError("number of bits must be <= 30 for int return");
             }
 
-            int maxVal = 1 << k;
             lock (_lock)
             {
-                return _random.Next(maxVal);
+                // Generate random bits by getting a random number in [0, 2^k)
+                return _random.Next(1 << k);
             }
         }
 
         /// <summary>
-        /// Return a k-sized list of elements chosen from the population with replacement,
+        /// Return a k sized list of elements chosen from the population with replacement,
         /// optionally weighted.
         /// </summary>
         public static Sharpy.List<T> Choices<T>(IList<T> population, IList<double>? weights = null, int k = 1)
@@ -239,15 +238,26 @@ namespace Sharpy
                 throw new ValueError("k must be non-negative");
             }
 
-            var result = new Sharpy.List<T>();
-
-            if (weights != null)
+            if (weights != null && weights.Count != population.Count)
             {
-                if (weights.Count != population.Count)
-                {
-                    throw new ValueError("The number of weights does not match the population");
-                }
+                throw new ValueError("The number of weights does not match the population");
+            }
 
+            var result = new System.Collections.Generic.List<T>(k);
+
+            if (weights == null)
+            {
+                // Uniform selection
+                lock (_lock)
+                {
+                    for (int i = 0; i < k; i++)
+                    {
+                        result.Add(population[_random.Next(population.Count)]);
+                    }
+                }
+            }
+            else
+            {
                 // Build cumulative weights
                 var cumWeights = new double[weights.Count];
                 double total = 0;
@@ -268,36 +278,21 @@ namespace Sharpy
                     {
                         double r = _random.NextDouble() * total;
                         // Binary search for the index
-                        int lo = 0, hi = cumWeights.Length;
-                        while (lo < hi)
+                        int idx = System.Array.BinarySearch(cumWeights, r);
+                        if (idx < 0)
                         {
-                            int mid = (lo + hi) / 2;
-                            if (cumWeights[mid] <= r)
-                            {
-                                lo = mid + 1;
-                            }
-                            else
-                            {
-                                hi = mid;
-                            }
+                            idx = ~idx;
                         }
-
-                        result.Append(population[lo < population.Count ? lo : population.Count - 1]);
-                    }
-                }
-            }
-            else
-            {
-                lock (_lock)
-                {
-                    for (int i = 0; i < k; i++)
-                    {
-                        result.Append(population[_random.Next(population.Count)]);
+                        if (idx >= population.Count)
+                        {
+                            idx = population.Count - 1;
+                        }
+                        result.Add(population[idx]);
                     }
                 }
             }
 
-            return result;
+            return new Sharpy.List<T>(result);
         }
 
         /// <summary>

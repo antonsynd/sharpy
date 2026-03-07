@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
-    internal static partial class Itertools
+    public static partial class Itertools
     {
         public static ZipLongestIterator<T> ZipLongest<T>(IEnumerable<T>[] iterables, T fillvalue = default!)
         {

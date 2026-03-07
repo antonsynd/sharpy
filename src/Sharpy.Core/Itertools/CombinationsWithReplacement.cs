@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Sharpy
 {
-    internal static partial class Itertools
+    public static partial class Itertools
     {
         public static CombinationsWithReplacementIterator<T> CombinationsWithReplacement<T>(IEnumerable<T> iterable, int r)
         {

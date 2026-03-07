@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
-    internal static partial class Itertools
+    public static partial class Itertools
     {
         public static CountIterator Count(int start = 0, int step = 1)
         {

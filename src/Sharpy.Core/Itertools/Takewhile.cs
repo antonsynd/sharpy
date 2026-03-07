@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
-    internal static partial class Itertools
+    public static partial class Itertools
     {
         public static TakewhileIterator<T> Takewhile<T>(Func<T, bool> predicate, IEnumerable<T> iterable)
         {

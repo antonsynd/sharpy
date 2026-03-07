@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
-    internal static partial class Itertools
+    public static partial class Itertools
     {
         public static PairwiseIterator<T> Pairwise<T>(IEnumerable<T> iterable)
         {

@@ -2,6 +2,10 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Python-compatible json module.
+    /// Provides dumps/loads for string serialization and dump/load for file I/O.
+    /// </summary>
     public static partial class Json
     {
         /// <summary>
@@ -13,45 +17,67 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Serialize obj to a JSON formatted string with options.
+        /// Serialize obj to a JSON formatted string with formatting options.
         /// </summary>
-        public static string Dumps(object? obj, int? indent = null, bool sortKeys = false, bool ensureAscii = false)
+        /// <param name="obj">The object to serialize.</param>
+        /// <param name="indent">Number of spaces for indentation. Use -1 for compact output.</param>
+        /// <param name="sortKeys">Whether to sort dictionary keys.</param>
+        /// <param name="ensureAscii">Whether to escape non-ASCII characters.</param>
+        public static string Dumps(object? obj, int indent = -1, bool sortKeys = false, bool ensureAscii = true)
         {
             return JsonSerializer.Serialize(obj, indent, sortKeys, ensureAscii);
         }
 
         /// <summary>
         /// Deserialize a JSON string to a Python-like object.
+        /// Returns Dict&lt;string, object?&gt; for objects, List&lt;object?&gt; for arrays,
+        /// string, int/long/double, bool, or null.
         /// </summary>
         public static object? Loads(string s)
         {
-            if (s == null)
-                throw new TypeError("the JSON object must be str, not None");
             return JsonParser.Parse(s);
         }
 
         /// <summary>
-        /// Serialize obj as a JSON string and write it to the file.
+        /// Serialize obj as a JSON formatted stream to a file.
         /// </summary>
-        public static void Dump(object? obj, TextFile file)
+        public static void Dump(object? obj, TextFile fp)
         {
-            file.Write(Dumps(obj));
+            if (fp == null)
+            {
+                throw new TypeError("expected TextFile, got NoneType");
+            }
+
+            string json = Dumps(obj);
+            fp.Write(json);
         }
 
         /// <summary>
-        /// Serialize obj as a JSON formatted string and write it to the file.
+        /// Serialize obj as a JSON formatted stream to a file with formatting options.
         /// </summary>
-        public static void Dump(object? obj, TextFile file, int? indent = null, bool sortKeys = false, bool ensureAscii = false)
+        public static void Dump(object? obj, TextFile fp, int indent = -1, bool sortKeys = false, bool ensureAscii = true)
         {
-            file.Write(Dumps(obj, indent, sortKeys, ensureAscii));
+            if (fp == null)
+            {
+                throw new TypeError("expected TextFile, got NoneType");
+            }
+
+            string json = Dumps(obj, indent, sortKeys, ensureAscii);
+            fp.Write(json);
         }
 
         /// <summary>
-        /// Read the file and deserialize its JSON content.
+        /// Deserialize a JSON document read from a file.
         /// </summary>
-        public static object? Load(TextFile file)
+        public static object? Load(TextFile fp)
         {
-            return Loads(file.Read());
+            if (fp == null)
+            {
+                throw new TypeError("expected TextFile, got NoneType");
+            }
+
+            string content = fp.Read();
+            return Loads(content);
         }
     }
 }

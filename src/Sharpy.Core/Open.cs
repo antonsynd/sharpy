@@ -6,35 +6,39 @@ namespace Sharpy
     public static partial class Builtins
     {
         /// <summary>
-        /// Open a file and return a TextFile object.
-        /// Python: <c>open(path)</c>
+        /// Open a file and return a file object.
         /// </summary>
+        /// <param name="path">Path to the file</param>
+        /// <returns>A TextFile in read mode with UTF-8 encoding</returns>
         public static TextFile Open(string path)
         {
-            return Open(path, "r");
+            return Open(path, "r", "utf-8");
         }
 
         /// <summary>
-        /// Open a file with the given mode and return a TextFile object.
-        /// Python: <c>open(path, mode)</c>
+        /// Open a file and return a file object.
         /// </summary>
+        /// <param name="path">Path to the file</param>
+        /// <param name="mode">File mode: "r" (read), "w" (write), "a" (append), "x" (exclusive create)</param>
+        /// <returns>A TextFile with UTF-8 encoding</returns>
         public static TextFile Open(string path, string mode)
         {
             return Open(path, mode, "utf-8");
         }
 
         /// <summary>
-        /// Open a file with the given mode and encoding, and return a TextFile object.
-        /// Python: <c>open(path, mode, encoding=encoding)</c>
+        /// Open a file and return a file object.
         /// </summary>
+        /// <param name="path">Path to the file</param>
+        /// <param name="mode">File mode: "r" (read), "w" (write), "a" (append), "x" (exclusive create)</param>
+        /// <param name="encoding">Text encoding name (e.g., "utf-8", "ascii")</param>
+        /// <returns>A TextFile with the specified mode and encoding</returns>
         public static TextFile Open(string path, string mode, string encoding)
         {
-            if (path == null)
-                throw new TypeError("open() argument 'file' cannot be None");
-            if (mode == null)
-                throw new TypeError("open() argument 'mode' cannot be None");
-            if (encoding == null)
-                throw new TypeError("open() argument 'encoding' cannot be None");
+            if (path is null)
+            {
+                throw new TypeError("open() argument 'file' must be str, not None");
+            }
 
             Encoding enc;
             switch (encoding.ToLowerInvariant())
@@ -46,28 +50,31 @@ namespace Sharpy
                 case "ascii":
                     enc = Encoding.ASCII;
                     break;
+                case "utf-16":
+                case "utf16":
+                case "utf-16-le":
+                    enc = Encoding.Unicode;
+                    break;
+                case "utf-16-be":
+                    enc = Encoding.BigEndianUnicode;
+                    break;
                 case "latin-1":
                 case "latin1":
                 case "iso-8859-1":
                     enc = Encoding.GetEncoding("iso-8859-1");
                     break;
-                case "utf-16":
-                case "utf16":
-                    enc = Encoding.Unicode;
-                    break;
                 default:
-                    try
-                    {
-                        enc = Encoding.GetEncoding(encoding);
-                    }
-                    catch (ArgumentException)
-                    {
-                        throw new ValueError("unknown encoding: " + encoding);
-                    }
-                    break;
+                    throw new LookupError("unknown encoding: " + encoding);
             }
 
-            return new TextFile(path, mode, enc);
+            try
+            {
+                return new TextFile(path, mode, enc);
+            }
+            catch (UnauthorizedAccessException ex) when (!(ex is PermissionError))
+            {
+                throw new PermissionError("Permission denied: '" + path + "'", ex);
+            }
         }
     }
 }

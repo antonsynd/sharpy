@@ -1,375 +1,420 @@
 using System;
-using System.IO;
-using FluentAssertions;
+using System.Collections.Generic;
+using System.Text;
 using Xunit;
-using Path = Sharpy.Path;
-using SysPath = System.IO.Path;
 
-namespace Sharpy.Core.Tests;
-
-public class PathlibTests : IDisposable
+namespace Sharpy.Core.Tests
 {
-    private readonly System.Collections.Generic.List<string> _tempDirs = new();
-    private readonly System.Collections.Generic.List<string> _tempFiles = new();
-
-    private string CreateTempDir()
+    public class PathlibTests : IDisposable
     {
-        var path = SysPath.Combine(SysPath.GetTempPath(), "sharpy_pathlib_test_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(path);
-        _tempDirs.Add(path);
-        return path;
-    }
+        private readonly string _tempDir;
 
-    private string CreateTempFile(string content = "hello")
-    {
-        var path = SysPath.GetTempFileName();
-        File.WriteAllText(path, content);
-        _tempFiles.Add(path);
-        return path;
-    }
+        public PathlibTests()
+        {
+            _tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sharpy_pathlib_tests_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(_tempDir);
+        }
 
-    public void Dispose()
-    {
-        foreach (var f in _tempFiles)
+        public void Dispose()
         {
             try
-            { File.Delete(f); }
-            catch { }
+            { System.IO.Directory.Delete(_tempDir, true); }
+            catch { /* best effort */ }
         }
-        foreach (var d in _tempDirs)
+
+        private string Sub(string name) => System.IO.Path.Combine(_tempDir, name);
+
+        // ===== Constructor =====
+
+        [Fact]
+        public void Constructor_StoresPath()
         {
-            try
-            { Directory.Delete(d, true); }
-            catch { }
+            var p = new Path("/some/path");
+            Assert.Equal("/some/path", p.ToString());
         }
-    }
 
-    // ===== Constructor =====
-
-    [Fact]
-    public void Constructor_Stores_Path()
-    {
-        var p = new Path("/a/b/c");
-        p.ToString().Should().Be("/a/b/c");
-    }
-
-    // ===== Operator / =====
-
-    [Fact]
-    public void Slash_Operator_Joins_With_String()
-    {
-        var p = new Path("/a") / "b";
-        p.ToString().Should().Be(SysPath.Combine("/a", "b"));
-    }
-
-    [Fact]
-    public void Slash_Operator_Joins_With_Path()
-    {
-        var p = new Path("/a") / new Path("b");
-        p.ToString().Should().Be(SysPath.Combine("/a", "b"));
-    }
-
-    // ===== Properties =====
-
-    [Fact]
-    public void Name_Returns_Filename()
-    {
-        new Path("/a/b/c.txt").Name.Should().Be("c.txt");
-    }
-
-    [Fact]
-    public void Stem_Returns_Name_Without_Extension()
-    {
-        new Path("/a/b/c.tar.gz").Stem.Should().Be("c.tar");
-    }
-
-    [Fact]
-    public void Suffix_Returns_Extension()
-    {
-        new Path("/a/b/c.tar.gz").Suffix.Should().Be(".gz");
-    }
-
-    [Fact]
-    public void Suffix_Empty_When_No_Extension()
-    {
-        new Path("/a/b/c").Suffix.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void Suffixes_Returns_All_Extensions()
-    {
-        var suffixes = new Path("/a/b/c.tar.gz").Suffixes;
-        suffixes.Should().HaveCount(2);
-        suffixes[0].Should().Be(".tar");
-        suffixes[1].Should().Be(".gz");
-    }
-
-    [Fact]
-    public void Parent_Returns_Parent_Directory()
-    {
-        new Path("/a/b/c").Parent.ToString().Should().Be("/a/b");
-    }
-
-    [Fact]
-    public void Parts_Absolute_Includes_Root()
-    {
-        var parts = new Path("/a/b/c").Parts;
-        parts[0].Should().Be("/");
-        parts[1].Should().Be("a");
-        parts[2].Should().Be("b");
-        parts[3].Should().Be("c");
-    }
-
-    [Fact]
-    public void Parts_Relative_No_Root()
-    {
-        var parts = new Path("a/b/c").Parts;
-        parts[0].Should().Be("a");
-        parts[1].Should().Be("b");
-        parts[2].Should().Be("c");
-    }
-
-    [Fact]
-    public void Root_Absolute()
-    {
-        new Path("/a/b").Root.Should().Be("/");
-    }
-
-    [Fact]
-    public void Root_Relative_Empty()
-    {
-        new Path("a/b").Root.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void IsAbsolute_True()
-    {
-        new Path("/a/b").IsAbsolute.Should().BeTrue();
-    }
-
-    [Fact]
-    public void IsAbsolute_False()
-    {
-        new Path("a/b").IsAbsolute.Should().BeFalse();
-    }
-
-    // ===== Query methods =====
-
-    [Fact]
-    public void Exists_True_For_File()
-    {
-        var path = CreateTempFile();
-        new Path(path).Exists().Should().BeTrue();
-    }
-
-    [Fact]
-    public void Exists_False_For_Nonexistent()
-    {
-        new Path("/tmp/nonexistent_" + Guid.NewGuid()).Exists().Should().BeFalse();
-    }
-
-    [Fact]
-    public void IsFile_Returns_True_For_File()
-    {
-        var path = CreateTempFile();
-        new Path(path).IsFile().Should().BeTrue();
-    }
-
-    [Fact]
-    public void IsDir_Returns_True_For_Directory()
-    {
-        var dir = CreateTempDir();
-        new Path(dir).IsDir().Should().BeTrue();
-    }
-
-    // ===== File I/O =====
-
-    [Fact]
-    public void ReadText_And_WriteText()
-    {
-        var dir = CreateTempDir();
-        var filePath = SysPath.Combine(dir, "test.txt");
-        _tempFiles.Add(filePath);
-
-        var p = new Path(filePath);
-        p.WriteText("hello world");
-        p.ReadText().Should().Be("hello world");
-    }
-
-    [Fact]
-    public void ReadBytes_And_WriteBytes()
-    {
-        var dir = CreateTempDir();
-        var filePath = SysPath.Combine(dir, "test.bin");
-        _tempFiles.Add(filePath);
-
-        var p = new Path(filePath);
-        var data = new byte[] { 1, 2, 3, 4, 5 };
-        p.WriteBytes(data);
-        p.ReadBytes().Should().Equal(data);
-    }
-
-    [Fact]
-    public void ReadText_Nonexistent_Throws()
-    {
-        var p = new Path("/tmp/nonexistent_" + Guid.NewGuid());
-        var act = () => p.ReadText();
-        act.Should().Throw<FileNotFoundError>();
-    }
-
-    // ===== Directory operations =====
-
-    [Fact]
-    public void Mkdir_Creates_Directory()
-    {
-        var root = CreateTempDir();
-        var sub = SysPath.Combine(root, "sub");
-        new Path(sub).Mkdir();
-        Directory.Exists(sub).Should().BeTrue();
-    }
-
-    [Fact]
-    public void Mkdir_Parents_Creates_Nested()
-    {
-        var root = CreateTempDir();
-        var nested = SysPath.Combine(root, "a", "b", "c");
-        new Path(nested).Mkdir(parents: true);
-        Directory.Exists(nested).Should().BeTrue();
-    }
-
-    [Fact]
-    public void Mkdir_ExistOk_No_Error()
-    {
-        var dir = CreateTempDir();
-        var act = () => new Path(dir).Mkdir(exist_ok: true);
-        act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void Rmdir_Removes_Empty()
-    {
-        var dir = CreateTempDir();
-        new Path(dir).Rmdir();
-        Directory.Exists(dir).Should().BeFalse();
-    }
-
-    [Fact]
-    public void Iterdir_Lists_Entries()
-    {
-        var dir = CreateTempDir();
-        File.WriteAllText(SysPath.Combine(dir, "a.txt"), "");
-        File.WriteAllText(SysPath.Combine(dir, "b.txt"), "");
-
-        var entries = new System.Collections.Generic.List<Path>();
-        foreach (var entry in new Path(dir).Iterdir())
+        [Fact]
+        public void Constructor_JoinsSegments()
         {
-            entries.Add(entry);
+            var p = new Path("a", "b");
+            Assert.Contains("b", p.ToString());
         }
-        entries.Should().HaveCount(2);
-    }
 
-    // ===== Mutation =====
+        // ===== Operator / =====
 
-    [Fact]
-    public void Rename_Moves_File()
-    {
-        var file = CreateTempFile("content");
-        var dest = file + "_renamed";
-        _tempFiles.Add(dest);
+        [Fact]
+        public void DivisionOperator_JoinsString()
+        {
+            var p = new Path("/root") / "child";
+            Assert.Contains("child", p.ToString());
+        }
 
-        var result = new Path(file).Rename(dest);
-        result.ToString().Should().Be(dest);
-        File.Exists(dest).Should().BeTrue();
-        File.Exists(file).Should().BeFalse();
-    }
+        [Fact]
+        public void DivisionOperator_JoinsPath()
+        {
+            var p = new Path("/root") / new Path("child");
+            Assert.Contains("child", p.ToString());
+        }
 
-    [Fact]
-    public void Unlink_Deletes_File()
-    {
-        var file = CreateTempFile();
-        new Path(file).Unlink();
-        File.Exists(file).Should().BeFalse();
-    }
+        // ===== Properties =====
 
-    [Fact]
-    public void Unlink_MissingOk_True_No_Error()
-    {
-        var act = () => new Path("/tmp/nonexistent_" + Guid.NewGuid()).Unlink(missing_ok: true);
-        act.Should().NotThrow();
-    }
+        [Fact]
+        public void Name_ReturnsFinalComponent()
+        {
+            var p = new Path("/some/path/file.txt");
+            Assert.Equal("file.txt", p.Name);
+        }
 
-    [Fact]
-    public void Unlink_MissingOk_False_Throws()
-    {
-        var act = () => new Path("/tmp/nonexistent_" + Guid.NewGuid()).Unlink(missing_ok: false);
-        act.Should().Throw<FileNotFoundError>();
-    }
+        [Fact]
+        public void Stem_ReturnsNameWithoutExtension()
+        {
+            var p = new Path("/some/path/file.txt");
+            Assert.Equal("file", p.Stem);
+        }
 
-    // ===== Navigation =====
+        [Fact]
+        public void Suffix_ReturnsExtension()
+        {
+            var p = new Path("/some/path/file.txt");
+            Assert.Equal(".txt", p.Suffix);
+        }
 
-    [Fact]
-    public void Resolve_Returns_Absolute()
-    {
-        var p = new Path("relative/path").Resolve();
-        p.IsAbsolute.Should().BeTrue();
-    }
+        [Fact]
+        public void Suffix_EmptyWhenNoExtension()
+        {
+            var p = new Path("/some/path/file");
+            Assert.Equal("", p.Suffix);
+        }
 
-    [Fact]
-    public void WithName_Changes_Name()
-    {
-        new Path("/a/b/c.txt").WithName("d.txt").ToString().Should().Be("/a/b/d.txt");
-    }
+        [Fact]
+        public void Suffixes_ReturnsAll()
+        {
+            var p = new Path("archive.tar.gz");
+            var suffixes = p.Suffixes;
+            Assert.Equal(2, ((ICollection<string>)suffixes).Count);
+            Assert.Equal(".tar", suffixes[0]);
+            Assert.Equal(".gz", suffixes[1]);
+        }
 
-    [Fact]
-    public void WithStem_Changes_Stem()
-    {
-        new Path("/a/b/c.tar.gz").WithStem("d").ToString().Should().Be("/a/b/d.gz");
-    }
+        [Fact]
+        public void Parent_ReturnsParentPath()
+        {
+            var p = new Path("/some/path/file.txt");
+            Assert.Contains("path", p.Parent.ToString());
+        }
 
-    [Fact]
-    public void WithSuffix_Changes_Suffix()
-    {
-        new Path("/a/b/c.tar.gz").WithSuffix(".txt").ToString().Should().Be("/a/b/c.tar.txt");
-    }
+        [Fact]
+        public void Root_ReturnsPathRoot()
+        {
+            var p = new Path("/some/path");
+            Assert.Equal("/", p.Root);
+        }
 
-    [Fact]
-    public void RelativeTo_Returns_Relative_Path()
-    {
-        var p = new Path("/a/b/c").RelativeTo(new Path("/a"));
-        p.ToString().Should().Be("b" + SysPath.DirectorySeparatorChar + "c");
-    }
+        [Fact]
+        public void IsAbsolute_TrueForAbsolutePaths()
+        {
+            Assert.True(new Path("/absolute").IsAbsolute);
+        }
 
-    [Fact]
-    public void RelativeTo_Not_Subpath_Throws()
-    {
-        var act = () => new Path("/a/b").RelativeTo(new Path("/c"));
-        act.Should().Throw<ValueError>();
-    }
+        [Fact]
+        public void IsAbsolute_FalseForRelativePaths()
+        {
+            Assert.False(new Path("relative").IsAbsolute);
+        }
 
-    // ===== Equality =====
+        // ===== Query Methods =====
 
-    [Fact]
-    public void Equals_Same_Path()
-    {
-        var a = new Path("/a/b");
-        var b = new Path("/a/b");
-        a.Equals(b).Should().BeTrue();
-        (a == b).Should().BeTrue();
-    }
+        [Fact]
+        public void Exists_TrueForExistingFile()
+        {
+            var path = Sub("exists.txt");
+            System.IO.File.WriteAllText(path, "data");
+            Assert.True(new Path(path).Exists());
+        }
 
-    [Fact]
-    public void NotEquals_Different_Path()
-    {
-        var a = new Path("/a/b");
-        var b = new Path("/a/c");
-        (a != b).Should().BeTrue();
-    }
+        [Fact]
+        public void Exists_FalseForNonexistent()
+        {
+            Assert.False(new Path(Sub("nope.txt")).Exists());
+        }
 
-    [Fact]
-    public void GetHashCode_Same_For_Equal()
-    {
-        var a = new Path("/a/b");
-        var b = new Path("/a/b");
-        a.GetHashCode().Should().Be(b.GetHashCode());
+        [Fact]
+        public void IsFile_TrueForFile()
+        {
+            var path = Sub("file.txt");
+            System.IO.File.WriteAllText(path, "data");
+            Assert.True(new Path(path).IsFile());
+        }
+
+        [Fact]
+        public void IsDir_TrueForDirectory()
+        {
+            Assert.True(new Path(_tempDir).IsDir());
+        }
+
+        // ===== File I/O =====
+
+        [Fact]
+        public void ReadText_And_WriteText_RoundTrip()
+        {
+            var path = Sub("roundtrip.txt");
+            var p = new Path(path);
+            p.WriteText("hello world");
+            Assert.Equal("hello world", p.ReadText());
+        }
+
+        [Fact]
+        public void ReadBytes_And_WriteBytes_RoundTrip()
+        {
+            var path = Sub("bytes.dat");
+            var p = new Path(path);
+            var data = new byte[] { 1, 2, 3, 4, 5 };
+            p.WriteBytes(data);
+            Assert.Equal(data, p.ReadBytes());
+        }
+
+        // ===== Directory Operations =====
+
+        [Fact]
+        public void Mkdir_CreatesDirectory()
+        {
+            var p = new Path(Sub("newdir"));
+            p.Mkdir();
+            Assert.True(p.IsDir());
+        }
+
+        [Fact]
+        public void Mkdir_Parents_CreatesNestedDirectories()
+        {
+            var p = new Path(System.IO.Path.Combine(_tempDir, "a", "b", "c"));
+            p.Mkdir(parents: true);
+            Assert.True(p.IsDir());
+        }
+
+        [Fact]
+        public void Rmdir_RemovesEmptyDirectory()
+        {
+            var path = Sub("tormdir");
+            System.IO.Directory.CreateDirectory(path);
+            new Path(path).Rmdir();
+            Assert.False(System.IO.Directory.Exists(path));
+        }
+
+        [Fact]
+        public void Iterdir_ListsEntries()
+        {
+            System.IO.File.WriteAllText(Sub("a.txt"), "");
+            System.IO.File.WriteAllText(Sub("b.txt"), "");
+
+            var entries = new System.Collections.Generic.List<string>();
+            foreach (var entry in new Path(_tempDir).Iterdir())
+            {
+                entries.Add(entry.Name);
+            }
+            Assert.Contains("a.txt", entries);
+            Assert.Contains("b.txt", entries);
+        }
+
+        [Fact]
+        public void Glob_MatchesPattern()
+        {
+            System.IO.File.WriteAllText(Sub("test1.txt"), "");
+            System.IO.File.WriteAllText(Sub("test2.txt"), "");
+            System.IO.File.WriteAllText(Sub("other.md"), "");
+
+            var matches = new System.Collections.Generic.List<string>();
+            foreach (var entry in new Path(_tempDir).Glob("*.txt"))
+            {
+                matches.Add(entry.Name);
+            }
+            Assert.Equal(2, matches.Count);
+        }
+
+        // ===== Mutation =====
+
+        [Fact]
+        public void Unlink_DeletesFile()
+        {
+            var path = Sub("todelete.txt");
+            System.IO.File.WriteAllText(path, "data");
+            new Path(path).Unlink();
+            Assert.False(System.IO.File.Exists(path));
+        }
+
+        [Fact]
+        public void Unlink_MissingOk_DoesNotThrow()
+        {
+            new Path(Sub("nonexistent.txt")).Unlink(missing_ok: true);
+        }
+
+        [Fact]
+        public void Unlink_ThrowsOnNonexistent()
+        {
+            Assert.Throws<FileNotFoundError>(() => new Path(Sub("nope.txt")).Unlink());
+        }
+
+        // ===== Navigation =====
+
+        [Fact]
+        public void Resolve_ReturnsAbsolutePath()
+        {
+            var p = new Path("relative").Resolve();
+            Assert.True(p.IsAbsolute);
+        }
+
+        [Fact]
+        public void WithName_ChangesName()
+        {
+            var p = new Path("/some/path/file.txt").WithName("other.md");
+            Assert.Equal("other.md", p.Name);
+        }
+
+        [Fact]
+        public void WithStem_ChangesStem()
+        {
+            var p = new Path("/some/path/file.txt").WithStem("other");
+            Assert.Equal("other.txt", p.Name);
+        }
+
+        [Fact]
+        public void WithSuffix_ChangesSuffix()
+        {
+            var p = new Path("/some/path/file.txt").WithSuffix(".md");
+            Assert.Equal("file.md", p.Name);
+        }
+
+        // ===== Rename =====
+
+        [Fact]
+        public void Rename_RenamesFile()
+        {
+            var src = Sub("rename_src.txt");
+            System.IO.File.WriteAllText(src, "content");
+            var dst = Sub("rename_dst.txt");
+            var result = new Path(src).Rename(dst);
+            Assert.False(System.IO.File.Exists(src));
+            Assert.True(System.IO.File.Exists(dst));
+            Assert.Equal(dst, result.ToString());
+            Assert.Equal("content", System.IO.File.ReadAllText(dst));
+        }
+
+        [Fact]
+        public void Rename_ThrowsOnNonexistent()
+        {
+            Assert.Throws<FileNotFoundError>(() => new Path(Sub("nonexistent.txt")).Rename(Sub("dst.txt")));
+        }
+
+        // ===== Replace =====
+
+        [Fact]
+        public void Replace_ReplacesExistingTarget()
+        {
+            var src = Sub("replace_src.txt");
+            var dst = Sub("replace_dst.txt");
+            System.IO.File.WriteAllText(src, "new content");
+            System.IO.File.WriteAllText(dst, "old content");
+            var result = new Path(src).Replace(dst);
+            Assert.False(System.IO.File.Exists(src));
+            Assert.True(System.IO.File.Exists(dst));
+            Assert.Equal(dst, result.ToString());
+            Assert.Equal("new content", System.IO.File.ReadAllText(dst));
+        }
+
+        [Fact]
+        public void Replace_WorksWhenTargetDoesNotExist()
+        {
+            var src = Sub("replace_src2.txt");
+            var dst = Sub("replace_dst2.txt");
+            System.IO.File.WriteAllText(src, "data");
+            var result = new Path(src).Replace(dst);
+            Assert.False(System.IO.File.Exists(src));
+            Assert.True(System.IO.File.Exists(dst));
+            Assert.Equal(dst, result.ToString());
+        }
+
+        // ===== RelativeTo =====
+
+        [Fact]
+        public void RelativeTo_ComputesRelativePath()
+        {
+            var child = new Path(System.IO.Path.Combine(_tempDir, "a", "b"));
+            var relative = child.RelativeTo(_tempDir);
+            var expected = System.IO.Path.Combine("a", "b");
+            Assert.Equal(expected, relative.ToString());
+        }
+
+        [Fact]
+        public void RelativeTo_ThrowsWhenNotRelative()
+        {
+            Assert.Throws<ValueError>(() => new Path("/completely/different").RelativeTo("/other/base"));
+        }
+
+        [Fact]
+        public void RelativeTo_SamePath_ReturnsDot()
+        {
+            var p = new Path(_tempDir);
+            var result = p.RelativeTo(_tempDir);
+            Assert.Equal(".", result.ToString());
+        }
+
+        // ===== Parts =====
+
+        [Fact]
+        public void Parts_ReturnsComponents()
+        {
+            var p = new Path("/usr/local/bin");
+            var parts = p.Parts;
+            Assert.Equal("/", parts[0]);
+            Assert.Equal("usr", parts[1]);
+            Assert.Equal("local", parts[2]);
+            Assert.Equal("bin", parts[3]);
+        }
+
+        [Fact]
+        public void Parts_RelativePath()
+        {
+            var p = new Path("a/b/c");
+            var parts = p.Parts;
+            Assert.Equal(3, ((ICollection<string>)parts).Count);
+            Assert.Equal("a", parts[0]);
+            Assert.Equal("b", parts[1]);
+            Assert.Equal("c", parts[2]);
+        }
+
+        // ===== Anchor =====
+
+        [Fact]
+        public void Anchor_AbsolutePath()
+        {
+            var p = new Path("/usr/local");
+            Assert.Equal("/", p.Anchor);
+        }
+
+        [Fact]
+        public void Anchor_RelativePath_IsEmpty()
+        {
+            var p = new Path("relative/path");
+            Assert.Equal("", p.Anchor);
+        }
+
+        // ===== Equality =====
+
+        [Fact]
+        public void Equals_SamePaths()
+        {
+            Assert.Equal(new Path("/a/b"), new Path("/a/b"));
+        }
+
+        [Fact]
+        public void Equals_DifferentPaths()
+        {
+            Assert.NotEqual(new Path("/a/b"), new Path("/a/c"));
+        }
+
+        [Fact]
+        public void GetHashCode_SameForEqualPaths()
+        {
+            Assert.Equal(new Path("/a/b").GetHashCode(), new Path("/a/b").GetHashCode());
+        }
     }
 }

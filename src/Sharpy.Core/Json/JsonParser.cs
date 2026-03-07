@@ -6,165 +6,117 @@ using System.Text;
 namespace Sharpy
 {
     /// <summary>
-    /// Recursive descent JSON parser. No external dependencies.
+    /// Minimal recursive descent JSON parser.
+    /// Returns Dict&lt;string, object&gt; for objects, List&lt;object&gt; for arrays,
+    /// string, double (or int/long when no fractional part), bool, or null.
     /// </summary>
     internal static class JsonParser
     {
-        internal static object? Parse(string json)
+        public static object? Parse(string json)
         {
-            int pos = 0;
-            var result = ParseValue(json, ref pos);
-            SkipWhitespace(json, ref pos);
-            if (pos < json.Length)
+            if (json == null)
             {
-                throw new JsonDecodeError("Extra data", json, pos);
+                throw new TypeError("the JSON object must be str, not NoneType");
             }
+
+            int index = 0;
+            object? result = ParseValue(json, ref index);
+            SkipWhitespace(json, ref index);
+            if (index < json.Length)
+            {
+                throw new JSONDecodeError(
+                    "Extra data",
+                    json,
+                    index);
+            }
+
             return result;
         }
 
-        private static object? ParseValue(string json, ref int pos)
+        private static object? ParseValue(string json, ref int index)
         {
-            SkipWhitespace(json, ref pos);
-            if (pos >= json.Length)
+            SkipWhitespace(json, ref index);
+
+            if (index >= json.Length)
             {
-                throw new JsonDecodeError("Expecting value", json, pos);
+                throw new JSONDecodeError(
+                    "Expecting value",
+                    json,
+                    index);
             }
 
-            char c = json[pos];
-            switch (c)
+            char c = json[index];
+
+            if (c == '"')
             {
-                case '{':
-                    return ParseObject(json, ref pos);
-                case '[':
-                    return ParseArray(json, ref pos);
-                case '"':
-                    return ParseString(json, ref pos);
-                case 't':
-                case 'f':
-                    return ParseBool(json, ref pos);
-                case 'n':
-                    return ParseNull(json, ref pos);
-                default:
-                    if (c == '-' || (c >= '0' && c <= '9'))
-                    {
-                        return ParseNumber(json, ref pos);
-                    }
-                    throw new JsonDecodeError("Expecting value", json, pos);
+                return ParseString(json, ref index);
             }
+
+            if (c == '{')
+            {
+                return ParseObject(json, ref index);
+            }
+
+            if (c == '[')
+            {
+                return ParseArray(json, ref index);
+            }
+
+            if (c == 't')
+            {
+                return ParseLiteral(json, ref index, "true", true);
+            }
+
+            if (c == 'f')
+            {
+                return ParseLiteral(json, ref index, "false", false);
+            }
+
+            if (c == 'n')
+            {
+                return ParseLiteral(json, ref index, "null", null);
+            }
+
+            if (c == '-' || (c >= '0' && c <= '9'))
+            {
+                return ParseNumber(json, ref index);
+            }
+
+            throw new JSONDecodeError(
+                "Expecting value",
+                json,
+                index);
         }
 
-        private static Dict<string, object?> ParseObject(string json, ref int pos)
+        private static string ParseString(string json, ref int index)
         {
-            pos++; // skip '{'
-            var dict = new Dict<string, object?>();
-            SkipWhitespace(json, ref pos);
+            // Skip opening quote
+            index++;
 
-            if (pos < json.Length && json[pos] == '}')
-            {
-                pos++;
-                return dict;
-            }
-
-            while (true)
-            {
-                SkipWhitespace(json, ref pos);
-                if (pos >= json.Length || json[pos] != '"')
-                {
-                    throw new JsonDecodeError("Expecting property name enclosed in double quotes", json, pos);
-                }
-
-                string key = ParseString(json, ref pos);
-                SkipWhitespace(json, ref pos);
-
-                if (pos >= json.Length || json[pos] != ':')
-                {
-                    throw new JsonDecodeError("Expecting ':' delimiter", json, pos);
-                }
-                pos++; // skip ':'
-
-                object? value = ParseValue(json, ref pos);
-                dict[key] = value;
-
-                SkipWhitespace(json, ref pos);
-                if (pos >= json.Length)
-                {
-                    throw new JsonDecodeError("Expecting ',' delimiter", json, pos);
-                }
-
-                if (json[pos] == '}')
-                {
-                    pos++;
-                    return dict;
-                }
-
-                if (json[pos] != ',')
-                {
-                    throw new JsonDecodeError("Expecting ',' delimiter", json, pos);
-                }
-                pos++; // skip ','
-            }
-        }
-
-        private static List<object?> ParseArray(string json, ref int pos)
-        {
-            pos++; // skip '['
-            var list = new List<object?>();
-            SkipWhitespace(json, ref pos);
-
-            if (pos < json.Length && json[pos] == ']')
-            {
-                pos++;
-                return list;
-            }
-
-            while (true)
-            {
-                object? value = ParseValue(json, ref pos);
-                list.Append(value);
-
-                SkipWhitespace(json, ref pos);
-                if (pos >= json.Length)
-                {
-                    throw new JsonDecodeError("Expecting ',' delimiter", json, pos);
-                }
-
-                if (json[pos] == ']')
-                {
-                    pos++;
-                    return list;
-                }
-
-                if (json[pos] != ',')
-                {
-                    throw new JsonDecodeError("Expecting ',' delimiter", json, pos);
-                }
-                pos++; // skip ','
-            }
-        }
-
-        private static string ParseString(string json, ref int pos)
-        {
-            pos++; // skip opening '"'
             var sb = new StringBuilder();
 
-            while (pos < json.Length)
+            while (index < json.Length)
             {
-                char c = json[pos];
+                char c = json[index];
+
                 if (c == '"')
                 {
-                    pos++;
+                    index++;
                     return sb.ToString();
                 }
 
                 if (c == '\\')
                 {
-                    pos++;
-                    if (pos >= json.Length)
+                    index++;
+                    if (index >= json.Length)
                     {
-                        throw new JsonDecodeError("Invalid \\escape", json, pos - 1);
+                        throw new JSONDecodeError(
+                            "Unterminated string escape",
+                            json,
+                            index);
                     }
 
-                    char esc = json[pos];
+                    char esc = json[index];
                     switch (esc)
                     {
                         case '"':
@@ -192,128 +144,139 @@ namespace Sharpy
                             sb.Append('\t');
                             break;
                         case 'u':
-                            pos++;
-                            int cp = ParseUnicodeEscape(json, ref pos);
-                            // Handle surrogate pairs
-                            if (cp >= 0xD800 && cp <= 0xDBFF)
-                            {
-                                if (pos + 1 < json.Length && json[pos] == '\\' && json[pos + 1] == 'u')
-                                {
-                                    pos += 2; // skip \u
-                                    int low = ParseUnicodeEscape(json, ref pos);
-                                    if (low >= 0xDC00 && low <= 0xDFFF)
-                                    {
-                                        int combined = 0x10000 + (cp - 0xD800) * 0x400 + (low - 0xDC00);
-                                        sb.Append(char.ConvertFromUtf32(combined));
-                                    }
-                                    else
-                                    {
-                                        sb.Append((char)cp);
-                                        sb.Append((char)low);
-                                    }
-                                }
-                                else
-                                {
-                                    sb.Append((char)cp);
-                                }
-                            }
-                            else
-                            {
-                                sb.Append((char)cp);
-                            }
-                            continue; // don't increment pos again
+                            index++;
+                            sb.Append(ParseUnicodeEscape(json, ref index));
+                            continue; // skip the index++ at end of loop
                         default:
-                            throw new JsonDecodeError("Invalid \\escape: " + esc, json, pos - 1);
+                            throw new JSONDecodeError(
+                                "Invalid \\escape: " + esc,
+                                json,
+                                index);
                     }
-                    pos++;
+
+                    index++;
                 }
-                else if (c < 0x20)
+                else if (c < ' ')
                 {
-                    throw new JsonDecodeError("Invalid control character", json, pos);
+                    throw new JSONDecodeError(
+                        "Invalid control character in string",
+                        json,
+                        index);
                 }
                 else
                 {
                     sb.Append(c);
-                    pos++;
+                    index++;
                 }
             }
 
-            throw new JsonDecodeError("Unterminated string starting at", json, pos);
+            throw new JSONDecodeError(
+                "Unterminated string",
+                json,
+                index);
         }
 
-        private static int ParseUnicodeEscape(string json, ref int pos)
+        private static char ParseUnicodeEscape(string json, ref int index)
         {
-            if (pos + 4 > json.Length)
+            if (index + 4 > json.Length)
             {
-                throw new JsonDecodeError("Invalid \\uXXXX escape", json, pos);
+                throw new JSONDecodeError(
+                    "Invalid \\uXXXX escape",
+                    json,
+                    index);
             }
 
-            string hex = json.Substring(pos, 4);
+            string hex = json.Substring(index, 4);
+
+#if NETSTANDARD2_0
             if (!int.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int codePoint))
+#else
+            if (!int.TryParse(hex.AsSpan(), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int codePoint))
+#endif
             {
-                throw new JsonDecodeError("Invalid \\uXXXX escape", json, pos);
+                throw new JSONDecodeError(
+                    "Invalid \\uXXXX escape",
+                    json,
+                    index);
             }
 
-            pos += 4;
-            return codePoint;
+            index += 4;
+            return (char)codePoint;
         }
 
-        private static object ParseNumber(string json, ref int pos)
+        private static object ParseNumber(string json, ref int index)
         {
-            int start = pos;
+            int start = index;
 
-            if (pos < json.Length && json[pos] == '-')
-                pos++;
-
-            if (pos >= json.Length)
-                throw new JsonDecodeError("Expecting value", json, start);
+            // Optional negative sign
+            if (index < json.Length && json[index] == '-')
+            {
+                index++;
+            }
 
             // Integer part
-            if (json[pos] == '0')
+            if (index >= json.Length)
             {
-                pos++;
+                throw new JSONDecodeError("Expecting value", json, start);
             }
-            else if (json[pos] >= '1' && json[pos] <= '9')
+
+            if (json[index] == '0')
             {
-                while (pos < json.Length && json[pos] >= '0' && json[pos] <= '9')
-                    pos++;
+                index++;
+            }
+            else if (json[index] >= '1' && json[index] <= '9')
+            {
+                index++;
+                while (index < json.Length && json[index] >= '0' && json[index] <= '9')
+                {
+                    index++;
+                }
             }
             else
             {
-                throw new JsonDecodeError("Expecting value", json, start);
+                throw new JSONDecodeError("Expecting value", json, start);
             }
 
             bool isFloat = false;
 
             // Fractional part
-            if (pos < json.Length && json[pos] == '.')
+            if (index < json.Length && json[index] == '.')
             {
                 isFloat = true;
-                pos++;
-                if (pos >= json.Length || json[pos] < '0' || json[pos] > '9')
+                index++;
+                if (index >= json.Length || json[index] < '0' || json[index] > '9')
                 {
-                    throw new JsonDecodeError("Expecting digit after decimal point", json, pos);
+                    throw new JSONDecodeError("Invalid number", json, start);
                 }
-                while (pos < json.Length && json[pos] >= '0' && json[pos] <= '9')
-                    pos++;
+
+                while (index < json.Length && json[index] >= '0' && json[index] <= '9')
+                {
+                    index++;
+                }
             }
 
             // Exponent part
-            if (pos < json.Length && (json[pos] == 'e' || json[pos] == 'E'))
+            if (index < json.Length && (json[index] == 'e' || json[index] == 'E'))
             {
                 isFloat = true;
-                pos++;
-                if (pos < json.Length && (json[pos] == '+' || json[pos] == '-'))
-                    pos++;
-                if (pos >= json.Length || json[pos] < '0' || json[pos] > '9')
+                index++;
+                if (index < json.Length && (json[index] == '+' || json[index] == '-'))
                 {
-                    throw new JsonDecodeError("Expecting digit in exponent", json, pos);
+                    index++;
                 }
-                while (pos < json.Length && json[pos] >= '0' && json[pos] <= '9')
-                    pos++;
+
+                if (index >= json.Length || json[index] < '0' || json[index] > '9')
+                {
+                    throw new JSONDecodeError("Invalid number", json, start);
+                }
+
+                while (index < json.Length && json[index] >= '0' && json[index] <= '9')
+                {
+                    index++;
+                }
             }
 
-            string numStr = json.Substring(start, pos - start);
+            string numStr = json.Substring(start, index - start);
 
             if (isFloat)
             {
@@ -321,61 +284,176 @@ namespace Sharpy
                 {
                     return d;
                 }
-                throw new JsonDecodeError("Invalid number", json, start);
+
+                throw new JSONDecodeError("Invalid number: " + numStr, json, start);
             }
-            else
+
+            // Try int first, then long, then fall back to double
+            if (int.TryParse(numStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int i))
             {
-                if (int.TryParse(numStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int i))
+                return i;
+            }
+
+            if (long.TryParse(numStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out long l))
+            {
+                return l;
+            }
+
+            if (double.TryParse(numStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double dbl))
+            {
+                return dbl;
+            }
+
+            throw new JSONDecodeError("Invalid number: " + numStr, json, start);
+        }
+
+        private static Dict<string, object?> ParseObject(string json, ref int index)
+        {
+            // Skip opening brace
+            index++;
+            SkipWhitespace(json, ref index);
+
+            var dict = new Dict<string, object?>();
+
+            if (index < json.Length && json[index] == '}')
+            {
+                index++;
+                return dict;
+            }
+
+            while (true)
+            {
+                SkipWhitespace(json, ref index);
+
+                if (index >= json.Length || json[index] != '"')
                 {
-                    return i;
+                    throw new JSONDecodeError(
+                        "Expecting property name enclosed in double quotes",
+                        json,
+                        index);
                 }
-                if (long.TryParse(numStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out long l))
+
+                string key = ParseString(json, ref index);
+                SkipWhitespace(json, ref index);
+
+                if (index >= json.Length || json[index] != ':')
                 {
-                    return l;
+                    throw new JSONDecodeError(
+                        "Expecting ':' delimiter",
+                        json,
+                        index);
                 }
-                // Fallback to double for very large integers
-                if (double.TryParse(numStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double d))
+
+                index++; // skip colon
+                SkipWhitespace(json, ref index);
+
+                object? value = ParseValue(json, ref index);
+                dict[key] = value;
+
+                SkipWhitespace(json, ref index);
+
+                if (index >= json.Length)
                 {
-                    return d;
+                    throw new JSONDecodeError(
+                        "Expecting ',' delimiter or '}'",
+                        json,
+                        index);
                 }
-                throw new JsonDecodeError("Invalid number", json, start);
+
+                if (json[index] == '}')
+                {
+                    index++;
+                    return dict;
+                }
+
+                if (json[index] != ',')
+                {
+                    throw new JSONDecodeError(
+                        "Expecting ',' delimiter or '}'",
+                        json,
+                        index);
+                }
+
+                index++; // skip comma
             }
         }
 
-        private static bool ParseBool(string json, ref int pos)
+        private static List<object?> ParseArray(string json, ref int index)
         {
-            if (json.Length - pos >= 4 && json.Substring(pos, 4) == "true")
+            // Skip opening bracket
+            index++;
+            SkipWhitespace(json, ref index);
+
+            var list = new List<object?>();
+
+            if (index < json.Length && json[index] == ']')
             {
-                pos += 4;
-                return true;
+                index++;
+                return list;
             }
-            if (json.Length - pos >= 5 && json.Substring(pos, 5) == "false")
+
+            while (true)
             {
-                pos += 5;
-                return false;
+                SkipWhitespace(json, ref index);
+                object? value = ParseValue(json, ref index);
+                list.Append(value);
+
+                SkipWhitespace(json, ref index);
+
+                if (index >= json.Length)
+                {
+                    throw new JSONDecodeError(
+                        "Expecting ',' delimiter or ']'",
+                        json,
+                        index);
+                }
+
+                if (json[index] == ']')
+                {
+                    index++;
+                    return list;
+                }
+
+                if (json[index] != ',')
+                {
+                    throw new JSONDecodeError(
+                        "Expecting ',' delimiter or ']'",
+                        json,
+                        index);
+                }
+
+                index++; // skip comma
             }
-            throw new JsonDecodeError("Expecting value", json, pos);
         }
 
-        private static object? ParseNull(string json, ref int pos)
+        private static object? ParseLiteral(string json, ref int index, string literal, object? value)
         {
-            if (json.Length - pos >= 4 && json.Substring(pos, 4) == "null")
+            if (index + literal.Length > json.Length ||
+                json.Substring(index, literal.Length) != literal)
             {
-                pos += 4;
-                return null;
+                throw new JSONDecodeError(
+                    "Expecting value",
+                    json,
+                    index);
             }
-            throw new JsonDecodeError("Expecting value", json, pos);
+
+            index += literal.Length;
+            return value;
         }
 
-        private static void SkipWhitespace(string json, ref int pos)
+        private static void SkipWhitespace(string json, ref int index)
         {
-            while (pos < json.Length)
+            while (index < json.Length)
             {
-                char c = json[pos];
+                char c = json[index];
                 if (c == ' ' || c == '\t' || c == '\r' || c == '\n')
-                    pos++;
+                {
+                    index++;
+                }
                 else
+                {
                     break;
+                }
             }
         }
     }

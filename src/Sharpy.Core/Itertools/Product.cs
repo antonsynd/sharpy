@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Sharpy
 {
-    internal static partial class Itertools
+    public static partial class Itertools
     {
         public static ProductIterator<T> Product<T>(params IEnumerable<T>[] iterables)
         {

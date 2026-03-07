@@ -7,234 +7,101 @@ using System.Text;
 namespace Sharpy
 {
     /// <summary>
-    /// JSON serializer. No external dependencies.
+    /// Minimal JSON serializer.
+    /// Supports Dict, List, string, int, long, double, bool, and null.
     /// </summary>
     internal static class JsonSerializer
     {
-        internal static string Serialize(object? obj, int? indent = null, bool sortKeys = false, bool ensureAscii = false)
+        public static string Serialize(object? obj, int indent = -1, bool sortKeys = false, bool ensureAscii = true)
         {
             var sb = new StringBuilder();
             SerializeValue(sb, obj, indent, sortKeys, ensureAscii, 0);
             return sb.ToString();
         }
 
-        private static void SerializeValue(StringBuilder sb, object? obj, int? indent, bool sortKeys, bool ensureAscii, int depth)
+        private static void SerializeValue(
+            StringBuilder sb,
+            object? value,
+            int indent,
+            bool sortKeys,
+            bool ensureAscii,
+            int currentIndent)
         {
-            if (obj == null)
+            if (value == null)
             {
                 sb.Append("null");
+                return;
             }
-            else if (obj is bool b)
+
+            if (value is bool b)
             {
-                // Must check bool before int since bool is convertible to int in .NET
                 sb.Append(b ? "true" : "false");
+                return;
             }
-            else if (obj is string s)
+
+            if (value is string s)
             {
                 SerializeString(sb, s, ensureAscii);
+                return;
             }
-            else if (obj is int i)
+
+            if (value is int i)
             {
                 sb.Append(i.ToString(CultureInfo.InvariantCulture));
+                return;
             }
-            else if (obj is long l)
+
+            if (value is long l)
             {
                 sb.Append(l.ToString(CultureInfo.InvariantCulture));
+                return;
             }
-            else if (obj is double d)
+
+            if (value is double d)
             {
-                if (double.IsInfinity(d) || double.IsNaN(d))
-                {
-                    throw new ValueError("Out of range float values are not JSON compliant");
-                }
-                sb.Append(FormatDouble(d));
+                SerializeDouble(sb, d);
+                return;
             }
-            else if (obj is float f)
+
+            if (value is float f)
             {
-                if (float.IsInfinity(f) || float.IsNaN(f))
-                {
-                    throw new ValueError("Out of range float values are not JSON compliant");
-                }
-                sb.Append(FormatDouble(f));
+                SerializeDouble(sb, f);
+                return;
             }
-            else if (IsDictLike(obj))
+
+            // Handle Dict<string, object?> and Dict<string, object>
+            if (value is IDictionary<string, object?> dictNullable)
             {
-                SerializeDict(sb, obj, indent, sortKeys, ensureAscii, depth);
+                SerializeDict(sb, dictNullable, indent, sortKeys, ensureAscii, currentIndent);
+                return;
             }
-            else if (IsListLike(obj))
+
+            if (value is IDictionary<string, object> dictNonNull)
             {
-                SerializeList(sb, obj, indent, sortKeys, ensureAscii, depth);
+                SerializeDictNonNull(sb, dictNonNull, indent, sortKeys, ensureAscii, currentIndent);
+                return;
             }
-            else
+
+            // Handle List<object?> and other IEnumerable
+            if (value is IEnumerable<object?> enumerable && !(value is string))
             {
-                throw new TypeError("Object of type '" + obj.GetType().Name + "' is not JSON serializable");
-            }
-        }
-
-        private static string FormatDouble(double d)
-        {
-            string s = d.ToString("R", CultureInfo.InvariantCulture);
-            if (s.IndexOf('.') < 0 && s.IndexOf('E') < 0 && s.IndexOf('e') < 0)
-            {
-                s += ".0";
-            }
-            return s;
-        }
-
-        private static bool IsDictLike(object obj)
-        {
-            if (obj is IDictionary)
-                return true;
-            if (obj is Dict<string, object?>)
-                return true;
-            // Check for generic IDictionary<K,V>
-            var type = obj.GetType();
-            foreach (var iface in type.GetInterfaces())
-            {
-                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IDictionary<,>))
-                    return true;
-            }
-            return false;
-        }
-
-        private static bool IsListLike(object obj)
-        {
-            if (obj is string)
-                return false;
-            return obj is IList || obj is IEnumerable;
-        }
-
-        private static void SerializeDict(StringBuilder sb, object obj, int? indent, bool sortKeys, bool ensureAscii, int depth)
-        {
-            sb.Append('{');
-
-            var entries = new System.Collections.Generic.List<KeyValuePair<string, object?>>();
-
-            if (obj is Dict<string, object?> sharpyDict)
-            {
-                foreach (string key in sharpyDict.Keys())
-                {
-                    entries.Add(new KeyValuePair<string, object?>(key, sharpyDict[key]));
-                }
-            }
-            else if (obj is IDictionary nonGenericDict)
-            {
-                foreach (DictionaryEntry entry in nonGenericDict)
-                {
-                    if (!(entry.Key is string key))
-                    {
-                        throw new TypeError("keys must be str, not " + entry.Key.GetType().Name);
-                    }
-                    entries.Add(new KeyValuePair<string, object?>(key, entry.Value));
-                }
-            }
-            else
-            {
-                // Handle generic IDictionary<K,V> via IEnumerable
-                foreach (var item in (IEnumerable)obj)
-                {
-                    var itemType = item.GetType();
-                    var keyProp = itemType.GetProperty("Key");
-                    var valProp = itemType.GetProperty("Value");
-                    if (keyProp != null && valProp != null)
-                    {
-                        var key = keyProp.GetValue(item);
-                        if (!(key is string keyStr))
-                        {
-                            throw new TypeError("keys must be str, not " + (key?.GetType().Name ?? "None"));
-                        }
-                        entries.Add(new KeyValuePair<string, object?>(keyStr, valProp.GetValue(item)));
-                    }
-                }
+                SerializeEnumerable(sb, enumerable, indent, sortKeys, ensureAscii, currentIndent);
+                return;
             }
 
-            if (sortKeys)
-            {
-                entries.Sort((a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));
-            }
-
-            for (int i = 0; i < entries.Count; i++)
-            {
-                if (i > 0)
-                {
-                    sb.Append(',');
-                }
-
-                if (indent.HasValue)
-                {
-                    sb.Append('\n');
-                    sb.Append(new string(' ', indent.Value * (depth + 1)));
-                }
-                else
-                {
-                    if (i > 0)
-                    {
-                        sb.Append(' ');
-                    }
-                }
-
-                SerializeString(sb, entries[i].Key, ensureAscii);
-                sb.Append(": ");
-                SerializeValue(sb, entries[i].Value, indent, sortKeys, ensureAscii, depth + 1);
-            }
-
-            if (entries.Count > 0 && indent.HasValue)
-            {
-                sb.Append('\n');
-                sb.Append(new string(' ', indent.Value * depth));
-            }
-            sb.Append('}');
-        }
-
-        private static void SerializeList(StringBuilder sb, object obj, int? indent, bool sortKeys, bool ensureAscii, int depth)
-        {
-            sb.Append('[');
-
-            var items = new System.Collections.Generic.List<object?>();
-            if (obj is IEnumerable enumerable)
-            {
-                foreach (var item in enumerable)
-                {
-                    items.Add(item);
-                }
-            }
-
-            for (int i = 0; i < items.Count; i++)
-            {
-                if (i > 0)
-                {
-                    sb.Append(',');
-                }
-
-                if (indent.HasValue)
-                {
-                    sb.Append('\n');
-                    sb.Append(new string(' ', indent.Value * (depth + 1)));
-                }
-                else
-                {
-                    if (i > 0)
-                    {
-                        sb.Append(' ');
-                    }
-                }
-
-                SerializeValue(sb, items[i], indent, sortKeys, ensureAscii, depth + 1);
-            }
-
-            if (items.Count > 0 && indent.HasValue)
-            {
-                sb.Append('\n');
-                sb.Append(new string(' ', indent.Value * depth));
-            }
-            sb.Append(']');
+            // Fallback: try to convert to string
+            throw new TypeError(
+                "Object of type " + value.GetType().Name + " is not JSON serializable");
         }
 
         private static void SerializeString(StringBuilder sb, string s, bool ensureAscii)
         {
             sb.Append('"');
-            foreach (char c in s)
+
+            for (int i = 0; i < s.Length; i++)
             {
+                char c = s[i];
+
                 switch (c)
                 {
                     case '"':
@@ -259,24 +126,215 @@ namespace Sharpy
                         sb.Append("\\t");
                         break;
                     default:
-                        if (c < 0x20)
+                        if (c < ' ')
                         {
                             sb.Append("\\u");
-                            sb.Append(((int)c).ToString("x4"));
+                            sb.Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));
                         }
-                        else if (ensureAscii && c > 0x7F)
+                        else if (ensureAscii && c > 127)
                         {
                             sb.Append("\\u");
-                            sb.Append(((int)c).ToString("x4"));
+                            sb.Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));
                         }
                         else
                         {
                             sb.Append(c);
                         }
+
                         break;
                 }
             }
+
             sb.Append('"');
+        }
+
+        private static void SerializeDouble(StringBuilder sb, double d)
+        {
+            if (double.IsInfinity(d) || double.IsNaN(d))
+            {
+                throw new ValueError(
+                    "Out of range float values are not JSON compliant");
+            }
+
+            string repr = d.ToString("R", CultureInfo.InvariantCulture);
+
+            // Ensure it looks like a float (has . or e)
+            if (repr.IndexOf('.') < 0 && repr.IndexOf('E') < 0 && repr.IndexOf('e') < 0)
+            {
+                repr += ".0";
+            }
+
+            sb.Append(repr);
+        }
+
+        private static void SerializeDict(
+            StringBuilder sb,
+            IDictionary<string, object?> dict,
+            int indent,
+            bool sortKeys,
+            bool ensureAscii,
+            int currentIndent)
+        {
+            var keys = new System.Collections.Generic.List<string>(dict.Keys);
+
+            if (sortKeys)
+            {
+                keys.Sort(StringComparer.Ordinal);
+            }
+
+            if (keys.Count == 0)
+            {
+                sb.Append("{}");
+                return;
+            }
+
+            bool pretty = indent >= 0;
+            int nextIndent = currentIndent + (pretty ? indent : 0);
+
+            sb.Append('{');
+
+            bool first = true;
+            foreach (string key in keys)
+            {
+                if (!first)
+                {
+                    sb.Append(',');
+                }
+
+                first = false;
+
+                if (pretty)
+                {
+                    sb.Append('\n');
+                    sb.Append(' ', nextIndent);
+                }
+
+                SerializeString(sb, key, ensureAscii);
+                sb.Append(':');
+                if (pretty)
+                {
+                    sb.Append(' ');
+                }
+
+                SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent);
+            }
+
+            if (pretty)
+            {
+                sb.Append('\n');
+                sb.Append(' ', currentIndent);
+            }
+
+            sb.Append('}');
+        }
+
+        private static void SerializeDictNonNull(
+            StringBuilder sb,
+            IDictionary<string, object> dict,
+            int indent,
+            bool sortKeys,
+            bool ensureAscii,
+            int currentIndent)
+        {
+            var keys = new System.Collections.Generic.List<string>(dict.Keys);
+
+            if (sortKeys)
+            {
+                keys.Sort(StringComparer.Ordinal);
+            }
+
+            if (keys.Count == 0)
+            {
+                sb.Append("{}");
+                return;
+            }
+
+            bool pretty = indent >= 0;
+            int nextIndent = currentIndent + (pretty ? indent : 0);
+
+            sb.Append('{');
+
+            bool first = true;
+            foreach (string key in keys)
+            {
+                if (!first)
+                {
+                    sb.Append(',');
+                }
+
+                first = false;
+
+                if (pretty)
+                {
+                    sb.Append('\n');
+                    sb.Append(' ', nextIndent);
+                }
+
+                SerializeString(sb, key, ensureAscii);
+                sb.Append(':');
+                if (pretty)
+                {
+                    sb.Append(' ');
+                }
+
+                SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent);
+            }
+
+            if (pretty)
+            {
+                sb.Append('\n');
+                sb.Append(' ', currentIndent);
+            }
+
+            sb.Append('}');
+        }
+
+        private static void SerializeEnumerable(
+            StringBuilder sb,
+            IEnumerable<object?> enumerable,
+            int indent,
+            bool sortKeys,
+            bool ensureAscii,
+            int currentIndent)
+        {
+            bool pretty = indent >= 0;
+            int nextIndent = currentIndent + (pretty ? indent : 0);
+
+            sb.Append('[');
+
+            bool first = true;
+            foreach (object? item in enumerable)
+            {
+                if (!first)
+                {
+                    sb.Append(',');
+                }
+
+                first = false;
+
+                if (pretty)
+                {
+                    sb.Append('\n');
+                    sb.Append(' ', nextIndent);
+                }
+
+                SerializeValue(sb, item, indent, sortKeys, ensureAscii, nextIndent);
+            }
+
+            if (first)
+            {
+                // empty
+                sb.Append(']');
+                return;
+            }
+
+            if (pretty)
+            {
+                sb.Append('\n');
+                sb.Append(' ', currentIndent);
+            }
+
+            sb.Append(']');
         }
     }
 }

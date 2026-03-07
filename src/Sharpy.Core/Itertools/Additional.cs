@@ -278,7 +278,7 @@ namespace Sharpy
     }
 
     [SharpyModule("itertools")]
-    internal static partial class Itertools
+    public static partial class Itertools
     {
         /// <summary>
         /// Make an iterator that returns elements from the first iterable until it is exhausted,

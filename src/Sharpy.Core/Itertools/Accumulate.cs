@@ -3,11 +3,16 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
-    internal static partial class Itertools
+    public static partial class Itertools
     {
-        public static AccumulateIterator<T> Accumulate<T>(IEnumerable<T> iterable, Func<T, T, T>? func = null, T? initial = default)
+        public static AccumulateIterator<T> Accumulate<T>(IEnumerable<T> iterable, Func<T, T, T>? func = null)
         {
-            return new AccumulateIterator<T>(iterable, func, initial, initial != null);
+            return new AccumulateIterator<T>(iterable, func, default, false);
+        }
+
+        public static AccumulateIterator<T> Accumulate<T>(IEnumerable<T> iterable, Func<T, T, T>? func, T initial)
+        {
+            return new AccumulateIterator<T>(iterable, func, initial, true);
         }
     }
 

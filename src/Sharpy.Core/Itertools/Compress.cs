@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
-    internal static partial class Itertools
+    public static partial class Itertools
     {
         public static CompressIterator<T> Compress<T>(IEnumerable<T> data, IEnumerable<bool> selectors)
         {

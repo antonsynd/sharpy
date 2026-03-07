@@ -1,6 +1,6 @@
 namespace Sharpy
 {
     [SharpyModule("pathlib")]
-    public static partial class Pathlib
+    public static partial class PathlibModule
     { }
 }

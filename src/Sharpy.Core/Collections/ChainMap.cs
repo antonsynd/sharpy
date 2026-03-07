@@ -5,63 +5,85 @@ using System.Linq;
 namespace Sharpy
 {
     /// <summary>
-    /// A ChainMap groups multiple dicts together to create a single, updateable view.
-    /// Lookups search the underlying mappings successively until a key is found.
-    /// Writes, updates, and deletions only operate on the first mapping.
+    /// A ChainMap groups multiple dictionaries together to create a single, updateable view.
+    /// Like Python's collections.ChainMap.
     /// </summary>
-    public class ChainMap<TKey, TValue> where TKey : notnull
+    public class ChainMap<K, V> where K : notnull
     {
-        private readonly System.Collections.Generic.List<System.Collections.Generic.Dictionary<TKey, TValue>> _maps;
+        private readonly System.Collections.Generic.List<Dict<K, V>> _maps;
 
-        public ChainMap(params System.Collections.Generic.Dictionary<TKey, TValue>[] maps)
+        /// <summary>
+        /// Create a new ChainMap from the given dictionaries.
+        /// If no maps are provided, a single empty dictionary is used.
+        /// </summary>
+        public ChainMap(params Dict<K, V>[] maps)
         {
-            if (maps.Length == 0)
+            if (maps == null || maps.Length == 0)
             {
-                _maps = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<TKey, TValue>>
-                {
-                    new System.Collections.Generic.Dictionary<TKey, TValue>()
-                };
+                _maps = new System.Collections.Generic.List<Dict<K, V>> { new Dict<K, V>() };
             }
             else
             {
-                _maps = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<TKey, TValue>>(maps);
+                _maps = new System.Collections.Generic.List<Dict<K, V>>(maps);
             }
         }
 
         /// <summary>
         /// The list of underlying mappings.
         /// </summary>
-        public IReadOnlyList<System.Collections.Generic.Dictionary<TKey, TValue>> Maps => _maps;
+        public System.Collections.Generic.List<Dict<K, V>> Maps => _maps;
 
         /// <summary>
-        /// New ChainMap containing all maps except the first.
+        /// A new ChainMap containing all maps except the first one.
         /// </summary>
-        public ChainMap<TKey, TValue> Parents
+        public ChainMap<K, V> Parents
         {
             get
             {
                 if (_maps.Count <= 1)
                 {
-                    return new ChainMap<TKey, TValue>();
+                    return new ChainMap<K, V>();
                 }
-
-                return new ChainMap<TKey, TValue>(_maps.Skip(1).ToArray());
+                var parentMaps = new Dict<K, V>[_maps.Count - 1];
+                for (int i = 1; i < _maps.Count; i++)
+                {
+                    parentMaps[i - 1] = _maps[i];
+                }
+                return new ChainMap<K, V>(parentMaps);
             }
         }
 
-        public TValue this[TKey key]
+        /// <summary>
+        /// Return a new ChainMap with a new map followed by all previous maps.
+        /// If no map is provided, an empty dict is used.
+        /// </summary>
+        public ChainMap<K, V> NewChild(Dict<K, V>? m = null)
+        {
+            var child = m ?? new Dict<K, V>();
+            var allMaps = new Dict<K, V>[_maps.Count + 1];
+            allMaps[0] = child;
+            for (int i = 0; i < _maps.Count; i++)
+            {
+                allMaps[i + 1] = _maps[i];
+            }
+            return new ChainMap<K, V>(allMaps);
+        }
+
+        /// <summary>
+        /// Gets or sets a value. Gets search through all maps; sets go to the first map.
+        /// </summary>
+        public V this[K key]
         {
             get
             {
                 foreach (var map in _maps)
                 {
-                    if (map.TryGetValue(key, out TValue? value))
+                    if (map.ContainsKey(key))
                     {
-                        return value;
+                        return map[key];
                     }
                 }
-
-                throw new KeyError($"'{key}'");
+                throw new KeyError(key?.ToString() ?? "None");
             }
             set
             {
@@ -69,7 +91,10 @@ namespace Sharpy
             }
         }
 
-        public bool ContainsKey(TKey key)
+        /// <summary>
+        /// Check if any map contains the key.
+        /// </summary>
+        public bool ContainsKey(K key)
         {
             foreach (var map in _maps)
             {
@@ -78,54 +103,75 @@ namespace Sharpy
                     return true;
                 }
             }
-
             return false;
         }
 
-        public TValue Get(TKey key, TValue defaultValue = default!)
+        /// <summary>
+        /// Get a value, searching through all maps.
+        /// </summary>
+        public V Get(K key, V @default = default!)
         {
             foreach (var map in _maps)
             {
-                if (map.TryGetValue(key, out TValue? value))
+                if (map.ContainsKey(key))
                 {
-                    return value;
+                    return map[key];
                 }
             }
-
-            return defaultValue;
+            return @default;
         }
 
         /// <summary>
-        /// Return a new ChainMap with a new map followed by all previous maps.
+        /// Return all unique keys across all maps.
         /// </summary>
-        public ChainMap<TKey, TValue> NewChild(System.Collections.Generic.Dictionary<TKey, TValue>? m = null)
+        public IEnumerable<K> Keys()
         {
-            var newMap = m ?? new System.Collections.Generic.Dictionary<TKey, TValue>();
-            var allMaps = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<TKey, TValue>> { newMap };
-            allMaps.AddRange(_maps);
-            return new ChainMap<TKey, TValue>(allMaps.ToArray());
-        }
-
-        public IEnumerable<TKey> Keys
-        {
-            get
+            var seen = new System.Collections.Generic.HashSet<K>();
+            foreach (var map in _maps)
             {
-                var seen = new System.Collections.Generic.HashSet<TKey>();
-                foreach (var map in _maps)
+                foreach (var key in map)
                 {
-                    foreach (var key in map.Keys)
+                    if (seen.Add(key))
                     {
-                        if (seen.Add(key))
-                        {
-                            yield return key;
-                        }
+                        yield return key;
                     }
                 }
             }
         }
 
-        public int Count => Keys.Count();
+        /// <summary>
+        /// Gets the total number of unique keys across all maps.
+        /// </summary>
+        public int Count
+        {
+            get
+            {
+                var seen = new System.Collections.Generic.HashSet<K>();
+                foreach (var map in _maps)
+                {
+                    foreach (var key in map)
+                    {
+                        seen.Add(key);
+                    }
+                }
+                return seen.Count;
+            }
+        }
 
-        public bool Remove(TKey key) => _maps[0].Remove(key);
+        /// <summary>
+        /// Remove key from the first mapping. Raises KeyError if not found in first mapping.
+        /// </summary>
+        public V Pop(K key)
+        {
+            return _maps[0].Pop(key);
+        }
+
+        /// <summary>
+        /// Clear the first mapping.
+        /// </summary>
+        public void Clear()
+        {
+            _maps[0].Clear();
+        }
     }
 }

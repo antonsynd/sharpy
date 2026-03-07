@@ -1,89 +1,95 @@
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Python-compatible regular expression module.
+    /// Wraps .NET's System.Text.RegularExpressions with Python-compatible API.
+    /// </summary>
     public static partial class Re
     {
-        // Python re flags
-        public static readonly int IGNORECASE = 2;
-        public static readonly int I = 2;
-        public static readonly int MULTILINE = 8;
-        public static readonly int M = 8;
-        public static readonly int DOTALL = 16;
-        public static readonly int S = 16;
+        // Flags — match Python's re module constants
+        /// <summary>Perform case-insensitive matching.</summary>
+        public const int IGNORECASE = 2;
+
+        /// <summary>Shorthand for IGNORECASE.</summary>
+        public const int I = 2;
+
+        /// <summary>Make ^ and $ match at line boundaries.</summary>
+        public const int MULTILINE = 8;
+
+        /// <summary>Shorthand for MULTILINE.</summary>
+        public const int M = 8;
+
+        /// <summary>Make . match any character including newline.</summary>
+        public const int DOTALL = 16;
+
+        /// <summary>Shorthand for DOTALL.</summary>
+        public const int S = 16;
 
         /// <summary>
-        /// Search for the pattern anywhere in the string.
+        /// Compile a pattern into a RePattern object.
         /// </summary>
-        public static ReMatch? Search(string pattern, string input, int flags = 0)
+        public static RePattern Compile(string pattern, int flags = 0)
         {
-            var compiled = CompileInternal(pattern, flags);
-            return compiled.Search(input);
+            return new RePattern(pattern, flags);
         }
 
         /// <summary>
-        /// Match the pattern at the beginning of the string.
+        /// Scan through string looking for the first location where the pattern produces a match.
         /// </summary>
-        public static ReMatch? Match(string pattern, string input, int flags = 0)
+        public static ReMatch? Search(string pattern, string s, int flags = 0)
         {
-            var compiled = CompileInternal(pattern, flags);
-            return compiled.Match(input);
+            return Compile(pattern, flags).Search(s);
         }
 
         /// <summary>
-        /// Match the pattern against the entire string.
+        /// Try to apply the pattern at the start of the string.
         /// </summary>
-        public static ReMatch? Fullmatch(string pattern, string input, int flags = 0)
+        public static ReMatch? Match(string pattern, string s, int flags = 0)
         {
-            var compiled = CompileInternal(pattern, flags);
-            return compiled.Fullmatch(input);
+            return Compile(pattern, flags).Match(s);
         }
 
         /// <summary>
-        /// Find all non-overlapping matches as a list of strings.
+        /// Try to apply the pattern to the entire string.
         /// </summary>
-        public static List<string> Findall(string pattern, string input, int flags = 0)
+        public static ReMatch? Fullmatch(string pattern, string s, int flags = 0)
         {
-            var compiled = CompileInternal(pattern, flags);
-            return compiled.Findall(input);
+            return Compile(pattern, flags).Fullmatch(s);
         }
 
         /// <summary>
-        /// Find all matches as an iterator of Match objects.
+        /// Return all non-overlapping matches of pattern in string, as a list.
         /// </summary>
-        public static IEnumerable<ReMatch> Finditer(string pattern, string input, int flags = 0)
+        public static List<object?> Findall(string pattern, string s, int flags = 0)
         {
-            var compiled = CompileInternal(pattern, flags);
-            return compiled.Finditer(input);
+            return Compile(pattern, flags).Findall(s);
+        }
+
+        /// <summary>
+        /// Return an iterator yielding match objects over all non-overlapping matches.
+        /// </summary>
+        public static List<ReMatch> Finditer(string pattern, string s, int flags = 0)
+        {
+            return Compile(pattern, flags).Finditer(s);
         }
 
         /// <summary>
         /// Return the string obtained by replacing the leftmost non-overlapping occurrences.
         /// </summary>
-        public static string Sub(string pattern, string repl, string input, int count = 0, int flags = 0)
+        public static string Sub(string pattern, string repl, string s, int count = 0, int flags = 0)
         {
-            var compiled = CompileInternal(pattern, flags);
-            return compiled.Sub(repl, input, count);
+            return Compile(pattern, flags).Sub(repl, s, count);
         }
 
         /// <summary>
-        /// Split the string by occurrences of the pattern.
+        /// Split string by the occurrences of the pattern.
         /// </summary>
-        public static List<string> Split(string pattern, string input, int maxsplit = 0, int flags = 0)
+        public static List<string> Split(string pattern, string s, int maxsplit = 0, int flags = 0)
         {
-            var compiled = CompileInternal(pattern, flags);
-            return compiled.Split(input, maxsplit);
-        }
-
-        /// <summary>
-        /// Compile a pattern into a Pattern object.
-        /// </summary>
-        public static RePattern Compile(string pattern, int flags = 0)
-        {
-            return new RePattern(pattern, flags);
+            return Compile(pattern, flags).Split(s, maxsplit);
         }
 
         /// <summary>
@@ -92,74 +98,6 @@ namespace Sharpy
         public static string Escape(string pattern)
         {
             return Regex.Escape(pattern);
-        }
-
-        private static RePattern CompileInternal(string pattern, int flags)
-        {
-            return new RePattern(pattern, flags);
-        }
-
-        /// <summary>
-        /// Translate Python regex syntax to .NET regex syntax.
-        /// </summary>
-        internal static string TranslatePattern(string pattern)
-        {
-            // (?P<name>...) → (?<name>...)
-            // (?P=name) → \k<name>
-            var sb = new StringBuilder(pattern.Length);
-            int i = 0;
-            while (i < pattern.Length)
-            {
-                if (i + 3 < pattern.Length && pattern[i] == '(' && pattern[i + 1] == '?' && pattern[i + 2] == 'P')
-                {
-                    if (i + 3 < pattern.Length && pattern[i + 3] == '<')
-                    {
-                        // (?P<name>...) → (?<name>...)
-                        sb.Append("(?<");
-                        i += 4; // skip (?P<
-                    }
-                    else if (i + 3 < pattern.Length && pattern[i + 3] == '=')
-                    {
-                        // (?P=name) → \k<name>
-                        i += 4; // skip (?P=
-                        int nameStart = i;
-                        while (i < pattern.Length && pattern[i] != ')')
-                            i++;
-                        string name = pattern.Substring(nameStart, i - nameStart);
-                        sb.Append("\\k<");
-                        sb.Append(name);
-                        sb.Append('>');
-                        if (i < pattern.Length)
-                            i++; // skip )
-                    }
-                    else
-                    {
-                        sb.Append(pattern[i]);
-                        i++;
-                    }
-                }
-                else
-                {
-                    sb.Append(pattern[i]);
-                    i++;
-                }
-            }
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Map Python re flags to .NET RegexOptions.
-        /// </summary>
-        internal static RegexOptions MapFlags(int flags)
-        {
-            var options = RegexOptions.None;
-            if ((flags & IGNORECASE) != 0)
-                options |= RegexOptions.IgnoreCase;
-            if ((flags & MULTILINE) != 0)
-                options |= RegexOptions.Multiline;
-            if ((flags & DOTALL) != 0)
-                options |= RegexOptions.Singleline;
-            return options;
         }
     }
 }

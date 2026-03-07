@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+
 namespace Sharpy
 {
     /// <summary>
@@ -149,7 +150,22 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// File exists error exception — raised when trying to create a file that already exists
+    /// Lookup error exception (base class for KeyError, IndexError in Python;
+    /// used directly for codec/encoding lookup failures).
+    /// </summary>
+    public class LookupError : Exception
+    {
+        public LookupError(string message) : base(message)
+        {
+        }
+
+        public LookupError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// File exists error — raised when trying to create a file that already exists.
     /// </summary>
     public class FileExistsError : IOException
     {
@@ -163,9 +179,9 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Permission error exception — raised on permission-related failures
+    /// Permission error — raised when an operation lacks sufficient access rights.
     /// </summary>
-    public class PermissionError : System.UnauthorizedAccessException
+    public class PermissionError : UnauthorizedAccessException
     {
         public PermissionError(string message) : base(message)
         {
@@ -177,7 +193,7 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Is a directory error exception — raised when a file operation is attempted on a directory
+    /// Is a directory error — raised when a file operation is attempted on a directory.
     /// </summary>
     public class IsADirectoryError : IOException
     {
@@ -191,30 +207,25 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Not a directory error exception — raised when a directory operation is attempted on a non-directory
+    /// Raised when argument parsing fails.
     /// </summary>
-    public class NotADirectoryError : IOException
+    public class ArgumentError : Exception
     {
-        public NotADirectoryError(string message) : base(message)
-        {
-        }
-
-        public NotADirectoryError(string message, Exception innerException) : base(message, innerException)
+        public ArgumentError(string message) : base(message)
         {
         }
     }
 
     /// <summary>
-    /// OS error exception — general operating system error
+    /// Raised to signal program exit (e.g., after --help).
     /// </summary>
-    public class OSError : Exception
+    public class SystemExit : Exception
     {
-        public OSError(string message) : base(message)
-        {
-        }
+        public int Code { get; }
 
-        public OSError(string message, Exception innerException) : base(message, innerException)
+        public SystemExit(int code) : base("SystemExit: " + code)
         {
+            Code = code;
         }
     }
 }

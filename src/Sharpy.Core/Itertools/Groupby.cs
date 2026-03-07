@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
-    internal static partial class Itertools
+    public static partial class Itertools
     {
         public static GroupbyIterator<T, TKey> Groupby<T, TKey>(IEnumerable<T> iterable, Func<T, TKey>? key = null)
         {

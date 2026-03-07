@@ -6,321 +6,239 @@ using System.Text;
 namespace Sharpy
 {
     /// <summary>
-    /// PurePath / Path implementation providing a Python pathlib-like API.
+    /// Object-oriented filesystem path, similar to Python's pathlib.Path.
+    /// Immutable — all mutation methods return new Path instances.
     /// </summary>
-    public class Path : IEquatable<Path>
+    public sealed class Path : IEquatable<Path>
     {
         private readonly string _path;
 
-        /// <summary>
-        /// Create a Path from a string.
-        /// </summary>
+        /// <summary>Create a path from a string.</summary>
         public Path(string path)
         {
-            _path = path ?? throw new TypeError("expected str, not NoneType");
+            _path = path ?? throw new TypeError("Path() argument must be str, not None");
         }
 
-        /// <summary>
-        /// Create a Path by joining multiple segments.
-        /// </summary>
-        public Path(params string[] segments)
+        /// <summary>Create a path by joining segments.</summary>
+        public Path(string first, string second)
         {
-            if (segments == null || segments.Length == 0)
-                _path = ".";
-            else
-                _path = System.IO.Path.Combine(segments);
+            _path = System.IO.Path.Combine(first, second);
         }
 
-        // --- Operators ---
+        /// <summary>Create a path by joining segments.</summary>
+        public Path(string first, string second, string third)
+        {
+            _path = System.IO.Path.Combine(first, second, third);
+        }
 
-        /// <summary>
-        /// Join a Path with a string using the / operator.
-        /// </summary>
+        // ===== Operator / for joining =====
+
+        /// <summary>Join two paths with /.</summary>
         public static Path operator /(Path left, string right)
         {
             return new Path(System.IO.Path.Combine(left._path, right));
         }
 
-        /// <summary>
-        /// Join two Paths using the / operator.
-        /// </summary>
+        /// <summary>Join two paths with /.</summary>
         public static Path operator /(Path left, Path right)
         {
             return new Path(System.IO.Path.Combine(left._path, right._path));
         }
 
-        // --- Properties ---
+        // ===== Properties =====
 
-        /// <summary>
-        /// The final component of this path.
-        /// </summary>
+        /// <summary>The final component of the path.</summary>
         public string Name => System.IO.Path.GetFileName(_path);
 
-        /// <summary>
-        /// The final component, without its suffix.
-        /// </summary>
+        /// <summary>The final component without its suffix.</summary>
         public string Stem => System.IO.Path.GetFileNameWithoutExtension(_path);
 
-        /// <summary>
-        /// The file extension of the final component.
-        /// </summary>
+        /// <summary>The file extension (including the dot).</summary>
         public string Suffix => System.IO.Path.GetExtension(_path);
 
-        /// <summary>
-        /// A list of the path's file extensions.
-        /// </summary>
+        /// <summary>All suffixes of the final component.</summary>
         public List<string> Suffixes
         {
             get
             {
                 var result = new List<string>();
-                string name = Name;
-                int firstDot = name.IndexOf('.');
-                if (firstDot < 0)
-                    return result;
-
-                // Extract all suffixes from the name
-                int pos = firstDot;
-                while (pos < name.Length)
+                var name = Name;
+                var idx = name.IndexOf('.');
+                if (idx >= 0)
                 {
-                    int nextDot = name.IndexOf('.', pos + 1);
-                    if (nextDot < 0)
+                    var remaining = name.Substring(idx);
+                    while (remaining.Length > 0)
                     {
-                        result.Append(name.Substring(pos));
-                        break;
-                    }
-                    else
-                    {
-                        result.Append(name.Substring(pos, nextDot - pos));
-                        pos = nextDot;
+                        var nextDot = remaining.IndexOf('.', 1);
+                        if (nextDot < 0)
+                        {
+                            result.Append(remaining);
+                            break;
+                        }
+                        result.Append(remaining.Substring(0, nextDot));
+                        remaining = remaining.Substring(nextDot);
                     }
                 }
                 return result;
             }
         }
 
-        /// <summary>
-        /// The logical parent of the path.
-        /// </summary>
+        /// <summary>The logical parent of the path.</summary>
         public Path Parent
         {
             get
             {
-                string? dir = System.IO.Path.GetDirectoryName(_path);
-                if (string.IsNullOrEmpty(dir))
-                {
-                    // For root paths like "/" return self; for relative like "a" return "."
-                    if (System.IO.Path.IsPathRooted(_path))
-                        return this;
-                    return new Path(".");
-                }
-                return new Path(dir);
+                var dir = System.IO.Path.GetDirectoryName(_path);
+                return new Path(string.IsNullOrEmpty(dir) ? "." : dir);
             }
         }
 
-        /// <summary>
-        /// An immutable sequence of the path's components.
-        /// </summary>
+        /// <summary>The path components as a list.</summary>
         public List<string> Parts
         {
             get
             {
                 var result = new List<string>();
-                if (string.IsNullOrEmpty(_path))
-                    return result;
-
-                string root = System.IO.Path.GetPathRoot(_path) ?? "";
+                var p = _path;
+                var root = System.IO.Path.GetPathRoot(p);
                 if (!string.IsNullOrEmpty(root))
                 {
                     result.Append(root);
+                    p = p.Substring(root.Length);
                 }
-
-                string rest = string.IsNullOrEmpty(root)
-                    ? _path
-                    : _path.Substring(root.Length);
-
-                if (!string.IsNullOrEmpty(rest))
+                if (p.Length > 0)
                 {
-                    string[] segments = rest.Split(
-                        new[] { '/', '\\' },
-                        StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var seg in segments)
+                    foreach (var part in p.Split(new[] { System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        result.Append(seg);
+                        result.Append(part);
                     }
                 }
                 return result;
             }
         }
 
-        /// <summary>
-        /// A string representing the root, if any.
-        /// </summary>
-        public string Root
-        {
-            get
-            {
-                string root = System.IO.Path.GetPathRoot(_path) ?? "";
-                return root;
-            }
-        }
+        /// <summary>The root of the path (e.g., "/" on Unix).</summary>
+        public string Root => System.IO.Path.GetPathRoot(_path) ?? "";
 
-        /// <summary>
-        /// The concatenation of the drive and root.
-        /// </summary>
+        /// <summary>The concatenation of drive and root (e.g., "/" on Unix, "C:\" on Windows).</summary>
         public string Anchor => Root;
 
-        /// <summary>
-        /// Whether the path is absolute.
-        /// </summary>
+        /// <summary>Whether the path is absolute.</summary>
         public bool IsAbsolute => System.IO.Path.IsPathRooted(_path);
 
-        // --- Query methods ---
+        // ===== Query Methods =====
 
-        /// <summary>
-        /// Whether this path exists on the filesystem.
-        /// </summary>
+        /// <summary>Whether the path exists on the filesystem.</summary>
         public bool Exists()
         {
             return File.Exists(_path) || Directory.Exists(_path);
         }
 
-        /// <summary>
-        /// Whether this path is an existing regular file.
-        /// </summary>
+        /// <summary>Whether the path points to a regular file.</summary>
         public bool IsFile()
         {
             return File.Exists(_path);
         }
 
-        /// <summary>
-        /// Whether this path is an existing directory.
-        /// </summary>
+        /// <summary>Whether the path points to a directory.</summary>
         public bool IsDir()
         {
             return Directory.Exists(_path);
         }
 
-        // --- File I/O ---
+        // ===== File I/O =====
 
-        /// <summary>
-        /// Read the text contents of the file.
-        /// </summary>
+        /// <summary>Read the file as text.</summary>
         public string ReadText(string encoding = "utf-8")
         {
-            if (!File.Exists(_path))
-                throw new FileNotFoundError("No such file or directory: '" + _path + "'");
             return File.ReadAllText(_path, GetEncoding(encoding));
         }
 
-        /// <summary>
-        /// Write text to the file, overwriting existing content.
-        /// </summary>
+        /// <summary>Write text to the file.</summary>
         public void WriteText(string data, string encoding = "utf-8")
         {
             File.WriteAllText(_path, data, GetEncoding(encoding));
         }
 
-        /// <summary>
-        /// Read the binary contents of the file.
-        /// </summary>
+        /// <summary>Read the file as bytes.</summary>
         public byte[] ReadBytes()
         {
-            if (!File.Exists(_path))
-                throw new FileNotFoundError("No such file or directory: '" + _path + "'");
             return File.ReadAllBytes(_path);
         }
 
-        /// <summary>
-        /// Write bytes to the file, overwriting existing content.
-        /// </summary>
+        /// <summary>Write bytes to the file.</summary>
         public void WriteBytes(byte[] data)
         {
             File.WriteAllBytes(_path, data);
         }
 
-        // --- Directory operations ---
+        // ===== Directory Operations =====
 
-        /// <summary>
-        /// Create the directory. If parents is true, create parent directories as needed.
-        /// </summary>
+        /// <summary>Create the directory. Optionally create parents.</summary>
         public void Mkdir(bool parents = false, bool exist_ok = false)
         {
             if (Directory.Exists(_path))
             {
                 if (!exist_ok)
+                {
                     throw new FileExistsError("File exists: '" + _path + "'");
+                }
                 return;
             }
-
             if (parents)
             {
                 Directory.CreateDirectory(_path);
             }
             else
             {
-                string? parent = System.IO.Path.GetDirectoryName(_path);
+                var parent = System.IO.Path.GetDirectoryName(_path);
                 if (!string.IsNullOrEmpty(parent) && !Directory.Exists(parent))
+                {
                     throw new FileNotFoundError("No such file or directory: '" + _path + "'");
+                }
                 Directory.CreateDirectory(_path);
             }
         }
 
-        /// <summary>
-        /// Remove this directory. The directory must be empty.
-        /// </summary>
+        /// <summary>Remove the directory (must be empty).</summary>
         public void Rmdir()
         {
             if (!Directory.Exists(_path))
+            {
                 throw new FileNotFoundError("No such file or directory: '" + _path + "'");
-            try
-            {
-                Directory.Delete(_path, false);
             }
-            catch (IOException ex)
-            {
-                throw new OSError("Directory not empty: '" + _path + "'", ex);
-            }
+            Directory.Delete(_path, false);
         }
 
-        /// <summary>
-        /// Iterate over the files in this directory.
-        /// </summary>
+        /// <summary>Iterate over the directory entries.</summary>
         public IEnumerable<Path> Iterdir()
         {
             if (!Directory.Exists(_path))
+            {
                 throw new FileNotFoundError("No such file or directory: '" + _path + "'");
-
+            }
             foreach (var entry in Directory.GetFileSystemEntries(_path))
             {
                 yield return new Path(entry);
             }
         }
 
-        /// <summary>
-        /// Glob the given relative pattern in this directory, yielding matching paths.
-        /// Supports simple patterns like "*.txt" and "**/*.txt".
-        /// </summary>
+        /// <summary>Glob for matching paths relative to this directory.</summary>
         public IEnumerable<Path> Glob(string pattern)
         {
             if (!Directory.Exists(_path))
+            {
                 throw new FileNotFoundError("No such file or directory: '" + _path + "'");
-
-            bool recursive = pattern.StartsWith("**/");
-            string searchPattern = recursive ? pattern.Substring(3) : pattern;
-            var option = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-
-            foreach (var entry in Directory.GetFileSystemEntries(_path, searchPattern, option))
+            }
+            foreach (var entry in Directory.GetFileSystemEntries(_path, pattern))
             {
                 yield return new Path(entry);
             }
         }
 
-        // --- Mutation ---
+        // ===== Mutation (returns new Path) =====
 
-        /// <summary>
-        /// Rename this file or directory to the given target.
-        /// </summary>
+        /// <summary>Rename the file or directory.</summary>
         public Path Rename(string target)
         {
             if (File.Exists(_path))
@@ -338,115 +256,102 @@ namespace Sharpy
             return new Path(target);
         }
 
-        /// <summary>
-        /// Remove this file. If missing_ok is false, raises FileNotFoundError if the file does not exist.
-        /// </summary>
+        /// <summary>Remove the file.</summary>
         public void Unlink(bool missing_ok = false)
         {
             if (!File.Exists(_path))
             {
-                if (Directory.Exists(_path))
-                    throw new IsADirectoryError("Is a directory: '" + _path + "'");
                 if (!missing_ok)
+                {
                     throw new FileNotFoundError("No such file or directory: '" + _path + "'");
+                }
                 return;
             }
             File.Delete(_path);
         }
 
-        /// <summary>
-        /// Rename this file or directory to the given target, replacing if it exists.
-        /// </summary>
+        /// <summary>Rename, replacing the target if it exists.</summary>
         public Path Replace(string target)
         {
             if (File.Exists(target))
+            {
                 File.Delete(target);
+            }
             return Rename(target);
         }
 
-        // --- Navigation ---
+        // ===== Navigation =====
 
-        /// <summary>
-        /// Make the path absolute, resolving any symlinks.
-        /// </summary>
+        /// <summary>Make the path absolute, resolving any symlinks.</summary>
         public Path Resolve()
         {
             return new Path(System.IO.Path.GetFullPath(_path));
         }
 
-        /// <summary>
-        /// Return a new path with the file name changed.
-        /// </summary>
+        /// <summary>Return a new path with the name changed.</summary>
         public Path WithName(string name)
         {
-            if (string.IsNullOrEmpty(Name))
-                throw new ValueError("Path has an empty name");
-            string? dir = System.IO.Path.GetDirectoryName(_path);
-            if (string.IsNullOrEmpty(dir))
-                return new Path(name);
-            return new Path(System.IO.Path.Combine(dir, name));
+            var parent = System.IO.Path.GetDirectoryName(_path);
+            return new Path(string.IsNullOrEmpty(parent) ? name : System.IO.Path.Combine(parent, name));
         }
 
-        /// <summary>
-        /// Return a new path with the stem changed.
-        /// </summary>
+        /// <summary>Return a new path with the stem changed.</summary>
         public Path WithStem(string stem)
         {
             return WithName(stem + Suffix);
         }
 
-        /// <summary>
-        /// Return a new path with the suffix changed.
-        /// </summary>
+        /// <summary>Return a new path with the suffix changed.</summary>
         public Path WithSuffix(string suffix)
         {
-            if (string.IsNullOrEmpty(Name))
-                throw new ValueError("Path has an empty name");
             return WithName(Stem + suffix);
         }
 
-        /// <summary>
-        /// Return a relative path from this path to other.
-        /// </summary>
-        public Path RelativeTo(Path other)
+        /// <summary>Return a relative path from this path to other.</summary>
+        public Path RelativeTo(string other)
         {
-            string thisNorm = System.IO.Path.GetFullPath(_path);
-            string otherNorm = System.IO.Path.GetFullPath(other._path);
-
-            if (!thisNorm.StartsWith(otherNorm, StringComparison.Ordinal))
-                throw new ValueError("'" + _path + "' is not in the subpath of '" + other._path + "'");
-
-            string relative = thisNorm.Substring(otherNorm.Length);
-            if (relative.StartsWith(System.IO.Path.DirectorySeparatorChar.ToString()))
+            var fullThis = System.IO.Path.GetFullPath(_path);
+            var fullOther = System.IO.Path.GetFullPath(other);
+            if (!fullThis.StartsWith(fullOther, StringComparison.Ordinal))
+            {
+                throw new ValueError("'" + _path + "' is not relative to '" + other + "'");
+            }
+            var relative = fullThis.Substring(fullOther.Length);
+            if (relative.Length > 0 && (relative[0] == System.IO.Path.DirectorySeparatorChar || relative[0] == System.IO.Path.AltDirectorySeparatorChar))
+            {
                 relative = relative.Substring(1);
-            if (relative.StartsWith(System.IO.Path.AltDirectorySeparatorChar.ToString()))
-                relative = relative.Substring(1);
-
-            return new Path(string.IsNullOrEmpty(relative) ? "." : relative);
+            }
+            return new Path(relative.Length == 0 ? "." : relative);
         }
 
-        // --- Object overrides ---
+        // ===== String Conversion =====
 
+        /// <summary>Return the string representation of the path.</summary>
         public override string ToString()
         {
             return _path;
         }
 
+        // ===== Equality =====
+
+        /// <summary>Check equality with another Path.</summary>
+        public bool Equals(Path? other)
+        {
+            if (other is null)
+                return false;
+            return _path == other._path;
+        }
+
+        /// <summary>Check equality.</summary>
         public override bool Equals(object? obj)
         {
             return obj is Path other && Equals(other);
         }
 
-        public bool Equals(Path? other)
-        {
-            if (other is null)
-                return false;
-            return string.Equals(_path, other._path, StringComparison.Ordinal);
-        }
-
+        /// <summary>Get hash code.</summary>
         public override int GetHashCode()
         {
-            return StringComparer.Ordinal.GetHashCode(_path);
+            return _path.GetHashCode();
         }
 
         public static bool operator ==(Path? left, Path? right)
@@ -461,9 +366,11 @@ namespace Sharpy
             return !(left == right);
         }
 
-        private static Encoding GetEncoding(string name)
+        // ===== Helpers =====
+
+        private static Encoding GetEncoding(string encoding)
         {
-            switch (name.ToLowerInvariant())
+            switch (encoding.ToLowerInvariant())
             {
                 case "utf-8":
                 case "utf8":
@@ -478,14 +385,7 @@ namespace Sharpy
                 case "iso-8859-1":
                     return Encoding.GetEncoding("iso-8859-1");
                 default:
-                    try
-                    {
-                        return Encoding.GetEncoding(name);
-                    }
-                    catch (ArgumentException)
-                    {
-                        throw new ValueError("unknown encoding: '" + name + "'");
-                    }
+                    throw new LookupError("unknown encoding: " + encoding);
             }
         }
     }

@@ -1,15 +1,18 @@
 using System;
-using System.Text;
+using System.Collections.Generic;
 
 namespace Sharpy
 {
     /// <summary>
-    /// Simple namespace object returned by ArgumentParser.ParseArgs().
-    /// Stores parsed argument values by name.
+    /// Stores parsed arguments as named values.
     /// </summary>
-    public class Namespace
+    public sealed class Namespace
     {
         private readonly Dict<string, object?> _values = new Dict<string, object?>();
+
+        internal Namespace()
+        {
+        }
 
         internal void Set(string name, object? value)
         {
@@ -17,80 +20,77 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Get an argument value by name.
+        /// Get a parsed argument value by name.
         /// </summary>
-        public object? Get(string name)
+        public object? this[string name]
         {
-            if (!_values.ContainsKey(name))
+            get
             {
-                throw new AttributeError("'Namespace' object has no attribute '" + name + "'");
+                if (!_values.ContainsKey(name))
+                {
+                    throw new AttributeError("'Namespace' object has no attribute '" + name + "'");
+                }
+
+                return _values[name];
             }
-            return _values[name];
         }
 
         /// <summary>
-        /// Get a typed argument value by name.
+        /// Get a parsed argument value with typed conversion.
         /// </summary>
         public T Get<T>(string name)
         {
-            object? val = Get(name);
+            object? val = this[name];
             if (val == null)
             {
-                return default!;
+                throw new TypeError("argument '" + name + "' is None");
             }
-            return (T)val;
+
+            if (val is T typed)
+            {
+                return typed;
+            }
+
+            throw new TypeError(
+                "argument '" + name + "' is type " + val.GetType().Name + ", expected " + typeof(T).Name);
         }
 
         /// <summary>
-        /// Check if the namespace contains a given name.
+        /// Check if a named argument exists.
         /// </summary>
         public bool Contains(string name)
         {
             return _values.ContainsKey(name);
         }
 
-        /// <summary>
-        /// Get or set a value by name.
-        /// </summary>
-        public object? this[string name]
-        {
-            get => Get(name);
-            set => _values[name] = value;
-        }
-
         public override string ToString()
         {
-            var sb = new StringBuilder("Namespace(");
-            bool first = true;
-            foreach (var key in _values.Keys())
+            var parts = new System.Collections.Generic.List<string>();
+            foreach (string key in _values.Keys())
             {
-                if (!first)
-                    sb.Append(", ");
-                first = false;
-                sb.Append(key);
-                sb.Append('=');
                 object? val = _values[key];
-                if (val is string s)
+                string valueStr;
+                if (val == null)
                 {
-                    sb.Append('\'');
-                    sb.Append(s);
-                    sb.Append('\'');
+                    valueStr = "None";
+                }
+                else if (val is string s)
+                {
+                    valueStr = "'" + s + "'";
                 }
                 else if (val is bool b)
                 {
-                    sb.Append(b ? "True" : "False");
-                }
-                else if (val == null)
-                {
-                    sb.Append("None");
+                    valueStr = b ? "True" : "False";
                 }
                 else
                 {
-                    sb.Append(val);
+                    valueStr = val.ToString() ?? "None";
                 }
+
+                parts.Add(key + "=" + valueStr);
             }
-            sb.Append(')');
-            return sb.ToString();
+
+            return "Namespace(" + string.Join(", ", parts) + ")";
         }
     }
 }

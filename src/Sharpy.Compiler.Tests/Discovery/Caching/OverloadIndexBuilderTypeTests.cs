@@ -129,8 +129,9 @@ public class OverloadIndexBuilderTypeTests
         // Assert
         var builtins = index.Modules["builtins"];
         var exceptionTypes = builtins.Types.Where(t => t.IsException).ToList();
-        // Most exception types directly extend Exception, but some (IOError, FileNotFoundError)
-        // extend intermediate .NET exception types (IOException, FileNotFoundException)
+        // Most exception types directly extend Exception, but some (IOError, FileNotFoundError,
+        // FileExistsError, IsADirectoryError) extend IOException, FileNotFoundException,
+        // UnauthorizedAccessException, or ValueError (JSONDecodeError)
         var allowedBaseTypes = new HashSet<string?>
         {
             "Exception", "IOException", "FileNotFoundException", "UnauthorizedAccessException", "ValueError"

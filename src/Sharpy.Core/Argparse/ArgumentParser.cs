@@ -5,151 +5,124 @@ using System.IO;
 namespace Sharpy
 {
     /// <summary>
-    /// Python-like argument parser for command-line arguments.
+    /// Python-compatible command-line argument parser.
     /// </summary>
-    public class ArgumentParser
+    public sealed class ArgumentParser
     {
         private readonly string _description;
-        private readonly string _prog;
-        private readonly System.Collections.Generic.List<ArgDef> _args = new System.Collections.Generic.List<ArgDef>();
+        private readonly System.Collections.Generic.List<ArgumentDef> _arguments = new System.Collections.Generic.List<ArgumentDef>();
+        private readonly bool _addHelp;
+        private TextWriter _output;
 
-        public ArgumentParser(string description = "", string prog = "")
+        /// <summary>Program name for help text.</summary>
+        public string Prog { get; set; }
+
+        public ArgumentParser(string description = "", string prog = "", bool addHelp = true)
         {
             _description = description;
-            _prog = string.IsNullOrEmpty(prog) ? "prog" : prog;
-            // Auto-add --help / -h
-            _args.Add(new ArgDef
-            {
-                Name = "help",
-                ShortFlag = "-h",
-                LongFlag = "--help",
-                Action = "help",
-                Help = "show this help message and exit",
-                IsPositional = false,
-            });
-        }
+            Prog = string.IsNullOrEmpty(prog) ? "prog" : prog;
+            _addHelp = addHelp;
+            _output = Console.Out;
 
-        /// <summary>
-        /// Add a positional or optional argument.
-        /// If nameOrFlag starts with '-', it's treated as an optional argument.
-        /// Otherwise, it's a positional argument.
-        /// </summary>
-        public void AddArgument(string nameOrFlag, string help = "", object? @default = null, Func<string, object>? type = null, string action = "store", bool required = false, string? nargs = null, List<string>? choices = null)
-        {
-            if (!nameOrFlag.StartsWith("-"))
+            if (addHelp)
             {
-                // Positional argument
-                _args.Add(new ArgDef
+                _arguments.Add(new ArgumentDef
                 {
-                    Name = nameOrFlag,
-                    IsPositional = true,
-                    Help = help,
-                    Default = @default,
-                    TypeConverter = type,
-                    Nargs = nargs,
-                    Choices = choices,
+                    ShortName = "-h",
+                    LongName = "--help",
+                    Dest = "help",
+                    Action = "help",
+                    Help = "show this help message and exit",
+                    IsOptional = true,
+                    Default = false
                 });
-                return;
+            }
+        }
+
+        /// <summary>
+        /// Add a positional argument.
+        /// </summary>
+        public void AddArgument(
+            string name,
+            string type = "str",
+            string help = "",
+            object? defaultValue = null,
+            string? nargs = null,
+            List<string>? choices = null)
+        {
+            if (name.StartsWith("-"))
+            {
+                throw new ValueError("positional argument names must not start with '-'");
             }
 
-            string name = nameOrFlag.TrimStart('-').Replace("-", "_");
-            _args.Add(new ArgDef
+            _arguments.Add(new ArgumentDef
             {
-                Name = name,
-                LongFlag = nameOrFlag.StartsWith("--") ? nameOrFlag : null,
-                ShortFlag = nameOrFlag.StartsWith("--") ? null : nameOrFlag,
-                IsPositional = false,
+                LongName = name,
+                Dest = name,
+                Type = type,
                 Help = help,
-                Default = @default,
-                TypeConverter = type,
-                Action = action,
-                Required = required,
+                Default = nargs == "*" ? (object)new List<string>() : defaultValue,
                 Nargs = nargs,
                 Choices = choices,
+                IsOptional = false,
+                Required = nargs != "*"
             });
         }
 
         /// <summary>
-        /// Add an optional argument with short and long flags.
+        /// Add an optional argument with long name only (e.g., "--verbose").
         /// </summary>
-        public void AddArgument(string shortFlag, string longFlag, string help = "", object? @default = null, Func<string, object>? type = null, string action = "store", bool required = false, string? nargs = null, List<string>? choices = null)
+        public void AddOptionalArgument(
+            string longName,
+            string? shortName = null,
+            string type = "str",
+            string help = "",
+            object? defaultValue = null,
+            bool required = false,
+            string action = "store",
+            string? nargs = null,
+            List<string>? choices = null,
+            string? dest = null)
         {
-            string name = longFlag.TrimStart('-').Replace("-", "_");
-            _args.Add(new ArgDef
+            ValidateOptionalName(longName);
+            if (shortName != null)
             {
-                Name = name,
-                ShortFlag = shortFlag,
-                LongFlag = longFlag,
-                IsPositional = false,
+                ValidateOptionalName(shortName);
+            }
+
+            _arguments.Add(new ArgumentDef
+            {
+                ShortName = shortName,
+                LongName = longName,
+                Dest = dest ?? NormalizeDest(longName),
+                Type = type,
                 Help = help,
-                Default = @default,
-                TypeConverter = type,
-                Action = action,
+                Default = GetDefaultForAction(action, defaultValue),
                 Required = required,
+                Action = action,
                 Nargs = nargs,
                 Choices = choices,
+                IsOptional = true
             });
         }
-
         /// <summary>
-        /// Parse command-line arguments from sys.argv (skipping first element).
+        /// Parse command-line arguments from the given string array.
         /// </summary>
-        public Namespace ParseArgs()
-        {
-            var argv = Sys.Argv;
-            var args = new System.Collections.Generic.List<string>();
-            // Skip first element (program name)
-            for (int i = 1; i < argv.Length; i++)
-            {
-                args.Add(argv[i]);
-            }
-            return ParseArgs(args);
-        }
-
-        /// <summary>
-        /// Parse the given list of arguments.
-        /// </summary>
-        public Namespace ParseArgs(System.Collections.Generic.List<string> args)
-        {
-            return ParseArgs(args.ToArray());
-        }
-
-        /// <summary>
-        /// Parse the given list of arguments.
-        /// </summary>
-        public Namespace ParseArgs(List<string> args)
-        {
-            var list = new System.Collections.Generic.List<string>();
-            foreach (var a in args)
-            {
-                list.Add(a);
-            }
-            return ParseArgs(list.ToArray());
-        }
-
-        private Namespace ParseArgs(string[] args)
+        public Namespace ParseArgs(string[] args)
         {
             var ns = new Namespace();
+            int positionalIndex = 0;
+            var positionalArgs = GetPositionalArgs();
+            var seen = new HashSet<string>();
 
             // Set defaults
-            foreach (var def in _args)
+            foreach (var argDef in _arguments)
             {
-                if (def.Action == "help")
-                    continue;
-                if (def.Action == "store_true")
-                    ns.Set(def.Name, def.Default ?? false);
-                else if (def.Action == "store_false")
-                    ns.Set(def.Name, def.Default ?? true);
-                else if (def.Action == "count")
-                    ns.Set(def.Name, def.Default ?? 0);
-                else if (def.Action == "append")
-                    ns.Set(def.Name, new List<object?>());
-                else
-                    ns.Set(def.Name, def.Default);
+                if (argDef.Action != "help")
+                {
+                    ns.Set(argDef.Dest, argDef.Default);
+                }
             }
-
-            int positionalIndex = 0;
-            var positionals = GetPositionals();
 
             int i = 0;
             while (i < args.Length)
@@ -159,104 +132,78 @@ namespace Sharpy
                 if (arg == "-h" || arg == "--help")
                 {
                     PrintHelp();
-                    Environment.Exit(0);
+                    throw new SystemExit(0);
                 }
 
-                if (arg.StartsWith("-"))
+                if (arg.StartsWith("--") || (arg.StartsWith("-") && arg.Length > 1 && !char.IsDigit(arg[1])))
                 {
-                    var def = FindOptional(arg);
-                    if (def == null)
+                    // Optional argument
+                    var argDef = FindOptionalArg(arg);
+                    if (argDef == null)
                     {
-                        Error("unrecognized arguments: " + arg);
-                        return ns; // unreachable, Error exits
+                        throw new ArgumentError("unrecognized arguments: " + arg);
                     }
 
-                    switch (def.Action)
-                    {
-                        case "store_true":
-                            ns.Set(def.Name, true);
-                            break;
-                        case "store_false":
-                            ns.Set(def.Name, false);
-                            break;
-                        case "count":
-                            ns.Set(def.Name, (int)ns.Get(def.Name)! + 1);
-                            break;
-                        case "append":
-                            i++;
-                            if (i >= args.Length)
-                                Error("argument " + arg + ": expected one argument");
-                            var appendList = (List<object?>)ns.Get(def.Name)!;
-                            appendList.Append(ConvertValue(def, args[i]));
-                            break;
-                        default: // "store"
-                            if (def.Nargs != null)
-                            {
-                                var collected = CollectNargs(def, args, ref i);
-                                ns.Set(def.Name, collected);
-                            }
-                            else
-                            {
-                                i++;
-                                if (i >= args.Length)
-                                    Error("argument " + arg + ": expected one argument");
-                                ns.Set(def.Name, ConvertValue(def, args[i]));
-                            }
-                            break;
-                    }
+                    seen.Add(argDef.Dest);
+                    i = ProcessOptionalArg(argDef, args, i, ns);
                 }
                 else
                 {
                     // Positional argument
-                    if (positionalIndex >= positionals.Count)
+                    if (positionalIndex >= positionalArgs.Count)
                     {
-                        Error("unrecognized arguments: " + arg);
+                        throw new ArgumentError("unrecognized arguments: " + arg);
                     }
 
-                    var def = positionals[positionalIndex];
-                    if (def.Nargs != null)
+                    var argDef = positionalArgs[positionalIndex];
+                    seen.Add(argDef.Dest);
+
+                    if (argDef.Nargs == "*" || argDef.Nargs == "+")
                     {
-                        var collected = new List<object?>();
+                        var values = new List<string>();
                         while (i < args.Length && !args[i].StartsWith("-"))
                         {
-                            collected.Append(ConvertValue(def, args[i]));
+                            ValidateChoice(argDef, args[i]);
+                            values.Append(args[i]);
                             i++;
                         }
-                        ns.Set(def.Name, collected);
-                        positionalIndex++;
-                        continue; // don't increment i again
+
+                        if (argDef.Nargs == "+" && ((ICollection<string>)values).Count == 0)
+                        {
+                            throw new ArgumentError(
+                                "the following arguments are required: " + argDef.Dest);
+                        }
+
+                        ns.Set(argDef.Dest, ConvertList(values, argDef.Type));
                     }
                     else
                     {
-                        ns.Set(def.Name, ConvertValue(def, arg));
-                        positionalIndex++;
+                        ValidateChoice(argDef, arg);
+                        ns.Set(argDef.Dest, ConvertValue(arg, argDef.Type));
+                        i++;
                     }
-                }
 
-                i++;
-            }
-
-            // Check required positionals
-            foreach (var def in positionals)
-            {
-                if (def.Nargs == null || def.Nargs == "+")
-                {
-                    if (ns.Get(def.Name) == null || (def.Nargs == "+" && ns.Get(def.Name) is List<object?> l && Builtins.Len(l) == 0))
-                    {
-                        Error("the following arguments are required: " + def.Name);
-                    }
+                    positionalIndex++;
                 }
             }
 
-            // Check required optionals
-            foreach (var def in _args)
+            // Check required arguments
+            foreach (var argDef in _arguments)
             {
-                if (!def.IsPositional && def.Required && def.Action != "help")
+                if (argDef.Action == "help")
+                    continue;
+
+                if (argDef.Required && !seen.Contains(argDef.Dest))
                 {
-                    if (ns.Get(def.Name) == null)
+                    if (!argDef.IsOptional)
                     {
-                        string flag = def.LongFlag ?? def.ShortFlag ?? def.Name;
-                        Error("the following arguments are required: " + flag);
+                        throw new ArgumentError(
+                            "the following arguments are required: " + argDef.Dest);
+                    }
+                    else
+                    {
+                        throw new ArgumentError(
+                            "the following arguments are required: " + argDef.LongName);
                     }
                 }
             }
@@ -264,216 +211,361 @@ namespace Sharpy
             return ns;
         }
 
-        private object? ConvertValue(ArgDef def, string value)
+        /// <summary>
+        /// Parse command-line arguments from Environment.GetCommandLineArgs().
+        /// </summary>
+        public Namespace ParseArgs()
         {
-            if (def.Choices != null)
-            {
-                bool found = false;
-                foreach (var c in def.Choices)
-                {
-                    if (c == value)
-                    { found = true; break; }
-                }
-                if (!found)
-                {
-                    Error("argument " + def.Name + ": invalid choice: '" + value + "'");
-                }
-            }
-
-            if (def.TypeConverter != null)
-            {
-                try
-                {
-                    return def.TypeConverter(value);
-                }
-                catch (Exception)
-                {
-                    string flag = def.LongFlag ?? def.ShortFlag ?? def.Name;
-                    Error("argument " + flag + ": invalid value: '" + value + "'");
-                    return null; // unreachable
-                }
-            }
-
-            return value;
-        }
-
-        private List<object?> CollectNargs(ArgDef def, string[] args, ref int i)
-        {
-            var result = new List<object?>();
-            string nargs = def.Nargs!;
-
-            if (nargs == "?")
-            {
-                i++;
-                if (i < args.Length && !args[i].StartsWith("-"))
-                {
-                    result.Append(ConvertValue(def, args[i]));
-                }
-                else
-                {
-                    i--; // didn't consume
-                }
-                return result;
-            }
-
-            if (nargs == "*" || nargs == "+")
-            {
-                i++;
-                while (i < args.Length && !args[i].StartsWith("-"))
-                {
-                    result.Append(ConvertValue(def, args[i]));
-                    i++;
-                }
-                i--; // back up one since outer loop will increment
-
-                if (nargs == "+" && Builtins.Len(result) == 0)
-                {
-                    string flag = def.LongFlag ?? def.ShortFlag ?? def.Name;
-                    Error("argument " + flag + ": expected at least one argument");
-                }
-                return result;
-            }
-
-            // Numeric nargs
-            if (int.TryParse(nargs, out int count))
-            {
-                for (int n = 0; n < count; n++)
-                {
-                    i++;
-                    if (i >= args.Length)
-                    {
-                        string flag = def.LongFlag ?? def.ShortFlag ?? def.Name;
-                        Error("argument " + flag + ": expected " + count + " argument(s)");
-                    }
-                    result.Append(ConvertValue(def, args[i]));
-                }
-                return result;
-            }
-
-            return result;
-        }
-
-        private System.Collections.Generic.List<ArgDef> GetPositionals()
-        {
-            var result = new System.Collections.Generic.List<ArgDef>();
-            foreach (var def in _args)
-            {
-                if (def.IsPositional)
-                    result.Add(def);
-            }
-            return result;
-        }
-
-        private ArgDef? FindOptional(string flag)
-        {
-            foreach (var def in _args)
-            {
-                if (!def.IsPositional && (def.ShortFlag == flag || def.LongFlag == flag))
-                    return def;
-            }
-            return null;
-        }
-
-        private void Error(string message)
-        {
-            Console.Error.WriteLine("usage: " + _prog);
-            Console.Error.WriteLine(_prog + ": error: " + message);
-            Environment.Exit(2);
+            string[] allArgs = Environment.GetCommandLineArgs();
+            // Skip the first element (program name)
+            string[] args = new string[allArgs.Length - 1];
+            Array.Copy(allArgs, 1, args, 0, args.Length);
+            return ParseArgs(args);
         }
 
         /// <summary>
-        /// Print help message to stdout.
+        /// Format and return the help text.
         /// </summary>
-        public void PrintHelp()
+        public string FormatHelp()
         {
-            var positionals = GetPositionals();
-            Console.Write("usage: " + _prog);
+            var sb = new System.Text.StringBuilder();
 
-            // Show optional flags in usage
-            foreach (var def in _args)
+            // Usage line
+            sb.Append("usage: ");
+            sb.Append(Prog);
+            foreach (var arg in _arguments)
             {
-                if (!def.IsPositional && def.Action != "help")
+                if (arg.IsOptional)
                 {
-                    string flag = def.ShortFlag ?? def.LongFlag ?? "";
-                    if (def.Required)
-                        Console.Write(" " + flag + " " + def.Name.ToUpper());
-                    else
-                        Console.Write(" [" + flag + " " + def.Name.ToUpper() + "]");
+                    sb.Append(" [");
+                    sb.Append(arg.LongName);
+                    if (arg.Action == "store")
+                    {
+                        sb.Append(' ');
+                        sb.Append(arg.Dest.ToUpper());
+                    }
+
+                    sb.Append(']');
+                }
+                else
+                {
+                    sb.Append(' ');
+                    sb.Append(arg.Dest);
                 }
             }
 
-            // Show help flag
-            Console.Write(" [-h]");
+            sb.Append('\n');
 
-            // Show positional args
-            foreach (var def in positionals)
-            {
-                Console.Write(" " + def.Name);
-            }
-            Console.WriteLine();
-
+            // Description
             if (!string.IsNullOrEmpty(_description))
             {
-                Console.WriteLine();
-                Console.WriteLine(_description);
+                sb.Append('\n');
+                sb.Append(_description);
+                sb.Append('\n');
             }
 
             // Positional arguments
+            var positionals = GetPositionalArgs();
             if (positionals.Count > 0)
             {
-                Console.WriteLine();
-                Console.WriteLine("positional arguments:");
-                foreach (var def in positionals)
+                sb.Append("\npositional arguments:\n");
+                foreach (var arg in positionals)
                 {
-                    Console.Write("  " + def.Name);
-                    if (!string.IsNullOrEmpty(def.Help))
+                    sb.Append("  ");
+                    sb.Append(arg.Dest);
+                    if (!string.IsNullOrEmpty(arg.Help))
                     {
-                        Console.Write(new string(' ', System.Math.Max(1, 22 - def.Name.Length - 2)));
-                        Console.Write(def.Help);
+                        sb.Append(new string(' ', System.Math.Max(1, 22 - arg.Dest.Length - 2)));
+                        sb.Append(arg.Help);
                     }
-                    Console.WriteLine();
+
+                    sb.Append('\n');
                 }
             }
 
             // Optional arguments
-            Console.WriteLine();
-            Console.WriteLine("options:");
-            foreach (var def in _args)
+            var optionals = GetOptionalArgs();
+            if (optionals.Count > 0)
             {
-                if (def.IsPositional)
-                    continue;
-
-                string flags = "";
-                if (def.ShortFlag != null && def.LongFlag != null)
-                    flags = def.ShortFlag + ", " + def.LongFlag;
-                else if (def.LongFlag != null)
-                    flags = def.LongFlag;
-                else if (def.ShortFlag != null)
-                    flags = def.ShortFlag;
-
-                Console.Write("  " + flags);
-                if (!string.IsNullOrEmpty(def.Help))
+                sb.Append("\noptions:\n");
+                foreach (var arg in optionals)
                 {
-                    Console.Write(new string(' ', System.Math.Max(1, 22 - flags.Length - 2)));
-                    Console.Write(def.Help);
+                    sb.Append("  ");
+                    string names;
+                    if (!string.IsNullOrEmpty(arg.ShortName))
+                    {
+                        names = arg.ShortName + ", " + arg.LongName;
+                    }
+                    else
+                    {
+                        names = arg.LongName;
+                    }
+
+                    sb.Append(names);
+                    if (!string.IsNullOrEmpty(arg.Help))
+                    {
+                        sb.Append(new string(' ', System.Math.Max(1, 22 - names.Length - 2)));
+                        sb.Append(arg.Help);
+                    }
+
+                    sb.Append('\n');
                 }
-                Console.WriteLine();
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Set the output writer for help text (for testing).
+        /// </summary>
+        public void SetOutput(TextWriter output)
+        {
+            _output = output;
+        }
+
+        private void PrintHelp()
+        {
+            _output.Write(FormatHelp());
+        }
+
+        private System.Collections.Generic.List<ArgumentDef> GetPositionalArgs()
+        {
+            var result = new System.Collections.Generic.List<ArgumentDef>();
+            foreach (var arg in _arguments)
+            {
+                if (!arg.IsOptional)
+                {
+                    result.Add(arg);
+                }
+            }
+
+            return result;
+        }
+
+        private System.Collections.Generic.List<ArgumentDef> GetOptionalArgs()
+        {
+            var result = new System.Collections.Generic.List<ArgumentDef>();
+            foreach (var arg in _arguments)
+            {
+                if (arg.IsOptional)
+                {
+                    result.Add(arg);
+                }
+            }
+
+            return result;
+        }
+
+        private ArgumentDef? FindOptionalArg(string name)
+        {
+            foreach (var arg in _arguments)
+            {
+                if (arg.IsOptional && (arg.LongName == name || arg.ShortName == name))
+                {
+                    return arg;
+                }
+            }
+
+            return null;
+        }
+
+        private int ProcessOptionalArg(ArgumentDef argDef, string[] args, int i, Namespace ns)
+        {
+            switch (argDef.Action)
+            {
+                case "store_true":
+                    ns.Set(argDef.Dest, true);
+                    return i + 1;
+
+                case "store_false":
+                    ns.Set(argDef.Dest, false);
+                    return i + 1;
+
+                case "count":
+                    object? current = null;
+                    try
+                    {
+                        current = ns[argDef.Dest];
+                    }
+                    catch (AttributeError)
+                    {
+                        // Ignore
+                    }
+
+                    int count = current is int c ? c : 0;
+                    ns.Set(argDef.Dest, count + 1);
+                    return i + 1;
+
+                case "append":
+                    i++;
+                    if (i >= args.Length)
+                    {
+                        throw new ArgumentError(
+                            "argument " + argDef.LongName + ": expected one argument");
+                    }
+
+                    ValidateChoice(argDef, args[i]);
+                    object? existing = null;
+                    try
+                    {
+                        existing = ns[argDef.Dest];
+                    }
+                    catch (AttributeError)
+                    {
+                        // Ignore
+                    }
+
+                    var appendList = existing as List<object?> ?? new List<object?>();
+                    appendList.Append(ConvertValue(args[i], argDef.Type));
+                    ns.Set(argDef.Dest, appendList);
+                    return i + 1;
+
+                case "store":
+                default:
+                    if (argDef.Nargs == "?")
+                    {
+                        if (i + 1 < args.Length && !args[i + 1].StartsWith("-"))
+                        {
+                            i++;
+                            ValidateChoice(argDef, args[i]);
+                            ns.Set(argDef.Dest, ConvertValue(args[i], argDef.Type));
+                        }
+
+                        // else: use default (already set)
+                        return i + 1;
+                    }
+
+                    i++;
+                    if (i >= args.Length)
+                    {
+                        throw new ArgumentError(
+                            "argument " + argDef.LongName + ": expected one argument");
+                    }
+
+                    ValidateChoice(argDef, args[i]);
+                    ns.Set(argDef.Dest, ConvertValue(args[i], argDef.Type));
+                    return i + 1;
             }
         }
 
-        private class ArgDef
+        private static object ConvertValue(string value, string type)
         {
-            public string Name { get; set; } = "";
-            public string? ShortFlag { get; set; }
-            public string? LongFlag { get; set; }
-            public bool IsPositional { get; set; }
+            switch (type)
+            {
+                case "int":
+                    if (int.TryParse(value, out int intVal))
+                    {
+                        return intVal;
+                    }
+
+                    throw new ArgumentError("argument: invalid int value: '" + value + "'");
+
+                case "float":
+                    if (double.TryParse(value, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out double dblVal))
+                    {
+                        return dblVal;
+                    }
+
+                    throw new ArgumentError("argument: invalid float value: '" + value + "'");
+
+                case "str":
+                default:
+                    return value;
+            }
+        }
+
+        private static object ConvertList(List<string> values, string type)
+        {
+            if (type == "str")
+            {
+                return values;
+            }
+
+            var result = new List<object?>();
+            foreach (string v in values)
+            {
+                result.Append(ConvertValue(v, type));
+            }
+
+            return result;
+        }
+
+        private static void ValidateChoice(ArgumentDef argDef, string value)
+        {
+            if (argDef.Choices != null)
+            {
+                bool found = false;
+                foreach (string choice in argDef.Choices)
+                {
+                    if (choice == value)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    throw new ArgumentError(
+                        "argument " + argDef.Dest + ": invalid choice: '" + value + "'");
+                }
+            }
+        }
+
+        private static string NormalizeDest(string name)
+        {
+            // --my-flag → my_flag
+            string dest = name;
+            while (dest.StartsWith("-"))
+            {
+                dest = dest.Substring(1);
+            }
+
+            return dest.Replace('-', '_');
+        }
+
+        private static void ValidateOptionalName(string name)
+        {
+            if (!name.StartsWith("-"))
+            {
+                throw new ValueError("optional argument names must start with '-'");
+            }
+        }
+
+        private static object? GetDefaultForAction(string action, object? defaultValue)
+        {
+            if (defaultValue != null)
+                return defaultValue;
+
+            switch (action)
+            {
+                case "store_true":
+                    return false;
+                case "store_false":
+                    return true;
+                case "count":
+                    return 0;
+                case "append":
+                    return null;
+                default:
+                    return null;
+            }
+        }
+
+        private sealed class ArgumentDef
+        {
+            public string? ShortName { get; set; }
+            public string LongName { get; set; } = "";
+            public string Dest { get; set; } = "";
+            public string Type { get; set; } = "str";
             public string Help { get; set; } = "";
             public object? Default { get; set; }
-            public Func<string, object>? TypeConverter { get; set; }
-            public string Action { get; set; } = "store";
             public bool Required { get; set; }
+            public string Action { get; set; } = "store";
             public string? Nargs { get; set; }
             public List<string>? Choices { get; set; }
+            public bool IsOptional { get; set; }
         }
     }
 }

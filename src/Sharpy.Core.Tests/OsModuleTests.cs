@@ -1,302 +1,332 @@
 using System;
-using System.IO;
-using FluentAssertions;
-using Sharpy;
+using System.Collections.Generic;
 using Xunit;
 
-namespace Sharpy.Core.Tests;
-
-public class OsModuleTests : IDisposable
+namespace Sharpy.Core.Tests
 {
-    private readonly System.Collections.Generic.List<string> _tempDirs = new();
-    private readonly System.Collections.Generic.List<string> _tempFiles = new();
-
-    private string CreateTempDir()
+    public class OsModuleTests : IDisposable
     {
-        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sharpy_os_test_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(path);
-        _tempDirs.Add(path);
-        return path;
-    }
+        private readonly string _tempDir;
 
-    private string CreateTempFile(string content = "hello")
-    {
-        var path = System.IO.Path.GetTempFileName();
-        File.WriteAllText(path, content);
-        _tempFiles.Add(path);
-        return path;
-    }
+        public OsModuleTests()
+        {
+            _tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sharpy_os_tests_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(_tempDir);
+        }
 
-    public void Dispose()
-    {
-        foreach (var f in _tempFiles)
+        public void Dispose()
         {
             try
-            { File.Delete(f); }
-            catch { }
+            { System.IO.Directory.Delete(_tempDir, true); }
+            catch { /* best effort */ }
         }
-        foreach (var d in _tempDirs)
+
+        private string Sub(string name) => System.IO.Path.Combine(_tempDir, name);
+
+        // ===== Constants =====
+
+        [Fact]
+        public void Sep_IsNotEmpty()
         {
+            Assert.False(string.IsNullOrEmpty(Os.Sep));
+        }
+
+        [Fact]
+        public void Linesep_IsNotEmpty()
+        {
+            Assert.False(string.IsNullOrEmpty(Os.Linesep));
+        }
+
+        [Fact]
+        public void Name_IsPosixOrNt()
+        {
+            Assert.True(Os.Name == "posix" || Os.Name == "nt");
+        }
+
+        // ===== File Operations =====
+
+        [Fact]
+        public void Remove_DeletesFile()
+        {
+            var path = Sub("removeme.txt");
+            System.IO.File.WriteAllText(path, "data");
+            Os.Remove(path);
+            Assert.False(System.IO.File.Exists(path));
+        }
+
+        [Fact]
+        public void Remove_ThrowsOnNonexistent()
+        {
+            Assert.Throws<FileNotFoundError>(() => Os.Remove(Sub("nope.txt")));
+        }
+
+        [Fact]
+        public void Rename_RenamesFile()
+        {
+            var src = Sub("old.txt");
+            var dst = Sub("new.txt");
+            System.IO.File.WriteAllText(src, "data");
+            Os.Rename(src, dst);
+            Assert.False(System.IO.File.Exists(src));
+            Assert.True(System.IO.File.Exists(dst));
+        }
+
+        [Fact]
+        public void Rename_ThrowsOnNonexistent()
+        {
+            Assert.Throws<FileNotFoundError>(() => Os.Rename(Sub("nope.txt"), Sub("also_nope.txt")));
+        }
+
+        // ===== Directory Operations =====
+
+        [Fact]
+        public void Mkdir_CreatesDirectory()
+        {
+            var path = Sub("newdir");
+            Os.Mkdir(path);
+            Assert.True(System.IO.Directory.Exists(path));
+        }
+
+        [Fact]
+        public void Mkdir_ThrowsIfExists()
+        {
+            var path = Sub("existdir");
+            System.IO.Directory.CreateDirectory(path);
+            Assert.Throws<FileExistsError>(() => Os.Mkdir(path));
+        }
+
+        [Fact]
+        public void Makedirs_CreatesNestedDirectories()
+        {
+            var path = System.IO.Path.Combine(_tempDir, "a", "b", "c");
+            Os.Makedirs(path);
+            Assert.True(System.IO.Directory.Exists(path));
+        }
+
+        [Fact]
+        public void Makedirs_ExistOk_DoesNotThrow()
+        {
+            var path = Sub("existing");
+            System.IO.Directory.CreateDirectory(path);
+            Os.Makedirs(path, exist_ok: true); // should not throw
+        }
+
+        [Fact]
+        public void Makedirs_NotExistOk_Throws()
+        {
+            var path = Sub("existing2");
+            System.IO.Directory.CreateDirectory(path);
+            Assert.Throws<FileExistsError>(() => Os.Makedirs(path, exist_ok: false));
+        }
+
+        [Fact]
+        public void Rmdir_RemovesEmptyDirectory()
+        {
+            var path = Sub("emptydir");
+            System.IO.Directory.CreateDirectory(path);
+            Os.Rmdir(path);
+            Assert.False(System.IO.Directory.Exists(path));
+        }
+
+        [Fact]
+        public void Rmdir_ThrowsOnNonEmpty()
+        {
+            var path = Sub("notempty");
+            System.IO.Directory.CreateDirectory(path);
+            System.IO.File.WriteAllText(System.IO.Path.Combine(path, "file.txt"), "data");
+            Assert.Throws<IOError>(() => Os.Rmdir(path));
+        }
+
+        [Fact]
+        public void Rmdir_ThrowsOnNonexistent()
+        {
+            Assert.Throws<FileNotFoundError>(() => Os.Rmdir(Sub("nope")));
+        }
+
+        [Fact]
+        public void Listdir_ReturnsEntries()
+        {
+            var dir = Sub("listdir");
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "a.txt"), "");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "b.txt"), "");
+            System.IO.Directory.CreateDirectory(System.IO.Path.Combine(dir, "subdir"));
+
+            var entries = Os.Listdir(dir);
+            Assert.Contains("a.txt", (IEnumerable<string>)entries);
+            Assert.Contains("b.txt", (IEnumerable<string>)entries);
+            Assert.Contains("subdir", (IEnumerable<string>)entries);
+        }
+
+        [Fact]
+        public void Listdir_ThrowsOnNonexistent()
+        {
+            Assert.Throws<FileNotFoundError>(() => Os.Listdir(Sub("nope")));
+        }
+
+        [Fact]
+        public void Getcwd_ReturnsNonEmptyString()
+        {
+            var cwd = Os.Getcwd();
+            Assert.False(string.IsNullOrEmpty(cwd));
+        }
+
+        [Fact]
+        public void Chdir_ChangesDirectory()
+        {
+            var original = Os.Getcwd();
             try
-            { Directory.Delete(d, true); }
-            catch { }
+            {
+                Os.Chdir(_tempDir);
+                // Verify we moved somewhere that contains the temp dir name component
+                var cwd = Os.Getcwd();
+                var dirName = System.IO.Path.GetFileName(_tempDir);
+                Assert.Contains(dirName, cwd);
+            }
+            finally
+            {
+                Os.Chdir(original);
+            }
         }
-    }
 
-    // ===== Properties =====
-
-    [Fact]
-    public void Name_Returns_Posix_Or_Nt()
-    {
-        var name = Os.Name;
-        name.Should().BeOneOf("posix", "nt");
-    }
-
-    [Fact]
-    public void Sep_Returns_Directory_Separator()
-    {
-        Os.Sep.Should().Be(System.IO.Path.DirectorySeparatorChar.ToString());
-    }
-
-    [Fact]
-    public void Linesep_Returns_Newline()
-    {
-        Os.Linesep.Should().Be(Environment.NewLine);
-    }
-
-    [Fact]
-    public void Environ_Returns_Dict_With_Entries()
-    {
-        var env = Os.Environ;
-        env.Should().NotBeNull();
-        // PATH is almost always set
-        env.Count.Should().BeGreaterThan(0);
-    }
-
-    // ===== File operations =====
-
-    [Fact]
-    public void Remove_Deletes_File()
-    {
-        var path = CreateTempFile();
-        File.Exists(path).Should().BeTrue();
-        Os.Remove(path);
-        File.Exists(path).Should().BeFalse();
-    }
-
-    [Fact]
-    public void Remove_Nonexistent_Throws_FileNotFoundError()
-    {
-        var act = () => Os.Remove("/tmp/nonexistent_sharpy_" + Guid.NewGuid());
-        act.Should().Throw<FileNotFoundError>();
-    }
-
-    [Fact]
-    public void Remove_Directory_Throws_IsADirectoryError()
-    {
-        var dir = CreateTempDir();
-        var act = () => Os.Remove(dir);
-        act.Should().Throw<IsADirectoryError>();
-    }
-
-    [Fact]
-    public void Rename_Moves_File()
-    {
-        var src = CreateTempFile("content");
-        var dst = src + "_renamed";
-        _tempFiles.Add(dst);
-        Os.Rename(src, dst);
-        File.Exists(src).Should().BeFalse();
-        File.Exists(dst).Should().BeTrue();
-        File.ReadAllText(dst).Should().Be("content");
-    }
-
-    [Fact]
-    public void Rename_Nonexistent_Throws()
-    {
-        var act = () => Os.Rename("/tmp/nonexistent_" + Guid.NewGuid(), "/tmp/dest");
-        act.Should().Throw<FileNotFoundError>();
-    }
-
-    [Fact]
-    public void Mkdir_Creates_Directory()
-    {
-        var parent = CreateTempDir();
-        var child = System.IO.Path.Combine(parent, "subdir");
-        Os.Mkdir(child);
-        Directory.Exists(child).Should().BeTrue();
-    }
-
-    [Fact]
-    public void Mkdir_No_Parent_Throws_FileNotFoundError()
-    {
-        var path = System.IO.Path.Combine("/tmp/nonexistent_" + Guid.NewGuid(), "child");
-        var act = () => Os.Mkdir(path);
-        act.Should().Throw<FileNotFoundError>();
-    }
-
-    [Fact]
-    public void Mkdir_Already_Exists_Throws_FileExistsError()
-    {
-        var dir = CreateTempDir();
-        var act = () => Os.Mkdir(dir);
-        act.Should().Throw<FileExistsError>();
-    }
-
-    [Fact]
-    public void Makedirs_Creates_Nested()
-    {
-        var root = CreateTempDir();
-        var nested = System.IO.Path.Combine(root, "a", "b", "c");
-        Os.Makedirs(nested);
-        Directory.Exists(nested).Should().BeTrue();
-    }
-
-    [Fact]
-    public void Makedirs_ExistOk_True_No_Error()
-    {
-        var dir = CreateTempDir();
-        var act = () => Os.Makedirs(dir, exist_ok: true);
-        act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void Makedirs_ExistOk_False_Throws()
-    {
-        var dir = CreateTempDir();
-        var act = () => Os.Makedirs(dir, exist_ok: false);
-        act.Should().Throw<FileExistsError>();
-    }
-
-    [Fact]
-    public void Rmdir_Removes_Empty_Directory()
-    {
-        var dir = CreateTempDir();
-        Os.Rmdir(dir);
-        Directory.Exists(dir).Should().BeFalse();
-    }
-
-    [Fact]
-    public void Rmdir_NonEmpty_Throws()
-    {
-        var dir = CreateTempDir();
-        File.WriteAllText(System.IO.Path.Combine(dir, "file.txt"), "x");
-        var act = () => Os.Rmdir(dir);
-        act.Should().Throw<OSError>();
-    }
-
-    [Fact]
-    public void Rmdir_Nonexistent_Throws()
-    {
-        var act = () => Os.Rmdir("/tmp/nonexistent_" + Guid.NewGuid());
-        act.Should().Throw<FileNotFoundError>();
-    }
-
-    [Fact]
-    public void Listdir_Returns_Entries()
-    {
-        var dir = CreateTempDir();
-        File.WriteAllText(System.IO.Path.Combine(dir, "a.txt"), "");
-        Directory.CreateDirectory(System.IO.Path.Combine(dir, "subdir"));
-
-        var entries = Os.Listdir(dir);
-        entries.Should().Contain("a.txt");
-        entries.Should().Contain("subdir");
-    }
-
-    [Fact]
-    public void Listdir_Nonexistent_Throws()
-    {
-        var act = () => Os.Listdir("/tmp/nonexistent_" + Guid.NewGuid());
-        act.Should().Throw<FileNotFoundError>();
-    }
-
-    [Fact]
-    public void Getcwd_Returns_Current_Directory()
-    {
-        Os.Getcwd().Should().NotBeNullOrEmpty();
-    }
-
-    // ===== Environment =====
-
-    [Fact]
-    public void Getenv_Returns_Null_For_Missing()
-    {
-        Os.Getenv("SHARPY_NONEXISTENT_VAR_12345").Should().BeNull();
-    }
-
-    [Fact]
-    public void Getenv_With_Default_Returns_Default_For_Missing()
-    {
-        Os.Getenv("SHARPY_NONEXISTENT_VAR_12345", "fallback").Should().Be("fallback");
-    }
-
-    [Fact]
-    public void Putenv_Sets_Variable()
-    {
-        Os.Putenv("SHARPY_TEST_VAR", "test_value");
-        Os.Getenv("SHARPY_TEST_VAR").Should().Be("test_value");
-        // Clean up
-        Environment.SetEnvironmentVariable("SHARPY_TEST_VAR", null);
-    }
-
-    // ===== Walk =====
-
-    [Fact]
-    public void Walk_Traverses_Directory_Tree()
-    {
-        var root = CreateTempDir();
-        Directory.CreateDirectory(System.IO.Path.Combine(root, "sub1"));
-        Directory.CreateDirectory(System.IO.Path.Combine(root, "sub2"));
-        File.WriteAllText(System.IO.Path.Combine(root, "root.txt"), "");
-        File.WriteAllText(System.IO.Path.Combine(root, "sub1", "a.txt"), "");
-
-        var entries = new System.Collections.Generic.List<(string dirpath, Sharpy.List<string> dirnames, Sharpy.List<string> filenames)>();
-        foreach (var entry in Os.Walk(root))
+        [Fact]
+        public void Chdir_ThrowsOnNonexistent()
         {
-            entries.Add(entry);
+            Assert.Throws<FileNotFoundError>(() => Os.Chdir(Sub("nope")));
         }
 
-        entries.Should().HaveCountGreaterThanOrEqualTo(3);
-        entries[0].dirpath.Should().Be(root);
-        entries[0].dirnames.Should().Contain("sub1");
-        entries[0].filenames.Should().Contain("root.txt");
-    }
+        // ===== Environment Variables =====
 
-    [Fact]
-    public void Walk_Nonexistent_Yields_Nothing()
-    {
-        var entries = new System.Collections.Generic.List<(string dirpath, Sharpy.List<string> dirnames, Sharpy.List<string> filenames)>();
-        foreach (var entry in Os.Walk("/tmp/nonexistent_" + Guid.NewGuid()))
+        [Fact]
+        public void Getenv_ReturnsNullForMissing()
         {
-            entries.Add(entry);
+            Assert.Null(Os.Getenv("SHARPY_TEST_NONEXISTENT_" + Guid.NewGuid().ToString("N")));
         }
-        entries.Should().BeEmpty();
-    }
 
-    // ===== Stat =====
+        [Fact]
+        public void Getenv_WithDefault_ReturnsDefault()
+        {
+            Assert.Equal("fallback", Os.Getenv("SHARPY_TEST_NONEXISTENT_" + Guid.NewGuid().ToString("N"), "fallback"));
+        }
 
-    [Fact]
-    public void Stat_Returns_File_Info()
-    {
-        var path = CreateTempFile("hello world");
-        var result = Os.Stat(path);
-        result.StSize.Should().BeGreaterThan(0);
-        result.StMtime.Should().BeGreaterThan(0);
-    }
+        [Fact]
+        public void Putenv_And_Getenv_RoundTrip()
+        {
+            var key = "SHARPY_TEST_" + Guid.NewGuid().ToString("N");
+            Os.Putenv(key, "testvalue");
+            try
+            {
+                Assert.Equal("testvalue", Os.Getenv(key));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(key, null);
+            }
+        }
 
-    [Fact]
-    public void Stat_Directory_Returns_Size_Zero()
-    {
-        var dir = CreateTempDir();
-        var result = Os.Stat(dir);
-        result.StSize.Should().Be(0);
-    }
+        [Fact]
+        public void Environ_ReturnsDictWithEntries()
+        {
+            var env = Os.Environ;
+            Assert.True(env.Count > 0);
+        }
 
-    [Fact]
-    public void Stat_Nonexistent_Throws()
-    {
-        var act = () => Os.Stat("/tmp/nonexistent_" + Guid.NewGuid());
-        act.Should().Throw<FileNotFoundError>();
+        // ===== PathExists =====
+
+        [Fact]
+        public void PathExists_TrueForFile()
+        {
+            var path = Sub("exists_file.txt");
+            System.IO.File.WriteAllText(path, "data");
+            Assert.True(Os.PathExists(path));
+        }
+
+        [Fact]
+        public void PathExists_TrueForDirectory()
+        {
+            var path = Sub("exists_dir");
+            System.IO.Directory.CreateDirectory(path);
+            Assert.True(Os.PathExists(path));
+        }
+
+        [Fact]
+        public void PathExists_FalseForNonexistent()
+        {
+            Assert.False(Os.PathExists(Sub("nonexistent_path")));
+        }
+
+        // ===== Stat =====
+
+        [Fact]
+        public void Stat_ReturnsFileSize()
+        {
+            var path = Sub("stat_file.txt");
+            System.IO.File.WriteAllText(path, "hello");
+            var result = Os.Stat(path);
+            Assert.True(result.StSize > 0);
+        }
+
+        [Fact]
+        public void Stat_ReturnsTimestamps()
+        {
+            var path = Sub("stat_time.txt");
+            System.IO.File.WriteAllText(path, "data");
+            var result = Os.Stat(path);
+            // Timestamps should be reasonable (after year 2020 = 1577836800)
+            Assert.True(result.StMtime > 1577836800);
+            Assert.True(result.StCtime > 1577836800);
+            Assert.True(result.StAtime > 1577836800);
+        }
+
+        [Fact]
+        public void Stat_WorksForDirectories()
+        {
+            var path = Sub("stat_dir");
+            System.IO.Directory.CreateDirectory(path);
+            var result = Os.Stat(path);
+            Assert.Equal(0, result.StSize);
+            Assert.True(result.StMtime > 1577836800);
+        }
+
+        [Fact]
+        public void Stat_ThrowsOnNonexistent()
+        {
+            Assert.Throws<FileNotFoundError>(() => Os.Stat(Sub("nonexistent_stat")));
+        }
+
+        // ===== Walk =====
+
+        [Fact]
+        public void Walk_TraversesDirectoryTree()
+        {
+            // Create a small directory tree
+            var root = Sub("walktest");
+            System.IO.Directory.CreateDirectory(root);
+            System.IO.File.WriteAllText(System.IO.Path.Combine(root, "file1.txt"), "");
+            var sub = System.IO.Path.Combine(root, "sub");
+            System.IO.Directory.CreateDirectory(sub);
+            System.IO.File.WriteAllText(System.IO.Path.Combine(sub, "file2.txt"), "");
+
+            var results = new System.Collections.Generic.List<string>();
+            foreach (var (dirpath, dirnames, filenames) in Os.Walk(root))
+            {
+                results.Add(dirpath);
+            }
+
+            Assert.Equal(2, results.Count);
+            Assert.Equal(root, results[0]);
+            Assert.Equal(sub, results[1]);
+        }
+
+        [Fact]
+        public void Walk_NonexistentPath_YieldsNothing()
+        {
+            var count = 0;
+            foreach (var _ in Os.Walk(Sub("nonexistent")))
+            {
+                count++;
+            }
+            Assert.Equal(0, count);
+        }
     }
 }

@@ -889,119 +889,91 @@ namespace Sharpy
         }
 
         // ----------------------------------------------------------------
-        // Priority 3 — split, replace, starts/endswith, index, partition,
-        //               expandtabs, istitle, encode, maketrans, translate
+        // Split / Rsplit
         // ----------------------------------------------------------------
 
         /// <summary>
-        /// Return a list of the words in the string, using whitespace as the
-        /// delimiter. Consecutive whitespace is collapsed and leading/trailing
-        /// whitespace is stripped.
+        /// Split the string on whitespace. Consecutive whitespace is collapsed,
+        /// and leading/trailing whitespace is stripped.
         /// Python: <c>str.split()</c>
         /// </summary>
         public static List<string> Split(this string s)
         {
             var result = new List<string>();
             int i = 0;
-            int len = s.Length;
-
-            while (i < len)
+            while (i < s.Length)
             {
                 // Skip whitespace
-                while (i < len && char.IsWhiteSpace(s[i]))
+                while (i < s.Length && char.IsWhiteSpace(s[i]))
                 {
                     i++;
                 }
-
-                if (i >= len)
+                if (i >= s.Length)
                 {
                     break;
                 }
-
-                // Find end of word
+                // Collect non-whitespace
                 int start = i;
-                while (i < len && !char.IsWhiteSpace(s[i]))
+                while (i < s.Length && !char.IsWhiteSpace(s[i]))
                 {
                     i++;
                 }
-
-                result.Append(s.Substring(start, i - start));
+                result.Add(s.Substring(start, i - start));
             }
-
             return result;
         }
 
         /// <summary>
-        /// Return a list of the words in the string, using <paramref name="sep"/>
-        /// as the delimiter string.
+        /// Split the string on a separator string.
         /// Python: <c>str.split(sep)</c>
         /// </summary>
         public static List<string> Split(this string s, string sep)
         {
-            if (string.IsNullOrEmpty(sep))
-            {
-                throw new ValueError("empty separator");
-            }
-
-            var result = new List<string>();
-            int start = 0;
-            int index;
-
-            while ((index = s.IndexOf(sep, start, StringComparison.Ordinal)) >= 0)
-            {
-                result.Append(s.Substring(start, index - start));
-                start = index + sep.Length;
-            }
-
-            result.Append(s.Substring(start));
-            return result;
+            return Split(s, sep, -1);
         }
 
         /// <summary>
-        /// Return a list of the words in the string, using <paramref name="sep"/>
-        /// as the delimiter string, splitting at most <paramref name="maxsplit"/>
-        /// times from the left.
+        /// Split the string on a separator string, performing at most
+        /// <paramref name="maxsplit"/> splits (from the left).
         /// Python: <c>str.split(sep, maxsplit)</c>
         /// </summary>
         public static List<string> Split(this string s, string sep, int maxsplit)
         {
-            if (string.IsNullOrEmpty(sep))
+            if (sep == null)
+            {
+                throw new ArgumentNullException(nameof(sep));
+            }
+            if (sep.Length == 0)
             {
                 throw new ValueError("empty separator");
-            }
-
-            if (maxsplit < 0)
-            {
-                return Split(s, sep);
-            }
-
-            if (maxsplit == 0)
-            {
-                var single = new List<string>();
-                single.Append(s);
-                return single;
             }
 
             var result = new List<string>();
             int start = 0;
             int splits = 0;
-            int index;
 
-            while (splits < maxsplit && (index = s.IndexOf(sep, start, StringComparison.Ordinal)) >= 0)
+            while (start <= s.Length)
             {
-                result.Append(s.Substring(start, index - start));
+                if (maxsplit >= 0 && splits >= maxsplit)
+                {
+                    break;
+                }
+                int index = s.IndexOf(sep, start, StringComparison.Ordinal);
+                if (index < 0)
+                {
+                    break;
+                }
+                result.Add(s.Substring(start, index - start));
                 start = index + sep.Length;
                 splits++;
             }
-
-            result.Append(s.Substring(start));
+            result.Add(s.Substring(start));
             return result;
         }
 
         /// <summary>
-        /// Return a list of the words in the string, using whitespace as the
-        /// delimiter, splitting from the right. Consecutive whitespace is
-        /// collapsed.
+        /// Split the string on whitespace from the right. Consecutive whitespace
+        /// is collapsed, and leading/trailing whitespace is stripped.
         /// Python: <c>str.rsplit()</c>
         /// </summary>
         public static List<string> Rsplit(this string s)
@@ -1011,150 +983,147 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return a list of the words in the string, using <paramref name="sep"/>
-        /// as the delimiter string, splitting from the right.
+        /// Split the string on a separator string from the right.
         /// Python: <c>str.rsplit(sep)</c>
         /// </summary>
         public static List<string> Rsplit(this string s, string sep)
         {
-            // With no maxsplit, rsplit == split
-            return Split(s, sep);
+            return Rsplit(s, sep, -1);
         }
 
         /// <summary>
-        /// Return a list of the words in the string, using <paramref name="sep"/>
-        /// as the delimiter string, splitting at most <paramref name="maxsplit"/>
-        /// times from the right.
+        /// Split the string on a separator string from the right, performing at
+        /// most <paramref name="maxsplit"/> splits.
         /// Python: <c>str.rsplit(sep, maxsplit)</c>
         /// </summary>
         public static List<string> Rsplit(this string s, string sep, int maxsplit)
         {
-            if (string.IsNullOrEmpty(sep))
+            if (sep == null)
+            {
+                throw new ArgumentNullException(nameof(sep));
+            }
+            if (sep.Length == 0)
             {
                 throw new ValueError("empty separator");
             }
 
             if (maxsplit < 0)
             {
-                return Split(s, sep);
+                // No limit — same as split
+                return Split(s, sep, -1);
             }
 
-            if (maxsplit == 0)
-            {
-                var single = new List<string>();
-                single.Append(s);
-                return single;
-            }
-
-            // Split from right: collect parts in reverse, then reverse
+            // Split from the right: collect parts in reverse
             var parts = new System.Collections.Generic.List<string>();
             int end = s.Length;
             int splits = 0;
-            int index;
 
-            while (splits < maxsplit && (index = s.LastIndexOf(sep, end - 1, StringComparison.Ordinal)) >= 0)
+            while (end > 0 && splits < maxsplit)
             {
+                int index = s.LastIndexOf(sep, end - 1, StringComparison.Ordinal);
+                if (index < 0)
+                {
+                    break;
+                }
                 parts.Add(s.Substring(index + sep.Length, end - index - sep.Length));
                 end = index;
                 splits++;
             }
-
             parts.Add(s.Substring(0, end));
             parts.Reverse();
-
-            var result = new List<string>();
-            foreach (var part in parts)
-            {
-                result.Append(part);
-            }
-
-            return result;
+            return new List<string>(parts);
         }
 
+        // ----------------------------------------------------------------
+        // Replace
+        // ----------------------------------------------------------------
+
         /// <summary>
-        /// Return a copy with all occurrences of substring <paramref name="old"/>
-        /// replaced by <paramref name="new"/>.
+        /// Return a copy with all occurrences of <paramref name="old"/> replaced
+        /// by <paramref name="new_"/>.
         /// Python: <c>str.replace(old, new)</c>
         /// </summary>
-        public static string Replace(this string s, string old, string @new)
+        public static string Replace(this string s, string old, string new_)
         {
-            if (string.IsNullOrEmpty(old))
+            if (old.Length == 0)
             {
-                // Python behavior: insert new between every character
-                var sb = new StringBuilder((s.Length + 1) * @new.Length + s.Length);
-                sb.Append(@new);
+                // Python inserts new_ between every character and at start/end
+                var sb = new StringBuilder(new_.Length * (s.Length + 1) + s.Length);
+                sb.Append(new_);
                 foreach (char c in s)
                 {
                     sb.Append(c);
-                    sb.Append(@new);
+                    sb.Append(new_);
                 }
                 return sb.ToString();
             }
-
-            return s.Replace(old, @new);
+            return s.Replace(old, new_);
         }
 
         /// <summary>
         /// Return a copy with the first <paramref name="count"/> occurrences of
-        /// substring <paramref name="old"/> replaced by <paramref name="new"/>.
+        /// <paramref name="old"/> replaced by <paramref name="new_"/>.
         /// Python: <c>str.replace(old, new, count)</c>
         /// </summary>
-        public static string Replace(this string s, string old, string @new, int count)
+        public static string Replace(this string s, string old, string new_, int count)
         {
             if (count < 0)
             {
-                return Replace(s, old, @new);
+                return Replace(s, old, new_);
             }
-
             if (count == 0)
             {
                 return s;
             }
 
-            if (string.IsNullOrEmpty(old))
+            if (old.Length == 0)
             {
-                // Python: insert new before each char, up to count times
+                // Python inserts new_ between chars, limited by count
                 var sb = new StringBuilder();
                 int replacements = 0;
-
                 if (replacements < count)
                 {
-                    sb.Append(@new);
+                    sb.Append(new_);
                     replacements++;
                 }
-
                 foreach (char c in s)
                 {
                     sb.Append(c);
                     if (replacements < count)
                     {
-                        sb.Append(@new);
+                        sb.Append(new_);
                         replacements++;
                     }
                 }
-
                 return sb.ToString();
             }
 
             var result = new StringBuilder(s.Length);
             int start = 0;
-            int replacementsDone = 0;
-            int index;
+            int replaced = 0;
 
-            while (replacementsDone < count && (index = s.IndexOf(old, start, StringComparison.Ordinal)) >= 0)
+            while (start < s.Length && replaced < count)
             {
+                int index = s.IndexOf(old, start, StringComparison.Ordinal);
+                if (index < 0)
+                {
+                    break;
+                }
                 result.Append(s, start, index - start);
-                result.Append(@new);
+                result.Append(new_);
                 start = index + old.Length;
-                replacementsDone++;
+                replaced++;
             }
-
             result.Append(s, start, s.Length - start);
             return result.ToString();
         }
 
+        // ----------------------------------------------------------------
+        // Startswith / Endswith
+        // ----------------------------------------------------------------
+
         /// <summary>
-        /// Return <c>true</c> if the string starts with the <paramref name="prefix"/>.
+        /// Return <c>true</c> if string starts with the <paramref name="prefix"/>.
         /// Python: <c>str.startswith(prefix)</c>
         /// </summary>
         public static bool Startswith(this string s, string prefix)
@@ -1163,8 +1132,7 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return <c>true</c> if the string starts with the <paramref name="prefix"/>,
-        /// beginning the check at position <paramref name="start"/>.
+        /// Return <c>true</c> if <c>s[start:]</c> starts with the <paramref name="prefix"/>.
         /// Python: <c>str.startswith(prefix, start)</c>
         /// </summary>
         public static bool Startswith(this string s, string prefix, int start)
@@ -1173,55 +1141,49 @@ namespace Sharpy
             {
                 start = System.Math.Max(0, s.Length + start);
             }
-
             if (start > s.Length)
             {
                 return false;
             }
-
-            return s.Substring(start).StartsWith(prefix, StringComparison.Ordinal);
+            if (start + prefix.Length > s.Length)
+            {
+                return false;
+            }
+            return string.Compare(s, start, prefix, 0, prefix.Length, StringComparison.Ordinal) == 0;
         }
 
         /// <summary>
-        /// Return <c>true</c> if the string starts with the <paramref name="prefix"/>,
-        /// considering only <c>s[start:end]</c>.
+        /// Return <c>true</c> if <c>s[start:end]</c> starts with the <paramref name="prefix"/>.
         /// Python: <c>str.startswith(prefix, start, end)</c>
         /// </summary>
         public static bool Startswith(this string s, string prefix, int start, int end)
         {
             if (start < 0)
-                start = System.Math.Max(0, s.Length + start);
-            if (end < 0)
-                end = System.Math.Max(0, s.Length + end);
-            if (end > s.Length)
-                end = s.Length;
-            if (start > end)
-                return false;
-
-            var slice = s.Substring(start, end - start);
-            return slice.StartsWith(prefix, StringComparison.Ordinal);
-        }
-
-        /// <summary>
-        /// Return <c>true</c> if the string starts with any of the given
-        /// <paramref name="prefixes"/>.
-        /// Python: <c>str.startswith(tuple_of_prefixes)</c>
-        /// </summary>
-        public static bool Startswith(this string s, params string[] prefixes)
-        {
-            foreach (var prefix in prefixes)
             {
-                if (s.StartsWith(prefix, StringComparison.Ordinal))
-                {
-                    return true;
-                }
+                start = System.Math.Max(0, s.Length + start);
             }
-
-            return false;
+            if (end < 0)
+            {
+                end = System.Math.Max(0, s.Length + end);
+            }
+            if (end > s.Length)
+            {
+                end = s.Length;
+            }
+            if (start > end)
+            {
+                return false;
+            }
+            int sliceLen = end - start;
+            if (prefix.Length > sliceLen)
+            {
+                return false;
+            }
+            return string.Compare(s, start, prefix, 0, prefix.Length, StringComparison.Ordinal) == 0;
         }
 
         /// <summary>
-        /// Return <c>true</c> if the string ends with the <paramref name="suffix"/>.
+        /// Return <c>true</c> if string ends with the <paramref name="suffix"/>.
         /// Python: <c>str.endswith(suffix)</c>
         /// </summary>
         public static bool Endswith(this string s, string suffix)
@@ -1230,62 +1192,48 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return <c>true</c> if the string ends with the <paramref name="suffix"/>,
-        /// considering only <c>s[:end]</c> or <c>s[start:]</c>.
+        /// Return <c>true</c> if <c>s[start:]</c> ends with the <paramref name="suffix"/>.
         /// Python: <c>str.endswith(suffix, start)</c>
         /// </summary>
         public static bool Endswith(this string s, string suffix, int start)
         {
-            if (start < 0)
-            {
-                start = System.Math.Max(0, s.Length + start);
-            }
-
-            if (start > s.Length)
-            {
-                return false;
-            }
-
-            return s.Substring(start).EndsWith(suffix, StringComparison.Ordinal);
+            return Endswith(s, suffix, start, s.Length);
         }
 
         /// <summary>
-        /// Return <c>true</c> if the string ends with the <paramref name="suffix"/>,
-        /// considering only <c>s[start:end]</c>.
+        /// Return <c>true</c> if <c>s[start:end]</c> ends with the <paramref name="suffix"/>.
         /// Python: <c>str.endswith(suffix, start, end)</c>
         /// </summary>
         public static bool Endswith(this string s, string suffix, int start, int end)
         {
             if (start < 0)
-                start = System.Math.Max(0, s.Length + start);
-            if (end < 0)
-                end = System.Math.Max(0, s.Length + end);
-            if (end > s.Length)
-                end = s.Length;
-            if (start > end)
-                return false;
-
-            var slice = s.Substring(start, end - start);
-            return slice.EndsWith(suffix, StringComparison.Ordinal);
-        }
-
-        /// <summary>
-        /// Return <c>true</c> if the string ends with any of the given
-        /// <paramref name="suffixes"/>.
-        /// Python: <c>str.endswith(tuple_of_suffixes)</c>
-        /// </summary>
-        public static bool Endswith(this string s, params string[] suffixes)
-        {
-            foreach (var suffix in suffixes)
             {
-                if (s.EndsWith(suffix, StringComparison.Ordinal))
-                {
-                    return true;
-                }
+                start = System.Math.Max(0, s.Length + start);
             }
-
-            return false;
+            if (end < 0)
+            {
+                end = System.Math.Max(0, s.Length + end);
+            }
+            if (end > s.Length)
+            {
+                end = s.Length;
+            }
+            if (start > end)
+            {
+                return false;
+            }
+            int sliceLen = end - start;
+            if (suffix.Length > sliceLen)
+            {
+                return false;
+            }
+            int compareStart = end - suffix.Length;
+            return string.Compare(s, compareStart, suffix, 0, suffix.Length, StringComparison.Ordinal) == 0;
         }
+
+        // ----------------------------------------------------------------
+        // Index / Rindex
+        // ----------------------------------------------------------------
 
         /// <summary>
         /// Like <see cref="Find(string, string)"/> but raises <see cref="ValueError"/>
@@ -1294,152 +1242,158 @@ namespace Sharpy
         /// </summary>
         public static int Index(this string s, string sub)
         {
-            int result = s.Find(sub);
+            int result = Find(s, sub);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
             }
-
             return result;
         }
 
         /// <summary>
-        /// Like <see cref="Find(string, string, int)"/> but raises
-        /// <see cref="ValueError"/> when the substring is not found.
+        /// Like <see cref="Find(string, string, int)"/> but raises <see cref="ValueError"/>
+        /// when the substring is not found.
         /// Python: <c>str.index(sub, start)</c>
         /// </summary>
         public static int Index(this string s, string sub, int start)
         {
-            int result = s.Find(sub, start);
+            int result = Find(s, sub, start);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
             }
-
             return result;
         }
 
         /// <summary>
-        /// Like <see cref="Find(string, string, int, int)"/> but raises
-        /// <see cref="ValueError"/> when the substring is not found.
+        /// Like <see cref="Find(string, string, int, int)"/> but raises <see cref="ValueError"/>
+        /// when the substring is not found.
         /// Python: <c>str.index(sub, start, end)</c>
         /// </summary>
         public static int Index(this string s, string sub, int start, int end)
         {
-            int result = s.Find(sub, start, end);
+            int result = Find(s, sub, start, end);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
             }
-
             return result;
         }
 
         /// <summary>
-        /// Like <see cref="Rfind(string, string)"/> but raises
-        /// <see cref="ValueError"/> when the substring is not found.
+        /// Like <see cref="Rfind(string, string)"/> but raises <see cref="ValueError"/>
+        /// when the substring is not found.
         /// Python: <c>str.rindex(sub)</c>
         /// </summary>
         public static int Rindex(this string s, string sub)
         {
-            int result = s.Rfind(sub);
+            int result = Rfind(s, sub);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
             }
-
             return result;
         }
 
         /// <summary>
-        /// Like <see cref="Rfind(string, string, int)"/> but raises
-        /// <see cref="ValueError"/> when the substring is not found.
+        /// Like <see cref="Rfind(string, string, int)"/> but raises <see cref="ValueError"/>
+        /// when the substring is not found.
         /// Python: <c>str.rindex(sub, start)</c>
         /// </summary>
         public static int Rindex(this string s, string sub, int start)
         {
-            int result = s.Rfind(sub, start);
+            int result = Rfind(s, sub, start);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
             }
-
             return result;
         }
 
         /// <summary>
-        /// Like <see cref="Rfind(string, string, int, int)"/> but raises
-        /// <see cref="ValueError"/> when the substring is not found.
+        /// Like <see cref="Rfind(string, string, int, int)"/> but raises <see cref="ValueError"/>
+        /// when the substring is not found.
         /// Python: <c>str.rindex(sub, start, end)</c>
         /// </summary>
         public static int Rindex(this string s, string sub, int start, int end)
         {
-            int result = s.Rfind(sub, start, end);
+            int result = Rfind(s, sub, start, end);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
             }
-
             return result;
         }
+
+        // ----------------------------------------------------------------
+        // Partition / Rpartition
+        // ----------------------------------------------------------------
 
         /// <summary>
         /// Split the string at the first occurrence of <paramref name="sep"/>,
         /// and return a 3-tuple containing the part before the separator, the
-        /// separator itself, and the part after the separator.
+        /// separator itself, and the part after the separator. If the separator
+        /// is not found, return a 3-tuple containing the string itself, followed
+        /// by two empty strings.
         /// Python: <c>str.partition(sep)</c>
         /// </summary>
         public static (string, string, string) Partition(this string s, string sep)
         {
-            if (string.IsNullOrEmpty(sep))
+            if (sep == null)
+            {
+                throw new ArgumentNullException(nameof(sep));
+            }
+            if (sep.Length == 0)
             {
                 throw new ValueError("empty separator");
             }
-
             int index = s.IndexOf(sep, StringComparison.Ordinal);
             if (index < 0)
             {
                 return (s, "", "");
             }
-
             return (s.Substring(0, index), sep, s.Substring(index + sep.Length));
         }
 
         /// <summary>
         /// Split the string at the last occurrence of <paramref name="sep"/>,
         /// and return a 3-tuple containing the part before the separator, the
-        /// separator itself, and the part after the separator.
+        /// separator itself, and the part after the separator. If the separator
+        /// is not found, return a 3-tuple containing two empty strings, followed
+        /// by the string itself.
         /// Python: <c>str.rpartition(sep)</c>
         /// </summary>
         public static (string, string, string) Rpartition(this string s, string sep)
         {
-            if (string.IsNullOrEmpty(sep))
+            if (sep == null)
+            {
+                throw new ArgumentNullException(nameof(sep));
+            }
+            if (sep.Length == 0)
             {
                 throw new ValueError("empty separator");
             }
-
             int index = s.LastIndexOf(sep, StringComparison.Ordinal);
             if (index < 0)
             {
                 return ("", "", s);
             }
-
             return (s.Substring(0, index), sep, s.Substring(index + sep.Length));
         }
 
+        // ----------------------------------------------------------------
+        // Expandtabs / Istitle / Encode
+        // ----------------------------------------------------------------
+
         /// <summary>
-        /// Return a copy where all tab characters are replaced by one or more
-        /// spaces, depending on the current column and the given tab size.
+        /// Return a copy where all tab characters are expanded using spaces.
+        /// The column position is tracked; tab stops are at every
+        /// <paramref name="tabsize"/> characters.
         /// Python: <c>str.expandtabs(tabsize=8)</c>
         /// </summary>
         public static string Expandtabs(this string s, int tabsize = 8)
         {
-            if (s.Length == 0)
-            {
-                return s;
-            }
-
-            var sb = new StringBuilder();
+            var result = new StringBuilder();
             int column = 0;
 
             foreach (char c in s)
@@ -1448,34 +1402,32 @@ namespace Sharpy
                 {
                     if (tabsize <= 0)
                     {
-                        // tabsize <= 0: tab replaced by nothing, column stays
+                        // No expansion
+                        continue;
                     }
-                    else
-                    {
-                        int spaces = tabsize - (column % tabsize);
-                        sb.Append(' ', spaces);
-                        column += spaces;
-                    }
+                    int spaces = tabsize - (column % tabsize);
+                    result.Append(' ', spaces);
+                    column += spaces;
                 }
                 else if (c == '\n' || c == '\r')
                 {
-                    sb.Append(c);
+                    result.Append(c);
                     column = 0;
                 }
                 else
                 {
-                    sb.Append(c);
+                    result.Append(c);
                     column++;
                 }
             }
 
-            return sb.ToString();
+            return result.ToString();
         }
 
         /// <summary>
-        /// Return <c>true</c> if the string is a titlecased string and there
-        /// is at least one character: uppercase characters may only follow
-        /// uncased characters and lowercase characters only cased characters.
+        /// Return <c>true</c> if the string is a titlecased string and there is
+        /// at least one character. Uppercase characters may only follow uncased
+        /// characters and lowercase characters only cased characters.
         /// Python: <c>str.istitle()</c>
         /// </summary>
         public static bool Istitle(this string s)
@@ -1518,12 +1470,12 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return the string encoded to bytes using the specified encoding.
+        /// Encode the string using the specified encoding and return as a byte array.
         /// Python: <c>str.encode(encoding='utf-8')</c>
         /// </summary>
         public static byte[] Encode(this string s, string encoding = "utf-8")
         {
-            switch (encoding.ToLowerInvariant().Replace("-", ""))
+            switch (encoding.ToLowerInvariant().Replace("-", "").Replace("_", ""))
             {
                 case "utf8":
                     return Encoding.UTF8.GetBytes(s);
@@ -1534,87 +1486,75 @@ namespace Sharpy
                     return Encoding.Unicode.GetBytes(s);
                 case "utf16be":
                     return Encoding.BigEndianUnicode.GetBytes(s);
+                case "utf32":
+                    return Encoding.UTF32.GetBytes(s);
                 case "latin1":
                 case "iso88591":
                     return Encoding.GetEncoding("iso-8859-1").GetBytes(s);
                 default:
-                    throw new ValueError($"unknown encoding: {encoding}");
+                    throw new LookupError("unknown encoding: " + encoding);
             }
         }
 
+        // ----------------------------------------------------------------
+        // Maketrans / Translate
+        // ----------------------------------------------------------------
+
         /// <summary>
-        /// Return a translation table usable for <see cref="Translate"/>.
+        /// Build a translation table mapping characters in <paramref name="x"/>
+        /// to corresponding characters in <paramref name="y"/>.
         /// Python: <c>str.maketrans(x, y)</c>
         /// </summary>
-        public static Dict<char, string?> Maketrans(string x, string y)
+        public static Dictionary<char, string> Maketrans(string x, string y)
         {
             if (x.Length != y.Length)
             {
                 throw new ValueError("the first two maketrans arguments must have equal length");
             }
-
-            var table = new Dict<char, string?>();
+            var table = new Dictionary<char, string>(x.Length);
             for (int i = 0; i < x.Length; i++)
             {
                 table[x[i]] = y[i].ToString();
             }
-
             return table;
         }
 
         /// <summary>
-        /// Return a translation table usable for <see cref="Translate"/>.
-        /// Characters in <paramref name="z"/> are mapped to deletion (null).
+        /// Build a translation table mapping characters in <paramref name="x"/>
+        /// to corresponding characters in <paramref name="y"/>, and mapping
+        /// each character in <paramref name="z"/> to deletion (empty string).
         /// Python: <c>str.maketrans(x, y, z)</c>
         /// </summary>
-        public static Dict<char, string?> Maketrans(string x, string y, string z)
+        public static Dictionary<char, string> Maketrans(string x, string y, string z)
         {
-            if (x.Length != y.Length)
-            {
-                throw new ValueError("the first two maketrans arguments must have equal length");
-            }
-
-            var table = new Dict<char, string?>();
-            for (int i = 0; i < x.Length; i++)
-            {
-                table[x[i]] = y[i].ToString();
-            }
-
+            var table = Maketrans(x, y);
             foreach (char c in z)
             {
-                table[c] = null;
+                table[c] = "";
             }
-
             return table;
         }
 
         /// <summary>
         /// Return a copy of the string in which each character has been mapped
-        /// through the given translation table. Characters mapped to
-        /// <c>null</c> are deleted.
+        /// through the given translation table. Characters mapped to an empty
+        /// string are deleted.
         /// Python: <c>str.translate(table)</c>
         /// </summary>
-        public static string Translate(this string s, Dict<char, string?> table)
+        public static string Translate(this string s, Dictionary<char, string> table)
         {
             var sb = new StringBuilder(s.Length);
-
             foreach (char c in s)
             {
-                if (table.ContainsKey(c))
+                if (table.TryGetValue(c, out var replacement))
                 {
-                    var mapped = table[c];
-                    if (mapped != null)
-                    {
-                        sb.Append(mapped);
-                    }
-                    // null means delete
+                    sb.Append(replacement);
                 }
                 else
                 {
                     sb.Append(c);
                 }
             }
-
             return sb.ToString();
         }
     }
