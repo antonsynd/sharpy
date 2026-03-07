@@ -334,7 +334,8 @@ namespace Sharpy
         /// <summary>Check equality with another Path.</summary>
         public bool Equals(Path? other)
         {
-            if (other is null) return false;
+            if (other is null)
+                return false;
             return _path == other._path;
         }
 
@@ -352,7 +353,8 @@ namespace Sharpy
 
         public static bool operator ==(Path? left, Path? right)
         {
-            if (left is null) return right is null;
+            if (left is null)
+                return right is null;
             return left.Equals(right);
         }
 

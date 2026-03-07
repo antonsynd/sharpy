@@ -16,7 +16,8 @@ namespace Sharpy.Core.Tests
 
         public void Dispose()
         {
-            try { System.IO.Directory.Delete(_tempDir, true); }
+            try
+            { System.IO.Directory.Delete(_tempDir, true); }
             catch { /* best effort */ }
         }
 

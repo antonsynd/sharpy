@@ -191,7 +191,8 @@ namespace Sharpy.Tests
         {
             // Python: math.fsum([0.1] * 10) == 1.0
             var values = new double[10];
-            for (int i = 0; i < 10; i++) values[i] = 0.1;
+            for (int i = 0; i < 10; i++)
+                values[i] = 0.1;
             Assert.Equal(1.0, Math.Fsum(values));
         }
 
