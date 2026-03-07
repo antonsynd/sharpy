@@ -87,7 +87,7 @@ public class SemanticInfo : ISemanticQuery
     /// <summary>
     /// The file path of the current compilation unit, used to tag symbol references.
     /// </summary>
-    public string? CurrentFilePath { get; set; }
+    public string? CurrentFilePath { get; internal set; }
 
     public void SetExpressionType(Expression expr, SemanticType type)
     {

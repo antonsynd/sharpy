@@ -30,7 +30,7 @@ internal sealed class SharplyDocumentHighlightHandler : DocumentHighlightHandler
         var uri = request.TextDocument.Uri.ToString();
         var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
-        if (analysis?.Ast == null || analysis.SemanticQuery == null || analysis.SemanticInfo == null)
+        if (analysis?.Ast == null || analysis.SemanticQuery == null)
             return null;
 
         var (line, col) = PositionConverter.ToCompiler(request.Position);
@@ -69,7 +69,7 @@ internal sealed class SharplyDocumentHighlightHandler : DocumentHighlightHandler
         }
 
         // Add reference highlights (Read kind)
-        var references = analysis.SemanticInfo.GetReferences(symbol);
+        var references = analysis.SemanticQuery.GetReferences(symbol);
         foreach (var refLoc in references)
         {
             // Only include references in the same document

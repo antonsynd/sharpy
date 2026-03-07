@@ -2,7 +2,6 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Semantic;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Handlers;
@@ -26,7 +25,7 @@ internal sealed class SharplyCodeLensHandler : CodeLensHandlerBase
         var uri = request.TextDocument.Uri.ToString();
         var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
-        if (analysis?.Ast == null || analysis.SemanticInfo == null || analysis.SymbolTable == null)
+        if (analysis?.Ast == null || analysis.SemanticQuery == null || analysis.SymbolTable == null)
             return null;
 
         var lenses = new List<CodeLens>();
@@ -70,7 +69,7 @@ internal sealed class SharplyCodeLensHandler : CodeLensHandlerBase
         var symbol = analysis.SymbolTable!.Lookup(funcDef.Name);
         if (symbol != null)
         {
-            var refCount = analysis.SemanticInfo!.GetReferences(symbol).Count;
+            var refCount = analysis.SemanticQuery!.GetReferences(symbol).Count;
             var refText = refCount == 1 ? "1 reference" : $"{refCount} references";
 
             lenses.Add(new CodeLens
@@ -111,7 +110,7 @@ internal sealed class SharplyCodeLensHandler : CodeLensHandlerBase
         if (symbol == null)
             return;
 
-        var refCount = analysis.SemanticInfo!.GetReferences(symbol).Count;
+        var refCount = analysis.SemanticQuery!.GetReferences(symbol).Count;
         var refText = refCount == 1 ? "1 reference" : $"{refCount} references";
 
         lenses.Add(new CodeLens

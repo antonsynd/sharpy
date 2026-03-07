@@ -4,7 +4,6 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Semantic;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Handlers;
@@ -29,7 +28,7 @@ internal sealed class SharplyReferencesHandler : ReferencesHandlerBase
         var uri = request.TextDocument.Uri.ToString();
         var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
-        if (analysis?.Ast == null || analysis.SemanticQuery == null || analysis.SemanticInfo == null)
+        if (analysis?.Ast == null || analysis.SemanticQuery == null)
             return null;
 
         var (line, col) = PositionConverter.ToCompiler(request.Position);
@@ -73,7 +72,7 @@ internal sealed class SharplyReferencesHandler : ReferencesHandlerBase
         }
 
         // Get all references
-        var references = analysis.SemanticInfo.GetReferences(symbol);
+        var references = analysis.SemanticQuery.GetReferences(symbol);
         foreach (var refLoc in references)
         {
             var refLine = System.Math.Max(0, refLoc.Line - 1);

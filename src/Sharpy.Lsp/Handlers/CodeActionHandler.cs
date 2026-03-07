@@ -2,6 +2,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Sharpy.Compiler.Diagnostics;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Handlers;
@@ -38,15 +39,15 @@ internal sealed class SharplyCodeActionHandler : CodeActionHandlerBase
 
             switch (code)
             {
-                case "SPY0452": // Unused import
+                case DiagnosticCodes.Validation.UnusedImport:
                     actions.Add(CreateRemoveImportAction(uri, diag, text));
                     break;
 
-                case "SPY0451": // Unused variable
+                case DiagnosticCodes.Validation.UnusedVariable:
                     actions.Add(CreatePrefixUnderscoreAction(uri, diag));
                     break;
 
-                case "SPY0453": // Naming convention warning
+                case DiagnosticCodes.Validation.NamingConventionWarning:
                     {
                         var renameAction = CreateNamingFixAction(uri, diag);
                         if (renameAction != null)
