@@ -345,6 +345,7 @@ public record ModuleSymbol : Symbol
 {
     public string FilePath { get; init; } = string.Empty;
     public Dictionary<string, Symbol> Exports { get; init; } = new();
+    public bool IsNetModule { get; init; } = false;
 
     public virtual bool Equals(ModuleSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
