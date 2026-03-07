@@ -1,0 +1,7 @@
+# Test math module: sqrt, floor, ceil via import
+import math
+
+def main():
+    print(math.sqrt(16.0))
+    print(math.floor(3.7))
+    print(math.ceil(3.2))

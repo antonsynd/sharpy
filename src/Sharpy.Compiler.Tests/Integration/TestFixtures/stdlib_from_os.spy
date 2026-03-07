@@ -1,0 +1,6 @@
+# Test from-import os module: getcwd
+from os import getcwd
+
+def main():
+    cwd: str = getcwd()
+    print(len(cwd) > 0)
