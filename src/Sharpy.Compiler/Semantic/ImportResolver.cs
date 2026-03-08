@@ -2,6 +2,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Semantic;
@@ -125,7 +126,8 @@ internal class ImportResolver
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
-                            IsNetModule = moduleInfo.IsNetModule
+                            IsNetModule = moduleInfo.IsNetModule,
+                            NetNamespaceName = moduleInfo.NetNamespaceName
                         };
                         symbolTable.TryDefine(aliasedModule);
                     }
@@ -142,7 +144,8 @@ internal class ImportResolver
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
-                            IsNetModule = moduleInfo.IsNetModule
+                            IsNetModule = moduleInfo.IsNetModule,
+                            NetNamespaceName = moduleInfo.NetNamespaceName
                         };
 
                         ModuleSymbol currentModule = leafModule;
@@ -413,6 +416,15 @@ internal class ImportResolver
                 {
                     var symbolName = importAlias.Name;
                     var targetName = importAlias.AsName ?? importAlias.Name;
+
+                    // For .NET modules, try PascalCase conversion if the exact name isn't found
+                    // (e.g., from system import console -> System.Console)
+                    if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName) && moduleInfo.IsNetModule)
+                    {
+                        var pascalName = NameMangler.ToPascalCase(symbolName);
+                        if (moduleInfo.ExportedSymbols.ContainsKey(pascalName))
+                            symbolName = pascalName;
+                    }
 
                     // Check if symbol exists in the module's exported symbols
                     if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName))
@@ -778,12 +790,15 @@ internal class ImportResolver
     {
         _logger.LogDebug($"Resolving .NET namespace module: {moduleName}");
 
+        var netNamespace = _moduleRegistry!.GetNetNamespace(moduleName);
+
         var moduleInfo = new ModuleInfo
         {
             Path = $".net:{moduleName}",
             Module = null!,
             ExportedSymbols = new Dictionary<string, Symbol>(),
-            IsNetModule = true
+            IsNetModule = true,
+            NetNamespaceName = netNamespace
         };
 
         var types = _moduleRegistry!.GetNamespaceTypes(moduleName);

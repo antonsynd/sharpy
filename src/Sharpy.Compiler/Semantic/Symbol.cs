@@ -348,6 +348,12 @@ public record ModuleSymbol : Symbol
     public Dictionary<string, List<FunctionSymbol>> FunctionOverloads { get; init; } = new();
     public bool IsNetModule { get; init; } = false;
 
+    /// <summary>
+    /// The .NET namespace name for CLR namespace modules (e.g., "System" for "system").
+    /// Null for Sharpy stdlib modules and non-.NET modules.
+    /// </summary>
+    public string? NetNamespaceName { get; init; }
+
     public virtual bool Equals(ModuleSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

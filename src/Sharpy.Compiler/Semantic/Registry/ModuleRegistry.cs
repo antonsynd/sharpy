@@ -226,6 +226,15 @@ internal class ModuleRegistry
     }
 
     /// <summary>
+    /// Get the .NET namespace name for a Sharpy module name (e.g., "system" -> "System").
+    /// Returns null if the module name doesn't map to a .NET namespace.
+    /// </summary>
+    public string? GetNetNamespace(string moduleName)
+    {
+        return MapModuleToNamespace(moduleName);
+    }
+
+    /// <summary>
     /// Get all public types from a .NET namespace.
     /// </summary>
     /// <param name="moduleName">The Sharpy module name (e.g., "system")</param>

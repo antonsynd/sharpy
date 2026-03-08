@@ -1,0 +1,7 @@
+# Test that snake_case method access on .NET types resolves to PascalCase
+# e.g., system.Console.write_line() -> System.Console.WriteLine()
+
+import system
+
+def main():
+    system.Console.write_line("hello from snake_case access")

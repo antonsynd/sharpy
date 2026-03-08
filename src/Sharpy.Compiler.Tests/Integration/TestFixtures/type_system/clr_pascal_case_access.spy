@@ -1,0 +1,7 @@
+# Test that PascalCase access on .NET types works alongside snake_case
+# Both system.Console.write_line() and system.Console.WriteLine() should work
+
+import system
+
+def main():
+    system.Console.WriteLine("direct pascal case access")

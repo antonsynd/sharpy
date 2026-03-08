@@ -136,7 +136,18 @@ internal partial class TypeChecker
         if (memberLookupType is ModuleType moduleType)
         {
             var moduleSymbol = moduleType.Symbol;
-            if (moduleSymbol.Exports.TryGetValue(memberAccess.Member, out var exportedSymbol))
+            var memberName = memberAccess.Member;
+
+            // For .NET modules, try PascalCase conversion if the exact name isn't found
+            // (e.g., system.console -> System.Console)
+            if (!moduleSymbol.Exports.ContainsKey(memberName) && moduleSymbol.IsNetModule)
+            {
+                var pascalName = NameMangler.ToPascalCase(memberName);
+                if (moduleSymbol.Exports.ContainsKey(pascalName))
+                    memberName = pascalName;
+            }
+
+            if (moduleSymbol.Exports.TryGetValue(memberName, out var exportedSymbol))
             {
                 var exportedType = exportedSymbol switch
                 {
@@ -169,17 +180,28 @@ internal partial class TypeChecker
 
         if (memberLookupType is UserDefinedType udt && udt.Symbol != null)
         {
+            // CLR types have unpopulated Methods/Fields/Properties on their TypeSymbol —
+            // member resolution is deferred to the codegen layer via CLR discovery.
+            // Don't emit an error here; let codegen handle it like GenericType/BuiltinType.
+            if (udt.Symbol.ClrType != null)
+            {
+                MarkExpressionAsErrorRecovery(memberAccess);
+                return SemanticType.Unknown;
+            }
+
+            var effectiveMember = memberAccess.Member;
+
             // Handle enum .name and .value properties
             if (udt.Symbol.TypeKind == TypeKind.Enum)
             {
-                if (memberAccess.Member == "name")
+                if (effectiveMember == "name")
                     return SemanticType.Str;
-                if (memberAccess.Member == "value")
+                if (effectiveMember == "value")
                     return SemanticType.Int;
             }
 
             // Look for field or property (including inherited fields)
-            var (field, fieldOwner) = FindFieldInHierarchy(udt.Symbol, memberAccess.Member);
+            var (field, fieldOwner) = FindFieldInHierarchy(udt.Symbol, effectiveMember);
             if (field != null && fieldOwner != null)
             {
                 // Access level validation is handled by AccessValidator in the validation pipeline
@@ -214,7 +236,7 @@ internal partial class TypeChecker
             }
 
             // Look for property (including inherited properties)
-            var (prop, propOwner) = FindPropertyInHierarchy(udt.Symbol, memberAccess.Member);
+            var (prop, propOwner) = FindPropertyInHierarchy(udt.Symbol, effectiveMember);
             if (prop != null && propOwner != null)
             {
                 var propType = prop.Type;
@@ -235,7 +257,7 @@ internal partial class TypeChecker
             }
 
             // Look for event (including inherited events)
-            var eventSymbol = FindEventInHierarchy(udt.Symbol, memberAccess.Member);
+            var eventSymbol = FindEventInHierarchy(udt.Symbol, effectiveMember);
             if (eventSymbol != null)
             {
                 _semanticInfo.MarkAsEventAccess(memberAccess);
@@ -268,7 +290,7 @@ internal partial class TypeChecker
 
             // Resolve .invoke() on delegate types — Sharpy's `invoke` maps to C#'s `Invoke`.
             // This enables the event raise pattern: self.on_change?.invoke(self, args)
-            if (memberAccess.Member == "invoke" && udt.Symbol.TypeKind == TypeKind.Delegate)
+            if (effectiveMember == "invoke" && udt.Symbol.TypeKind == TypeKind.Delegate)
             {
                 var invokeMethod = TryGetDelegateInvokeMethod(memberLookupType);
                 if (invokeMethod != null)
@@ -284,7 +306,7 @@ internal partial class TypeChecker
             }
 
             // Look for method (including inherited methods)
-            var (method, methodOwner) = FindMethodInHierarchy(udt.Symbol, memberAccess.Member);
+            var (method, methodOwner) = FindMethodInHierarchy(udt.Symbol, effectiveMember);
             if (method != null && methodOwner != null)
             {
                 // Access level validation is handled by AccessValidator in the validation pipeline
@@ -304,10 +326,10 @@ internal partial class TypeChecker
                 return methodFunctionType;
             }
 
-            var typeMemberMessage = $"Type '{memberLookupType.GetDisplayName()}' has no member '{memberAccess.Member}'";
+            var typeMemberMessage = $"Type '{memberLookupType.GetDisplayName()}' has no member '{effectiveMember}'";
             if (udt.Symbol != null)
             {
-                var typeMemberSuggestion = FindMemberSuggestion(memberAccess.Member, udt.Symbol);
+                var typeMemberSuggestion = FindMemberSuggestion(effectiveMember, udt.Symbol);
                 if (typeMemberSuggestion != null)
                     typeMemberMessage += $". Did you mean '{typeMemberSuggestion}'?";
             }

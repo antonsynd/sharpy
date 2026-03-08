@@ -543,8 +543,12 @@ internal partial class RoslynEmitter
         }
 
         // Check if this is a module symbol - use service for name resolution
-        if (symbol is ModuleSymbol)
+        if (symbol is ModuleSymbol moduleSymbol)
         {
+            // For .NET namespace modules, use the actual namespace name
+            // (e.g., "system" -> "System")
+            if (moduleSymbol.NetNamespaceName != null)
+                return moduleSymbol.NetNamespaceName;
             return NameResolutionService.EscapeCSharpKeyword(name.Replace(".", "_"));
         }
 

@@ -827,8 +827,11 @@ internal partial class RoslynEmitter
 
             // Build the import alias from the module path parts
             // Also escape C# keywords like "base" -> "@base"
+            // For .NET namespace modules (e.g., system -> System), use the actual namespace name
             var moduleParts = modulePath.Take(modulePartCount);
-            var aliasName = EscapeCSharpKeyword(string.Join("_", moduleParts));
+            var aliasName = currentModule.NetNamespaceName != null
+                ? currentModule.NetNamespaceName
+                : EscapeCSharpKeyword(string.Join("_", moduleParts));
 
             // If the entire path is just the module (no member access), return the alias
             if (modulePartCount == modulePath.Count)

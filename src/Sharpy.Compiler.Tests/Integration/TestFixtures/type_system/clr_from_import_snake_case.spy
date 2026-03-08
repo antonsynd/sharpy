@@ -1,0 +1,7 @@
+# Test that from-import with snake_case on .NET modules works
+# e.g., from system import console -> System.Console
+
+from system import console
+
+def main():
+    console.write_line("hello from from-import")

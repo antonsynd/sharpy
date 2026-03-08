@@ -29,6 +29,12 @@ internal class ModuleInfo
     public bool IsNetModule { get; init; } = false;
 
     /// <summary>
+    /// The .NET namespace name for CLR namespace modules (e.g., "System" for "system").
+    /// Null for Sharpy stdlib modules loaded via [SharpyModule] and non-.NET modules.
+    /// </summary>
+    public string? NetNamespaceName { get; init; }
+
+    /// <summary>
     /// The canonical module name (e.g., "mypackage.submodule") derived from the file path.
     /// Used for DefiningModule tracking in re-exported symbols.
     /// </summary>
