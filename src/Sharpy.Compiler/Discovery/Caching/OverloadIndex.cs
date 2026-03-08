@@ -37,6 +37,18 @@ internal class DiscoveredTypeInfo
     public List<FunctionSignature> Methods { get; set; } = new();
     public Dictionary<string, List<FunctionSignature>> OperatorMethods { get; set; } = new();
     public Dictionary<string, List<FunctionSignature>> ProtocolMethods { get; set; } = new();
+    public List<DiscoveredPropertyInfo> Properties { get; set; } = new();
+}
+
+/// <summary>
+/// Information about a public property discovered from a CLR type.
+/// </summary>
+internal class DiscoveredPropertyInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public TypeSignature PropertyType { get; set; } = new();
+    public bool HasGetter { get; set; }
+    public bool HasSetter { get; set; }
 }
 
 /// <summary>
