@@ -12,12 +12,27 @@ result = apply(10, lambda x: x ** 2)
 ## Lambda Rules
 
 - Single expression only (no statements)
-- Parameter types inferred from context
+- Parameter types can be explicitly annotated or inferred from context
 - Expression result is automatically returned
+
+## Parameter Type Annotations
+
+Lambda parameters can have explicit type annotations using the syntax `lambda param: type: expr`:
+
+```python
+# Explicit type annotations on lambda parameters
+f: (int) -> int = lambda x: int: x + 1
+g: (str) -> str = lambda s: str: s + "!"
+h: (int) -> bool = lambda x: int: x > 0
+```
+
+The colon after the type annotation separates it from the lambda body expression. This mirrors the syntax used in `def` parameter declarations.
+
+When type annotations are provided, the lambda does not require external type context for inference.
 
 ## Type Inference Requirements
 
-Lambda parameters have no type annotations; their types must be inferable from context. Sharpy requires sufficient context to determine all lambda parameter types.
+Lambda parameters without type annotations must have their types inferable from context. Sharpy requires sufficient context to determine all lambda parameter types.
 
 **Valid contexts (types inferable):**
 
