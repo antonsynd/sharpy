@@ -1,6 +1,6 @@
 # Operator Overloading
 
-> **Known gaps:** `__truediv__`/`__mod__` operator dispatch not yet codegen'd (#277). `__getitem__`/`__setitem__` indexer codegen not yet implemented (#276).
+> **Known gaps:** `__div__`/`__mod__` operator dispatch not yet codegen'd (#277). `__getitem__`/`__setitem__` indexer codegen not yet implemented (#276).
 
 Classes can define dunder methods (double-underscore methods like `__add__`, `__eq__`) to customize how operators and built-in functions behave with their instances. **Dunder methods are a definition mechanism only**—they specify *how* a type behaves, but users invoke that behavior through operators and built-in functions, not by calling dunders directly.
 
@@ -17,7 +17,7 @@ Dunder methods have compiler-enforced return types. The compiler validates that 
 | `__add__(self, other: T)` | Same type as `self` or compatible | Binary `+` |
 | `__sub__(self, other: T)` | Same type as `self` or compatible | Binary `-` |
 | `__mul__(self, other: T)` | Same type as `self` or compatible | Binary `*` |
-| `__truediv__(self, other: T)` | Same type as `self` or compatible | Binary `/` |
+| `__div__(self, other: T)` | Same type as `self` or compatible | Binary `/` |
 | `__floordiv__(self, other: T)` | `int64` or float type | Binary `//` |
 | `__mod__(self, other: T)` | Same type as `self` or compatible | Binary `%` |
 | `__pow__(self, other: T)` | Same type as `self` or compatible | Binary `**` |
@@ -138,12 +138,14 @@ class Vector:
 | `+` | `__add__` | `operator +` |
 | `-` | `__sub__` | `operator -` |
 | `*` | `__mul__` | `operator *` |
-| `/` | `__truediv__` | `operator /` |
+| `/` | `__div__` | `operator /` |
 | `//` | `__floordiv__` | (method call) |
 | `%` | `__mod__` | `operator %` |
 | `**` | `__pow__` | (method call) |
 | `-x` | `__neg__` | `operator -` (unary) |
 | `+x` | `__pos__` | `operator +` (unary) |
+
+> **Note:** Sharpy uses `__div__` (not Python's `__truediv__`) because `//` floor division is not dispatched via a dunder method. See [Dunder Methods](dunder_methods.md) for details.
 
 *Implementation: ✅ Native - Generates both dunder method and C# operator overload.*
 
