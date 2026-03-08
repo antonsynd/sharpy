@@ -1,3 +1,4 @@
+using System.Linq;
 using FluentAssertions;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
@@ -25,6 +26,16 @@ public class ParserPositionTests
         }
         var parser = new ParserNs.Parser(tokens);
         return parser.ParseModule();
+    }
+
+    private static string ParseExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        parser.ParseModule();
+        parser.Diagnostics.HasErrors.Should().BeTrue("Expected parser to report an error for input: " + source);
+        return string.Join("\n", parser.Diagnostics.GetErrors().Select(d => d.Message));
     }
 
     #region Basic Expressions
@@ -783,13 +794,10 @@ y = 2";
     }
 
     [Fact]
-    public void Position_TypeCast_PositionsTracked()
+    public void Position_TypeCast_AsKeywordRejected()
     {
-        var module = Parse("x as int");
-        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
-        var cast = exprStmt.Expression.Should().BeOfType<TypeCast>().Subject;
-
-        cast.LineStart.Should().Be(1);
+        var errors = ParseExpectingError("x as int");
+        errors.Should().Contain("Expected end of statement");
     }
 
     [Fact]
