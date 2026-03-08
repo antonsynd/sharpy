@@ -292,7 +292,7 @@ internal class ClrTypeMapper
 
     /// <summary>
     /// Builds the interface list for a CLR type, synthesizing IDisposable if implemented.
-    /// Returns null if no interfaces are synthesized.
+    /// Returns an empty list if no interfaces are synthesized.
     /// </summary>
     private static List<InterfaceReference> BuildInterfaceList(Type clrType)
     {
