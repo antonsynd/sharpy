@@ -454,7 +454,8 @@ namespace Sharpy
             switch (type)
             {
                 case "int":
-                    if (int.TryParse(value, out int intVal))
+                    if (int.TryParse(value, System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture, out int intVal))
                     {
                         return intVal;
                     }

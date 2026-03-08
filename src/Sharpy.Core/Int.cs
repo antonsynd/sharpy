@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 namespace Sharpy
 {
     /// <summary>
@@ -94,7 +95,7 @@ namespace Sharpy
 
             s = s.Trim();
 
-            if (!int.TryParse(s, out int result))
+            if (!int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result))
             {
                 throw new ValueError($"invalid literal for int() with base 10: '{s}'");
             }

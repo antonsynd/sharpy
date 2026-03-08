@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 namespace Sharpy
 {
     /// <summary>
@@ -66,7 +67,7 @@ namespace Sharpy
 
             s = s.Trim();
 
-            if (!double.TryParse(s, out double result))
+            if (!double.TryParse(s, NumberStyles.Float | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out double result))
             {
                 throw new ValueError($"could not convert string to float: '{s}'");
             }

@@ -132,7 +132,8 @@ namespace Sharpy
             var named = new System.Collections.Generic.List<string>();
             foreach (string name in names)
             {
-                if (!int.TryParse(name, out _))
+                if (!int.TryParse(name, System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture, out _))
                 {
                     named.Add(name);
                 }
