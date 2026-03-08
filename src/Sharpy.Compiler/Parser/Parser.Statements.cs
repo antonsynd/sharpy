@@ -331,12 +331,7 @@ public partial class Parser
             var itemStartColumn = Current.Column;
             var itemStartToken = Current;
 
-            // Inhibit postfix 'as' (type cast) so it's not consumed as part of the expression.
-            // In with statements, 'as' binds the context manager to a name.
-            var savedInhibit = _inhibitPostfixAs;
-            _inhibitPostfixAs = true;
             var contextExpr = ParseExpression();
-            _inhibitPostfixAs = savedInhibit;
 
             string? name = null;
             if (Current.Type == TokenType.As)

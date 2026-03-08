@@ -422,46 +422,23 @@ public partial class Parser
     {
         var expr = ParsePipe();
 
-        // Handle `to` (type coercion) and `as` (type cast) at precedence level 11
+        // Handle `to` (type coercion) at precedence level 11
         // (between pipe and comparisons). Left-to-right associativity.
-        // `_inhibitPostfixAs` suppresses `as` in with-statement contexts where
-        // `as` binds the context manager to a name instead.
-        while (Current.Type == TokenType.To ||
-               (Current.Type == TokenType.As && !_inhibitPostfixAs))
+        while (Current.Type == TokenType.To)
         {
-            if (Current.Type == TokenType.To)
-            {
-                Advance();
-                var targetType = ParseTypeAnnotation();
+            Advance();
+            var targetType = ParseTypeAnnotation();
 
-                expr = new TypeCoercion
-                {
-                    Value = expr,
-                    TargetType = targetType,
-                    LineStart = expr.LineStart,
-                    ColumnStart = expr.ColumnStart,
-                    LineEnd = Previous.Line,
-                    ColumnEnd = Previous.Column + Previous.Value.Length,
-                    Span = expr.Span
-                };
-            }
-            else
+            expr = new TypeCoercion
             {
-                // Type cast: expr as Type
-                Advance();
-                var targetType = ParseTypeAnnotation();
-
-                expr = new TypeCast
-                {
-                    Value = expr,
-                    TargetType = targetType,
-                    LineStart = expr.LineStart,
-                    ColumnStart = expr.ColumnStart,
-                    LineEnd = Previous.Line,
-                    ColumnEnd = Previous.Column + Previous.Value.Length,
-                    Span = expr.Span
-                };
-            }
+                Value = expr,
+                TargetType = targetType,
+                LineStart = expr.LineStart,
+                ColumnStart = expr.ColumnStart,
+                LineEnd = Previous.Line,
+                ColumnEnd = Previous.Column + Previous.Value.Length,
+                Span = expr.Span
+            };
         }
 
         return expr;

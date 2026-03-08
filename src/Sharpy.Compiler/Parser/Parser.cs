@@ -70,12 +70,6 @@ public partial class Parser
     private bool _parsingInterface;
 
     /// <summary>
-    /// When true, the postfix 'as' (type cast) is not consumed.
-    /// Used in with-statement parsing where 'as' binds the context manager, not a cast.
-    /// </summary>
-    private bool _inhibitPostfixAs;
-
-    /// <summary>
     /// Decorators parsed for the current definition being processed.
     /// Set by ParseDecoratedStatement() before dispatching to the definition parser,
     /// so that ParseFunctionDef() can check for @abstract to allow body-less syntax.
