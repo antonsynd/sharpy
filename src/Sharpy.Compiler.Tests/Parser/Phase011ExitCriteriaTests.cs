@@ -827,13 +827,6 @@ def foo():
     }
 
     [Fact]
-    public void ExitCriteria_TypeCastWithAs_Rejected()
-    {
-        var errors = ParseExpectingError("x as int");
-        errors.Should().Contain("Expected end of statement");
-    }
-
-    [Fact]
     public void ExitCriteria_TypeCheckWithIs()
     {
         var module = Parse("x is int");

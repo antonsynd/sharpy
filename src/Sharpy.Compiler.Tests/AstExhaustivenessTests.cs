@@ -45,7 +45,7 @@ public class AstExhaustivenessTests
             // Operators
             "UnaryOp", "BinaryOp", "ComparisonChain",
             // Advanced
-            "ConditionalExpression", "LambdaExpression", "TypeCast",
+            "ConditionalExpression", "LambdaExpression",
             "TypeCoercion", "TypeCheck", "Parenthesized", "WalrusExpression",
             "TryExpression", "MaybeExpression", "StarExpression", "SpreadElement",
             // Future (in Expression.Future.cs) — not yet handled, expected to be in default case

@@ -734,14 +734,6 @@ internal class AstDumper
                 DumpNode(lambdaExpr.Body, depth + 2, true);
                 break;
 
-            case TypeCast typeCast:
-                _output.AppendLine($"{indent}{prefix}TypeCast @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine($"{indent}{childPrefix}Value:");
-                DumpNode(typeCast.Value, depth + 2, false);
-                _output.AppendLine($"{indent}{childPrefix}TargetType:");
-                DumpTypeAnnotation(typeCast.TargetType, depth + 2, true);
-                break;
-
             case TypeCoercion typeCoercion:
                 _output.AppendLine($"{indent}{prefix}TypeCoercion @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Value:");

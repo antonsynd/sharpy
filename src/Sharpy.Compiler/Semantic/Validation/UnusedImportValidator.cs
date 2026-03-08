@@ -371,11 +371,6 @@ internal class UnusedImportValidator : SemanticValidatorBase
                 CollectReferencesFromExpression(lambda.Body, refs);
                 break;
 
-            case TypeCast castExpr:
-                CollectReferencesFromExpression(castExpr.Value, refs);
-                CollectReferencesFromTypeAnnotation(castExpr.TargetType, refs);
-                break;
-
             case TypeCoercion coercion:
                 CollectReferencesFromExpression(coercion.Value, refs);
                 CollectReferencesFromTypeAnnotation(coercion.TargetType, refs);

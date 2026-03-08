@@ -575,15 +575,6 @@ internal partial class RoslynEmitter
         return ConditionalExpression(test, whenTrue, whenFalse);
     }
 
-    private ExpressionSyntax GenerateTypeCast(TypeCast cast)
-    {
-        // value as Type → (Type)value
-        var value = GenerateExpression(cast.Value);
-        var targetType = _typeMapper.MapType(cast.TargetType);
-
-        return CastExpression(targetType, value);
-    }
-
     private ExpressionSyntax GenerateTypeCoercion(TypeCoercion coercion)
     {
         // The `to` operator:

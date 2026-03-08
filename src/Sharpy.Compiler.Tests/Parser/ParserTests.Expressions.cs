@@ -105,13 +105,6 @@ public partial class ParserTests
     }
 
     [Fact]
-    public void ParseTypeCast_AsKeywordRejected()
-    {
-        var errors = ParseExpectingError("x as int");
-        errors.Should().Contain("Expected end of statement");
-    }
-
-    [Fact]
     public void ParseTypeCheck()
     {
         var module = Parse("x is int");

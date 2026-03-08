@@ -1050,26 +1050,7 @@ public class RoslynEmitterExpressionTests
 
     #endregion
 
-    #region Type Cast and Check Tests
-
-    [Fact]
-    public void GenerateExpression_TypeCast_GeneratesCastExpression()
-    {
-        // Arrange
-        var expr = new TypeCast
-        {
-            Value = new Identifier { Name = "value" },
-            TargetType = new TypeAnnotation { Name = "int" }
-        };
-
-        // Act
-        var result = InvokeGenerateExpression(expr);
-
-        // Assert
-        var code = result.ToString();
-        code.Should().Contain("(int)");
-        code.Should().Contain("value");
-    }
+    #region Type Coercion and Check Tests
 
     [Fact]
     public void GenerateExpression_TypeCoercion_NonNullable_GeneratesCastExpression()

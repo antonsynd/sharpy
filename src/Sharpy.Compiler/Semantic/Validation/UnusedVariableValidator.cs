@@ -584,10 +584,6 @@ internal class UnusedVariableValidator : SemanticValidatorBase
                 CollectReadsFromExpression(lambda.Body, read);
                 break;
 
-            case TypeCast castExpr:
-                CollectReadsFromExpression(castExpr.Value, read);
-                break;
-
             case TypeCoercion coercion:
                 CollectReadsFromExpression(coercion.Value, read);
                 break;

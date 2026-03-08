@@ -659,32 +659,8 @@ public record LambdaExpression : Expression
 }
 
 /// <summary>
-/// Type cast (value as Type) — TODO(#347): dead code, parser no longer creates this node
-/// </summary>
-public record TypeCast : Expression
-{
-    public Expression Value { get; init; } = null!;
-    public TypeAnnotation TargetType { get; init; } = null!;
-
-    /// <inheritdoc/>
-    public override void ValidateInvariants()
-    {
-        base.ValidateInvariants();
-        Debug.Assert(Value != null, "TypeCast.Value cannot be null");
-        Debug.Assert(TargetType != null, "TypeCast.TargetType cannot be null");
-    }
-
-    /// <inheritdoc/>
-    public override IEnumerable<Node> GetChildNodes()
-    {
-        // Note: TargetType is TypeAnnotation which doesn't inherit from Node
-        yield return Value;
-    }
-}
-
-/// <summary>
 /// Type coercion (value to Type or value to Type?)
-/// Unlike TypeCast (as), this throws InvalidCastException on failure for non-nullable types
+/// Throws InvalidCastException on failure for non-nullable types
 /// or returns None for nullable types (T?).
 /// </summary>
 public record TypeCoercion : Expression

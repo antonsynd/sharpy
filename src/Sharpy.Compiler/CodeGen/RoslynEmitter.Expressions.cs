@@ -67,7 +67,6 @@ internal partial class RoslynEmitter
             // Advanced expressions
             ConditionalExpression cond => GenerateConditionalExpression(cond),
             LambdaExpression lambda => GenerateLambdaExpression(lambda),
-            TypeCast cast => GenerateTypeCast(cast),
             TypeCoercion coercion => GenerateTypeCoercion(coercion),
             TypeCheck check => GenerateTypeCheck(check),
             Parenthesized paren => ParenthesizedExpression(GenerateExpression(paren.Expression)),

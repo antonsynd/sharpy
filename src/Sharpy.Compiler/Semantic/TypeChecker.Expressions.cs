@@ -51,7 +51,6 @@ internal partial class TypeChecker
             DictComprehension dictComp => CheckDictComprehension(dictComp),
             ConditionalExpression cond => CheckConditionalExpression(cond),
             LambdaExpression lambda => CheckLambda(lambda),
-            TypeCast cast => CheckTypeCast(cast),
             TypeCoercion coercion => CheckTypeCoercion(coercion),
             TypeCheck typeCheck => CheckTypeCheck(typeCheck),
             MaybeExpression maybeExpr => CheckMaybeExpression(maybeExpr),

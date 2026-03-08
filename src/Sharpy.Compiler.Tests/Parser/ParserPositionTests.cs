@@ -794,13 +794,6 @@ y = 2";
     }
 
     [Fact]
-    public void Position_TypeCast_AsKeywordRejected()
-    {
-        var errors = ParseExpectingError("x as int");
-        errors.Should().Contain("Expected end of statement");
-    }
-
-    [Fact]
     public void Position_TypeCheck_PositionsTracked()
     {
         var module = Parse("x is int");

@@ -453,12 +453,6 @@ internal partial class TypeChecker
         return SemanticType.Unknown;
     }
 
-    private SemanticType CheckTypeCast(TypeCast cast)
-    {
-        CheckExpression(cast.Value);
-        return _typeResolver.ResolveTypeAnnotation(cast.TargetType);
-    }
-
     /// <summary>
     /// Type-checks a type coercion expression (value to Type).
     /// Validates that the coercion is valid per the language specification.

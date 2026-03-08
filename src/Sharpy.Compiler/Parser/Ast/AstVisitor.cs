@@ -111,9 +111,6 @@ public abstract class AstVisitor
             case LambdaExpression n:
                 VisitLambdaExpression(n);
                 break;
-            case TypeCast n:
-                VisitTypeCast(n);
-                break;
             case TypeCoercion n:
                 VisitTypeCoercion(n);
                 break;
@@ -398,7 +395,6 @@ public abstract class AstVisitor
 
     public virtual void VisitConditionalExpression(ConditionalExpression node) => VisitExpression(node);
     public virtual void VisitLambdaExpression(LambdaExpression node) => VisitExpression(node);
-    public virtual void VisitTypeCast(TypeCast node) => VisitExpression(node);
     public virtual void VisitTypeCoercion(TypeCoercion node) => VisitExpression(node);
     public virtual void VisitTypeCheck(TypeCheck node) => VisitExpression(node);
     public virtual void VisitParenthesized(Parenthesized node) => VisitExpression(node);
@@ -551,7 +547,6 @@ public abstract class AstVisitor<T>
             // Expressions - Advanced
             ConditionalExpression n => VisitConditionalExpression(n),
             LambdaExpression n => VisitLambdaExpression(n),
-            TypeCast n => VisitTypeCast(n),
             TypeCoercion n => VisitTypeCoercion(n),
             TypeCheck n => VisitTypeCheck(n),
             Parenthesized n => VisitParenthesized(n),
@@ -725,7 +720,6 @@ public abstract class AstVisitor<T>
 
     public virtual T VisitConditionalExpression(ConditionalExpression node) => VisitExpression(node);
     public virtual T VisitLambdaExpression(LambdaExpression node) => VisitExpression(node);
-    public virtual T VisitTypeCast(TypeCast node) => VisitExpression(node);
     public virtual T VisitTypeCoercion(TypeCoercion node) => VisitExpression(node);
     public virtual T VisitTypeCheck(TypeCheck node) => VisitExpression(node);
     public virtual T VisitParenthesized(Parenthesized node) => VisitExpression(node);

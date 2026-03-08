@@ -282,18 +282,6 @@ x: int = 5 if True else 10
     }
 
     [Fact]
-    public void ChecksTypeCast()
-    {
-        var source = @"
-x: float = 42 as float
-";
-        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: false);
-
-        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
-    }
-
-    [Fact]
     public void AllowsNoneForNullableTypes()
     {
         var source = @"
