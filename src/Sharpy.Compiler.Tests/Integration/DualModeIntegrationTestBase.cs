@@ -1,4 +1,3 @@
-using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -23,26 +22,30 @@ public abstract class DualModeIntegrationTestBase : IntegrationTestBase
 
     /// <summary>
     /// Compiles and executes source code using multi-file project compilation
-    /// (via ProjectCompilationHelper with a single main.spy file).
+    /// (via CompileAndExecuteProject with a single main.spy file in a temp directory).
     /// </summary>
     protected ExecutionResult CompileAndExecuteMultiFile(string source)
     {
-        using var helper = new ProjectCompilationHelper(Output);
-        helper.WithRootNamespace("DualModeTest")
-            .WithEntryPoint("main.spy")
-            .AddSourceFile("main.spy", source)
-            .CreateProjectFile();
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_dual_test_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
 
-        var helperResult = helper.CompileAndExecute();
-
-        // Map ProjectCompilationHelper's ExecutionResult to IntegrationTestBase's ExecutionResult
-        return new IntegrationTestBase.ExecutionResult
+        try
         {
-            Success = helperResult.Success,
-            StandardOutput = helperResult.StandardOutput,
-            StandardError = helperResult.StandardError,
-            CompilationErrors = helperResult.CompilationErrors
-        };
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), source);
+            return CompileAndExecuteProject(tempDir, "main.spy");
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, recursive: true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
     }
 
     /// <summary>
