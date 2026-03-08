@@ -139,7 +139,8 @@ internal partial class ProjectCompiler
                                 Name = importAlias.AsName,
                                 Kind = SymbolKind.Module,
                                 FilePath = moduleInfo.Path,
-                                Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
+                                Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
+                                FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads)
                             };
                             SymbolTable.TryDefine(aliasedModule);
                             continue;
@@ -155,7 +156,8 @@ internal partial class ProjectCompiler
                             Name = parts[^1], // Last part (e.g., "math")
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
-                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
+                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
+                            FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads)
                         };
 
                         // Build nested structure from inside out

@@ -25,6 +25,7 @@ internal class ModuleInfo
     public string Path { get; init; } = string.Empty;
     public Module Module { get; init; } = null!;
     public Dictionary<string, Symbol> ExportedSymbols { get; init; } = new();
+    public Dictionary<string, List<FunctionSymbol>> FunctionOverloads { get; init; } = new();
     public bool IsNetModule { get; init; } = false;
 
     /// <summary>

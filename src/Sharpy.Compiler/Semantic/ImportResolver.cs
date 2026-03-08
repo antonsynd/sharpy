@@ -123,6 +123,7 @@ internal class ImportResolver
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
+                            FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule
                         };
@@ -139,6 +140,7 @@ internal class ImportResolver
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
+                            FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule
                         };
@@ -746,6 +748,13 @@ internal class ImportResolver
         foreach (var function in functions)
         {
             moduleInfo.ExportedSymbols[function.Name] = function;
+
+            if (!moduleInfo.FunctionOverloads.TryGetValue(function.Name, out var overloadList))
+            {
+                overloadList = new List<FunctionSymbol>();
+                moduleInfo.FunctionOverloads[function.Name] = overloadList;
+            }
+            overloadList.Add(function);
         }
 
         foreach (var type in types)
@@ -787,6 +796,13 @@ internal class ImportResolver
             foreach (var function in functions)
             {
                 moduleInfo.ExportedSymbols[function.Name] = function;
+
+                if (!moduleInfo.FunctionOverloads.TryGetValue(function.Name, out var overloadList))
+                {
+                    overloadList = new List<FunctionSymbol>();
+                    moduleInfo.FunctionOverloads[function.Name] = overloadList;
+                }
+                overloadList.Add(function);
             }
         }
 
