@@ -65,6 +65,7 @@ internal static class BuiltinNames
     public const string Tuple = "tuple";
     public const string None = "None";
     public const string Object = "object";
+    public const string Void = "void";
 
     // ---- Wrapper type names ----
     public const string Optional = "Optional";

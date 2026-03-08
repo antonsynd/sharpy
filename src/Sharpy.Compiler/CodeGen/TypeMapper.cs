@@ -657,7 +657,7 @@ internal class TypeMapper
     /// </summary>
     private bool IsVoidType(TypeAnnotation? type)
     {
-        return type?.Name == "void" || type?.Name == "None";
+        return type?.Name == BuiltinNames.Void || type?.Name == BuiltinNames.None;
     }
 
     /// <summary>
@@ -704,21 +704,21 @@ internal class TypeMapper
     {
         return expr switch
         {
-            IntegerLiteral => "int",
+            IntegerLiteral => BuiltinNames.Int,
             FloatLiteral floatLit => floatLit.Suffix?.ToLower() switch
             {
                 "f" => "float",
                 "m" => "decimal",
-                _ => "double"
+                _ => BuiltinNames.Double
             },
             StringLiteral => "string",
-            BooleanLiteral => "bool",
-            NoneLiteral => "object",
+            BooleanLiteral => BuiltinNames.Bool,
+            NoneLiteral => BuiltinNames.Object,
             ListLiteral => BuiltinNames.List,
             DictLiteral => BuiltinNames.Dict,
             SetLiteral => BuiltinNames.Set,
             TupleLiteral => BuiltinNames.Tuple,
-            _ => "object"
+            _ => BuiltinNames.Object
         };
     }
 
@@ -737,14 +737,14 @@ internal class TypeMapper
     {
         return typeName switch
         {
-            "int" => PredefinedType(Token(SyntaxKind.IntKeyword)),
-            "long" => PredefinedType(Token(SyntaxKind.LongKeyword)),
+            BuiltinNames.Int => PredefinedType(Token(SyntaxKind.IntKeyword)),
+            BuiltinNames.Long => PredefinedType(Token(SyntaxKind.LongKeyword)),
             "float" => PredefinedType(Token(SyntaxKind.FloatKeyword)),
-            "double" => PredefinedType(Token(SyntaxKind.DoubleKeyword)),
+            BuiltinNames.Double => PredefinedType(Token(SyntaxKind.DoubleKeyword)),
             "decimal" => PredefinedType(Token(SyntaxKind.DecimalKeyword)),
             "string" => PredefinedType(Token(SyntaxKind.StringKeyword)),
-            "bool" => PredefinedType(Token(SyntaxKind.BoolKeyword)),
-            "object" => PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+            BuiltinNames.Bool => PredefinedType(Token(SyntaxKind.BoolKeyword)),
+            BuiltinNames.Object => PredefinedType(Token(SyntaxKind.ObjectKeyword)),
             _ => ParseTypeName(GetMappedTypeName(typeName))
         };
     }
