@@ -247,6 +247,29 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Ensures that synthesized protocol properties (e.g., IsTrue, Count) have the virtual
+    /// modifier in non-sealed classes so subclasses can use @override. Skips adding virtual
+    /// when abstract, override, sealed, or @final is already present, since abstract and
+    /// virtual are mutually exclusive in C#.
+    /// </summary>
+    private SyntaxTokenList EnsureVirtualForProtocolProperty(
+        SyntaxTokenList modifiers, bool isAbstract, FunctionDef func)
+    {
+        if (!isAbstract
+            && _currentTypeSymbol != null
+            && _currentTypeSymbol.TypeKind == Semantic.TypeKind.Class
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword))
+            && !func.Decorators.Any(d => d.Name == DecoratorNames.Final))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
+        }
+
+        return modifiers;
+    }
+
+    /// <summary>
     /// Generates a read-only IsTrue property for __bool__ to satisfy IBoolConvertible.
     /// The user's __bool__ body becomes the getter body.
     /// </summary>
@@ -274,19 +297,7 @@ internal partial class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
         }
 
-        // Add virtual keyword for synthesized protocol properties in non-sealed classes.
-        // Without virtual, subclasses cannot use @override on __bool__.
-        // Must run after abstract check since abstract and virtual are mutually exclusive in C#.
-        if (!isAbstract
-            && _currentTypeSymbol != null
-            && _currentTypeSymbol.TypeKind == Semantic.TypeKind.Class
-            && !modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword))
-            && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
-            && !modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword))
-            && !func.Decorators.Any(d => d.Name == DecoratorNames.Final))
-        {
-            modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
-        }
+        modifiers = EnsureVirtualForProtocolProperty(modifiers, isAbstract, func);
 
         // Build getter: abstract properties use semicolon, concrete use body
         AccessorDeclarationSyntax getter;
@@ -345,19 +356,7 @@ internal partial class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
         }
 
-        // Add virtual keyword for synthesized protocol properties in non-sealed classes.
-        // Without virtual, subclasses cannot use @override on __len__.
-        // Must run after abstract check since abstract and virtual are mutually exclusive in C#.
-        if (!isAbstract
-            && _currentTypeSymbol != null
-            && _currentTypeSymbol.TypeKind == Semantic.TypeKind.Class
-            && !modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword))
-            && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
-            && !modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword))
-            && !func.Decorators.Any(d => d.Name == DecoratorNames.Final))
-        {
-            modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
-        }
+        modifiers = EnsureVirtualForProtocolProperty(modifiers, isAbstract, func);
 
         // Build getter: abstract properties use semicolon, concrete use body
         AccessorDeclarationSyntax getter;
