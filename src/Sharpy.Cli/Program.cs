@@ -284,6 +284,9 @@ class Program
 
         // === LSP Command ===
         var lspCommand = new Command("lsp", "Start the Sharpy Language Server (stdio transport)");
+        // Accept --stdio flag for compatibility with LSP clients that pass it (e.g., vscode-languageclient)
+        var lspStdioOpt = new Option<bool>("--stdio") { Description = "Use stdio transport (default, accepted for compatibility)" };
+        lspCommand.Options.Add(lspStdioOpt);
         lspCommand.SetAction(async (parseResult, cancellationToken) =>
         {
             await Sharpy.Lsp.Program.Main(Array.Empty<string>()).ConfigureAwait(false);
