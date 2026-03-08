@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Analysis.ControlFlow;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -320,7 +321,7 @@ internal class PropertyValidator : SemanticValidatorBase
         // Check each constructor
         foreach (var initMethod in initMethods)
         {
-            var assignedNames = CollectSelfAssignments(initMethod.Body);
+            var assignedNames = CollectGuaranteedSelfAssignments(initMethod.Body);
             foreach (var prop in initPropsWithoutDefaults)
             {
                 if (!assignedNames.Contains(prop.Name))
@@ -336,21 +337,78 @@ internal class PropertyValidator : SemanticValidatorBase
     }
 
     /// <summary>
-    /// Collects names of members assigned via self.{name} = ... in a method body.
-    /// TODO(#348): Only checks top-level statements (not inside conditionals/loops).
-    /// Should use ControlFlowGraph to detect assignments on all paths.
+    /// Collects names of members that are guaranteed to be assigned via self.{name} = ...
+    /// on all paths through the method body, using CFG-based forward "must-assign" analysis.
     /// </summary>
-    private static HashSet<string> CollectSelfAssignments(IReadOnlyList<Statement> body)
+    private static HashSet<string> CollectGuaranteedSelfAssignments(IReadOnlyList<Statement> body)
     {
-        var assigned = new HashSet<string>();
-        foreach (var stmt in body)
+        var builder = new ControlFlowGraphBuilder();
+        var cfg = builder.Build(body);
+
+        var rpo = cfg.GetReversePostOrder();
+
+        // For each block, compute which self.{name} assignments it contains
+        var blockAssignments = new Dictionary<BasicBlock, HashSet<string>>();
+        foreach (var block in cfg.Blocks)
         {
-            if (stmt is Assignment { Operator: AssignmentOperator.Assign, Target: MemberAccess { Object: Identifier { Name: "self" }, Member: var member } })
+            var assigns = new HashSet<string>();
+            foreach (var stmt in block.Statements)
             {
-                assigned.Add(member);
+                if (stmt is Assignment { Operator: AssignmentOperator.Assign, Target: MemberAccess { Object: Identifier { Name: "self" }, Member: var member } })
+                {
+                    assigns.Add(member);
+                }
+            }
+            blockAssignments[block] = assigns;
+        }
+
+        // Forward "must-assign" dataflow analysis using worklist algorithm
+        // mustAssignIn[block] = intersection of mustAssignOut[pred] for all predecessors
+        // mustAssignOut[block] = mustAssignIn[block] union blockAssignments[block]
+        var mustAssignOut = new Dictionary<BasicBlock, HashSet<string>>();
+        foreach (var block in cfg.Blocks)
+        {
+            mustAssignOut[block] = new HashSet<string>();
+        }
+
+        var changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var block in rpo)
+            {
+                if (block == cfg.Entry)
+                    continue;
+
+                // Compute mustAssignIn as intersection of all predecessor outputs
+                HashSet<string>? mustIn = null;
+                foreach (var pred in block.Predecessors)
+                {
+                    if (mustIn == null)
+                    {
+                        mustIn = new HashSet<string>(mustAssignOut[pred]);
+                    }
+                    else
+                    {
+                        mustIn.IntersectWith(mustAssignOut[pred]);
+                    }
+                }
+
+                mustIn ??= new HashSet<string>();
+
+                // mustAssignOut = mustIn union block's own assignments
+                var newOut = new HashSet<string>(mustIn);
+                newOut.UnionWith(blockAssignments[block]);
+
+                if (!newOut.SetEquals(mustAssignOut[block]))
+                {
+                    mustAssignOut[block] = newOut;
+                    changed = true;
+                }
             }
         }
-        return assigned;
+
+        return mustAssignOut[cfg.Exit];
     }
 
     /// <summary>

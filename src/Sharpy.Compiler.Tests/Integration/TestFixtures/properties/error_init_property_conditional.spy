@@ -1,0 +1,11 @@
+class Server:
+    property init host: str
+    property init port: int
+
+    def __init__(self, host: str, port: int, use_port: bool):
+        self.host = host
+        if use_port:
+            self.port = port
+
+def main():
+    pass

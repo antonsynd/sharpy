@@ -1,0 +1,15 @@
+class Server:
+    property init host: str
+    property init port: int
+
+    def __init__(self, host: str, port: int, use_default: bool):
+        self.host = host
+        if use_default:
+            self.port = 8080
+        else:
+            self.port = port
+
+def main():
+    s = Server("localhost", 3000, True)
+    print(s.host)
+    print(s.port)

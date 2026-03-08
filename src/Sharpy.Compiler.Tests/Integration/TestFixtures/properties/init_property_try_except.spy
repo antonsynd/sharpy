@@ -1,0 +1,14 @@
+class Config:
+    property init value: int
+
+    def __init__(self, raw: str):
+        try:
+            self.value = int(raw)
+        except:
+            self.value = 0
+
+def main():
+    c = Config("42")
+    print(c.value)
+    c2 = Config("bad")
+    print(c2.value)
