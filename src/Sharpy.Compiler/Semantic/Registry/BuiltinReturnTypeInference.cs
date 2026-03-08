@@ -33,10 +33,8 @@ internal static class BuiltinReturnTypeInference
                 => InferElementTypeUnary(argTypes, typeInference),
             BuiltinNames.Enumerate when argTypes.Count is 1 or 2
                 => InferEnumerate(argTypes, typeInference),
-            BuiltinNames.Zip when argTypes.Count == 2
-                => InferZip2(argTypes, typeInference),
-            BuiltinNames.Zip when argTypes.Count == 3
-                => InferZip3(argTypes, typeInference),
+            BuiltinNames.Zip when argTypes.Count >= 2
+                => InferZip(argTypes, typeInference),
             BuiltinNames.Map when argTypes.Count == 2
                 => InferMap(argTypes),
             _ => null
@@ -87,35 +85,22 @@ internal static class BuiltinReturnTypeInference
         };
     }
 
-    private static SemanticType? InferZip2(List<SemanticType> argTypes, TypeInferenceService typeInference)
+    private static SemanticType? InferZip(List<SemanticType> argTypes, TypeInferenceService typeInference)
     {
-        var elem1 = typeInference.InferIterableElementType(argTypes[0]);
-        var elem2 = typeInference.InferIterableElementType(argTypes[1]);
-        if (elem1 == null || elem2 == null)
-            return null;
+        var elementTypes = new List<SemanticType>(argTypes.Count);
+        foreach (var arg in argTypes)
+        {
+            var elem = typeInference.InferIterableElementType(arg);
+            if (elem == null)
+                return null;
+            elementTypes.Add(elem);
+        }
         return new GenericType
         {
             Name = BuiltinNames.Iterator,
             TypeArguments = new List<SemanticType>
             {
-                new TupleType { ElementTypes = new List<SemanticType> { elem1, elem2 } }
-            }
-        };
-    }
-
-    private static SemanticType? InferZip3(List<SemanticType> argTypes, TypeInferenceService typeInference)
-    {
-        var elem1 = typeInference.InferIterableElementType(argTypes[0]);
-        var elem2 = typeInference.InferIterableElementType(argTypes[1]);
-        var elem3 = typeInference.InferIterableElementType(argTypes[2]);
-        if (elem1 == null || elem2 == null || elem3 == null)
-            return null;
-        return new GenericType
-        {
-            Name = BuiltinNames.Iterator,
-            TypeArguments = new List<SemanticType>
-            {
-                new TupleType { ElementTypes = new List<SemanticType> { elem1, elem2, elem3 } }
+                new TupleType { ElementTypes = elementTypes }
             }
         };
     }

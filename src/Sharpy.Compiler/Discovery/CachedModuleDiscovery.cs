@@ -73,7 +73,7 @@ internal class CachedModuleDiscovery
             foreach (var typeInfo in moduleOverloads.Types)
             {
                 if (typeInfo.IsModuleType)
-                    _moduleTypeNames.Add(typeInfo.Name);
+                    _moduleTypeNames.Add(typeInfo.Namespace + "." + typeInfo.Name);
             }
         }
     }
@@ -510,7 +510,7 @@ internal class CachedModuleDiscovery
                 // UserDefinedType in the symbol table, so operator return types must also be
                 // UserDefinedType for assignability to work.
                 // Uses pre-computed set from discovery phase instead of runtime reflection.
-                if (_moduleTypeNames.Contains(clrType.Name))
+                if (clrType.FullName != null && _moduleTypeNames.Contains(clrType.FullName))
                 {
                     return new UserDefinedType { Name = signature.Name };
                 }

@@ -1,0 +1,7 @@
+# Test zip builtin with three lists
+def main():
+    names: list[str] = ["Alice", "Bob"]
+    ages: list[int] = [25, 30]
+    cities: list[str] = ["NYC", "LA"]
+    for triple in zip(names, ages, cities):
+        print(f"{triple[0]} is {triple[1]} from {triple[2]}")

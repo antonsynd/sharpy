@@ -627,10 +627,13 @@ internal partial class TypeChecker
         bool returnFirstMatch = false,
         bool skipUnknownTypes = false)
     {
+        int GetSelfOffset(FunctionSymbol o) =>
+            skipSelfParam && o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+
         // First pass: filter by argument count
         var arityCandidates = candidates.Where(o =>
         {
-            var selfOffset = skipSelfParam && o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+            var selfOffset = GetSelfOffset(o);
             var requiredParams = o.Parameters.Skip(selfOffset).Count(p => !p.HasDefault && !p.IsVariadic);
             var hasVariadic = o.Parameters.Skip(selfOffset).Any(p => p.IsVariadic);
             var totalParams = o.Parameters.Count - selfOffset;
@@ -643,7 +646,7 @@ internal partial class TypeChecker
         var matchingOverloads = new List<FunctionSymbol>();
         foreach (var overload in arityCandidates)
         {
-            var selfOffset = skipSelfParam && overload.Parameters.Count > 0 && overload.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+            var selfOffset = GetSelfOffset(overload);
             bool typesMatch = true;
             var variadicParam = overload.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
 
@@ -692,10 +695,8 @@ internal partial class TypeChecker
         if (matchingOverloads.Count > 1)
         {
             var exactArityMatches = matchingOverloads.Where(o =>
-            {
-                var selfOffset = skipSelfParam && o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
-                return o.Parameters.Count - selfOffset == totalArgCount;
-            }).ToList();
+                o.Parameters.Count - GetSelfOffset(o) == totalArgCount
+            ).ToList();
 
             if (exactArityMatches.Count == 1)
                 return (exactArityMatches[0], arityCandidates, false);
@@ -721,7 +722,7 @@ internal partial class TypeChecker
         var funcSymbol = _symbolTable.Lookup(id.Name) as FunctionSymbol;
         // If funcSymbol was found in symbol table AND it's one of the builtin overloads, use overload resolution
         var needsOverloadResolution = isBuiltinWithOverloads &&
-            (funcSymbol == null || (funcSymbol != null && overloads!.Contains(funcSymbol)));
+            (funcSymbol == null || overloads!.Contains(funcSymbol));
         if (!needsOverloadResolution)
             return null;
 
