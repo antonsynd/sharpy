@@ -208,6 +208,10 @@ namespace Sharpy
                 if (!first)
                 {
                     sb.Append(',');
+                    if (!pretty)
+                    {
+                        sb.Append(' ');
+                    }
                 }
 
                 first = false;
@@ -220,10 +224,7 @@ namespace Sharpy
 
                 SerializeString(sb, key, ensureAscii);
                 sb.Append(':');
-                if (pretty)
-                {
-                    sb.Append(' ');
-                }
+                sb.Append(' ');
 
                 SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent);
             }
@@ -269,6 +270,10 @@ namespace Sharpy
                 if (!first)
                 {
                     sb.Append(',');
+                    if (!pretty)
+                    {
+                        sb.Append(' ');
+                    }
                 }
 
                 first = false;
@@ -281,10 +286,7 @@ namespace Sharpy
 
                 SerializeString(sb, key, ensureAscii);
                 sb.Append(':');
-                if (pretty)
-                {
-                    sb.Append(' ');
-                }
+                sb.Append(' ');
 
                 SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent);
             }
@@ -317,6 +319,10 @@ namespace Sharpy
                 if (!first)
                 {
                     sb.Append(',');
+                    if (!pretty)
+                    {
+                        sb.Append(' ');
+                    }
                 }
 
                 first = false;
@@ -365,6 +371,10 @@ namespace Sharpy
                 if (!first)
                 {
                     sb.Append(',');
+                    if (!pretty)
+                    {
+                        sb.Append(' ');
+                    }
                 }
 
                 first = false;

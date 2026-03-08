@@ -127,7 +127,7 @@ namespace Sharpy.Tests
             var d = new Dict<string, object?>();
             d["a"] = 1;
             string result = Json.Dumps(d);
-            Assert.Equal("{\"a\":1}", result);
+            Assert.Equal("{\"a\": 1}", result);
         }
 
         [Fact]
@@ -144,7 +144,7 @@ namespace Sharpy.Tests
             l.Append("two");
             l.Append(true);
             string result = Json.Dumps(l);
-            Assert.Equal("[1,\"two\",true]", result);
+            Assert.Equal("[1, \"two\", true]", result);
         }
 
         [Fact]
@@ -158,7 +158,7 @@ namespace Sharpy.Tests
             outer["items"] = list;
 
             string result = Json.Dumps(outer);
-            Assert.Equal("{\"items\":[{\"x\":1}]}", result);
+            Assert.Equal("{\"items\": [{\"x\": 1}]}", result);
         }
 
         #endregion
@@ -186,7 +186,7 @@ namespace Sharpy.Tests
             d["b"] = 2;
 
             string result = Json.Dumps(d, sortKeys: true);
-            Assert.Equal("{\"a\":1,\"b\":2,\"c\":3}", result);
+            Assert.Equal("{\"a\": 1, \"b\": 2, \"c\": 3}", result);
         }
 
         [Fact]
@@ -638,7 +638,7 @@ namespace Sharpy.Tests
                 }
 
                 string content = System.IO.File.ReadAllText(tempPath);
-                Assert.Equal("{\"key\":\"value\"}", content);
+                Assert.Equal("{\"key\": \"value\"}", content);
             }
             finally
             {
@@ -741,7 +741,7 @@ namespace Sharpy.Tests
         {
             var d = new Dict<string, object?>();
             d["key"] = null;
-            Assert.Equal("{\"key\":null}", Json.Dumps(d));
+            Assert.Equal("{\"key\": null}", Json.Dumps(d));
         }
 
         [Fact]
@@ -763,7 +763,7 @@ namespace Sharpy.Tests
             l.Append(1);
             l.Append(2);
             l.Append(3);
-            Assert.Equal("[1,2,3]", Json.Dumps(l));
+            Assert.Equal("[1, 2, 3]", Json.Dumps(l));
         }
 
         [Fact]
@@ -788,7 +788,7 @@ namespace Sharpy.Tests
             var l = new List<double>();
             l.Append(1.5);
             l.Append(2.5);
-            Assert.Equal("[1.5,2.5]", Json.Dumps(l));
+            Assert.Equal("[1.5, 2.5]", Json.Dumps(l));
         }
 
         [Fact]
@@ -797,7 +797,7 @@ namespace Sharpy.Tests
             var l = new List<bool>();
             l.Append(true);
             l.Append(false);
-            Assert.Equal("[true,false]", Json.Dumps(l));
+            Assert.Equal("[true, false]", Json.Dumps(l));
         }
 
         [Fact]
@@ -808,7 +808,7 @@ namespace Sharpy.Tests
             inner.Append(10);
             inner.Append(20);
             d["nums"] = inner;
-            Assert.Equal("{\"nums\":[10,20]}", Json.Dumps(d));
+            Assert.Equal("{\"nums\": [10, 20]}", Json.Dumps(d));
         }
 
         [Fact]
