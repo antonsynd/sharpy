@@ -413,86 +413,19 @@ internal partial class TypeChecker
     /// Finds a field by name in the type's hierarchy (including parent classes and interfaces).
     /// </summary>
     private (VariableSymbol? Field, TypeSymbol? Owner) FindFieldInHierarchy(TypeSymbol type, string fieldName)
-    {
-        // First check the type itself
-        var field = type.Fields.FirstOrDefault(f => f.Name == fieldName);
-        if (field != null)
-            return (field, type);
-
-        // Check base class chain
-        var current = GetBaseType(type);
-        while (current != null)
-        {
-            field = current.Fields.FirstOrDefault(f => f.Name == fieldName);
-            if (field != null)
-                return (field, current);
-            current = GetBaseType(current);
-        }
-
-        return (null, null);
-    }
+        => TypeHierarchyService.FindField(type, fieldName, SemanticBinding);
 
     /// <summary>
     /// Finds a property by name in the type's hierarchy (including parent classes and interfaces).
     /// </summary>
     private (PropertySymbol? Property, TypeSymbol? Owner) FindPropertyInHierarchy(TypeSymbol type, string propertyName)
-    {
-        // First check the type itself
-        var prop = type.Properties.FirstOrDefault(p => p.Name == propertyName);
-        if (prop != null)
-            return (prop, type);
-
-        // Check base class chain
-        var current = GetBaseType(type);
-        while (current != null)
-        {
-            prop = current.Properties.FirstOrDefault(p => p.Name == propertyName);
-            if (prop != null)
-                return (prop, current);
-            current = GetBaseType(current);
-        }
-
-        // Check interfaces
-        foreach (var iface in GetInterfaces(type))
-        {
-            prop = iface.Properties.FirstOrDefault(p => p.Name == propertyName);
-            if (prop != null)
-                return (prop, iface);
-        }
-
-        return (null, null);
-    }
+        => TypeHierarchyService.FindProperty(type, propertyName, SemanticBinding);
 
     /// <summary>
     /// Finds a method by name in the type's hierarchy (including parent classes and interfaces).
     /// </summary>
     private (FunctionSymbol? Method, TypeSymbol? Owner) FindMethodInHierarchy(TypeSymbol type, string methodName)
-    {
-        // First check the type itself
-        var method = type.Methods.FirstOrDefault(m => m.Name == methodName);
-        if (method != null)
-            return (method, type);
-
-        // Check base class chain
-        var current = GetBaseType(type);
-        while (current != null)
-        {
-            method = current.Methods.FirstOrDefault(m => m.Name == methodName);
-            if (method != null)
-                return (method, current);
-            current = GetBaseType(current);
-        }
-
-        // Check interfaces (for method contracts)
-        foreach (var iface in GetInterfaces(type))
-        {
-            method = iface.Methods.FirstOrDefault(m => m.Name == methodName);
-            if (method != null)
-                return (method, iface);
-        }
-
-        return (null, null);
-    }
+        => TypeHierarchyService.FindMethod(type, methodName, SemanticBinding);
 
     private SemanticType CheckIndexAccess(IndexAccess indexAccess)
     {

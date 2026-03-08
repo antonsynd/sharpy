@@ -607,27 +607,7 @@ internal partial class TypeChecker
     /// Checks if a type symbol inherits from another type symbol (directly or indirectly).
     /// </summary>
     private bool InheritsFrom(TypeSymbol? derived, TypeSymbol? baseType)
-    {
-        if (derived == null || baseType == null)
-            return false;
-
-        var current = GetBaseType(derived);
-        while (current != null)
-        {
-            if (current == baseType || current.Name == baseType.Name)
-                return true;
-            current = GetBaseType(current);
-        }
-
-        // Also check interfaces
-        foreach (var iface in GetInterfaces(derived))
-        {
-            if (iface == baseType || iface.Name == baseType.Name)
-                return true;
-        }
-
-        return false;
-    }
+        => TypeHierarchyService.InheritsFrom(derived, baseType, SemanticBinding);
 
     private SemanticType CheckTypeCheck(TypeCheck typeCheck)
     {

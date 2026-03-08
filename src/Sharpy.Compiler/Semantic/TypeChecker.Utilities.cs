@@ -896,44 +896,10 @@ internal partial class TypeChecker
     /// </summary>
     private TypeSymbolSet CollectAllInterfaces(TypeSymbol type)
     {
+        var all = TypeHierarchyService.GetAllInterfaces(type, SemanticBinding);
         var result = new TypeSymbolSet();
-        var visited = new HashSet<string>();
-        var visitedBaseClasses = new HashSet<string>();
-        var queue = new Queue<TypeSymbol>();
-
-        // Add directly implemented interfaces
-        foreach (var iface in GetInterfaces(type))
-        {
-            queue.Enqueue(iface);
-        }
-
-        // Add interfaces from base class hierarchy (with cycle detection)
-        var baseType = GetBaseType(type);
-        while (baseType != null && visitedBaseClasses.Add(baseType.Name))
-        {
-            foreach (var iface in GetInterfaces(baseType))
-            {
-                queue.Enqueue(iface);
-            }
-            baseType = GetBaseType(baseType);
-        }
-
-        // BFS through interface inheritance
-        while (queue.Count > 0)
-        {
-            var iface = queue.Dequeue();
-            if (!visited.Add(iface.Name))
-                continue;
-
+        foreach (var iface in all)
             result.Add(iface);
-
-            // Add base interfaces
-            foreach (var baseIface in GetInterfaces(iface))
-            {
-                queue.Enqueue(baseIface);
-            }
-        }
-
         return result;
     }
 
@@ -943,26 +909,7 @@ internal partial class TypeChecker
     /// Used for interface implementation validation by name matching.
     /// </summary>
     private Dictionary<string, FunctionSymbol> CollectImplementedMethodsByName(TypeSymbol type)
-    {
-        var result = new Dictionary<string, FunctionSymbol>();
-        var visited = new HashSet<string>();
-
-        var currentType = type;
-        while (currentType != null && visited.Add(currentType.Name))
-        {
-            foreach (var method in currentType.Methods)
-            {
-                // Only add if not already present (prefer most derived implementation)
-                if (!result.ContainsKey(method.Name))
-                {
-                    result[method.Name] = method;
-                }
-            }
-            currentType = GetBaseType(currentType);
-        }
-
-        return result;
-    }
+        => TypeHierarchyService.CollectAllMethods(type, SemanticBinding);
 
     /// <summary>
     /// Finds the least common ancestor (most specific common base type) of a list of types.
@@ -1023,32 +970,7 @@ internal partial class TypeChecker
     /// For primitives: [PrimitiveType, object]
     /// </summary>
     private List<SemanticType> GetTypeAncestorChain(SemanticType type)
-    {
-        var chain = new List<SemanticType> { type };
-
-        if (type is UserDefinedType udt && udt.Symbol != null)
-        {
-            var current = GetBaseType(udt.Symbol);
-            while (current != null)
-            {
-                chain.Add(new UserDefinedType
-                {
-                    Name = current.Name,
-                    Symbol = current
-                });
-                current = GetBaseType(current);
-            }
-        }
-
-        // Add object as ultimate base (if not already there)
-        var lastTypeName = chain.Last().GetDisplayName().ToLowerInvariant();
-        if (lastTypeName != "object" && lastTypeName != "system.object")
-        {
-            chain.Add(SemanticType.Object);
-        }
-
-        return chain;
-    }
+        => TypeHierarchyService.GetAncestorChain(type, SemanticBinding).ToList();
 
     /// <summary>
     /// Marks an expression as error recovery in SemanticInfo and increments the recovery counter.
