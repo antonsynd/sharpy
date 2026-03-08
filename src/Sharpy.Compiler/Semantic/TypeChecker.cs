@@ -245,6 +245,20 @@ internal partial class TypeChecker
         // Propagate SemanticBinding to sub-services
         _genericInference.SemanticBinding = SemanticBinding;
 
+        // Pre-pass: resolve return types and parameter types for all module-level functions
+        // so that forward references from class methods have resolved type information.
+        // The NameResolver pre-pass registers function names, but types remain Unknown
+        // until the TypeChecker processes each function. Without this pre-pass, a class
+        // method calling a function defined later in the file would see Unknown types.
+        foreach (var statement in module.Body)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            if (statement is FunctionDef functionDef)
+            {
+                ResolveModuleFunctionSignature(functionDef);
+            }
+        }
+
         foreach (var statement in module.Body)
         {
             _cancellationToken.ThrowIfCancellationRequested();

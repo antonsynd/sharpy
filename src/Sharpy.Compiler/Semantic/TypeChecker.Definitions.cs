@@ -12,6 +12,68 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 internal partial class TypeChecker
 {
+    /// <summary>
+    /// Pre-pass: resolve parameter and return types for a module-level function
+    /// so forward references from class methods see resolved types instead of Unknown.
+    /// Only resolves type annotations — does not check the function body.
+    /// </summary>
+    private void ResolveModuleFunctionSignature(FunctionDef functionDef)
+    {
+        var functionSymbol = _symbolTable.LookupFunction(functionDef.Name);
+        if (functionSymbol == null)
+            return;
+
+        // Enter a temporary scope for generic type parameters
+        _symbolTable.EnterScope($"pre-pass:{functionDef.Name}");
+
+        foreach (var typeParam in functionDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = null,
+                Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
+                DeclarationLine = typeParam.LineStart,
+                DeclarationColumn = typeParam.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
+        // Resolve return type from annotation
+        var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
+        if (functionDef.Name == DunderNames.Init)
+        {
+            returnType = SemanticType.Void;
+        }
+        else if (returnType == SemanticType.Unknown && functionDef.ReturnType == null)
+        {
+            returnType = SemanticType.Void;
+        }
+
+        // Resolve parameter types from annotations
+        for (int i = 0; i < functionDef.Parameters.Length; i++)
+        {
+            var param = functionDef.Parameters[i];
+            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+            if (param.Type == null && param.Name != PythonNames.Self)
+            {
+                paramType = SemanticType.Unknown;
+            }
+            if (i < functionSymbol.Parameters.Count)
+            {
+                functionSymbol.Parameters[i] = functionSymbol.Parameters[i] with { Type = paramType };
+            }
+        }
+
+        // Update the function symbol with resolved types
+        var updatedSymbol = functionSymbol with { ReturnType = returnType };
+        _symbolTable.UpdateSymbol(updatedSymbol);
+
+        _symbolTable.ExitScope();
+    }
+
     private void CheckFunction(FunctionDef functionDef)
     {
         _logger.LogDebug($"Type checking function: {functionDef.Name}");
