@@ -761,8 +761,7 @@ internal partial class TypeChecker
         }).ToList();
 
         // Second pass: check type compatibility
-        FunctionSymbol? matchingOverload = null;
-        int matchCount = 0;
+        var matchingOverloads = new List<FunctionSymbol>();
         foreach (var overload in candidates)
         {
             var selfOffset = overload.Parameters.Count > 0 && overload.Parameters[0].Name == PythonNames.Self ? 1 : 0;
@@ -801,17 +800,35 @@ internal partial class TypeChecker
             }
             if (typesMatch)
             {
-                matchingOverload = overload;
-                matchCount++;
+                matchingOverloads.Add(overload);
             }
         }
 
-        if (matchCount > 1)
+        // When multiple overloads match, prefer the one with exact arity (no defaults/variadic used)
+        FunctionSymbol? matchingOverload;
+        if (matchingOverloads.Count > 1)
         {
-            AddError($"Ambiguous call to overloaded method '{memberAccess.Member}' — multiple overloads match the argument types",
-                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
-                span: call.Span);
-            return SemanticType.Unknown;
+            var exactArityMatches = matchingOverloads.Where(o =>
+            {
+                var selfOffset = o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+                return o.Parameters.Count - selfOffset == totalArgCount;
+            }).ToList();
+
+            if (exactArityMatches.Count == 1)
+            {
+                matchingOverload = exactArityMatches[0];
+            }
+            else
+            {
+                AddError($"Ambiguous call to overloaded method '{memberAccess.Member}' — multiple overloads match the argument types",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
+                    span: call.Span);
+                return SemanticType.Unknown;
+            }
+        }
+        else
+        {
+            matchingOverload = matchingOverloads.Count == 1 ? matchingOverloads[0] : null;
         }
 
         if (matchingOverload == null)
