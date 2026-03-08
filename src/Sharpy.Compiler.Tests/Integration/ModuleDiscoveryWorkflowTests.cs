@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Discovery.Caching;
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
@@ -259,5 +260,63 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
         Assert.True(medianSecondLoad <= maxReasonableTime,
             $"Median cached load ({medianSecondLoad}ms) should be reasonable. " +
             $"Median first load: {medianFirstLoad}ms, max allowed: {maxReasonableTime}ms");
+    }
+
+    [Fact]
+    public void Workflow_ModuleFunctionOverloads_PopulatedInModuleInfo()
+    {
+        // Arrange - Load Sharpy.Core which contains os.path with overloaded join
+        var registry = new ModuleRegistry(cache: _cache);
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
+        registry.LoadReference(sharpyCoreAssembly);
+
+        // Act - Get os.path functions
+        var osPathFunctions = registry.GetModuleFunctions("os.path");
+
+        // Assert - join should have 3 overloads (2-arg, 3-arg, 4-arg)
+        var joinOverloads = osPathFunctions.Where(f => f.Name == "join").ToList();
+        Assert.True(joinOverloads.Count >= 2,
+            $"Expected at least 2 overloads for os.path.join, got {joinOverloads.Count}");
+        Assert.Contains(joinOverloads, f => f.Parameters.Count == 2);
+        Assert.Contains(joinOverloads, f => f.Parameters.Count == 3);
+    }
+
+    [Fact]
+    public void Workflow_ModuleFunctionOverloads_ThreadedToModuleSymbol()
+    {
+        // Arrange - Set up ImportResolver to resolve os.path module
+        var registry = new ModuleRegistry(cache: _cache);
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
+        registry.LoadReference(sharpyCoreAssembly);
+
+        var logger = Sharpy.Compiler.Logging.NullLogger.Instance;
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var semanticBinding = new SemanticBinding();
+
+        var importResolver = new ImportResolver(logger, moduleRegistry: registry);
+        importResolver.SetSemanticBinding(semanticBinding);
+
+        // Act - Resolve os.path via import statement
+        var source = "import os.path\n\ndef main():\n    pass\n";
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, logger);
+        var tokens = lexer.TokenizeAll();
+        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, logger);
+        var module = parser.ParseModule();
+
+        importResolver.ResolveAllImports(module, symbolTable, "/test");
+
+        // Assert - ModuleSymbol should have FunctionOverloads populated
+        var osSymbol = symbolTable.Lookup("os", searchParents: false) as ModuleSymbol;
+        Assert.NotNull(osSymbol);
+
+        var pathSymbol = osSymbol.Exports["path"] as ModuleSymbol;
+        Assert.NotNull(pathSymbol);
+        Assert.True(pathSymbol.FunctionOverloads.ContainsKey("join"),
+            "ModuleSymbol.FunctionOverloads should contain 'join'");
+
+        var joinOverloads = pathSymbol.FunctionOverloads["join"];
+        Assert.True(joinOverloads.Count >= 2,
+            $"Expected at least 2 overloads for join in FunctionOverloads, got {joinOverloads.Count}");
     }
 }
