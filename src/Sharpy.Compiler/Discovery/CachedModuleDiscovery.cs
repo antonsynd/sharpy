@@ -168,10 +168,10 @@ internal class CachedModuleDiscovery
             }
         }
 
-        // Convert operator methods from discovery as marker-only stubs.
-        // Validators only check for key presence, not signatures, so we strip
-        // parameters/return types to marker-only stubs that validators expect.
-        var operatorMethods = NormalizeToDunderStubs(typeInfo.OperatorMethods);
+        // Convert operator methods from discovery with full signatures preserved.
+        // TypeInferenceService.FindBestOverload needs parameter types and return types
+        // to resolve operator overloads (e.g., Path / str -> Path).
+        var operatorMethods = ConvertOperatorMethods(typeInfo.OperatorMethods, sharedTypeParams);
 
         // Convert protocol methods from discovery as marker-only stubs (same rationale).
         var protocolMethods = NormalizeToDunderStubs(typeInfo.ProtocolMethods);
@@ -280,6 +280,27 @@ internal class CachedModuleDiscovery
     public void ClearCache()
     {
         _cache.ClearAll();
+    }
+
+    /// <summary>
+    /// Converts discovered operator methods to FunctionSymbol entries with full signatures.
+    /// Preserves parameter types and return type so TypeInferenceService can resolve overloads.
+    /// </summary>
+    private Dictionary<string, List<FunctionSymbol>> ConvertOperatorMethods(
+        Dictionary<string, List<FunctionSignature>> discovered,
+        TypeParameterType[]? sharedTypeParams)
+    {
+        var result = new Dictionary<string, List<FunctionSymbol>>();
+        foreach (var (dunderName, signatures) in discovered)
+        {
+            var symbols = new List<FunctionSymbol>();
+            foreach (var sig in signatures)
+            {
+                symbols.Add(ConvertToFunctionSymbol(sig, dunderName, sharedTypeParams));
+            }
+            result[dunderName] = symbols;
+        }
+        return result;
     }
 
     /// <summary>
