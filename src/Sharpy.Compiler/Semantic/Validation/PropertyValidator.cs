@@ -252,7 +252,7 @@ internal class PropertyValidator : SemanticValidatorBase
             return;
         }
 
-        var baseProp = FindPropertyInHierarchy(baseType, propDef.Name);
+        var (baseProp, _) = TypeHierarchyService.FindProperty(baseType, propDef.Name);
         if (baseProp == null)
         {
             AddError(_context,
@@ -428,15 +428,4 @@ internal class PropertyValidator : SemanticValidatorBase
     /// <summary>
     /// Walks the base class hierarchy to find a property with the given name.
     /// </summary>
-    private static PropertySymbol? FindPropertyInHierarchy(TypeSymbol? type, string propertyName)
-    {
-        while (type != null)
-        {
-            var prop = type.Properties.FirstOrDefault(p => p.Name == propertyName);
-            if (prop != null)
-                return prop;
-            type = type.BaseType;
-        }
-        return null;
-    }
 }

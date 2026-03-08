@@ -320,67 +320,28 @@ public sealed record UserDefinedType : SemanticType
                 if (Symbol == otherUdt.Symbol)
                     return true;
 
-                // Check inheritance chain
+                // When target symbol is available, use TypeHierarchyService for full
+                // hierarchy + interface check. When null (e.g., cross-module imports
+                // where the symbol isn't resolved), fall back to name-based base chain walk.
+                if (otherUdt.Symbol != null)
+                {
+                    return TypeHierarchyService.InheritsFrom(Symbol, otherUdt.Symbol);
+                }
+
+                // Name-based fallback: walk base chain comparing names
                 var current = Symbol.BaseType;
                 while (current != null)
                 {
-                    if (current == otherUdt.Symbol || current.Name == otherUdt.Name)
+                    if (current.Name == otherUdt.Name)
                         return true;
                     current = current.BaseType;
                 }
-
-                // Check all interfaces (including inherited from base classes)
-                return ImplementsInterface(Symbol, otherUdt);
             }
         }
 
         return false;
     }
 
-    /// <summary>
-    /// Check if a type implements an interface, including interfaces
-    /// inherited from base classes and interface inheritance chains.
-    /// </summary>
-    /// <remarks>
-    /// Reads Symbol.BaseType/Interfaces directly (see IsAssignableTo remarks for rationale).
-    /// </remarks>
-    private static bool ImplementsInterface(TypeSymbol type, UserDefinedType targetInterface)
-    {
-        // Use BFS to search all interfaces in the hierarchy
-        var visited = new HashSet<string>();
-        var queue = new Queue<TypeSymbol>();
-
-        // Add direct interfaces of the type and all its base classes
-        var currentType = type;
-        while (currentType != null)
-        {
-            foreach (var ifaceRef in currentType.Interfaces)
-            {
-                queue.Enqueue(ifaceRef.Definition);
-            }
-            currentType = currentType.BaseType;
-        }
-
-        // BFS through interface inheritance
-        while (queue.Count > 0)
-        {
-            var iface = queue.Dequeue();
-            if (!visited.Add(iface.Name))
-                continue;
-
-            // Check if this is the target interface
-            if (iface == targetInterface.Symbol || iface.Name == targetInterface.Name)
-                return true;
-
-            // Add base interfaces to the queue
-            foreach (var baseIfaceRef in iface.Interfaces)
-            {
-                queue.Enqueue(baseIfaceRef.Definition);
-            }
-        }
-
-        return false;
-    }
 }
 
 /// <summary>

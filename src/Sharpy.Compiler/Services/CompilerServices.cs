@@ -130,7 +130,7 @@ public class CompilerServices
         // Handle inheritance
         if (from is UserDefinedType fromUdt && to is UserDefinedType toUdt)
         {
-            return IsSubtypeOf(fromUdt.Symbol, toUdt.Symbol);
+            return TypeHierarchyService.InheritsFrom(fromUdt.Symbol, toUdt.Symbol, SemanticBinding);
         }
 
         // Handle numeric widening (int -> long, float32 -> float64)
@@ -175,38 +175,6 @@ public class CompilerServices
     // Private helper methods
     // =========================================================================
 
-    private TypeSymbol? GetBaseType(TypeSymbol symbol)
-        => SemanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
-
-    private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-    {
-        var refs = SemanticBinding.GetInterfaces(symbol);
-        if (refs != null)
-            return refs.Select(r => r.Definition).ToList();
-        return symbol.Interfaces.Select(r => r.Definition).ToList();
-    }
-
-    private bool IsSubtypeOf(TypeSymbol? derived, TypeSymbol? baseType)
-    {
-        if (derived == null || baseType == null)
-            return false;
-        if (derived == baseType)
-            return true;
-
-        // Check direct base type
-        var derivedBase = GetBaseType(derived);
-        if (derivedBase != null && IsSubtypeOf(derivedBase, baseType))
-            return true;
-
-        // Check interfaces
-        foreach (var iface in GetInterfaces(derived))
-        {
-            if (IsSubtypeOf(iface, baseType))
-                return true;
-        }
-
-        return false;
-    }
 
     private bool IsNumericWidening(SemanticType from, SemanticType to)
     {
