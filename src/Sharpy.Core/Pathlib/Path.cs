@@ -9,6 +9,7 @@ namespace Sharpy
     /// Object-oriented filesystem path, similar to Python's pathlib.Path.
     /// Immutable — all mutation methods return new Path instances.
     /// </summary>
+    [SharpyModuleType("pathlib")]
     public sealed class Path : IEquatable<Path>
     {
         private readonly string _path;

@@ -65,7 +65,7 @@ internal class OverloadIndexBuilder
 
         foreach (var type in allTypes)
         {
-            var moduleName = DeriveModuleNameFromNamespace(type.Namespace);
+            var moduleName = DeriveModuleNameForType(type);
 
             if (!index.Modules.TryGetValue(moduleName, out var moduleOverloads))
             {
@@ -249,6 +249,18 @@ internal class OverloadIndexBuilder
                 new FunctionSignature { Name = dunderName }
             };
         }
+    }
+
+    private string DeriveModuleNameForType(Type type)
+    {
+        // Check for [SharpyModuleType("name")] attribute on the type itself
+        var attr = type.CustomAttributes
+            .FirstOrDefault(a => a.AttributeType.FullName == "Sharpy.SharpyModuleTypeAttribute");
+        if (attr != null && attr.ConstructorArguments.Count > 0)
+            return (string)attr.ConstructorArguments[0].Value!;
+
+        // Fallback to namespace-based derivation
+        return DeriveModuleNameFromNamespace(type.Namespace);
     }
 
     private string DeriveModuleNameFromNamespace(string? ns)

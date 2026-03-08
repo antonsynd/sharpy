@@ -7,6 +7,7 @@ namespace Sharpy
     /// <summary>
     /// Python-compatible command-line argument parser.
     /// </summary>
+    [SharpyModuleType("argparse")]
     public sealed class ArgumentParser
     {
         private readonly string _description;
