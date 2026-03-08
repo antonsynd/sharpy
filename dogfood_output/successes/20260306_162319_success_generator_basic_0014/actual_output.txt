@@ -1,9 +1,0 @@
-0 is zero
-3 is odd
-5 is odd
--5 is negative
-8 is even
-7 is odd
-15 is odd
-count=7
-mode=Filtered

@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0220]: Cannot assign type 'list[Shape]' to variable of type 'list'
-  --> /tmp/tmpk3nnmx8o/main.spy:40:5
-    |
- 40 |     shapes: list = [s1, s2, s3]
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-

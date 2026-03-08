@@ -1,4 +1,0 @@
-# Shape categories enum
-enum ShapeCategory:
-    TWO_D = 1
-    THREE_D = 2

@@ -1,9 +1,0 @@
-negative
-neg_mult_3
-negative
-negative
-zero
-positive
-pos_even
-positive
-pos_even

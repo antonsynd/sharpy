@@ -1,5 +1,0 @@
-Regular login
-VIP login
-Long session
-High value
-Low value

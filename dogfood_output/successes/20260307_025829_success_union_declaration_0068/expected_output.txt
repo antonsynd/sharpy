@@ -1,6 +1,0 @@
-ok
-created
-moved_permanently
-found
-client_fault
-server_fault

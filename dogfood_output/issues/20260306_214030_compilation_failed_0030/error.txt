@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0266]: Cannot implicitly convert type 'object' to 'Definitions.Point'. An explicit conversion exists (are you missing a cast?)
-  --> /tmp/tmpif1dwwms/definitions.spy:33:35
-    |
- 33 |     print(bounds[0])
-    |                     ^
-    |
-

@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0200]: Undefined identifier 'get_config_str'
-  --> /tmp/tmp37_6gxcl/main.spy:57:22
-    |
- 57 |     print(f"Config: {get_config_str()}")
-    |                      ^^^^^^^^^^^^^^
-    |
-

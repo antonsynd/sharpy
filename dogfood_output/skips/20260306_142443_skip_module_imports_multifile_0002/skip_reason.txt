@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0220]: Cannot assign type 'list[ShapeBase]' to variable of type 'list[IShape]'
-  --> /tmp/tmpllcbf1ph/main.spy:41:5
-    |
- 41 |     shapes: list[IShape] = [rect, circle]
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-

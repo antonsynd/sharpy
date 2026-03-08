@@ -1,5 +1,0 @@
-negative
-zero
-6
-10
-4

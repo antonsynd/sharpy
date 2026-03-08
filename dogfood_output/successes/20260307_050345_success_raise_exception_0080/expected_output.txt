@@ -1,6 +1,0 @@
-Validation passed
-160
-ValueError caught
--1
-ValidationError: science
--2

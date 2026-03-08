@@ -1,6 +1,0 @@
-I am Rex
-Animal: Rex
-Alive
-I am Rose
-Plant: Rose
-Alive

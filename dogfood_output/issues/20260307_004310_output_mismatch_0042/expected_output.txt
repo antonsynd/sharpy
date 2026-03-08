@@ -1,7 +1,0 @@
-1
-65.26545
-5.0
-Rectangle with area 15.0
-Rectangle with area 8.0
-blue
-60.0

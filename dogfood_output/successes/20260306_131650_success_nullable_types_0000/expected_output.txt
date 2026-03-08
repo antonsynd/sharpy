@@ -1,3 +1,0 @@
-api.example.com:443 (timeout: 5.0s)
-localhost:3000 (timeout: 30.0s)
-localhost:8080 (timeout: 30.0s)

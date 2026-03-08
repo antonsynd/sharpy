@@ -1,3 +1,0 @@
-Employee: Alice Smith (ID: 12345)
-Distance: 5.0
-Laptop - 999.99 USD, Mouse - 29.99 USD

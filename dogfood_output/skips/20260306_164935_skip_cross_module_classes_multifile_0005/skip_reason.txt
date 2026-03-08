@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0203]: Type 'Counter' has no member 'value'
-  --> /tmp/tmpdtnhuz_k/main.spy:11:11
-    |
- 11 |     print(counter.value)
-    |           ^^^^^^^^^^^^^
-    |
-

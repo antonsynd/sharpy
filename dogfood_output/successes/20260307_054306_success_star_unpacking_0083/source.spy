@@ -1,9 +1,0 @@
-# Test star unpacking with middle collection
-def main():
-    scores: list[int] = [75, 82, 91, 88, 79]
-    first, *middle, last = scores
-    
-    print(first)
-    print(len(middle))
-    print(last)
-    print(sum(middle))

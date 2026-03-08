@@ -1,3 +1,0 @@
-rect: area=50.0, perim=30.0
-square: area=16.0, perim=16.0
-66.0

@@ -1,7 +1,0 @@
-Area=78.54, Perimeter=31.42
-Area=24.00, Perimeter=20.00
-Circle
-Red
-Rectangle
-Green
-102.54

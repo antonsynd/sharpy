@@ -1,9 +1,0 @@
-500.0
-False
-Balance updated to 25.0
-basic
-True
-Balance updated to 1500.0
-premium
-ERROR: Cannot set negative balance
-1500.0

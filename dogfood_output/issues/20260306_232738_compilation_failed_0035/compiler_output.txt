@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'Vehicle' is never used
-  --> /tmp/tmpbitysh9s/main.spy:1:22
-    |
-  1 | from vehicles import Vehicle
-    |                      ^^^^^^^
-    |
-

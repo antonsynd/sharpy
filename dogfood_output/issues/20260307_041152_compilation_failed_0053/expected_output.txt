@@ -1,4 +1,0 @@
-Hit
-value1
-Miss
-null

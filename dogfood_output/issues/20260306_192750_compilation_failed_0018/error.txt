@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS1501]: No overload for method 'GetCoreValues' takes 1 arguments
-  --> /tmp/tmp9hfrj5jw/dogfood_test.spy:26:43
-    |
- 26 |         parent_vals = DataProvider.get_core_values(self)
-    |                                           ^
-    |
-

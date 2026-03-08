@@ -1,8 +1,0 @@
-22.3606797749979
-Circle(red, r=5.0)
-Rectangle(blue, 8x6)
-Triangle(green, b=6.0, h=4.0)
-800.0
-bright
-91.4159
-3

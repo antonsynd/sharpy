@@ -1,3 +1,0 @@
-Unhandled exception. Sharpy.TypeError: object of type 'ShapeCollection' has no len()
-   at Sharpy.Builtins.Len(Object obj)
-   at Program.Main() in /tmp/tmpncm30dih/main.spy:line 25

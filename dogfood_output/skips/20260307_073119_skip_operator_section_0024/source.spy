@@ -1,7 +1,0 @@
-# Test map with lambda function
-# Demonstrates: using a lambda with explicit parameter type for division
-def main():
-    values: list[int] = [10, 20, 40, 80]
-    result = map(lambda x: x / 10, values)
-    for v in result:
-        print(v)

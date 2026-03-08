@@ -1,8 +1,0 @@
-Models module loaded
-User-100
-Pending
-Widget-500
-10.0
-10.0
-True
-True

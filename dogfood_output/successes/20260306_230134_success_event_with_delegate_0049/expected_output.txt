@@ -1,8 +1,0 @@
-Phase 1
-Logged 26.0
-WARNING at Kitchen
-Phase 2
-Lambda sees Living
-Phase 3
-CRITICAL at Kitchen
-Complete

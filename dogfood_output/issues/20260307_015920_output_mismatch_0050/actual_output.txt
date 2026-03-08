@@ -1,7 +1,0 @@
-Circle with radius 5.0
-Rectangle 3.0x4.0
-90.53975
-314.159
-Green
-5.0
-0.0

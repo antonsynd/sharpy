@@ -1,5 +1,0 @@
-olleh
-True
-False
-11
-3

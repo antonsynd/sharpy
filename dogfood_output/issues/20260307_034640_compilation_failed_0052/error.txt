@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0238]: 'Shapes.Shape.PositionStr()' cannot be sealed because it is not an override
-  --> /tmp/tmpbwax3pwc/shapes.spy:19:30
-    |
- 19 | 
-    | ^
-    |
-

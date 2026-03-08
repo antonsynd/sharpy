@@ -1,8 +1,0 @@
-[INFO] System started
-10
-12
-0
-86.6
-100
-0
-50

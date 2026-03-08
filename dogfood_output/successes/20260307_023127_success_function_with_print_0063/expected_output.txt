@@ -1,9 +1,0 @@
-Starting tree traversal...
-[Depth 2] Leaf: 7 -> 14
-[Depth 2] Leaf: 8 -> 16
-[Depth 1] Node 6: 14 + 16 = 30
-[Depth 2] Leaf: 8 -> 16
-[Depth 2] Leaf: 9 -> 18
-[Depth 1] Node 7: 16 + 18 = 34
-[Depth 0] Node 5: 30 + 34 = 64
-Final result: 64

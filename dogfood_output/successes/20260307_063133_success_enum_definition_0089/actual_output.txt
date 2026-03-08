@@ -1,6 +1,0 @@
-Warning
-Caution
-3
-Error
-Critical
-4

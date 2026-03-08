@@ -1,7 +1,0 @@
-Subscribed: 2
-Events: 2
-[HIGH] 2: initialized->active
-[HIGH] 3: initialized->active
-Unsubscribed: 3
-Events: 1
-[HIGH] 2: active->inactive

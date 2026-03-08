@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS1503]: Argument 1: cannot convert from 'Sharpy.List<Shapes.Rectangle>' to 'Sharpy.List<Shapes.Shape>'
-  --> /tmp/tmp9njfsl1z/main.spy:13:30
-    |
- 13 |     total = sum_areas(shapes)
-    |                              ^
-    |
-

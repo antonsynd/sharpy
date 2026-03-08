@@ -1,4 +1,0 @@
-Result: 150.0
-Result: 30.0
-Result: 40.0
-15.0

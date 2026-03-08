@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0107]: Invalid type annotation target
-  --> /tmp/tmpe5s4m_js/dogfood_test.spy:9:19
-    |
-  9 |         self.value: int = 0
-    |                   ^
-    |
-

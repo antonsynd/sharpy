@@ -1,9 +1,0 @@
-Buddy is a Golden Retriever dog
-Whiskers is a Tabby cat
----
-Buddy is a Golden Retriever dog
-Woof!
-Whiskers is a Tabby cat
-Meow!
----
-Drew a Tabby cat named Whiskers

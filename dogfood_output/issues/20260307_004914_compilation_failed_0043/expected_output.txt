@@ -1,9 +1,0 @@
-APP_
-1.0.0
-db.example.com
-3306
-localhost
-APP_DB@db.example.com:3306
-mydb
-admin
-mydb

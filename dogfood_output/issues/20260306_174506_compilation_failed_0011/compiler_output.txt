@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'Point' is never used
-  --> /tmp/tmpeixpvobu/utils.spy:3:3
-    |
-  3 | from shapes import Circle, Triangle
-    |   ^^^^^
-    |
-

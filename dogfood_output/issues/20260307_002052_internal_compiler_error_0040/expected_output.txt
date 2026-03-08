@@ -1,4 +1,0 @@
-Base int: 5
-Base str: hello
-Child int: 10
-Child str: HELLO

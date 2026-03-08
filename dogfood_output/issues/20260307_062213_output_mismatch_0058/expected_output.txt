@@ -1,8 +1,0 @@
-1
-Book: The Hobbit by Tolkien
-BK-2
-EL-100
-5.0
-20.0
-2.5
-Book: The Hobbit by Tolkien [Books, Blue]
