@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -11,6 +12,7 @@ namespace Sharpy.Compiler.Semantic;
 ///
 /// NOTE: Not designed for cross-compilation reuse.
 /// </summary>
+[NotThreadSafe(Reason = "Uses non-concurrent Dictionary caches; create per-compilation instance")]
 internal class ClrMemberCache
 {
     // Operator methods cache: Type -> (operator name like "op_Addition" -> MethodInfo list)

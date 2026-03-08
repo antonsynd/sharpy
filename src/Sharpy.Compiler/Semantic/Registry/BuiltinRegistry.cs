@@ -10,6 +10,7 @@ namespace Sharpy.Compiler.Semantic.Registry;
 /// Registry of builtin types and functions from Sharpy.Core
 /// Now uses cached reflection-based discovery for functions.
 /// </summary>
+[NotThreadSafe(Reason = "Uses non-concurrent Dictionary caches; create per-compilation instance")]
 internal class BuiltinRegistry
 {
     private readonly Dictionary<string, TypeSymbol> _types = new();

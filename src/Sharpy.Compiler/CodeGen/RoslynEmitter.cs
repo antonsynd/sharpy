@@ -21,6 +21,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// - Type detection (class/struct instantiation): Use SymbolTable lookup
 /// - String enum detection: Use CodeGenInfo.IsStringEnum
 /// </summary>
+[NotThreadSafe(Reason = "Maintains mutable emission state; create per-file instance")]
 internal partial class RoslynEmitter
 {
     private readonly CodeGenContext _context;

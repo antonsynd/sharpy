@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -40,6 +41,7 @@ namespace Sharpy.Compiler.Semantic;
 /// and should be created per-file for parallel analysis scenarios.
 /// </para>
 /// </remarks>
+[ThreadSafe]
 public class SemanticBinding
 {
     // Logger kept for backwards compatibility but no longer used after freeze violations became exceptions

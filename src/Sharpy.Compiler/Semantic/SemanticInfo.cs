@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -16,6 +17,7 @@ namespace Sharpy.Compiler.Semantic;
 /// single-threaded analysis phases. Each compilation creates its own instance.
 /// </para>
 /// </remarks>
+[ThreadSafe]
 public class SemanticInfo : ISemanticQuery
 {
     // Use ReferenceEqualityComparer because AST nodes are records with value-based equality,

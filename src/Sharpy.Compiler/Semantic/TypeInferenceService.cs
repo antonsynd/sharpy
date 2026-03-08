@@ -19,6 +19,7 @@ namespace Sharpy.Compiler.Semantic;
 /// - Results are cached for performance (operator results are highly repetitive)
 /// - Thread-safe caching could be added in future if needed
 /// </remarks>
+[NotThreadSafe(Reason = "Uses non-concurrent Dictionary caches; create per-compilation instance")]
 internal class TypeInferenceService
 {
     private readonly SymbolTable _symbolTable;
