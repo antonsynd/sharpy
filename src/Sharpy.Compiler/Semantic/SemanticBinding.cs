@@ -89,6 +89,7 @@ public class SemanticBinding
     private bool _inheritanceFrozen;
     private bool _variableTypesFrozen;
     private bool _codeGenInfoFrozen;
+    private bool _netModuleNamesFrozen;
 
     /// <summary>
     /// Throws when a frozen store is written to after the corresponding phase has completed.
@@ -101,6 +102,7 @@ public class SemanticBinding
             "CodeGenInfo" => "set CodeGenInfo",
             "VariableTypes" => "set variable type",
             "Inheritance" => "set inheritance data",
+            "NetModuleNames" => "mark .NET module",
             _ => $"write {storeName}"
         };
 
@@ -109,6 +111,7 @@ public class SemanticBinding
             "CodeGenInfo" => "code generation info",
             "VariableTypes" => "type checking",
             "Inheritance" => "inheritance resolution",
+            "NetModuleNames" => "import resolution",
             _ => storeName
         };
 
@@ -132,6 +135,12 @@ public class SemanticBinding
     /// Any subsequent SetCodeGenInfo calls will emit a logged warning.
     /// </summary>
     internal void FreezeCodeGenInfo() => _codeGenInfoFrozen = true;
+
+    /// <summary>
+    /// Freeze .NET module name data after import resolution completes.
+    /// Any subsequent MarkAsNetModule calls will throw.
+    /// </summary>
+    internal void FreezeNetModules() => _netModuleNamesFrozen = true;
 
     #region CodeGenInfo
 
@@ -321,7 +330,13 @@ public class SemanticBinding
     /// Marks a module name as a .NET stdlib module for codegen to emit correct using directives.
     /// </summary>
     public void MarkAsNetModule(string moduleName)
-        => _netModuleNames[moduleName] = true;
+    {
+        if (_netModuleNamesFrozen)
+        {
+            AssertNotFrozen("NetModuleNames", moduleName);
+        }
+        _netModuleNames[moduleName] = true;
+    }
 
     /// <summary>
     /// Checks if a module name was marked as a .NET stdlib module during import resolution.

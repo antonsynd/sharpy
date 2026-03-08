@@ -179,6 +179,7 @@ internal partial class ProjectCompiler
             _projectModel.SemanticBinding.MaterializeInheritance();
             DualWriteAssertions.AssertInheritanceConsistency(SymbolTable, _projectModel.SemanticBinding);
             _projectModel.SemanticBinding.FreezeInheritance();
+            _projectModel.SemanticBinding.FreezeNetModules();
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 5: Perform semantic analysis on all files

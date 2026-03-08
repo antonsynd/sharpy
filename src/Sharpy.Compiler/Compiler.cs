@@ -262,6 +262,7 @@ public class Compiler
             assertionTimer.Stop();
             _logger.LogDebug($"Post-inheritance assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             semanticBinding.FreezeInheritance();
+            semanticBinding.FreezeNetModules();
 
             LogPhaseEnd(filePath, importResolver.Diagnostics.ErrorCount);
             metrics.EndPhase();

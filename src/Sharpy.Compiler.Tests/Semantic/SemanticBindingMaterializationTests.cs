@@ -529,5 +529,47 @@ public class SemanticBindingMaterializationTests
         ex.ExpectedPhase.Should().Contain("inheritance resolution");
     }
 
+    [Fact]
+    public void FreezeNetModules_PreventsSubsequentMarkAsNetModule()
+    {
+        var binding = new SemanticBinding();
+
+        binding.MarkAsNetModule("math");
+        binding.FreezeNetModules();
+
+        // Verify the previously marked module is still readable
+        binding.IsNetModule("math").Should().BeTrue();
+    }
+
+    [Fact]
+    public void MarkAsNetModule_AfterFreeze_Throws()
+    {
+        var binding = new SemanticBinding();
+
+        binding.MarkAsNetModule("math");
+        binding.FreezeNetModules();
+
+        var ex = Assert.Throws<PhaseViolationException>(() =>
+            binding.MarkAsNetModule("os"));
+        ex.Message.Should().Contain("Phase violation");
+        ex.Operation.Should().Contain(".NET module");
+        ex.SymbolName.Should().Be("os");
+        ex.ExpectedPhase.Should().Contain("import resolution");
+    }
+
+    [Fact]
+    public void IsNetModule_WorksAfterFreeze()
+    {
+        var binding = new SemanticBinding();
+
+        binding.MarkAsNetModule("math");
+        binding.MarkAsNetModule("os");
+        binding.FreezeNetModules();
+
+        binding.IsNetModule("math").Should().BeTrue();
+        binding.IsNetModule("os").Should().BeTrue();
+        binding.IsNetModule("json").Should().BeFalse();
+    }
+
     #endregion
 }
