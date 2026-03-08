@@ -13,11 +13,21 @@ namespace Sharpy.Compiler.Semantic;
 /// Validators should use this service for type inference and handle error reporting separately.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Design notes:
 /// - All methods return nullable types (null means "cannot infer")
 /// - Methods do NOT report errors (validation responsibility is separate)
 /// - Results are cached for performance (operator results are highly repetitive)
-/// - Thread-safe caching could be added in future if needed
+/// </para>
+/// <para>
+/// <b>Threading:</b> Not thread-safe. Caches use <see cref="Dictionary{TKey,TValue}"/>.
+/// Each <see cref="TypeChecker"/> creates its own instance, so concurrent access does not
+/// arise in practice.
+/// </para>
+/// <para>
+/// <b>To make thread-safe:</b> Replace <c>_binaryOpCache</c> and <c>_unaryOpCache</c>
+/// with <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey,TValue}"/>.
+/// </para>
 /// </remarks>
 [NotThreadSafe(Reason = "Uses non-concurrent Dictionary caches; create per-compilation instance")]
 internal class TypeInferenceService

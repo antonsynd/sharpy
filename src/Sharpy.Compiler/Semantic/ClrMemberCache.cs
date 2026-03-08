@@ -8,10 +8,20 @@ namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
 /// Caches CLR type metadata discovered via reflection.
-/// NOT thread-safe. Cache is populated lazily per-type; not safe for concurrent access.
-///
-/// NOTE: Not designed for cross-compilation reuse.
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>Threading:</b> Not thread-safe. All internal caches use <see cref="Dictionary{TKey,TValue}"/>
+/// which is not safe for concurrent reads/writes. Each compilation creates its own instance via
+/// <see cref="TypeInferenceService"/>, so concurrent access does not arise in practice.
+/// </para>
+/// <para>
+/// <b>To make thread-safe:</b> Replace <see cref="Dictionary{TKey,TValue}"/> fields
+/// (<c>_operatorCache</c>, <c>_interfaceCache</c>, <c>_indexerCache</c>, <c>_enumeratorCache</c>)
+/// with <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey,TValue}"/>.
+/// </para>
+/// <para>Not designed for cross-compilation reuse.</para>
+/// </remarks>
 [NotThreadSafe(Reason = "Uses non-concurrent Dictionary caches; create per-compilation instance")]
 internal class ClrMemberCache
 {
