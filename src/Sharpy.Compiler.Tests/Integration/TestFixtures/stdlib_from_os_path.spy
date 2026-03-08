@@ -1,0 +1,8 @@
+# Test from os.path import: basename, dirname, isabs
+from os.path import basename, dirname, isabs
+
+def main():
+    print(basename("/usr/local/bin"))
+    print(dirname("/usr/local/bin"))
+    print(isabs("/usr/local"))
+    print(isabs("relative"))
