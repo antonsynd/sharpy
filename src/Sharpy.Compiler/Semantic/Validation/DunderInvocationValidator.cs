@@ -175,6 +175,12 @@ internal class DunderInvocationValidator : SemanticValidatorBase
                 ValidateFunctionCall(call);
                 break;
             case MemberAccess memberAccess:
+                // Dunder properties (e.g., __name__, __doc__) are attributes, not methods
+                if (DunderDetector.IsDunderProperty(memberAccess.Member))
+                {
+                    ValidateExpression(memberAccess.Object);
+                    break;
+                }
                 // A dunder MemberAccess that is NOT a direct call target is a capture
                 if (DunderDetector.IsDunderMethod(memberAccess.Member))
                 {
@@ -268,7 +274,9 @@ internal class DunderInvocationValidator : SemanticValidatorBase
 
     private void ValidateFunctionCall(FunctionCall call)
     {
-        if (call.Function is MemberAccess memberAccess && DunderDetector.IsDunderMethod(memberAccess.Member))
+        if (call.Function is MemberAccess memberAccess
+            && DunderDetector.IsDunderMethod(memberAccess.Member)
+            && !DunderDetector.IsDunderProperty(memberAccess.Member))
         {
             // This is a dunder method call (e.g., self.__eq__(other))
             var dunderName = memberAccess.Member;
