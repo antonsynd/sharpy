@@ -489,23 +489,20 @@ internal partial class RoslynEmitter
             return false;
 
         // Walk the base class chain — if any base has this method as virtual/abstract/override, keep override
-        var baseType = _context.SemanticBinding.GetBaseType(_currentTypeSymbol) ?? _currentTypeSymbol.BaseType;
-        var current = baseType;
-        while (current != null)
+        var baseTypes = TypeHierarchyService.GetAllBaseTypes(_currentTypeSymbol, _context.SemanticBinding);
+        foreach (var baseType in baseTypes)
         {
-            if (current.Methods.Any(m => m.Name == methodName && (m.IsVirtual || m.IsAbstract || m.IsOverride)))
+            if (baseType.Methods.Any(m => m.Name == methodName && (m.IsVirtual || m.IsAbstract || m.IsOverride)))
                 return false; // Found in base class, keep override
-            current = _context.SemanticBinding.GetBaseType(current) ?? current.BaseType;
         }
 
         // No base class method found — check only DIRECT interfaces (not inherited ones,
         // since base classes synthesize abstract methods for inherited interface methods)
         var interfaceRefs = _context.SemanticBinding.GetInterfaces(_currentTypeSymbol)
             ?? (IReadOnlyList<Semantic.InterfaceReference>)_currentTypeSymbol.Interfaces;
-        var interfaces = interfaceRefs.Select(r => r.Definition).ToList();
-        foreach (var iface in interfaces)
+        foreach (var ifaceRef in interfaceRefs)
         {
-            if (iface.Methods.Any(m => m.Name == methodName))
+            if (ifaceRef.Definition.Methods.Any(m => m.Name == methodName))
                 return true;
         }
 

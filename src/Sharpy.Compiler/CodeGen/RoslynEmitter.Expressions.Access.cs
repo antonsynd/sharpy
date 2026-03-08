@@ -1370,17 +1370,13 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Checks whether a type (or its base classes) defines a method with the given name.
+    /// Does not search interfaces — only the class hierarchy.
     /// </summary>
     private static bool HasMethodDefined(TypeSymbol typeSymbol, string methodName)
     {
-        var current = typeSymbol;
-        while (current != null)
-        {
-            if (current.Methods.Any(m => m.Name == methodName))
-                return true;
-            current = current.BaseType;
-        }
-        return false;
+        var (method, _) = TypeHierarchyService.FindMember<FunctionSymbol>(
+            typeSymbol, methodName, t => t.Methods, searchInterfaces: false);
+        return method != null;
     }
 
     /// <summary>
@@ -1512,20 +1508,23 @@ internal partial class RoslynEmitter
             _ => null
         };
 
-        // Traverse the type hierarchy (like HasMethodDefined) so inherited
-        // methods with keyword-only/variadic params also get call-site reordering.
-        var current = typeSymbol;
-        while (current != null)
+        if (typeSymbol == null)
+            return null;
+
+        // Search Methods in the type hierarchy (including interfaces)
+        var (method, _) = TypeHierarchyService.FindMethod(typeSymbol, methodName);
+        if (method != null)
+            return method;
+
+        // Fall back to MethodOverloads (walk base class chain for overloaded methods)
+        if (typeSymbol.MethodOverloads.TryGetValue(methodName, out var overloads) && overloads.Count > 0)
+            return overloads[0];
+        foreach (var baseType in TypeHierarchyService.GetAllBaseTypes(typeSymbol))
         {
-            foreach (var method in current.Methods)
-            {
-                if (string.Equals(method.Name, methodName, StringComparison.Ordinal))
-                    return method;
-            }
-            if (current.MethodOverloads.TryGetValue(methodName, out var overloads) && overloads.Count > 0)
+            if (baseType.MethodOverloads.TryGetValue(methodName, out overloads) && overloads.Count > 0)
                 return overloads[0];
-            current = current.BaseType;
         }
+
         return null;
     }
 
