@@ -63,6 +63,9 @@ internal partial class NameResolver
             }
         }
 
+        // Main pass: process all declarations. FunctionDef statements are re-visited here
+        // but ResolveFunctionDeclaration() detects the existing symbol and returns early,
+        // so only non-function declarations (classes, structs, etc.) do real work.
         foreach (var statement in module.Body)
         {
             cancellationToken.ThrowIfCancellationRequested();
