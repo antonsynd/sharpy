@@ -606,6 +606,107 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Core overload resolution algorithm shared by all overload resolution methods.
+    /// Performs two-pass matching: first filters by argument count, then checks type compatibility.
+    /// </summary>
+    /// <param name="candidates">The list of overload candidates.</param>
+    /// <param name="totalArgCount">Total argument count at the call site.</param>
+    /// <param name="argTypes">Resolved argument types.</param>
+    /// <param name="skipSelfParam">If true, computes per-overload self offset (for instance methods).</param>
+    /// <param name="typeSubstitution">Optional function to substitute type parameters before comparison.</param>
+    /// <param name="returnFirstMatch">If true, returns the first matching overload (builtin behavior).
+    /// If false, collects all matches and disambiguates by exact arity.</param>
+    /// <param name="skipUnknownTypes">If true, skip type comparison when either side is UnknownType.</param>
+    /// <returns>A tuple of (matched overload, arity-filtered candidates, whether resolution was ambiguous).</returns>
+    private (FunctionSymbol? Match, List<FunctionSymbol> ArityCandidates, bool IsAmbiguous) ResolveOverloadCore(
+        List<FunctionSymbol> candidates,
+        int totalArgCount,
+        List<SemanticType> argTypes,
+        bool skipSelfParam = false,
+        Func<SemanticType, SemanticType>? typeSubstitution = null,
+        bool returnFirstMatch = false,
+        bool skipUnknownTypes = false)
+    {
+        // First pass: filter by argument count
+        var arityCandidates = candidates.Where(o =>
+        {
+            var selfOffset = skipSelfParam && o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+            var requiredParams = o.Parameters.Skip(selfOffset).Count(p => !p.HasDefault && !p.IsVariadic);
+            var hasVariadic = o.Parameters.Skip(selfOffset).Any(p => p.IsVariadic);
+            var totalParams = o.Parameters.Count - selfOffset;
+            if (hasVariadic)
+                return totalArgCount >= requiredParams;
+            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
+        }).ToList();
+
+        // Second pass: check type compatibility
+        var matchingOverloads = new List<FunctionSymbol>();
+        foreach (var overload in arityCandidates)
+        {
+            var selfOffset = skipSelfParam && overload.Parameters.Count > 0 && overload.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+            bool typesMatch = true;
+            var variadicParam = overload.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
+
+            for (int i = 0; i < argTypes.Count; i++)
+            {
+                SemanticType expectedType;
+                var paramIdx = i + selfOffset;
+                if (paramIdx < overload.Parameters.Count && !overload.Parameters[paramIdx].IsVariadic)
+                {
+                    expectedType = overload.Parameters[paramIdx].Type;
+                }
+                else if (variadicParam != null)
+                {
+                    expectedType = variadicParam.Type;
+                }
+                else
+                {
+                    typesMatch = false;
+                    break;
+                }
+
+                if (typeSubstitution != null)
+                    expectedType = typeSubstitution(expectedType);
+
+                if (skipUnknownTypes && (expectedType is UnknownType || argTypes[i] is UnknownType))
+                    continue;
+
+                if (!IsAssignable(argTypes[i], expectedType))
+                {
+                    typesMatch = false;
+                    break;
+                }
+            }
+            if (typesMatch)
+            {
+                if (returnFirstMatch)
+                    return (overload, arityCandidates, false);
+                matchingOverloads.Add(overload);
+            }
+        }
+
+        if (returnFirstMatch)
+            return (null, arityCandidates, false);
+
+        // Disambiguate: prefer exact arity match
+        if (matchingOverloads.Count > 1)
+        {
+            var exactArityMatches = matchingOverloads.Where(o =>
+            {
+                var selfOffset = skipSelfParam && o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+                return o.Parameters.Count - selfOffset == totalArgCount;
+            }).ToList();
+
+            if (exactArityMatches.Count == 1)
+                return (exactArityMatches[0], arityCandidates, false);
+
+            return (null, arityCandidates, true);
+        }
+
+        return (matchingOverloads.Count == 1 ? matchingOverloads[0] : null, arityCandidates, false);
+    }
+
+    /// <summary>
     /// Resolves builtin function overloads for a call. Returns the resolved return type,
     /// or null if no overload resolution is needed.
     /// </summary>
@@ -624,57 +725,8 @@ internal partial class TypeChecker
         if (!needsOverloadResolution)
             return null;
 
-        // First pass: filter by argument count (considering default parameters and variadic parameters)
-        var candidateOverloads = overloads!.Where(o =>
-        {
-            var requiredParams = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
-            var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
-            var totalParams = o.Parameters.Count;
-            // Variadic functions can accept any number of arguments >= required
-            if (hasVariadic)
-                return totalArgCount >= requiredParams;
-            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
-        }).ToList();
-
-        // Second pass: check type compatibility
-        FunctionSymbol? matchingOverload = null;
-        foreach (var overload in candidateOverloads)
-        {
-            bool typesMatch = true;
-            var variadicParam = overload.Parameters.FirstOrDefault(p => p.IsVariadic);
-
-            for (int i = 0; i < argTypes.Count; i++)
-            {
-                SemanticType expectedType;
-                if (i < overload.Parameters.Count && !overload.Parameters[i].IsVariadic)
-                {
-                    // Regular parameter
-                    expectedType = overload.Parameters[i].Type;
-                }
-                else if (variadicParam != null)
-                {
-                    // Variadic parameter - all remaining args must match the element type
-                    expectedType = variadicParam.Type;
-                }
-                else
-                {
-                    // Index out of bounds - shouldn't happen with valid candidates
-                    typesMatch = false;
-                    break;
-                }
-
-                if (!IsAssignable(argTypes[i], expectedType))
-                {
-                    typesMatch = false;
-                    break;
-                }
-            }
-            if (typesMatch)
-            {
-                matchingOverload = overload;
-                break;
-            }
-        }
+        var (matchingOverload, _, _) = ResolveOverloadCore(
+            overloads!, totalArgCount, argTypes, returnFirstMatch: true);
 
         if (matchingOverload != null)
         {
@@ -765,92 +817,30 @@ internal partial class TypeChecker
             }
         }
 
-        // First pass: filter by argument count (skip 'self' parameter)
-        var candidates = overloads.Where(o =>
+        Func<SemanticType, SemanticType>? typeSubstitution = null;
+        if (typeArgs != null && typeSymbol.TypeParameters.Count > 0)
         {
-            var selfOffset = o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
-            var requiredParams = o.Parameters.Skip(selfOffset).Count(p => !p.HasDefault && !p.IsVariadic);
-            var hasVariadic = o.Parameters.Skip(selfOffset).Any(p => p.IsVariadic);
-            var totalParams = o.Parameters.Count - selfOffset;
-            if (hasVariadic)
-                return totalArgCount >= requiredParams;
-            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
-        }).ToList();
-
-        // Second pass: check type compatibility
-        var matchingOverloads = new List<FunctionSymbol>();
-        foreach (var overload in candidates)
-        {
-            var selfOffset = overload.Parameters.Count > 0 && overload.Parameters[0].Name == PythonNames.Self ? 1 : 0;
-            bool typesMatch = true;
-            var variadicParam = overload.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
-
-            for (int i = 0; i < argTypes.Count; i++)
-            {
-                SemanticType expectedType;
-                var paramIdx = i + selfOffset;
-                if (paramIdx < overload.Parameters.Count && !overload.Parameters[paramIdx].IsVariadic)
-                {
-                    expectedType = overload.Parameters[paramIdx].Type;
-                }
-                else if (variadicParam != null)
-                {
-                    expectedType = variadicParam.Type;
-                }
-                else
-                {
-                    typesMatch = false;
-                    break;
-                }
-
-                // Substitute type parameters for builtin generic types before comparison
-                var resolvedExpected = typeArgs != null && typeSymbol.TypeParameters.Count > 0
-                    ? SubstituteTypeParameters(expectedType, typeSymbol.TypeParameters, typeArgs)
-                    : expectedType;
-
-                if (resolvedExpected is not UnknownType && argTypes[i] is not UnknownType
-                    && !IsAssignable(argTypes[i], resolvedExpected))
-                {
-                    typesMatch = false;
-                    break;
-                }
-            }
-            if (typesMatch)
-            {
-                matchingOverloads.Add(overload);
-            }
+            var capturedTypeSymbol = typeSymbol;
+            var capturedTypeArgs = typeArgs;
+            typeSubstitution = t => SubstituteTypeParameters(t, capturedTypeSymbol.TypeParameters, capturedTypeArgs);
         }
 
-        // When multiple overloads match, prefer the one with exact arity (no defaults/variadic used)
-        FunctionSymbol? matchingOverload;
-        if (matchingOverloads.Count > 1)
-        {
-            var exactArityMatches = matchingOverloads.Where(o =>
-            {
-                var selfOffset = o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
-                return o.Parameters.Count - selfOffset == totalArgCount;
-            }).ToList();
+        var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
+            overloads, totalArgCount, argTypes,
+            skipSelfParam: true, typeSubstitution: typeSubstitution,
+            skipUnknownTypes: true);
 
-            if (exactArityMatches.Count == 1)
-            {
-                matchingOverload = exactArityMatches[0];
-            }
-            else
-            {
-                AddError($"Ambiguous call to overloaded method '{memberAccess.Member}' — multiple overloads match the argument types",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
-                    span: call.Span);
-                return SemanticType.Unknown;
-            }
-        }
-        else
+        if (isAmbiguous)
         {
-            matchingOverload = matchingOverloads.Count == 1 ? matchingOverloads[0] : null;
+            AddError($"Ambiguous call to overloaded method '{memberAccess.Member}' — multiple overloads match the argument types",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
+                span: call.Span);
+            return SemanticType.Unknown;
         }
 
         if (matchingOverload == null)
         {
-            if (candidates.Count == 0)
+            if (arityCandidates.Count == 0)
             {
                 AddError($"No matching overload for '{memberAccess.Member}' with {totalArgCount} argument(s)",
                     call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
@@ -858,7 +848,6 @@ internal partial class TypeChecker
             }
             else
             {
-                // Candidates matched by arity but not by type
                 AddError($"No matching overload for '{memberAccess.Member}' with the given argument types",
                     call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
                     span: call.Span);
@@ -872,9 +861,9 @@ internal partial class TypeChecker
         var returnType = matchingOverload.ReturnType;
 
         // Substitute type parameters for builtin generic types (e.g., T0 -> int for dict[str, int])
-        if (typeArgs != null && typeSymbol.TypeParameters.Count > 0)
+        if (typeSubstitution != null)
         {
-            returnType = SubstituteTypeParameters(returnType, typeSymbol.TypeParameters, typeArgs);
+            returnType = typeSubstitution(returnType);
         }
 
         if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
@@ -944,81 +933,20 @@ internal partial class TypeChecker
         if (!moduleSymbol.FunctionOverloads.TryGetValue(memberAccess.Member, out var overloads) || overloads.Count <= 1)
             return null;
 
-        // Filter by argument count (module functions have no 'self' parameter)
-        var candidates = overloads.Where(o =>
+        var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
+            overloads, totalArgCount, argTypes, skipUnknownTypes: true);
+
+        if (isAmbiguous)
         {
-            var requiredParams = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
-            var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
-            var totalParams = o.Parameters.Count;
-            if (hasVariadic)
-                return totalArgCount >= requiredParams;
-            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
-        }).ToList();
-
-        // Check type compatibility
-        var matchingOverloads = new List<FunctionSymbol>();
-        foreach (var overload in candidates)
-        {
-            bool typesMatch = true;
-            var variadicParam = overload.Parameters.FirstOrDefault(p => p.IsVariadic);
-
-            for (int i = 0; i < argTypes.Count; i++)
-            {
-                SemanticType expectedType;
-                if (i < overload.Parameters.Count && !overload.Parameters[i].IsVariadic)
-                {
-                    expectedType = overload.Parameters[i].Type;
-                }
-                else if (variadicParam != null)
-                {
-                    expectedType = variadicParam.Type;
-                }
-                else
-                {
-                    typesMatch = false;
-                    break;
-                }
-
-                if (expectedType is not UnknownType && argTypes[i] is not UnknownType
-                    && !IsAssignable(argTypes[i], expectedType))
-                {
-                    typesMatch = false;
-                    break;
-                }
-            }
-            if (typesMatch)
-            {
-                matchingOverloads.Add(overload);
-            }
-        }
-
-        // Prefer exact arity match
-        FunctionSymbol? matchingOverload;
-        if (matchingOverloads.Count > 1)
-        {
-            var exactArityMatches = matchingOverloads.Where(o =>
-                o.Parameters.Count == totalArgCount).ToList();
-
-            if (exactArityMatches.Count == 1)
-            {
-                matchingOverload = exactArityMatches[0];
-            }
-            else
-            {
-                AddError($"Ambiguous call to overloaded function '{memberAccess.Member}' — multiple overloads match the argument types",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
-                    span: call.Span);
-                return SemanticType.Unknown;
-            }
-        }
-        else
-        {
-            matchingOverload = matchingOverloads.Count == 1 ? matchingOverloads[0] : null;
+            AddError($"Ambiguous call to overloaded function '{memberAccess.Member}' — multiple overloads match the argument types",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
+                span: call.Span);
+            return SemanticType.Unknown;
         }
 
         if (matchingOverload == null)
         {
-            if (candidates.Count == 0)
+            if (arityCandidates.Count == 0)
             {
                 AddError($"No matching overload for '{memberAccess.Member}' with {totalArgCount} argument(s)",
                     call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
@@ -1059,81 +987,20 @@ internal partial class TypeChecker
         if (overloads == null || overloads.Count <= 1)
             return null;
 
-        // Filter by argument count
-        var candidates = overloads.Where(o =>
+        var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
+            overloads, totalArgCount, argTypes, skipUnknownTypes: true);
+
+        if (isAmbiguous)
         {
-            var requiredParams = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
-            var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
-            var totalParams = o.Parameters.Count;
-            if (hasVariadic)
-                return totalArgCount >= requiredParams;
-            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
-        }).ToList();
-
-        // Check type compatibility
-        var matchingOverloads = new List<FunctionSymbol>();
-        foreach (var overload in candidates)
-        {
-            bool typesMatch = true;
-            var variadicParam = overload.Parameters.FirstOrDefault(p => p.IsVariadic);
-
-            for (int i = 0; i < argTypes.Count; i++)
-            {
-                SemanticType expectedType;
-                if (i < overload.Parameters.Count && !overload.Parameters[i].IsVariadic)
-                {
-                    expectedType = overload.Parameters[i].Type;
-                }
-                else if (variadicParam != null)
-                {
-                    expectedType = variadicParam.Type;
-                }
-                else
-                {
-                    typesMatch = false;
-                    break;
-                }
-
-                if (expectedType is not UnknownType && argTypes[i] is not UnknownType
-                    && !IsAssignable(argTypes[i], expectedType))
-                {
-                    typesMatch = false;
-                    break;
-                }
-            }
-            if (typesMatch)
-            {
-                matchingOverloads.Add(overload);
-            }
-        }
-
-        // Prefer exact arity match
-        FunctionSymbol? matchingOverload;
-        if (matchingOverloads.Count > 1)
-        {
-            var exactArityMatches = matchingOverloads.Where(o =>
-                o.Parameters.Count == totalArgCount).ToList();
-
-            if (exactArityMatches.Count == 1)
-            {
-                matchingOverload = exactArityMatches[0];
-            }
-            else
-            {
-                AddError($"Ambiguous call to overloaded function '{id.Name}' — multiple overloads match the argument types",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
-                    span: call.Span);
-                return SemanticType.Unknown;
-            }
-        }
-        else
-        {
-            matchingOverload = matchingOverloads.Count == 1 ? matchingOverloads[0] : null;
+            AddError($"Ambiguous call to overloaded function '{id.Name}' — multiple overloads match the argument types",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
+                span: call.Span);
+            return SemanticType.Unknown;
         }
 
         if (matchingOverload == null)
         {
-            if (candidates.Count == 0)
+            if (arityCandidates.Count == 0)
             {
                 AddError($"No matching overload for '{id.Name}' with {totalArgCount} argument(s)",
                     call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
