@@ -422,20 +422,10 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Check if a module name corresponds to a Sharpy stdlib (.NET) module.
-    /// Checks both the SemanticBinding registry (populated during import resolution)
-    /// and the symbol table (for import statements that register module symbols).
+    /// Uses the SemanticBinding registry populated during import resolution.
     /// </summary>
     private bool IsStdlibModule(string moduleName)
-    {
-        // Check SemanticBinding first (works for both import and from-import)
-        if (_context.SemanticBinding.IsNetModule(moduleName))
-            return true;
-
-        // Fallback: check symbol table (works for import statements)
-        var topLevel = moduleName.Split('.')[0];
-        var symbol = _context.LookupSymbol(topLevel);
-        return symbol is ModuleSymbol { IsNetModule: true };
-    }
+        => _context.SemanticBinding.IsNetModule(moduleName);
 
     /// <summary>
     /// Convert a Sharpy stdlib module name to a fully qualified C# class name.
