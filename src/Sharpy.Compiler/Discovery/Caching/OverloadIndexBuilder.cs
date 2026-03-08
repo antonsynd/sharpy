@@ -101,6 +101,7 @@ internal class OverloadIndexBuilder
             DiscoverTypeMethods(type, typeInfo);
             DiscoverTypeOperators(type, typeInfo);
             DiscoverTypeProtocols(type, typeInfo);
+            DiscoverTypeProperties(type, typeInfo);
 
             moduleOverloads.Types.Add(typeInfo);
         }
@@ -238,6 +239,36 @@ internal class OverloadIndexBuilder
         var containsMethod = type.GetMethod("Contains", BindingFlags.Public | BindingFlags.Instance);
         if (containsMethod != null)
             AddProtocolStub(typeInfo, "__contains__");
+    }
+
+    /// <summary>
+    /// Discovers public instance properties on a type, excluding indexers.
+    /// </summary>
+    private void DiscoverTypeProperties(Type type, DiscoveredTypeInfo typeInfo)
+    {
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.GetIndexParameters().Length == 0)
+            .ToList();
+
+        foreach (var property in properties)
+        {
+            try
+            {
+                var propertyInfo = new DiscoveredPropertyInfo
+                {
+                    Name = property.Name,
+                    PropertyType = CreateTypeSignature(property.PropertyType),
+                    HasGetter = property.GetGetMethod() != null,
+                    HasSetter = property.GetSetMethod() != null
+                };
+
+                typeInfo.Properties.Add(propertyInfo);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
+            {
+                _logger.LogDebug($"Skipping property {type.Name}.{property.Name}: {ex.Message}");
+            }
+        }
     }
 
     private static void AddProtocolStub(DiscoveredTypeInfo typeInfo, string dunderName)
