@@ -753,5 +753,75 @@ namespace Sharpy.Tests
         }
 
         #endregion
+
+        #region Dumps - Generic Collections with Value Types
+
+        [Fact]
+        public void Dumps_ListOfInt_ReturnsArray()
+        {
+            var l = new List<int>();
+            l.Append(1);
+            l.Append(2);
+            l.Append(3);
+            Assert.Equal("[1,2,3]", Json.Dumps(l));
+        }
+
+        [Fact]
+        public void Dumps_EmptyListOfInt_ReturnsEmptyArray()
+        {
+            var l = new List<int>();
+            Assert.Equal("[]", Json.Dumps(l));
+        }
+
+        [Fact]
+        public void Dumps_SetOfString_ReturnsArray()
+        {
+            var s = new Set<string>();
+            s.Add("hello");
+            string result = Json.Dumps(s);
+            Assert.Equal("[\"hello\"]", result);
+        }
+
+        [Fact]
+        public void Dumps_ListOfDouble_ReturnsArray()
+        {
+            var l = new List<double>();
+            l.Append(1.5);
+            l.Append(2.5);
+            Assert.Equal("[1.5,2.5]", Json.Dumps(l));
+        }
+
+        [Fact]
+        public void Dumps_ListOfBool_ReturnsArray()
+        {
+            var l = new List<bool>();
+            l.Append(true);
+            l.Append(false);
+            Assert.Equal("[true,false]", Json.Dumps(l));
+        }
+
+        [Fact]
+        public void Dumps_NestedListOfInt_InDict_Serializes()
+        {
+            var d = new Dict<string, object?>();
+            var inner = new List<int>();
+            inner.Append(10);
+            inner.Append(20);
+            d["nums"] = inner;
+            Assert.Equal("{\"nums\":[10,20]}", Json.Dumps(d));
+        }
+
+        [Fact]
+        public void Dumps_ListOfInt_WithIndent_PrettyPrints()
+        {
+            var l = new List<int>();
+            l.Append(1);
+            l.Append(2);
+            string result = Json.Dumps(l, indent: 2);
+            string expected = "[\n  1,\n  2\n]";
+            Assert.Equal(expected, result);
+        }
+
+        #endregion
     }
 }

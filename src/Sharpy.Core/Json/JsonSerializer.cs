@@ -82,10 +82,19 @@ namespace Sharpy
                 return;
             }
 
-            // Handle List<object?> and other IEnumerable
+            // Handle List<object?> and other IEnumerable<object?>
             if (value is IEnumerable<object?> enumerable && !(value is string))
             {
                 SerializeEnumerable(sb, enumerable, indent, sortKeys, ensureAscii, currentIndent);
+                return;
+            }
+
+            // Handle generic collections with value-type elements (e.g. List<int>, Set<int>)
+            // which don't implement IEnumerable<object?> due to C# covariance limitations.
+            // Must come after IDictionary checks to avoid serializing dicts as arrays.
+            if (value is IEnumerable nonGenericEnumerable && !(value is string))
+            {
+                SerializeNonGenericEnumerable(sb, nonGenericEnumerable, indent, sortKeys, ensureAscii, currentIndent);
                 return;
             }
 
@@ -287,6 +296,54 @@ namespace Sharpy
             }
 
             sb.Append('}');
+        }
+
+        private static void SerializeNonGenericEnumerable(
+            StringBuilder sb,
+            IEnumerable enumerable,
+            int indent,
+            bool sortKeys,
+            bool ensureAscii,
+            int currentIndent)
+        {
+            bool pretty = indent >= 0;
+            int nextIndent = currentIndent + (pretty ? indent : 0);
+
+            sb.Append('[');
+
+            bool first = true;
+            foreach (object? item in enumerable)
+            {
+                if (!first)
+                {
+                    sb.Append(',');
+                }
+
+                first = false;
+
+                if (pretty)
+                {
+                    sb.Append('\n');
+                    sb.Append(' ', nextIndent);
+                }
+
+                SerializeValue(sb, item, indent, sortKeys, ensureAscii, nextIndent);
+            }
+
+            if (first)
+            {
+                // empty
+                sb.Append(']');
+                return;
+            }
+
+            if (pretty)
+            {
+                sb.Append('\n');
+                sb.Append(' ', currentIndent);
+            }
+
+            sb.Append(']');
         }
 
         private static void SerializeEnumerable(
