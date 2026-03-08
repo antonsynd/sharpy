@@ -176,6 +176,17 @@ internal class CachedModuleDiscovery
         // Convert protocol methods from discovery as marker-only stubs (same rationale).
         var protocolMethods = NormalizeToDunderStubs(typeInfo.ProtocolMethods);
 
+        // Convert properties from discovery
+        var properties = typeInfo.Properties
+            .Select(p => new PropertySymbol
+            {
+                Name = ReverseNameMangler.ToSharpyName(p.Name, ReverseNameContext.Property),
+                Type = ConvertTypeSignature(p.PropertyType, sharedTypeParams),
+                HasGetter = p.HasGetter,
+                HasSetter = p.HasSetter,
+            })
+            .ToList();
+
         return new TypeSymbol
         {
             Name = typeInfo.Name,
@@ -187,6 +198,7 @@ internal class CachedModuleDiscovery
             Methods = methods,
             OperatorMethods = operatorMethods,
             ProtocolMethods = protocolMethods,
+            Properties = properties,
         };
     }
 
