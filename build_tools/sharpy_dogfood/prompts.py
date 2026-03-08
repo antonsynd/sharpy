@@ -217,9 +217,8 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
     ),
     (
         r"SPY0907.*FunctionCall",
-        "If using overloaded methods (same name, different signatures), try using different "
-        "method names as a workaround (e.g., process_int(x: int) and process_str(s: str)). "
-        "Otherwise, simplify the code to avoid complex type inference.",
+        "An internal compiler error occurred during function call resolution. "
+        "Try simplifying the code to avoid complex type inference.",
     ),
     (
         r"SPY0237.*map",
@@ -309,7 +308,7 @@ BEHAVIORAL_RULES_SECTION = """\
           self.x = x
           self.y = y
   ```
-- **Method overloading edge cases**: Sharpy supports method overloading (multiple methods with the same name, different signatures), but overloaded virtual/override methods may trigger ICE (SPY0907). If you encounter SPY0907 on overloaded methods, try using different method names as a workaround (e.g., `process_int()` and `process_str()`).
+- **Method overloading**: Sharpy supports method overloading (multiple methods with the same name, different signatures), including on virtual and override methods.
 - **Enum cross-module caution**: When accessing `.name` or `.value` on enum members imported from another module, ensure the enum is properly imported and the member access matches the PascalCase-mangled name. If unsure, prefer `str(member)` over `.name` and avoid `.value` for cross-module enums.
 - **Expected output accuracy**: Double-check ALL arithmetic in expected output. Trace each computation step-by-step. Common mistakes: area/perimeter formulas, order of operations, integer vs float division, off-by-one in loops. When in doubt, keep computations simple.
 - **`map()` type inference**: The compiler may not infer `map()`'s output type parameter. If you get SPY0237, use explicit type arguments: `map[int, str](lambda x: str(x), items)`."""
