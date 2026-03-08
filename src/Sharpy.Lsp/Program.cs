@@ -11,6 +11,20 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
+        try
+        {
+            await RunServerAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await Console.Error.WriteLineAsync(
+                $"[Fatal] Sharpy LSP server crashed: {ex}").ConfigureAwait(false);
+            Environment.ExitCode = 1;
+        }
+    }
+
+    private static async Task RunServerAsync()
+    {
         // Store the workspace root URI from initialization for use in OnInitialized.
         Uri? workspaceRootUri = null;
 

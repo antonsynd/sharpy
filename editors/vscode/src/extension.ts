@@ -37,14 +37,19 @@ function createClient(context: ExtensionContext): LanguageClient {
         workspace.createFileSystemWatcher("**/*.spyproj"),
       ],
     },
+    outputChannelName: "Sharpy Language Server",
   };
 
-  return new LanguageClient(
+  const lc = new LanguageClient(
     "sharpy",
     "Sharpy Language Server",
     serverOptions,
     clientOptions
   );
+
+  lc.outputChannel.appendLine(`Server command: ${serverPath} lsp`);
+
+  return lc;
 }
 
 function updateStatusBar(running: boolean): void {
@@ -62,8 +67,17 @@ function updateStatusBar(running: boolean): void {
 
 async function startClient(context: ExtensionContext): Promise<void> {
   client = createClient(context);
-  await client.start();
-  updateStatusBar(true);
+  try {
+    await client.start();
+    updateStatusBar(true);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    client.outputChannel.appendLine(`Failed to start server: ${msg}`);
+    updateStatusBar(false);
+    window.showWarningMessage(
+      `Sharpy Language Server failed to start. Check the output channel for details.`
+    );
+  }
 }
 
 async function stopClient(): Promise<void> {
