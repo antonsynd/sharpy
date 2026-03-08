@@ -43,7 +43,7 @@ internal static class DefaultValueParser
             return new StringLiteral { Value = value[1..^1] };
 
         // Integer literals (no decimal point, no exponent)
-        if (long.TryParse(value, out _))
+        if (long.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out _))
             return new IntegerLiteral { Value = value };
 
         // Float literals (contains decimal point or exponent)

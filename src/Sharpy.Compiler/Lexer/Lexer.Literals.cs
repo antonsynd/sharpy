@@ -236,7 +236,7 @@ public partial class Lexer
                         throw ReportError("Invalid hex escape sequence", _line, _column, DiagnosticCodes.Lexer.InvalidHexEscape);
 
                     var hex = _source.Substring(_position, 2);
-                    if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var value))
+                    if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var value))
                         throw ReportError($"Invalid hex escape sequence: \\x{hex}", _line, _column, DiagnosticCodes.Lexer.InvalidHexEscape);
 
                     _position += 2;
@@ -251,7 +251,7 @@ public partial class Lexer
                         throw ReportError("Invalid unicode escape sequence", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
 
                     var hex = _source.Substring(_position, 4);
-                    if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var value))
+                    if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var value))
                         throw ReportError($"Invalid unicode escape sequence: \\u{hex}", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
 
                     _position += 4;
@@ -265,7 +265,7 @@ public partial class Lexer
                         throw ReportError("Invalid unicode escape sequence", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
 
                     var hex = _source.Substring(_position, 8);
-                    if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var value))
+                    if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var value))
                         throw ReportError($"Invalid unicode escape sequence: \\U{hex}", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
 
                     _position += 8;

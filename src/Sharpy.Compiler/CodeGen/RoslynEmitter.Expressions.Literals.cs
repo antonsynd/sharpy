@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -1005,7 +1006,7 @@ internal partial class RoslynEmitter
         while (pos < pythonSpec.Length && char.IsDigit(pythonSpec[pos]))
             pos++;
         if (pos > widthStart)
-            width = int.Parse(pythonSpec.Substring(widthStart, pos - widthStart));
+            width = int.Parse(pythonSpec.Substring(widthStart, pos - widthStart), CultureInfo.InvariantCulture);
 
         // Step 7: Parse optional grouping (, or _)
         if (pos < pythonSpec.Length && (pythonSpec[pos] == ',' || pythonSpec[pos] == '_'))
@@ -1022,7 +1023,7 @@ internal partial class RoslynEmitter
             while (pos < pythonSpec.Length && char.IsDigit(pythonSpec[pos]))
                 pos++;
             if (pos > precStart)
-                precision = int.Parse(pythonSpec.Substring(precStart, pos - precStart));
+                precision = int.Parse(pythonSpec.Substring(precStart, pos - precStart), CultureInfo.InvariantCulture);
             else
                 precision = 0;
         }
