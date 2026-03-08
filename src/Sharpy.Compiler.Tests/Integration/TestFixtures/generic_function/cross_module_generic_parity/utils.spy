@@ -1,0 +1,5 @@
+def identity[T](x: T) -> T:
+    return x
+
+def first_of[T](items: list[T]) -> T:
+    return items[0]

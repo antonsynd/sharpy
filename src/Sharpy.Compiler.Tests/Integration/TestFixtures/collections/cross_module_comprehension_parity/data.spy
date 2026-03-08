@@ -1,0 +1,5 @@
+def get_numbers() -> list[int]:
+    return [1, 2, 3, 4, 5]
+
+def is_even(n: int) -> bool:
+    return n % 2 == 0

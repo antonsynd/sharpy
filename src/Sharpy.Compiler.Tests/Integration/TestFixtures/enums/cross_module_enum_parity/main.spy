@@ -1,0 +1,14 @@
+from colors import Color
+
+def describe_color(c: Color) -> str:
+    if c == Color.RED:
+        return "red"
+    elif c == Color.GREEN:
+        return "green"
+    else:
+        return "blue"
+
+def main():
+    print(describe_color(Color.RED))
+    print(describe_color(Color.BLUE))
+    print(Color.GREEN == Color.GREEN)

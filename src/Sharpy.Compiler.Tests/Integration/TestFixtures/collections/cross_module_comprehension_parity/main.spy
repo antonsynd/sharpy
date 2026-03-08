@@ -1,0 +1,8 @@
+from data import get_numbers, is_even
+
+def main():
+    nums = get_numbers()
+    squares: list[int] = [x * x for x in nums]
+    print(squares)
+    evens: list[int] = [x for x in nums if is_even(x)]
+    print(evens)

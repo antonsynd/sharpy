@@ -1,0 +1,10 @@
+from models import Person
+
+def main():
+    p = Person("Alice", 30)
+    print(p.name)
+    print(p.age)
+    print(p.greet())
+    p.name = "Bob"
+    p.age = 25
+    print(p.greet())

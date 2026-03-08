@@ -1,0 +1,7 @@
+from utils import identity, first_of
+
+def main():
+    print(identity(42))
+    print(identity("hello"))
+    nums: list[int] = [10, 20, 30]
+    print(first_of(nums))

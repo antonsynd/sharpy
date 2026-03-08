@@ -1,0 +1,14 @@
+from base_classes import Animal
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    def speak(self) -> str:
+        return f"{self.name} says Woof"
+
+def main():
+    d = Dog("Rex")
+    print(d.speak())
+    a = Animal("Cat")
+    print(a.speak())
