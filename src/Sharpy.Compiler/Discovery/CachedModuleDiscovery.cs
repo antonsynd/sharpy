@@ -17,7 +17,7 @@ internal class CachedModuleDiscovery
     private readonly OverloadIndexBuilder _builder;
     private readonly ClrTypeMapper _typeMapper;
     private readonly ConcurrentDictionary<string, Lazy<OverloadIndex>> _loadedIndices = new();
-    private readonly HashSet<string> _moduleTypeNames = new();
+    private readonly ConcurrentDictionary<string, byte> _moduleTypeNames = new();
 
     /// <summary>
     /// Create a discovery instance using the default cache directory.
@@ -73,7 +73,7 @@ internal class CachedModuleDiscovery
             foreach (var typeInfo in moduleOverloads.Types)
             {
                 if (typeInfo.IsModuleType)
-                    _moduleTypeNames.Add(typeInfo.Namespace + "." + typeInfo.Name);
+                    _moduleTypeNames.TryAdd(typeInfo.Namespace + "." + typeInfo.Name, 0);
             }
         }
     }
@@ -510,7 +510,7 @@ internal class CachedModuleDiscovery
                 // UserDefinedType in the symbol table, so operator return types must also be
                 // UserDefinedType for assignability to work.
                 // Uses pre-computed set from discovery phase instead of runtime reflection.
-                if (clrType.FullName != null && _moduleTypeNames.Contains(clrType.FullName))
+                if (clrType.FullName != null && _moduleTypeNames.ContainsKey(clrType.FullName))
                 {
                     return new UserDefinedType { Name = signature.Name };
                 }
