@@ -451,6 +451,15 @@ internal partial class TypeChecker
         {
             funcSymbol = ResolveFunctionSymbolFromMemberAccess(memberAccessCall);
 
+            // Try module function overloads (e.g., os.path.join with different arities)
+            {
+                var moduleOverloadResult = ResolveModuleFunctionOverload(
+                    memberAccessCall, argTypes, totalArgCount, call,
+                    isNullConditionalCall, isOptionalNullConditional);
+                if (moduleOverloadResult != null)
+                    return moduleOverloadResult;
+            }
+
             // Try user-defined method overloads: either when no symbol was found,
             // or when the found symbol's method has multiple overloads on the owning type
             {
@@ -909,6 +918,125 @@ internal partial class TypeChecker
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Resolves overloaded module-level functions (e.g., os.path.join with different arities).
+    /// Returns null if the object is not a module or has no overloads for the member.
+    /// </summary>
+    private SemanticType? ResolveModuleFunctionOverload(
+        MemberAccess memberAccess, List<SemanticType> argTypes, int totalArgCount, FunctionCall call,
+        bool isNullConditionalCall, bool isOptionalNullConditional)
+    {
+        var objectType = _semanticInfo.GetExpressionType(memberAccess.Object);
+        if (objectType is not ModuleType moduleType)
+            return null;
+
+        var moduleSymbol = moduleType.Symbol;
+        if (!moduleSymbol.FunctionOverloads.TryGetValue(memberAccess.Member, out var overloads) || overloads.Count <= 1)
+            return null;
+
+        // Filter by argument count (module functions have no 'self' parameter)
+        var candidates = overloads.Where(o =>
+        {
+            var requiredParams = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
+            var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
+            var totalParams = o.Parameters.Count;
+            if (hasVariadic)
+                return totalArgCount >= requiredParams;
+            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
+        }).ToList();
+
+        // Check type compatibility
+        var matchingOverloads = new List<FunctionSymbol>();
+        foreach (var overload in candidates)
+        {
+            bool typesMatch = true;
+            var variadicParam = overload.Parameters.FirstOrDefault(p => p.IsVariadic);
+
+            for (int i = 0; i < argTypes.Count; i++)
+            {
+                SemanticType expectedType;
+                if (i < overload.Parameters.Count && !overload.Parameters[i].IsVariadic)
+                {
+                    expectedType = overload.Parameters[i].Type;
+                }
+                else if (variadicParam != null)
+                {
+                    expectedType = variadicParam.Type;
+                }
+                else
+                {
+                    typesMatch = false;
+                    break;
+                }
+
+                if (expectedType is not UnknownType && argTypes[i] is not UnknownType
+                    && !IsAssignable(argTypes[i], expectedType))
+                {
+                    typesMatch = false;
+                    break;
+                }
+            }
+            if (typesMatch)
+            {
+                matchingOverloads.Add(overload);
+            }
+        }
+
+        // Prefer exact arity match
+        FunctionSymbol? matchingOverload;
+        if (matchingOverloads.Count > 1)
+        {
+            var exactArityMatches = matchingOverloads.Where(o =>
+                o.Parameters.Count == totalArgCount).ToList();
+
+            if (exactArityMatches.Count == 1)
+            {
+                matchingOverload = exactArityMatches[0];
+            }
+            else
+            {
+                AddError($"Ambiguous call to overloaded function '{memberAccess.Member}' — multiple overloads match the argument types",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
+                    span: call.Span);
+                return SemanticType.Unknown;
+            }
+        }
+        else
+        {
+            matchingOverload = matchingOverloads.Count == 1 ? matchingOverloads[0] : null;
+        }
+
+        if (matchingOverload == null)
+        {
+            if (candidates.Count == 0)
+            {
+                AddError($"No matching overload for '{memberAccess.Member}' with {totalArgCount} argument(s)",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                    span: call.Span);
+            }
+            else
+            {
+                AddError($"No matching overload for '{memberAccess.Member}' with the given argument types",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                    span: call.Span);
+            }
+            return SemanticType.Unknown;
+        }
+
+        // Record the resolved call target for codegen
+        _semanticInfo.SetCallTarget(call, matchingOverload);
+
+        var returnType = matchingOverload.ReturnType;
+
+        if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
+        {
+            if (isOptionalNullConditional)
+                return new OptionalType { UnderlyingType = returnType };
+            return new NullableType { UnderlyingType = returnType };
+        }
+        return returnType;
     }
 
     /// <summary>
