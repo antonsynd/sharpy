@@ -17,6 +17,7 @@ internal class CachedModuleDiscovery
     private readonly OverloadIndexBuilder _builder;
     private readonly ClrTypeMapper _typeMapper;
     private readonly ConcurrentDictionary<string, Lazy<OverloadIndex>> _loadedIndices = new();
+    private readonly HashSet<string> _moduleTypeNames = new();
 
     /// <summary>
     /// Create a discovery instance using the default cache directory.
@@ -64,7 +65,17 @@ internal class CachedModuleDiscovery
         }));
 
         // Force evaluation so the assembly is loaded eagerly
-        _ = lazy.Value;
+        var index = lazy.Value;
+
+        // Pre-compute module type names for ConvertTypeSignature
+        foreach (var moduleOverloads in index.Modules.Values)
+        {
+            foreach (var typeInfo in moduleOverloads.Types)
+            {
+                if (typeInfo.IsModuleType)
+                    _moduleTypeNames.Add(typeInfo.Name);
+            }
+        }
     }
 
     /// <summary>
@@ -498,8 +509,8 @@ internal class CachedModuleDiscovery
                 // Types with [SharpyModuleType] (e.g., ArgumentParser, Path) are imported as
                 // UserDefinedType in the symbol table, so operator return types must also be
                 // UserDefinedType for assignability to work.
-                if (clrType.CustomAttributes.Any(
-                    a => a.AttributeType.FullName == "Sharpy.SharpyModuleTypeAttribute"))
+                // Uses pre-computed set from discovery phase instead of runtime reflection.
+                if (_moduleTypeNames.Contains(clrType.Name))
                 {
                     return new UserDefinedType { Name = signature.Name };
                 }

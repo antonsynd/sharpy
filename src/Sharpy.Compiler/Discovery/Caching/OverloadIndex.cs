@@ -38,6 +38,7 @@ internal class DiscoveredTypeInfo
     public Dictionary<string, List<FunctionSignature>> OperatorMethods { get; set; } = new();
     public Dictionary<string, List<FunctionSignature>> ProtocolMethods { get; set; } = new();
     public List<DiscoveredPropertyInfo> Properties { get; set; } = new();
+    public bool IsModuleType { get; set; }
 }
 
 /// <summary>

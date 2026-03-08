@@ -87,6 +87,8 @@ internal class OverloadIndexBuilder
                 continue;
 
             var isException = typeof(Exception).IsAssignableFrom(type);
+            var isModuleType = type.CustomAttributes.Any(
+                a => a.AttributeType.FullName == "Sharpy.SharpyModuleTypeAttribute");
 
             var typeInfo = new DiscoveredTypeInfo
             {
@@ -94,6 +96,7 @@ internal class OverloadIndexBuilder
                 Namespace = type.Namespace ?? string.Empty,
                 ClrTypeName = type.AssemblyQualifiedName ?? type.FullName ?? type.Name,
                 IsException = isException,
+                IsModuleType = isModuleType,
                 BaseTypeName = type.BaseType?.Name,
                 TypeKind = typeKind
             };
