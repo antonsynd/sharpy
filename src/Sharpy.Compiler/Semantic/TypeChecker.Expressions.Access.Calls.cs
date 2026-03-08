@@ -996,8 +996,10 @@ internal partial class TypeChecker
         {
             // Check if funcSymbol is from a different source than the overloads.
             // Imported overloads share a DeclaringFilePath; a local shadow won't.
+            // Guard against null paths (e.g. CLR-discovered symbols) to avoid
+            // null == null being treated as "same source".
             var overloadPath = overloads[0].DeclaringFilePath;
-            if (funcSymbol.DeclaringFilePath != overloadPath)
+            if (overloadPath != null && funcSymbol.DeclaringFilePath != overloadPath)
                 return null;
         }
 

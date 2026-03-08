@@ -1,0 +1,16 @@
+# Assignment in finally block guarantees property is always set,
+# even if try or except don't assign it.
+class Config:
+    property init value: int
+
+    def __init__(self, raw: str):
+        try:
+            x: int = int(raw)
+        except:
+            pass
+        finally:
+            self.value = 0
+
+def main():
+    c = Config("42")
+    print(c.value)

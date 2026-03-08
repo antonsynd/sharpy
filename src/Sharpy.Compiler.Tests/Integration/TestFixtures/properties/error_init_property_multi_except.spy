@@ -1,0 +1,15 @@
+# Multiple except handlers where only some assign the property.
+# Should produce SPY0426 since not all paths assign.
+class Config:
+    property init value: int
+
+    def __init__(self, raw: str):
+        try:
+            self.value = int(raw)
+        except ValueError:
+            self.value = -1
+        except OverflowError:
+            pass
+
+def main():
+    pass
