@@ -6,6 +6,7 @@ namespace Sharpy.Compiler.Semantic;
 public class Scope
 {
     private readonly Dictionary<string, Symbol> _symbols = new();
+    private readonly Dictionary<string, List<FunctionSymbol>> _functionOverloads = new();
     private readonly Scope? _parent;
     public string Name { get; }
     public Scope? Parent => _parent;
@@ -84,6 +85,22 @@ public class Scope
         }
 
         return false;
+    }
+
+    public void DefineFunctionOverloads(string name, List<FunctionSymbol> overloads)
+    {
+        _functionOverloads[name] = overloads;
+    }
+
+    public List<FunctionSymbol>? LookupFunctionOverloads(string name, bool searchParent = true)
+    {
+        if (_functionOverloads.TryGetValue(name, out var overloads))
+            return overloads;
+
+        if (searchParent && _parent != null)
+            return _parent.LookupFunctionOverloads(name, searchParent);
+
+        return null;
     }
 
     public IEnumerable<Symbol> GetAllSymbols()

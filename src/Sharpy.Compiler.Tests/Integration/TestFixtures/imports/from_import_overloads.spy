@@ -1,0 +1,10 @@
+# Test from-import with overloaded functions
+from os.path import join
+
+def main():
+    result1: str = join("a", "b")
+    result2: str = join("a", "b", "c")
+    result3: str = join("a", "b", "c", "d")
+    print(result1)
+    print(result2)
+    print(result3)

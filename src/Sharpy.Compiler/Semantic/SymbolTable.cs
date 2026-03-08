@@ -113,6 +113,24 @@ public class SymbolTable
         return CurrentScope.Update(symbol);
     }
 
+    /// <summary>
+    /// Defines function overloads for a given name in the current scope.
+    /// Used when from-importing overloaded functions (e.g., from os.path import join).
+    /// </summary>
+    public void DefineFunctionOverloads(string name, List<FunctionSymbol> overloads)
+    {
+        CurrentScope.DefineFunctionOverloads(name, overloads);
+    }
+
+    /// <summary>
+    /// Looks up function overloads by name, walking the scope chain.
+    /// Returns null if no overloads are registered for the given name.
+    /// </summary>
+    public List<FunctionSymbol>? LookupFunctionOverloads(string name)
+    {
+        return CurrentScope.LookupFunctionOverloads(name);
+    }
+
     public Scope CurrentScope => _scopeStack.Peek();
     public Scope GlobalScope => _globalScope;
     public int ScopeDepth => _scopeStack.Count;

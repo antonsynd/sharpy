@@ -188,6 +188,12 @@ internal class ImportResolver
 
                             _logger.LogDebug($"  Defining symbol (import *): {name}");
                             symbolTable.TryDefine(symbol);
+
+                            // Propagate function overloads for wildcard imports
+                            if (moduleInfo.FunctionOverloads.TryGetValue(name, out var wildOverloads) && wildOverloads.Count > 1)
+                            {
+                                symbolTable.DefineFunctionOverloads(name, wildOverloads);
+                            }
                         }
                     }
                     else
@@ -204,6 +210,12 @@ internal class ImportResolver
                                     symbol = CloneSymbolWithName(symbol, registerName);
                                 }
                                 symbolTable.TryDefine(symbol);
+
+                                // Propagate function overloads for named imports
+                                if (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads) && overloads.Count > 1)
+                                {
+                                    symbolTable.DefineFunctionOverloads(registerName, overloads);
+                                }
                             }
                             else if (registerName != lookupName && reExportedSymbols.TryGetValue(registerName, out symbol))
                             {

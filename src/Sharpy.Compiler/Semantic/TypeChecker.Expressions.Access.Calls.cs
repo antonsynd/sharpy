@@ -383,6 +383,14 @@ internal partial class TypeChecker
             var overloadResult = ResolveBuiltinOverload(id, argTypes, totalArgCount, call);
             if (overloadResult != null)
                 return overloadResult;
+
+            // Resolve imported function overloads (e.g., from os.path import join)
+            {
+                var importedOverloadResult = ResolveImportedFunctionOverload(
+                    id, argTypes, totalArgCount, call);
+                if (importedOverloadResult != null)
+                    return importedOverloadResult;
+            }
         }
         // Handle union case construction: Shape.Circle(5.0) → new Shape.Circle(5.0)
         // The calleeType is a UserDefinedType for the case class whose BaseType is the union.
@@ -1037,6 +1045,113 @@ internal partial class TypeChecker
             return new NullableType { UnderlyingType = returnType };
         }
         return returnType;
+    }
+
+    /// <summary>
+    /// Resolves overloaded functions that were imported via from-import (e.g., from os.path import join).
+    /// Uses the same overload resolution logic as ResolveModuleFunctionOverload but reads from
+    /// SymbolTable.LookupFunctionOverloads instead of ModuleSymbol.FunctionOverloads.
+    /// </summary>
+    private SemanticType? ResolveImportedFunctionOverload(
+        Identifier id, List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
+    {
+        var overloads = _symbolTable.LookupFunctionOverloads(id.Name);
+        if (overloads == null || overloads.Count <= 1)
+            return null;
+
+        // Filter by argument count
+        var candidates = overloads.Where(o =>
+        {
+            var requiredParams = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
+            var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
+            var totalParams = o.Parameters.Count;
+            if (hasVariadic)
+                return totalArgCount >= requiredParams;
+            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
+        }).ToList();
+
+        // Check type compatibility
+        var matchingOverloads = new List<FunctionSymbol>();
+        foreach (var overload in candidates)
+        {
+            bool typesMatch = true;
+            var variadicParam = overload.Parameters.FirstOrDefault(p => p.IsVariadic);
+
+            for (int i = 0; i < argTypes.Count; i++)
+            {
+                SemanticType expectedType;
+                if (i < overload.Parameters.Count && !overload.Parameters[i].IsVariadic)
+                {
+                    expectedType = overload.Parameters[i].Type;
+                }
+                else if (variadicParam != null)
+                {
+                    expectedType = variadicParam.Type;
+                }
+                else
+                {
+                    typesMatch = false;
+                    break;
+                }
+
+                if (expectedType is not UnknownType && argTypes[i] is not UnknownType
+                    && !IsAssignable(argTypes[i], expectedType))
+                {
+                    typesMatch = false;
+                    break;
+                }
+            }
+            if (typesMatch)
+            {
+                matchingOverloads.Add(overload);
+            }
+        }
+
+        // Prefer exact arity match
+        FunctionSymbol? matchingOverload;
+        if (matchingOverloads.Count > 1)
+        {
+            var exactArityMatches = matchingOverloads.Where(o =>
+                o.Parameters.Count == totalArgCount).ToList();
+
+            if (exactArityMatches.Count == 1)
+            {
+                matchingOverload = exactArityMatches[0];
+            }
+            else
+            {
+                AddError($"Ambiguous call to overloaded function '{id.Name}' — multiple overloads match the argument types",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
+                    span: call.Span);
+                return SemanticType.Unknown;
+            }
+        }
+        else
+        {
+            matchingOverload = matchingOverloads.Count == 1 ? matchingOverloads[0] : null;
+        }
+
+        if (matchingOverload == null)
+        {
+            if (candidates.Count == 0)
+            {
+                AddError($"No matching overload for '{id.Name}' with {totalArgCount} argument(s)",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                    span: call.Span);
+            }
+            else
+            {
+                AddError($"No matching overload for '{id.Name}' with the given argument types",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                    span: call.Span);
+            }
+            return SemanticType.Unknown;
+        }
+
+        // Record the resolved call target for codegen
+        _semanticInfo.SetCallTarget(call, matchingOverload);
+
+        return matchingOverload.ReturnType;
     }
 
     /// <summary>
