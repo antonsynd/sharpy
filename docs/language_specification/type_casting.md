@@ -48,11 +48,11 @@ the cast behavior in safe tagged unions:
 
 ```python
 my_dog: object = Dog()
-some_result = try my_dog as Cat  # some_result = Result[Cat, InvalidCastException].Err
-some_result = try my_dog as Cat?  # some_result = Result[Cat?, Exception].Ok(None). Compiler will warn user to use a `maybe` expression instead
+some_result = try my_dog to Cat  # some_result = Result[Cat, InvalidCastException].Err
+some_result = try my_dog to Cat?  # some_result = Result[Cat?, Exception].Ok(None). Compiler will warn user to use a `maybe` expression instead
 
-some_optional = maybe my_dog as Cat  # Throws. Compiler will warn user to use a `try` expression instead
-some_optional = maybe my_dog as Cat?  # some_optional = Optional[str].None()
+some_optional = maybe my_dog to Cat  # Throws. Compiler will warn user to use a `try` expression instead
+some_optional = maybe my_dog to Cat?  # some_optional = Optional[str].None()
 ```
 
 ## Safe Casting Pattern
@@ -209,9 +209,9 @@ dog = x to Dog                   # Throws InvalidCastException
 dog = x to Dog?                  # None
 ```
 
-*Implementation: 🔄 Lowered*
+*Implementation: Lowered*
 - *`value to T` → `(T)value` (C# cast expression)*
-- *`value to T?` → `value as T` for reference types, try-pattern for value types*
+- *`value to T?` → C# `value as T` for reference types, try-pattern for value types*
 
 ```csharp
 // value to Dog (throwing)
@@ -223,6 +223,10 @@ value as Dog
 // value to int? (safe, value type - requires pattern)
 value is int _temp ? (int?)_temp : null
 ```
+
+## Note on `as`
+
+`as` is **not** a casting operator in Sharpy. The `as` keyword is reserved for other contexts (exception binding, context managers, import aliases, and match/case pattern binding). See [SRP-0005](../../rejected_proposals/SRP-0005-as-casting-operator.md) for rationale.
 
 ## See Also
 
