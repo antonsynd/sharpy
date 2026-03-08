@@ -7,7 +7,7 @@ class Foo:
 
     def __eq__(self, other: object) -> bool:
         if other is Foo:
-            return self.x == (other as Foo).x
+            return self.x == (other to Foo).x
         return False
 
     def __hash__(self) -> int:

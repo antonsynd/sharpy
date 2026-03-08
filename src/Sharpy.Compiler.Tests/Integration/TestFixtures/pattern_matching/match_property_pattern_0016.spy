@@ -83,7 +83,7 @@ def analyze_shapes(shapes: list[object]) -> None:
         result = "unknown"
 
         if isinstance(s, Point):
-            p = s as Point
+            p = s to Point
             vx = p.x
             vy = p.y
             if vx > 0 and vy > 0:
@@ -93,7 +93,7 @@ def analyze_shapes(shapes: list[object]) -> None:
             else:
                 result = "other-point"
         elif isinstance(s, SmallRectangle):
-            r = s as SmallRectangle
+            r = s to SmallRectangle
             w = r.width
             result = f"small-w{w}"
 

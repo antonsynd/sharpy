@@ -547,7 +547,7 @@ internal partial class TypeChecker
     /// </summary>
     private static bool IsObjectType(SemanticType type)
     {
-        return type is BuiltinType builtin && builtin.Name == "object";
+        return type is BuiltinType { Name: "object" } or UserDefinedType { Name: "object" };
     }
 
     /// <summary>
@@ -588,12 +588,12 @@ internal partial class TypeChecker
         if (source is UserDefinedType && target is UserDefinedType targetType && targetType.Symbol?.TypeKind == TypeKind.Interface)
             return true;
 
-        // Builtin to user-defined: only valid if unboxing from object
-        if (source is BuiltinType sourceBuiltin && sourceBuiltin.Name == "object")
+        // Unboxing from object is always valid
+        if (IsObjectType(source))
             return true;
 
-        // User-defined to builtin: only valid for boxing to object
-        if (target is BuiltinType targetBuiltin && targetBuiltin.Name == "object")
+        // Boxing to object is always valid
+        if (IsObjectType(target))
             return true;
 
         // For generic types, check the base definition

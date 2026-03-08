@@ -1,6 +1,6 @@
 def main():
     x: int = 5
-    y: float = x + 1 as float
+    y: float = x + 1 to float
     print(y)
-    z: float = x * 2 as float
+    z: float = x * 2 to float
     print(z)

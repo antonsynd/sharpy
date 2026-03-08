@@ -1,4 +1,4 @@
 def main():
     x: float = 3.14
-    y: int? = x as int
+    y: int? = x to int
     print(y)
