@@ -124,6 +124,79 @@ def bar():
     }
 
     [Fact]
+    public void DunderPropertyAccess_NoError()
+    {
+        var code = @"
+class Foo:
+    def __init__(self):
+        pass
+
+def bar():
+    f: Foo = Foo()
+    x = f.__name__
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DunderInvocationValidator();
+        validator.Validate(module, context);
+
+        var dunderErrors = context.Diagnostics.GetErrors()
+            .Where(e => e.Code == DiagnosticCodes.Validation.DunderDirectInvocation
+                     || e.Code == DiagnosticCodes.Validation.DunderWrongReceiver
+                     || e.Code == DiagnosticCodes.Validation.DunderCapture)
+            .ToList();
+        Assert.Empty(dunderErrors);
+    }
+
+    [Fact]
+    public void DunderDictAccess_NoError()
+    {
+        var code = @"
+class Foo:
+    def __init__(self):
+        pass
+
+def bar():
+    f: Foo = Foo()
+    x = f.__dict__
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DunderInvocationValidator();
+        validator.Validate(module, context);
+
+        var dunderErrors = context.Diagnostics.GetErrors()
+            .Where(e => e.Code == DiagnosticCodes.Validation.DunderDirectInvocation
+                     || e.Code == DiagnosticCodes.Validation.DunderWrongReceiver
+                     || e.Code == DiagnosticCodes.Validation.DunderCapture)
+            .ToList();
+        Assert.Empty(dunderErrors);
+    }
+
+    [Fact]
+    public void DunderMethodCapture_StillReportsError()
+    {
+        // __add__ is a dunder method, not a property — should still report SPY0462
+        var code = @"
+class Foo:
+    def __add__(self, other: Foo) -> Foo:
+        return self
+
+def bar():
+    f: Foo = Foo()
+    x = f.__add__
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DunderInvocationValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.DunderCapture);
+    }
+
+    [Fact]
     public void NormalMethodCall_NoError()
     {
         var code = @"
