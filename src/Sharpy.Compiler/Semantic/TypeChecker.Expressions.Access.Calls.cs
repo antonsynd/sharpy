@@ -771,13 +771,10 @@ internal partial class TypeChecker
         MemberAccess memberAccess, List<SemanticType> argTypes, int totalArgCount, FunctionCall call,
         bool isNullConditionalCall, bool isOptionalNullConditional)
     {
-        var objectType = _semanticInfo.GetExpressionType(memberAccess.Object);
-
-        // Unwrap nullable/optional types for null-conditional method calls
-        if (objectType is NullableType nt)
-            objectType = nt.UnderlyingType;
-        else if (objectType is OptionalType ot)
-            objectType = ot.UnderlyingType;
+        var rawObjectType = _semanticInfo.GetExpressionType(memberAccess.Object);
+        if (rawObjectType == null)
+            return null;
+        var objectType = UnwrapCallTarget(rawObjectType);
 
         TypeSymbol? typeSymbol = null;
         List<SemanticType>? typeArgs = null;
@@ -837,28 +834,9 @@ internal partial class TypeChecker
                 SkipSelfParam: true, TypeSubstitution: typeSubstitution,
                 SkipUnknownTypes: true));
 
-        if (isAmbiguous)
+        if (isAmbiguous || matchingOverload == null)
         {
-            AddError($"Ambiguous call to overloaded method '{memberAccess.Member}' — multiple overloads match the argument types",
-                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
-                span: call.Span);
-            return SemanticType.Unknown;
-        }
-
-        if (matchingOverload == null)
-        {
-            if (arityCandidates.Count == 0)
-            {
-                AddError($"No matching overload for '{memberAccess.Member}' with {totalArgCount} argument(s)",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
-                    span: call.Span);
-            }
-            else
-            {
-                AddError($"No matching overload for '{memberAccess.Member}' with the given argument types",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
-                    span: call.Span);
-            }
+            ReportOverloadError(memberAccess.Member, call, isAmbiguous, arityCandidates, totalArgCount);
             return SemanticType.Unknown;
         }
 
@@ -892,16 +870,55 @@ internal partial class TypeChecker
         if (type.MethodOverloads.TryGetValue(methodName, out var overloads) && overloads.Count > 0)
             return overloads;
 
-        // Check base class chain
-        var current = GetBaseType(type);
-        while (current != null)
+        // Check base class chain using TypeHierarchyService
+        foreach (var baseType in TypeHierarchyService.GetAllBaseTypes(type, SemanticBinding))
         {
-            if (current.MethodOverloads.TryGetValue(methodName, out overloads) && overloads.Count > 0)
+            if (baseType.MethodOverloads.TryGetValue(methodName, out overloads) && overloads.Count > 0)
                 return overloads;
-            current = GetBaseType(current);
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Reports an overload resolution error (ambiguous or no matching overload).
+    /// Shared by all overload resolution methods to avoid duplicating diagnostic logic.
+    /// </summary>
+    private void ReportOverloadError(
+        string calleeName, FunctionCall call, bool isAmbiguous,
+        List<FunctionSymbol> arityCandidates, int totalArgCount)
+    {
+        if (isAmbiguous)
+        {
+            AddError($"Ambiguous call to overloaded method '{calleeName}' — multiple overloads match the argument types",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
+                span: call.Span);
+        }
+        else if (arityCandidates.Count == 0)
+        {
+            AddError($"No matching overload for '{calleeName}' with {totalArgCount} argument(s)",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                span: call.Span);
+        }
+        else
+        {
+            AddError($"No matching overload for '{calleeName}' with the given argument types",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                span: call.Span);
+        }
+    }
+
+    /// <summary>
+    /// Unwraps nullable/optional types for null-conditional method calls.
+    /// Returns the unwrapped type.
+    /// </summary>
+    private static SemanticType UnwrapCallTarget(SemanticType type)
+    {
+        if (type is NullableType nt)
+            return nt.UnderlyingType;
+        if (type is OptionalType ot)
+            return ot.UnderlyingType;
+        return type;
     }
 
     /// <summary>
@@ -943,28 +960,9 @@ internal partial class TypeChecker
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads, totalArgCount, argTypes, SkipUnknownTypes: true));
 
-        if (isAmbiguous)
+        if (isAmbiguous || matchingOverload == null)
         {
-            AddError($"Ambiguous call to overloaded function '{memberAccess.Member}' — multiple overloads match the argument types",
-                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
-                span: call.Span);
-            return SemanticType.Unknown;
-        }
-
-        if (matchingOverload == null)
-        {
-            if (arityCandidates.Count == 0)
-            {
-                AddError($"No matching overload for '{memberAccess.Member}' with {totalArgCount} argument(s)",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
-                    span: call.Span);
-            }
-            else
-            {
-                AddError($"No matching overload for '{memberAccess.Member}' with the given argument types",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
-                    span: call.Span);
-            }
+            ReportOverloadError(memberAccess.Member, call, isAmbiguous, arityCandidates, totalArgCount);
             return SemanticType.Unknown;
         }
 
@@ -1012,28 +1010,9 @@ internal partial class TypeChecker
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads!, totalArgCount, argTypes, SkipUnknownTypes: true));
 
-        if (isAmbiguous)
+        if (isAmbiguous || matchingOverload == null)
         {
-            AddError($"Ambiguous call to overloaded function '{id.Name}' — multiple overloads match the argument types",
-                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
-                span: call.Span);
-            return SemanticType.Unknown;
-        }
-
-        if (matchingOverload == null)
-        {
-            if (arityCandidates.Count == 0)
-            {
-                AddError($"No matching overload for '{id.Name}' with {totalArgCount} argument(s)",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
-                    span: call.Span);
-            }
-            else
-            {
-                AddError($"No matching overload for '{id.Name}' with the given argument types",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
-                    span: call.Span);
-            }
+            ReportOverloadError(id.Name, call, isAmbiguous, arityCandidates, totalArgCount);
             return SemanticType.Unknown;
         }
 
