@@ -352,7 +352,7 @@ internal class DecoratorValidator : SemanticValidatorBase
         if (csharpName == null && method.Name == DunderNames.Eq
             && method.Parameters.Any(p =>
                 p.Name != PythonNames.Self
-                && p.Type?.Name == "object"))
+                && p.Type?.Name == BuiltinNames.Object))
         {
             csharpName = "Object.Equals()";
         }

@@ -302,7 +302,7 @@ internal class PropertyValidator : SemanticValidatorBase
             return;
 
         // Find all __init__ methods (constructors)
-        var initMethods = body.OfType<FunctionDef>().Where(f => f.Name == "__init__").ToList();
+        var initMethods = body.OfType<FunctionDef>().Where(f => f.Name == DunderNames.Init).ToList();
 
         if (initMethods.Count == 0)
         {
