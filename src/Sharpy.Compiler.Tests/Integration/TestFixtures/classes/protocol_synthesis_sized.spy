@@ -1,0 +1,15 @@
+# Test ISized protocol synthesis via __len__
+class Bag:
+    _count: int
+
+    def __init__(self, count: int):
+        self._count = count
+
+    def __len__(self) -> int:
+        return self._count
+
+def main():
+    b = Bag(5)
+    print(len(b))
+    b2 = Bag(0)
+    print(len(b2))

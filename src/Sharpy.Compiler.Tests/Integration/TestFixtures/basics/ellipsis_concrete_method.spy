@@ -1,0 +1,18 @@
+# Test ellipsis (...) in concrete method bodies raises NotImplementedException
+def todo_int() -> int:
+    ...
+
+def todo_void():
+    ...
+
+def main():
+    try:
+        result: int = todo_int()
+        print(result)
+    except Exception:
+        print("caught exception from todo_int()")
+    try:
+        todo_void()
+    except Exception:
+        print("caught exception from todo_void()")
+    print("done")

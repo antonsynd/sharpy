@@ -1,0 +1,27 @@
+# Test string predicate methods
+def main():
+    # isdigit
+    print("123".isdigit())
+    print("abc".isdigit())
+    print("12a".isdigit())
+    print("".isdigit())
+    # isalpha
+    print("abc".isalpha())
+    print("abc1".isalpha())
+    print("".isalpha())
+    # isalnum
+    print("abc123".isalnum())
+    print("abc 123".isalnum())
+    print("".isalnum())
+    # isupper
+    print("ABC".isupper())
+    print("Abc".isupper())
+    print("".isupper())
+    # islower
+    print("abc".islower())
+    print("Abc".islower())
+    print("".islower())
+    # isspace
+    print("   ".isspace())
+    print(" a ".isspace())
+    print("".isspace())

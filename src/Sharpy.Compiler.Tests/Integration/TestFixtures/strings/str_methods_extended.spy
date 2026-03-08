@@ -1,0 +1,21 @@
+# Test string methods: replace, startswith, endswith, find, rfind, count
+def main():
+    s: str = "hello world"
+    # replace
+    print(s.replace("world", "python"))
+    print(s.replace("l", "L"))
+    print(s.replace("l", "L", 1))
+    # startswith / endswith
+    print(s.startswith("hello"))
+    print(s.startswith("world"))
+    print(s.endswith("world"))
+    print(s.endswith("hello"))
+    # find / rfind
+    print(s.find("l"))
+    print(s.find("l", 4))
+    print(s.rfind("l"))
+    print(s.find("xyz"))
+    # count
+    print(s.count("l"))
+    print(s.count("o"))
+    print("aaa".count("aa"))

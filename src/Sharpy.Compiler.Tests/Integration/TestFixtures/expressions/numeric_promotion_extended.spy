@@ -1,0 +1,23 @@
+# Test numeric type promotion across arithmetic operations
+def main():
+    # int + long -> long
+    a: int = 10
+    b: long = 20
+    c = a + b
+    print(c)
+
+    # int + float -> float (float64)
+    d: int = 3
+    e: float = 1.5
+    f = d + e
+    print(f)
+
+    # int * long -> long
+    g: int = 5
+    h: long = 4
+    print(g * h)
+
+    # int - float -> float
+    i: int = 10
+    j: float = 3.5
+    print(i - j)

@@ -1,0 +1,6 @@
+# Test that comprehension loop variable does not leak into enclosing scope
+def main():
+    x: int = 99
+    result: list[int] = [x for x in range(5)]
+    print(x)
+    print(result)
