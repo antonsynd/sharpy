@@ -337,7 +337,8 @@ internal class PropertyValidator : SemanticValidatorBase
 
     /// <summary>
     /// Collects names of members assigned via self.{name} = ... in a method body.
-    /// Only checks top-level statements (not inside conditionals/loops).
+    /// TODO(#348): Only checks top-level statements (not inside conditionals/loops).
+    /// Should use ControlFlowGraph to detect assignments on all paths.
     /// </summary>
     private static HashSet<string> CollectSelfAssignments(IReadOnlyList<Statement> body)
     {

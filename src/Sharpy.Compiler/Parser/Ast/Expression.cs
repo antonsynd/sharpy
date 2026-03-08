@@ -659,7 +659,7 @@ public record LambdaExpression : Expression
 }
 
 /// <summary>
-/// Type cast (value as Type)
+/// Type cast (value as Type) — TODO(#347): dead code, parser no longer creates this node
 /// </summary>
 public record TypeCast : Expression
 {
