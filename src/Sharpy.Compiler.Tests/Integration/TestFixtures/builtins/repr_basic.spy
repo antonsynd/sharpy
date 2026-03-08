@@ -1,0 +1,5 @@
+# Test repr() builtin
+def main():
+    print(repr("hello"))
+    print(repr(42))
+    print(repr(True))

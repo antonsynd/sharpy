@@ -1,0 +1,5 @@
+# Test round() builtin with banker's rounding
+def main():
+    print(round(3.7))
+    print(round(3.14159, 2))
+    print(round(2.5))

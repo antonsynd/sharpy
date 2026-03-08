@@ -1,0 +1,6 @@
+# Test zip builtin with two lists and tuple unpacking
+def main():
+    names: list[str] = ["Alice", "Bob", "Charlie"]
+    ages: list[int] = [25, 30, 35]
+    for pair in zip(names, ages):
+        print(f"{pair[0]} is {pair[1]}")

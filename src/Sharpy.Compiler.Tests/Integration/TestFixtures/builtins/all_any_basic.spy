@@ -1,0 +1,8 @@
+# Test all() and any() builtins with boolean lists
+def main():
+    print(all([True, True, True]))
+    print(all([True, False, True]))
+    print(all([False, False, False]))
+    print(any([True, True, True]))
+    print(any([True, False, True]))
+    print(any([False, False, False]))

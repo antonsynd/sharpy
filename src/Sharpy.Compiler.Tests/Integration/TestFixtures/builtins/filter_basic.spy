@@ -1,0 +1,5 @@
+# Test filter builtin with lambda predicate
+def main():
+    nums: list[int] = [1, 2, 3, 4, 5, 6]
+    evens: list[int] = list(filter(lambda x: x % 2 == 0, nums))
+    print(evens)

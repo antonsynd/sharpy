@@ -1,0 +1,8 @@
+# Test map builtin with lambda function
+def double(x: int) -> int:
+    return x * 2
+
+def main():
+    nums: list[int] = [1, 2, 3, 4, 5]
+    doubled: list[int] = list(map[int, int](double, nums))
+    print(doubled)

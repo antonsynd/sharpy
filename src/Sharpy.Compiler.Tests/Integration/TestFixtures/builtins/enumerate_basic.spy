@@ -1,0 +1,7 @@
+# Test enumerate builtin with default and custom start
+def main():
+    items: list[str] = ["a", "b", "c"]
+    for pair in enumerate(items):
+        print(f"{pair[0]}: {pair[1]}")
+    for pair in enumerate(items, 1):
+        print(f"{pair[0]}: {pair[1]}")
