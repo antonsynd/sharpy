@@ -1,0 +1,9 @@
+# Test that a user-defined function shadows imported overloaded functions
+from os.path import join
+
+def join(a: str, b: str) -> str:
+    return a + "-" + b
+
+def main():
+    result: str = join("hello", "world")
+    print(result)

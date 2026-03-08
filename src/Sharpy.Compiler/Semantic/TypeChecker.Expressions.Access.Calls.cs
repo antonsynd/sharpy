@@ -988,8 +988,21 @@ internal partial class TypeChecker
         if (overloads == null || overloads.Count <= 1)
             return null;
 
+        // Shadow check: if a user-defined function with the same name exists and it
+        // was NOT imported from the same source as the overloads, it shadows them.
+        // Skip overload resolution so the normal call path uses the user's function.
+        var funcSymbol = _symbolTable.Lookup(id.Name) as FunctionSymbol;
+        if (funcSymbol != null)
+        {
+            // Check if funcSymbol is from a different source than the overloads.
+            // Imported overloads share a DeclaringFilePath; a local shadow won't.
+            var overloadPath = overloads[0].DeclaringFilePath;
+            if (funcSymbol.DeclaringFilePath != overloadPath)
+                return null;
+        }
+
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
-            overloads, totalArgCount, argTypes, skipUnknownTypes: true);
+            overloads!, totalArgCount, argTypes, skipUnknownTypes: true);
 
         if (isAmbiguous)
         {

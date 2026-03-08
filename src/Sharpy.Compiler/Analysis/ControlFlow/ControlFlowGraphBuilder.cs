@@ -106,6 +106,18 @@ internal class ControlFlowGraphBuilder
         to.AddPredecessor(from);
     }
 
+    /// <summary>
+    /// Connects two blocks with an exception edge. The successor relationship is maintained
+    /// (so forward reachability still works), but the handler sees this as an exception
+    /// predecessor rather than a normal predecessor. This distinction allows dataflow
+    /// analyses to use conservative assumptions for exception edges.
+    /// </summary>
+    private void ConnectException(BasicBlock from, BasicBlock to)
+    {
+        from.AddSuccessor(to);
+        to.AddExceptionPredecessor(from);
+    }
+
     private void BuildStatements(IReadOnlyList<Statement> statements)
     {
         for (int i = 0; i < statements.Count; i++)
@@ -597,9 +609,10 @@ internal class ControlFlowGraphBuilder
             };
             var handlerBlock = CreateBlock($"except_{typeName}");
 
-            // Simplified: all handlers are reachable from try body (exception edges)
-            // We don't model which specific exceptions go to which handlers
-            Connect(tryBlock, handlerBlock);
+            // Exception edge: handler is reachable from try body via exception.
+            // Uses ConnectException so dataflow analyses can distinguish exception
+            // predecessors from normal predecessors (conservative must-assign).
+            ConnectException(tryBlock, handlerBlock);
 
             // Push handler context for bare raise
             _handlerStack.Push(handlerBlock);

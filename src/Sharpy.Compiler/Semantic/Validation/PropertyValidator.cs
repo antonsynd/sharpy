@@ -363,11 +363,16 @@ internal class PropertyValidator : SemanticValidatorBase
         }
 
         // Forward "must-assign" dataflow analysis using worklist algorithm
-        // mustAssignIn[block] = intersection of mustAssignOut[pred] for all predecessors
+        // mustAssignIn[block] = intersection of:
+        //   - mustAssignOut[pred] for normal predecessors
+        //   - mustAssignIn[pred] for exception predecessors (conservative: assumes no
+        //     statements in the excepting block completed)
         // mustAssignOut[block] = mustAssignIn[block] union blockAssignments[block]
+        var mustAssignIn = new Dictionary<BasicBlock, HashSet<string>>();
         var mustAssignOut = new Dictionary<BasicBlock, HashSet<string>>();
         foreach (var block in cfg.Blocks)
         {
+            mustAssignIn[block] = new HashSet<string>();
             mustAssignOut[block] = new HashSet<string>();
         }
 
@@ -380,28 +385,37 @@ internal class PropertyValidator : SemanticValidatorBase
                 if (block == cfg.Entry)
                     continue;
 
-                // Compute mustAssignIn as intersection of all predecessor outputs
-                HashSet<string>? mustIn = null;
+                // Compute mustIn as intersection of all predecessor contributions
+                HashSet<string>? computedIn = null;
+
+                // Normal predecessors: use their output (assignments completed)
                 foreach (var pred in block.Predecessors)
                 {
-                    if (mustIn == null)
-                    {
-                        mustIn = new HashSet<string>(mustAssignOut[pred]);
-                    }
+                    if (computedIn == null)
+                        computedIn = new HashSet<string>(mustAssignOut[pred]);
                     else
-                    {
-                        mustIn.IntersectWith(mustAssignOut[pred]);
-                    }
+                        computedIn.IntersectWith(mustAssignOut[pred]);
                 }
 
-                mustIn ??= new HashSet<string>();
+                // Exception predecessors: use their input (conservative — exception may
+                // have occurred before any statement in the predecessor completed)
+                foreach (var pred in block.ExceptionPredecessors)
+                {
+                    if (computedIn == null)
+                        computedIn = new HashSet<string>(mustAssignIn[pred]);
+                    else
+                        computedIn.IntersectWith(mustAssignIn[pred]);
+                }
+
+                computedIn ??= new HashSet<string>();
 
                 // mustAssignOut = mustIn union block's own assignments
-                var newOut = new HashSet<string>(mustIn);
+                var newOut = new HashSet<string>(computedIn);
                 newOut.UnionWith(blockAssignments[block]);
 
-                if (!newOut.SetEquals(mustAssignOut[block]))
+                if (!computedIn.SetEquals(mustAssignIn[block]) || !newOut.SetEquals(mustAssignOut[block]))
                 {
+                    mustAssignIn[block] = computedIn;
                     mustAssignOut[block] = newOut;
                     changed = true;
                 }

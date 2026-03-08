@@ -116,6 +116,17 @@ internal static class BuiltinReturnTypeInference
                 TypeArguments = new List<SemanticType> { funcType.ReturnType }
             };
         }
+
+        // Handle generic functions (e.g., str constructor passed as mapper)
+        if (argTypes[0] is GenericFunctionType genFuncType && genFuncType.FunctionSymbol != null)
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.Iterator,
+                TypeArguments = new List<SemanticType> { genFuncType.FunctionSymbol.ReturnType }
+            };
+        }
+
         return null;
     }
 }

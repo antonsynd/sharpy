@@ -47,6 +47,14 @@ internal sealed class BasicBlock
     private readonly List<BasicBlock> _successors = new();
 
     /// <summary>
+    /// Exception predecessor blocks - blocks whose exceptions can transfer control TO this block.
+    /// Distinguished from normal predecessors so dataflow analyses can use conservative
+    /// assumptions (e.g., mustAssignIn rather than mustAssignOut) for exception edges.
+    /// </summary>
+    public IReadOnlyList<BasicBlock> ExceptionPredecessors => _exceptionPredecessors;
+    private readonly List<BasicBlock> _exceptionPredecessors = new();
+
+    /// <summary>
     /// The terminator instruction that ends this block.
     /// Null only for the exit block.
     /// </summary>
@@ -87,6 +95,12 @@ internal sealed class BasicBlock
     {
         if (!_successors.Contains(block))
             _successors.Add(block);
+    }
+
+    internal void AddExceptionPredecessor(BasicBlock block)
+    {
+        if (!_exceptionPredecessors.Contains(block))
+            _exceptionPredecessors.Add(block);
     }
 
     public override string ToString() =>

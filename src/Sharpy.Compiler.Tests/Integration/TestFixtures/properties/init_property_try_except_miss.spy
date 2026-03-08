@@ -1,0 +1,15 @@
+# Property assignment only in try body — if exception occurs before
+# the assignment completes, the except handler doesn't assign it.
+# This should produce SPY0426.
+class Config:
+    property init value: int
+
+    def __init__(self, raw: str):
+        try:
+            self.value = int(raw)
+        except:
+            pass
+
+def main():
+    c = Config("42")
+    print(c.value)

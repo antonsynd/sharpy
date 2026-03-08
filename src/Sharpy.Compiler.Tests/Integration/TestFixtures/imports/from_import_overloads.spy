@@ -1,4 +1,5 @@
 # Test from-import with overloaded functions
+# NOTE: Expected output uses forward slashes (Linux/macOS). See #351.
 from os.path import join
 
 def main():

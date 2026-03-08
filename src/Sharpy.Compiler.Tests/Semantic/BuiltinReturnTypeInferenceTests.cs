@@ -188,6 +188,37 @@ public class BuiltinReturnTypeInferenceTests
     }
 
     [Fact]
+    public void Map_With_GenericFunctionType_Returns_Iterator_Of_Return_Type()
+    {
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "str",
+            ReturnType = SemanticType.Str,
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol { Name = "value", Type = SemanticType.Int }
+            }
+        };
+        var genFuncType = new GenericFunctionType
+        {
+            FunctionSymbol = funcSymbol,
+            TypeArguments = new List<SemanticType>()
+        };
+        var argTypes = new List<SemanticType>
+        {
+            genFuncType,
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Int } }
+        };
+        var result = BuiltinReturnTypeInference.InferReturnType(Map, argTypes, _typeInference);
+        Assert.NotNull(result);
+        Assert.IsType<GenericType>(result);
+        var gt = (GenericType)result!;
+        Assert.Equal(Iterator, gt.Name);
+        Assert.Single(gt.TypeArguments);
+        Assert.Equal(SemanticType.Str, gt.TypeArguments[0]);
+    }
+
+    [Fact]
     public void Map_With_Non_FunctionType_Returns_Null()
     {
         var argTypes = new List<SemanticType>
