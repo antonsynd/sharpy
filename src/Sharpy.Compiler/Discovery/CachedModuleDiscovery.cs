@@ -3,6 +3,7 @@ using System.Reflection;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Discovery;
 
@@ -432,32 +433,32 @@ internal class CachedModuleDiscovery
         }
 
         // Handle primitive types
-        if (signature.Name == "int")
+        if (signature.Name == BuiltinNames.Int)
             return SemanticType.Int;
-        if (signature.Name == "long")
+        if (signature.Name == BuiltinNames.Long)
             return SemanticType.Long;
-        if (signature.Name == "float")
+        if (signature.Name == BuiltinNames.Float)
             return SemanticType.Float;       // float -> double (per spec)
-        if (signature.Name == "float32")
+        if (signature.Name == BuiltinNames.Float32)
             return SemanticType.Float32;   // float32 -> C# float
-        if (signature.Name == "float64")
+        if (signature.Name == BuiltinNames.Float64)
             return SemanticType.Double;    // float64 -> double
-        if (signature.Name == "double")
+        if (signature.Name == BuiltinNames.Double)
             return SemanticType.Double;
-        if (signature.Name == "bool")
+        if (signature.Name == BuiltinNames.Bool)
             return SemanticType.Bool;
-        if (signature.Name == "str")
+        if (signature.Name == BuiltinNames.Str)
             return SemanticType.Str;
-        if (signature.Name == "None")
+        if (signature.Name == BuiltinNames.None)
             return SemanticType.Void;
-        if (signature.Name == "object")
+        if (signature.Name == BuiltinNames.Object)
             return SemanticType.Object;
 
         // Handle generic types
         if (signature.IsGeneric)
         {
             // Handle Optional[T] -> OptionalType (produced by OverloadExpander for dict.get/pop)
-            if (signature.Name == "Optional" && signature.TypeArguments.Count == 1)
+            if (signature.Name == BuiltinNames.Optional && signature.TypeArguments.Count == 1)
             {
                 return new OptionalType
                 {
@@ -466,7 +467,7 @@ internal class CachedModuleDiscovery
             }
 
             // Handle tuple[T0, T1, ...] -> TupleType
-            if (signature.Name == "tuple" && signature.TypeArguments.Count > 0)
+            if (signature.Name == BuiltinNames.Tuple && signature.TypeArguments.Count > 0)
             {
                 return new TupleType
                 {

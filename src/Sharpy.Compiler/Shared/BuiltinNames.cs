@@ -58,6 +58,7 @@ internal static class BuiltinNames
     public const string Long = "long";
     public const string Double = "double";
     public const string Float32 = "float32";
+    public const string Float64 = "float64";
     public const string List = "list";
     public const string Dict = "dict";
     public const string Set = "set";
