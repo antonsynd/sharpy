@@ -65,7 +65,7 @@ def find_user(name: str) -> str?:
 def safe_divide(a: int, b: int) -> int !str:
     if b == 0:
         return Err("division by zero")
-    return Ok(a / b)
+    return Ok(a // b)
 
 def main():
     print(find_user("Alice").unwrap_or("not found"))  # alice@example.com
@@ -176,25 +176,22 @@ def describe(value: int):
 Import .NET types directly. `snake_case` calls auto-map to `PascalCase` .NET methods.
 
 ```python
-from system.io import StringWriter
+from system import Console
 
 def main():
-    with StringWriter() as writer:
-        writer.write("hello")
-        print(writer.to_string())  # hello
+    Console.write_line("Hello from .NET!")
+    Console.write_line(f"2 + 2 = {2 + 2}")
 ```
 
 ### Async
 
 ```python
-from system.threading.tasks import Task
+async def fetch_value() -> str:
+    return "hello async"
 
-async def compute() -> int:
-    return 42
-
-def main():
-    t: Task[int] = compute()
-    print(t.result)  # 42
+async def main():
+    result: str = await fetch_value()
+    print(result)  # hello async
 ```
 
 ## Familiar Python
@@ -224,11 +221,11 @@ class Circle(Shape):
         return 3.14 * self.radius * self.radius
 
 def fibonacci(n: int) -> int:
-    a, b = 0, 1
+    a, b = (0, 1)
     i = 0
     while i < n:
         yield a
-        a, b = b, a + b
+        a, b = (b, a + b)
         i += 1
 
 def main():
@@ -291,13 +288,17 @@ Sharpy follows three axioms in strict priority order:
 ```
 sharpy/
 ├── src/
-│   ├── Sharpy.Compiler/         # Compiler (lexer, parser, semantic, codegen)
-│   ├── Sharpy.Core/             # Standard library (runtime)
-│   ├── Sharpy.Cli/              # CLI tool
-│   ├── Sharpy.Compiler.Tests/   # 784 test fixtures + unit tests
-│   └── Sharpy.Core.Tests/       # Runtime library tests
-├── docs/language_specification/  # Authoritative language specification
-└── build_tools/                 # Build automation and dogfooding tools
+│   ├── Sharpy.Compiler/             # Compiler (lexer, parser, semantic, codegen)
+│   ├── Sharpy.Core/                 # Standard library (runtime)
+│   ├── Sharpy.Cli/                  # CLI tool
+│   ├── Sharpy.Lsp/                  # Language Server Protocol server
+│   ├── Sharpy.Compiler.Tests/       # 1,264 test fixtures + unit tests
+│   ├── Sharpy.Compiler.Benchmarks/  # Performance benchmarks
+│   ├── Sharpy.Core.Tests/           # Runtime library tests
+│   └── Sharpy.Lsp.Tests/            # LSP server tests
+├── editors/vscode/                  # VS Code extension
+├── docs/language_specification/     # Authoritative language specification
+└── build_tools/                     # Build automation and dogfooding tools
 ```
 
 ## Editor Support
