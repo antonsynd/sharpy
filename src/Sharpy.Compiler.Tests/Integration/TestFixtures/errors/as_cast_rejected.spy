@@ -1,0 +1,2 @@
+x: object = 42
+y = x as int
