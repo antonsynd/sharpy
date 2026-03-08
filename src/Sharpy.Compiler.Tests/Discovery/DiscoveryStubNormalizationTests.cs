@@ -6,8 +6,8 @@ using Xunit;
 namespace Sharpy.Compiler.Tests.Discovery;
 
 /// <summary>
-/// Verifies that discovered protocol and operator stubs are normalized to marker-only format,
-/// where validators only check for key presence, not actual method signatures.
+/// Verifies that discovered protocol stubs are normalized to marker-only format (validators check key presence),
+/// and that operator stubs preserve full signatures (parameter types + return type) for type checking.
 /// </summary>
 public class DiscoveryStubNormalizationTests : IDisposable
 {
@@ -87,20 +87,22 @@ public class DiscoveryStubNormalizationTests : IDisposable
     // ---- Operator stub normalization ----
 
     [Fact]
-    public void List_OperatorStubs_AreMarkerOnly()
+    public void List_OperatorStubs_PreserveSignatures()
     {
         var type = _discovery.GetTypeByName("List");
         Assert.NotNull(type);
 
         foreach (var (dunderName, stubs) in type.OperatorMethods)
         {
-            Assert.Single(stubs);
-            var stub = stubs[0];
-            Assert.Equal(dunderName, stub.Name);
-            Assert.Equal(SymbolKind.Function, stub.Kind);
-            Assert.Equal(AccessLevel.Public, stub.AccessLevel);
-            Assert.Empty(stub.Parameters);
-            Assert.IsType<UnknownType>(stub.ReturnType);
+            Assert.NotEmpty(stubs);
+            foreach (var stub in stubs)
+            {
+                Assert.Equal(dunderName, stub.Name);
+                Assert.Equal(SymbolKind.Function, stub.Kind);
+                Assert.Equal(AccessLevel.Public, stub.AccessLevel);
+                // Operator stubs preserve full signatures for type checking
+                Assert.NotEmpty(stub.Parameters);
+            }
         }
     }
 
@@ -118,34 +120,38 @@ public class DiscoveryStubNormalizationTests : IDisposable
     }
 
     [Fact]
-    public void Set_OperatorStubs_AreMarkerOnly()
+    public void Set_OperatorStubs_PreserveSignatures()
     {
         var type = _discovery.GetTypeByName("Set");
         Assert.NotNull(type);
 
         foreach (var (dunderName, stubs) in type.OperatorMethods)
         {
-            Assert.Single(stubs);
-            var stub = stubs[0];
-            Assert.Equal(dunderName, stub.Name);
-            Assert.Empty(stub.Parameters);
-            Assert.IsType<UnknownType>(stub.ReturnType);
+            Assert.NotEmpty(stubs);
+            foreach (var stub in stubs)
+            {
+                Assert.Equal(dunderName, stub.Name);
+                // Operator stubs preserve full signatures for type checking
+                Assert.NotEmpty(stub.Parameters);
+            }
         }
     }
 
     [Fact]
-    public void Dict_OperatorStubs_AreMarkerOnly()
+    public void Dict_OperatorStubs_PreserveSignatures()
     {
         var type = _discovery.GetTypeByName("Dict");
         Assert.NotNull(type);
 
         foreach (var (dunderName, stubs) in type.OperatorMethods)
         {
-            Assert.Single(stubs);
-            var stub = stubs[0];
-            Assert.Equal(dunderName, stub.Name);
-            Assert.Empty(stub.Parameters);
-            Assert.IsType<UnknownType>(stub.ReturnType);
+            Assert.NotEmpty(stubs);
+            foreach (var stub in stubs)
+            {
+                Assert.Equal(dunderName, stub.Name);
+                // Operator stubs preserve full signatures for type checking
+                Assert.NotEmpty(stub.Parameters);
+            }
         }
     }
 }
