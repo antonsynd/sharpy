@@ -1,3 +1,4 @@
+using System.Globalization;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Shared;
@@ -13,13 +14,13 @@ internal static class AstHelper
     /// </summary>
     public static bool TryGetConstantIntIndex(Expression expr, out int value)
     {
-        if (expr is IntegerLiteral intLit && int.TryParse(intLit.Value, out value))
+        if (expr is IntegerLiteral intLit && int.TryParse(intLit.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
         {
             return true;
         }
 
         if (expr is UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral negIntLit }
-            && int.TryParse(negIntLit.Value, out var posValue))
+            && int.TryParse(negIntLit.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var posValue))
         {
             value = -posValue;
             return true;

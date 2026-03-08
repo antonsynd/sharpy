@@ -34,14 +34,14 @@ namespace Sharpy.Compiler.Semantic;
 /// - Phase-gating: freeze assertions prevent writes after a phase completes
 /// </para>
 /// <para>
-/// <b>Threading:</b> This type is thread-safe. All internal stores use
-/// <see cref="ConcurrentDictionary{TKey,TValue}"/> to support cross-file symbol
-/// materialization in project compilation, where multiple files may need to read/write
-/// binding data concurrently. In contrast, <see cref="SemanticInfo"/> is not thread-safe
-/// and should be created per-file for parallel analysis scenarios.
+/// <b>Threading:</b> Internal stores use <see cref="ConcurrentDictionary{TKey,TValue}"/>
+/// for cross-file symbol materialization, but the freeze-gate bool flags
+/// (<c>_inheritanceFrozen</c>, etc.) are plain fields — not volatile. Under the current
+/// single-threaded-per-phase execution model this is safe, but concurrent freeze/write
+/// races would require marking the flags <c>volatile</c> or using <c>Interlocked</c>.
 /// </para>
 /// </remarks>
-[ThreadSafe]
+[NotThreadSafe(Reason = "ConcurrentDictionary stores are thread-safe, but freeze-gate bool flags are not volatile — concurrent freeze/write races are possible. Safe under current single-threaded-per-phase usage.")]
 public class SemanticBinding
 {
     // Logger kept for backwards compatibility but no longer used after freeze violations became exceptions

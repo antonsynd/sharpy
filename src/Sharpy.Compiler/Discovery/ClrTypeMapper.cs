@@ -40,15 +40,15 @@ internal class ClrTypeMapper
             // Return the appropriate SemanticType singleton or create BuiltinType
             return primitiveInfo.SharpyName switch
             {
-                "int" => SemanticType.Int,
-                "long" => SemanticType.Long,
-                "float" => SemanticType.Float,       // float -> double (per spec)
-                "float32" => SemanticType.Float32,   // float32 -> C# float
-                "float64" or "double" => SemanticType.Double,
-                "bool" => SemanticType.Bool,
-                "str" or "string" => SemanticType.Str,
-                "void" or "None" => SemanticType.Void,
-                "object" => SemanticType.Object,
+                BuiltinNames.Int => SemanticType.Int,
+                BuiltinNames.Long => SemanticType.Long,
+                BuiltinNames.Float => SemanticType.Float,       // float -> double (per spec)
+                BuiltinNames.Float32 => SemanticType.Float32,   // float32 -> C# float
+                BuiltinNames.Float64 or BuiltinNames.Double => SemanticType.Double,
+                BuiltinNames.Bool => SemanticType.Bool,
+                BuiltinNames.Str or "string" => SemanticType.Str,
+                BuiltinNames.Void or BuiltinNames.None => SemanticType.Void,
+                BuiltinNames.Object => SemanticType.Object,
                 _ => new BuiltinType { Name = primitiveInfo.SharpyName, ClrType = clrType }
             };
         }

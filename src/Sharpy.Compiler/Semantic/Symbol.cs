@@ -242,40 +242,6 @@ public record TypeSymbol : Symbol
         return overloads;
     }
 
-    /// <summary>
-    /// Collects all interfaces from the full inheritance chain of a type symbol.
-    /// Walks BaseType upward, gathering interfaces from each level.
-    /// Checks SemanticBinding first (if provided) for binding-tracked interfaces,
-    /// falls back to symbol.Interfaces.
-    /// </summary>
-    public static IReadOnlyList<TypeSymbol> GetAllInterfaces(TypeSymbol typeSymbol, SemanticBinding? semanticBinding = null)
-    {
-        var seen = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
-        var result = new List<TypeSymbol>();
-
-        var current = typeSymbol;
-        while (current != null)
-        {
-            IReadOnlyList<InterfaceReference>? refs = null;
-            if (semanticBinding != null)
-                refs = semanticBinding.GetInterfaces(current);
-
-            var interfaces = refs ?? (IReadOnlyList<InterfaceReference>)current.Interfaces;
-
-            foreach (var iface in interfaces)
-            {
-                if (seen.Add(iface.Definition))
-                    result.Add(iface.Definition);
-            }
-
-            current = semanticBinding != null
-                ? (semanticBinding.GetBaseType(current) ?? current.BaseType)
-                : current.BaseType;
-        }
-
-        return result;
-    }
-
     public virtual bool Equals(TypeSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

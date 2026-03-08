@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.Semantic;
 /// single-threaded analysis phases. Each compilation creates its own instance.
 /// </para>
 /// </remarks>
-[ThreadSafe]
+[NotThreadSafe(Reason = "ConcurrentDictionary stores are thread-safe, but HashSet fields (_generatorFunctions, _eventAccessNodes) are single-threaded only. Safe under current per-file instance usage.")]
 public class SemanticInfo : ISemanticQuery
 {
     // Use ReferenceEqualityComparer because AST nodes are records with value-based equality,
