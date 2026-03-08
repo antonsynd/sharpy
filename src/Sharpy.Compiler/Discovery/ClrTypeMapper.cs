@@ -107,30 +107,22 @@ internal class ClrTypeMapper
             return SemanticType.Int;
         }
 
-        // Sharpy.TextFile -> UserDefinedType with IDisposable
-        if (clrType.FullName == "Sharpy.TextFile")
+        // Non-generic CLR class/struct: map to UserDefinedType with CLR type info
+        if (clrType.IsClass || clrType.IsValueType)
         {
-            var disposableSymbol = new TypeSymbol
+            var symbol = new TypeSymbol
             {
-                Name = "IDisposable",
+                Name = clrType.Name,
                 Kind = SymbolKind.Type,
-                TypeKind = TypeKind.Interface
-            };
-            var textFileSymbol = new TypeSymbol
-            {
-                Name = "TextFile",
-                Kind = SymbolKind.Type,
-                TypeKind = TypeKind.Class,
+                TypeKind = clrType.IsValueType ? TypeKind.Struct : TypeKind.Class,
                 ClrType = clrType,
-                Interfaces = new List<InterfaceReference>
-                {
-                    new InterfaceReference { Definition = disposableSymbol }
-                }
+                Interfaces = BuildInterfaceList(clrType)
             };
+
             return new UserDefinedType
             {
-                Name = "TextFile",
-                Symbol = textFileSymbol
+                Name = clrType.Name,
+                Symbol = symbol
             };
         }
 
@@ -296,5 +288,26 @@ internal class ClrTypeMapper
     private bool IsGenericTypeDefinition(Type type, Type genericTypeDef)
     {
         return type == genericTypeDef;
+    }
+
+    /// <summary>
+    /// Builds the interface list for a CLR type, synthesizing IDisposable if implemented.
+    /// Returns null if no interfaces are synthesized.
+    /// </summary>
+    private static List<InterfaceReference> BuildInterfaceList(Type clrType)
+    {
+        if (!typeof(System.IDisposable).IsAssignableFrom(clrType))
+            return new List<InterfaceReference>();
+
+        var disposableSymbol = new TypeSymbol
+        {
+            Name = "IDisposable",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Interface
+        };
+        return new List<InterfaceReference>
+        {
+            new InterfaceReference { Definition = disposableSymbol }
+        };
     }
 }

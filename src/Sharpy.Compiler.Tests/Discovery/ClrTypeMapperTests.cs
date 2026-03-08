@@ -193,4 +193,50 @@ public class ClrTypeMapperTests
         Assert.Equal("RangeIterator", builtinType.Name);
         Assert.Equal(typeof(SharpyRT::Sharpy.RangeIterator), builtinType.ClrType);
     }
+
+    [Fact]
+    public void MapDisposableClrType_SynthesizesIDisposableInterface()
+    {
+        // Arrange & Act - MemoryStream implements IDisposable
+        var result = _mapper.MapClrTypeToSemanticType(typeof(System.IO.MemoryStream));
+
+        // Assert
+        Assert.IsType<UserDefinedType>(result);
+        var udt = (UserDefinedType)result;
+        Assert.Equal("MemoryStream", udt.Name);
+        Assert.NotNull(udt.Symbol);
+        Assert.Equal(typeof(System.IO.MemoryStream), udt.Symbol!.ClrType);
+        Assert.NotNull(udt.Symbol.Interfaces);
+        Assert.Contains(udt.Symbol.Interfaces!, i => i.Definition.Name == "IDisposable");
+    }
+
+    [Fact]
+    public void MapNonDisposableClrType_NoIDisposableInterface()
+    {
+        // Arrange & Act - Uri does not implement IDisposable
+        var result = _mapper.MapClrTypeToSemanticType(typeof(System.Uri));
+
+        // Assert
+        Assert.IsType<UserDefinedType>(result);
+        var udt = (UserDefinedType)result;
+        Assert.Equal("Uri", udt.Name);
+        Assert.NotNull(udt.Symbol);
+        Assert.Empty(udt.Symbol!.Interfaces);
+    }
+
+    [Fact]
+    public void MapTextFile_SynthesizesIDisposableInterface()
+    {
+        // Arrange & Act - TextFile implements IDisposable (previously hardcoded)
+        var result = _mapper.MapClrTypeToSemanticType(typeof(SharpyRT::Sharpy.TextFile));
+
+        // Assert
+        Assert.IsType<UserDefinedType>(result);
+        var udt = (UserDefinedType)result;
+        Assert.Equal("TextFile", udt.Name);
+        Assert.NotNull(udt.Symbol);
+        Assert.Equal(typeof(SharpyRT::Sharpy.TextFile), udt.Symbol!.ClrType);
+        Assert.NotNull(udt.Symbol.Interfaces);
+        Assert.Contains(udt.Symbol.Interfaces!, i => i.Definition.Name == "IDisposable");
+    }
 }
