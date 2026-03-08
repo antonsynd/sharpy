@@ -253,7 +253,7 @@ internal class CachedModuleDiscovery
                     return string.Equals(name, clrName, StringComparison.Ordinal);
                 });
 
-                if (typeInfo != null && (typeInfo.Methods.Count > 0 || typeInfo.OperatorMethods.Count > 0 || typeInfo.ProtocolMethods.Count > 0))
+                if (typeInfo != null && (typeInfo.Methods.Count > 0 || typeInfo.OperatorMethods.Count > 0 || typeInfo.ProtocolMethods.Count > 0 || typeInfo.Properties.Count > 0))
                 {
                     return ConvertToTypeSymbol(typeInfo, sharedTypeParams);
                 }
