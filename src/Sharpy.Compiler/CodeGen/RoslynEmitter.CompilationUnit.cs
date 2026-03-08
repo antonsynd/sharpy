@@ -328,12 +328,20 @@ internal partial class RoslynEmitter
         }
         else if (IsStdlibModule(fromImport.Module))
         {
-            // Generate using static for Sharpy stdlib module class
-            // e.g., "from math import sqrt" → "using static global::Sharpy.Math;"
-            // e.g., "from os.path import join" → "using static global::Sharpy.OsPath;"
-            var fullModuleClass = ConvertStdlibModuleToFullyQualified(fromImport.Module);
-            yield return UsingDirective(ParseName(fullModuleClass))
-                .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
+            // For type-only imports (e.g., "from argparse import ArgumentParser"),
+            // skip the using static — the types live in the Sharpy namespace and are
+            // already accessible via "using global::Sharpy;".
+            var allImportsAreTypes = !fromImport.ImportAll && fromImport.Names.Length > 0 &&
+                fromImport.Names.All(n => _context.LookupSymbol(n.Name) is TypeSymbol);
+            if (!allImportsAreTypes)
+            {
+                // Generate using static for Sharpy stdlib module class
+                // e.g., "from math import sqrt" → "using static global::Sharpy.Math;"
+                // e.g., "from os.path import join" → "using static global::Sharpy.OsPath;"
+                var fullModuleClass = ConvertStdlibModuleToFullyQualified(fromImport.Module);
+                yield return UsingDirective(ParseName(fullModuleClass))
+                    .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
+            }
         }
         else
         {

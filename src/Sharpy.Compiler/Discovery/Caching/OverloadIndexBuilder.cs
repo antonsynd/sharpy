@@ -123,7 +123,7 @@ internal class OverloadIndexBuilder
         ["op_Addition"] = "__add__",
         ["op_Subtraction"] = "__sub__",
         ["op_Multiply"] = "__mul__",
-        ["op_Division"] = "__truediv__",
+        ["op_Division"] = "__div__",
         ["op_Modulus"] = "__mod__",
         ["op_Equality"] = "__eq__",
         ["op_Inequality"] = "__ne__",

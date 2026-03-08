@@ -416,6 +416,15 @@ internal class TypeMapper
     /// </summary>
     private string GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)
     {
+        // For Sharpy.Core CLR types (with [SharpyModuleType] attribute), use the actual CLR
+        // type name rather than deriving from DefiningModule, since the CLR namespace (Sharpy)
+        // differs from the module name (e.g., argparse -> Sharpy.ArgumentParser,
+        // not Argparse.ArgumentParser)
+        if (typeSymbol.ClrType != null && typeSymbol.ClrType.Namespace == "Sharpy")
+        {
+            return $"global::{typeSymbol.ClrType.FullName}";
+        }
+
         string moduleNamespace;
 
         if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))

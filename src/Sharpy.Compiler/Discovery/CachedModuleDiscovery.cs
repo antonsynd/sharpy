@@ -495,6 +495,15 @@ internal class CachedModuleDiscovery
 
             if (clrType != null)
             {
+                // Types with [SharpyModuleType] (e.g., ArgumentParser, Path) are imported as
+                // UserDefinedType in the symbol table, so operator return types must also be
+                // UserDefinedType for assignability to work.
+                if (clrType.CustomAttributes.Any(
+                    a => a.AttributeType.FullName == "Sharpy.SharpyModuleTypeAttribute"))
+                {
+                    return new UserDefinedType { Name = signature.Name };
+                }
+
                 return new BuiltinType
                 {
                     Name = signature.Name,
