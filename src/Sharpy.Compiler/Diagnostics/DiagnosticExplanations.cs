@@ -1163,6 +1163,11 @@ public static class DiagnosticExplanations
             "@custom(1 + 2)  # error: arithmetic expression is not a compile-time constant\ndef foo():\n    pass",
             "Use a literal value instead:\n@custom(3)\ndef foo():\n    pass");
 
+        Add(dict, DiagnosticCodes.Validation.InitPropertyNotAssigned, "Init property not assigned in constructor", "Validation",
+            "A 'property init' field without a default value must be assigned in every constructor (__init__). Init properties are set-once, so they must be initialized during construction.",
+            "class Config:\n    property init port: int\n\n    def __init__(self):\n        pass  # error: 'port' not assigned",
+            "Assign the init property in the constructor:\ndef __init__(self):\n    self.port = 8080");
+
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
         Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",

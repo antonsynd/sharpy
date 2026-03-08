@@ -277,6 +277,7 @@ public static class DiagnosticCodes
 
         // Decorator argument validation (SPY0425-SPY0429)
         public const string NonConstantDecoratorArgument = "SPY0425";
+        public const string InitPropertyNotAssigned = "SPY0426";
 
         // Warnings (SPY0450-SPY0499)
         public const string UnreachableCodeWarning = "SPY0450";

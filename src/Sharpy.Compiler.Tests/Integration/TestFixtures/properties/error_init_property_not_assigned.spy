@@ -1,0 +1,9 @@
+class Server:
+    property init host: str
+    property init port: int
+
+    def __init__(self, host: str):
+        self.host = host
+
+def main():
+    pass

@@ -16,6 +16,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// 5. @abstract properties must have ellipsis body (SPY0409)
 /// 6. @final cannot be combined with @abstract or @virtual (SPY0410)
 /// 7. @override property must have matching virtual/abstract base property (SPY0411)
+/// 8. Init properties without defaults must be assigned in every constructor (SPY0426)
 /// </summary>
 internal class PropertyValidator : SemanticValidatorBase
 {
@@ -99,6 +100,9 @@ internal class PropertyValidator : SemanticValidatorBase
         {
             ValidateMixedPropertyStyle(typeName, propName, group);
         }
+
+        // Check that init properties without defaults are assigned in constructors
+        ValidateInitPropertyAssignment(typeName, body, propertyDefs);
     }
 
     /// <summary>
@@ -281,6 +285,71 @@ internal class PropertyValidator : SemanticValidatorBase
                     span: propDef.Span);
             }
         }
+    }
+
+    /// <summary>
+    /// Rule 8: Init properties without defaults must be assigned in every constructor.
+    /// </summary>
+    private void ValidateInitPropertyAssignment(string typeName, IReadOnlyList<Statement> body, List<PropertyDef> propertyDefs)
+    {
+        // Collect init properties without defaults
+        var initPropsWithoutDefaults = propertyDefs
+            .Where(p => p.Accessor == PropertyAccessor.Init && !p.IsFunctionStyle && p.DefaultValue == null)
+            .ToList();
+
+        if (initPropsWithoutDefaults.Count == 0)
+            return;
+
+        // Find all __init__ methods (constructors)
+        var initMethods = body.OfType<FunctionDef>().Where(f => f.Name == "__init__").ToList();
+
+        if (initMethods.Count == 0)
+        {
+            // No constructor at all — all init properties without defaults are unassigned
+            foreach (var prop in initPropsWithoutDefaults)
+            {
+                AddError(_context,
+                    $"Init property '{prop.Name}' in '{typeName}' must be assigned in every constructor",
+                    prop.LineStart, prop.ColumnStart,
+                    code: DiagnosticCodes.Validation.InitPropertyNotAssigned,
+                    span: prop.Span);
+            }
+            return;
+        }
+
+        // Check each constructor
+        foreach (var initMethod in initMethods)
+        {
+            var assignedNames = CollectSelfAssignments(initMethod.Body);
+            foreach (var prop in initPropsWithoutDefaults)
+            {
+                if (!assignedNames.Contains(prop.Name))
+                {
+                    AddError(_context,
+                        $"Init property '{prop.Name}' in '{typeName}' must be assigned in every constructor",
+                        initMethod.LineStart, initMethod.ColumnStart,
+                        code: DiagnosticCodes.Validation.InitPropertyNotAssigned,
+                        span: initMethod.Span);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Collects names of members assigned via self.{name} = ... in a method body.
+    /// Only checks top-level statements (not inside conditionals/loops).
+    /// </summary>
+    private static HashSet<string> CollectSelfAssignments(IReadOnlyList<Statement> body)
+    {
+        var assigned = new HashSet<string>();
+        foreach (var stmt in body)
+        {
+            if (stmt is Assignment { Operator: AssignmentOperator.Assign, Target: MemberAccess { Object: Identifier { Name: "self" }, Member: var member } })
+            {
+                assigned.Add(member);
+            }
+        }
+        return assigned;
     }
 
     /// <summary>
