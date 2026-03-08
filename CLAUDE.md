@@ -372,5 +372,6 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 - `dotnet10.yml` — Active; tests on .NET 10
 - `python-build-tools.yml` — Runs pytest for `build_tools/` on Python 3.12
 - `benchmarks.yml` — Performance benchmarks
+- `vscode-extension.yml` — VS Code extension CI
 
 An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
