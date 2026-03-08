@@ -1,1 +1,1 @@
-map with explicit type params generates invalid C# (CS0103: Map not in scope)
+map() generic type inference limitation (SPY0237) — #346
