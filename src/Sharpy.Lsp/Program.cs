@@ -32,6 +32,11 @@ public class Program
             options
                 .WithInput(Console.OpenStandardInput())
                 .WithOutput(Console.OpenStandardOutput())
+                .WithServerInfo(new ServerInfo
+                {
+                    Name = "sharpyc",
+                    Version = Compiler.VersionInfo.InformationalVersion,
+                })
                 .ConfigureLogging(logging =>
                 {
                     logging.SetMinimumLevel(LogLevel.Information);

@@ -1,5 +1,24 @@
 <Project>
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Sharpy toolchain version (single version for Compiler + Core + CLI + LSP) -->
+    <SharpyVersion>0.1.0</SharpyVersion>
+    <Version>$(SharpyVersion)</Version>
+    <AssemblyVersion>$(SharpyVersion).0</AssemblyVersion>
+    <FileVersion>$(SharpyVersion).0</FileVersion>
   </PropertyGroup>
+
+  <!-- Embed git commit hash into InformationalVersion at build time -->
+  <Target Name="_SetSharpyInformationalVersion" BeforeTargets="GetAssemblyVersion;GenerateAssemblyInfo">
+    <Exec Command="git -C &quot;$(MSBuildThisFileDirectory)&quot; rev-parse --short HEAD" ConsoleToMsBuild="true" StandardOutputImportance="low" ContinueOnError="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_SharpyCommitHash" />
+    </Exec>
+    <PropertyGroup>
+      <_SharpyCommitHash Condition="'$(_SharpyCommitHash)' == ''">unknown</_SharpyCommitHash>
+      <InformationalVersion>$(SharpyVersion)+$(_SharpyCommitHash)</InformationalVersion>
+      <!-- Prevent .NET SDK from appending SourceRevisionId to InformationalVersion -->
+      <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    </PropertyGroup>
+  </Target>
 </Project>

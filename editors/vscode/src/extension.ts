@@ -52,13 +52,16 @@ function createClient(context: ExtensionContext): LanguageClient {
   return lc;
 }
 
-function updateStatusBar(running: boolean): void {
+function updateStatusBar(running: boolean, toolchainVersion?: string): void {
   if (!statusBarItem) {
     return;
   }
   if (running) {
-    statusBarItem.text = "$(check) Sharpy";
-    statusBarItem.tooltip = "Sharpy Language Server is running";
+    const versionSuffix = toolchainVersion ? ` v${toolchainVersion}` : "";
+    statusBarItem.text = `$(check) Sharpy${versionSuffix}`;
+    statusBarItem.tooltip = toolchainVersion
+      ? `Sharpy Language Server is running\nToolchain: ${toolchainVersion}`
+      : "Sharpy Language Server is running";
   } else {
     statusBarItem.text = "$(warning) Sharpy";
     statusBarItem.tooltip = "Sharpy Language Server is stopped";
@@ -69,7 +72,8 @@ async function startClient(context: ExtensionContext): Promise<void> {
   client = createClient(context);
   try {
     await client.start();
-    updateStatusBar(true);
+    const serverVersion = client.initializeResult?.serverInfo?.version;
+    updateStatusBar(true, serverVersion);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     client.outputChannel.appendLine(`Failed to start server: ${msg}`);

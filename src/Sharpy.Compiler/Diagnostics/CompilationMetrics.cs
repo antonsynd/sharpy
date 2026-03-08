@@ -24,8 +24,7 @@ namespace Sharpy.Compiler.Diagnostics;
 /// </remarks>
 public class CompilationMetrics
 {
-    internal static readonly string CompilerVersion =
-        typeof(CompilationMetrics).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+    internal static readonly string CompilerVersion = VersionInfo.InformationalVersion;
 
     private readonly List<PhaseMetric> _phases = new();
     private PhaseMetric? _currentPhase;

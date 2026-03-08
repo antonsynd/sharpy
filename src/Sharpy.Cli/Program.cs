@@ -19,6 +19,13 @@ class Program
 
     static int Main(string[] args)
     {
+        // Handle --version before System.CommandLine to show our custom format
+        if (args.Length == 1 && args[0] == "--version")
+        {
+            Console.WriteLine(VersionInfo.GetDetailedDisplayString());
+            return 0;
+        }
+
         var rootCommand = new RootCommand("sharpyc - Sharpy Compiler");
 
         // === Global Options (Recursive = true so they propagate to all subcommands) ===
