@@ -87,6 +87,119 @@ public class BuiltinReturnTypeInferenceTests
     }
 
     [Fact]
+    public void Enumerate_Returns_Iterator_Of_Tuple_Int_Element()
+    {
+        var argTypes = new List<SemanticType>
+        {
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Str } }
+        };
+        var result = BuiltinReturnTypeInference.InferReturnType(Enumerate, argTypes, _typeInference);
+        Assert.NotNull(result);
+        Assert.IsType<GenericType>(result);
+        var gt = (GenericType)result!;
+        Assert.Equal(Iterator, gt.Name);
+        Assert.Single(gt.TypeArguments);
+        Assert.IsType<TupleType>(gt.TypeArguments[0]);
+        var tuple = (TupleType)gt.TypeArguments[0];
+        Assert.Equal(2, tuple.ElementTypes.Count);
+        Assert.Equal(SemanticType.Int, tuple.ElementTypes[0]);
+        Assert.Equal(SemanticType.Str, tuple.ElementTypes[1]);
+    }
+
+    [Fact]
+    public void Enumerate_With_Start_Returns_Iterator_Of_Tuple()
+    {
+        var argTypes = new List<SemanticType>
+        {
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Int } },
+            SemanticType.Int
+        };
+        var result = BuiltinReturnTypeInference.InferReturnType(Enumerate, argTypes, _typeInference);
+        Assert.NotNull(result);
+        Assert.IsType<GenericType>(result);
+        var gt = (GenericType)result!;
+        Assert.Equal(Iterator, gt.Name);
+        var tuple = (TupleType)gt.TypeArguments[0];
+        Assert.Equal(SemanticType.Int, tuple.ElementTypes[0]);
+        Assert.Equal(SemanticType.Int, tuple.ElementTypes[1]);
+    }
+
+    [Fact]
+    public void Zip_Returns_Iterator_Of_Tuple_Two_Elements()
+    {
+        var argTypes = new List<SemanticType>
+        {
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Int } },
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Str } }
+        };
+        var result = BuiltinReturnTypeInference.InferReturnType(Zip, argTypes, _typeInference);
+        Assert.NotNull(result);
+        Assert.IsType<GenericType>(result);
+        var gt = (GenericType)result!;
+        Assert.Equal(Iterator, gt.Name);
+        Assert.Single(gt.TypeArguments);
+        Assert.IsType<TupleType>(gt.TypeArguments[0]);
+        var tuple = (TupleType)gt.TypeArguments[0];
+        Assert.Equal(2, tuple.ElementTypes.Count);
+        Assert.Equal(SemanticType.Int, tuple.ElementTypes[0]);
+        Assert.Equal(SemanticType.Str, tuple.ElementTypes[1]);
+    }
+
+    [Fact]
+    public void Zip_Returns_Iterator_Of_Tuple_Three_Elements()
+    {
+        var argTypes = new List<SemanticType>
+        {
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Int } },
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Str } },
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Bool } }
+        };
+        var result = BuiltinReturnTypeInference.InferReturnType(Zip, argTypes, _typeInference);
+        Assert.NotNull(result);
+        var gt = (GenericType)result!;
+        Assert.Equal(Iterator, gt.Name);
+        var tuple = (TupleType)gt.TypeArguments[0];
+        Assert.Equal(3, tuple.ElementTypes.Count);
+        Assert.Equal(SemanticType.Int, tuple.ElementTypes[0]);
+        Assert.Equal(SemanticType.Str, tuple.ElementTypes[1]);
+        Assert.Equal(SemanticType.Bool, tuple.ElementTypes[2]);
+    }
+
+    [Fact]
+    public void Map_Returns_Iterator_Of_Return_Type()
+    {
+        var funcType = new FunctionType
+        {
+            ParameterTypes = new List<SemanticType> { SemanticType.Int },
+            ReturnType = SemanticType.Str
+        };
+        var argTypes = new List<SemanticType>
+        {
+            funcType,
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Int } }
+        };
+        var result = BuiltinReturnTypeInference.InferReturnType(Map, argTypes, _typeInference);
+        Assert.NotNull(result);
+        Assert.IsType<GenericType>(result);
+        var gt = (GenericType)result!;
+        Assert.Equal(Iterator, gt.Name);
+        Assert.Single(gt.TypeArguments);
+        Assert.Equal(SemanticType.Str, gt.TypeArguments[0]);
+    }
+
+    [Fact]
+    public void Map_With_Non_FunctionType_Returns_Null()
+    {
+        var argTypes = new List<SemanticType>
+        {
+            SemanticType.Str,
+            new GenericType { Name = List, TypeArguments = new List<SemanticType> { SemanticType.Int } }
+        };
+        var result = BuiltinReturnTypeInference.InferReturnType(Map, argTypes, _typeInference);
+        Assert.Null(result);
+    }
+
+    [Fact]
     public void Unknown_Function_Returns_Null()
     {
         var argTypes = new List<SemanticType> { SemanticType.Int };

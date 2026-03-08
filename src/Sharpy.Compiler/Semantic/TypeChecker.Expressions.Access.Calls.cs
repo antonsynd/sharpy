@@ -1016,6 +1016,8 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // Update the identifier symbol to point to the matching overload
+        _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
         // Record the resolved call target for codegen
         _semanticInfo.SetCallTarget(call, matchingOverload);
 

@@ -222,6 +222,12 @@ internal class ImportResolver
                                 // Fallback: error recovery modules may register symbols under alias name
                                 _logger.LogDebug($"  Defining imported symbol (alias fallback): {registerName} ({symbol.Kind})");
                                 symbolTable.TryDefine(symbol);
+
+                                // Propagate function overloads for alias fallback path
+                                if (moduleInfo.FunctionOverloads.TryGetValue(registerName, out var fallbackOverloads) && fallbackOverloads.Count > 1)
+                                {
+                                    symbolTable.DefineFunctionOverloads(registerName, fallbackOverloads);
+                                }
                             }
                             else
                             {
