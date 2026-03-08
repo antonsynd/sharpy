@@ -23,6 +23,9 @@ CORE_DIR: Path = SRC_DIR / "Sharpy.Core"
 CORE_TEST_DIR: Path = SRC_DIR / "Sharpy.Core.Tests"
 CLI_DIR: Path = SRC_DIR / "Sharpy.Cli"
 
+EDITORS_DIR: Path = ROOT_DIR / "editors"
+VSCODE_EXT_DIR: Path = EDITORS_DIR / "vscode"
+
 CSHARP_PROJECTS: Sequence[Path] = [
     COMPILER_DIR / "Sharpy.Compiler.csproj",
     CLI_DIR / "Sharpy.Cli.csproj",
@@ -98,7 +101,7 @@ def create_parser() -> argparse.ArgumentParser:
         "--project",
         type=str,
         default="all",
-        choices=("all", "cli", "compiler", "lib", "tests"),
+        choices=("all", "cli", "compiler", "lib", "tests", "vscode"),
     )
     build_parser.add_argument("--release", action="store_true")
     clean_parser = subparsers.add_parser(
@@ -180,6 +183,9 @@ def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     if "project" not in argdict or argdict["project"] in {"all", "tests"}:
         build_tests(release=release)
 
+    if argdict.get("project") == "vscode":
+        build_vscode(production=release)
+
 
 def build_cli(release: bool) -> None:
     build_type: str = "Release" if release else "Debug"
@@ -222,6 +228,35 @@ def build_lib(release: bool) -> None:
         sys.exit(1)
 
 
+def build_vscode(production: bool) -> None:
+    get_logger().info("Building VS Code extension...")
+
+    # Ensure node_modules are installed
+    if not (VSCODE_EXT_DIR / "node_modules").exists():
+        get_logger().info("Installing npm dependencies...")
+        try:
+            subprocess.run(
+                ["npm", "install"],
+                check=True,
+                cwd=VSCODE_EXT_DIR,
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            get_logger().error(f"npm install failed: {e}")
+            sys.exit(1)
+
+    cmd: MutableSequence[str] = ["node", "esbuild.mjs"]
+
+    if production:
+        cmd.append("--production")
+
+    try:
+        subprocess.run(cmd, check=True, cwd=VSCODE_EXT_DIR)
+        get_logger().info("VS Code extension built successfully.")
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        get_logger().error(f"VS Code extension build failed: {e}")
+        sys.exit(1)
+
+
 def build_tests(release: bool) -> None:
     build_type: str = "Release" if release else "Debug"
 
@@ -248,6 +283,21 @@ def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Install VS Code extension dependencies
+    if (VSCODE_EXT_DIR / "package.json").exists():
+        get_logger().info("Installing VS Code extension npm dependencies...")
+        try:
+            subprocess.run(
+                ["npm", "install"],
+                check=True,
+                cwd=VSCODE_EXT_DIR,
+            )
+        except FileNotFoundError:
+            get_logger().warning("npm not found, skipping VS Code extension setup")
+        except subprocess.CalledProcessError as e:
+            print(f"Encountered error {e}", file=sys.stderr)
+            sys.exit(1)
+
 
 def clean(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Cleaning project...")
@@ -257,6 +307,13 @@ def clean(args: argparse.Namespace, rest: Sequence[str]) -> None:
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
+
+    # Clean VS Code extension dist
+    vscode_dist = VSCODE_EXT_DIR / "dist"
+
+    if vscode_dist.exists():
+        get_logger().info("Cleaning VS Code extension dist/...")
+        shutil.rmtree(vscode_dist)
 
 
 def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
