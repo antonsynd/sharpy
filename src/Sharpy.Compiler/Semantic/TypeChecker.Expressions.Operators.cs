@@ -664,7 +664,8 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        if (nullable.UnderlyingType is TypeParameterType typeParam)
+        if (nullable.UnderlyingType is TypeParameterType typeParam
+            && !typeParam.Constraints.Any(c => c is ClassConstraint or StructConstraint))
         {
             AddError(
                 $"'maybe' cannot be used with unconstrained generic type parameter '{typeParam.Name}'. The type parameter must be constrained to either a reference type or value type.",
