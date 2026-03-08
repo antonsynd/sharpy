@@ -51,6 +51,15 @@ internal partial class RoslynEmitter
                 // Generate arguments (reorder for C# compliance if needed)
                 var allArgs = GenerateReorderedCallArguments(call, genericFuncSymbol);
 
+                // Builtin generic functions need qualification: global::Sharpy.Builtins.Map<T>(...)
+                if (_context.IsBuiltinFunction(genericName.Name))
+                {
+                    var qualifiedBase = MakeGlobalQualifiedName("Sharpy", "Builtins");
+                    return InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, qualifiedBase, genericFuncSyntax))
+                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+                }
+
                 return InvocationExpression(genericFuncSyntax)
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }
