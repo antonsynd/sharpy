@@ -1,1 +1,1 @@
-#329: Overload resolution picks wrong OsPath.Join overload
+#337: Module function overload resolution: os.path.join picks wrong overload

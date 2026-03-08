@@ -1,1 +1,1 @@
-#327: Type-only modules - DeriveModuleNameFromNamespace maps Sharpy namespace types to "builtins"
+#336: type(x).__name__ falsely triggers dunder capture error

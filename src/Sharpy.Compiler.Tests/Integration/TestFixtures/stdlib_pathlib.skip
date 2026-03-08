@@ -1,1 +1,1 @@
-#327: Type-only modules - DeriveModuleNameFromNamespace maps Sharpy namespace types to "builtins"
+#338: pathlib.Path missing properties and / operator in CLR discovery
