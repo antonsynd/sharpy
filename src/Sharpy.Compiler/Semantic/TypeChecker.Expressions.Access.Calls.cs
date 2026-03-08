@@ -606,40 +606,46 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Captures all inputs for overload resolution, reducing parameter count on <see cref="ResolveOverloadCore"/>.
+    /// </summary>
+    /// <param name="Candidates">The list of overload candidates.</param>
+    /// <param name="TotalArgCount">Total argument count at the call site.</param>
+    /// <param name="ArgTypes">Resolved argument types.</param>
+    /// <param name="SkipSelfParam">If true, computes per-overload self offset (for instance methods).</param>
+    /// <param name="TypeSubstitution">Optional function to substitute type parameters before comparison.</param>
+    /// <param name="ReturnFirstMatch">If true, returns the first matching overload (builtin behavior).
+    /// If false, collects all matches and disambiguates by exact arity.</param>
+    /// <param name="SkipUnknownTypes">If true, skip type comparison when either side is UnknownType.</param>
+    internal record OverloadResolutionContext(
+        List<FunctionSymbol> Candidates,
+        int TotalArgCount,
+        List<SemanticType> ArgTypes,
+        bool SkipSelfParam = false,
+        Func<SemanticType, SemanticType>? TypeSubstitution = null,
+        bool ReturnFirstMatch = false,
+        bool SkipUnknownTypes = false);
+
+    /// <summary>
     /// Core overload resolution algorithm shared by all overload resolution methods.
     /// Performs two-pass matching: first filters by argument count, then checks type compatibility.
     /// </summary>
-    /// <param name="candidates">The list of overload candidates.</param>
-    /// <param name="totalArgCount">Total argument count at the call site.</param>
-    /// <param name="argTypes">Resolved argument types.</param>
-    /// <param name="skipSelfParam">If true, computes per-overload self offset (for instance methods).</param>
-    /// <param name="typeSubstitution">Optional function to substitute type parameters before comparison.</param>
-    /// <param name="returnFirstMatch">If true, returns the first matching overload (builtin behavior).
-    /// If false, collects all matches and disambiguates by exact arity.</param>
-    /// <param name="skipUnknownTypes">If true, skip type comparison when either side is UnknownType.</param>
     /// <returns>A tuple of (matched overload, arity-filtered candidates, whether resolution was ambiguous).</returns>
     private (FunctionSymbol? Match, List<FunctionSymbol> ArityCandidates, bool IsAmbiguous) ResolveOverloadCore(
-        List<FunctionSymbol> candidates,
-        int totalArgCount,
-        List<SemanticType> argTypes,
-        bool skipSelfParam = false,
-        Func<SemanticType, SemanticType>? typeSubstitution = null,
-        bool returnFirstMatch = false,
-        bool skipUnknownTypes = false)
+        OverloadResolutionContext context)
     {
         int GetSelfOffset(FunctionSymbol o) =>
-            skipSelfParam && o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+            context.SkipSelfParam && o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
 
         // First pass: filter by argument count
-        var arityCandidates = candidates.Where(o =>
+        var arityCandidates = context.Candidates.Where(o =>
         {
             var selfOffset = GetSelfOffset(o);
             var requiredParams = o.Parameters.Skip(selfOffset).Count(p => !p.HasDefault && !p.IsVariadic);
             var hasVariadic = o.Parameters.Skip(selfOffset).Any(p => p.IsVariadic);
             var totalParams = o.Parameters.Count - selfOffset;
             if (hasVariadic)
-                return totalArgCount >= requiredParams;
-            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
+                return context.TotalArgCount >= requiredParams;
+            return context.TotalArgCount >= requiredParams && context.TotalArgCount <= totalParams;
         }).ToList();
 
         // Second pass: check type compatibility
@@ -650,7 +656,7 @@ internal partial class TypeChecker
             bool typesMatch = true;
             var variadicParam = overload.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
 
-            for (int i = 0; i < argTypes.Count; i++)
+            for (int i = 0; i < context.ArgTypes.Count; i++)
             {
                 SemanticType expectedType;
                 var paramIdx = i + selfOffset;
@@ -668,13 +674,13 @@ internal partial class TypeChecker
                     break;
                 }
 
-                if (typeSubstitution != null)
-                    expectedType = typeSubstitution(expectedType);
+                if (context.TypeSubstitution != null)
+                    expectedType = context.TypeSubstitution(expectedType);
 
-                if (skipUnknownTypes && (expectedType is UnknownType || argTypes[i] is UnknownType))
+                if (context.SkipUnknownTypes && (expectedType is UnknownType || context.ArgTypes[i] is UnknownType))
                     continue;
 
-                if (!IsAssignable(argTypes[i], expectedType))
+                if (!IsAssignable(context.ArgTypes[i], expectedType))
                 {
                     typesMatch = false;
                     break;
@@ -682,20 +688,20 @@ internal partial class TypeChecker
             }
             if (typesMatch)
             {
-                if (returnFirstMatch)
+                if (context.ReturnFirstMatch)
                     return (overload, arityCandidates, false);
                 matchingOverloads.Add(overload);
             }
         }
 
-        if (returnFirstMatch)
+        if (context.ReturnFirstMatch)
             return (null, arityCandidates, false);
 
         // Disambiguate: prefer exact arity match
         if (matchingOverloads.Count > 1)
         {
             var exactArityMatches = matchingOverloads.Where(o =>
-                o.Parameters.Count - GetSelfOffset(o) == totalArgCount
+                o.Parameters.Count - GetSelfOffset(o) == context.TotalArgCount
             ).ToList();
 
             if (exactArityMatches.Count == 1)
@@ -727,7 +733,7 @@ internal partial class TypeChecker
             return null;
 
         var (matchingOverload, _, _) = ResolveOverloadCore(
-            overloads!, totalArgCount, argTypes, returnFirstMatch: true);
+            new OverloadResolutionContext(overloads!, totalArgCount, argTypes, ReturnFirstMatch: true));
 
         if (matchingOverload != null)
         {
@@ -827,9 +833,9 @@ internal partial class TypeChecker
         }
 
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
-            overloads, totalArgCount, argTypes,
-            skipSelfParam: true, typeSubstitution: typeSubstitution,
-            skipUnknownTypes: true);
+            new OverloadResolutionContext(overloads, totalArgCount, argTypes,
+                SkipSelfParam: true, TypeSubstitution: typeSubstitution,
+                SkipUnknownTypes: true));
 
         if (isAmbiguous)
         {
@@ -935,7 +941,7 @@ internal partial class TypeChecker
             return null;
 
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
-            overloads, totalArgCount, argTypes, skipUnknownTypes: true);
+            new OverloadResolutionContext(overloads, totalArgCount, argTypes, SkipUnknownTypes: true));
 
         if (isAmbiguous)
         {
@@ -1004,7 +1010,7 @@ internal partial class TypeChecker
         }
 
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
-            overloads!, totalArgCount, argTypes, skipUnknownTypes: true);
+            new OverloadResolutionContext(overloads!, totalArgCount, argTypes, SkipUnknownTypes: true));
 
         if (isAmbiguous)
         {
