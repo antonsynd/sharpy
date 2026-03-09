@@ -508,10 +508,16 @@ internal partial class TypeChecker
             }
         }
 
-        // If callee type is Unknown, this is error recovery from a sub-expression
-        // (covered by transitive error recovery tracking in CheckExpression).
+        // If callee type is Unknown, this is error recovery from a sub-expression.
+        // Explicitly mark the FunctionCall as error recovery as a safety net — transitive
+        // tracking in CheckExpression usually handles this, but some paths (e.g., property
+        // type resolution) can return Unknown without marking or emitting an error.
         // Otherwise, the callee evaluated to a non-callable type — emit an error.
-        if (calleeType is not UnknownType)
+        if (calleeType is UnknownType)
+        {
+            MarkExpressionAsErrorRecovery(call);
+        }
+        else
         {
             AddError($"Expression of type '{calleeType.GetDisplayName()}' is not callable",
                 call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction,
