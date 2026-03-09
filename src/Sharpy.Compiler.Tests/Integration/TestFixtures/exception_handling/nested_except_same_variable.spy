@@ -1,0 +1,12 @@
+def main():
+    try:
+        raise ValueError("outer")
+    except ValueError as e:
+        outer_msg: str = "caught: outer"
+        print(outer_msg)
+        try:
+            raise TypeError("inner")
+        except TypeError as e:
+            inner_msg: str = "caught: inner"
+            print(inner_msg)
+    print("done")

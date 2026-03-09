@@ -1801,26 +1801,59 @@ internal partial class RoslynEmitter
     {
         return handlers.Select(handler =>
         {
-            var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
-
             if (handler.ExceptionType != null)
             {
                 var exceptionType = _typeMapper.MapType(handler.ExceptionType);
 
                 if (handler.Name != null)
                 {
-                    var exceptionVar = NameMangler.ToCamelCase(handler.Name);
+                    var baseName = NameMangler.ToCamelCase(handler.Name);
+
+                    // Track exception variable in _variableVersions so nested
+                    // catch clauses with the same name get versioned (e, e_1, ...)
+                    // to avoid CS0136 in generated C#.
+                    var hadPrevious = _variableVersions.TryGetValue(baseName, out var previousVersion);
+                    if (hadPrevious)
+                    {
+                        var newVersion = previousVersion + 1;
+                        _variableVersions[baseName] = newVersion;
+                    }
+                    else
+                    {
+                        _variableVersions[baseName] = 0;
+                    }
+
+                    var exceptionVar = hadPrevious
+                        ? $"{baseName}_{_variableVersions[baseName]}"
+                        : baseName;
+
+                    _sourceVariableNames.Add(baseName);
+
+                    var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
                     var declaration = CatchDeclaration(exceptionType, Identifier(exceptionVar));
+
+                    // Restore previous version state after generating the catch body
+                    if (hadPrevious)
+                    {
+                        _variableVersions[baseName] = previousVersion;
+                    }
+                    else
+                    {
+                        _variableVersions.Remove(baseName);
+                    }
+
                     return CatchClause(declaration, null, catchBlock);
                 }
                 else
                 {
+                    var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
                     var declaration = CatchDeclaration(exceptionType);
                     return CatchClause(declaration, null, catchBlock);
                 }
             }
             else
             {
+                var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
                 return CatchClause()
                     .WithBlock(catchBlock);
             }
