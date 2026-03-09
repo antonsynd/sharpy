@@ -1,0 +1,18 @@
+MULTIPLIER: int = 10
+GREETING: str = "Hello"
+
+def multiply(x: int) -> int:
+    return x * MULTIPLIER
+
+def greet(name: str) -> str:
+    return GREETING + " " + name
+
+class Calculator:
+    def scale(self, value: int) -> int:
+        return value * MULTIPLIER
+
+def main():
+    print(multiply(5))
+    print(greet("World"))
+    calc = Calculator()
+    print(calc.scale(3))
