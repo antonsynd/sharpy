@@ -965,7 +965,7 @@ internal partial class RoslynEmitter
             var objectType = GetExpressionSemanticType(memberAccess.Object);
             if (objectType is Semantic.UserDefinedType objUdt && objUdt.Symbol is TypeSymbol typeSymbol)
             {
-                var field = typeSymbol.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
+                var field = typeSymbol.Fields.Find(f => f.Name == memberAccess.Member);
                 if (field != null &&
                     GetVariableType(field) is Semantic.UserDefinedType fieldUdt &&
                     fieldUdt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
@@ -973,7 +973,7 @@ internal partial class RoslynEmitter
                     return true;
                 }
 
-                var prop = typeSymbol.Properties.FirstOrDefault(p => p.Name == memberAccess.Member);
+                var prop = typeSymbol.Properties.Find(p => p.Name == memberAccess.Member);
                 if (prop?.Type is Semantic.UserDefinedType propUdt &&
                     propUdt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
                 {

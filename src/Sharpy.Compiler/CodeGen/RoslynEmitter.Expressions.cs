@@ -239,6 +239,7 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Fallback type resolution when SemanticInfo doesn't have an expression type recorded.
     /// Resolves identifiers via their symbol and member access (self.x) via the current type's fields/properties.
+    /// TODO(#360): This is a codegen-layer workaround — move type resolution to the semantic phase.
     /// </summary>
     private SemanticType? ResolveExpressionTypeFromSymbols(Sharpy.Compiler.Parser.Ast.Expression expr)
     {
