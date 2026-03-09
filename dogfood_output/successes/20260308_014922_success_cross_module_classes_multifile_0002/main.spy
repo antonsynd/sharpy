@@ -1,0 +1,38 @@
+# Main entry point - tests cross-module class usage
+from inventory import Item, Product
+from inventory_utils import count_products, get_item_names, get_product_prices
+
+def main():
+    # Create items
+    item1: Item = Item("Generic", 5)
+    prod1: Product = Product("Widget", 10, 2.5)
+    prod2: Product = Product("Gadget", 3, 5.0)
+    
+    items: list[Item] = [item1, prod1, prod2]
+    products: list[Product] = [prod1, prod2]
+    
+    # Test basic inheritance
+    print(item1.get_name())
+    print(item1.get_quantity())
+    
+    # Test subclass methods
+    print(prod1.get_name())
+    print(prod1.get_quantity())
+    print(prod1.get_price())
+    
+    # Test cross-module utility functions
+    print(count_products(items))
+    
+    # Get names via cross-module utility
+    names: list[str] = get_item_names(items)
+    print(len(names))
+    
+    # Get product info
+    print(prod1.get_item_info())
+    print(prod2.get_item_info())
+    
+    # Test isinstance with different types
+    print(isinstance(item1, Item))
+    print(isinstance(prod1, Item))
+    print(isinstance(prod1, Product))
+    print(isinstance(item1, Product))

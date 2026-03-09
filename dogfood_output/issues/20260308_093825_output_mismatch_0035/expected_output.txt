@@ -1,0 +1,8 @@
+Entity: TestEntity (ID: 1)
+[ActiveItem] Content
+Default is Active
+5.0
+Completed
+Renderable: PolyName
+Pending
+Active

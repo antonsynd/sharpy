@@ -1,0 +1,25 @@
+from module_utils import is_sorted, find_min, Cache
+from module_shapes import Circle, Rectangle
+
+def main():
+    # Test utility functions from module_utils
+    print(is_sorted([1, 2, 3]))
+    nums: list[int] = [5, 2, 8, 1, 9]
+    print(find_min(nums))
+
+    # Test generic Cache class
+    cache: Cache[str] = Cache[str](3)
+    cache.add("alpha")
+    cache.add("beta")
+    print(cache.get_size())
+
+    # Test shapes with inheritance from module_shapes
+    c = Circle("C1", 0.0, 0.0, 5.0)
+    r = Rectangle("R1", 10.0, 10.0, 4.0, 6.0)
+
+    # Test method calls directly on instances
+    area: float = c.get_area()
+    print(area)
+
+    desc: str = r.get_description()
+    print(desc)

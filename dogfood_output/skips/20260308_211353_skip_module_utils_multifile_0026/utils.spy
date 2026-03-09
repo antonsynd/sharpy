@@ -1,0 +1,46 @@
+# Utils module: utility functions and operations
+from types import SizeCategory
+from shapes import Rectangle
+
+# Counter class
+class Counter:
+    _count: int
+    _limit: int
+    
+    def __init__(self, limit: int):
+        self._count = 0
+        self._limit = limit
+    
+    def increment(self) -> None:
+        self._count = self._count + 1
+        if self._count >= self._limit:
+            print("Limit reached")
+    
+    def get_count(self) -> int:
+        return self._count
+    
+    def reset(self) -> None:
+        self._count = 0
+
+# Function with positional and keyword-only parameters
+def scale_factor(value: float, /, multiplier: float = 2.0) -> float:
+    return value * multiplier
+
+# Generic identity function
+def identity[T](value: T) -> T:
+    return value
+
+# Enum iteration helper
+def list_sizes() -> list[str]:
+    sizes: list[str] = []
+    sizes.append("Small")
+    sizes.append("Medium")
+    sizes.append("Large")
+    return sizes
+
+# Distance calculator
+def distance(x1: float, y1: float, x2: float, y2: float) -> float:
+    dx: float = x2 - x1
+    dy: float = y2 - y1
+    result: float = (dx * dx + dy * dy) ** 0.5
+    return result

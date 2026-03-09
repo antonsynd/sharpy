@@ -1,0 +1,16 @@
+Internal compiler error: Compilation errors:
+
+error[SPY0907]: Internal: type inference produced UnknownType for 'diff_calc()' without a corresponding error diagnostic. This is a compiler bug.
+  --> /tmp/tmpi14qiu56/dogfood_test.spy:73:16
+    |
+ 73 |         diff = diff_calc(self.get_area(), other.get_area())
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0907]: Internal: type inference produced UnknownType for 'complex_calc()' without a corresponding error diagnostic. This is a compiler bug.
+  --> /tmp/tmpi14qiu56/dogfood_test.spy:124:11
+     |
+ 124 |     print(complex_calc(3, 4))
+     |           ^^^^^^^^^^^^^^^^^^
+     |
+

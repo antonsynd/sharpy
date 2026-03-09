@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Service' has no member 'total_cost'
+  --> /tmp/tmpxc0u3262/main.spy:41:11
+    |
+ 41 |     print(s.total_cost)
+    |           ^^^^^^^^^^^^
+    |
+

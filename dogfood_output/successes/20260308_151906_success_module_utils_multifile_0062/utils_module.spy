@@ -1,0 +1,19 @@
+# Utility module with helper functions
+# Tests enum matching and struct formatting across modules
+from types_module import Point, Color
+
+def format_point(p: Point) -> str:
+    x_str: str = str(p.x)
+    y_str: str = str(p.y)
+    return "(" + x_str + ", " + y_str + ")"
+
+def color_to_string(c: Color) -> str:
+    match c:
+        case Color.RED:
+            return "Red"
+        case Color.GREEN:
+            return "Green"
+        case Color.BLUE:
+            return "Blue"
+        case _:
+            return "Other"

@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-08T17:56:45.487974",
+  "generated_code": "# Test: try/except/finally with custom validation and state cleanup\n# Combines: classes, multiple exception types, finally for state reset\n\nclass ValidationError(Exception):\n    message: str\n    def __init__(self, msg: str):\n        self.message = msg\n\nclass DataProcessor:\n    data: list[int]\n    is_processing: bool\n    processed_count: int\n    error_count: int\n    \n    def __init__(self):\n        self.data = []\n        self.is_processing = False\n        self.processed_count = 0\n        self.error_count = 0\n    \n    def clear(self) -> None:\n        self.data = []\n        self.is_processing = False\n    \n    def validate_and_add(self, value: int) -> None:\n        self.is_processing = True\n        try:\n            if value < 0:\n                raise ValueError(\"Negative values not allowed\")\n            if value > 100:\n                raise ValidationError(\"Value exceeds maximum of 100\")\n            self.data.append(value)\n            self.processed_count += 1\n        except ValueError as e:\n            self.error_count += 1\n            print(f\"ValueError: {e}\")\n        except ValidationError as e:\n            self.error_count += 1\n            print(f\"ValidationError: {e.message}\")\n        finally:\n            self.is_processing = False\n\ndef main():\n    processor = DataProcessor()\n    \n    # Test various inputs\n    processor.validate_and_add(50)\n    processor.validate_and_add(-5)\n    processor.validate_and_add(150)\n    processor.validate_and_add(75)\n    \n    print(f\"Processed: {processor.processed_count}\")\n    print(f\"Errors: {processor.error_count}\")\n    print(f\"Data: {len(processor.data)}\")\n    \n    for item in processor.data:\n        print(item)\n",
+  "expected_output": "Processed: 2\nErrors: 2\nData: 2\n50\n75\n",
+  "actual_output": "ValueError: Sharpy.ValueError: Negative values not allowed\n   at DogfoodTest.DataProcessor.ValidateAndAdd(Int32 value) in /tmp/tmpkaq4p57l/dogfood_test.spy:line 29\nValidationError: Value exceeds maximum of 100\nProcessed: 2\nErrors: 2\nData: 2\n50\n75",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "try_except_finally",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 54.99550199508667,
+  "compilation_duration": null,
+  "execution_duration": 5.038595914840698,
+  "source_files": null
+}

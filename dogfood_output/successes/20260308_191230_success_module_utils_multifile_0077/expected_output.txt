@@ -1,0 +1,8 @@
+Green
+5.0
+78.53975
+50.0
+Drawing: TestObject
+120
+25
+3.3

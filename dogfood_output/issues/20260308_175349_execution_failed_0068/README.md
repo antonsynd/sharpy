@@ -1,0 +1,175 @@
+# Issue Report: execution_failed
+
+**Timestamp:** 2026-03-08T17:43:53.562174
+**Type:** execution_failed
+**Feature Focus:** collection_methods
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: Collection method choreography in stock management workflow
+# Demonstrates: list append/count/extend/index/pop/sort, dict get/items/keys/values,
+# set add/difference/discard, with enums and inheritance hierarchy
+
+enum ProductType:
+    DIGITAL = 1
+    PHYSICAL = 2
+
+type SKU = int
+type Quantity = int
+
+class StockTracker:
+    inventory: dict[SKU, Quantity]
+    categories: dict[SKU, ProductType]
+    orders: list[SKU]
+    history: list[str]
+    
+    def __init__(self):
+        self.inventory = {}
+        self.categories = {}
+        self.orders = []
+        self.history = []
+    
+    def add_product(self, sku: SKU, qty: Quantity, ptype: ProductType) -> None:
+        self.inventory[sku] = qty
+        self.categories[sku] = ptype
+        self.orders.append(sku)
+        self.history.append(f"added_{sku}")
+    
+    def get_inventory_value(self) -> Quantity:
+        total: Quantity = 0
+        for qty in self.inventory.values():
+            total = total + qty
+        return total
+    
+    def get_category_counts(self) -> dict[ProductType, int]:
+        counts: dict[ProductType, int] = {}
+        for cat in self.categories.items():
+            ptype: ProductType = cat[1]
+            current: int = counts.get(ptype, 0)
+            counts[ptype] = current + 1
+        return counts
+
+class Warehouse(StockTracker):
+    restricted: set[SKU]
+    
+    def __init__(self):
+        super().__init__()
+        self.restricted = set()
+    
+    def restrict_items(self, targets: list[SKU]) -> None:
+        for sku in targets:
+            self.restricted.add(sku)
+    
+    def unrestrict_item(self, sku: SKU) -> None:
+        self.restricted.discard(sku)
+    
+    def pop_smallest_restricted(self) -> SKU:
+        temp: list[SKU] = []
+        for s in self.restricted:
+            temp.append(s)
+        temp.sort()
+        first: SKU = temp[0]
+        self.restricted.discard(first)
+        return first
+    
+    def get_shippable_digital(self) -> list[SKU]:
+        digital: set[SKU] = set()
+        for sku, cat in self.categories.items():
+            if cat == ProductType.DIGITAL:
+                digital.add(sku)
+        
+        allowed: set[SKU] = digital.difference(self.restricted)
+        result: list[SKU] = []
+        for s in allowed:
+            result.append(s)
+        result.sort()
+        return result
+    
+    def merge_logs(self, extra: list[str]) -> None:
+        self.history.extend(extra)
+    
+    def find_order_index(self, target: SKU) -> int:
+        if target in self.orders:
+            return self.orders.index(target)
+        return -1
+
+def main():
+    warehouse = Warehouse()
+    
+    # Setup: Add products (3 digital, 1 physical)
+    warehouse.add_product(201, 10, ProductType.DIGITAL)
+    warehouse.add_product(202, 5, ProductType.PHYSICAL)
+    warehouse.add_product(203, 20, ProductType.DIGITAL)
+    warehouse.add_product(204, 15, ProductType.DIGITAL)
+    
+    # Restrict some items
+    warehouse.restrict_items([201, 203])
+    
+    # Pop smallest restricted
+    popped = warehouse.pop_smallest_restricted()
+    print(popped)
+    
+    # Check remaining restricted
+    remaining: list[SKU] = []
+    for s in warehouse.restricted:
+        remaining.append(s)
+    print(remaining[0])
+    
+    # Unrestrict and get shippable digital items
+    warehouse.unrestrict_item(203)
+    shippable = warehouse.get_shippable_digital()
+    print(shippable[0])
+    print(shippable[1])
+    
+    # Total inventory value
+    print(warehouse.get_inventory_value())
+    
+    # Digital product count via dict get
+    cat_counts = warehouse.get_category_counts()
+    print(cat_counts.get(ProductType.DIGITAL, 0))
+    
+    # Find order index
+    print(warehouse.find_order_index(204))
+    
+    # Extend and count in history
+    warehouse.merge_logs(["audit_1", "audit_2"])
+    print(warehouse.history.count("audit_1"))
+
+```
+
+## Error
+
+```
+Unhandled exception. Sharpy.ValueError: 204 is not in list
+   at Sharpy.List`1.Index(T x, Int32 start, Int32 end)
+   at DogfoodTest.Warehouse.FindOrderIndex(Int32 target) in /tmp/tmpglyi3ncg/dogfood_test.spy:line 85
+   at DogfoodTest.Main() in /tmp/tmpglyi3ncg/dogfood_test.spy:line 124
+
+```
+
+## Compiler Output
+
+```
+201
+203
+201
+203
+50
+3
+
+```
+
+## Generated C#
+
+```csharp
+Generated C# code written to: /tmp/tmpglyi3ncg/dogfood_test.cs
+
+```
+
+## Timing
+
+- Generation: 579.47s
+- Execution: 6.61s

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T08:28:04.420169",
+  "generated_code": "enum Priority:\n    LOW = 10\n    MEDIUM = 20\n    HIGH = 30\n    CRITICAL = 100\n\ndef describe_priority(p: Priority) -> str:\n    return f\"{p.name} (score: {p.value})\"\n\ndef should_alert(p: Priority) -> bool:\n    return p.value >= 30\n\ndef main():\n    p1: Priority = Priority.MEDIUM\n    p2: Priority = Priority.HIGH\n    \n    print(describe_priority(p1))\n    print(describe_priority(p2))\n    \n    for p in Priority:\n        if should_alert(p):\n            print(f\"ALERT: {p.name}\")\n        else:\n            print(f\"OK: {p.name}\")\n",
+  "expected_output": "Medium (score: 20)\nHigh (score: 30)\nOK: Low\nOK: Medium\nALERT: High\nALERT: Critical\n",
+  "actual_output": "Medium (score: 20)\nHigh (score: 30)\nOK: Low\nOK: Medium\nALERT: High\nALERT: Critical",
+  "feature_focus": "enum_name_value",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 70.42798328399658,
+  "execution_duration": 5.041255950927734,
+  "source_files": null
+}

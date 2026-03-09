@@ -1,0 +1,21 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-08T12:37:16.692700",
+  "generated_code": "from geometry_utils import Rectangle, Circle, total_area, average_perimeter\n\ndef main():\n    # Create some shapes for testing\n    rect1 = Rectangle(5.0, 3.0)\n    rect2 = Rectangle(4.0, 4.0)\n    circle = Circle(2.0)\n\n    # Create a list of shapes\n    shapes: list[Shape] = [rect1, rect2, circle]\n\n    # Test individual areas\n    print(rect1.area())\n    print(circle.area())\n\n    # Test total area function\n    total: float = total_area(shapes)\n    print(total)\n\n    # Test average perimeter function\n    avg_perim: float = average_perimeter(shapes)\n    print(avg_perim)\n",
+  "expected_output": "15.0\n12.56636\n43.56636\n16.094213333333333\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0513]: 'GeometryUtils.Shape.Area()' is abstract but it is contained in non-abstract type 'GeometryUtils.Shape'\n  --> geometry_utils.cs:14:32\n    |\n 14 |     print(circle.area())\n    |                         ^\n    |\n\nerror[CS0513]: 'GeometryUtils.Shape.Perimeter()' is abstract but it is contained in non-abstract type 'GeometryUtils.Shape'\n  --> geometry_utils.cs:15:32\n    |\n 15 | \n    | ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 124.86976289749146,
+  "compilation_duration": null,
+  "execution_duration": 4.970982074737549,
+  "source_files": {
+    "geometry_utils.spy": "# Geometry utilities module with shapes and calculation functions\n# NOTE: math module is not available - using direct calculations\n\nclass Shape:\n    @abstract\n    def area(self) -> float: ...\n\n    @abstract\n    def perimeter(self) -> float: ...\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n\n    def __init__(self, width: float, height: float):\n        self.width = width\n        self.height = height\n\n    @override\n    def area(self) -> float:\n        return self.width * self.height\n\n    @override\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)\n\nclass Circle(Shape):\n    radius: float\n\n    def __init__(self, radius: float):\n        self.radius = radius\n\n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n\n    @override\n    def perimeter(self) -> float:\n        return 2.0 * 3.14159 * self.radius\n\ndef total_area(shapes: list[Shape]) -> float:\n    total: float = 0.0\n    for shape in shapes:\n        total += shape.area()\n    return total\n\ndef average_perimeter(shapes: list[Shape]) -> float:\n    if len(shapes) == 0:\n        return 0.0\n    total: float = 0.0\n    for shape in shapes:\n        total += shape.perimeter()\n    return total / float(len(shapes))\n",
+    "main.spy": "from geometry_utils import Rectangle, Circle, total_area, average_perimeter\n\ndef main():\n    # Create some shapes for testing\n    rect1 = Rectangle(5.0, 3.0)\n    rect2 = Rectangle(4.0, 4.0)\n    circle = Circle(2.0)\n\n    # Create a list of shapes\n    shapes: list[Shape] = [rect1, rect2, circle]\n\n    # Test individual areas\n    print(rect1.area())\n    print(circle.area())\n\n    # Test total area function\n    total: float = total_area(shapes)\n    print(total)\n\n    # Test average perimeter function\n    avg_perim: float = average_perimeter(shapes)\n    print(avg_perim)\n"
+  }
+}

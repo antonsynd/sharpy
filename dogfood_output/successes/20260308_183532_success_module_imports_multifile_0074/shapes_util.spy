@@ -1,0 +1,12 @@
+from geometry import Shape
+
+def total_area(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for s in shapes:
+        total += s.area()
+    return total
+
+def describe_shape(s: Shape) -> str:
+    area_val: float = s.area()
+    perim_val: float = s.perimeter()
+    return f"Area: {area_val}, Perimeter: {perim_val}"

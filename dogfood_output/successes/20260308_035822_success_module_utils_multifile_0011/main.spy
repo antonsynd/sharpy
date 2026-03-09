@@ -1,0 +1,43 @@
+# Main entry point demonstrating complex cross-module usage
+from types import Identifiable, Status, Metadata
+from utils import Logger, Cache, calculate_hash
+from services import UserService
+
+def main():
+    # Initialize logger
+    log: Logger = Logger("System")
+    log.log("Initialization")
+
+    # Use struct and standalone function
+    meta: Metadata = Metadata("revision", 8)
+    hash_val: int = calculate_hash(meta)
+    print(hash_val)
+
+    # Test generic class
+    cache: Cache[str] = Cache()
+    cache.add("alpha")
+    cache.add("beta")
+    print(len(cache.get_all()))
+
+    # Pattern matching on enum using literal patterns and wildcard
+    initial_status: Status = Status.ACTIVE
+    match initial_status:
+        case Status.ACTIVE:
+            print("active")
+        case Status.INACTIVE:
+            print("inactive")
+        case _:
+            print("pending")
+
+    # Interface implementation across modules
+    service: UserService = UserService("usr_456")
+    print(service.get_id())
+    service.set_status(Status.INACTIVE)
+
+    # Match on service status - using if/elif instead of enum pattern matching
+    if service.status == Status.INACTIVE:
+        print("service_inactive")
+    else:
+        print("other")
+
+    log.log("Completion")

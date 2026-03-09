@@ -1,0 +1,31 @@
+# Main entry point - demonstrates cross-module class usage
+from shapes import Shape
+from rectangles import Rectangle, Square
+from utils import calculate_total_area, create_description
+
+def main():
+    # Create shapes
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    square: Square = Square(4.0)
+    generic: Shape = Shape("Generic")
+
+    # Test individual shapes
+    print("Individual shapes:")
+    print(rect.describe())
+    print(rect.area())
+    print(square.describe())
+    print(square.area())
+    print(generic.describe())
+    print(generic.area())
+
+    # Test polymorphism
+    shapes: list[Rectangle] = [rect, square]
+    total: float = calculate_total_area(shapes)
+    print("Total area:")
+    print(total)
+
+    # Test descriptions via utility
+    print("Descriptions:")
+    print(create_description(rect))
+    print(create_description(square))
+    print(create_description(generic))

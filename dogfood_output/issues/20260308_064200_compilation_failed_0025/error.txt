@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS0266]: Cannot implicitly convert type 'System.Collections.Generic.IEnumerator<DogfoodTest.Point>' to 'DogfoodTest.Point'. An explicit conversion exists (are you missing a cast?)
+  --> /tmp/tmpe8cri4je/dogfood_test.spy:85:20
+    |
+ 85 |         return super().__iter__()
+    |                    ^
+    |
+
+error[CS0117]: 'DogfoodTest.Point' does not contain a definition for 'Current'
+  --> /tmp/tmpe8cri4je/dogfood_test.spy:123:37
+     |
+ 123 |     for pt in poly:
+     |                    ^
+     |
+
+error[CS0202]: foreach requires that the return type 'DogfoodTest.Point' of 'DogfoodTest.Polygon.GetEnumerator()' must have a suitable public 'MoveNext' method and public 'Current' property
+  --> /tmp/tmpe8cri4je/dogfood_test.spy:123:37
+     |
+ 123 |     for pt in poly:
+     |                    ^
+     |
+

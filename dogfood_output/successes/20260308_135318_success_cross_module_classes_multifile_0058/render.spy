@@ -1,0 +1,16 @@
+from geometry import Shape
+
+class Renderer:
+    render_count: int
+    
+    def __init__(self):
+        self.render_count = 0
+    
+    def render(self, shape: Shape) -> str:
+        self.render_count += 1
+        desc: str = shape.describe()
+        area: float = shape.area()
+        return f"[{self.render_count}] {desc} -> area={area}"
+    
+    def get_count(self) -> int:
+        return self.render_count

@@ -1,0 +1,40 @@
+enum Priority:
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+
+enum Status:
+    PENDING = 0
+    ACTIVE = 1
+    COMPLETED = 2
+
+class ColorTriple:
+    r: int
+    g: int
+    b: int
+
+    def __init__(self, r: int, g: int, b: int):
+        self.r = r
+        self.g = g
+        self.b = b
+
+class Config:
+    @static
+    priority_threshold: int = 2
+
+    _name: str
+    _value: int
+
+    def __init__(self, name: str, value: int):
+        self._name = name
+        self._value = value
+
+    def get_display(self) -> str:
+        return f"{self._name}={self._value}"
+
+def calculate_priority_score(priority: Priority, multiplier: int) -> int:
+    p_val: int = priority.value
+    return p_val * multiplier
+
+def create_color(red: int, green: int, blue: int) -> ColorTriple:
+    return ColorTriple(r=red, g=green, b=blue)

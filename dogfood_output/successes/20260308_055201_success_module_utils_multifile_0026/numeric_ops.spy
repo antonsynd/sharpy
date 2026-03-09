@@ -1,0 +1,15 @@
+class Calculator:
+    _value: float
+    
+    def __init__(self, value: float):
+        self._value = value
+    
+    @virtual
+    def compute(self) -> float:
+        return self._value
+
+def double_value(x: float) -> float:
+    return x * 2.0
+
+def triple_value(x: float) -> float:
+    return x * 3.0

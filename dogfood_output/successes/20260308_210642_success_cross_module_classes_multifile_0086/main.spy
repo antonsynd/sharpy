@@ -1,0 +1,46 @@
+# Main entry point - demonstrates cross-module class usage
+
+from types_module import ShapeCategory
+from types_module import Point2D
+from types_module import category_to_string
+from geometry_base import Shape
+from geometry_base import Circle
+from geometry_shapes import Rectangle
+from geometry_shapes import Cylinder
+
+def process_shape(s: Shape) -> str:
+    return s.describe()
+
+def main():
+    # Create a Point2D struct from types_module
+    origin: Point2D = Point2D(0.0, 0.0)
+
+    # Create a Circle from geometry_base
+    circle: Circle = Circle(origin, 5.0)
+
+    # Create a Rectangle from geometry_shapes
+    rect: Rectangle = Rectangle(Point2D(1.0, 1.0), 10.0, 20.0)
+
+    # Create a Cylinder (composite of Circle)
+    base: Circle = Circle(Point2D(0.0, 0.0), 3.0)
+    cylinder: Cylinder = Cylinder(base, 10.0)
+
+    # Test 1: Polymorphic dispatch through Shape
+    shapes: list[Shape] = [circle, rect, cylinder]
+    for s in shapes:
+        print(process_shape(s))
+
+    # Test 2: Interface implementation and method access
+    print("Circle area: " + str(circle.area()))
+    print("Rect perimeter: " + str(rect.perimeter()))
+
+    # Test 3: Enum usage from imported module
+    cat: ShapeCategory = cylinder.category
+    print("Category: " + category_to_string(cat))
+
+    # Test 4: Display method from IDisplayable
+    print(cylinder.display())
+
+    # Test 5: Calculated values
+    total_area: float = circle.area() + rect.area()
+    print("Total area: " + str(total_area))

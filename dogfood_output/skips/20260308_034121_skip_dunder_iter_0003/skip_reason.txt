@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0266]: Function '__iter__' must return a value of type 'int' in all code paths
+  --> /tmp/tmp37x9zzl8/dogfood_test.spy:16:5
+    |
+ 16 |     def __iter__(self) -> int:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

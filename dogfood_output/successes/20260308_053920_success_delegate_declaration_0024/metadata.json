@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T05:35:08.878271",
+  "generated_code": "# Test: Delegates with collection folding/reduction patterns\n# Tests generic delegates used for aggregation over collections\n\n# Generic accumulator delegate: takes accumulator and item, returns new accumulator\ndelegate Reducer[T, U](acc: T, item: U) -> T\n\n# Multi-parameter delegate for element processing\ndelegate Processor[T](first: T, second: T) -> T\n\nstruct Point:\n    x: float\n    y: float\n    \n    def __init__(self, x: float, y: float):\n        self.x = x\n        self.y = y\n\ndef fold_points(items: list[Point], initial: Point, reducer: Reducer[Point, Point]) -> Point:\n    result: Point = initial\n    for item in items:\n        result = reducer(result, item)\n    return result\n\ndef process_pair(p1: Point, p2: Point, proc: Processor[float]) -> Point:\n    x_val: float = proc(p1.x, p2.x)\n    y_val: float = proc(p1.y, p2.y)\n    return Point(x_val, y_val)\n\ndef main():\n    points: list[Point] = [Point(1.0, 2.0), Point(3.0, 4.0), Point(5.0, 6.0)]\n    \n    # Test 1: Using delegate to sum all points (fold/reduce pattern)\n    origin: Point = Point(0.0, 0.0)\n    total: Point = fold_points(points, origin, lambda acc, p: Point(acc.x + p.x, acc.y + p.y))\n    print(\"Total X:\")\n    print(total.x)\n    print(\"Total Y:\")\n    print(total.y)\n    \n    # Test 2: Using delegate with averaging logic\n    avg_x: float = total.x / 3.0\n    avg_y: float = total.y / 3.0\n    print(\"Avg X:\")\n    print(avg_x)\n    print(\"Avg Y:\")\n    print(avg_y)\n    \n    # Test 3: Multi-parameter delegate for min/max calculation\n    min_point: Point = process_pair(points[0], points[1], lambda a, b: a if a < b else b)\n    print(\"Min point X:\")\n    print(min_point.x)\n    print(\"Min point Y:\")\n    print(min_point.y)\n",
+  "expected_output": "Total X:\n9.0\nTotal Y:\n12.0\nAvg X:\n3.0\nAvg Y:\n4.0\nMin point X:\n1.0\nMin point Y:\n2.0\n",
+  "actual_output": "Total X:\n9.0\nTotal Y:\n12.0\nAvg X:\n3.0\nAvg Y:\n4.0\nMin point X:\n1.0\nMin point Y:\n2.0",
+  "feature_focus": "delegate_declaration",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 240.37051963806152,
+  "execution_duration": 5.199960947036743,
+  "source_files": null
+}

@@ -1,0 +1,28 @@
+warning[SPY0452]: Imported name 'geometry' is never used
+  --> /tmp/tmpxzw2k8qf/shapes.spy:2:13
+    |
+  2 | from geometry import Point
+    |             ^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IShape' is never used
+  --> /tmp/tmpxzw2k8qf/concrete_shapes.spy:3:29
+    |
+  3 | from concrete_shapes import Circle, Rectangle
+    |                             ^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Dimensions' is never used
+  --> /tmp/tmpxzw2k8qf/concrete_shapes.spy:4:18
+    |
+  4 | from shapes import IShape, ShapeType
+    |                  ^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ShapeType' is never used
+  --> /tmp/tmpxzw2k8qf/main.spy:4:28
+    |
+  4 | from shapes import IShape, ShapeType
+    |                            ^^^^^^^^^
+    |
+

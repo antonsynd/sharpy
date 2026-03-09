@@ -1,0 +1,8 @@
+Active
+Task 'Fix bug' (P1)
+Task: Feature work [Pending]
+Task 'Feature work' is Completed
+Task 'Fix bug' (P1)
+Task 'Write docs' (P2)
+Task 'Feature work' is Completed
+SUMMARY: Task: Feature work [Completed] + Task 'Feature work' is Completed

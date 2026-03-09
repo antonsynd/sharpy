@@ -1,0 +1,19 @@
+from math_utils import rectangle_area, PI
+from shapes import Rectangle, Circle
+
+def main():
+    # Test direct function import
+    area: int = rectangle_area(5, 3)
+    print(area)
+    
+    # Test constant import
+    print(PI)
+    
+    # Test class import from shapes (Rectangle uses imported functions internally)
+    rect = Rectangle(4, 6)
+    print(rect.area())
+    print(rect.perimeter())
+    
+    # Test class import from shapes (Circle uses imported PI constant)
+    circle = Circle(5.0)
+    print(circle.circumference())

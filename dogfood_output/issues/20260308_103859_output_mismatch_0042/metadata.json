@@ -1,0 +1,22 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-08T10:35:35.865690",
+  "generated_code": "# Main entry point - imports from both modules\n\nfrom shapes import Shape, Rectangle, Circle, Drawable\nfrom utils import total_area, describe_all, create_default_shapes\n\ndef main():\n    # Create shapes using module function\n    shapes: list[Shape] = create_default_shapes()\n    print(len(shapes))\n    \n    # Test polymorphic method dispatch with @virtual/@override\n    rect = Rectangle(\"TestRect\", 10.0, 5.0)\n    print(rect.area())\n    \n    circle = Circle(\"TestCircle\", 3.0)\n    print(circle.area())\n    \n    # Test total area calculation\n    total: float = total_area(shapes)\n    print(total)\n    \n    # Test describe_all with polymorphic dispatch\n    descriptions: list[str] = describe_all(shapes)\n    for desc in descriptions:\n        print(desc)\n",
+  "expected_output": "3\n50.0\n28.27431\n113.27431\nRectangle R1: 3.0 x 4.0\nCircle C1: radius=2.0\nRectangle R2: 5.0 x 6.0\n",
+  "actual_output": "3\n50.0\n28.274309999999996\n54.56636\nRectangle R1: 3.0 x 4.0\nCircle C1: radius=2.0\nRectangle R2: 5.0 x 6.0",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 109.3816487789154,
+  "compilation_duration": null,
+  "execution_duration": 5.389283180236816,
+  "source_files": {
+    "shapes.spy": "# Module providing shape base classes and interfaces\n\ninterface Drawable:\n    def draw(self) -> str: ...\n\n@abstract\nclass Shape:\n    _name: str\n    \n    def __init__(self, name: str):\n        self._name = name\n    \n    property get name(self) -> str:\n        return self._name\n    \n    @abstract\n    def area(self) -> float: ...\n    \n    @virtual\n    def describe(self) -> str:\n        return f\"Shape: {self._name}\"\n\nclass Rectangle(Shape):\n    _width: float\n    _height: float\n    \n    def __init__(self, name: str, width: float, height: float):\n        super().__init__(name)\n        self._width = width\n        self._height = height\n    \n    @override\n    def area(self) -> float:\n        return self._width * self._height\n    \n    @override\n    def describe(self) -> str:\n        return f\"Rectangle {self._name}: {self._width} x {self._height}\"\n\nclass Circle(Shape):\n    _radius: float\n    \n    def __init__(self, name: str, radius: float):\n        super().__init__(name)\n        self._radius = radius\n    \n    @override\n    def area(self) -> float:\n        return 3.14159 * self._radius * self._radius\n    \n    @override\n    def describe(self) -> str:\n        return f\"Circle {self._name}: radius={self._radius}\"\n",
+    "utils.spy": "# Module providing utility functions for shape operations\n\nfrom shapes import Shape, Rectangle, Circle\n\ndef total_area(shapes: list[Shape]) -> float:\n    total: float = 0.0\n    for s in shapes:\n        total += s.area()\n    return total\n\ndef describe_all(shapes: list[Shape]) -> list[str]:\n    result: list[str] = list()\n    for s in shapes:\n        result.append(s.describe())\n    return result\n\ndef create_default_shapes() -> list[Shape]:\n    shapes: list[Shape] = list()\n    shapes.append(Rectangle(\"R1\", 3.0, 4.0))\n    shapes.append(Circle(\"C1\", 2.0))\n    shapes.append(Rectangle(\"R2\", 5.0, 6.0))\n    return shapes\n",
+    "main.spy": "# Main entry point - imports from both modules\n\nfrom shapes import Shape, Rectangle, Circle, Drawable\nfrom utils import total_area, describe_all, create_default_shapes\n\ndef main():\n    # Create shapes using module function\n    shapes: list[Shape] = create_default_shapes()\n    print(len(shapes))\n    \n    # Test polymorphic method dispatch with @virtual/@override\n    rect = Rectangle(\"TestRect\", 10.0, 5.0)\n    print(rect.area())\n    \n    circle = Circle(\"TestCircle\", 3.0)\n    print(circle.area())\n    \n    # Test total area calculation\n    total: float = total_area(shapes)\n    print(total)\n    \n    # Test describe_all with polymorphic dispatch\n    descriptions: list[str] = describe_all(shapes)\n    for desc in descriptions:\n        print(desc)\n"
+  }
+}

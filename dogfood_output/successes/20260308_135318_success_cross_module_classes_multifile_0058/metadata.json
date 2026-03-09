@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T13:45:55.975136",
+  "generated_code": "from geometry import Shape, Circle, Rectangle\nfrom render import Renderer\n\ndef main():\n    renderer: Renderer = Renderer()\n    \n    shapes: list[Shape] = [Circle(2.0), Rectangle(3.0, 4.0), Circle(1.0)]\n    \n    total_area: float = 0.0\n    \n    for s in shapes:\n        print(renderer.render(s))\n        total_area += s.area()\n    \n    print(f\"Total area: {total_area}\")\n    print(f\"Total shapes: {renderer.get_count()}\")\n",
+  "expected_output": "[1] Circle #0 (r=2.0) -> area=12.56636\n[2] Rectangle #1 (3.0x4.0) -> area=12.0\n[3] Circle #2 (r=1.0) -> area=3.14159\nTotal area: 27.70795\nTotal shapes: 3\n",
+  "actual_output": "[1] Circle #0 (r=2.0) -> area=12.56636\n[2] Rectangle #1 (3.0x4.0) -> area=12.0\n[3] Circle #2 (r=1.0) -> area=3.14159\nTotal area: 27.70795\nTotal shapes: 3",
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 425.13331747055054,
+  "execution_duration": 5.3226330280303955,
+  "source_files": {
+    "geometry.spy": "@abstract\nclass Shape:\n    @static\n    _id_counter: int = 0\n    \n    @static\n    def next_id() -> int:\n        current: int = Shape._id_counter\n        Shape._id_counter += 1\n        return current\n    \n    id: int\n    \n    def __init__(self):\n        self.id = Shape.next_id()\n    \n    @abstract\n    def area(self) -> float: ...\n    \n    @virtual\n    def describe(self) -> str:\n        return f\"Shape #{self.id}\"\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, radius: float):\n        super().__init__()\n        self.radius = radius\n    \n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n    \n    @override\n    def describe(self) -> str:\n        return f\"Circle #{self.id} (r={self.radius})\"\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, width: float, height: float):\n        super().__init__()\n        self.width = width\n        self.height = height\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    @override\n    def describe(self) -> str:\n        return f\"Rectangle #{self.id} ({self.width}x{self.height})\"\n",
+    "render.spy": "from geometry import Shape\n\nclass Renderer:\n    render_count: int\n    \n    def __init__(self):\n        self.render_count = 0\n    \n    def render(self, shape: Shape) -> str:\n        self.render_count += 1\n        desc: str = shape.describe()\n        area: float = shape.area()\n        return f\"[{self.render_count}] {desc} -> area={area}\"\n    \n    def get_count(self) -> int:\n        return self.render_count\n",
+    "main.spy": "from geometry import Shape, Circle, Rectangle\nfrom render import Renderer\n\ndef main():\n    renderer: Renderer = Renderer()\n    \n    shapes: list[Shape] = [Circle(2.0), Rectangle(3.0, 4.0), Circle(1.0)]\n    \n    total_area: float = 0.0\n    \n    for s in shapes:\n        print(renderer.render(s))\n        total_area += s.area()\n    \n    print(f\"Total area: {total_area}\")\n    print(f\"Total shapes: {renderer.get_count()}\")\n"
+  }
+}

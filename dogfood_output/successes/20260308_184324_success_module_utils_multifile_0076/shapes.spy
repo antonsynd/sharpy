@@ -1,0 +1,79 @@
+# Module containing shape hierarchy with cross-module inheritance
+from contracts import ShapeType, Point
+
+class Shape:
+    _shape_type: ShapeType
+
+    def __init__(self, kind: ShapeType):
+        self._shape_type = kind
+
+    @virtual
+    def get_area(self) -> float:
+        return 0.0
+
+    @virtual
+    def get_perimeter(self) -> float:
+        return 0.0
+
+    @virtual
+    def get_name(self) -> str:
+        return "Shape"
+
+    @virtual
+    def describe(self) -> str:
+        return "A shape"
+
+    property get shape_kind(self) -> ShapeType:
+        return self._shape_type
+
+class Circle(Shape):
+    _center: Point
+    _radius: float
+
+    def __init__(self, center: Point, radius: float):
+        super().__init__(ShapeType.CIRCLE)
+        self._center = center
+        self._radius = radius
+
+    @override
+    def get_area(self) -> float:
+        return 3.14159 * self._radius * self._radius
+
+    @override
+    def get_perimeter(self) -> float:
+        return 2.0 * 3.14159 * self._radius
+
+    @override
+    def get_name(self) -> str:
+        return "Circle"
+
+    @override
+    def describe(self) -> str:
+        return f"A circle with radius {self._radius}"
+
+class Rectangle(Shape):
+    _top_left: Point
+    _width: float
+    _height: float
+
+    def __init__(self, top_left: Point, width: float, height: float):
+        super().__init__(ShapeType.RECTANGLE)
+        self._top_left = top_left
+        self._width = width
+        self._height = height
+
+    @override
+    def get_area(self) -> float:
+        return self._width * self._height
+
+    @override
+    def get_perimeter(self) -> float:
+        return 2.0 * (self._width + self._height)
+
+    @override
+    def get_name(self) -> str:
+        return "Rectangle"
+
+    @override
+    def describe(self) -> str:
+        return f"A rectangle {self._width} x {self._height}"

@@ -1,0 +1,22 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-08T05:19:20.897057",
+  "generated_code": "# Entry point - tests polymorphism and cross-module imports\nfrom utils import BaseCounter, double_value, Countable\nfrom advanced import AdvancedCounter\n\ndef main():\n    # Test 1: Interface-typed reference to base class\n    c: Countable = BaseCounter(5)\n    print(c.get_count())\n    \n    # Test 2: Base class virtual method (increments by 1)\n    base = BaseCounter(10)\n    print(base.increment())\n    \n    # Test 3: Derived class override (increments by step=3)\n    adv = AdvancedCounter(20, 3)\n    print(adv.increment())\n    \n    # Test 4: Polymorphism - BaseCounter type, AdvancedCounter instance\n    poly: BaseCounter = AdvancedCounter(100, 50)\n    print(poly.increment())\n    \n    # Test 5: Static field usage via utility function\n    print(double_value(3))\n",
+  "expected_output": "5\n11\n23\n150\n6\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0103]: The name 'multiplier' does not exist in the current context\n  --> /tmp/tmpgfvsmq4b/utils.spy:24:20\n    |\n 24 | \n    | ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 256.3642861843109,
+  "compilation_duration": null,
+  "execution_duration": 4.5415849685668945,
+  "source_files": {
+    "utils.spy": "# Base module with interface, base class, and utility function\n\ninterface Countable:\n    def get_count(self) -> int: ...\n\nclass BaseCounter(Countable):\n    count: int\n    \n    def __init__(self, start: int):\n        self.count = start\n    \n    def get_count(self) -> int:\n        return self.count\n    \n    @virtual\n    def increment(self) -> int:\n        self.count = self.count + 1\n        return self.count\n\n@static\nMULTIPLIER: int = 2\n\ndef double_value(x: int) -> int:\n    return x * MULTIPLIER\n",
+    "advanced.spy": "# Derived module with class inheriting from BaseCounter\nfrom utils import BaseCounter\n\nclass AdvancedCounter(BaseCounter):\n    step: int\n    \n    def __init__(self, start: int, step: int):\n        super().__init__(start)\n        self.step = step\n    \n    @override\n    def increment(self) -> int:\n        self.count = self.count + self.step\n        return self.count\n",
+    "main.spy": "# Entry point - tests polymorphism and cross-module imports\nfrom utils import BaseCounter, double_value, Countable\nfrom advanced import AdvancedCounter\n\ndef main():\n    # Test 1: Interface-typed reference to base class\n    c: Countable = BaseCounter(5)\n    print(c.get_count())\n    \n    # Test 2: Base class virtual method (increments by 1)\n    base = BaseCounter(10)\n    print(base.increment())\n    \n    # Test 3: Derived class override (increments by step=3)\n    adv = AdvancedCounter(20, 3)\n    print(adv.increment())\n    \n    # Test 4: Polymorphism - BaseCounter type, AdvancedCounter instance\n    poly: BaseCounter = AdvancedCounter(100, 50)\n    print(poly.increment())\n    \n    # Test 5: Static field usage via utility function\n    print(double_value(3))\n"
+  }
+}

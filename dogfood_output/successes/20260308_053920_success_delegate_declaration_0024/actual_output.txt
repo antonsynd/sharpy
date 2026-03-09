@@ -1,0 +1,12 @@
+Total X:
+9.0
+Total Y:
+12.0
+Avg X:
+3.0
+Avg Y:
+4.0
+Min point X:
+1.0
+Min point Y:
+2.0

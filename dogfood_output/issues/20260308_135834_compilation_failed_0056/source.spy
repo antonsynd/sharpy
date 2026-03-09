@@ -1,0 +1,37 @@
+# Main entry point - demonstrates cross-module polymorphism
+from geometry import Point
+from concrete_shapes import Circle, Rectangle
+from shapes import IShape, ShapeType
+
+def print_shape(s: IShape) -> None:
+    print(f"Area: {s.area()}")
+    print(f"Perimeter: {s.perimeter()}")
+
+def main():
+    # Create a Point from geometry module
+    p: Point = Point(3.0, 4.0)
+    print(f"Point: {p}")
+
+    # Create Circle - cross-module inheritance
+    print("Circle:")
+    c: Circle = Circle(5.0)
+    print(f"Radius: {c.radius}")
+    print(f"Area: {c.area()}")
+    print(f"Perimeter: {c.perimeter()}")
+
+    # Create Rectangle - cross-module inheritance
+    print("Rectangle:")
+    r: Rectangle = Rectangle(3.0, 4.0)
+    print(f"Dimensions: {r.width} x {r.height}")
+    print(f"Area: {r.area()}")
+    print(f"Perimeter: {r.perimeter()}")
+
+    # Show enum value from shapes module
+    print(f"Circle type: {str(c.shape_type)}")
+    print(f"Rectangle type: {str(r.shape_type)}")
+
+    # Polymorphic dispatch through interface
+    print("Via interface (Circle):")
+    print_shape(c)
+    print("Via interface (Rectangle):")
+    print_shape(r)

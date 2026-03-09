@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0224]: Function 'format_float' expects 1 arguments but got 2
+  --> /tmp/tmpa9tb4bfn/main.spy:12:25
+    |
+ 12 |         area_str: str = format_float(a, 2)
+    |                         ^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0224]: Function 'format_float' expects 1 arguments but got 2
+  --> /tmp/tmpa9tb4bfn/main.spy:19:25
+    |
+ 19 |         area_str: str = format_float(a, 2)
+    |                         ^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0224]: Function 'format_float' expects 1 arguments but got 2
+  --> /tmp/tmpa9tb4bfn/main.spy:21:22
+    |
+ 21 |     total_str: str = format_float(total_area, 2)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0224]: Function 'format_float' expects 1 arguments but got 2
+  --> /tmp/tmpa9tb4bfn/main.spy:33:43
+    |
+ 33 |     print("Distance from origin to A: " + format_float(dist, 2))
+    |                                           ^^^^^^^^^^^^^^^^^^^^^
+    |
+

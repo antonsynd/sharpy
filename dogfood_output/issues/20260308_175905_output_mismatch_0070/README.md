@@ -1,0 +1,105 @@
+# Issue Report: output_mismatch
+
+**Timestamp:** 2026-03-08T17:56:45.487974
+**Type:** output_mismatch
+**Feature Focus:** try_except_finally
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: try/except/finally with custom validation and state cleanup
+# Combines: classes, multiple exception types, finally for state reset
+
+class ValidationError(Exception):
+    message: str
+    def __init__(self, msg: str):
+        self.message = msg
+
+class DataProcessor:
+    data: list[int]
+    is_processing: bool
+    processed_count: int
+    error_count: int
+    
+    def __init__(self):
+        self.data = []
+        self.is_processing = False
+        self.processed_count = 0
+        self.error_count = 0
+    
+    def clear(self) -> None:
+        self.data = []
+        self.is_processing = False
+    
+    def validate_and_add(self, value: int) -> None:
+        self.is_processing = True
+        try:
+            if value < 0:
+                raise ValueError("Negative values not allowed")
+            if value > 100:
+                raise ValidationError("Value exceeds maximum of 100")
+            self.data.append(value)
+            self.processed_count += 1
+        except ValueError as e:
+            self.error_count += 1
+            print(f"ValueError: {e}")
+        except ValidationError as e:
+            self.error_count += 1
+            print(f"ValidationError: {e.message}")
+        finally:
+            self.is_processing = False
+
+def main():
+    processor = DataProcessor()
+    
+    # Test various inputs
+    processor.validate_and_add(50)
+    processor.validate_and_add(-5)
+    processor.validate_and_add(150)
+    processor.validate_and_add(75)
+    
+    print(f"Processed: {processor.processed_count}")
+    print(f"Errors: {processor.error_count}")
+    print(f"Data: {len(processor.data)}")
+    
+    for item in processor.data:
+        print(item)
+
+```
+
+## Error
+
+```
+AI explicitly reported mismatch
+```
+
+## Output Comparison
+
+### Expected
+```
+Processed: 2
+Errors: 2
+Data: 2
+50
+75
+
+```
+
+### Actual
+```
+ValueError: Sharpy.ValueError: Negative values not allowed
+   at DogfoodTest.DataProcessor.ValidateAndAdd(Int32 value) in /tmp/tmpkaq4p57l/dogfood_test.spy:line 29
+ValidationError: Value exceeds maximum of 100
+Processed: 2
+Errors: 2
+Data: 2
+50
+75
+```
+
+## Timing
+
+- Generation: 55.00s
+- Execution: 5.04s

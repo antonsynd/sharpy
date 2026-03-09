@@ -1,0 +1,48 @@
+# Main entry point demonstrating cross-module class features
+from shapes_base import Shape, ShapeCategory, IDrawable, IMeasurable
+from shapes_concrete import Circle, Rectangle, Triangle
+from shape_utils import Point, calculate_total_area, find_largest_shape, create_unit_circle, create_square, filter_shapes, is_large_shape
+from shape_controllers import ShapeRenderer, CircleFactory, RandomShapeGenerator, ShapeAnalyzer
+
+def main():
+    # Test 1: Create shapes from different modules
+    circle: Circle = Circle(5.0)
+    rectangle: Rectangle = Rectangle(4.0, 6.0)
+    triangle: Triangle = Triangle(3.0, 4.0, 5.0)
+    print(circle.name)
+    print(rectangle.category.name)
+    print(triangle.category.value)
+
+    # Test 2: Test interface implementation across modules
+    renderer: ShapeRenderer = ShapeRenderer()
+    print(renderer.render(circle))
+
+    # Test 3: Test abstract class inheritance
+    analyzer: ShapeAnalyzer = ShapeAnalyzer()
+    print(analyzer.analyze(rectangle))
+
+    # Test 4: Test factory pattern
+    factory: CircleFactory = CircleFactory(3.0)
+    new_circle: Shape = factory.create_shape()
+    print(str(new_circle))
+
+    # Test 5: Test utility functions with cross-module types
+    shapes: list[Shape] = [circle, rectangle, triangle]
+    total: float = calculate_total_area(shapes)
+    print(f"{total:.2f}")
+    largest: Shape = find_largest_shape(shapes)
+    print(largest.name)
+
+    # Test 6: Test struct from another module
+    origin: Point = Point(0.0, 0.0)
+    print(str(origin))
+
+    # Test 7: Test filtering with higher-order functions (using raw function type)
+    large_shapes: list[Shape] = filter_shapes(shapes, is_large_shape)
+    print(len(large_shapes))
+
+    # Test 8: Test static methods and enum iteration
+    generator: RandomShapeGenerator = RandomShapeGenerator()
+    generated: list[Shape] = generator.generate_shapes()
+    count: int = analyzer.count_by_category(generated, ShapeCategory.GEOMETRIC)
+    print(count)

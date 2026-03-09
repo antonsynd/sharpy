@@ -1,0 +1,18 @@
+Standard electronics, 2 year warranty
+2.5
+High voltage appliance
+25.0
+Other electronics
+15.0
+DIY wooden furniture
+100.0
+Metal furniture
+30.0
+Standard furniture
+30.0
+Red clothing size M
+0.6
+Extra large clothing
+1.2
+Standard clothing
+10.0

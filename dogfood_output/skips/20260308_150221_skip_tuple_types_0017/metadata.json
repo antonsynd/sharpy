@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T14:58:11.447803",
+  "skip_reason": "Repeated identical compiler error (likely compiler bug): Compilation errors:\n\nerror[SPY0103]: Expected end of statement, got Comma\n  --> /tmp/tmpoc9ft64y/dogfood_test.spy:5:27\n    |\n  5 |     first, second = second, first\n    |                           ^\n    |\n\n",
+  "generated_code": "# Test: Tuple unpacking for value swapping (Pythonic pattern)\ndef main():\n    first: int = 7\n    second: int = 12\n    first, second = second, first\n    print(first)\n    print(second)\n",
+  "expected_output": "12\n7\n",
+  "feature_focus": "tuple_types",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 239.59952664375305,
+  "source_files": null,
+  "validation_output": null
+}

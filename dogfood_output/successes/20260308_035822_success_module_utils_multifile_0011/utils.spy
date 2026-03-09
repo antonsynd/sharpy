@@ -1,0 +1,27 @@
+# Utility module with classes and functions
+from types import Metadata
+
+class Logger:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def log(self, msg: str) -> None:
+        s: str = "[" + self.name + "] " + msg
+        print(s)
+
+class Cache[T]:
+    items: list[T]
+
+    def __init__(self):
+        self.items = []
+
+    def add(self, item: T) -> None:
+        self.items.append(item)
+
+    def get_all(self) -> list[T]:
+        return self.items
+
+def calculate_hash(obj: Metadata) -> int:
+    return len(obj.key) + obj.value

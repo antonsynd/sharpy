@@ -1,0 +1,37 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Product' has no member 'display_name'
+  --> /tmp/tmpml9_jwn3/main.spy:16:11
+    |
+ 16 |     print(prod.display_name)
+    |           ^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Product' has no member 'id'
+  --> /tmp/tmpml9_jwn3/main.spy:17:11
+    |
+ 17 |     print(prod.id)
+    |           ^^^^^^^
+    |
+
+error[SPY0203]: Type 'Product' has no member 'status'. Did you mean '_status'?
+  --> /tmp/tmpml9_jwn3/main.spy:24:25
+    |
+ 24 |     print(format_status(prod.status))
+    |                         ^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Product' has no member 'status'. Did you mean '_status'?
+  --> /tmp/tmpml9_jwn3/main.spy:25:21
+    |
+ 25 |     print(is_active(prod.status))
+    |                     ^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Service' has no member 'status'. Did you mean '_status'?
+  --> /tmp/tmpml9_jwn3/main.spy:33:25
+    |
+ 33 |     print(format_status(svc.status))
+    |                         ^^^^^^^^^^
+    |
+

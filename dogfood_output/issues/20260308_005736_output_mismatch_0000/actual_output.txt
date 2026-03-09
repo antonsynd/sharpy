@@ -1,0 +1,10 @@
+Red
+Green
+15.0
+19.6349375
+86.90924749999999
+Drawing rectangle
+Drawing rectangle
+Drawing circle
+3
+5.0

@@ -1,0 +1,5 @@
+10.0
+19
+Circle with radius 2.5, area 19.63
+Rectangle 4.0x5.0 = 20.0
+123.46

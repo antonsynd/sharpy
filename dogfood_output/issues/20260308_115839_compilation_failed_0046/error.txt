@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0029]: Cannot implicitly convert type 'Sharpy.Optional<DogfoodTest.Address>' to 'Sharpy.Optional<string>'
+  --> /tmp/tmpvtnx8ef1/dogfood_test.spy:29:51
+    |
+ 29 |     city: str? = person?.get_address()?.get_city()
+    |                                                   ^
+    |
+

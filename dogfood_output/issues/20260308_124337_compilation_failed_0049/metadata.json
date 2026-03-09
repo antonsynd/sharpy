@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-08T12:39:43.897114",
+  "generated_code": "import asyncio\n\ninterface IAsyncProcessor[T]:\n    async def process(self, item: T) -> T: ...\n\nclass AsyncDataSource:\n    @virtual\n    async def fetch_batch(self, start: int, count: int) -> int:\n        yield 0\n\n    async def sum_items(self, items: list[int]) -> int:\n        total = 0\n        for item in items:\n            total += item\n        return total\n\nclass FilteredDataSource(AsyncDataSource):\n    threshold: int\n\n    def __init__(self, threshold: int):\n        self.threshold = threshold\n\n    @override\n    async def fetch_batch(self, start: int, count: int) -> int:\n        i = 0\n        while i < count:\n            value = start + i\n            if value > self.threshold:\n                yield value\n            i += 1\n            await asyncio.sleep(0.001)\n\nclass DoublingProcessor(IAsyncProcessor[int]):\n    async def process(self, item: int) -> int:\n        await asyncio.sleep(0.001)\n        return item * 2\n\nasync def main():\n    source: FilteredDataSource = FilteredDataSource(5)\n    processor: DoublingProcessor = DoublingProcessor()\n\n    # First async for: process and print filtered values\n    results: list[int] = []\n    async for value in source.fetch_batch(1, 10):\n        processed = await processor.process(value)\n        results.append(processed)\n\n    for r in results:\n        print(r)\n\n    # Second async for on a fresh stream with different logic\n    data2 = source.fetch_batch(1, 10)\n    count = 0\n    total = 0\n    async for val in data2:\n        count += 1\n        total += val\n        if count >= 3:\n            break\n\n    print(count)\n    print(total)\n",
+  "expected_output": "12\n14\n16\n18\n20\n22\n3\n21\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0738]: 'DogfoodTest.DoublingProcessor' does not implement interface member 'DogfoodTest.IAsyncProcessor<int>.Process(int)'. 'DogfoodTest.DoublingProcessor.Process(int)' cannot implement 'DogfoodTest.IAsyncProcessor<int>.Process(int)' because it does not have the matching return type of 'int'.\n  --> /tmp/tmpe9fpmimn/dogfood_test.spy:25:38\n    |\n 25 |         i = 0\n    |              ^\n    |\n\n",
+  "compiler_output": "warning[SPY0451]: Local variable 'processor' is assigned but never used\n  --> /tmp/tmpe9fpmimn/dogfood_test.spy:40:5\n    |\n 40 |     processor: DoublingProcessor = DoublingProcessor()\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\nwarning[SPY0452]: Imported name 'asyncio' is never used\n  --> /tmp/tmpe9fpmimn/dogfood_test.spy:1:8\n    |\n  1 | import asyncio\n    |        ^^^^^^^\n    |\n\n",
+  "generated_cs": "warning[SPY0451]: Local variable 'processor' is assigned but never used\n  --> /tmp/tmpe9fpmimn/dogfood_test.spy:40:5\n    |\n 40 |     processor: DoublingProcessor = DoublingProcessor()\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\nwarning[SPY0452]: Imported name 'asyncio' is never used\n  --> /tmp/tmpe9fpmimn/dogfood_test.spy:1:8\n    |\n  1 | import asyncio\n    |        ^^^^^^^\n    |\n\nGenerated C# code written to: /tmp/tmpe9fpmimn/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "async_for",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 212.83154559135437,
+  "compilation_duration": null,
+  "execution_duration": 4.841517210006714,
+  "source_files": null
+}

@@ -1,0 +1,7 @@
+ok
+warning
+error
+zero
+positive
+negative
+forty-two

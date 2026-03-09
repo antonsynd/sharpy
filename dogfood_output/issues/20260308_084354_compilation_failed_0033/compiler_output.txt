@@ -1,0 +1,77 @@
+warning[SPY0458]: @virtual is redundant on '__str__' in 'Shape' — it always overrides Object.ToString(). The @virtual decorator will be ignored.
+  --> /tmp/tmplzwnp4db/shapes_base.spy:10:10
+    |
+ 10 |     rectangle: Rectangle = Rectangle(4.0, 6.0)
+    |          ^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IDrawable' is never used
+  --> /tmp/tmplzwnp4db/shape_utils.spy:2:23
+    |
+  2 | from shapes_base import Shape, ShapeCategory, IDrawable, IMeasurable
+    |                       ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IMeasurable' is never used
+  --> /tmp/tmplzwnp4db/shape_controllers.spy:2:55
+    |
+  2 | from shapes_base import Shape, ShapeCategory, IDrawable, IMeasurable
+    |                                                       ^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Point' is never used
+  --> /tmp/tmplzwnp4db/shape_controllers.spy:4:22
+    |
+  4 | from shape_utils import Point, calculate_total_area, find_largest_shape, create_unit_circle, create_square, filter_shapes, is_large_shape
+    |                      ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'calculate_total_area' is never used
+  --> /tmp/tmplzwnp4db/shape_controllers.spy:4:29
+    |
+  4 | from shape_utils import Point, calculate_total_area, find_largest_shape, create_unit_circle, create_square, filter_shapes, is_large_shape
+    |                             ^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'filter_shapes' is never used
+  --> /tmp/tmplzwnp4db/shape_controllers.spy:4:51
+    |
+  4 | from shape_utils import Point, calculate_total_area, find_largest_shape, create_unit_circle, create_square, filter_shapes, is_large_shape
+    |                                                   ^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'is_large_shape' is never used
+  --> /tmp/tmplzwnp4db/shape_controllers.spy:4:66
+    |
+  4 | from shape_utils import Point, calculate_total_area, find_largest_shape, create_unit_circle, create_square, filter_shapes, is_large_shape
+    |                                                                  ^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IDrawable' is never used
+  --> /tmp/tmplzwnp4db/main.spy:2:47
+    |
+  2 | from shapes_base import Shape, ShapeCategory, IDrawable, IMeasurable
+    |                                               ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IMeasurable' is never used
+  --> /tmp/tmplzwnp4db/main.spy:2:58
+    |
+  2 | from shapes_base import Shape, ShapeCategory, IDrawable, IMeasurable
+    |                                                          ^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'create_unit_circle' is never used
+  --> /tmp/tmplzwnp4db/main.spy:4:74
+    |
+  4 | from shape_utils import Point, calculate_total_area, find_largest_shape, create_unit_circle, create_square, filter_shapes, is_large_shape
+    |                                                                          ^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'create_square' is never used
+  --> /tmp/tmplzwnp4db/main.spy:4:94
+    |
+  4 | from shape_utils import Point, calculate_total_area, find_largest_shape, create_unit_circle, create_square, filter_shapes, is_large_shape
+    |                                                                                              ^^^^^^^^^^^^^
+    |
+

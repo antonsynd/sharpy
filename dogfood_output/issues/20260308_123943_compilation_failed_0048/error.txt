@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0513]: 'GeometryUtils.Shape.Area()' is abstract but it is contained in non-abstract type 'GeometryUtils.Shape'
+  --> geometry_utils.cs:14:32
+    |
+ 14 |     print(circle.area())
+    |                         ^
+    |
+
+error[CS0513]: 'GeometryUtils.Shape.Perimeter()' is abstract but it is contained in non-abstract type 'GeometryUtils.Shape'
+  --> geometry_utils.cs:15:32
+    |
+ 15 | 
+    | ^
+    |
+

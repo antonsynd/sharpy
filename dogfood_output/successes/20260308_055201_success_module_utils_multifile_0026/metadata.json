@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T05:44:04.569762",
+  "generated_code": "from numeric_ops import Calculator, double_value, triple_value\nfrom advanced_calc import DoublingCalculator, SquaringCalculator\n\ndef main():\n    base = Calculator(5.0)\n    doubling = DoublingCalculator(5.0)\n    squaring = SquaringCalculator(5.0)\n    \n    print(base.compute())\n    print(doubling.compute())\n    print(squaring.compute())\n    print(double_value(10.0))\n    print(triple_value(10.0))\n",
+  "expected_output": "5.0\n10.0\n25.0\n20.0\n30.0\n",
+  "actual_output": "5.0\n10.0\n25.0\n20.0\n30.0",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 449.7252736091614,
+  "execution_duration": 5.1920952796936035,
+  "source_files": {
+    "numeric_ops.spy": "class Calculator:\n    _value: float\n    \n    def __init__(self, value: float):\n        self._value = value\n    \n    @virtual\n    def compute(self) -> float:\n        return self._value\n\ndef double_value(x: float) -> float:\n    return x * 2.0\n\ndef triple_value(x: float) -> float:\n    return x * 3.0\n",
+    "advanced_calc.spy": "from numeric_ops import Calculator\n\nclass DoublingCalculator(Calculator):\n    @override\n    def compute(self) -> float:\n        base: float = super().compute()\n        return base * 2.0\n\nclass SquaringCalculator(Calculator):\n    @override\n    def compute(self) -> float:\n        base: float = super().compute()\n        return base * base\n",
+    "main.spy": "from numeric_ops import Calculator, double_value, triple_value\nfrom advanced_calc import DoublingCalculator, SquaringCalculator\n\ndef main():\n    base = Calculator(5.0)\n    doubling = DoublingCalculator(5.0)\n    squaring = SquaringCalculator(5.0)\n    \n    print(base.compute())\n    print(doubling.compute())\n    print(squaring.compute())\n    print(double_value(10.0))\n    print(triple_value(10.0))\n"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T13:25:20.402823",
+  "generated_code": "# Generator-based iterator class with yield in __iter__\nclass CountingSequence:\n    start: int\n    step: int\n    count: int\n    \n    def __init__(self, start: int, step: int, count: int):\n        self.start = start\n        self.step = step\n        self.count = count\n    \n    def __iter__(self) -> int:\n        current: int = self.start\n        i: int = 0\n        while i < self.count:\n            yield current\n            current += self.step\n            i += 1\n\ndef main():\n    seq = CountingSequence(5, 3, 4)\n    for val in seq:\n        print(val)\n",
+  "expected_output": "5\n8\n11\n14\n",
+  "actual_output": "5\n8\n11\n14",
+  "feature_focus": "generator_iter_class",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 101.22973561286926,
+  "execution_duration": 5.24712610244751,
+  "source_files": null
+}

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T06:54:05.959673",
+  "generated_code": "# Main entry point importing from multiple modules\nfrom math_utils import square, twice, Calculator\nfrom geometry import Point\n\ndef main():\n    # Test imported function from math_utils\n    result: int = twice(7)\n    print(result)\n\n    # Test imported class from math_utils\n    calc = Calculator(5)\n    print(calc.add(3))\n\n    # Test geometry class that internally uses imported functions\n    p = Point(3.0, 4.0)\n    print(p.distance_squared())\n\n    # Test cross-module type usage\n    calc2 = p.get_calculator()\n    print(calc2.add(10))\n",
+  "expected_output": "14\n8\n25.0\n13\n",
+  "actual_output": "14\n8\n25.0\n13",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 173.1477770805359,
+  "execution_duration": 5.235142946243286,
+  "source_files": {
+    "math_utils.spy": "# Math utility module providing functions and classes\ndef square(x: float) -> float:\n    return x * x\n\ndef twice(x: int) -> int:\n    return x * 2\n\nclass Calculator:\n    value: int\n\n    def __init__(self, v: int):\n        self.value = v\n\n    def add(self, x: int) -> int:\n        return self.value + x\n",
+    "geometry.spy": "# Geometry module using math utilities\nfrom math_utils import square, Calculator\n\nclass Point:\n    x: float\n    y: float\n\n    def __init__(self, x: float, y: float):\n        self.x = x\n        self.y = y\n\n    def distance_squared(self) -> float:\n        # Uses imported function\n        return square(self.x) + square(self.y)\n\n    def get_calculator(self) -> Calculator:\n        # Returns imported type\n        return Calculator(int(self.x))\n",
+    "main.spy": "# Main entry point importing from multiple modules\nfrom math_utils import square, twice, Calculator\nfrom geometry import Point\n\ndef main():\n    # Test imported function from math_utils\n    result: int = twice(7)\n    print(result)\n\n    # Test imported class from math_utils\n    calc = Calculator(5)\n    print(calc.add(3))\n\n    # Test geometry class that internally uses imported functions\n    p = Point(3.0, 4.0)\n    print(p.distance_squared())\n\n    # Test cross-module type usage\n    calc2 = p.get_calculator()\n    print(calc2.add(10))\n"
+  }
+}

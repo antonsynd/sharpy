@@ -1,0 +1,21 @@
+warning[SPY0452]: Imported name 'IMeasurable' is never used
+  --> /tmp/tmptfwqj_o5/shapes.spy:2:11
+    |
+  2 | from geometry import Point, ShapeBase, IMeasurable, IDrawable
+    |           ^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ShapeBase' is never used
+  --> /tmp/tmptfwqj_o5/main.spy:2:29
+    |
+  2 | from geometry import Point, ShapeBase, IMeasurable, IDrawable
+    |                             ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IDrawable' is never used
+  --> /tmp/tmptfwqj_o5/main.spy:2:53
+    |
+  2 | from geometry import Point, ShapeBase, IMeasurable, IDrawable
+    |                                                     ^^^^^^^^^
+    |
+

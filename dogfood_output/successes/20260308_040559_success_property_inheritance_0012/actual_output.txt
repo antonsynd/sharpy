@@ -1,0 +1,3 @@
+Rectangle 'box': 5.0x3.0 (area=15.0)
+Circle 'wheel': r=2.0 (area=12.57)
+Shape: generic

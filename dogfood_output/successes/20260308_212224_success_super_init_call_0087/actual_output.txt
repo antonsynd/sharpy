@@ -1,0 +1,11 @@
+leafA
+branch
+5
+100
+3
+True
+160
+root
+root/5
+root/7
+True

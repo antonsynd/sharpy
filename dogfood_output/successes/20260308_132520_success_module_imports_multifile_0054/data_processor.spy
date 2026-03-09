@@ -1,0 +1,14 @@
+# Module that imports from shared_types and provides processing
+from shared_types import DataSource, format_output
+
+class Processor(DataSource):
+    def __init__(self, name: str):
+        super().__init__(name)
+    
+    @override
+    def fetch(self) -> str:
+        return format_output(self.name + ": processed")
+
+def compute_total(count: int) -> str:
+    value: int = count * 3
+    return format_output("total=" + str(value))

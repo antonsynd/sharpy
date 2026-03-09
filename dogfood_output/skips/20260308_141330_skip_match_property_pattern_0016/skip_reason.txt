@@ -1,0 +1,88 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Type errors:
+error[SPY0203]: Type 'Item' has no member 'voltage'
+  --> /tmp/tmpndywf_81/dogfood_test.spy:53:42
+    |
+ 53 |     if isinstance(item, Electronics) and item.voltage == 120 and item.warranty_years == 2:
+    |                                          ^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Item' has no member 'warranty_years'
+  --> /tmp/tmpndywf_81/dogfood_test.spy:53:66
+    |
+ 53 |     if isinstance(item, Electronics) and item.voltage == 120 and item.warranty_years == 2:
+    |                                                                  ^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Item' has no member 'voltage'
+  --> /tmp/tmpndywf_81/dogfood_test.spy:55:44
+    |
+ 55 |     elif isinstance(item, Electronics) and item.voltage == 240:
+    |                                            ^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Item' has no member 'material'
+  --> /tmp/tmpndywf_81/dogfood_test.spy:59:42
+    |
+ 59 |     elif isinstance(item, Furniture) and item.material == "wood" and item.assembly_required == True:
+    |                                          ^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Item' has no member 'assembly_required'
+  --> /tmp/tmpndywf_81/dogfood_test.spy:59:70
+    |
+ 59 |     elif isinstance(item, Furniture) and item.material == "wood" and item.assembly_required == True:
+    |                                                                      ^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Item' has no member 'material'
+  --> /tmp/tmpndywf_81/dogfood_test.spy:63:42
+    |
+ 63 |     elif isinstance(item, Furniture) and item.material == "metal":
+    |                                          ^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Item' has no member 'size'
+  --> /tmp/tmpndywf_81/dogfood_test.spy:67:41
+    |
+ 67 |     elif isinstance(item, Clothing) and item.size == "M" and item.color == "red":
+    |                                         ^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Item' has no member 'color'
+  --> /tmp/tmpndywf_81/dogfood_test.spy:67:62
+    |
+ 67 |     elif isinstance(item, Clothing) and item.size == "M" and item.color == "red":
+    |                                                              ^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Item' has no member 'size'
+  --> /tmp/tmpndywf_81/dogfood_test.spy:69:41
+    |
+ 69 |     elif isinstance(item, Clothing) and item.size == "XL":
+    |                                         ^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Item' has no member 'material'
+  --> /tmp/tmpndywf_81/dogfood_test.spy:83:42
+    |
+ 83 |     elif isinstance(item, Furniture) and item.material == "metal":
+    |                                          ^^^^^^^^^^^^^
+    |
+
+Validation errors:
+error[SPY0266]: Function 'categorize_item' must return a value of type 'str' in all code paths
+  --> /tmp/tmpndywf_81/dogfood_test.spy:51:1
+    |
+ 51 | def categorize_item(item: Item) -> str:
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0266]: Function 'shipping_cost' must return a value of type 'float' in all code paths
+  --> /tmp/tmpndywf_81/dogfood_test.spy:76:1
+    |
+ 76 | def shipping_cost(item: Item) -> float:
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

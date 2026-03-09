@@ -1,0 +1,55 @@
+# shapes_geometry.spy - Concrete shape implementations
+from shapes import Shape, IShape
+
+PI: float = 3.14159265
+
+def square(x: float) -> float:
+    return x * x
+
+class Rectangle(Shape, IShape):
+    width: float
+    height: float
+
+    def __init__(self, width: float, height: float):
+        super().__init__("Rectangle")
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+    @override
+    def describe(self) -> str:
+        return f"Rectangle({self.width}, {self.height})"
+
+    @override
+    def scale(self, factor: float) -> float:
+        return self.area() * factor * factor
+
+class Circle(Shape, IShape):
+    radius: float
+
+    def __init__(self, radius: float):
+        super().__init__("Circle")
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return PI * square(self.radius)
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * PI * self.radius
+
+    @override
+    def describe(self) -> str:
+        return f"Circle(r={self.radius})"
+
+    @override
+    def scale(self, factor: float) -> float:
+        return self.area() * factor * factor

@@ -1,0 +1,56 @@
+warning[SPY0452]: Imported name 'Rectangle' is never used
+  --> /tmp/tmpjhkltfaf/utils.spy:3:3
+    |
+  3 | from geometry import Circle, Rectangle, Triangle, Point
+    |   ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Triangle' is never used
+  --> /tmp/tmpjhkltfaf/utils.spy:3:14
+    |
+  3 | from geometry import Circle, Rectangle, Triangle, Point
+    |              ^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Shape' is never used
+  --> /tmp/tmpjhkltfaf/main.spy:2:20
+    |
+  2 | from shapes import Shape, IArea, IPerimeter, ShapeType, Color
+    |                    ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IArea' is never used
+  --> /tmp/tmpjhkltfaf/main.spy:2:27
+    |
+  2 | from shapes import Shape, IArea, IPerimeter, ShapeType, Color
+    |                           ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IPerimeter' is never used
+  --> /tmp/tmpjhkltfaf/main.spy:2:34
+    |
+  2 | from shapes import Shape, IArea, IPerimeter, ShapeType, Color
+    |                                  ^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ShapeType' is never used
+  --> /tmp/tmpjhkltfaf/main.spy:2:46
+    |
+  2 | from shapes import Shape, IArea, IPerimeter, ShapeType, Color
+    |                                              ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'calculate_total_area' is never used
+  --> /tmp/tmpjhkltfaf/main.spy:4:19
+    |
+  4 | from utils import calculate_total_area, calculate_total_perimeter, get_shape_category, format_color_code
+    |                   ^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'calculate_total_perimeter' is never used
+  --> /tmp/tmpjhkltfaf/main.spy:4:41
+    |
+  4 | from utils import calculate_total_area, calculate_total_perimeter, get_shape_category, format_color_code
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T15:58:19.439652",
+  "generated_code": "# Test: Custom decorators on classes and methods with arithmetic processing\n# Tests @obsolete class/function attribute and @system.serializable\n\n@obsolete(\"Use DataProcessor instead\")\nclass Calculator:\n    multiplier: int\n    \n    def __init__(self, m: int):\n        self.multiplier = m\n    \n    def compute(self, x: int) -> int:\n        return x * self.multiplier\n\n@system.serializable\nclass Config:\n    threshold: int\n    active: bool\n    \n    def __init__(self):\n        self.threshold = 10\n        self.active = True\n\ndef accumulate_until(items: list[int], cap: int) -> int:\n    running = 0\n    for item in items:\n        if running + item > cap:\n            break\n        running += item\n    return running\n\ndef main():\n    calc = Calculator(3)\n    print(calc.compute(7))\n    \n    cfg = Config()\n    print(cfg.threshold)\n    \n    data: list[int] = [2, 4, 6, 8, 10]\n    result = accumulate_until(data, 15)\n    print(result)\n",
+  "expected_output": "21\n10\n12\n",
+  "actual_output": "21\n10\n12",
+  "feature_focus": "custom_decorator_simple",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 349.69490671157837,
+  "execution_duration": 5.249226093292236,
+  "source_files": null
+}

@@ -1,0 +1,37 @@
+# Utils module - string utilities and formatting
+enum LogLevel:
+    DEBUG = 0
+    INFO = 1
+    WARNING = 2
+    ERROR = 3
+
+def format_float(value: float, decimals: int) -> str:
+    # Simple implementation: multiply by 10^decimals, round, then format
+    # For now, just return the string representation
+    # Build the format manually for 2 decimal places (common case)
+    if decimals == 0:
+        return str(int(value))
+    if decimals == 1:
+        scaled: float = value * 10.0
+        rounded: int = int(scaled + 0.5)
+        return str(rounded // 10) + "." + str(rounded % 10)
+    if decimals == 2:
+        scaled2: float = value * 100.0
+        rounded2: int = int(scaled2 + 0.5)
+        int_part: int = rounded2 // 100
+        frac_part: int = rounded2 % 100
+        frac_tens: int = frac_part // 10
+        frac_ones: int = frac_part % 10
+        return str(int_part) + "." + str(frac_tens) + str(frac_ones)
+    # Fallback for other decimal places
+    return str(value)
+
+def join_strings(parts: list[str], delimiter: str) -> str:
+    result: str = ""
+    first: bool = True
+    for part in parts:
+        if not first:
+            result = result + delimiter
+        result = result + part
+        first = False
+    return result

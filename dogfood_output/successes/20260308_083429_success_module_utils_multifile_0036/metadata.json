@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T08:30:20.510637",
+  "generated_code": "from math_utils import MathHelper, clamp, sign\nfrom string_utils import Formatter, repeat_char\n\nclass ExtendedMath(MathHelper):\n    @override\n    def compute(self, x: int) -> int:\n        return clamp(x * x, 0, 100)\n\ndef main():\n    helper: ExtendedMath = ExtendedMath()\n    \n    result1: int = helper.compute(7)\n    print(result1)\n    \n    result2: int = helper.compute(12)\n    print(result2)\n    \n    formatter: Formatter = Formatter(\"Val: \", 50)\n    formatted: str = formatter.format(30)\n    print(formatted)\n    \n    formatter2: Formatter = Formatter(\"X=\", 10)\n    formatted2: str = formatter2.format(8)\n    print(formatted2)\n    \n    stars: str = repeat_char(\"*\", 3 + sign(5))\n    print(stars)\n    \n    pi: float = MathHelper.PI\n    print(pi)\n",
+  "expected_output": "49\n100\nVal: 60\nX=16\n****\n3.14159\n",
+  "actual_output": "49\n100\nVal: 60\nX=16\n****\n3.14159",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 232.3525197505951,
+  "execution_duration": 5.226464748382568,
+  "source_files": {
+    "math_utils.spy": "class MathHelper:\n    @static\n    PI: float = 3.14159\n    \n    @virtual\n    def compute(self, x: int) -> int:\n        return x * 2\n\ndef clamp(value: int, min_val: int, max_val: int) -> int:\n    if value < min_val:\n        return min_val\n    if value > max_val:\n        return max_val\n    return value\n\ndef sign(value: int) -> int:\n    if value > 0:\n        return 1\n    if value < 0:\n        return -1\n    return 0\n",
+    "string_utils.spy": "from math_utils import clamp\n\nclass Formatter:\n    prefix: str\n    max_val: int\n    \n    def __init__(self, prefix: str, max_val: int):\n        self.prefix = prefix\n        self.max_val = max_val\n    \n    def format(self, value: int) -> str:\n        clamped: int = clamp(value, 0, self.max_val)\n        scaled: int = clamped * 2\n        return self.prefix + str(scaled)\n    \n    def get_limit(self) -> int:\n        return self.max_val\n\ndef repeat_char(char: str, count: int) -> str:\n    result: str = \"\"\n    i: int = 0\n    while i < count:\n        result = result + char\n        i = i + 1\n    return result\n",
+    "main.spy": "from math_utils import MathHelper, clamp, sign\nfrom string_utils import Formatter, repeat_char\n\nclass ExtendedMath(MathHelper):\n    @override\n    def compute(self, x: int) -> int:\n        return clamp(x * x, 0, 100)\n\ndef main():\n    helper: ExtendedMath = ExtendedMath()\n    \n    result1: int = helper.compute(7)\n    print(result1)\n    \n    result2: int = helper.compute(12)\n    print(result2)\n    \n    formatter: Formatter = Formatter(\"Val: \", 50)\n    formatted: str = formatter.format(30)\n    print(formatted)\n    \n    formatter2: Formatter = Formatter(\"X=\", 10)\n    formatted2: str = formatter2.format(8)\n    print(formatted2)\n    \n    stars: str = repeat_char(\"*\", 3 + sign(5))\n    print(stars)\n    \n    pi: float = MathHelper.PI\n    print(pi)\n"
+  }
+}

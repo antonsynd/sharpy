@@ -1,0 +1,89 @@
+# Test complex delegate and lambda interactions
+# Features: generic delegates, delegates as return values, 
+# partial application, delegates in collections
+
+delegate Transformer[T](value: T) -> T
+delegate Predicate(value: int) -> bool
+
+class DataPipeline:
+    _processors: list[Transformer[int]]
+    
+    def __init__(self):
+        self._processors = []
+    
+    def add_processor(self, proc: Transformer[int]) -> None:
+        self._processors.append(proc)
+    
+    def process(self, val: int) -> int:
+        current: int = val
+        for proc in self._processors:
+            current = proc(current)
+        return current
+    
+    def build_filter(self, threshold: int) -> Predicate:
+        return lambda x: x > threshold
+
+class NumberStats:
+    values: list[int]
+    
+    def __init__(self, data: list[int]):
+        self.values = data
+    
+    def apply_if(self, pred: Predicate, action: Transformer[int]) -> None:
+        i: int = 0
+        while i < len(self.values):
+            if pred(self.values[i]):
+                self.values[i] = action(self.values[i])
+            i += 1
+    
+    def sum_positive(self) -> int:
+        total: int = 0
+        for val in self.values:
+            if val > 0:
+                total += val
+        return total
+
+def make_multiplier(factor: int) -> Transformer[int]:
+    return lambda x: x * factor
+
+def main():
+    # Create pipeline with multiple lambdas as delegates
+    pipeline = DataPipeline()
+    
+    # Lambda as delegate
+    pipeline.add_processor(lambda x: x + 10)
+    
+    # Partial application: underscore placeholder creates delegate
+    doubler: Transformer[int] = make_multiplier(2)
+    pipeline.add_processor(doubler)
+    
+    # Process data
+    result: int = pipeline.process(5)
+    print(result)
+    
+    # Delegate returned from method
+    is_large: Predicate = pipeline.build_filter(20)
+    print(is_large(result))
+    
+    # Stats with filter delegate and action delegate
+    data: list[int] = [1, -3, 15, -8, 20]
+    stats: NumberStats = NumberStats(data)
+    
+    # Lambda delegates in method calls
+    stats.apply_if(lambda v: v < 0, lambda v: v * -1)
+    
+    # Sum positive values
+    positive_sum: int = stats.sum_positive()
+    print(positive_sum)
+    
+    # Test that negatives were flipped
+    print(stats.values[1])
+    print(stats.values[3])
+    
+    # Combine delegates with conditional logic
+    base: int = 7
+    final_result: int = pipeline.process(base)
+    if is_large(final_result):
+        print(final_result)
+    else:
+        print(0)

@@ -1,0 +1,19 @@
+# Core types module - defines interfaces, enum, and struct
+interface IRenderable:
+    def render(self) -> str: ...
+
+interface IMeasurable:
+    property area: float
+
+enum Color:
+    RED = 0
+    GREEN = 1
+    BLUE = 2
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y

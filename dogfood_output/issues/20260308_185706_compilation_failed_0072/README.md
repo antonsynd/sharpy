@@ -1,0 +1,134 @@
+# Issue Report: compilation_failed
+
+**Timestamp:** 2026-03-08T18:49:38.917927
+**Type:** compilation_failed
+**Feature Focus:** try_except_finally
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Transaction pipeline with exception handling
+enum ResultCode:
+    SUCCESS = 0
+    PARSE_ERROR = 1
+    PROCESS_ERROR = 2
+
+class ProcessingError(Exception):
+    pass
+
+class ValidationError(Exception):
+    pass
+
+class Parser:
+    name: str
+    def __init__(self, name: str):
+        self.name = name
+    @virtual
+    def parse(self, data: int) -> int:
+        return data
+
+class StrictParser(Parser):
+    max_value: int
+    def __init__(self, name: str, max_val: int):
+        super().__init__(name)
+        self.max_value = max_val
+    @override
+    def parse(self, data: int) -> int:
+        if data > self.max_value:
+            raise ProcessingError("Too large")
+        if data < 0:
+            raise ValidationError("Negative")
+        return data * 10
+
+class Pipeline:
+    codes: list[ResultCode]
+    def __init__(self):
+        self.codes = []
+    def process(self, items: list[int]) -> int:
+        parser: Parser = StrictParser("strict", 100)
+        total: int = 0
+        for i in range(len(items)):
+            try:
+                val: int = parser.parse(items[i])
+                total += val
+                self.codes.append(ResultCode.SUCCESS)
+            except ProcessingError as e:
+                total += 1000
+                self.codes.append(ResultCode.PROCESS_ERROR)
+            except ValidationError as e:
+                total += 500
+                self.codes.append(ResultCode.PARSE_ERROR)
+            finally:
+                print(f"Item {i} processed")
+        return total
+
+def main():
+    pipe = Pipeline()
+    data: list[int] = [5, 200, -3]
+    result: int = pipe.process(data)
+    print(result)
+    for c in pipe.codes:
+        if c == ResultCode.SUCCESS:
+            print("OK")
+        elif c == ResultCode.PROCESS_ERROR:
+            print("PROC_ERR")
+        else:
+            print("VALID_ERR")
+
+```
+
+## Error
+
+```
+Assembly compilation failed:
+
+error[CS1729]: 'DogfoodTest.ProcessingError' does not contain a constructor that takes 1 arguments
+  --> /tmp/tmp6bnauyhj/dogfood_test.spy:29:27
+    |
+ 29 |             raise ProcessingError("Too large")
+    |                           ^
+    |
+
+error[CS1729]: 'DogfoodTest.ValidationError' does not contain a constructor that takes 1 arguments
+  --> /tmp/tmp6bnauyhj/dogfood_test.spy:31:27
+    |
+ 31 |             raise ValidationError("Negative")
+    |                           ^
+    |
+
+
+```
+
+## Compiler Output
+
+```
+warning[SPY0451]: Local variable 'e' is assigned but never used
+  --> /tmp/tmp6bnauyhj/dogfood_test.spy:49:13
+    |
+ 49 |             except ValidationError as e:
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+
+```
+
+## Generated C#
+
+```csharp
+warning[SPY0451]: Local variable 'e' is assigned but never used
+  --> /tmp/tmp6bnauyhj/dogfood_test.spy:49:13
+    |
+ 49 |             except ValidationError as e:
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+Generated C# code written to: /tmp/tmp6bnauyhj/dogfood_test.cs
+
+```
+
+## Timing
+
+- Generation: 432.31s
+- Execution: 5.00s

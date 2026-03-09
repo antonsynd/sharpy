@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T04:59:47.040777",
+  "generated_code": "# Main entry point demonstrating cross-module imports\nfrom calculator import Calculator\nfrom math_core import cube\n\ndef main():\n    # Create calculator with initial value\n    calc = Calculator(10.0)\n    print(calc.result)\n    \n    # Add square of 3.0 to accumulator\n    calc.add_square(3.0)\n    print(calc.result)\n    \n    # Calculate circle area using imported PI\n    area: float = calc.circle_area(2.0)\n    print(area)\n    \n    # Direct use of imported cube function\n    cubed: float = cube(3.0)\n    print(cubed)\n",
+  "expected_output": "10.0\n19.0\n12.56636\n27.0\n",
+  "actual_output": "10.0\n19.0\n12.56636\n27.0",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 149.70635414123535,
+  "execution_duration": 4.896334171295166,
+  "source_files": {
+    "math_core.spy": "# Core mathematical utilities module\nPI: float = 3.14159\n\ndef square(x: float) -> float:\n    return x * x\n\ndef cube(x: float) -> float:\n    return x * x * x\n",
+    "calculator.spy": "# Calculator module that imports from math_core\nfrom math_core import PI, square\n\nclass Calculator:\n    result: float\n    \n    def __init__(self, initial: float):\n        self.result = initial\n    \n    def add_square(self, x: float) -> float:\n        self.result = self.result + square(x)\n        return self.result\n    \n    def circle_area(self, radius: float) -> float:\n        return PI * square(radius)\n",
+    "main.spy": "# Main entry point demonstrating cross-module imports\nfrom calculator import Calculator\nfrom math_core import cube\n\ndef main():\n    # Create calculator with initial value\n    calc = Calculator(10.0)\n    print(calc.result)\n    \n    # Add square of 3.0 to accumulator\n    calc.add_square(3.0)\n    print(calc.result)\n    \n    # Calculate circle area using imported PI\n    area: float = calc.circle_area(2.0)\n    print(area)\n    \n    # Direct use of imported cube function\n    cubed: float = cube(3.0)\n    print(cubed)\n"
+  }
+}

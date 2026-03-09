@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'Circle' is never used
+  --> /tmp/tmpfy9pxcj4/utils.spy:3:26
+    |
+  3 | from geometry import Circle, Rectangle, Point2D
+    |                          ^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Rectangle' is never used
+  --> /tmp/tmpfy9pxcj4/utils.spy:3:34
+    |
+  3 | from geometry import Circle, Rectangle, Point2D
+    |                                  ^^^^^^^^^
+    |
+

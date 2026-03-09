@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T04:21:02.350753",
+  "generated_code": "def main():\n    scores: dict[str, int] = {\"alice\": 85, \"bob\": 92, \"carol\": 78}\n    total: int = 0\n    for score in scores.values():\n        total += score\n    print(total)\n",
+  "expected_output": "255\n",
+  "actual_output": "255",
+  "feature_focus": "dict_literal",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 47.58018898963928,
+  "execution_duration": 5.139892339706421,
+  "source_files": null
+}

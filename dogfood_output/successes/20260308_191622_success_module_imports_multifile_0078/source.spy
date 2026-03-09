@@ -1,0 +1,22 @@
+# Main entry point - imports from both modules and demonstrates functionality
+from string_ops import reverse_str, StringProcessor
+from text_formatter import UpperCaseFormatter, ReversedFormatter, analyze_text
+
+def main():
+    text: str = "Hello World"
+    
+    # Test 1: Direct function call from string_ops
+    print(reverse_str(text))
+    
+    # Test 2: Using UpperCaseFormatter (inherits from StringProcessor in string_ops)
+    upper = UpperCaseFormatter(text)
+    print(upper.process())
+    
+    # Test 3: Using ReversedFormatter (inherits from StringProcessor)
+    rev = ReversedFormatter(text)
+    print(rev.process())
+    
+    # Test 4 & 5: Using analyze_text from text_formatter (returns tuple)
+    stats: tuple[int, str] = analyze_text(text)
+    print(stats[0])
+    print(stats[1])

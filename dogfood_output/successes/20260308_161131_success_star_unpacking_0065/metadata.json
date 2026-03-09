@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T16:05:42.707682",
+  "generated_code": "class DataProcessor:\n    values: list[int]\n    \n    def __init__(self, values: list[int]) -> None:\n        self.values = values\n    \n    def analyze(self) -> tuple[int, int, int]:\n        if len(self.values) < 3:\n            result: tuple[int, int, int] = (0, 0, 0)\n            return result\n        \n        first: int = self.values[0]\n        last: int = self.values[len(self.values) - 1]\n        middle_count: int = len(self.values) - 2\n        \n        result: tuple[int, int, int] = (first, middle_count, last)\n        return result\n    \n    def summary(self) -> int:\n        a: int\n        b: int\n        c: int\n        a, b, c = self.analyze()\n        return a + b * 10 + c\n\ndef main():\n    dp: DataProcessor = DataProcessor([5, 10, 15, 20, 25])\n    start: int\n    middle_count: int\n    end: int\n    start, middle_count, end = dp.analyze()\n    print(start)\n    print(middle_count)\n    print(end)\n    print(dp.summary())\n    \n    dp2: DataProcessor = DataProcessor([100, 200, 300])\n    print(dp2.summary())\n",
+  "expected_output": "5\n3\n25\n60\n410\n",
+  "actual_output": "5\n3\n25\n60\n410",
+  "feature_focus": "star_unpacking",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 331.9103207588196,
+  "execution_duration": 5.062467098236084,
+  "source_files": null
+}

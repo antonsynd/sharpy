@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Geometry.Shape' does not contain a definition for 'Area' and no accessible extension method 'Area' accepting a first argument of type 'Geometry.Shape' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpfy9pxcj4/utils.spy:8:31
+    |
+  8 |     corner: Point2D = Point2D(6.0, 8.0)
+    |                               ^
+    |
+

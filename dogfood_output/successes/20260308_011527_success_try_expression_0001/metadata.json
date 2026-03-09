@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T01:08:16.273320",
+  "generated_code": "def safe_divide(a: int, b: int) -> int !Exception:\n    return try a // b\n\ndef format_result(r: int !Exception) -> str:\n    value: int = r.unwrap_or(-1)\n    if value == -1:\n        return \"error\"\n    return f\"success: {value}\"\n\ndef main():\n    # Test try expression with successful division\n    result1: int !Exception = safe_divide(24, 6)\n    print(format_result(result1))\n    \n    # Test try expression with division by zero\n    result2: int !Exception = safe_divide(10, 0)\n    print(format_result(result2))\n    \n    # Test unwrap on success\n    result3: int !Exception = safe_divide(35, 5)\n    print(result3.unwrap())\n    \n    # Test unwrap_or with error\n    result4: int !Exception = safe_divide(100, 0)\n    print(result4.unwrap_or(-999))\n    \n    # Test unwrap on success with map\n    result5: int !Exception = safe_divide(42, 7)\n    mapped: str !Exception = result5.map(lambda x: x * 2).map(lambda x: f\"value: {x}\")\n    print(mapped.unwrap())\n    \n    # Basic try expression in main\n    result6: int !Exception = try 100 // 25\n    print(result6.unwrap())\n    \n    # Try expression with division by zero\n    result7: int !Exception = try 50 // 0\n    print(result7.unwrap_or(0))\n",
+  "expected_output": "success: 4\nerror\n7\n-999\nvalue: 12\n4\n0\n",
+  "actual_output": "success: 4\nerror\n7\n-999\nvalue: 12\n4\n0",
+  "feature_focus": "try_expression",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 408.90140104293823,
+  "execution_duration": 5.540403604507446,
+  "source_files": null
+}

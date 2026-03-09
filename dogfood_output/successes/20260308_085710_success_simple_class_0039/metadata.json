@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T08:56:05.040818",
+  "generated_code": "# Test: Simple class with properties, static tracking, and tuple unpacking\n# Combines auto-properties, static fields, and __str__ for a library system\n\nclass Book:\n    @static\n    total_books: int = 0\n    \n    property title: str\n    property author: str\n    property get display_info(self) -> str:\n        return f\"'{self.title}' by {self.author}\"\n    \n    def __init__(self, title: str, author: str):\n        self.title = title\n        self.author = author\n        Book.total_books += 1\n    \n    def __str__(self) -> str:\n        return f\"[Book: {self.title}]\"\n    \n    def get_details(self) -> tuple[str, str]:\n        return (self.title, self.author)\n\ndef main():\n    # Create instances\n    book1 = Book(\"Python Guide\", \"Alice Smith\")\n    book2 = Book(\"Code Patterns\", \"Bob Jones\")\n    \n    # Print using __str__\n    print(book1)\n    \n    # Property access\n    print(book2.title)\n    \n    # Computed property\n    info: str = book1.display_info\n    print(info)\n    \n    # Tuple unpacking from method\n    title, author = book2.get_details()\n    print(title)\n    print(author)\n    \n    # Static field tracking\n    print(Book.total_books)\n",
+  "expected_output": "[Book: Python Guide]\nCode Patterns\n'Python Guide' by Alice Smith\nCode Patterns\nBob Jones\n2\n",
+  "actual_output": "[Book: Python Guide]\nCode Patterns\n'Python Guide' by Alice Smith\nCode Patterns\nBob Jones\n2",
+  "feature_focus": "simple_class",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 54.52749538421631,
+  "execution_duration": 5.272475481033325,
+  "source_files": null
+}

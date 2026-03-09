@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot assign type 'object' to variable of type 'Item'
+  --> /tmp/tmpdwo3uagq/dogfood_test.spy:23:9
+    |
+ 23 |         other_item: Item = other
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

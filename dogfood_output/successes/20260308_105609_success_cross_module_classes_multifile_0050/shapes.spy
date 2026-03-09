@@ -1,0 +1,21 @@
+# Base module defining shape hierarchy - demonstrates abstract classes and interfaces
+
+interface Drawable:
+    def draw(self) -> str: ...
+
+@abstract
+class Shape:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    @abstract
+    def area(self) -> float:
+        ...
+    
+    @virtual
+    def get_info(self) -> str:
+        return "Shape at (" + str(self.x) + ", " + str(self.y) + ")"

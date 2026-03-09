@@ -1,0 +1,14 @@
+# Utility module - helper functions using types
+from types import Color
+
+def color_name(c: Color) -> str:
+    match c:
+        case Color.RED:
+            return "Red"
+        case Color.GREEN:
+            return "Green"
+        case _:
+            return "Blue"
+
+def scale_factor(base: float, multiplier: float) -> float:
+    return base * multiplier

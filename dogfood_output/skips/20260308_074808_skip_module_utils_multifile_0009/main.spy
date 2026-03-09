@@ -1,0 +1,31 @@
+# Main entry point - tests module imports and shape calculations
+from utils import Statistics, format_number
+from shapes import Rectangle, Circle, IShape
+
+def main():
+    # Create shapes list
+    shapes: list[IShape] = []
+    shapes.append(Rectangle(5.0, 3.0))
+    shapes.append(Circle(2.5))
+    shapes.append(Rectangle(4.0, 4.0))
+
+    # Calculate areas
+    areas: list[float] = []
+    for s in shapes:
+        areas.append(s.area())
+
+    # Print shape descriptions
+    for s in shapes:
+        print(s.describe())
+
+    # Calculate and print statistics
+    total_area: float = 0.0
+    for a in areas:
+        total_area = total_area + a
+
+    mean_area: float = Statistics.mean(areas)
+    sum_sq: float = Statistics.sum_of_squares(areas)
+
+    print(f"Total: {format_number(total_area)}")
+    print(f"Mean: {format_number(mean_area)}")
+    print(f"SumSquares: {format_number(sum_sq)}")

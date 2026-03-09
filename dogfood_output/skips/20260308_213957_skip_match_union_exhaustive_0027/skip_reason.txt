@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0100]: Unexpected token: Newline
+  --> /tmp/tmp5_75zzm_/dogfood_test.spy:8:29
+    |
+  8 |         case Status.Pending:
+    |                             ^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmp5_75zzm_/dogfood_test.spy:10:9
+    |
+ 10 |         case Status.Running:
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Case
+  --> /tmp/tmp5_75zzm_/dogfood_test.spy:12:9
+    |
+ 12 |         case Status.Completed:
+    |         ^^^^
+    |
+
+error[SPY0100]: Unexpected token: Dedent
+  --> /tmp/tmp5_75zzm_/dogfood_test.spy:15:1
+    |
+ 15 | def main():
+    | ^
+    |
+

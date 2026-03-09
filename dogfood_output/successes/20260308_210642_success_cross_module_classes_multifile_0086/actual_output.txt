@@ -1,0 +1,8 @@
+A circle with radius 5.0
+A rectangle 10.0 x 20.0
+A cylinder with height 10.0
+Circle area: 78.53975
+Rect perimeter: 60.0
+Category: 3D
+Cylinder[r=3.0, h=10.0]
+Total area: 278.53975

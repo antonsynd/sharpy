@@ -1,0 +1,7 @@
+warning[SPY0452]: Imported name 'ShapeBase' is never used
+  --> /tmp/tmp21icildd/main.spy:2:39
+    |
+  2 | from shapes import IShape, IDrawable, ShapeBase
+    |                                       ^^^^^^^^^
+    |
+

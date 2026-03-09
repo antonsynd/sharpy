@@ -1,0 +1,8 @@
+Rectangle name: Rectangle
+Circle name: Circle
+Rectangle(5.0, 3.0): area=15.0, perimeter=16.0
+Circle(r=2.5): area=19.6349540625, perimeter=15.70796325
+Total area: 34.6349540625
+Scaled rect area: 60.0
+Scaled circle area: 78.53981625
+Via Shape ref: Rectangle

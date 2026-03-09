@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T19:22:29.167533",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0100]: Unexpected token: Newline\n  --> /tmp/tmpgi5wkumb/dogfood_test.spy:21:29\n    |\n 21 |         case TaskState.IDLE:\n    |                             ^\n    |\n\nerror[SPY0100]: Unexpected token: Case\n  --> /tmp/tmpgi5wkumb/dogfood_test.spy:23:9\n    |\n 23 |         case TaskState.PROCESSING:\n    |         ^^^^\n    |\n\nerror[SPY0100]: Unexpected token: Case\n  --> /tmp/tmpgi5wkumb/dogfood_test.spy:25:9\n    |\n 25 |         case TaskState.FINISHED:\n    |         ^^^^\n    |\n\nerror[SPY0100]: Unexpected token: Dedent\n  --> /tmp/tmpgi5wkumb/dogfood_test.spy:28:1\n    |\n 28 | def main():\n    | ^\n    |\n\n",
+  "generated_code": "# Test: Exhaustive pattern matching on enums\n# Using enum with data carried in parallel variables to simulate tagged union\n\nenum TaskState:\n    IDLE = 0\n    PROCESSING = 1\n    FINISHED = 2\n\nclass Task:\n    state: TaskState\n    step: int\n    result: str\n\n    def __init__(self):\n        self.state = TaskState.IDLE\n        self.step = 0\n        self.result = \"\"\n\ndef describe(task: Task) -> str:\n    return match task.state:\n        case TaskState.IDLE:\n            \"waiting to start\"\n        case TaskState.PROCESSING:\n            f\"step {task.step}\"\n        case TaskState.FINISHED:\n            f\"completed: {task.result}\"\n\ndef main():\n    t1: Task = Task()\n    t1.state = TaskState.IDLE\n\n    t2: Task = Task()\n    t2.state = TaskState.PROCESSING\n    t2.step = 3\n\n    t3: Task = Task()\n    t3.state = TaskState.FINISHED\n    t3.result = \"ok\"\n\n    print(describe(t1))\n    print(describe(t2))\n    print(describe(t3))\n",
+  "expected_output": "waiting to start\nstep 3\ncompleted: ok\n",
+  "feature_focus": "match_union_exhaustive",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 263.2352488040924,
+  "source_files": null,
+  "validation_output": null
+}

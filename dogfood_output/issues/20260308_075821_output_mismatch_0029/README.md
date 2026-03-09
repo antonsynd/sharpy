@@ -1,0 +1,98 @@
+# Issue Report: output_mismatch
+
+**Timestamp:** 2026-03-08T07:48:08.748120
+**Type:** output_mismatch
+**Feature Focus:** module_imports
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# main.spy - Main entry point demonstrating complex module imports
+from types_module import Point, ShapeCategory, IPrintable, IMeasurable
+from shapes_module import Circle, Rectangle
+from utils_module import total_measurement, format_all, get_category_name, origin_point
+
+def main():
+    # Create some points using struct from types_module
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+
+    # Test Point struct methods (calculates distance: sqrt((3-0)^2 + (4-0)^2) = 5.0)
+    dist: float = p1.distance_to(p2)
+    print(dist)
+
+    # Create shapes using classes from shapes_module
+    circle: Circle = Circle("Sun", p1, 5.0)
+    rect: Rectangle = Rectangle("Box", Point(1.0, 1.0), 4.0, 3.0)
+
+    # Test enum access - get category name
+    print(get_category_name(ShapeCategory.GEOMETRIC))
+
+    # Test inheritance - describe() is overridden
+    print(circle.describe())
+    print(rect.describe())
+
+    # Test interface implementations using utilities
+    # Build list[IMeasurable] by declaring with interface type and appending
+    shapes: list[IMeasurable] = []
+    shapes.append(circle)
+    shapes.append(rect)
+
+    # Calculate total area: Circle (3.14159 * 5^2 = 78.53975) + Rectangle (4 * 3 = 12) = 90.53975
+    total: float = total_measurement(shapes)
+    print(total)
+
+    # Format all shapes - build list[IPrintable] with append
+    printable_shapes: list[IPrintable] = []
+    printable_shapes.append(circle)
+    printable_shapes.append(rect)
+
+    formatted: list[str] = format_all(printable_shapes)
+    for s in formatted:
+        print(s)
+
+    # Test static function from utils
+    origin: Point = origin_point()
+    print(origin.x)
+
+```
+
+## Error
+
+```
+AI explicitly reported mismatch
+```
+
+## Output Comparison
+
+### Expected
+```
+5.0
+Geometric
+Circle 'Sun' at (0.0, 0.0) with radius 5.0
+Rectangle 'Box' at (1.0, 1.0) sized 4.0x3.0
+90.53975
+[Circle: r=5.0]
+[Rectangle: 4.0x3.0]
+0.0
+
+```
+
+### Actual
+```
+5.0
+Geometric
+Circle 'Sun' at (0, 0) with radius 5.0
+Rectangle 'Box' at (1, 1) sized 4.0x3.0
+90.53975
+[Circle: r=5.0]
+[Rectangle: 4.0x3.0]
+0.0
+```
+
+## Timing
+
+- Generation: 477.53s
+- Execution: 5.47s

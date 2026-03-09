@@ -1,0 +1,8 @@
+Rectangle at (0.0, 0.0)
+Circle at (1.0, 1.0)
+Rectangle(10.0 x 20.0) area=200.0
+Rectangle(3.0 x 4.0) area=12.0
+Circle(r=5.0) area=78.53975
+290.53975
+3
+(42.0, 99.5)

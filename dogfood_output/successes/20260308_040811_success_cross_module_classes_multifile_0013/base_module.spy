@@ -1,0 +1,14 @@
+# Base module defining an abstract base class with virtual methods
+class Animal:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def speak(self) -> str:
+        return "..."
+    
+    @virtual
+    def describe(self) -> str:
+        return f"A generic animal named {self.name}"

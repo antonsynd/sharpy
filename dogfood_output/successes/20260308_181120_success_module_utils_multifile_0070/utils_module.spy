@@ -1,0 +1,17 @@
+# Utility module with static methods operating on interface types
+
+from types_module import IMeasurable
+
+class MetricsCalculator:
+    @static
+    def sum_areas(shapes: list[IMeasurable]) -> float:
+        total: float = 0.0
+        for s in shapes:
+            total = total + s.area()
+        return total
+    
+    @static
+    def average_area(shapes: list[IMeasurable]) -> float:
+        if len(shapes) == 0:
+            return 0.0
+        return MetricsCalculator.sum_areas(shapes) / float(len(shapes))

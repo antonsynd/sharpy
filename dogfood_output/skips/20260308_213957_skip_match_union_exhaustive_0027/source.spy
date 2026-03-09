@@ -1,0 +1,21 @@
+union Status:
+    case Pending
+    case Running(progress: int)
+    case Completed(result: str)
+
+def describe(status: Status) -> str:
+    return match status:
+        case Status.Pending:
+            "waiting"
+        case Status.Running:
+            f"loading {status.progress}%"
+        case Status.Completed:
+            f"done: {status.result}"
+
+def main():
+    s1: Status = Status.Pending
+    s2: Status = Status.Running(50)
+    s3: Status = Status.Completed("success")
+    print(describe(s1))
+    print(describe(s2))
+    print(describe(s3))

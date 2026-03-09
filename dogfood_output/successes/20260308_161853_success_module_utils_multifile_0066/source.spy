@@ -1,0 +1,43 @@
+from math_utils import Geometry, area_of_circle, area_of_rectangle, perimeter_of_circle
+from string_utils import StringHelper
+
+def main():
+    # Test geometry calculations
+    radius: float = 5.0
+    circle_area: float = area_of_circle(radius)
+    circle_perimeter: float = perimeter_of_circle(radius)
+    
+    print("Circle calculations:")
+    print(f"Radius: {radius}")
+    print(f"Area: {circle_area}")
+    print(f"Perimeter: {circle_perimeter}")
+    
+    rect_width: float = 4.0
+    rect_height: float = 6.0
+    rect_area: float = area_of_rectangle(rect_width, rect_height)
+    
+    print("Rectangle calculations:")
+    print(f"Width: {rect_width}")
+    print(f"Height: {rect_height}")
+    print(f"Area: {rect_area}")
+    
+    # Test string manipulation
+    text: str = "Hello World"
+    helper: StringHelper = StringHelper()
+    reversed_text: str = helper.reverse_string(text)
+    word_count: int = helper.count_words(text)
+    is_pal: bool = helper.is_palindrome(text)
+    
+    print("String operations:")
+    print(f"Original: {text}")
+    print(f"Reversed: {reversed_text}")
+    print(f"Word count: {word_count}")
+    print(f"Is palindrome: {is_pal}")
+    
+    # Test with palindrome
+    palindrome: str = "radar"
+    is_pal2: bool = helper.is_palindrome(palindrome)
+    
+    print("Palindrome test:")
+    print(f"Text: {palindrome}")
+    print(f"Is palindrome: {is_pal2}")

@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0534]: 'DogfoodTest.Document' does not implement inherited abstract member 'DogfoodTest.Asset.Category.get'
+  --> /tmp/tmppqxv232y/dogfood_test.spy:18:18
+    |
+ 18 |     property title: str = "Untitled"
+    |                  ^
+    |
+
+error[CS0535]: 'DogfoodTest.Document' does not implement interface member 'DogfoodTest.ILocatable.Location.set'
+  --> /tmp/tmppqxv232y/dogfood_test.spy:18:36
+    |
+ 18 |     property title: str = "Untitled"
+    |                                    ^
+    |
+

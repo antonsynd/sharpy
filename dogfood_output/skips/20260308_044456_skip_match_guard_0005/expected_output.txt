@@ -1,0 +1,16 @@
+small_square
+37.5
+large_square
+600.0
+wide_large
+300.0
+tall
+75.0
+rectangle
+21.0
+circle_small
+78.53975
+circle_large
+1963.49375
+circle_huge
+70685.775

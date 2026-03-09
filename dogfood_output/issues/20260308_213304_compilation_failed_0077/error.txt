@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS1061]: 'GeometryTypes.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'GeometryTypes.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp21icildd/shape_impl.spy:29:194
+    |
+ 29 |     rect: Rectangle = Rectangle(5.0, 3.0, Color.RED, LineStyle.DASHED)
+    |                                                                       ^
+    |
+
+error[CS1061]: 'GeometryTypes.LineStyle' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'GeometryTypes.LineStyle' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp21icildd/shape_impl.spy:33:91
+    |
+ 33 |     print(process_shape(rect))
+    |                               ^
+    |
+

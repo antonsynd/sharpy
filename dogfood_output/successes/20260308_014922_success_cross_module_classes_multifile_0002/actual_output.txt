@@ -1,0 +1,13 @@
+Generic
+5
+Widget
+10
+2.5
+2
+3
+Widget @ 2.5
+Gadget @ 5.0
+True
+True
+True
+False

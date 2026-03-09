@@ -1,0 +1,12 @@
+=== Circle ===
+Circle(MyCircle) with radius 5.0
+78.53975
+31.4159
+Drawing circle: MyCircle
+=== Rectangle ===
+Rectangle(MyRect): 4.0x6.0
+24.0
+20.0
+Drawing rectangle: MyRect
+=== Polymorphism ===
+78.53975

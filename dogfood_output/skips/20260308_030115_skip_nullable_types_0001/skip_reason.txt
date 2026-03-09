@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0260]: Cannot return 'None' from function expecting 'str?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmput3nb9q3/dogfood_test.spy:7:9
+    |
+  7 |         return None
+    |         ^^^^^^^^^^^
+    |
+
+error[SPY0229]: Cannot assign 'None' to 'str?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmput3nb9q3/dogfood_test.spy:21:36
+    |
+ 21 |         self._cache["empty_key"] = None
+    |                                    ^^^^
+    |
+
+error[SPY0260]: Cannot return 'None' from function expecting 'str?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmput3nb9q3/dogfood_test.spy:34:9
+    |
+ 34 |         return None
+    |         ^^^^^^^^^^^
+    |
+
+error[SPY0260]: Cannot return 'None' from function expecting 'str?'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?
+  --> /tmp/tmput3nb9q3/dogfood_test.spy:49:9
+    |
+ 49 |         return None
+    |         ^^^^^^^^^^^
+    |
+

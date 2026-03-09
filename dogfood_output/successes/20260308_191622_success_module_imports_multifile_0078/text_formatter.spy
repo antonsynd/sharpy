@@ -1,0 +1,23 @@
+# Text formatter module - imports from string_ops and provides formatting
+from string_ops import reverse_str, count_vowels, StringProcessor
+
+class UpperCaseFormatter(StringProcessor):
+    def __init__(self, data: str):
+        super().__init__(data)
+    
+    @override
+    def process(self) -> str:
+        return self.data.upper()
+
+class ReversedFormatter(StringProcessor):
+    def __init__(self, data: str):
+        super().__init__(data)
+    
+    @override
+    def process(self) -> str:
+        return reverse_str(self.data)
+
+def analyze_text(text: str) -> tuple[int, str]:
+    vowel_count: int = count_vowels(text)
+    reversed_text: str = reverse_str(text)
+    return (vowel_count, reversed_text)

@@ -1,0 +1,14 @@
+Circle: Sun
+Red
+Rectangle: Door
+Green
+Triangle: Pyramid
+Blue
+78.53975
+24.0
+6.0
+31.4159
+20.0
+12.0
+Geometric
+0x65280

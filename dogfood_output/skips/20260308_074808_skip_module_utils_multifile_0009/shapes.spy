@@ -1,0 +1,47 @@
+# Shapes module - geometric shapes with area calculation
+interface IShape:
+    def area(self) -> float: ...
+
+@abstract
+class Shape(IShape):
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @virtual
+    def describe(self) -> str:
+        return "Shape: " + self.name
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, width: float, height: float):
+        super().__init__("Rectangle")
+        self.width = width
+        self.height = height
+
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def describe(self) -> str:
+        return self.name + " [" + str(self.width) + " x " + str(self.height) + "]"
+
+class Circle(Shape):
+    radius: float
+
+    @static
+    const PI: float = 3.14159
+
+    def __init__(self, radius: float):
+        super().__init__("Circle")
+        self.radius = radius
+
+    def area(self) -> float:
+        return Circle.PI * self.radius * self.radius
+
+    @override
+    def describe(self) -> str:
+        return self.name + " (r=" + str(self.radius) + ")"

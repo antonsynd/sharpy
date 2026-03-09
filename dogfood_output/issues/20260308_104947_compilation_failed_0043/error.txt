@@ -1,0 +1,19 @@
+Assembly compilation failed:
+
+error[CS1061]: 'TypesModule.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'TypesModule.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpelacqv08/main.spy:27:53
+    |
+ 27 |     print(red_rect.color.name)
+    |                               ^
+    |
+
+error[CS1061]: 'TypesModule.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'TypesModule.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpelacqv08/derived_module.spy:23:89
+    |
+ 23 |     print(circle.draw())
+    |                         ^
+    |
+
+error[CS1061]: 'TypesModule.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'TypesModule.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpelacqv08/derived_module.spy:44:65
+

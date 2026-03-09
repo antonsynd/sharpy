@@ -1,0 +1,19 @@
+Starting .NET type usage demo
+.NET List count: 3
+Value is 20
+Value is 40
+Value is 60
+True
+False
+42
+42
+False
+True
+-1
+True
+False
+15
+15
+False
+True
+-1

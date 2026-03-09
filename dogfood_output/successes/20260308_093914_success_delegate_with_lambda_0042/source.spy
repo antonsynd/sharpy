@@ -1,0 +1,15 @@
+# Simple delegate with lambda - math transformer pipeline
+delegate IntTransformer(x: int) -> int
+
+def main():
+    # Lambda assigned to delegate variable
+    double_it: IntTransformer = lambda n: int: n * 2
+    
+    # Chain applications through the delegate
+    value: int = 5
+    result: int = double_it(value)
+    print(result)
+    
+    # Reassign lambda to same delegate type  
+    triple_it: IntTransformer = lambda n: int: n * 3
+    print(triple_it(result))

@@ -1,0 +1,30 @@
+# Main entry point importing classes from multiple modules
+from utils import Counter, format_number
+from shapes import Shape, Rectangle, Circle, Square
+
+def process_shape(shape: Shape) -> str:
+    return shape.describe()
+
+def main():
+    # Create counter from utils module
+    counter = Counter()
+    
+    # Create shapes from shapes module
+    rect = Rectangle(5.0, 3.0)
+    circle = Circle(2.0)
+    square = Square(4.0)
+    
+    # Process each shape polymorphically
+    shapes: list[Shape] = [rect, circle, square]
+    for shape in shapes:
+        counter.increment()
+        desc: str = process_shape(shape)
+        print(desc)
+    
+    # Access area methods directly
+    print(format_number(rect.area()))
+    print(format_number(circle.area()))
+    print(format_number(square.area()))
+    
+    # Output final count
+    print(counter.get_count())

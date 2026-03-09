@@ -1,0 +1,24 @@
+enum Priority:
+    LOW = 10
+    MEDIUM = 20
+    HIGH = 30
+    CRITICAL = 100
+
+def describe_priority(p: Priority) -> str:
+    return f"{p.name} (score: {p.value})"
+
+def should_alert(p: Priority) -> bool:
+    return p.value >= 30
+
+def main():
+    p1: Priority = Priority.MEDIUM
+    p2: Priority = Priority.HIGH
+    
+    print(describe_priority(p1))
+    print(describe_priority(p2))
+    
+    for p in Priority:
+        if should_alert(p):
+            print(f"ALERT: {p.name}")
+        else:
+            print(f"OK: {p.name}")

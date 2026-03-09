@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T10:16:39.312759",
+  "generated_code": "# Main entry point - imports from multiple modules\nfrom utils import double_value\nfrom models import BaseItem, DerivedCounter\n\ndef main():\n    # Test base class functionality\n    b = BaseItem(\"Base\")\n    print(b.get_label())\n    print(b.doubled_name())\n    \n    # Test derived class with method override and utility usage\n    d = DerivedCounter(\"Derived\", 5)\n    print(d.get_label())\n    print(d.next_count())\n    print(d.doubled_name())\n",
+  "expected_output": "Item: Base\nBase-Base\nItem: Derived [Count: 5]\n12\nDerived-Derived\n",
+  "actual_output": "Item: Base\nBase-Base\nItem: Derived [Count: 5]\n12\nDerived-Derived",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 390.39489340782166,
+  "execution_duration": 5.2411208152771,
+  "source_files": {
+    "utils.spy": "# Utility functions for mathematical and string operations\ndef double_value(x: int) -> int:\n    return x * 2\n\ndef combine_strings(a: str, b: str) -> str:\n    return f\"{a}-{b}\"\n",
+    "models.spy": "# Model classes using utilities with inheritance\nfrom utils import double_value, combine_strings\n\nclass BaseItem:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    @virtual\n    def get_label(self) -> str:\n        return f\"Item: {self.name}\"\n    \n    def doubled_name(self) -> str:\n        return combine_strings(self.name, self.name)\n\nclass DerivedCounter(BaseItem):\n    count: int\n    \n    def __init__(self, name: str, start: int):\n        super().__init__(name)\n        self.count = start\n    \n    @override\n    def get_label(self) -> str:\n        base = super().get_label()\n        return f\"{base} [Count: {self.count}]\"\n    \n    def next_count(self) -> int:\n        self.count = self.count + 1\n        return double_value(self.count)\n",
+    "main.spy": "# Main entry point - imports from multiple modules\nfrom utils import double_value\nfrom models import BaseItem, DerivedCounter\n\ndef main():\n    # Test base class functionality\n    b = BaseItem(\"Base\")\n    print(b.get_label())\n    print(b.doubled_name())\n    \n    # Test derived class with method override and utility usage\n    d = DerivedCounter(\"Derived\", 5)\n    print(d.get_label())\n    print(d.next_count())\n    print(d.doubled_name())\n"
+  }
+}

@@ -1,0 +1,41 @@
+# main.spy - Entry point demonstrating cross-module class usage
+from shapes import Shape, IShape
+from shapes_geometry import Rectangle, Circle, PI
+from utils import sum_areas
+
+def process_shape(shape: IShape) -> None:
+    desc: str = shape.describe()
+    area: float = shape.area()
+    perim: float = shape.perimeter()
+    print(f"{desc}: area={area}, perimeter={perim}")
+
+def main():
+    # Create shapes from cross-module classes
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    circle: Circle = Circle(2.5)
+
+    # Test inheritance (Shape base class)
+    print(f"Rectangle name: {rect.get_name()}")
+    print(f"Circle name: {circle.get_name()}")
+
+    # Test interface implementation
+    process_shape(rect)
+    process_shape(circle)
+
+    # Test utility function from another module
+    # Create list with base type due to generic invariance
+    shapes: list[IShape] = []
+    shapes.append(rect)
+    shapes.append(circle)
+    total: float = sum_areas(shapes)
+    print(f"Total area: {total}")
+
+    # Test scaling
+    scaled_rect: float = rect.scale(2.0)
+    scaled_circle: float = circle.scale(2.0)
+    print(f"Scaled rect area: {scaled_rect}")
+    print(f"Scaled circle area: {scaled_circle}")
+
+    # Test polymorphism with base class
+    shape_ref: Shape = rect
+    print(f"Via Shape ref: {shape_ref.get_name()}")

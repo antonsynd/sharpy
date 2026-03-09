@@ -1,0 +1,9 @@
+Rectangle(5.0x3.0)
+Circle(r=2.0)
+Square(s=4.0)
+Total area: 51.27
+Total perimeter: 54.57
+Rect: 2.0
+Rect: 6.0
+Rect: 12.0
+Scaled: 10.0

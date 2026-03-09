@@ -1,0 +1,32 @@
+# Main entry point
+
+from shapes import Shape, Rectangle, Circle, Square
+from utils import scale_shape, total_area
+
+def main():
+    # Create shapes
+    r: Rectangle = Rectangle(5.0, 3.0)
+    c: Circle = Circle(2.0)
+    s: Square = Square(4.0)
+    
+    # Print individual areas
+    print(r.area())
+    print(c.area())
+    print(s.area())
+    
+    # Store in list
+    shapes: list[Shape] = list[Shape]()
+    shapes.append(r)
+    shapes.append(c)
+    shapes.append(s)
+    
+    # Calculate total area
+    print(total_area(shapes))
+    
+    # Scale shapes
+    scaled: Shape = scale_shape(r, 2.0)
+    print(scaled.area())
+    
+    # Test polymorphism
+    for shape in shapes:
+        print(shape.perimeter())

@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS0305]: Using the generic type 'List<T>' requires 1 type arguments
+  --> dogfood_test.cs:9:55
+    |
+  9 |     
+    |     ^
+    |
+
+error[CS0234]: The type or namespace name 'DotNetList<>' does not exist in the namespace 'System.Collections.Generic' (are you missing an assembly reference?)
+  --> /tmp/tmpsmgu67ui/dogfood_test.spy:43:36
+    |
+ 43 |     dn_list: DotNetList[str] = DotNetList[str]()
+    |                                    ^
+    |
+
+error[CS0307]: The using alias 'DotNetList' cannot be used with type arguments
+  --> /tmp/tmpsmgu67ui/dogfood_test.spy:43:68
+    |
+ 43 |     dn_list: DotNetList[str] = DotNetList[str]()
+    |                                                 ^
+    |
+

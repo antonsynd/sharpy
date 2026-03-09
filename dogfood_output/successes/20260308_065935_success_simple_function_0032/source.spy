@@ -1,0 +1,32 @@
+# Simple recursive function test - calculates geometric series sum
+# 1 + r + r^2 + r^3 + ... + r^n
+def geometric_series_sum(ratio: int, terms: int) -> int:
+    if terms == 0:
+        return 1
+    if terms == 1:
+        return 1 + ratio
+    
+    # Get the sum up to terms-1
+    partial: int = geometric_series_sum(ratio, terms - 1)
+    
+    # Calculate ratio^terms using multiplication
+    power: int = 1
+    i: int = 0
+    while i < terms:
+        power = power * ratio
+        i = i + 1
+    
+    return partial + power
+
+def main():
+    # Calculate sum for ratio=2, n=5: 1 + 2 + 4 + 8 + 16 + 32 = 63
+    result1: int = geometric_series_sum(2, 5)
+    print(result1)
+    
+    # Calculate sum for ratio=3, n=4: 1 + 3 + 9 + 27 + 81 = 121
+    result2: int = geometric_series_sum(3, 4)
+    print(result2)
+    
+    # Calculate sum for ratio=10, n=2: 1 + 10 + 100 = 111
+    result3: int = geometric_series_sum(10, 2)
+    print(result3)

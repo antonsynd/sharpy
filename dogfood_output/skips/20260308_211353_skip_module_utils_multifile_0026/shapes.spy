@@ -1,0 +1,55 @@
+# Shapes module: classes implementing interfaces
+from types import IDrawable, IMeasurable, SizeCategory
+
+# Rectangle class with multiple interfaces
+class Rectangle(IDrawable, IMeasurable):
+    _id: int
+    width: float
+    height: float
+    
+    def __init__(self, id: int, width: float, height: float):
+        self._id = id
+        self.width = width
+        self.height = height
+    
+    property get id(self) -> int:
+        return self._id
+    
+    @virtual
+    def draw(self) -> str:
+        return f"Drawing rectangle {self._id}"
+    
+    def calculate(self) -> float:
+        return self.width * self.height
+
+# Circle class
+class Circle(IDrawable, IMeasurable):
+    _id: int
+    radius: float
+    
+    def __init__(self, id: int, radius: float):
+        self._id = id
+        self.radius = radius
+    
+    property get id(self) -> int:
+        return self._id
+    
+    @virtual
+    def draw(self) -> str:
+        return f"Drawing circle {self._id}"
+    
+    def calculate(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+# Function to categorize size
+def categorize(area: float) -> SizeCategory:
+    if area < 10.0:
+        return SizeCategory.SMALL
+    elif area < 100.0:
+        return SizeCategory.MEDIUM
+    else:
+        return SizeCategory.LARGE
+
+# Function returning tuple
+def compute(measurable: IMeasurable) -> tuple[bool, float]:
+    return (True, measurable.calculate())

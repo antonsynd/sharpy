@@ -1,0 +1,19 @@
+# Main entry point - demonstrates cross-module inheritance
+
+from base import Appliance
+from impl import WashingMachine, Refrigerator
+
+def main():
+    # Create appliances from cross-module classes
+    washer = WashingMachine(500)
+    fridge = Refrigerator(365)
+    
+    # Test specific implementations
+    print(washer.power_consumption())
+    print(washer.get_type())
+    print(fridge.power_consumption())
+    print(fridge.get_type())
+    
+    # Calculate total consumption
+    total: int = washer.power_consumption() + fridge.power_consumption()
+    print(total)

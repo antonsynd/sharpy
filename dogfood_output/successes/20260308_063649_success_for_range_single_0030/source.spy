@@ -1,0 +1,49 @@
+# Test for range with single argument and various range patterns
+
+def main():
+    # Basic range - single argument
+    print("=== Basic range(5) ===")
+    for i in range(5):
+        print(i)
+
+    # Range with start and end
+    print("=== range(2, 6) ===")
+    for i in range(2, 6):
+        print(i)
+
+    # Range with step
+    print("=== range(0, 10, 2) ===")
+    for i in range(0, 10, 2):
+        print(i)
+
+    # Range with negative step
+    print("=== range(5, 0, -1) ===")
+    for i in range(5, 0, -1):
+        print(i)
+
+    # Nested ranges
+    print("=== Nested ranges ===")
+    for i in range(3):
+        for j in range(2):
+            print(i)
+            print(j)
+
+    # Range with calculations inside
+    print("=== Range with calculations ===")
+    n: int = 4
+    for i in range(n):
+        print(i * i)
+
+    # Range with break
+    print("=== Range with break ===")
+    for i in range(10):
+        if i > 3:
+            break
+        print(i)
+
+    # Range with continue
+    print("=== Range with continue ===")
+    for i in range(5):
+        if i == 2:
+            continue
+        print(i)

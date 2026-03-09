@@ -1,0 +1,6 @@
+Medium (score: 20)
+High (score: 30)
+OK: Low
+OK: Medium
+ALERT: High
+ALERT: Critical

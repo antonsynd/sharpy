@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T04:46:01.109405",
+  "generated_code": "# Result type with arithmetic operations and error mapping\ndef divide(a: float, b: float) -> float !str:\n    if b == 0.0:\n        return Err(\"division by zero\")\n    return Ok(a / b)\n\ndef double_value(x: float) -> float:\n    return x * 2.0\n\ndef prefix_error(e: str) -> str:\n    return f\"error: {e}\"\n\ndef main():\n    # Ok result with unwrap\n    r1: float !str = divide(20.0, 4.0)\n    print(r1.unwrap())\n    \n    # Err result with unwrap_or\n    r2: float !str = divide(15.0, 0.0)\n    print(r2.unwrap_or(-1.0))\n    \n    # map on Ok result\n    r3: float !str = Ok(5.0)\n    mapped = r3.map(double_value)\n    print(mapped.unwrap())\n    \n    # map_err on Err result\n    r4: float !str = divide(8.0, 0.0)\n    remapped = r4.map_err(prefix_error)\n    print(remapped.unwrap_or(0.0))\n",
+  "expected_output": "5.0\n-1.0\n10.0\n0.0\n",
+  "actual_output": "5.0\n-1.0\n10.0\n0.0",
+  "feature_focus": "result_type",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 113.50161576271057,
+  "execution_duration": 5.373246192932129,
+  "source_files": null
+}

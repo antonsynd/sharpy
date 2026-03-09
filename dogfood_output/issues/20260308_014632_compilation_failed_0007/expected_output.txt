@@ -1,0 +1,21 @@
+Transformed 5 -> 50
+Processed index 0
+Validation error at index 1
+Code 1001: Validation failed for item_1: negative value not allowed
+Processed index 1
+Transformed 8 -> 80
+Processed index 2
+Transformed 15 -> 150
+Processed index 3
+Overflow at index 4
+Processed index 4
+Execution completed
+---
+Caught validation: name
+Caught processing: 2
+---
+Division error, using fallback
+42
+20
+---
+Final: PROCESSING_ERROR

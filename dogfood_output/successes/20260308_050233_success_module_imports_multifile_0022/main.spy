@@ -1,0 +1,20 @@
+# Main entry point demonstrating cross-module imports
+from calculator import Calculator
+from math_core import cube
+
+def main():
+    # Create calculator with initial value
+    calc = Calculator(10.0)
+    print(calc.result)
+    
+    # Add square of 3.0 to accumulator
+    calc.add_square(3.0)
+    print(calc.result)
+    
+    # Calculate circle area using imported PI
+    area: float = calc.circle_area(2.0)
+    print(area)
+    
+    # Direct use of imported cube function
+    cubed: float = cube(3.0)
+    print(cubed)

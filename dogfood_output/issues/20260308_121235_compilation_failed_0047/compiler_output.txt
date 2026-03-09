@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'Triangle' is never used
+  --> /tmp/tmp5rn3cgtx/utils.spy:4:19
+    |
+  4 | from utils import create_rectangle, create_circle, measure_shape, scale_shape, check_status, total_area, process_shapes
+    |                   ^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ShapeStatus' is never used
+  --> /tmp/tmp5rn3cgtx/main.spy:2:19
+    |
+  2 | from types import ShapeStatus, Point
+    |                   ^^^^^^^^^^^
+    |
+

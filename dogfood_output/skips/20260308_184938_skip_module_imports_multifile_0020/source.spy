@@ -1,0 +1,37 @@
+# Main entry point
+# Demonstrates cross-module imports and usage
+
+from types import Status, Dimensions
+from models import Entity, Product, Service
+from utils import format_status, is_active, scale_dimensions
+
+def main():
+    # Create product
+    prod: Product = Product(1, "Widget", 10.0, 5.0, 99.99)
+
+    # Create service
+    svc: Service = Service(2, "Consultation", 60)
+
+    # Test interface implementation
+    print(prod.display_name)
+    print(prod.id)
+
+    # Test polymorphic method dispatch
+    print(prod.get_description())
+    print(svc.get_description())
+
+    # Test status enum across modules
+    print(format_status(prod.status))
+    print(is_active(prod.status))
+
+    # Test struct operations
+    small: Dimensions = Dimensions(4.0, 3.0)
+    large: Dimensions = scale_dimensions(small, 2.0)
+    print(large.area())
+
+    # Test service status
+    print(format_status(svc.status))
+
+    # Test name property on enum
+    status: Status = Status.ACTIVE
+    print(status.name)

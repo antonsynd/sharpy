@@ -1,0 +1,22 @@
+# Utilities module with enums and structs
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return f"Point({self.x}, {self.y})"
+
+def format_color(color: Color) -> str:
+    return color.name
+
+def distance_from_origin(p: Point) -> float:
+    return 0.0

@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Rectangle' has no member 'display_name'
+  --> /tmp/tmpzxy8hfu4/main.spy:28:11
+    |
+ 28 |     print(rect.display_name)
+    |           ^^^^^^^^^^^^^^^^^
+    |
+

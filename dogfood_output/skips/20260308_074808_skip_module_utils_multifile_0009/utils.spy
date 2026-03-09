@@ -1,0 +1,20 @@
+# Utility module providing statistical functions
+class Statistics:
+    @static
+    def mean(values: list[float]) -> float:
+        total: float = 0.0
+        for v in values:
+            total = total + v
+        return total / float(len(values))
+
+    @static
+    def sum_of_squares(values: list[float]) -> float:
+        result: float = 0.0
+        for v in values:
+            result = result + v * v
+        return result
+
+def format_number(n: float) -> str:
+    # Format float to 2 decimal places
+    rounded: int = int(n * 100.0 + 0.5)
+    return str(float(rounded) / 100.0)

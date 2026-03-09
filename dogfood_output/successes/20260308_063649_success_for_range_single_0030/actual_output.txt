@@ -1,0 +1,51 @@
+=== Basic range(5) ===
+0
+1
+2
+3
+4
+=== range(2, 6) ===
+2
+3
+4
+5
+=== range(0, 10, 2) ===
+0
+2
+4
+6
+8
+=== range(5, 0, -1) ===
+5
+4
+3
+2
+1
+=== Nested ranges ===
+0
+0
+0
+1
+1
+0
+1
+1
+2
+0
+2
+1
+=== Range with calculations ===
+0
+1
+4
+9
+=== Range with break ===
+0
+1
+2
+3
+=== Range with continue ===
+0
+1
+3
+4

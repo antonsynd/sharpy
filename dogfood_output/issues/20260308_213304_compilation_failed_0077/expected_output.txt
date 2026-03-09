@@ -1,0 +1,9 @@
+Distance between points: 5.0
+Selected color: Green
+Color value: 2
+Rectangle: 5.0x3.0, color=Red [area=15.0, perim=16.0]
+Circle: r=2.5 at Point(1.0, 1.0) [area=19.6349375, perim=15.70795]
+Drawing rectangle with Dashed lines
+Drawing circle at Point(1.0, 1.0)
+Default rect area: 50.0
+Unit circle perimeter: 6.28318

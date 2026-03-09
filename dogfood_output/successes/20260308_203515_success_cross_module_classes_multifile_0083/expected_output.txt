@@ -1,0 +1,16 @@
+Rectangle(4.0 x 5.0)
+20.0
+Rectangle(2.0 x 3.0)
+52.0
+5.0
+Dog(Rex, German Shepherd)
+Woof!
+Cat(Whiskers, Tabby)
+Meow!
+3
+Active
+2
+timeout=30
+10
+255
+128

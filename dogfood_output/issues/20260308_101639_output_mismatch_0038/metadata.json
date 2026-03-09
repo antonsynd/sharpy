@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-08T10:09:15.889876",
+  "generated_code": "# Test: try_except_else execution flow and scoping\n# The else block runs only when NO exception occurs in the try body\n# Tests: else with no exception, else skipped on exception, else in loop\ndef main():\n    # Scenario 1: No exception - else executes\n    result: int = 0\n    try:\n        temp: int = 15\n        result = temp // 3  # 5\n    except ValueError:\n        result = 999  # Should not run\n    else:\n        result = result * 4  # 5 * 4 = 20\n    print(result)\n    \n    # Scenario 2: Exception raised - else is skipped\n    try:\n        flag: int = 1\n        raise KeyError(\"not found\")\n        result = 500  # Unreachable\n    except KeyError:\n        result = 42\n    else:\n        result = 100  # Should NOT execute\n    print(result)\n    \n    # Scenario 3: else within a for loop with mixed success/failure\n    scores: list[int] = [10, 20, 30]\n    total: int = 0\n    for score in scores:\n        bonus: int = 0  # Declare BEFORE try so it's visible in all blocks\n        try:\n            if score == 20:\n                raise RuntimeError(\"bad value\")\n            bonus = score\n        except RuntimeError:\n            bonus = 1\n        else:\n            bonus = bonus + 5  # Add bonus on success\n        total += bonus\n    print(total)\n",
+  "expected_output": "20\n42\n26\n",
+  "actual_output": "20\n42\n51",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "try_except_else",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 150.38412022590637,
+  "compilation_duration": null,
+  "execution_duration": 5.290689706802368,
+  "source_files": null
+}

@@ -1,0 +1,21 @@
+# Inventory utilities module - demonstrates cross-module usage
+from inventory import Item, Product
+
+def count_products(items: list[Item]) -> int:
+    count: int = 0
+    for item in items:
+        if isinstance(item, Product):
+            count = count + 1
+    return count
+
+def get_item_names(items: list[Item]) -> list[str]:
+    names: list[str] = []
+    for item in items:
+        names.append(item.get_name())
+    return names
+
+def get_product_prices(products: list[Product]) -> list[float]:
+    prices: list[float] = []
+    for prod in products:
+        prices.append(prod.get_price())
+    return prices

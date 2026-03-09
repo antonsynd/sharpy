@@ -1,0 +1,15 @@
+# Calculator module that imports from math_core
+from math_core import PI, square
+
+class Calculator:
+    result: float
+    
+    def __init__(self, initial: float):
+        self.result = initial
+    
+    def add_square(self, x: float) -> float:
+        self.result = self.result + square(x)
+        return self.result
+    
+    def circle_area(self, radius: float) -> float:
+        return PI * square(radius)

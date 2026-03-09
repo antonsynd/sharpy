@@ -1,0 +1,22 @@
+from geometry_utils import Rectangle, Circle, total_area, average_perimeter
+
+def main():
+    # Create some shapes for testing
+    rect1 = Rectangle(5.0, 3.0)
+    rect2 = Rectangle(4.0, 4.0)
+    circle = Circle(2.0)
+
+    # Create a list of shapes
+    shapes: list[Shape] = [rect1, rect2, circle]
+
+    # Test individual areas
+    print(rect1.area())
+    print(circle.area())
+
+    # Test total area function
+    total: float = total_area(shapes)
+    print(total)
+
+    # Test average perimeter function
+    avg_perim: float = average_perimeter(shapes)
+    print(avg_perim)

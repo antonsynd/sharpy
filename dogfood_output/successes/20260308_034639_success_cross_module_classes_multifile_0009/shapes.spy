@@ -1,0 +1,27 @@
+# shapes.spy - Base shapes module with abstract base class and interface
+
+interface IShape:
+    @abstract
+    def area(self) -> float: ...
+
+    @abstract
+    def perimeter(self) -> float: ...
+
+    @abstract
+    def describe(self) -> str: ...
+
+@abstract
+class Shape:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @virtual
+    def get_name(self) -> str:
+        return self.name
+
+    @virtual
+    def scale(self, factor: float) -> float:
+        # Default scale returns zero
+        return 0.0

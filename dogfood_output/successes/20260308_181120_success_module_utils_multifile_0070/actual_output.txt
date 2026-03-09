@@ -1,0 +1,8 @@
+Origin distance: 0.0
+Circle area: 28.274309999999996
+Rect area: 20.0
+Total: 48.27431
+Average: 24.137155
+Drawing a shape
+Drawing a shape
+Shape with color

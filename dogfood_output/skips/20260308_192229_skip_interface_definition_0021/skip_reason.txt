@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot pass argument of type 'EventFilter' to parameter of type 'IFilter[str]'
+  --> /tmp/tmppvls230o/dogfood_test.spy:98:29
+    |
+ 98 |     result = matches_filter(processor, "ERROR: Connection failed")
+    |                             ^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'EventFilter' to parameter of type 'IFilter[str]'
+  --> /tmp/tmppvls230o/dogfood_test.spy:102:29
+     |
+ 102 |     result = matches_filter(processor, "DEBUG: Details")
+     |                             ^^^^^^^^^
+     |
+
+error[SPY0220]: Cannot pass argument of type 'EventFilter' to parameter of type 'IFilter[str]'
+  --> /tmp/tmppvls230o/dogfood_test.spy:124:29
+     |
+ 124 |     result = matches_filter(processor, "WARNING: Low memory")
+     |                             ^^^^^^^^^
+     |
+
+error[SPY0220]: Cannot pass argument of type 'EventFilter' to parameter of type 'IFilter[str]'
+  --> /tmp/tmppvls230o/dogfood_test.spy:132:29
+     |
+ 132 |     result = matches_filter(processor, "ANYTHING")
+     |                             ^^^^^^^^^
+     |
+

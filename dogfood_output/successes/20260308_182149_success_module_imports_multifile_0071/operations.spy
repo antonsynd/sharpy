@@ -1,0 +1,27 @@
+from math_utils import factorial
+from data_types import Point
+
+def create_points() -> list[Point]:
+    points: list[Point] = []
+    p1: Point = Point(3.0, 4.0)
+    p2: Point = Point(1.0, 1.0)
+    p3: Point = Point(5.0, 12.0)
+    points.append(p1)
+    points.append(p2)
+    points.append(p3)
+    return points
+
+def calculate_distances(points: list[Point]) -> list[float]:
+    distances: list[float] = []
+    for p in points:
+        d: float = p.distance_squared()
+        distances.append(d)
+    return distances
+
+def compute_factorial_sum(n: int) -> int:
+    total: int = 0
+    i: int = 1
+    while i <= n:
+        total = total + factorial(i)
+        i = i + 1
+    return total

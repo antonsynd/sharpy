@@ -1,0 +1,120 @@
+# Issue Report: compilation_failed
+
+**Timestamp:** 2026-03-08T10:06:33.163755
+**Type:** compilation_failed
+**Feature Focus:** module_imports
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Main entry point with complex imports from multiple modules
+
+from math_utils import OperationType, Calculator, calculate_square, calculate_power
+from data_structures import Point, Box, Pair, Container
+
+# From import with alias
+from advanced_calc import ScientificCalculator as SciCalc, create_calculator_box
+
+def main():
+    # Test enum import and usage
+    op: OperationType = OperationType.ADD
+    print(op.name)
+    print(op.value)
+    
+    # Test function imports from math_utils
+    sq: int = calculate_square(5)
+    print(sq)
+    
+    # Test float power calculation
+    power: float = calculate_power(2.0, 4.0)
+    print(power)
+    
+    # Test class import and instantiation
+    calc: Calculator = Calculator(10.0)
+    result: float = calc.compute(3.0, 4.0)
+    print(result)
+    
+    # Test struct import
+    pt: Point = Point(3.0, 4.0)
+    dist: float = pt.distance_from_origin()
+    print(dist)
+    
+    # Test generic class import
+    box: Box[int] = Box[int](42)
+    val: int = box.get_value()
+    print(val)
+    
+    # Test cross-module inheritance
+    sci: SciCalc = SciCalc(2.0, 3.0)
+    sci_result: float = sci.compute(1.0, 2.0)
+    print(sci_result)
+    
+    # Test generic pair with swap
+    pair: Pair[int, str] = Pair[int, str](100, "hello")
+    swapped: Pair[str, int] = pair.swap()
+    print(swapped.first)
+
+```
+
+## Error
+
+```
+Assembly compilation failed:
+
+error[CS0426]: The type name 'SciCalc' does not exist in the type 'AdvancedCalc'
+  --> /tmp/tmpcumyks6e/main.spy:39:22
+    |
+ 39 |     sci: SciCalc = SciCalc(2.0, 3.0)
+    |                      ^
+    |
+
+error[CS0426]: The type name 'SciCalc' does not exist in the type 'AdvancedCalc'
+  --> /tmp/tmpcumyks6e/main.spy:39:53
+    |
+ 39 |     sci: SciCalc = SciCalc(2.0, 3.0)
+    |                                     ^
+    |
+
+
+```
+
+## Compiler Output
+
+```
+warning[SPY0452]: Imported name 'OperationType' is never used
+  --> /tmp/tmpcumyks6e/advanced_calc.spy:4:9
+    |
+  4 | from data_structures import Point, Box, Pair, Container
+    |         ^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Container' is never used
+  --> /tmp/tmpcumyks6e/advanced_calc.spy:4:51
+    |
+  4 | from data_structures import Point, Box, Pair, Container
+    |                                                   ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Container' is never used
+  --> /tmp/tmpcumyks6e/main.spy:4:47
+    |
+  4 | from data_structures import Point, Box, Pair, Container
+    |                                               ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'create_calculator_box' is never used
+  --> /tmp/tmpcumyks6e/main.spy:7:60
+    |
+  7 | from advanced_calc import ScientificCalculator as SciCalc, create_calculator_box
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^
+    |
+
+
+```
+
+## Timing
+
+- Generation: 143.78s
+- Execution: 4.96s

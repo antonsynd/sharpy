@@ -1,0 +1,6 @@
+# Module defining an interface for logging
+
+interface ILogger:
+    def log(self, message: str) -> None: ...
+    
+    def error(self, message: str) -> None: ...

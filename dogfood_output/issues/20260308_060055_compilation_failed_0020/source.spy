@@ -1,0 +1,34 @@
+# main.spy - Entry point demonstrating cross-module imports
+from shapes import Color, IDrawable
+from geometry import Rectangle, Circle, Point
+from utils import total_area, create_origin
+
+def main():
+    # Create shapes with different colors and dimensions
+    r1: Rectangle = Rectangle(3.0, 4.0, Color.RED)
+    r2: Rectangle = Rectangle(5.0, 4.0, Color.BLUE)
+    c1: Circle = Circle(3.0, Color.YELLOW)
+    c2: Circle = Circle(2.0, Color.GREEN)
+
+    # Test interface method
+    d: IDrawable = r1
+    print(d.draw())
+
+    # Test virtual method from base class via concrete instances
+    print(c1.describe())
+
+    # Test struct
+    origin: Point = create_origin()
+    print(origin.x)
+
+    # Test enum value access
+    print(c2.color.value)
+
+    # Calculate and print total area of all shapes
+    shapes: list[Shape] = [r1, r2, c1, c2]
+    total: float = total_area(shapes)
+    print(total)
+
+    # Test inheritance and polymorphism
+    print(r1.area())
+    print(c1.area())

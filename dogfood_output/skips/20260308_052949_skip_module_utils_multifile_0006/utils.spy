@@ -1,0 +1,50 @@
+# Module: utils
+# Contains: Static utility methods, type aliases
+
+from entities import IArea, Circle, Rectangle
+
+def sum_areas(shapes: list[IArea]) -> float:
+    total: float = 0.0
+    for shape in shapes:
+        total += shape.area()
+    return total
+
+def sum_circles(circles: list[Circle]) -> float:
+    total: float = 0.0
+    for c in circles:
+        total += c.area()
+    return total
+
+def sum_rectangles(rects: list[Rectangle]) -> float:
+    total: float = 0.0
+    for r in rects:
+        total += r.area()
+    return total
+
+@static
+def format_number(n: float, decimals: int) -> str:
+    if decimals == 0:
+        return str(int(n))
+    factor: float = 1.0
+    i: int = 0
+    while i < decimals:
+        factor = factor * 10.0
+        i += 1
+    rounded: int = int(n * factor)
+    result: float = float(rounded) / factor
+    return str(result)
+
+def identity_int(x: int) -> int:
+    return x
+
+def identity_str(x: str) -> str:
+    return x
+
+def pair_of_ints(x: int) -> tuple[int, int]:
+    return (x, x)
+
+def pair_of_strs(x: str) -> tuple[str, str]:
+    return (x, x)
+
+def apply_to_int(f: (int) -> int, x: int) -> int:
+    return f(x)

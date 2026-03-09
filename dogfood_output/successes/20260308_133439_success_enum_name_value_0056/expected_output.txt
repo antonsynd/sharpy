@@ -1,0 +1,30 @@
+=== Priority Enum Members ===
+ Low = 1
+ Medium = 5
+ High = 10
+ Critical = 100
+
+=== Basic Name/Value Access ===
+Priority.HIGH.name = High
+Priority.HIGH.value = 10
+Priority.LOW.name = Low
+Priority.LOW.value = 1
+
+=== Match Expression with Enum ===
+Pending: Waiting to start
+Completed: Done successfully
+Failed: Error occurred
+
+=== Tasks with Enums ===
+Fix bug: High(10) -> Processing(1)
+Update docs: Low(1) -> Pending(0)
+Deploy release: Critical(100) -> Completed(2)
+
+=== Enum Lookup by Value ===
+Value 5 -> Medium
+
+=== Status Summary ===
+Pending: 0
+Processing: 1
+Completed: 2
+Failed: 1

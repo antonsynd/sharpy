@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-03-08T20:20:15.190746",
+  "generated_code": "# Main entry point - tests cross-module inheritance\n\nfrom geometry import Circle, Rectangle, describe_shape\n\ndef main():\n    # Create shapes\n    c: Circle = Circle(3.0)\n    r: Rectangle = Rectangle(4.0, 6.0)\n    \n    # Test polymorphic dispatch\n    print(describe_shape(c))\n    print(describe_shape(r))\n    \n    # Test direct method calls\n    print(c.description())\n    print(r.description())\n    \n    # Test individual areas\n    print(c.area())\n    print(r.area())\n    \n    # Calculate total area manually (no list[Shape] due to variance)\n    total: float = c.area() + r.area()\n    print(total)\n",
+  "expected_output": "A circle with radius 3.0, area: 28.27431\nA rectangle 4.0 by 6.0, area: 24.0\nA circle with radius 3.0\nA rectangle 4.0 by 6.0\n28.27431\n24.0\n52.27431\n",
+  "actual_output": "A circle with radius 3.0, area: 28.274309999999996\nA rectangle 4.0 by 6.0, area: 24.0\nA circle with radius 3.0\nA rectangle 4.0 by 6.0\n28.274309999999996\n24.0\n52.27431",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 89.21167159080505,
+  "execution_duration": 4.929237365722656,
+  "source_files": {
+    "geometry.spy": "# Geometry module with shape hierarchy\n\n@abstract\nclass Shape:\n    \"\"\"Abstract base class for geometric shapes.\"\"\"\n    \n    @abstract\n    def area(self) -> float:\n        ...\n    \n    @virtual\n    def description(self) -> str:\n        return \"A generic shape\"\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, radius: float):\n        self.radius = radius\n    \n    @override\n    def area(self) -> float:\n        pi: float = 3.14159\n        return pi * self.radius * self.radius\n    \n    @override\n    def description(self) -> str:\n        return \"A circle with radius \" + str(self.radius)\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, width: float, height: float):\n        self.width = width\n        self.height = height\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    @override\n    def description(self) -> str:\n        return \"A rectangle \" + str(self.width) + \" by \" + str(self.height)\n\ndef describe_shape(s: Shape) -> str:\n    \"\"\"Helper function that works with any Shape.\"\"\"\n    return s.description() + \", area: \" + str(s.area())\n",
+    "main.spy": "# Main entry point - tests cross-module inheritance\n\nfrom geometry import Circle, Rectangle, describe_shape\n\ndef main():\n    # Create shapes\n    c: Circle = Circle(3.0)\n    r: Rectangle = Rectangle(4.0, 6.0)\n    \n    # Test polymorphic dispatch\n    print(describe_shape(c))\n    print(describe_shape(r))\n    \n    # Test direct method calls\n    print(c.description())\n    print(r.description())\n    \n    # Test individual areas\n    print(c.area())\n    print(r.area())\n    \n    # Calculate total area manually (no list[Shape] due to variance)\n    total: float = c.area() + r.area()\n    print(total)\n"
+  }
+}

@@ -1,0 +1,13 @@
+# Base module defining abstract appliance class
+
+@abstract
+class Appliance:
+    """Abstract base class for household appliances."""
+    
+    @abstract
+    def power_consumption(self) -> int:
+        ...
+    
+    @virtual
+    def get_type(self) -> str:
+        return "Unknown appliance"

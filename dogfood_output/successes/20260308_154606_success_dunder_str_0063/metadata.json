@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T15:37:34.932636",
+  "generated_code": "# Test: Complex __str__ inheritance with abstract classes\n@abstract\nclass Shape:\n    @abstract\n    def area(self) -> float:\n        ...\n\n    @virtual\n    def __str__(self) -> str:\n        return f\"Shape(area={self.area()})\"\n\nclass Circle(Shape):\n    radius: float\n\n    def __init__(self, r: float):\n        self.radius = r\n\n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n\n    @override\n    def __str__(self) -> str:\n        return f\"Circle(r={self.radius}, area={self.area():.2f})\"\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n\n    def __init__(self, w: float, h: float):\n        self.width = w\n        self.height = h\n\n    @override\n    def area(self) -> float:\n        return self.width * self.height\n\n    @override\n    def __str__(self) -> str:\n        return f\"Rectangle({self.width}x{self.height}, area={self.area():.1f})\"\n\nclass Canvas:\n    shapes: list[Shape]\n\n    def __init__(self):\n        self.shapes = []\n\n    def add(self, shape: Shape) -> None:\n        self.shapes.append(shape)\n\n    def __str__(self) -> str:\n        result: str = \"Canvas[\"\n        count = len(self.shapes)\n        for i in range(count):\n            result = result + str(self.shapes[i])\n            if i < count - 1:\n                result = result + \", \"\n        result = result + \"]\"\n        return result\n\ndef main():\n    c = Canvas()\n    c.add(Circle(5.0))\n    c.add(Circle(3.0))\n    c.add(Rectangle(4.0, 6.0))\n    print(c)\n    s: Shape = Circle(2.0)\n    print(s)\n    r: Shape = Rectangle(3.0, 4.0)\n    print(r)\n    print(str(s))\n    print(f\"Got: {r}\")\n    c2 = Canvas()\n    c2.add(Circle(1.0))\n    print(c2)\n",
+  "expected_output": "Canvas[Circle(r=5.0, area=78.54), Circle(r=3.0, area=28.27), Rectangle(4.0x6.0, area=24.0)]\nCircle(r=2.0, area=12.57)\nRectangle(3.0x4.0, area=12.0)\nCircle(r=2.0, area=12.57)\nGot: Rectangle(3.0x4.0, area=12.0)\nCanvas[Circle(r=1.0, area=3.14)]\n",
+  "actual_output": "Canvas[Circle(r=5.0, area=78.54), Circle(r=3.0, area=28.27), Rectangle(4.0x6.0, area=24.0)]\nCircle(r=2.0, area=12.57)\nRectangle(3.0x4.0, area=12.0)\nCircle(r=2.0, area=12.57)\nGot: Rectangle(3.0x4.0, area=12.0)\nCanvas[Circle(r=1.0, area=3.14)]",
+  "feature_focus": "dunder_str",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 488.75183868408203,
+  "execution_duration": 5.2164952754974365,
+  "source_files": null
+}

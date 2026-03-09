@@ -1,0 +1,25 @@
+# Base types module - defines interfaces, enums, and structs
+# Used across multiple modules to test cross-module type resolution
+
+interface IDrawable:
+    def draw(self) -> str: ...
+
+interface IMeasurable:
+    def area(self) -> float: ...
+    def perimeter(self) -> float: ...
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+struct Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    def distance_to_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5

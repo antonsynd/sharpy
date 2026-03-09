@@ -1,0 +1,16 @@
+Circle calculations:
+Radius: 5.0
+Area: 78.53975
+Perimeter: 31.4159
+Rectangle calculations:
+Width: 4.0
+Height: 6.0
+Area: 24.0
+String operations:
+Original: Hello World
+Reversed: dlroW olleH
+Word count: 2
+Is palindrome: False
+Palindrome test:
+Text: radar
+Is palindrome: True

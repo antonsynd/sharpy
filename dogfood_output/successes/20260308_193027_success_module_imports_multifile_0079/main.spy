@@ -1,0 +1,18 @@
+from text_processor import MAX_LENGTH, word_count, get_initials, TextFormatter
+
+def main():
+    text: str = "hello world from sharpy"
+    
+    print(MAX_LENGTH)
+    
+    count: int = word_count(text)
+    print(count)
+    
+    initials: str = get_initials(text)
+    print(initials)
+    
+    formatter: TextFormatter = TextFormatter("[", "]")
+    result: str = formatter.format("test")
+    print(result)
+    
+    print(word_count("one two"))

@@ -1,0 +1,38 @@
+# Main entry point - demonstrates module imports
+
+from utils import format_number, greet
+from math_utils import calculate_area, calculate_circumference, factorial, PI
+from models import Point, Counter
+
+def main():
+    # Test utils module
+    message = greet("World")
+    print(message)
+    
+    formatted = format_number(42)
+    print(formatted)
+    
+    # Test math_utils module
+    print(f"PI value: {PI}")
+    
+    radius: float = 5.0
+    area = calculate_area(radius)
+    print(f"Area: {area}")
+    
+    circumference = calculate_circumference(radius)
+    print(f"Circumference: {circumference}")
+    
+    fact5 = factorial(5)
+    print(f"Factorial of 5: {fact5}")
+    
+    # Test models module
+    p = Point(3.0, 4.0)
+    dist = p.distance_from_origin()
+    print(f"Distance from origin: {dist}")
+    
+    counter = Counter()
+    print(f"Counter initial: {counter.get_value()}")
+    v1 = counter.increment()
+    print(f"After increment 1: {v1}")
+    v2 = counter.increment()
+    print(f"After increment 2: {v2}")

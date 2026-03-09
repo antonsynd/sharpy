@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0029]: Cannot implicitly convert type 'Sharpy.Optional<T>' to 'T'
+  --> /tmp/tmpz43b_cbk/dogfood_test.spy:33:20
+    |
+ 33 |         return value
+    |                    ^
+    |
+
+error[CS0019]: Operator '+' cannot be applied to operands of type 'int' and 'Optional<int>'
+  --> /tmp/tmpz43b_cbk/dogfood_test.spy:70:25
+    |
+ 70 |             total += val
+    |                         ^
+    |
+

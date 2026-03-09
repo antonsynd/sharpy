@@ -1,0 +1,38 @@
+# Main entry point - demonstrates cross-module functionality
+from types import ShapeStatus, Point
+from shapes import Shape, Rectangle, Circle, Triangle
+from utils import create_rectangle, create_circle, measure_shape, scale_shape, check_status, total_area, process_shapes
+
+def main():
+    # Create shapes using factory functions from utils
+    rect: Rectangle = create_rectangle(5.0, 3.0)
+    circle: Circle = create_circle(2.0)
+    
+    # Create triangle directly
+    t1: Point = Point(0.0, 0.0)
+    t2: Point = Point(4.0, 0.0)
+    t3: Point = Point(0.0, 3.0)
+    tri: Triangle = Triangle(t1, t2, t3)
+    
+    # Measure shapes using IMeasurable interface
+    rect_measure: tuple[float, float] = measure_shape(rect)
+    print(rect_measure[0])
+    print(rect_measure[1])
+    
+    # Scale using ITransformable interface
+    scale_shape(rect, 2.0)
+    print(rect.area())
+    
+    # Check status returns string
+    status_result: str = check_status(circle)
+    print(status_result)
+    
+    # Total area calculation
+    shapes: list[IMeasurable] = [rect, circle, tri]
+    print(total_area(shapes))
+    
+    # Process and print status
+    all_shapes: list[Shape] = [rect, circle, tri]
+    processed: list[str] = process_shapes(all_shapes)
+    for p in processed:
+        print(p)

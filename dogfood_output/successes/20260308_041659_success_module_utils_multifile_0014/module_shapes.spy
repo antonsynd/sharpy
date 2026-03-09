@@ -1,0 +1,48 @@
+# Shape classes with inheritance
+
+class Shape:
+    _name: str
+    x: float
+    y: float
+
+    def __init__(self, name: str, x: float, y: float):
+        self._name = name
+        self.x = x
+        self.y = y
+
+    def get_name(self) -> str:
+        return self._name
+
+    def get_area(self) -> float:
+        return 0.0
+
+    def get_description(self) -> str:
+        return "Shape " + self._name
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, name: str, x: float, y: float, radius: float):
+        super().__init__(name, x, y)
+        self.radius = radius
+
+    def get_area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    def get_description(self) -> str:
+        return "Circle " + self._name + " at (" + str(self.x) + ", " + str(self.y) + ")"
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, name: str, x: float, y: float, w: float, h: float):
+        super().__init__(name, x, y)
+        self.width = w
+        self.height = h
+
+    def get_area(self) -> float:
+        return self.width * self.height
+
+    def get_description(self) -> str:
+        return "Rectangle " + self._name + " at (" + str(self.x) + ", " + str(self.y) + ")"

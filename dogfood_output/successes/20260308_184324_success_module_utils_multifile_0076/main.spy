@@ -1,0 +1,35 @@
+# Main entry point demonstrating cross-module features
+from contracts import ShapeType, Point
+from shapes import Shape, Circle, Rectangle
+from utils import origin, translate_point, scale_point, format_coordinate, analyze_shape, get_type_name
+
+def main():
+    # Create points using utility functions
+    center: Point = origin()
+    corner: Point = Point(5.0, 3.0)
+    
+    # Transform points
+    scaled: Point = scale_point(corner, 2.0)
+    translated: Point = translate_point(scaled, 1.0, 1.0)
+    
+    # Print point transformations
+    print(format_coordinate(center))
+    print(format_coordinate(scaled))
+    print(format_coordinate(translated))
+    
+    # Create shapes
+    circle: Circle = Circle(center, 5.0)
+    rect: Rectangle = Rectangle(translated, 4.0, 3.0)
+    
+    # Demonstrate polymorphism via base class
+    shapes: list[Shape] = [circle, rect]
+    
+    for s in shapes:
+        result: str = analyze_shape(s)
+        print(result)
+        print(s.get_name())
+        print(s.describe())
+    
+    # Test get_type_name
+    print(get_type_name(ShapeType.CIRCLE))
+    print(get_type_name(ShapeType.RECTANGLE))

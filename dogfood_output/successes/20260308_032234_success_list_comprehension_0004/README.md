@@ -1,0 +1,82 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-03-08T03:19:19.615148
+**Feature Focus:** list_comprehension
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: List comprehension with class instances and method access
+# Creates a workflow of filtering and transforming custom objects
+class Product:
+    _name: str
+    price: float
+    
+    def __init__(self, name: str, price: float):
+        self._name = name
+        self.price = price
+    
+    property get name(self) -> str:
+        return self._name
+    
+    def discount(self, percent: float) -> float:
+        return self.price * (1.0 - percent / 100.0)
+
+def main():
+    # Initialize product catalog
+    products: list[Product] = []
+    products.append(Product("laptop", 1200.0))
+    products.append(Product("mouse", 25.0))
+    products.append(Product("keyboard", 75.0))
+    products.append(Product("monitor", 300.0))
+    products.append(Product("cable", 10.0))
+    
+    # List comprehension: filter by price and extract discounted prices
+    affordable: list[float] = [p.discount(10.0) for p in products if p.price <= 100.0]
+    print("Discounted prices under $100:")
+    for price in affordable:
+        print(price)
+    
+    # List comprehension: extract names of expensive items
+    premium_names: list[str] = [p.name for p in products if p.price > 200.0]
+    print("Premium items:")
+    for name in premium_names:
+        print(name)
+    
+    # Combined: calculate average of mid-range items (100-500)
+    mid_prices: list[float] = [p.price for p in products if 100.0 < p.price < 500.0]
+    total: float = 0.0
+    for p in mid_prices:
+        total += p
+    avg: float = total / len(mid_prices)
+    print(avg)
+
+```
+
+## Output
+
+```
+Discounted prices under $100:
+22.5
+67.5
+9.0
+Premium items:
+laptop
+monitor
+300.0
+```
+
+## Timing
+
+- Generation: 178.27s
+- Execution: 5.12s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

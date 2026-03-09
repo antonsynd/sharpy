@@ -1,0 +1,155 @@
+class DomainException(Exception):
+    _message: str
+    code: int
+    
+    def __init__(self, message: str):
+        self._message = message
+        self.code = 1000
+    
+    property get details(self) -> str:
+        return f"Code {self.code}: {self._message}"
+
+class ValidationException(DomainException):
+    field_name: str
+    
+    def __init__(self, field: str, msg: str):
+        super().__init__(f"Validation failed for {field}: {msg}")
+        self.code = 1001
+        self.field_name = field
+
+class ProcessingException(DomainException):
+    step: int
+    
+    def __init__(self, step_num: int, msg: str):
+        super().__init__(f"Step {step_num} failed: {msg}")
+        self.code = 1002
+        self.step = step_num
+
+enum OperationResult:
+    SUCCESS = 0
+    VALIDATION_FAILED = 1
+    PROCESSING_ERROR = 2
+    UNEXPECTED_ERROR = 3
+
+class DataTransformer:
+    _multiplier: int
+    
+    def __init__(self, mult: int):
+        self._multiplier = mult
+    
+    def transform(self, values: list[int]) -> list[int]:
+        result: list[int] = []
+        idx: int = 0
+        for i in range(len(values)):
+            idx = i
+            val: int = values[idx]
+            transformed: int = 0
+            try:
+                if val < 0:
+                    raise ValidationException(f"item_{idx}", "negative value not allowed")
+                if self._multiplier == 0:
+                    raise ProcessingException(1, "multiplier is zero")
+                transformed = val * self._multiplier
+                if transformed > 10000:
+                    raise OverflowError("value overflow")
+                result.append(transformed)
+            except ValidationException as ve:
+                print(f"Validation error at index {idx}")
+                print(ve.details)
+            except ProcessingException as pe:
+                print(f"Processing error at step {pe.step}")
+                return []
+            except OverflowError:
+                print(f"Overflow at index {idx}")
+            else:
+                print(f"Transformed {val} -> {transformed}")
+            finally:
+                print(f"Processed index {idx}")
+        return result
+
+def execute_with_recovery(data: list[int], transformer: DataTransformer) -> OperationResult:
+    final_result: list[int] = []
+    try:
+        final_result = transformer.transform(data)
+        if len(final_result) == 0:
+            raise RuntimeError("Empty result")
+    except DomainException as de:
+        print(f"Domain error: {de.details}")
+        return OperationResult.VALIDATION_FAILED
+    except RuntimeError:
+        print("Runtime error occurred")
+        return OperationResult.PROCESSING_ERROR
+    except Exception:
+        print("Unexpected error")
+        return OperationResult.UNEXPECTED_ERROR
+    else:
+        print("Transformation succeeded")
+    finally:
+        print("Execution completed")
+    
+    if len(final_result) > 3:
+        return OperationResult.SUCCESS
+    return OperationResult.PROCESSING_ERROR
+
+def demonstrate_exception_dispatch():
+    errors: list[DomainException] = []
+    ve: ValidationException = ValidationException("name", "empty")
+    pe: ProcessingException = ProcessingException(2, "timeout")
+    errors.append(ve)
+    errors.append(pe)
+    
+    for i in range(len(errors)):
+        err = errors[i]
+        try:
+            if isinstance(err, ValidationException):
+                raise err
+            else:
+                raise err
+        except ValidationException as ve:
+            print(f"Caught validation: {ve.field_name}")
+        except ProcessingException as pe:
+            print(f"Caught processing: {pe.step}")
+        except Exception:
+            print("Outer catch")
+
+class FaultTolerantCalculator:
+    _fallback: int
+    
+    def __init__(self, fallback: int = 0):
+        self._fallback = fallback
+    
+    def divide(self, a: int, b: int) -> int:
+        result: int = self._fallback
+        try:
+            if b == 0:
+                raise ZeroDivisionError("division by zero")
+            result = a // b
+        except ZeroDivisionError:
+            print("Division error, using fallback")
+            result = self._fallback
+        except Exception:
+            result = -1
+        return result
+    
+    property get safe_fallback(self) -> int:
+        return self._fallback
+
+def main():
+    transformer = DataTransformer(10)
+    data: list[int] = [5, -3, 8, 15, 200]
+    result = execute_with_recovery(data, transformer)
+    print("---")
+    demonstrate_exception_dispatch()
+    print("---")
+    calc = FaultTolerantCalculator(42)
+    print(calc.divide(100, 0))
+    print(calc.divide(100, 5))
+    print("---")
+    if result == OperationResult.SUCCESS:
+        print("Final: SUCCESS")
+    elif result == OperationResult.VALIDATION_FAILED:
+        print("Final: VALIDATION_FAILED")
+    elif result == OperationResult.PROCESSING_ERROR:
+        print("Final: PROCESSING_ERROR")
+    else:
+        print("Final: OTHER")

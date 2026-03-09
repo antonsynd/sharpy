@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T08:43:54.008409",
+  "generated_code": "# Test: Relational patterns using if/elif/else\n# Classifies measurements into ranges\n\nenum GradeLevel:\n    BEGINNER = 1\n    INTERMEDIATE = 2\n    ADVANCED = 3\n\ndef classify_score(score: int) -> str:\n    if score > 95:\n        return f\"Outstanding: {score}\"\n    elif score > 90:\n        return f\"Excellent: {score}\"\n    elif score > 75:\n        return f\"Good: {score}\"\n    elif score > 60:\n        return f\"Passing: {score}\"\n    else:\n        return \"Needs improvement\"\n\ndef classify_temperature(temp: float) -> str:\n    if temp >= 100.0:\n        return \"Boiling\"\n    elif temp >= 38.5:\n        return \"High fever\"\n    elif temp >= 37.0:\n        return \"Fever\"\n    elif temp > 0.0:\n        return \"Normal\"\n    elif temp <= 0.0:\n        return \"Freezing\"\n    else:\n        return \"Unknown\"\n\ndef main():\n    print(classify_score(98))\n    print(classify_score(92))\n    print(classify_score(80))\n    print(classify_score(55))\n    print(classify_temperature(101.5))\n    print(classify_temperature(39.0))\n    print(classify_temperature(25.0))\n    print(classify_temperature(-5.0))\n",
+  "expected_output": "Outstanding: 98\nExcellent: 92\nGood: 80\nNeeds improvement\nBoiling\nHigh fever\nNormal\nFreezing\n",
+  "actual_output": "Outstanding: 98\nExcellent: 92\nGood: 80\nNeeds improvement\nBoiling\nHigh fever\nNormal\nFreezing",
+  "feature_focus": "match_relational_pattern",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 381.6062927246094,
+  "execution_duration": 5.007267951965332,
+  "source_files": null
+}

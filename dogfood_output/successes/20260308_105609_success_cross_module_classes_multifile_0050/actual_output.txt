@@ -1,0 +1,8 @@
+Circle:
+Shape at (0.0, 0.0) with radius 5.0
+Drawing red circle
+78.53975
+Rectangle:
+Shape at (1.0, 2.0)
+Drawing blue rectangle
+50.0

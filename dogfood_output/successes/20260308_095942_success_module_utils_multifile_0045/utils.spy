@@ -1,0 +1,26 @@
+from shapes import Circle, Rectangle
+
+def circle_area(c: Circle) -> float:
+    return c.area()
+
+def rectangle_area(r: Rectangle) -> float:
+    return r.area()
+
+def describe_shape(shape) -> str:
+    if isinstance(shape, Circle):
+        return f"Circle with radius {shape.radius}"
+    elif isinstance(shape, Rectangle):
+        return f"Rectangle {shape.width}x{shape.height}"
+    return "Unknown shape"
+
+def total_circle_area(circles: list[Circle]) -> float:
+    total: float = 0.0
+    for c in circles:
+        total = total + c.area()
+    return total
+
+def total_rectangle_area(rects: list[Rectangle]) -> float:
+    total: float = 0.0
+    for r in rects:
+        total = total + r.area()
+    return total

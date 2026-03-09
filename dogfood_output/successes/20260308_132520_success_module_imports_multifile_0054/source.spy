@@ -1,0 +1,17 @@
+# Main entry point - imports from multiple modules
+from shared_types import DataSource, format_output
+from data_processor import Processor, compute_total
+
+def main():
+    # Test base class
+    base_source: DataSource = DataSource("base")
+    print(base_source.name)
+    print(base_source.fetch())
+    
+    # Test inherited class across module boundary
+    proc: Processor = Processor("main")
+    print(proc.name)
+    print(proc.fetch())
+    
+    # Test module-level function import
+    print(compute_total(4))

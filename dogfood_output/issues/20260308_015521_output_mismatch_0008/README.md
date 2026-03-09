@@ -1,0 +1,140 @@
+# Issue Report: output_mismatch
+
+**Timestamp:** 2026-03-08T01:49:22.645619
+**Type:** output_mismatch
+**Feature Focus:** cross_module_classes
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Main entry point for cross-module classes test
+# Demonstrates inheritance, interfaces, struct usage, and enums across modules
+from shapes import Shape, ShapeType, IMeasurable, IDrawable
+from geometry import Point, Rectangle
+from utils import PI, ShapeCounter, Box
+
+@final
+class Circle(Shape):
+    """A circle with radius."""
+    radius: float
+    
+    def __init__(self, center: Point, radius: float):
+        super().__init__(center)
+        self.radius = radius
+        self.shape_type = ShapeType.CIRCLE
+    
+    @override
+    def area(self) -> float:
+        return PI * self.radius * self.radius
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * PI * self.radius
+    
+    @override
+    def description(self) -> str:
+        return "A circle with radius " + str(self.radius)
+    
+    @override
+    def draw(self) -> str:
+        return "Drawing circle at (" + str(self.center.x) + ", " + str(self.center.y) + ")"
+
+@final
+class Square(Rectangle):
+    """A square with equal sides."""
+    side_length: float
+    
+    def __init__(self, top_left: Point, side: float):
+        super().__init__(top_left, side, side)
+        self.side_length = side
+    
+    @override
+    def area(self) -> float:
+        return self.side_length * self.side_length
+    
+    def diagonal(self) -> float:
+        return self.side_length * (2.0 ** 0.5)
+
+def process_shapes(shapes: list[Shape]) -> float:
+    """Calculate total area of all shapes."""
+    total: float = 0.0
+    for s in shapes:
+        total += s.area()
+    return total
+
+def main():
+    # Create Points
+    origin: Point = Point(0.0, 0.0)
+    p1: Point = Point(3.0, 4.0)
+    p2: Point = Point(10.0, 10.0)
+    
+    # Calculate distance
+    dist: float = origin.distance_to(p1)
+    print(dist)
+    
+    # Create counter and register shapes
+    counter: ShapeCounter = ShapeCounter()
+    counter.register("circle")
+    counter.register("circle")
+    counter.register("square")
+    
+    # Create shapes
+    circle: Circle = Circle(origin, 5.0)
+    square: Square = Square(p2, 4.0)
+    box: Box = Box(p1, 3.0, 2.0, 1.0)
+    
+    # Access shape properties (demonstrates virtual dispatch)
+    print(circle.area())
+    print(circle.description())
+    print(circle.draw())
+    
+    # Demonstrate Rectangle methods
+    rect: Rectangle = box
+    print(rect.area())
+    
+    # Print side length
+    print(square.side_length)
+    
+    # Test counter
+    print(counter.total())
+
+```
+
+## Error
+
+```
+AI explicitly reported mismatch
+```
+
+## Output Comparison
+
+### Expected
+```
+5.0
+3
+78.53975
+A circle with radius 5.0
+Drawing circle at (0.0, 0.0)
+22.0
+4.0
+3
+
+```
+
+### Actual
+```
+5.0
+78.53975
+A circle with radius 5.0
+Drawing circle at (0.0, 0.0)
+22.0
+4.0
+3
+```
+
+## Timing
+
+- Generation: 309.55s
+- Execution: 5.26s

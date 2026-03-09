@@ -1,0 +1,72 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Counter' has no member 'value'
+  --> /tmp/tmpb6h5s2sq/main.spy:18:24
+    |
+ 18 |     counter_val: int = counter.value
+    |                        ^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Counter' has no member 'value'
+  --> /tmp/tmpb6h5s2sq/main.spy:21:19
+    |
+ 21 |     counter_val = counter.value
+    |                   ^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type '() -> float' to variable of type 'float'
+  --> /tmp/tmpb6h5s2sq/main.spy:26:5
+    |
+ 26 |     rect_area: float = rect.area
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type '() -> float' to variable of type 'float'
+  --> /tmp/tmpb6h5s2sq/main.spy:28:5
+    |
+ 28 |     rect_perim: float = rect.perimeter
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type '() -> float' to variable of type 'float'
+  --> /tmp/tmpb6h5s2sq/main.spy:32:5
+    |
+ 32 |     circle_area: float = circle.area
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type '() -> float' to variable of type 'float'
+  --> /tmp/tmpb6h5s2sq/main.spy:34:5
+    |
+ 34 |     circle_perim: float = circle.perimeter
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type '() -> float' to variable of type 'float'
+  --> /tmp/tmpb6h5s2sq/main.spy:40:9
+    |
+ 40 |         shape_area: float = shape.area
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Calculator' has no member 'memory'. Did you mean '_memory'?
+  --> /tmp/tmpb6h5s2sq/main.spy:55:22
+    |
+ 55 |     mem_val: float = calc.memory
+    |                      ^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Calculator' has no member 'memory'. Did you mean '_memory'?
+  --> /tmp/tmpb6h5s2sq/main.spy:58:15
+    |
+ 58 |     mem_val = calc.memory
+    |               ^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'Calculator' has no member 'memory'. Did you mean '_memory'?
+  --> /tmp/tmpb6h5s2sq/main.spy:61:15
+    |
+ 61 |     mem_val = calc.memory
+    |               ^^^^^^^^^^^
+    |
+

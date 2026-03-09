@@ -1,0 +1,87 @@
+# shapes.spy - Geometric shapes with inheritance and interfaces
+
+interface IRenderable:
+    def render(self) -> str: ...
+
+@abstract
+class Shape(IRenderable):
+    # Instance fields
+    name: str
+    _area: float
+    
+    def __init__(self, name: str):
+        self.name = name
+        self._area = 0.0
+    
+    @abstract
+    def get_area(self) -> float: ...
+    
+    @virtual
+    def describe(self) -> str:
+        return f"Shape: {self.name}"
+    
+    def render(self) -> str:
+        generic_area = self.get_area()
+        return f"[Shape {self.name}: area={generic_area:.2f}]"
+
+class Rectangle(Shape):
+    width: float
+    height: float
+    
+    def __init__(self, name: str, width: float, height: float):
+        super().__init__(name)
+        self.width = width
+        self.height = height
+    
+    @override
+    def get_area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def describe(self) -> str:
+        return f"Rectangle {self.name}: {self.width} x {self.height}"
+    
+    @override
+    def render(self) -> str:
+        return f"[Rect {self.name}: area={self.get_area():.1f}]"
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, name: str, radius: float):
+        super().__init__(name)
+        self.radius = radius
+    
+    @override
+    def get_area(self) -> float:
+        # Use approximate pi
+        return 3.14159 * self.radius * self.radius
+    
+    @override
+    def describe(self) -> str:
+        return f"Circle {self.name}: r={self.radius}"
+    
+    @override
+    def render(self) -> str:
+        return f"[Circle {self.name}: area={self.get_area():.2f}]"
+
+class Triangle(Shape):
+    base: float
+    height: float
+    
+    def __init__(self, name: str, base: float, height: float):
+        super().__init__(name)
+        self.base = base
+        self.height = height
+    
+    @override
+    def get_area(self) -> float:
+        return 0.5 * self.base * self.height
+    
+    @override
+    def describe(self) -> str:
+        return f"Triangle {self.name}: base={self.base}, height={self.height}"
+    
+    @override
+    def render(self) -> str:
+        return f"[Triangle {self.name}: area={self.get_area():.1f}]"

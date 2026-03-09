@@ -1,0 +1,22 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-08T05:11:27.925118",
+  "generated_code": "# Main entry point\n\nfrom shapes import Shape, Rectangle, Circle, Square\nfrom utils import scale_shape, total_area\n\ndef main():\n    # Create shapes\n    r: Rectangle = Rectangle(5.0, 3.0)\n    c: Circle = Circle(2.0)\n    s: Square = Square(4.0)\n    \n    # Print individual areas\n    print(r.area())\n    print(c.area())\n    print(s.area())\n    \n    # Store in list\n    shapes: list[Shape] = list[Shape]()\n    shapes.append(r)\n    shapes.append(c)\n    shapes.append(s)\n    \n    # Calculate total area\n    print(total_area(shapes))\n    \n    # Scale shapes\n    scaled: Shape = scale_shape(r, 2.0)\n    print(scaled.area())\n    \n    # Test polymorphism\n    for shape in shapes:\n        print(shape.perimeter())\n",
+  "expected_output": "15.0\n12.56636\n16.0\n43.56636\n60.0\n16.0\n25.13272\n16.0\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0513]: 'Shapes.Shape.Area()' is abstract but it is contained in non-abstract type 'Shapes.Shape'\n  --> shapes.cs:14:32\n    |\n 14 |     print(c.area())\n    |                    ^\n    |\n\nerror[CS0513]: 'Shapes.Shape.Perimeter()' is abstract but it is contained in non-abstract type 'Shapes.Shape'\n  --> shapes.cs:15:32\n    |\n 15 |     print(s.area())\n    |                    ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "cross_module_classes",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 217.5631184577942,
+  "compilation_duration": null,
+  "execution_duration": 4.889993190765381,
+  "source_files": {
+    "shapes.spy": "# Shape classes for geometry calculations\n\nclass Shape:\n    @abstract\n    def area(self) -> float: ...\n\n    @abstract\n    def perimeter(self) -> float: ...\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n\n    def __init__(self, width: float, height: float):\n        self.width = width\n        self.height = height\n\n    @override\n    def area(self) -> float:\n        return self.width * self.height\n\n    @override\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)\n\nclass Circle(Shape):\n    radius: float\n\n    def __init__(self, radius: float):\n        self.radius = radius\n\n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n\n    @override\n    def perimeter(self) -> float:\n        return 2.0 * 3.14159 * self.radius\n\nclass Square(Rectangle):\n    def __init__(self, side: float):\n        super().__init__(side, side)\n",
+    "utils.spy": "# Utility functions for shape operations\n\nfrom shapes import Shape, Rectangle, Circle, Square\n\ndef scale_shape(shape: Shape, factor: float) -> Shape:\n    if isinstance(shape, Rectangle):\n        rect: Rectangle = shape\n        return Rectangle(rect.width * factor, rect.height * factor)\n    elif isinstance(shape, Square):\n        sq: Square = shape\n        new_side: float = sq.width * factor\n        return Square(new_side)\n    elif isinstance(shape, Circle):\n        circ: Circle = shape\n        return Circle(circ.radius * factor)\n    return shape\n\ndef total_area(shapes: list[Shape]) -> float:\n    total: float = 0.0\n    for s in shapes:\n        total += s.area()\n    return total\n",
+    "main.spy": "# Main entry point\n\nfrom shapes import Shape, Rectangle, Circle, Square\nfrom utils import scale_shape, total_area\n\ndef main():\n    # Create shapes\n    r: Rectangle = Rectangle(5.0, 3.0)\n    c: Circle = Circle(2.0)\n    s: Square = Square(4.0)\n    \n    # Print individual areas\n    print(r.area())\n    print(c.area())\n    print(s.area())\n    \n    # Store in list\n    shapes: list[Shape] = list[Shape]()\n    shapes.append(r)\n    shapes.append(c)\n    shapes.append(s)\n    \n    # Calculate total area\n    print(total_area(shapes))\n    \n    # Scale shapes\n    scaled: Shape = scale_shape(r, 2.0)\n    print(scaled.area())\n    \n    # Test polymorphism\n    for shape in shapes:\n        print(shape.perimeter())\n"
+  }
+}

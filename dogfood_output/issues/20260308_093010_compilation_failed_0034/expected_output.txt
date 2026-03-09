@@ -1,0 +1,24 @@
+Rectangle area:
+15.0
+Rectangle perimeter:
+16.0
+Circle area:
+12.56636
+Circle perimeter:
+12.56636
+Colored rectangle color:
+red
+Colored rectangle area:
+24.0
+Colored circle color:
+blue
+Colored circle area:
+28.27431
+Factory created shape color:
+green
+Total area of all shapes:
+80.84067
+Rectangle description:
+Area: 15.0, Perimeter: 16.0
+Circle description:
+Area: 12.56636, Perimeter: 12.56636

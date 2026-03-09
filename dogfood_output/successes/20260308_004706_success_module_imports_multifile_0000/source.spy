@@ -1,0 +1,30 @@
+# Main entry point - imports from multiple modules
+from types_module import Status, Entity
+from data_module import TaskStruct, TaskEntity
+from utils_module import status_to_str, process_describable, create_task_summary
+
+def main():
+    # Test enum import
+    print(status_to_str(Status.ACTIVE))
+    
+    # Test struct import and interface implementation
+    s1: TaskStruct = TaskStruct("Fix bug", 1)
+    s2: TaskStruct = TaskStruct("Write docs", 2)
+    print(s1.describe())
+    
+    # Test class with inheritance and multiple interfaces
+    task: TaskEntity = TaskEntity("Feature work", Status.PENDING)
+    print(task.get_display_info())
+    
+    # Test polymorphism via interface
+    task.set_status(Status.COMPLETED)
+    print(task.describe())
+    
+    # Test utility function with interface list
+    describables: list[IDescribable] = [s1, s2, task]
+    descriptions: list[str] = process_describable(describables)
+    for desc in descriptions:
+        print(desc)
+    
+    # Test cross-module complex interaction
+    print(create_task_summary(task))

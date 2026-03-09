@@ -1,0 +1,13 @@
+5
+5
+10
+not_prime
+not_prime
+prime
+prime
+not_prime
+prime
+not_prime
+prime
+not_prime
+not_prime

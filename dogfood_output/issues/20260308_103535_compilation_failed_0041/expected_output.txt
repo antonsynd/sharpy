@@ -1,0 +1,7 @@
+5.0
+Red
+Shape: Rectangle with 4 sides
+Rectangle area = 15.0
+Circle area = 12.566370614359172
+16.0
+Blue

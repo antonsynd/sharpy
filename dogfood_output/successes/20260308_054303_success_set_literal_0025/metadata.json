@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T05:40:58.129735",
+  "generated_code": "# Test set literals with spread operator and membership testing\n# Combines set literals, spread operator, and deterministic iteration\ndef analyze_sets() -> None:\n    odd: set[int] = {1, 3, 5, 7, 9}\n    even: set[int] = {0, 2, 4, 6, 8}\n    primes: set[int] = {2, 3, 5, 7}\n    \n    # Use spread to combine set literals\n    combined: set[int] = {*odd, *even}\n    \n    print(len(odd))\n    print(len(even))\n    print(len(combined))\n    \n    # Membership testing in loop with deterministic range\n    for i in range(10):\n        if i in primes:\n            print(\"prime\")\n        else:\n            print(\"not_prime\")\n\ndef main():\n    analyze_sets()\n",
+  "expected_output": "5\n5\n10\nnot_prime\nnot_prime\nprime\nprime\nnot_prime\nprime\nnot_prime\nprime\nnot_prime\nnot_prime\n",
+  "actual_output": "5\n5\n10\nnot_prime\nnot_prime\nprime\nprime\nnot_prime\nprime\nnot_prime\nprime\nnot_prime\nnot_prime",
+  "feature_focus": "set_literal",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 114.57149147987366,
+  "execution_duration": 5.000718355178833,
+  "source_files": null
+}

@@ -1,0 +1,25 @@
+# Test: Custom container with __contains__ for numeric range checking
+class RangeContainer:
+    min_val: int
+    max_val: int
+    
+    def __init__(self, min_v: int, max_v: int):
+        self.min_val = min_v
+        self.max_val = max_v
+    
+    def __contains__(self, value: int) -> bool:
+        return self.min_val <= value <= self.max_val
+
+def main():
+    range_a = RangeContainer(10, 50)
+    range_b = RangeContainer(100, 200)
+    
+    test_values: list[int] = [5, 25, 75, 150, 250]
+    
+    for val in test_values:
+        if val in range_a:
+            print(f"{val} in range_a")
+        elif val in range_b:
+            print(f"{val} in range_b")
+        else:
+            print(f"{val} not found")

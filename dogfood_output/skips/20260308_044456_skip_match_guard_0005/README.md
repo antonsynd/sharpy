@@ -1,0 +1,159 @@
+# Skipped Dogfood Run
+
+**Timestamp:** 2026-03-08T04:41:15.533985
+**Skip Reason:** Repeated identical compiler error (likely compiler bug): Compilation errors:
+
+
+**Feature Focus:** match_guard
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test: Match guards with type patterns, property patterns, and complex boolean expressions
+# Combines: class hierarchy, interfaces, virtual/override, property patterns, guards
+
+interface IScalable:
+    def scale(self, factor: float) -> None: ...
+
+@abstract
+class Shape:
+    @virtual
+    def area(self) -> float:
+        return 0.0
+
+    @virtual
+    def perimeter(self) -> float:
+        return 0.0
+
+@abstract
+class Drawable:
+    @abstract
+    def draw(self) -> str: ...
+
+class Rectangle(Shape, Drawable):
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float):
+        self.width = w
+        self.height = h
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+    @override
+    def draw(self) -> str:
+        return f"Rect({self.width}, {self.height})"
+
+class Circle(Shape, Drawable):
+    radius: float
+
+    def __init__(self, r: float):
+        self.radius = r
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self.radius
+
+    @override
+    def draw(self) -> str:
+        return f"Circle(r={self.radius})"
+
+def classify_shape(s: Shape) -> str:
+    match s:
+        # Rectangle with square property pattern + large guard
+        case Rectangle() if s.width == s.height and s.width > 10.0:
+            return "large_square"
+        # Rectangle with square property pattern + small guard
+        case Rectangle() if s.width == s.height:
+            return "small_square"
+        # Rectangle with wide aspect ratio guard
+        case Rectangle() if s.width > 2.0 * s.height and s.width > 15.0:
+            return "wide_large"
+        # Rectangle with tall aspect ratio guard
+        case Rectangle() if s.height > 2.0 * s.width:
+            return "tall"
+        # Generic rectangle
+        case Rectangle():
+            return "rectangle"
+        # Circle with large radius guard
+        case Circle() if s.radius > 100.0:
+            return "circle_huge"
+        # Circle with medium radius guard
+        case Circle() if s.radius > 10.0:
+            return "circle_large"
+        # Circle with small radius guard
+        case Circle() if s.radius > 0.0:
+            return "circle_small"
+        # Fallback case
+        case _:
+            return "unknown"
+
+def calculate_score(s: Shape) -> float:
+    a: float = s.area()
+    p: float = s.perimeter()
+    
+    match s:
+        # High score for efficient shapes 
+        case Circle() if s.radius > 5.0 and a / p > 5.0:
+            return a * 2.0
+        # Medium score for squares
+        case Rectangle() if s.width == s.height and s.width > 5.0:
+            return a * 1.5
+        # Low score for inefficient shapes
+        case _ if a / p < 1.0:
+            return a * 0.5
+        # Standard score
+        case _:
+            return a
+
+def main():
+    shapes: list[Shape] = []
+    
+    # Rectangle(5.0, 5.0) - small_square
+    shapes.append(Rectangle(5.0, 5.0))
+    # Rectangle(20.0, 20.0) - large_square
+    shapes.append(Rectangle(20.0, 20.0))
+    # Rectangle(30.0, 10.0) - wide_large
+    shapes.append(Rectangle(30.0, 10.0))
+    # Rectangle(5.0, 15.0) - tall
+    shapes.append(Rectangle(5.0, 15.0))
+    # Rectangle(7.0, 3.0) - rectangle
+    shapes.append(Rectangle(7.0, 3.0))
+    # Circle(5.0) - circle_small
+    shapes.append(Circle(5.0))
+    # Circle(25.0) - circle_large
+    shapes.append(Circle(25.0))
+    # Circle(150.0) - circle_huge
+    shapes.append(Circle(150.0))
+    
+    for shape in shapes:
+        c: str = classify_shape(shape)
+        score: float = calculate_score(shape)
+        print(c)
+        print(score)
+
+```
+
+## Timing
+
+- Generation: 204.47s
+
+## Notes
+
+This iteration was skipped because the generated code didn't pass validation.
+This is typically due to the AI generating code with unsupported features
+or syntax that doesn't match the Sharpy spec (phases 0.1.0-0.2.6).
+
+This output is saved for inspection to help improve prompting.

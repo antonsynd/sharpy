@@ -1,0 +1,33 @@
+# Module for utility functions
+from contracts import Point
+
+def origin() -> Point:
+    return Point(0.0, 0.0)
+
+def translate_point(p: Point, dx: float, dy: float) -> Point:
+    return Point(p.x + dx, p.y + dy)
+
+def scale_point(p: Point, factor: float) -> Point:
+    return Point(p.x * factor, p.y * factor)
+
+def format_coordinate(p: Point) -> str:
+    return f"({p.x}, {p.y})"
+
+def apply_transform(value: float, factor: float) -> float:
+    return value * factor
+
+def analyze_shape(shape: Shape) -> str:
+    area: float = shape.get_area()
+    perim: float = shape.get_perimeter()
+    return f"area={area:.2f}, perimeter={perim:.2f}"
+
+def get_type_name(kind: ShapeType) -> str:
+    # Enum iteration to find matching name
+    if kind == ShapeType.CIRCLE:
+        return "Circle"
+    elif kind == ShapeType.RECTANGLE:
+        return "Rectangle"
+    elif kind == ShapeType.TRIANGLE:
+        return "Triangle"
+    else:
+        return "Polygon"

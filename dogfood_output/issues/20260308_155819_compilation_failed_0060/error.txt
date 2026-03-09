@@ -1,0 +1,31 @@
+Assembly compilation failed:
+
+error[CS0509]: 'Collections.Point3D': cannot derive from sealed type 'Utils.Point'
+  --> /tmp/tmpmgk1qagm/collections.spy:16:28
+    |
+ 16 |     colorable: IColorable = circle
+    |                            ^
+    |
+
+error[CS1061]: 'Collections.Point3D' does not contain a definition for 'X' and no accessible extension method 'X' accepting a first argument of type 'Collections.Point3D' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpmgk1qagm/collections.spy:46:42
+
+error[CS1061]: 'Collections.Point3D' does not contain a definition for 'X' and no accessible extension method 'X' accepting a first argument of type 'Collections.Point3D' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpmgk1qagm/collections.spy:46:51
+
+error[CS1061]: 'Collections.Point3D' does not contain a definition for 'Y' and no accessible extension method 'Y' accepting a first argument of type 'Collections.Point3D' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpmgk1qagm/collections.spy:46:60
+
+error[CS1061]: 'Collections.Point3D' does not contain a definition for 'Y' and no accessible extension method 'Y' accepting a first argument of type 'Collections.Point3D' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpmgk1qagm/collections.spy:46:69
+
+error[CS1729]: 'object' does not contain a constructor that takes 2 arguments
+  --> /tmp/tmpmgk1qagm/collections.spy:49:56
+
+error[CS1061]: 'Shapes.ShapeType' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'Shapes.ShapeType' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpmgk1qagm/shapes.spy:27:43
+    |
+ 27 |     print(collection.total_area())
+    |                                   ^
+    |
+

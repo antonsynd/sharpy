@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T15:02:22.001776",
+  "generated_code": "# Main entry point - demonstrates cross-module inheritance\n\nfrom base import Appliance\nfrom impl import WashingMachine, Refrigerator\n\ndef main():\n    # Create appliances from cross-module classes\n    washer = WashingMachine(500)\n    fridge = Refrigerator(365)\n    \n    # Test specific implementations\n    print(washer.power_consumption())\n    print(washer.get_type())\n    print(fridge.power_consumption())\n    print(fridge.get_type())\n    \n    # Calculate total consumption\n    total: int = washer.power_consumption() + fridge.power_consumption()\n    print(total)\n",
+  "expected_output": "500\nWashing machine\n365\nRefrigerator\n865\n",
+  "actual_output": "500\nWashing machine\n365\nRefrigerator\n865",
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 221.40346240997314,
+  "execution_duration": 5.327385425567627,
+  "source_files": {
+    "base.spy": "# Base module defining abstract appliance class\n\n@abstract\nclass Appliance:\n    \"\"\"Abstract base class for household appliances.\"\"\"\n    \n    @abstract\n    def power_consumption(self) -> int:\n        ...\n    \n    @virtual\n    def get_type(self) -> str:\n        return \"Unknown appliance\"\n",
+    "impl.spy": "# Implementation module - defines concrete appliance types\n\nfrom base import Appliance\n\nclass WashingMachine(Appliance):\n    wattage: int\n    \n    def __init__(self, wattage: int):\n        self.wattage = wattage\n    \n    @override\n    def power_consumption(self) -> int:\n        return self.wattage\n    \n    @override\n    def get_type(self) -> str:\n        return \"Washing machine\"\n\nclass Refrigerator(Appliance):\n    annual_kwh: int\n    \n    def __init__(self, annual_kwh: int):\n        self.annual_kwh = annual_kwh\n    \n    @override\n    def power_consumption(self) -> int:\n        return self.annual_kwh\n    \n    @override\n    def get_type(self) -> str:\n        return \"Refrigerator\"\n",
+    "main.spy": "# Main entry point - demonstrates cross-module inheritance\n\nfrom base import Appliance\nfrom impl import WashingMachine, Refrigerator\n\ndef main():\n    # Create appliances from cross-module classes\n    washer = WashingMachine(500)\n    fridge = Refrigerator(365)\n    \n    # Test specific implementations\n    print(washer.power_consumption())\n    print(washer.get_type())\n    print(fridge.power_consumption())\n    print(fridge.get_type())\n    \n    # Calculate total consumption\n    total: int = washer.power_consumption() + fridge.power_consumption()\n    print(total)\n"
+  }
+}

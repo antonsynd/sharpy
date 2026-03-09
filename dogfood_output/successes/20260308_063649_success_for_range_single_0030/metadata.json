@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T06:35:00.166929",
+  "generated_code": "# Test for range with single argument and various range patterns\n\ndef main():\n    # Basic range - single argument\n    print(\"=== Basic range(5) ===\")\n    for i in range(5):\n        print(i)\n\n    # Range with start and end\n    print(\"=== range(2, 6) ===\")\n    for i in range(2, 6):\n        print(i)\n\n    # Range with step\n    print(\"=== range(0, 10, 2) ===\")\n    for i in range(0, 10, 2):\n        print(i)\n\n    # Range with negative step\n    print(\"=== range(5, 0, -1) ===\")\n    for i in range(5, 0, -1):\n        print(i)\n\n    # Nested ranges\n    print(\"=== Nested ranges ===\")\n    for i in range(3):\n        for j in range(2):\n            print(i)\n            print(j)\n\n    # Range with calculations inside\n    print(\"=== Range with calculations ===\")\n    n: int = 4\n    for i in range(n):\n        print(i * i)\n\n    # Range with break\n    print(\"=== Range with break ===\")\n    for i in range(10):\n        if i > 3:\n            break\n        print(i)\n\n    # Range with continue\n    print(\"=== Range with continue ===\")\n    for i in range(5):\n        if i == 2:\n            continue\n        print(i)\n",
+  "expected_output": "=== Basic range(5) ===\n0\n1\n2\n3\n4\n=== range(2, 6) ===\n2\n3\n4\n5\n=== range(0, 10, 2) ===\n0\n2\n4\n6\n8\n=== range(5, 0, -1) ===\n5\n4\n3\n2\n1\n=== Nested ranges ===\n0\n0\n0\n1\n1\n0\n1\n1\n2\n0\n2\n1\n=== Range with calculations ===\n0\n1\n4\n9\n=== Range with break ===\n0\n1\n2\n3\n=== Range with continue ===\n0\n1\n3\n4\n",
+  "actual_output": "=== Basic range(5) ===\n0\n1\n2\n3\n4\n=== range(2, 6) ===\n2\n3\n4\n5\n=== range(0, 10, 2) ===\n0\n2\n4\n6\n8\n=== range(5, 0, -1) ===\n5\n4\n3\n2\n1\n=== Nested ranges ===\n0\n0\n0\n1\n1\n0\n1\n1\n2\n0\n2\n1\n=== Range with calculations ===\n0\n1\n4\n9\n=== Range with break ===\n0\n1\n2\n3\n=== Range with continue ===\n0\n1\n3\n4",
+  "feature_focus": "for_range_single",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 97.6982307434082,
+  "execution_duration": 5.20529580116272,
+  "source_files": null
+}

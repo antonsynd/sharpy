@@ -1,0 +1,2 @@
+Repeated identical compiler error (likely compiler bug): Compilation errors:
+

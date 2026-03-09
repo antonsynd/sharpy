@@ -1,0 +1,22 @@
+# Module defining shared types
+# Interfaces, enums, and structs for entity system
+
+interface Identifiable:
+    property get id() -> int
+    property get display_name() -> str
+
+enum Status:
+    ACTIVE = 1
+    INACTIVE = 2
+    PENDING = 3
+
+struct Dimensions:
+    width: float
+    height: float
+
+    def __init__(self, width: float, height: float):
+        self.width = width
+        self.height = height
+
+    def area(self) -> float:
+        return self.width * self.height

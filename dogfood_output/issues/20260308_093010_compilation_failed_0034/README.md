@@ -1,0 +1,166 @@
+# Issue Report: compilation_failed
+
+**Timestamp:** 2026-03-08T09:25:51.259948
+**Type:** compilation_failed
+**Feature Focus:** cross_module_classes
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Main entry point using cross-module classes
+
+from shapes import Shape, Rectangle, Circle
+from colored_shapes import ColoredRectangle, ColoredCircle, create_colored_shape
+from utils import total_area, describe_shape
+
+def main():
+    # Create some shapes from the base module
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    circle: Circle = Circle(2.0)
+
+    # Print individual shape properties
+    print("Rectangle area:")
+    print(rect.area())
+    print("Rectangle perimeter:")
+    print(rect.perimeter())
+    print("Circle area:")
+    print(circle.area())
+    print("Circle perimeter:")
+    print(circle.perimeter())
+
+    # Create colored shapes from the colored_shapes module
+    colored_rect: ColoredRectangle = ColoredRectangle(4.0, 6.0, "red")
+    colored_circle: ColoredCircle = ColoredCircle(3.0, "blue")
+
+    print("Colored rectangle color:")
+    print(colored_rect.get_color())
+    print("Colored rectangle area:")
+    print(colored_rect.area())
+    print("Colored circle color:")
+    print(colored_circle.get_color())
+    print("Colored circle area:")
+    print(colored_circle.area())
+
+    # Test the factory function
+    new_shape: ColoredShape = create_colored_shape("circle", 2.5, "green")
+    print("Factory created shape color:")
+    print(new_shape.get_color())
+
+    # Use utility functions from utils module
+    all_shapes: list[Shape] = [rect, circle, colored_rect, colored_circle]
+    total: float = total_area(all_shapes)
+    print("Total area of all shapes:")
+    print(total)
+
+    # Test describe function
+    print("Rectangle description:")
+    print(describe_shape(rect))
+    print("Circle description:")
+    print(describe_shape(circle))
+
+```
+
+## Error
+
+```
+Assembly compilation failed:
+
+error[CS1721]: Class 'ColoredShapes.ColoredRectangle' cannot have multiple base classes: 'Shapes.Rectangle' and 'ColoredShapes.ColoredShape'
+  --> /tmp/tmpg70jeetd/colored_shapes.spy:13:55
+    |
+ 13 |     print("Rectangle area:")
+    |                             ^
+    |
+
+error[CS1721]: Class 'ColoredShapes.ColoredCircle' cannot have multiple base classes: 'Shapes.Circle' and 'ColoredShapes.ColoredShape'
+  --> /tmp/tmpg70jeetd/colored_shapes.spy:23:49
+    |
+ 23 |     colored_rect: ColoredRectangle = ColoredRectangle(4.0, 6.0, "red")
+    |                                                 ^
+    |
+
+error[CS0506]: 'Shapes.Rectangle.Area()': cannot override inherited member 'Shapes.Shape.Area()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmpg70jeetd/shapes.spy:16:32
+    |
+ 16 |     print(rect.perimeter())
+    |                            ^
+    |
+
+error[CS0506]: 'Shapes.Rectangle.Perimeter()': cannot override inherited member 'Shapes.Shape.Perimeter()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmpg70jeetd/shapes.spy:23:32
+    |
+ 23 |     colored_rect: ColoredRectangle = ColoredRectangle(4.0, 6.0, "red")
+    |                                ^
+    |
+
+error[CS0506]: 'Shapes.Circle.Perimeter()': cannot override inherited member 'Shapes.Shape.Perimeter()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmpg70jeetd/shapes.spy:38:32
+    |
+ 38 |     print(new_shape.get_color())
+    |                                ^
+    |
+
+error[CS0029]: Cannot implicitly convert type 'ColoredShapes.ColoredRectangle' to 'ColoredShapes.ColoredShape'
+  --> /tmp/tmpg70jeetd/colored_shapes.spy:30:20
+    |
+ 30 |     print("Colored circle color:")
+    |                    ^
+    |
+
+error[CS0029]: Cannot implicitly convert type 'ColoredShapes.ColoredCircle' to 'ColoredShapes.ColoredShape'
+  --> /tmp/tmpg70jeetd/colored_shapes.spy:32:20
+    |
+ 32 |     print("Colored circle area:")
+    |                    ^
+    |
+
+error[CS0030]: Cannot convert type 'ColoredShapes.ColoredRectangle' to 'ColoredShapes.ColoredShape'
+  --> /tmp/tmpg70jeetd/main.spy:27:40
+    |
+ 27 |     print(colored_rect.get_color())
+    |                                    ^
+    |
+
+error[CS0030]: Cannot convert type 'ColoredShapes.ColoredCircle' to 'ColoredShapes.ColoredShape'
+  --> /tmp/tmpg70jeetd/main.spy:31:40
+    |
+ 31 |     print(colored_circle.get_color())
+    |                                      ^
+    |
+
+error[CS1061]: 'ColoredShapes.ColoredRectangle' does not contain a definition for 'Color' and no accessible extension method 'Color' accepting a first argument of type 'ColoredShapes.ColoredRectangle' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpg70jeetd/colored_shapes.spy:19:18
+    |
+ 19 |     print("Circle perimeter:")
+    |                  ^
+    |
+
+error[CS1061]: 'ColoredShapes.ColoredCircle' does not contain a definition for 'Color' and no accessible extension method 'Color' accepting a first argument of type 'ColoredShapes.ColoredCircle' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpg70jeetd/colored_shapes.spy:26:18
+    |
+ 26 |     print("Colored rectangle color:")
+    |                  ^
+    |
+
+
+```
+
+## Compiler Output
+
+```
+warning[SPY0452]: Imported name 'Shape' is never used
+  --> /tmp/tmpg70jeetd/colored_shapes.spy:3:17
+    |
+  3 | from shapes import Shape, Rectangle, Circle
+    |                 ^^^^^
+    |
+
+
+```
+
+## Timing
+
+- Generation: 240.70s
+- Execution: 5.01s

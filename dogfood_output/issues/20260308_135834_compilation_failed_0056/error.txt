@@ -1,0 +1,19 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Shapes.ShapeBase' does not contain a definition for 'Center' and no accessible extension method 'Center' accepting a first argument of type 'Shapes.ShapeBase' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpxzw2k8qf/shapes.spy:27:66
+    |
+ 27 |     print(f"Perimeter: {r.perimeter()}")
+    |                                         ^
+    |
+
+error[CS1729]: 'Shapes.ShapeBase' does not contain a constructor that takes 2 arguments
+  --> /tmp/tmpxzw2k8qf/concrete_shapes.spy:27:40
+    |
+ 27 |     print(f"Perimeter: {r.perimeter()}")
+    |                                        ^
+    |
+
+error[CS1729]: 'Shapes.ShapeBase' does not contain a constructor that takes 2 arguments
+  --> /tmp/tmpxzw2k8qf/concrete_shapes.spy:48:57
+

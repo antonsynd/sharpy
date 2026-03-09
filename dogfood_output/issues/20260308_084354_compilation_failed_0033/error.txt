@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS1061]: 'ShapesBase.ShapeCategory' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'ShapesBase.ShapeCategory' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmplzwnp4db/main.spy:13:58
+    |
+ 13 |     print(rectangle.category.name)
+    |                                   ^
+    |
+
+error[CS1061]: 'ShapesBase.ShapeCategory' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'ShapesBase.ShapeCategory' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmplzwnp4db/main.spy:14:57
+    |
+ 14 |     print(triangle.category.value)
+    |                                   ^
+    |
+
+error[CS1061]: 'ShapesBase.ShapeCategory' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'ShapesBase.ShapeCategory' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmplzwnp4db/shapes_base.spy:36:34
+    |
+ 36 |     # Test 6: Test struct from another module
+    |                                  ^
+    |
+

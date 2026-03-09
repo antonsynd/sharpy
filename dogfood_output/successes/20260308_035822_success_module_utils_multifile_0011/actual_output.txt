@@ -1,0 +1,7 @@
+[System] Initialization
+16
+2
+active
+usr_456
+service_inactive
+[System] Completion

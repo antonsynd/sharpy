@@ -1,0 +1,18 @@
+# Main entry point demonstrating cross-module class usage
+from shapes import Shape, Drawable
+from colored_shapes import ColoredCircle, ColoredRectangle
+
+def describe_shape(shape: Shape, drawable: Drawable) -> None:
+    print(shape.get_info())
+    print(drawable.draw())
+    print(shape.area())
+
+def main():
+    circle = ColoredCircle(0.0, 0.0, 5.0, "red")
+    rect = ColoredRectangle(1.0, 2.0, 10.0, 5.0, "blue")
+    
+    print("Circle:")
+    describe_shape(circle, circle)
+    
+    print("Rectangle:")
+    describe_shape(rect, rect)

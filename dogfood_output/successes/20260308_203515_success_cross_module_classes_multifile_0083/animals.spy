@@ -1,0 +1,43 @@
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @virtual
+    def speak(self) -> str:
+        return "..."
+
+    @virtual
+    def describe(self) -> str:
+        return f"Animal({self.name})"
+
+class Dog(Animal):
+    breed: str
+
+    def __init__(self, name: str, breed: str):
+        super().__init__(name)
+        self.breed = breed
+
+    @override
+    def speak(self) -> str:
+        return "Woof!"
+
+    @override
+    def describe(self) -> str:
+        return f"Dog({self.name}, {self.breed})"
+
+class Cat(Animal):
+    color: str
+
+    def __init__(self, name: str, color: str):
+        super().__init__(name)
+        self.color = color
+
+    @override
+    def speak(self) -> str:
+        return "Meow!"
+
+    @override
+    def describe(self) -> str:
+        return f"Cat({self.name}, {self.color})"

@@ -1,0 +1,42 @@
+# Test: Exhaustive pattern matching on enums
+# Using enum with data carried in parallel variables to simulate tagged union
+
+enum TaskState:
+    IDLE = 0
+    PROCESSING = 1
+    FINISHED = 2
+
+class Task:
+    state: TaskState
+    step: int
+    result: str
+
+    def __init__(self):
+        self.state = TaskState.IDLE
+        self.step = 0
+        self.result = ""
+
+def describe(task: Task) -> str:
+    return match task.state:
+        case TaskState.IDLE:
+            "waiting to start"
+        case TaskState.PROCESSING:
+            f"step {task.step}"
+        case TaskState.FINISHED:
+            f"completed: {task.result}"
+
+def main():
+    t1: Task = Task()
+    t1.state = TaskState.IDLE
+
+    t2: Task = Task()
+    t2.state = TaskState.PROCESSING
+    t2.step = 3
+
+    t3: Task = Task()
+    t3.state = TaskState.FINISHED
+    t3.result = "ok"
+
+    print(describe(t1))
+    print(describe(t2))
+    print(describe(t3))

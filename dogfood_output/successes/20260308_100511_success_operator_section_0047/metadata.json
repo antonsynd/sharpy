@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T10:02:46.911753",
+  "generated_code": "def main():\n    # Test arithmetic operator sections with function type annotations\n    triple: (int) -> int = (_ * 3)\n    add_ten: (int) -> int = (_ + 10)\n    halve: (int) -> int = (_ // 2)\n    \n    print(triple(5))\n    print(add_ten(7))\n    print(halve(15))\n",
+  "expected_output": "15\n17\n7\n",
+  "actual_output": "15\n17\n7",
+  "feature_focus": "operator_section",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 133.02165389060974,
+  "execution_duration": 5.309725046157837,
+  "source_files": null
+}

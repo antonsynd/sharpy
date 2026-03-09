@@ -1,0 +1,75 @@
+class Temperature:
+    _kelvin: float
+    
+    const ABSOLUTE_ZERO: float = -273.15
+    
+    def __init__(self, celsius: float):
+        self._kelvin = self._to_kelvin(celsius)
+    
+    def _to_kelvin(self, celsius: float) -> float:
+        return celsius - self.ABSOLUTE_ZERO
+    
+    def _to_celsius(self, kelvin: float) -> float:
+        return kelvin + self.ABSOLUTE_ZERO
+    
+    property get celsius(self) -> float:
+        return self._to_celsius(self._kelvin)
+    
+    property set celsius(self, value: float):
+        if value < self.ABSOLUTE_ZERO:
+            self._kelvin = 0.0
+        else:
+            self._kelvin = self._to_kelvin(value)
+    
+    property get fahrenheit(self) -> float:
+        return self.celsius * 9.0 / 5.0 + 32.0
+    
+    property get kelvin(self) -> float:
+        return self._kelvin
+
+class Sensor(Temperature):
+    _id: str
+    
+    def __init__(self, id: str, initial_celsius: float):
+        super().__init__(initial_celsius)
+        self._id = id
+    
+    property get id(self) -> str:
+        return self._id
+    
+    property get status(self) -> str:
+        if self.celsius < -50.0:
+            return "extreme_cold"
+        elif self.celsius > 50.0:
+            return "extreme_heat"
+        else:
+            return "normal"
+
+def main():
+    # Test basic function-style properties with backing field
+    temp = Temperature(25.0)
+    print(temp.celsius)
+    print(temp.fahrenheit)
+    
+    # Test setter with validation logic
+    temp.celsius = 100.0
+    print(temp.celsius)
+    print(temp.kelvin)
+    
+    # Test validation path - setting below absolute zero
+    temp.celsius = -300.0
+    print(temp.kelvin)
+    
+    # Test inheritance with properties
+    sensor = Sensor("T001", 75.0)
+    print(sensor.id)
+    print(sensor.celsius)
+    print(sensor.status)
+    
+    # Test inherited computed property
+    print(sensor.fahrenheit)
+    
+    # Test property update through inherited class
+    sensor.celsius = -60.0
+    print(sensor.celsius)
+    print(sensor.status)

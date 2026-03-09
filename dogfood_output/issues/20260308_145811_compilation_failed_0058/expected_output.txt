@@ -1,0 +1,12 @@
+5.830951894845301
+34.6349375
+31.70795
+10.0x5.0
+2.0
+blue
+Box(2 items)
+24.0
+DrawableRectangle 4 at 10.0
+DrawableRectangle 5 at 0.0
+2
+2

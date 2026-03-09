@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T20:52:54.914440",
+  "generated_code": "class DataProcessor:\n    _values: list[float]\n    \n    def __init__(self, initial: float):\n        self._values = [initial ** 0.5]\n    \n    def add_scaled(self, value: float, scale: float) -> None:\n        scaled = value * scale\n        self._values.append(scaled ** 0.5)\n    \n    def average(self) -> float:\n        if len(self._values) == 0:\n            return 0.0\n        total = 0.0\n        for v in self._values:\n            total = total + v\n        return total / len(self._values)\n\ndef main():\n    processor = DataProcessor(16.0)\n    processor.add_scaled(9.0, 1.0)\n    processor.add_scaled(4.0, 1.0)\n    result = processor.average()\n    print(result)\n    path = \"/\".join([\"data\", \"results.txt\"])\n    path_len = len(path)\n    print(path_len)\n",
+  "expected_output": "3.0\n16\n",
+  "actual_output": "3.0\n16",
+  "feature_focus": "import_statement",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 272.2435784339905,
+  "execution_duration": 5.314144134521484,
+  "source_files": null
+}

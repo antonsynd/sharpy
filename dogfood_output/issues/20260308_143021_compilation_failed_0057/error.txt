@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Shapes.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Shapes.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmplm1jjwyk/shapes.spy:29:31
+    |
+ 29 |     print(rect.get_color_name())
+    |                               ^
+    |
+

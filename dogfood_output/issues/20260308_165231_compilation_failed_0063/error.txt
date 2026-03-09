@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS1729]: 'DogfoodTest.RangeError' does not contain a constructor that takes 1 arguments
+  --> /tmp/tmpv6lnum42/dogfood_test.spy:40:27
+    |
+ 40 |             raise RangeError("Negative")
+    |                           ^
+    |
+
+error[CS1729]: 'DogfoodTest.ParseError' does not contain a constructor that takes 1 arguments
+  --> /tmp/tmpv6lnum42/dogfood_test.spy:16:27
+    |
+ 16 |             raise ParseError("Empty")
+    |                           ^
+    |
+
+error[CS1729]: 'DogfoodTest.ParseError' does not contain a constructor that takes 1 arguments
+  --> /tmp/tmpv6lnum42/dogfood_test.spy:31:27
+    |
+ 31 |             raise ParseError("Invalid")
+    |                           ^
+    |
+

@@ -1,0 +1,7 @@
+warning[SPY0452]: Imported name 'Circle' is never used
+  --> /tmp/tmpu4kcnjx8/utils.spy:2:32
+    |
+  2 | from shapes import Rectangle, Circle, Square, IDrawable, IShape
+    |                                ^^^^^^
+    |
+

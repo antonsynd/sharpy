@@ -1,0 +1,34 @@
+# Math operations module
+def square(x: float) -> float:
+    return x * x
+
+def is_even(n: int) -> bool:
+    return n % 2 == 0
+
+def sum_of_squares(values: list[float]) -> float:
+    total: float = 0.0
+    for v in values:
+        total += v * v
+    return total
+
+class Calculator:
+    _memory: float
+    
+    def __init__(self):
+        self._memory = 0.0
+    
+    property get memory(self) -> float:
+        return self._memory
+    
+    def store(self, value: float) -> None:
+        self._memory = value
+    
+    def add_to_memory(self, value: float) -> None:
+        self._memory += value
+    
+    def clear_memory(self) -> None:
+        self._memory = 0.0
+    
+    @staticmethod
+    def double(x: float) -> float:
+        return x * 2.0

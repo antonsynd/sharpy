@@ -1,0 +1,14 @@
+const PI: float = 3.14159
+
+def rectangle_area(width: int, height: int) -> int:
+    return width * height
+
+def rectangle_perimeter(width: int, height: int) -> int:
+    return 2 * (width + height)
+
+class GeometryHelper:
+    def __init__(self):
+        pass
+    
+    def describe(self) -> str:
+        return "Geometry helper ready"

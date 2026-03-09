@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-08T10:23:26.226338",
+  "generated_code": "# Test: Partial application with operator sections in data transformation pipeline\ndef apply_transform(value: int, fn: (int) -> int) -> int:\n    return fn(value)\n\ndef clamp(min_val: int, max_val: int, x: int) -> int:\n    if x < min_val:\n        return min_val\n    if x > max_val:\n        return max_val\n    return x\n\ndef lerp(start: float, end: float, t: float) -> float:\n    return start + (end - start) * t\n\ndef main():\n    # Partial application: clamp with fixed bounds\n    clamp_0_100 = clamp(0, 100, _)\n    \n    # Test clamping various values\n    print(clamp_0_100(-10))\n    print(clamp_0_100(50))\n    print(clamp_0_100(150))\n    \n    # Operator section: double value\n    double = (_ * 2)\n    print(double(7))\n    \n    # Partial application with apply_transform\n    double_transform = apply_transform(_, (_ * 2))\n    print(double_transform(5))\n    \n    # Partial lerp for interpolation factor\n    lerp_half = lerp(0.0, 100.0, _)\n    result = lerp_half(0.5)\n    print(result)\n",
+  "expected_output": "0\n50\n100\n14\n10\n50.0\n",
+  "actual_output": "0\n50\n100\n7.0\n10\n50.0",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "partial_application",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 97.83939051628113,
+  "compilation_duration": null,
+  "execution_duration": 5.05165696144104,
+  "source_files": null
+}

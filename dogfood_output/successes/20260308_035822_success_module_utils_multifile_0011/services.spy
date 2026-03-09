@@ -1,0 +1,16 @@
+# Service module demonstrating interface implementation
+from types import Identifiable, Status
+
+class UserService(Identifiable):
+    user_id: str
+    status: Status
+
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+        self.status = Status.PENDING
+
+    def get_id(self) -> str:
+        return self.user_id
+
+    def set_status(self, new_status: Status) -> None:
+        self.status = new_status

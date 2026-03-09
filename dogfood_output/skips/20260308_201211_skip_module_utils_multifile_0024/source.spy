@@ -1,0 +1,45 @@
+# Main entry point - demonstrates cross-module imports
+from module_utils import Product, Service, Status, Dimension, Stats, Identifiable
+
+def process_item(item: Identifiable) -> str:
+    return item.describe()
+
+def main():
+    # Create products and services
+    p = Product("Widget", 50.0, 10.0, 5.0)
+    s = Service("Support", 75.0, 4)
+    
+    # Test inherited methods
+    print(p.get_name())
+    print(s.get_name())
+    
+    # Test abstract method implementation
+    print(p.calculate())
+    print(s.calculate())
+    
+    # Test interface implementation
+    print(process_item(p))
+    print(process_item(s))
+    
+    # Test interface method directly
+    print(p.get_id())
+    print(s.get_id())
+    
+    # Test enum usage
+    status = Status.ACTIVE
+    print(status.value)
+    
+    # Test struct operations
+    dim = Dimension(3.0, 4.0)
+    print(dim.area())
+    
+    # Test static methods
+    print(Stats.max_value(10.0, 25.0))
+    print(Stats.get_entity_count())
+    
+    # Test property
+    print(s.total_cost)
+    
+    # Test list with floats
+    values: list[float] = [1.0, 2.0, 3.0, 4.0, 5.0]
+    print(Stats.average(values))

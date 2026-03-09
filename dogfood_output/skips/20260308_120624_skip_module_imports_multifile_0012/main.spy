@@ -1,0 +1,56 @@
+# Main entry point - demonstrates complex cross-module imports and usage
+from types_module import Color, Point, Shape, IDrawable, IHasArea
+from shapes_module import Rectangle, Circle, Triangle
+from utils_module import create_rectangle, create_circle, create_triangle, calculate_total_area, count_shapes_by_color, find_largest_shape, describe_point
+
+def main():
+    # Create some shapes using factory
+    rect = create_rectangle(0.0, 0.0, 4.0, 5.0)
+    circle = create_circle(1.0, 1.0, 3.0)
+    tri = create_triangle(0.0, 0.0, 3.0, 0.0, 1.5, 2.598)
+
+    # Test individual shape methods
+    print(rect.name())
+    print(circle.name())
+    print(tri.name())
+
+    # Test drawing (interface method)
+    print(rect.draw())
+    print(circle.draw())
+    print(tri.draw())
+
+    # Test area calculations
+    print(rect.area())
+    print(circle.area())
+    print(tri.area())
+
+    # Test struct functionality
+    p = Point(3.0, 4.0)
+    print(describe_point(p))
+
+    # Work with collections - create list[Shape] and append individually
+    # (cannot use list literal due to generic invariance)
+    shapes: list[Shape] = []
+    shapes.append(rect)
+    shapes.append(circle)
+    shapes.append(tri)
+
+    # Calculate total area
+    total = calculate_total_area(shapes)
+    print(total)
+
+    # Count by color
+    green_count = count_shapes_by_color(shapes, Color.GREEN)
+    print(green_count)
+
+    # Test enum values
+    print(Color.RED.name)
+    print(Color.BLUE.value)
+
+    # Find largest shape
+    largest = find_largest_shape(shapes)
+    print(largest.name())
+
+    # Test perimeter/circumference (specific methods)
+    print(rect.perimeter())
+    print(circle.circumference())

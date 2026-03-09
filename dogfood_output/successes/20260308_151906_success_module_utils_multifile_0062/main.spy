@@ -1,0 +1,32 @@
+# Main entry point demonstrating complex multi-file interactions
+# Tests interface dispatch, struct usage, and enum matching
+from types_module import Point, Color, IDrawable
+from shapes_module import Circle, Rectangle
+from utils_module import format_point, color_to_string
+
+def describe_shape(d: IDrawable) -> str:
+    return d.draw()
+
+def main():
+    # Test struct Point with initialization and method call
+    p: Point = Point(3.0, 4.0)
+    print(format_point(p))
+    print(p.distance_from_origin())
+
+    # Create shapes using struct Point from types_module
+    circle: Circle = Circle(Point(0.0, 0.0), 2.0)
+    rect: Rectangle = Rectangle(Point(10.0, 20.0), 3.0, 4.0)
+
+    # Test interface dispatch via IDrawable
+    print(describe_shape(circle))
+    print(describe_shape(rect))
+
+    # Test area methods on concrete types
+    circle_area: float = circle.area()
+    rect_area: float = rect.area()
+    print(circle_area)
+    print(rect_area)
+
+    # Test enum usage across modules with match
+    selected: Color = Color.GREEN
+    print(color_to_string(selected))

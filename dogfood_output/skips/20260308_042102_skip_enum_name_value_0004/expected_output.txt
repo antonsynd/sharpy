@@ -1,0 +1,7 @@
+Task(1): backup [Medium=5]
+Scheduled(2 at 9:00): report [High=10]
+Scheduled(3 at 8:00): cleanup [Critical=20]
+Scheduled(4 at 14:00): sync [Medium=5]
+Total priority value: 40
+High priority tasks: 2
+Priority levels: 4

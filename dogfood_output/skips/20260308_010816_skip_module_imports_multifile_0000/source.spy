@@ -1,0 +1,37 @@
+# Main entry point demonstrating cross-module imports
+from shapes import Circle, Rectangle, total_area, Shape
+from utils import Color, Point, format_color, distance_from_origin
+
+def main():
+    # Create shapes with colors based on enum
+    red: str = format_color(Color.RED)
+    blue: str = format_color(Color.BLUE)
+    c: Circle = Circle(red, 5.0)
+    r: Rectangle = Rectangle(blue, 4.0, 6.0)
+
+    # Print 1: Circle area
+    print(c.area)
+
+    # Print 2: Rectangle area
+    print(r.area)
+
+    # Print 3: Circle description
+    print(c.describe())
+
+    # Print 4: Rectangle description
+    print(r.describe())
+
+    # Print 5: Create a Point from utils
+    origin: Point = Point(0.0, 0.0)
+    print(str(origin))
+
+    # Print 6: Polymorphic list and total area
+    shapes: list[Shape] = [c, r]
+    total: float = total_area(shapes)
+    print(total)
+
+    # Print 7: Color enum name
+    print(Color.GREEN.name)
+
+    # Print 8: Enum values
+    print(Color.RED.value)

@@ -1,0 +1,39 @@
+# Base types module - defines interfaces, enums, abstract classes
+# that will be used across multiple modules
+
+interface IDrawable:
+    def draw(self) -> str: ...
+
+interface IHasArea:
+    def area(self) -> float: ...
+
+@abstract
+class Shape:
+    _color: Color
+
+    def __init__(self, color: Color):
+        self._color = color
+
+    @virtual
+    def name(self) -> str:
+        return "Shape"
+
+    def color_name(self) -> str:
+        return self._color.name
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+    PURPLE = 4
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_from_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5

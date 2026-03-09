@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T17:16:39.934123",
+  "generated_code": "class Validator:\n    min_val: int\n    max_val: int\n\n    def __init__(self, min_val: int, max_val: int):\n        self.min_val = min_val\n        self.max_val = max_val\n\n    # Two-parameter version: validate without clamping\n    def validate(self, value: int) -> int:\n        if value < self.min_val:\n            return -1\n        if value > self.max_val:\n            return -1\n        return value\n\n    # Three-parameter version: validate with clamp flag\n    def validate(self, value: int, clamp: bool) -> int:\n        if value < self.min_val:\n            if clamp:\n                return self.min_val\n            return -1\n        if value > self.max_val:\n            if clamp:\n                return self.max_val\n            return -1\n        return value\n\n# Single function with default parameters instead of overloading\ndef repeat(text: str, times: int = 3, separator: str = \"-\") -> str:\n    if times <= 0:\n        return \"\"\n    result: str = text\n    for i in range(1, times):\n        result = result + separator + text\n    return result\n\ndef main():\n    v = Validator(10, 50)\n    \n    # Test rejection (no clamping)\n    print(v.validate(5))\n    \n    # Test clamping to min\n    print(v.validate(5, True))\n    \n    # Test clamping to max\n    print(v.validate(75, True))\n    \n    # Test default repeat pattern (no args beyond text)\n    print(repeat(\"x\"))\n    \n    # Test custom times (2 args)\n    print(repeat(\"a\", 2))\n    \n    # Test custom times and separator (3 args)\n    result1: str = repeat(\"a\", 2, \":\")\n    print(result1)\n    \n    # Test valid value within range\n    print(v.validate(25))\n",
+  "expected_output": "-1\n10\n50\nx-x-x\na-a\na:a\n25\n",
+  "actual_output": "-1\n10\n50\nx-x-x\na-a\na:a\n25",
+  "feature_focus": "function_default_params",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 324.1957688331604,
+  "execution_duration": 4.925931692123413,
+  "source_files": null
+}

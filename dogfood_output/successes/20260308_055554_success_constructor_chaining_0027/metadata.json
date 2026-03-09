@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T05:52:01.691790",
+  "generated_code": "class TimeDuration:\n    total_seconds: int\n    \n    def __init__(self, seconds: int = 0):\n        self.total_seconds = seconds\n    \n    def from_minutes(mins: int, secs: int) -> TimeDuration:\n        return TimeDuration(mins * 60 + secs)\n    \n    def to_minutes(self) -> float:\n        return self.total_seconds / 60.0\n    \n    def describe(self) -> str:\n        mins = self.total_seconds // 60\n        secs = self.total_seconds % 60\n        return f\"{mins}m {secs}s\"\n\ndef main():\n    t1 = TimeDuration()\n    t2 = TimeDuration(90)\n    t3 = TimeDuration.from_minutes(2, 30)\n    print(t1.describe())\n    print(t2.describe())\n    print(t3.describe())\n    print(t2.to_minutes())\n",
+  "expected_output": "0m 0s\n1m 30s\n2m 30s\n1.5\n",
+  "actual_output": "0m 0s\n1m 30s\n2m 30s\n1.5",
+  "feature_focus": "constructor_chaining",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 215.78346037864685,
+  "execution_duration": 5.1993327140808105,
+  "source_files": null
+}

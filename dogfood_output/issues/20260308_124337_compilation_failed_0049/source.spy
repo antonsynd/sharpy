@@ -1,0 +1,62 @@
+import asyncio
+
+interface IAsyncProcessor[T]:
+    async def process(self, item: T) -> T: ...
+
+class AsyncDataSource:
+    @virtual
+    async def fetch_batch(self, start: int, count: int) -> int:
+        yield 0
+
+    async def sum_items(self, items: list[int]) -> int:
+        total = 0
+        for item in items:
+            total += item
+        return total
+
+class FilteredDataSource(AsyncDataSource):
+    threshold: int
+
+    def __init__(self, threshold: int):
+        self.threshold = threshold
+
+    @override
+    async def fetch_batch(self, start: int, count: int) -> int:
+        i = 0
+        while i < count:
+            value = start + i
+            if value > self.threshold:
+                yield value
+            i += 1
+            await asyncio.sleep(0.001)
+
+class DoublingProcessor(IAsyncProcessor[int]):
+    async def process(self, item: int) -> int:
+        await asyncio.sleep(0.001)
+        return item * 2
+
+async def main():
+    source: FilteredDataSource = FilteredDataSource(5)
+    processor: DoublingProcessor = DoublingProcessor()
+
+    # First async for: process and print filtered values
+    results: list[int] = []
+    async for value in source.fetch_batch(1, 10):
+        processed = await processor.process(value)
+        results.append(processed)
+
+    for r in results:
+        print(r)
+
+    # Second async for on a fresh stream with different logic
+    data2 = source.fetch_batch(1, 10)
+    count = 0
+    total = 0
+    async for val in data2:
+        count += 1
+        total += val
+        if count >= 3:
+            break
+
+    print(count)
+    print(total)

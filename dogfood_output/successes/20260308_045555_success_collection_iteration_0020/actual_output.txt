@@ -1,0 +1,14 @@
+range_sums:
+5
+7
+9
+11
+13
+running_avgs:
+10.0
+15.0
+20.0
+pairs:
+a=85
+b=92
+c=78

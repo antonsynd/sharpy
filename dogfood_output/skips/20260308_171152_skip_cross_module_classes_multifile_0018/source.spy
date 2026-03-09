@@ -1,0 +1,37 @@
+# Main entry point - demonstrates cross-module classes and polymorphism
+from types_module import Color, Point, Shape, IDrawable
+from entities_module import Circle, Rectangle, ShapeFactory
+from utils_module import calculate_total_area, count_by_color, create_rainbow_circles, find_largest_shape
+
+def main():
+    # Create shapes using both direct construction and factory
+    c1: Circle = ShapeFactory.create_circle(Color.RED, 0.0, 0.0, 5.0)
+    c2: Circle = Circle(Color.BLUE, Point(10.0, 10.0), 3.0)
+    r1: Rectangle = Rectangle(Color.GREEN, Point(5.0, 5.0), 4.0, 6.0)
+
+    # Test interface polymorphism - IDrawable
+    drawables: list[IDrawable] = [c1, c2, r1]
+    for drawable in drawables:
+        print(drawable.draw())
+
+    # Calculate total area using IMeasurable interface
+    shapes: list[IMeasurable] = [c1, c2, r1]
+    total: float = calculate_total_area(shapes)
+    print(f"Total area: {total}")
+
+    # Test struct Point
+    p: Point = Point(1.5, 2.5)
+    print(f"Point: {str(p)}")
+
+    # Create rainbow circles and count by color
+    rainbow: list[Circle] = create_rainbow_circles()
+    red_count: int = count_by_color(rainbow, Color.RED)
+    print(f"Red circles: {red_count}")
+
+    # Find largest shape
+    largest: float = find_largest_shape(shapes)
+    print(f"Largest area: {largest}")
+
+    # Test cloning
+    c1_clone: Shape = c1.duplicate()
+    print(f"Clone is Circle: {isinstance(c1_clone, Circle)}")

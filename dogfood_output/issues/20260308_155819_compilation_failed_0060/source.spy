@@ -1,0 +1,35 @@
+# Main entry point - demonstrates cross-module imports and usage
+
+from shapes import ShapeType, IShape, IColorable, Circle, Rectangle
+from utils import Point, format_number, calculate_statistics, shape_type_to_string
+from collections import ShapeCollection, Point3D
+
+def main():
+    # Test 1: Create shapes and calculate properties
+    circle: Circle = Circle(5.0)
+    rect: Rectangle = Rectangle(4.0, 6.0)
+    print(circle.area())
+    print(rect.perimeter())
+
+    # Test 2: Use interface functionality
+    circle.set_color("red")
+    colorable: IColorable = circle
+    print(colorable.get_color())
+
+    # Test 3: Use struct from utils
+    pt: Point = Point(3.0, 4.0)
+    print(pt.distance_from_origin())
+
+    # Test 4: Use shape collection from collections
+    collection: ShapeCollection = ShapeCollection("MyShapes")
+    collection.add(circle)
+    collection.add(rect)
+    print(collection.total_area())
+    print(format_number(collection.total_perimeter(), 2))
+
+    # Test 5: Use Point3D (inherits from Point across modules)
+    pt3d: Point3D = Point3D(1.0, 2.0, 2.0)
+    print(pt3d.distance_from_origin())
+
+    # Test 6: Enum to string conversion
+    print(shape_type_to_string(1))

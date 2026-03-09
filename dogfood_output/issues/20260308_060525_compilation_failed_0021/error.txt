@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS1503]: Argument 1: cannot convert from 'Sharpy.Optional<int>' to 'int'
+  --> /tmp/tmpuj257e83/dogfood_test.spy:57:36
+    |
+ 57 |                 results.append(opt)
+    |                                    ^
+    |
+
+error[CS1660]: Cannot convert lambda expression to type 'Optional<Optional<Func<int, bool>>>' because it is not a delegate type
+  --> /tmp/tmpuj257e83/dogfood_test.spy:40:56
+    |
+ 40 |         self._pipeline = LambdaPipeline[int](lambda x: x > 0)
+    |                                                        ^
+    |
+
+error[CS1955]: Non-invocable member 'DogfoodTest.LambdaPipeline<T>._FinalCheck' cannot be used like a method.
+  --> /tmp/tmpuj257e83/dogfood_test.spy:30:26
+    |
+ 30 |             if self._final_check(result):
+    |                          ^
+    |
+

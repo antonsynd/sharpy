@@ -1,0 +1,35 @@
+# Module providing utilities for working with shapes
+from types_module import Color, IMeasurable, Point
+from entities_module import Circle, Rectangle, ShapeFactory
+
+def calculate_total_area(shapes: list[IMeasurable]) -> float:
+    total: float = 0.0
+    for shape in shapes:
+        total = total + shape.area
+    return total
+
+def count_by_color(shapes: list[Circle], target: Color) -> int:
+    count: int = 0
+    for shape in shapes:
+        if shape.color == target:
+            count = count + 1
+    return count
+
+def create_rainbow_circles() -> list[Circle]:
+    colors: list[Color] = [Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW]
+    result: list[Circle] = []
+    i: int = 0
+    for c in colors:
+        r: float = 1.0 + float(i) * 0.5
+        circle: Circle = ShapeFactory.create_circle(c, float(i) * 10.0, 0.0, r)
+        result.append(circle)
+        i = i + 1
+    return result
+
+def find_largest_shape(shapes: list[IMeasurable]) -> float:
+    max_area: float = 0.0
+    for shape in shapes:
+        area: float = shape.area
+        if area > max_area:
+            max_area = area
+    return max_area

@@ -1,0 +1,22 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-08T13:21:15.384438",
+  "generated_code": "# Main entry point - imports from shapes and math_utils modules\n\nfrom shapes import Shape, Rectangle, Circle\nfrom math_utils import square, factorial, sum_of_squares\n\ndef main():\n    # Create shapes and calculate their properties\n    rect: Rectangle = Rectangle(5.0, 3.0)\n    circle: Circle = Circle(4.0)\n    \n    # Print shape areas and perimeters\n    print(rect.area())\n    print(rect.perimeter())\n    print(circle.area())\n    print(circle.perimeter())\n    \n    # Test math utilities\n    print(square(7.0))\n    print(factorial(5))\n    \n    # Test sum_of_squares with a list\n    values: list[float] = [1.0, 2.0, 3.0, 4.0]\n    print(sum_of_squares(values))\n",
+  "expected_output": "15.0\n16.0\n50.26544\n25.13272\n49.0\n120\n30.0\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0513]: 'Shapes.Shape.Area()' is abstract but it is contained in non-abstract type 'Shapes.Shape'\n  --> shapes.cs:14:32\n    |\n 14 |     print(circle.area())\n    |                         ^\n    |\n\nerror[CS0513]: 'Shapes.Shape.Perimeter()' is abstract but it is contained in non-abstract type 'Shapes.Shape'\n  --> shapes.cs:15:32\n    |\n 15 |     print(circle.perimeter())\n    |                              ^\n    |\n\n",
+  "compiler_output": "warning[SPY0452]: Imported name 'Shape' is never used\n  --> /tmp/tmpejz0xj45/main.spy:3:20\n    |\n  3 | from shapes import Shape, Rectangle, Circle\n    |                    ^^^^^\n    |\n\n",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 82.96600365638733,
+  "compilation_duration": null,
+  "execution_duration": 4.672922849655151,
+  "source_files": {
+    "shapes.spy": "# Geometric shapes module\n\nclass Shape:\n    @abstract\n    def area(self) -> float:\n        ...\n\n    @abstract\n    def perimeter(self) -> float:\n        ...\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, width: float, height: float):\n        self.width = width\n        self.height = height\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    @override\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, radius: float):\n        self.radius = radius\n    \n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n    \n    @override\n    def perimeter(self) -> float:\n        return 2.0 * 3.14159 * self.radius\n",
+    "math_utils.spy": "# Math utilities module\n\ndef square(x: float) -> float:\n    return x * x\n\ndef factorial(n: int) -> int:\n    result: int = 1\n    i: int = 2\n    while i <= n:\n        result = result * i\n        i = i + 1\n    return result\n\ndef sum_of_squares(values: list[float]) -> float:\n    total: float = 0.0\n    for v in values:\n        total = total + square(v)\n    return total\n",
+    "main.spy": "# Main entry point - imports from shapes and math_utils modules\n\nfrom shapes import Shape, Rectangle, Circle\nfrom math_utils import square, factorial, sum_of_squares\n\ndef main():\n    # Create shapes and calculate their properties\n    rect: Rectangle = Rectangle(5.0, 3.0)\n    circle: Circle = Circle(4.0)\n    \n    # Print shape areas and perimeters\n    print(rect.area())\n    print(rect.perimeter())\n    print(circle.area())\n    print(circle.perimeter())\n    \n    # Test math utilities\n    print(square(7.0))\n    print(factorial(5))\n    \n    # Test sum_of_squares with a list\n    values: list[float] = [1.0, 2.0, 3.0, 4.0]\n    print(sum_of_squares(values))\n"
+  }
+}

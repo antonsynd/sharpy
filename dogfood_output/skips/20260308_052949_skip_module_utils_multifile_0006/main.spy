@@ -1,0 +1,59 @@
+# Main entry point
+# Tests: imports, inheritance, interfaces, generics, static members, properties
+
+from entities import Shape, Rectangle, Circle, Container, create_rectangle, create_circle, IArea
+from utils import sum_areas, identity_int, identity_str, pair_of_strs, apply_to_int
+
+def main():
+    # Test A: Create shapes and show inheritance/polymorphism
+    rect: Rectangle = create_rectangle("R1", 5.0, 3.0)
+    circle: Circle = create_circle("C1", 2.0)
+    
+    # Test B: Virtual methods (polymorphic dispatch)
+    # Access shape via Shape list - declared as Shape list
+    shapes: list[Shape] = []
+    shapes.append(rect)
+    shapes.append(circle)
+    
+    for shape in shapes:
+        print(shape.describe())
+        print(shape.dimensions())
+    
+    # Test C: Interface usage
+    print(rect.area())
+    print(rect.perimeter())
+    print(circle.area())
+    
+    # Test D: Properties
+    print(rect.display_name)
+    
+    # Test E: Static field access across module
+    print(Shape.SHAPE_COUNT)
+    
+    # Test F: Generic container
+    int_container: Container[int] = Container[int](42)
+    print(int_container.get())
+    int_container.set(100)
+    print(int_container.get())
+    
+    # Test G: Identity functions (typed versions)
+    result: int = identity_int(7)
+    print(result)
+    
+    pair: tuple[str, str] = pair_of_strs("hello")
+    print(pair[0])
+    
+    # Lambda application
+    doubled: int = apply_to_int(lambda x: x * 2, 5)
+    print(doubled)
+    
+    # Test H: Sum areas function
+    area_shapes: list[IArea] = []
+    area_shapes.append(rect)
+    area_shapes.append(circle)
+    total: float = sum_areas(area_shapes)
+    print(total)
+    
+    # Test I: Identity with string
+    greeting: str = identity_str("world")
+    print(greeting)

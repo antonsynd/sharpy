@@ -1,0 +1,26 @@
+# Utility functions and constants
+const PI: float = 3.14159
+
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+def calculate_factorial(n: int) -> int:
+    if n <= 1:
+        return 1
+    return n * calculate_factorial(n - 1)
+
+class Counter:
+    _count: int
+    
+    def __init__(self):
+        self._count = 0
+    
+    # Using function-style computed property
+    property get value(self) -> int:
+        return self._count
+    
+    def increment(self) -> None:
+        self._count += 1
+    
+    def reset(self) -> None:
+        self._count = 0

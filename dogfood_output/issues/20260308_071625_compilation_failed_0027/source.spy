@@ -1,0 +1,41 @@
+from utils import Calculator, Rectangle, Circle, Shape, process_shapes, factorial, fibonacci
+
+def main() -> None:
+    # Test Calculator
+    calc: Calculator = Calculator()
+    Calculator.reset()
+    
+    sum_result: int = calc.add(10, 20)
+    prod_result: int = calc.multiply(5, 6)
+    print(sum_result)
+    print(prod_result)
+    
+    # Test factorial
+    fact5: int = factorial(5)
+    print(fact5)
+    
+    # Test fibonacci
+    fib10: int = fibonacci(10)
+    print(fib10)
+    
+    # Test shapes
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    circle: Circle = Circle(2.5)
+    
+    print(rect.area())
+    print(rect.perimeter())
+    print(circle.area())
+    print(circle.perimeter())
+    
+    # Test polymorphism
+    shapes: list[Shape] = [rect, circle]
+    i: int = 0
+    while i < len(shapes):
+        s: Shape = shapes[i]
+        print(s.area())
+        i = i + 1
+    
+    # Test process_shapes
+    result: tuple[float, float] = process_shapes(shapes)
+    print(result[0])
+    print(result[1])

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T09:52:02.306665",
+  "generated_code": "from shapes import Circle, Rectangle\nfrom utils import circle_area, rectangle_area, describe_shape, total_circle_area, total_rectangle_area\n\ndef main():\n    c1 = Circle(10.0)\n    c2 = Circle(5.0)\n    r1 = Rectangle(10.0, 5.0)\n    r2 = Rectangle(4.0, 3.0)\n    \n    print(circle_area(c1))\n    print(circle_area(c2))\n    print(rectangle_area(r1))\n    print(rectangle_area(r2))\n    \n    print(describe_shape(c1))\n    print(describe_shape(r1))\n    \n    circles: list[Circle] = [c1, c2]\n    rects: list[Rectangle] = [r1, r2]\n    \n    print(total_circle_area(circles))\n    print(total_rectangle_area(rects))\n",
+  "expected_output": "314.0\n78.5\n50.0\n12.0\nCircle with radius 10.0\nRectangle 10.0x5.0\n392.5\n62.0\n",
+  "actual_output": "314.0\n78.5\n50.0\n12.0\nCircle with radius 10.0\nRectangle 10.0x5.0\n392.5\n62.0",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 431.9076557159424,
+  "execution_duration": 5.278897762298584,
+  "source_files": {
+    "shapes.spy": "class Circle:\n    radius: float\n    name: str\n    \n    def __init__(self, radius: float):\n        self.radius = radius\n        self.name = \"Circle\"\n    \n    def area(self) -> float:\n        return 3.14 * self.radius * self.radius\n\nclass Rectangle:\n    width: float\n    height: float\n    name: str\n    \n    def __init__(self, width: float, height: float):\n        self.width = width\n        self.height = height\n        self.name = \"Rectangle\"\n    \n    def area(self) -> float:\n        return self.width * self.height\n",
+    "utils.spy": "from shapes import Circle, Rectangle\n\ndef circle_area(c: Circle) -> float:\n    return c.area()\n\ndef rectangle_area(r: Rectangle) -> float:\n    return r.area()\n\ndef describe_shape(shape) -> str:\n    if isinstance(shape, Circle):\n        return f\"Circle with radius {shape.radius}\"\n    elif isinstance(shape, Rectangle):\n        return f\"Rectangle {shape.width}x{shape.height}\"\n    return \"Unknown shape\"\n\ndef total_circle_area(circles: list[Circle]) -> float:\n    total: float = 0.0\n    for c in circles:\n        total = total + c.area()\n    return total\n\ndef total_rectangle_area(rects: list[Rectangle]) -> float:\n    total: float = 0.0\n    for r in rects:\n        total = total + r.area()\n    return total\n",
+    "main.spy": "from shapes import Circle, Rectangle\nfrom utils import circle_area, rectangle_area, describe_shape, total_circle_area, total_rectangle_area\n\ndef main():\n    c1 = Circle(10.0)\n    c2 = Circle(5.0)\n    r1 = Rectangle(10.0, 5.0)\n    r2 = Rectangle(4.0, 3.0)\n    \n    print(circle_area(c1))\n    print(circle_area(c2))\n    print(rectangle_area(r1))\n    print(rectangle_area(r2))\n    \n    print(describe_shape(c1))\n    print(describe_shape(r1))\n    \n    circles: list[Circle] = [c1, c2]\n    rects: list[Rectangle] = [r1, r2]\n    \n    print(total_circle_area(circles))\n    print(total_rectangle_area(rects))\n"
+  }
+}

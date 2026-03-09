@@ -1,0 +1,48 @@
+# Main entry point demonstrating cross-module inheritance
+from shapes_base import Shape, IDrawable, Point
+from shapes_impl import Rectangle, Circle, create_shapes
+
+def process_shape(shape: Shape) -> None:
+    """Process any shape through its base interface."""
+    print(f"Shape: {shape.get_name()}")
+    area: float = shape.area()
+    print(f" Area: {area}")
+    print(f" Perimeter: {shape.perimeter()}")
+    
+    # Check if drawable and use that interface
+    if isinstance(shape, IDrawable):
+        drawable: IDrawable = shape as IDrawable
+        print(f" {drawable.draw()}")
+        print(f" Color: {drawable.get_color()}")
+
+def main():
+    print("=== Cross-Module Inheritance Test ===")
+    print("")
+    
+    # Create and test a rectangle
+    print("Creating Rectangle:")
+    rect: Rectangle = Rectangle("my_rect", 4.0, 6.0)
+    process_shape(rect)
+    print("")
+    
+    # Test scaling through the IScalable interface
+    print("After scaling by 2.0:")
+    rect.scale(2.0)
+    print(f" New area: {rect.area()}")
+    print(f" New perimeter: {rect.perimeter()}")
+    print("")
+    
+    # Create and test a circle
+    print("Creating Circle:")
+    center: Point = Point(1.0, 2.0)
+    circle: Circle = Circle("my_circle", center, 3.0)
+    process_shape(circle)
+    print("")
+    
+    # Test the factory function from shapes_impl
+    print("=== Factory-created shapes ===")
+    shapes: list[Shape] = create_shapes()
+    for s in shapes:
+        print(f"{s.get_name()}: area={s.area()}")
+    print("")
+    print("=== Test Complete ===")

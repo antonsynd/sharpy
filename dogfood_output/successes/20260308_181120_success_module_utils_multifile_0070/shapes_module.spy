@@ -1,0 +1,58 @@
+# Shape implementations with cross-module inheritance and interface implementation
+
+from types_module import IDrawable, IMeasurable, Color, Point
+
+@abstract
+class Shape(IDrawable, IMeasurable):
+    color: Color
+    position: Point
+    
+    def __init__(self, color: Color, position: Point):
+        self.color = color
+        self.position = position
+    
+    def draw(self) -> str:
+        return "Drawing a shape"
+    
+    @abstract
+    def area(self) -> float: ...
+    
+    @abstract
+    def perimeter(self) -> float: ...
+    
+    def description(self) -> str:
+        return "Shape with color"
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, radius: float, color: Color, position: Point):
+        super().__init__(color, position)
+        self.radius = radius
+    
+    @override
+    def area(self) -> float:
+        pi: float = 3.14159
+        return pi * self.radius * self.radius
+    
+    @override
+    def perimeter(self) -> float:
+        pi: float = 3.14159
+        return 2.0 * pi * self.radius
+
+class Rectangle(Shape):
+    width: float
+    height: float
+    
+    def __init__(self, width: float, height: float, color: Color, position: Point):
+        super().__init__(color, position)
+        self.width = width
+        self.height = height
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)

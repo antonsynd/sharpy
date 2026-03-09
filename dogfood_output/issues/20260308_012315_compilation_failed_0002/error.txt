@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS0106]: The modifier 'virtual' is not valid for this item
+  --> types_module.cs:28:31
+    |
+ 28 | 
+    | ^
+    |
+
+error[CS0136]: A local or parameter named 'Decimal' cannot be declared in this scope because that name is used in an enclosing local scope to define a local or parameter
+  --> /tmp/tmpv3s6eedp/utils_module.spy:15:21
+    |
+ 15 |     origin: Point = Point(0.0, 0.0)
+    |                     ^
+    |
+
+error[CS0841]: Cannot use local variable 'Decimal' before it is declared
+  --> /tmp/tmpv3s6eedp/utils_module.spy:15:61
+    |
+ 15 |     origin: Point = Point(0.0, 0.0)
+    |                                    ^
+    |
+

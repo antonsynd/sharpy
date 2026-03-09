@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-08T13:14:18.578074",
+  "generated_code": "# Test raise exception with custom validation and error recovery\n# Tests: raise, custom exceptions, try/except, finally, error propagation\n\nclass ValidationError(Exception):\n    field_name: str\n    message: str\n    \n    def __init__(self, field: str, msg: str):\n        self.field_name = field\n        self.message = msg\n\nclass RangeValidator:\n    min_val: int\n    max_val: int\n    \n    def __init__(self, min_v: int, max_v: int):\n        self.min_val = min_v\n        self.max_val = max_v\n    \n    def validate(self, value: int) -> int:\n        if value < self.min_val:\n            raise ValidationError(\"value\", f\"Below minimum {self.min_val}\")\n        if value > self.max_val:\n            raise ValidationError(\"value\", f\"Above maximum {self.max_val}\")\n        return value\n\ndef process_values(values: list[int]) -> list[int]:\n    validator = RangeValidator(10, 100)\n    results: list[int] = list()\n    \n    for v in values:\n        try:\n            validated = validator.validate(v)\n            results.append(validated)\n        except ValidationError as e:\n            print(f\"Validation failed: {e.field_name}\")\n        finally:\n            print(f\"Processed: {v}\")\n    \n    return results\n\ndef main():\n    inputs: list[int] = [5, 50, 150]\n    processed = process_values(inputs)\n    print(len(processed))\n    print(processed[0])\n",
+  "expected_output": "Processed: 5\nValidation failed: value\nProcessed: 50\nProcessed: 150\nValidation failed: value\n1\n50\n",
+  "actual_output": "Validation failed: value\nProcessed: 5\nProcessed: 50\nValidation failed: value\nProcessed: 150\n1\n50",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "raise_exception",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 143.22216296195984,
+  "compilation_duration": null,
+  "execution_duration": 5.113714694976807,
+  "source_files": null
+}

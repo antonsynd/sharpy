@@ -1,0 +1,32 @@
+from math_utils import square
+from string_utils import reverse_string
+
+class Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_squared(self) -> float:
+        return square(self.x) + square(self.y)
+
+    def __str__(self) -> str:
+        x_str: str = str(self.x)
+        y_str: str = str(self.y)
+        return "Point(" + x_str + ", " + y_str + ")"
+
+class LabeledPoint:
+    label: str
+    point: Point
+
+    def __init__(self, label: str, point: Point):
+        self.label = label
+        self.point = point
+
+    def get_reversed_label(self) -> str:
+        return reverse_string(self.label)
+
+    def get_description(self) -> str:
+        return self.label + " point"

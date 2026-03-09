@@ -1,0 +1,51 @@
+Assembly compilation failed:
+
+error[CS0708]: 'Utils.Constants.PI': cannot declare instance members in a static class
+  --> utils.cs:22:23
+    |
+ 22 |     print(circle.area())
+    |                       ^
+    |
+
+error[CS1721]: Class 'Models.Circle' cannot have multiple base classes: 'Shapes.Shape' and 'Shapes.Drawable'
+  --> models.cs:14:41
+    |
+ 14 |     print(dist)
+    |                ^
+    |
+
+error[CS1721]: Class 'Models.Rectangle' cannot have multiple base classes: 'Shapes.Shape' and 'Shapes.Drawable'
+  --> /tmp/tmpp3i4h4b1/models.spy:20:44
+    |
+ 20 |     
+    |     ^
+    |
+
+error[CS0534]: 'Models.Circle' does not implement inherited abstract member 'Shapes.Shape.Perimeter()'
+  --> models.cs:14:18
+    |
+ 14 |     print(dist)
+    |                ^
+    |
+
+error[CS0534]: 'Models.Rectangle' does not implement inherited abstract member 'Shapes.Shape.Perimeter()'
+  --> /tmp/tmpp3i4h4b1/models.spy:20:18
+    |
+ 20 |     
+    |     ^
+    |
+
+error[CS0117]: 'Utils.Constants' does not contain a definition for 'Pi'
+  --> /tmp/tmpp3i4h4b1/models.spy:19:30
+    |
+ 19 |     square: Square = Square("s1", Point(20.0, 20.0), 3.0)
+    |                              ^
+    |
+
+error[CS0117]: 'Utils.Constants' does not contain a definition for 'Pi'
+  --> /tmp/tmpp3i4h4b1/models.spy:22:37
+    |
+ 22 |     print(circle.area())
+    |                         ^
+    |
+

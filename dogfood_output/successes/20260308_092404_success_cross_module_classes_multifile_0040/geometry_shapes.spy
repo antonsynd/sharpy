@@ -1,0 +1,44 @@
+from geometry_types import IMeasurable, Unit, Dimension
+
+@abstract
+class Shape(IMeasurable):
+    unit: Unit
+    
+    def __init__(self, u: Unit):
+        self.unit = u
+    
+    @virtual
+    def get_unit_name(self) -> str:
+        if self.unit == Unit.METRIC:
+            return "metric"
+        return "imperial"
+
+class Rectangle(Shape):
+    dim: Dimension
+    
+    def __init__(self, w: float, h: float, u: Unit):
+        super().__init__(u)
+        self.dim = Dimension(w, h)
+    
+    @override
+    def measure(self) -> float:
+        return self.dim.width * self.dim.height
+    
+    @override
+    def get_dimensions(self) -> str:
+        return str(self.dim.width) + "x" + str(self.dim.height)
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, r: float, u: Unit):
+        super().__init__(u)
+        self.radius = r
+    
+    @override
+    def measure(self) -> float:
+        return 3.14 * self.radius * self.radius
+    
+    @override
+    def get_dimensions(self) -> str:
+        return "r=" + str(self.radius)

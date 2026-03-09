@@ -1,0 +1,9 @@
+Repeated identical compiler error (likely compiler bug): Compilation errors:
+
+error[SPY0203]: Type 'IShape' has no member 'describe'
+  --> /tmp/tmpwifrqk4i/main.spy:19:15
+    |
+ 19 |         print(s.describe())
+    |               ^^^^^^^^^^
+    |
+

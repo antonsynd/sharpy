@@ -1,0 +1,12 @@
+35.566370614359172
+38.56637061435917
+Rectangle 5.0x3.0
+Circle r=2.0
+Rectangle 4.0x4.0
+Q1
+Q1
+Q2
+Q3
+Yellow
+2
+4

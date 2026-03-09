@@ -1,0 +1,15 @@
+2
+Rectangle
+50.0
+Circle
+78.53975
+Square
+16.0
+144.53975
+Drawing 20.0x10.0 rectangle
+Drawing circle at (0.0, 0.0)
+Drawing square with side 20.0
+200.0
+706.85775
+5.0
+3

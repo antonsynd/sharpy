@@ -1,0 +1,67 @@
+# Implementation module with concrete shapes
+from shapes_base import Shape, IDrawable, IScalable, Point
+
+class Rectangle(Shape, IDrawable, IScalable):
+    """Rectangle implementation with full functionality."""
+    width: float
+    height: float
+    _color: str
+    
+    def __init__(self, name: str, width: float, height: float):
+        super().__init__(name)
+        self.width = width
+        self.height = height
+        self._color = "blue"
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+    
+    def draw(self) -> str:
+        return f"Drawing {self.get_name()}: rectangle {self.width} x {self.height}"
+    
+    def scale(self, factor: float) -> None:
+        self.width = self.width * factor
+        self.height = self.height * factor
+    
+    def get_color(self) -> str:
+        return self._color
+    
+    def set_color(self, value: str) -> None:
+        self._color = value
+
+class Circle(Shape, IDrawable):
+    """Circle implementation."""
+    center: Point
+    radius: float
+    
+    def __init__(self, name: str, center: Point, radius: float):
+        super().__init__(name)
+        self.center = center
+        self.radius = radius
+    
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self.radius
+    
+    def draw(self) -> str:
+        return f"Drawing {self.get_name()}: circle at {self.center}, r={self.radius}"
+    
+    def get_color(self) -> str:
+        return "red"
+
+def create_shapes() -> list[Shape]:
+    """Factory function returning a collection of shapes."""
+    shapes: list[Shape] = []
+    p: Point = Point(0.0, 0.0)
+    shapes.append(Rectangle("rect1", 5.0, 3.0))
+    shapes.append(Circle("circle1", p, 2.5))
+    return shapes

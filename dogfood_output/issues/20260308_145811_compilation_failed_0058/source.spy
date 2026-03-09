@@ -1,0 +1,67 @@
+# main.spy - Entry point demonstrating cross-module features
+
+from shapes import Shape, Rectangle, Circle, Color, calculate_total_area, IPerimeter
+from utils import Point, Dimension, format_dimension, get_color_name, sum_perimeters
+from collections import Box, DrawableRectangle, create_bounded_shape
+
+def main():
+    # Create shapes from shapes module
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    circle: Circle = Circle(2.5)
+
+    # Create geometry from utils module
+    origin: Point = Point(0.0, 0.0)
+    corner: Point = Point(5.0, 3.0)
+
+    # Test struct methods
+    dist: float = origin.distance(corner)
+    print(dist)
+
+    # Create list[IPerimeter] directly to avoid generic invariance issue
+    perimeters: list[IPerimeter] = []
+    perimeters.append(rect)
+    perimeters.append(circle)
+
+    # Create list[Shape] for area calculation
+    shapes: list[Shape] = []
+    shapes.append(rect)
+    shapes.append(circle)
+
+    # Calculate total area using shapes module function
+    total_area: float = calculate_total_area(shapes)
+    print(total_area)
+
+    # Test perimeter sum using utils function
+    # perimeters is list[IPerimeter] which matches the parameter type
+    total_perim: float = sum_perimeters(perimeters)
+    print(total_perim)
+
+    # Test Point and Dimension
+    dim: Dimension = Dimension(10.0, 5.0)
+    print(format_dimension(dim))
+    print(dim.aspect_ratio())
+
+    # Test enum and color name
+    col: Color = Color.BLUE
+    print(get_color_name(col))
+
+    # Test Box from collections (multiple inheritance via mixins)
+    box: Box = Box(4.0, 3.0, 2.0)
+    box.add(rect)
+    box.add(circle)
+    print(box.describe())
+    print(box.volume())
+
+    # Test DrawableRectangle
+    draw_rect: DrawableRectangle = DrawableRectangle(6.0, 4.0, Color.GREEN, Point(10.0, 20.0))
+    print(draw_rect.describe())
+
+    # Test create_bounded_shape factory
+    bounded: DrawableRectangle = create_bounded_shape(Dimension(8.0, 6.0), Color.RED)
+    print(bounded.describe())
+
+    # Final counts
+    print(len(shapes))
+
+    # Verify box capacity matches contents
+    print(box.capacity())

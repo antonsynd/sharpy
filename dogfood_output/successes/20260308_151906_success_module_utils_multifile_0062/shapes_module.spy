@@ -1,0 +1,41 @@
+# Shapes module implementing interfaces from types_module
+# Demonstrates cross-module interface implementation
+from types_module import IDrawable, Point
+
+class Circle(IDrawable):
+    center: Point
+    radius: float
+
+    def __init__(self, center: Point, radius: float):
+        self.center = center
+        self.radius = radius
+
+    def area(self) -> float:
+        PI: float = 3.14159
+        return PI * self.radius * self.radius
+
+    def draw(self) -> str:
+        cx: str = str(self.center.x)
+        cy: str = str(self.center.y)
+        r: str = str(self.radius)
+        return "Circle at (" + cx + ", " + cy + ") radius " + r
+
+class Rectangle(IDrawable):
+    position: Point
+    width: float
+    height: float
+
+    def __init__(self, position: Point, width: float, height: float):
+        self.position = position
+        self.width = width
+        self.height = height
+
+    def area(self) -> float:
+        return self.width * self.height
+
+    def draw(self) -> str:
+        px: str = str(self.position.x)
+        py: str = str(self.position.y)
+        w: str = str(self.width)
+        h: str = str(self.height)
+        return "Rectangle at (" + px + ", " + py + ") size " + w + "x" + h

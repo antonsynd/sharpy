@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0248]: Method 'classify' is marked @override but no matching method exists in base class
+  --> /tmp/tmpw242dbsi/dogfood_test.spy:50:5
+    |
+ 50 |     def classify(self) -> str:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

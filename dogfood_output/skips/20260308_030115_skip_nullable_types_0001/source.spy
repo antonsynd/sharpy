@@ -1,0 +1,76 @@
+# Test: Nullable types with inheritance, virtual methods, and type narrowing
+# This explores nullable propagation through a data processing pipeline
+
+class DataSource:
+    @virtual
+    def fetch(self, key: str) -> str?:
+        return None
+
+    def get_or_default(self, key: str, default_val: str) -> str:
+        result = self.fetch(key)
+        if result is not None:
+            return result
+        return default_val
+
+class CachingDataSource(DataSource):
+    _cache: dict[str, str?]
+
+    def __init__(self):
+        self._cache = {}
+        self._cache["cached_key"] = "cached_value"
+        self._cache["empty_key"] = None
+
+    @override
+    def fetch(self, key: str) -> str?:
+        if key in self._cache:
+            cached = self._cache[key]
+            if cached is not None:
+                return cached
+        return self._lookup(key)
+
+    def _lookup(self, key: str) -> str?:
+        if key == "valid":
+            return "found"
+        return None
+
+class TransformingDataSource(DataSource):
+    _inner: DataSource
+    _prefix: str
+
+    def __init__(self, inner: DataSource, prefix: str):
+        self._inner = inner
+        self._prefix = prefix
+
+    @override
+    def fetch(self, key: str) -> str?:
+        inner_result = self._inner.fetch(key)
+        if inner_result is not None:
+            return f"{self._prefix}{inner_result}"
+        return None
+
+def process_keys(source: DataSource, keys: list[str]) -> None:
+    found_count = 0
+    for key in keys:
+        result = source.fetch(key)
+        if result is not None:
+            found_count += 1
+            print(f"Found: {result}")
+        else:
+            print(f"Missing: {key}")
+    print(f"Total found: {found_count}")
+
+def main():
+    cache = CachingDataSource()
+    transformed = TransformingDataSource(cache, "PREFIX_")
+    
+    # Test get_or_default with cached values
+    print(cache.get_or_default("cached_key", "default"))
+    print(cache.get_or_default("empty_key", "fallback"))
+    
+    # Test transformed fetch with narrowing
+    result = transformed.fetch("cached_key")
+    if result is not None:
+        print(result)
+    
+    # Process multiple keys including valid (via _lookup) and missing
+    process_keys(cache, ["cached_key", "empty_key", "valid", "missing"])

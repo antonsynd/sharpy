@@ -1,0 +1,18 @@
+# Types module: defines enums and interfaces
+
+# Integer set enum with explicit values
+enum SizeCategory:
+    SMALL = 1
+    MEDIUM = 2
+    LARGE = 3
+
+# Interface for drawable objects
+interface IDrawable:
+    def draw(self) -> str: ...
+
+# Interface for measurable shapes
+interface IMeasurable:
+    def calculate(self) -> float: ...
+
+# Type alias for compute result
+type ComputeResult = tuple[bool, float]

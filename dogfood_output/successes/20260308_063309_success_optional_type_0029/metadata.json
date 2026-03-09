@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-08T06:28:31.212744",
+  "generated_code": "# Test: Optional chaining, transformation, and narrowing in pipeline\n# Demonstrates combining ??, .map(), .unwrap_or(), and type narrowing\n\ndef fetch_config() -> int?:\n    return Some(25)\n\ndef describe_value(opt: int?) -> str:\n    if opt is not None:\n        return f\"value={opt}\"\n    return \"missing\"\n\ndef main():\n    cfg = fetch_config()\n    \n    # ?? provides default only if None\n    primary = cfg ?? 10\n    print(primary)\n    \n    # Map transforms the wrapped value\n    doubled = cfg.map(lambda x: x * 2).unwrap_or(0)\n    print(doubled)\n    \n    # Type narrowing in function\n    print(describe_value(cfg))\n    \n    # Testing with actual None\n    empty: int? = None()\n    fallback = empty ?? 50\n    print(fallback)\n    \n    # Map on None propagates None\n    result = empty.map(lambda x: x + 5).unwrap_or(-1)\n    print(result)\n",
+  "expected_output": "25\n50\nvalue=25\n50\n-1\n",
+  "actual_output": "25\n50\nvalue=25\n50\n-1",
+  "feature_focus": "optional_type",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 266.4446907043457,
+  "execution_duration": 5.371186017990112,
+  "source_files": null
+}

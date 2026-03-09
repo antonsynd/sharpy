@@ -1,0 +1,24 @@
+const MAX_LENGTH: int = 50
+
+def word_count(text: str) -> int:
+    words: list[str] = text.split(" ")
+    return len(words)
+
+def get_initials(text: str) -> str:
+    words: list[str] = text.split(" ")
+    result: str = ""
+    for word in words:
+        if len(word) > 0:
+            result = result + str(word[0])
+    return result.upper()
+
+class TextFormatter:
+    prefix: str
+    suffix: str
+    
+    def __init__(self, prefix: str, suffix: str):
+        self.prefix = prefix
+        self.suffix = suffix
+    
+    def format(self, text: str) -> str:
+        return self.prefix + text + self.suffix

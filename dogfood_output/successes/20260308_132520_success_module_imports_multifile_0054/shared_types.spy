@@ -1,0 +1,13 @@
+# Module providing shared types and base classes
+class DataSource:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def fetch(self) -> str:
+        return "base data"
+
+def format_output(raw: str) -> str:
+    return "{" + raw + "}"

@@ -1,0 +1,28 @@
+warning[SPY0452]: Imported name 'OperationType' is never used
+  --> /tmp/tmpcumyks6e/advanced_calc.spy:4:9
+    |
+  4 | from data_structures import Point, Box, Pair, Container
+    |         ^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Container' is never used
+  --> /tmp/tmpcumyks6e/advanced_calc.spy:4:51
+    |
+  4 | from data_structures import Point, Box, Pair, Container
+    |                                                   ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Container' is never used
+  --> /tmp/tmpcumyks6e/main.spy:4:47
+    |
+  4 | from data_structures import Point, Box, Pair, Container
+    |                                               ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'create_calculator_box' is never used
+  --> /tmp/tmpcumyks6e/main.spy:7:60
+    |
+  7 | from advanced_calc import ScientificCalculator as SciCalc, create_calculator_box
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^
+    |
+

@@ -1,0 +1,48 @@
+# Geometry module with shape hierarchy
+
+@abstract
+class Shape:
+    """Abstract base class for geometric shapes."""
+    
+    @abstract
+    def area(self) -> float:
+        ...
+    
+    @virtual
+    def description(self) -> str:
+        return "A generic shape"
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, radius: float):
+        self.radius = radius
+    
+    @override
+    def area(self) -> float:
+        pi: float = 3.14159
+        return pi * self.radius * self.radius
+    
+    @override
+    def description(self) -> str:
+        return "A circle with radius " + str(self.radius)
+
+class Rectangle(Shape):
+    width: float
+    height: float
+    
+    def __init__(self, width: float, height: float):
+        self.width = width
+        self.height = height
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def description(self) -> str:
+        return "A rectangle " + str(self.width) + " by " + str(self.height)
+
+def describe_shape(s: Shape) -> str:
+    """Helper function that works with any Shape."""
+    return s.description() + ", area: " + str(s.area())

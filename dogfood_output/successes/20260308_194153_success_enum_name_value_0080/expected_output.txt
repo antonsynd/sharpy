@@ -1,0 +1,10 @@
+Low
+3
+Medium
+5
+High
+8
+Critical
+13
+29
+High=8

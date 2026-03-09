@@ -1,0 +1,31 @@
+# Module providing shared types, enums, structs, and interfaces
+
+# Enum for shape categories
+enum ShapeCategory:
+    TWO_DIMENSIONAL = 1
+    THREE_DIMENSIONAL = 2
+
+# Struct for 2D coordinates
+struct Point2D:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+# Interface for measurable objects
+interface IMeasurable:
+    def area(self) -> float: ...
+    def perimeter(self) -> float: ...
+
+# Interface for displayable objects
+interface IDisplayable:
+    def display(self) -> str: ...
+
+# Helper function to convert category to string
+def category_to_string(cat: ShapeCategory) -> str:
+    if cat == ShapeCategory.TWO_DIMENSIONAL:
+        return "2D"
+    else:
+        return "3D"

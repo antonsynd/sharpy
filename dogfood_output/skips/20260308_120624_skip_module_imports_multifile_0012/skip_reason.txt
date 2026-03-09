@@ -1,0 +1,23 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot pass argument of type 'Rectangle' to parameter of type 'Shape'
+  --> /tmp/tmpecg25jp1/main.spy:34:19
+    |
+ 34 |     shapes.append(rect)
+    |                   ^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'Circle' to parameter of type 'Shape'
+  --> /tmp/tmpecg25jp1/main.spy:35:19
+    |
+ 35 |     shapes.append(circle)
+    |                   ^^^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'Triangle' to parameter of type 'Shape'
+  --> /tmp/tmpecg25jp1/main.spy:36:19
+    |
+ 36 |     shapes.append(tri)
+    |                   ^^^
+    |
+

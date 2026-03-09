@@ -1,0 +1,24 @@
+=== Shape Descriptions ===
+Shape: Circle (ID: 1), radius=5.00, area=78.5
+Shape: Rectangle (ID: 3), 4.0x6.0, area=24.0
+=== Area Calculations ===
+78.53975
+24.0
+148.27411
+=== Color Operations ===
+Blue
+Yellow
+128
+0
+128
+=== Struct Operations ===
+5.0
+200.0
+=== Shape IDs ===
+1
+2
+3
+4
+=== Shape Names ===
+Circle
+Rectangle

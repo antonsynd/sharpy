@@ -1,0 +1,20 @@
+# Main entry point importing from multiple modules
+from math_utils import square, twice, Calculator
+from geometry import Point
+
+def main():
+    # Test imported function from math_utils
+    result: int = twice(7)
+    print(result)
+
+    # Test imported class from math_utils
+    calc = Calculator(5)
+    print(calc.add(3))
+
+    # Test geometry class that internally uses imported functions
+    p = Point(3.0, 4.0)
+    print(p.distance_squared())
+
+    # Test cross-module type usage
+    calc2 = p.get_calculator()
+    print(calc2.add(10))
