@@ -680,7 +680,7 @@ internal partial class RoslynEmitter
                 // Escape literal braces for C# interpolated strings:
                 // The lexer already converts Python's {{ → { and }} → },
                 // so we re-escape { → {{ and } → }} for C# interpolation syntax.
-                var sourceText = part.Text.Replace("{", "{{").Replace("}", "}}");
+                var sourceText = part.Text.Replace("{", "{{", StringComparison.Ordinal).Replace("}", "}}", StringComparison.Ordinal);
                 parts.Add(InterpolatedStringText()
                     .WithTextToken(Token(
                         TriviaList(),
@@ -901,8 +901,7 @@ internal partial class RoslynEmitter
 
                     // For floating-point types without a format spec, wrap in FormatFloat()
                     // to ensure Python-compatible formatting (e.g., 5.0 instead of 5).
-                    var exprType = GetExpressionSemanticType(part.Expression)
-                        ?? ResolveExpressionTypeFromSymbols(part.Expression);
+                    var exprType = GetExpressionSemanticType(part.Expression);
                     if (exprType == SemanticType.Float ||
                         exprType == SemanticType.Double ||
                         exprType == SemanticType.Float32)
@@ -1066,7 +1065,7 @@ internal partial class RoslynEmitter
         // Percent format — handled by special-case in caller (IsPercentFormat)
         if (typeChar == '%')
         {
-            var prec = precision?.ToString() ?? "6";
+            var prec = precision?.ToString(CultureInfo.InvariantCulture) ?? "6";
             return new FormatSpecResult("P" + prec, null, false, null, null, null, null);
         }
 
@@ -1111,9 +1110,9 @@ internal partial class RoslynEmitter
         if (grouping == ',')
         {
             if (typeChar == 'f' || typeChar == 'F')
-                return "N" + (precision?.ToString() ?? "0");
+                return "N" + (precision?.ToString(CultureInfo.InvariantCulture) ?? "0");
             if (typeChar == null)
-                return "N" + (precision?.ToString() ?? "0");
+                return "N" + (precision?.ToString(CultureInfo.InvariantCulture) ?? "0");
         }
 
         // Map type characters to C# format specifiers

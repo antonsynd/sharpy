@@ -161,7 +161,7 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateIntegerLiteral(IntegerLiteral literal)
     {
-        var text = literal.Value.Replace("_", "");
+        var text = literal.Value.Replace("_", "", StringComparison.Ordinal);
 
         long value;
         try
@@ -234,56 +234,6 @@ internal partial class RoslynEmitter
     private SemanticType? GetExpressionSemanticType(Sharpy.Compiler.Parser.Ast.Expression expr)
     {
         return _context.SemanticInfo?.GetExpressionType(expr);
-    }
-
-    /// <summary>
-    /// Fallback type resolution when SemanticInfo doesn't have an expression type recorded.
-    /// Resolves identifiers via their symbol and member access (self.x) via the current type's fields/properties.
-    /// TODO(#360): This is a codegen-layer workaround — move type resolution to the semantic phase.
-    /// </summary>
-    private SemanticType? ResolveExpressionTypeFromSymbols(Sharpy.Compiler.Parser.Ast.Expression expr)
-    {
-        if (_context.SemanticInfo is null)
-            return null;
-
-        if (expr is Identifier id)
-        {
-            var symbol = _context.SemanticInfo.GetIdentifierSymbol(id);
-            if (symbol is VariableSymbol varSym)
-                return varSym.Type;
-        }
-        else if (expr is MemberAccess memberAccess)
-        {
-            // For self.x, look up on the current type
-            if (memberAccess.Object is Identifier obj
-                && string.Equals(obj.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase)
-                && _currentTypeSymbol is not null)
-            {
-                var field = _currentTypeSymbol.Fields.Find(f => f.Name == memberAccess.Member);
-                if (field is not null)
-                    return field.Type;
-
-                var prop = _currentTypeSymbol.Properties.Find(p => p.Name == memberAccess.Member);
-                if (prop is not null)
-                    return prop.Type;
-            }
-
-            // For other member access, resolve the object type and look up the member
-            var objectType = GetExpressionSemanticType(memberAccess.Object)
-                ?? ResolveExpressionTypeFromSymbols(memberAccess.Object);
-            if (objectType is Semantic.UserDefinedType udt && udt.Symbol is TypeSymbol typeSymbol)
-            {
-                var field = typeSymbol.Fields.Find(f => f.Name == memberAccess.Member);
-                if (field is not null)
-                    return field.Type;
-
-                var prop = typeSymbol.Properties.Find(p => p.Name == memberAccess.Member);
-                if (prop is not null)
-                    return prop.Type;
-            }
-        }
-
-        return null;
     }
 
     /// <summary>
