@@ -328,7 +328,13 @@ internal class AccessValidator : SemanticValidatorBase
     /// <summary>
     /// Check whether two types are in the same class hierarchy (one inherits from the other).
     /// Only walks the base class chain — interface relationships do not grant protected access.
+    /// Does not use <see cref="TypeHierarchyService.InheritsFrom"/> because that also checks
+    /// interfaces, which would incorrectly grant protected access through interface relationships.
     /// </summary>
+    /// <remarks>
+    /// Name equality fallback (ancestor.Name == target.Name) is a cross-module identity
+    /// approximation tracked by TODO(#361).
+    /// </remarks>
     private bool IsInHierarchy(TypeSymbol currentClass, TypeSymbol targetClass)
     {
         if (currentClass == targetClass)

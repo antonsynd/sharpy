@@ -319,9 +319,10 @@ internal class PropertyValidator : SemanticValidatorBase
         }
 
         // Check each constructor
+        var propNames = initPropsWithoutDefaults.Select(p => p.Name).ToList();
         foreach (var initMethod in initMethods)
         {
-            var assignedNames = CollectGuaranteedSelfAssignments(initMethod.Body, initPropsWithoutDefaults.Select(p => p.Name));
+            var assignedNames = CollectGuaranteedSelfAssignments(initMethod.Body, propNames);
             foreach (var prop in initPropsWithoutDefaults)
             {
                 if (!assignedNames.Contains(prop.Name))
@@ -340,7 +341,7 @@ internal class PropertyValidator : SemanticValidatorBase
     /// Collects names of members that are guaranteed to be assigned via self.{name} = ...
     /// on all paths through the method body, using CFG-based forward "must-assign" analysis.
     /// </summary>
-    private static HashSet<string> CollectGuaranteedSelfAssignments(IReadOnlyList<Statement> body, IEnumerable<string> allProperties)
+    private static HashSet<string> CollectGuaranteedSelfAssignments(IReadOnlyList<Statement> body, IReadOnlyCollection<string> allProperties)
     {
         var builder = new ControlFlowGraphBuilder();
         var cfg = builder.Build(body);

@@ -88,10 +88,11 @@ internal class InheritanceResolver
             }
 
             // Resolve interfaces
+            var resolvedInterfaces = TypeHierarchyService.GetAllInterfaces(type, _semanticBinding);
             foreach (var ifaceName in type.UnresolvedInterfaceNames)
             {
                 var ifaceType = _symbolTable.LookupType(ifaceName);
-                if (ifaceType != null && !TypeHierarchyService.GetAllInterfaces(type, _semanticBinding).Contains(ifaceType))
+                if (ifaceType != null && !resolvedInterfaces.Contains(ifaceType))
                 {
                     _semanticBinding.AddInterface(type, ifaceType);
                     _logger.LogDebug($"Resolved interface: {type.Name} : {ifaceType.Name}");
