@@ -959,6 +959,29 @@ internal partial class RoslynEmitter
             }
         }
 
+        // Fallback: resolve MemberAccess by looking up the member's type on the object's type symbol
+        if (expr is MemberAccess memberAccess)
+        {
+            var objectType = GetExpressionSemanticType(memberAccess.Object);
+            if (objectType is Semantic.UserDefinedType objUdt && objUdt.Symbol is TypeSymbol typeSymbol)
+            {
+                var field = typeSymbol.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
+                if (field != null &&
+                    GetVariableType(field) is Semantic.UserDefinedType fieldUdt &&
+                    fieldUdt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
+                {
+                    return true;
+                }
+
+                var prop = typeSymbol.Properties.FirstOrDefault(p => p.Name == memberAccess.Member);
+                if (prop?.Type is Semantic.UserDefinedType propUdt &&
+                    propUdt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
+                {
+                    return true;
+                }
+            }
+        }
+
         return false;
     }
 
