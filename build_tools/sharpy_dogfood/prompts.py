@@ -242,6 +242,12 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "Custom exception with `pass` body has no constructor accepting arguments. "
         "Add `def __init__(self, message: str): super().__init__(message)` to accept a message.",
     ),
+    (
+        r"SPY0203",
+        "Type 'X' has no member 'Y' — the member does not exist on the type. "
+        "Either: (1) define the missing method/property in the class definition, "
+        "(2) check for typos in the member name, or (3) use a different member that exists.",
+    ),
 ]
 
 
@@ -251,6 +257,20 @@ def _get_remediation_hint(validation_error: str) -> str:
     for pattern, hint in RETRY_REMEDIATION:
         if re.search(pattern, validation_error, re.IGNORECASE):
             hints.append(hint)
+
+    # Enrich SPY0203 hints with extracted type/member names
+    spy0203_match = re.search(
+        r"SPY0203.*?[Tt]ype '([^']+)' has no member '([^']+)'", validation_error
+    )
+    if spy0203_match:
+        type_name = spy0203_match.group(1)
+        member_name = spy0203_match.group(2)
+        hints.append(
+            f"Specifically: type '{type_name}' does not have member '{member_name}'. "
+            f"Check that '{member_name}' is defined in the '{type_name}' class, "
+            f"or use a member that '{type_name}' actually provides."
+        )
+
     if not hints:
         return ""
     return "\n\n## Remediation Hints\n\n" + "\n".join(f"- {h}" for h in hints) + "\n"
