@@ -156,7 +156,7 @@ internal class CodeGenInfoComputer
             {
                 SetCodeGenInfo(moduleSymbol, new CodeGenInfo
                 {
-                    CSharpName = effectiveName.Replace(".", "_"),
+                    CSharpName = effectiveName.Replace(".", "_", StringComparison.Ordinal),
                     OriginalName = effectiveName,
                     ImportKind = alias.AsName != null ? ImportKind.FromImportWithAlias : ImportKind.ModuleImport
                 });

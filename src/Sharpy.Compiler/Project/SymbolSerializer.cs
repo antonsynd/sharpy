@@ -623,7 +623,7 @@ internal static class SymbolSerializer
     private static SemanticType ResolveFunctionType(string value)
     {
         // Format: (ParamType1,ParamType2,...)->ReturnType
-        var arrowIndex = value.IndexOf("->");
+        var arrowIndex = value.IndexOf("->", StringComparison.Ordinal);
         if (arrowIndex < 0)
             return SemanticType.Unknown;
 

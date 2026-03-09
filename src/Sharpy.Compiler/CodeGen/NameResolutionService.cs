@@ -256,7 +256,7 @@ internal sealed class NameResolutionService
             SymbolKind.Variable => NameMangler.ToCamelCase(symbol.Name),
             SymbolKind.Function => NameMangler.ToPascalCase(symbol.Name),
             SymbolKind.Type => NameMangler.ToPascalCase(symbol.Name),
-            SymbolKind.Module => EscapeCSharpKeyword(symbol.Name.Replace(".", "_")),
+            SymbolKind.Module => EscapeCSharpKeyword(symbol.Name.Replace(".", "_", StringComparison.Ordinal)),
             SymbolKind.Parameter => NameMangler.ToCamelCase(symbol.Name),
             _ => symbol.Name
         };

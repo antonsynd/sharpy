@@ -21,7 +21,9 @@ namespace Sharpy
 
         public override string ToString()
         {
+#pragma warning disable CA1307 // string.Replace(string, string, StringComparison) not available in netstandard2.0
             return $"b'{BitConverter.ToString(_data).Replace("-", " ")}'";
+#pragma warning restore CA1307
         }
     }
 }

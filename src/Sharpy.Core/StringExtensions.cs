@@ -1057,7 +1057,9 @@ namespace Sharpy
                 }
                 return sb.ToString();
             }
+#pragma warning disable CA1307 // string.Replace(string, string, StringComparison) not available in netstandard2.0
             return s.Replace(old, new_);
+#pragma warning restore CA1307
         }
 
         /// <summary>
@@ -1475,7 +1477,9 @@ namespace Sharpy
         /// </summary>
         public static byte[] Encode(this string s, string encoding = "utf-8")
         {
+#pragma warning disable CA1307 // string.Replace(string, string, StringComparison) not available in netstandard2.0
             switch (encoding.ToLowerInvariant().Replace("-", "").Replace("_", ""))
+#pragma warning restore CA1307
             {
                 case "utf8":
                     return Encoding.UTF8.GetBytes(s);

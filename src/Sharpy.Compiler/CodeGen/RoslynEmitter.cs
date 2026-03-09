@@ -550,7 +550,7 @@ internal partial class RoslynEmitter
             // (e.g., "system" -> "System")
             if (moduleSymbol.NetNamespaceName != null)
                 return moduleSymbol.NetNamespaceName;
-            return NameResolutionService.EscapeCSharpKeyword(name.Replace(".", "_"));
+            return NameResolutionService.EscapeCSharpKeyword(name.Replace(".", "_", StringComparison.Ordinal));
         }
 
         // Try CodeGenInfo-based resolution for module-level symbols and from-imports

@@ -818,11 +818,11 @@ internal class AstDumper
     private string EscapeString(string str)
     {
         return str
-            .Replace("\\", "\\\\")
-            .Replace("\n", "\\n")
-            .Replace("\r", "\\r")
-            .Replace("\t", "\\t")
-            .Replace("\"", "\\\"");
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal)
+            .Replace("\r", "\\r", StringComparison.Ordinal)
+            .Replace("\t", "\\t", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal);
     }
 
     private void DumpDecorators(ImmutableArray<Decorator> decorators, int depth, string indent, string childPrefix)

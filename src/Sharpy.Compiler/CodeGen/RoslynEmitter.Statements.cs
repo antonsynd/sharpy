@@ -137,7 +137,7 @@ internal partial class RoslynEmitter
     private static SyntaxTriviaList CreateLineDirectiveTrivia(int line, string filePath)
     {
         // Escape backslashes in file path for the #line directive string
-        var escapedPath = filePath.Replace("\\", "\\\\");
+        var escapedPath = filePath.Replace("\\", "\\\\", StringComparison.Ordinal);
         return ParseLeadingTrivia($"#line {line} \"{escapedPath}\"\n");
     }
 

@@ -256,7 +256,7 @@ internal partial class RoslynEmitter
                 else if (IsStdlibModule(alias.Name))
                 {
                     // import math -> using math = global::Sharpy.Math;
-                    var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_"));
+                    var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_", StringComparison.Ordinal));
                     var fullModuleClass = ConvertStdlibModuleToFullyQualified(alias.Name);
                     yield return UsingDirective(
                         NameEquals(sanitizedAlias),
@@ -265,7 +265,7 @@ internal partial class RoslynEmitter
                 else
                 {
                     // import module -> using module_alias = ProjectNamespace.Module;
-                    var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_"));
+                    var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_", StringComparison.Ordinal));
 
                     // e.g., "config" → "TestProject.Config"
                     // e.g., "lib.math.operations" → "TestProject.Lib.Math.Operations"
