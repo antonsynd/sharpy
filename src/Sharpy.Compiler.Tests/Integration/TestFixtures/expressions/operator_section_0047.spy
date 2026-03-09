@@ -1,0 +1,9 @@
+def main():
+    # Test arithmetic operator sections with function type annotations
+    triple: (int) -> int = (_ * 3)
+    add_ten: (int) -> int = (_ + 10)
+    halve: (int) -> int = (_ // 2)
+    
+    print(triple(5))
+    print(add_ten(7))
+    print(halve(15))

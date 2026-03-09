@@ -1,0 +1,12 @@
+# Test enum iteration with member access
+enum Priority:
+    LOW = 1
+    MEDIUM = 5
+    HIGH = 10
+
+def main():
+    total: int = 0
+    for p in Priority:
+        total += p.value
+        print(f"{p.name}={p.value}")
+    print(total)
