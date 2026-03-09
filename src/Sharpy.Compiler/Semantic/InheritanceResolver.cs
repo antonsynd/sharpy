@@ -26,17 +26,6 @@ internal class InheritanceResolver
         _semanticBinding = semanticBinding ?? new SemanticBinding();
     }
 
-    private TypeSymbol? GetBaseType(TypeSymbol symbol)
-        => _semanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
-
-    private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-    {
-        var refs = _semanticBinding.GetInterfaces(symbol);
-        if (refs != null)
-            return refs.Select(r => r.Definition).ToList();
-        return symbol.Interfaces.Select(r => r.Definition).ToList();
-    }
-
     /// <summary>
     /// Resolve all inheritance relationships for imported types.
     /// This should be called after all imports are registered but before type checking.
@@ -71,14 +60,15 @@ internal class InheritanceResolver
         foreach (var type in allTypes)
         {
             // Resolve base class
-            if (GetBaseType(type) == null && !string.IsNullOrEmpty(type.UnresolvedBaseName))
+            if (TypeHierarchyService.GetAllBaseTypes(type, _semanticBinding).Count == 0
+                && !string.IsNullOrEmpty(type.UnresolvedBaseName))
             {
                 var baseType = _symbolTable.LookupType(type.UnresolvedBaseName);
                 if (baseType != null)
                 {
                     if (baseType.TypeKind == TypeKind.Interface)
                     {
-                        if (!GetInterfaces(type).Contains(baseType))
+                        if (!TypeHierarchyService.GetAllInterfaces(type, _semanticBinding).Contains(baseType))
                         {
                             _semanticBinding.AddInterface(type, baseType);
                         }
@@ -99,7 +89,7 @@ internal class InheritanceResolver
             foreach (var ifaceName in type.UnresolvedInterfaceNames)
             {
                 var ifaceType = _symbolTable.LookupType(ifaceName);
-                if (ifaceType != null && !GetInterfaces(type).Contains(ifaceType))
+                if (ifaceType != null && !TypeHierarchyService.GetAllInterfaces(type, _semanticBinding).Contains(ifaceType))
                 {
                     _semanticBinding.AddInterface(type, ifaceType);
                     _logger.LogDebug($"Resolved interface: {type.Name} : {ifaceType.Name}");
