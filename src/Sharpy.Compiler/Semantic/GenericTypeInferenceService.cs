@@ -92,17 +92,6 @@ internal class GenericTypeInferenceService
         _symbolTable = symbolTable;
     }
 
-    private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-    {
-        var refs = SemanticBinding.GetInterfaces(symbol);
-        if (refs != null)
-            return refs.Select(r => r.Definition).ToList();
-        return symbol.Interfaces.Select(r => r.Definition).ToList();
-    }
-
-    private TypeSymbol? GetBaseType(TypeSymbol symbol)
-        => SemanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
-
     /// <summary>
     /// Attempt to infer type arguments for a generic function call.
     /// </summary>
@@ -469,7 +458,7 @@ internal class GenericTypeInferenceService
         var result = constraintTypeName;
         foreach (var (paramName, inferredType) in substitutions)
         {
-            result = result.Replace(paramName, inferredType.GetDisplayName());
+            result = result.Replace(paramName, inferredType.GetDisplayName(), StringComparison.Ordinal);
         }
         return result;
     }
@@ -493,7 +482,7 @@ internal class GenericTypeInferenceService
         {
             // Check if the type implements the constraint interface
             // Look for the constraint type name in the symbol's interfaces
-            foreach (var iface in GetInterfaces(udt.Symbol))
+            foreach (var iface in TypeHierarchyService.GetAllInterfaces(udt.Symbol, SemanticBinding))
             {
                 if (InterfaceMatchesConstraint(iface, constraintTypeName))
                 {
@@ -501,11 +490,10 @@ internal class GenericTypeInferenceService
                 }
             }
 
-            // Check base type
-            var symbolBase = GetBaseType(udt.Symbol);
-            if (symbolBase != null)
+            // Check base types
+            foreach (var baseSymbol in TypeHierarchyService.GetAllBaseTypes(udt.Symbol, SemanticBinding))
             {
-                var baseType = new UserDefinedType { Symbol = symbolBase, Name = symbolBase.Name };
+                var baseType = new UserDefinedType { Symbol = baseSymbol, Name = baseSymbol.Name };
                 if (TypeSatisfiesConstraint(baseType, constraintTypeName))
                 {
                     return true;
