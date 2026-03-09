@@ -59,9 +59,11 @@ internal class InheritanceResolver
 
         foreach (var type in allTypes)
         {
-            // Resolve base class
-            if (TypeHierarchyService.GetAllBaseTypes(type, _semanticBinding).Count == 0
-                && !string.IsNullOrEmpty(type.UnresolvedBaseName))
+            // Resolve base class — check if an immediate base has been resolved yet.
+            // Use a direct binding lookup (single dictionary read) rather than
+            // GetAllBaseTypes, which would allocate and traverse the full chain.
+            var resolvedBase = _semanticBinding.GetBaseType(type) ?? type.BaseType;
+            if (resolvedBase == null && !string.IsNullOrEmpty(type.UnresolvedBaseName))
             {
                 var baseType = _symbolTable.LookupType(type.UnresolvedBaseName);
                 if (baseType != null)

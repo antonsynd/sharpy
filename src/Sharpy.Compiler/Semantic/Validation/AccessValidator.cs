@@ -325,11 +325,29 @@ internal class AccessValidator : SemanticValidatorBase
         return AccessLevel.Public;
     }
 
+    /// <summary>
+    /// Check whether two types are in the same class hierarchy (one inherits from the other).
+    /// Only walks the base class chain — interface relationships do not grant protected access.
+    /// </summary>
     private bool IsInHierarchy(TypeSymbol currentClass, TypeSymbol targetClass)
     {
         if (currentClass == targetClass)
             return true;
-        return TypeHierarchyService.InheritsFrom(currentClass, targetClass, _context.SemanticBinding)
-            || TypeHierarchyService.InheritsFrom(targetClass, currentClass, _context.SemanticBinding);
+
+        // Check if currentClass is a subclass of targetClass
+        foreach (var ancestor in TypeHierarchyService.GetAllBaseTypes(currentClass, _context.SemanticBinding))
+        {
+            if (ReferenceEquals(ancestor, targetClass) || ancestor.Name == targetClass.Name)
+                return true;
+        }
+
+        // Check if targetClass is a subclass of currentClass
+        foreach (var ancestor in TypeHierarchyService.GetAllBaseTypes(targetClass, _context.SemanticBinding))
+        {
+            if (ReferenceEquals(ancestor, currentClass) || ancestor.Name == currentClass.Name)
+                return true;
+        }
+
+        return false;
     }
 }

@@ -370,6 +370,12 @@ internal class PropertyValidator : SemanticValidatorBase
         // mustAssignOut[block] = mustAssignIn[block] union blockAssignments[block]
         var mustAssignIn = new Dictionary<BasicBlock, HashSet<string>>();
         var mustAssignOut = new Dictionary<BasicBlock, HashSet<string>>();
+        // Optimistic initialization for forward must-analysis: non-entry blocks start as
+        // "all properties assigned." Intersection with predecessors drains any overestimates
+        // during worklist iteration. This produces the same fixpoint as empty initialization
+        // but converges faster on straight-line constructors (the common case).
+        // NOTE: This pattern is correct for must-analysis (intersection) but would be wrong
+        // for may-analysis (union), where blocks must start empty.
         var universalSet = new HashSet<string>(allProperties);
         foreach (var block in cfg.Blocks)
         {

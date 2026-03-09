@@ -80,6 +80,9 @@ internal static class TypeHierarchyService
         visited.Add(derived);
 
         // Walk base class chain
+        // TODO(#361): Name equality is a fallback for cross-module type identity where
+        // different TypeSymbol instances may represent the same logical type. This is an
+        // approximation — unrelated types with the same short name will incorrectly match.
         var current = ResolveBaseType(derived, binding);
         while (current != null && visited.Add(current))
         {
