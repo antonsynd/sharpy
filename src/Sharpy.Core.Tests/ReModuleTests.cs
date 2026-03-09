@@ -358,8 +358,8 @@ namespace Sharpy.Tests
             var m = Re.Search("world", "hello world");
             Assert.NotNull(m);
             string s = m!.ToString();
-            Assert.Contains("span=(6, 11)", s);
-            Assert.Contains("match='world'", s);
+            Assert.Contains("span=(6, 11)", s, StringComparison.Ordinal);
+            Assert.Contains("match='world'", s, StringComparison.Ordinal);
         }
 
         #endregion

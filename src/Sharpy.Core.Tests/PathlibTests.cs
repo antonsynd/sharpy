@@ -37,7 +37,7 @@ namespace Sharpy.Core.Tests
         public void Constructor_JoinsSegments()
         {
             var p = new Path("a", "b");
-            Assert.Contains("b", p.ToString());
+            Assert.Contains("b", p.ToString(), StringComparison.Ordinal);
         }
 
         // ===== Operator / =====
@@ -46,14 +46,14 @@ namespace Sharpy.Core.Tests
         public void DivisionOperator_JoinsString()
         {
             var p = new Path("/root") / "child";
-            Assert.Contains("child", p.ToString());
+            Assert.Contains("child", p.ToString(), StringComparison.Ordinal);
         }
 
         [Fact]
         public void DivisionOperator_JoinsPath()
         {
             var p = new Path("/root") / new Path("child");
-            Assert.Contains("child", p.ToString());
+            Assert.Contains("child", p.ToString(), StringComparison.Ordinal);
         }
 
         // ===== Properties =====
@@ -100,7 +100,7 @@ namespace Sharpy.Core.Tests
         public void Parent_ReturnsParentPath()
         {
             var p = new Path("/some/path/file.txt");
-            Assert.Contains("path", p.Parent.ToString());
+            Assert.Contains("path", p.Parent.ToString(), StringComparison.Ordinal);
         }
 
         [Fact]

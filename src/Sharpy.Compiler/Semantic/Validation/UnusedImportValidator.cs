@@ -75,7 +75,7 @@ internal class UnusedImportValidator : SemanticValidatorBase
     /// </summary>
     private static string GetTopLevelName(string dottedName)
     {
-        var dotIndex = dottedName.IndexOf('.');
+        var dotIndex = dottedName.IndexOf('.', StringComparison.Ordinal);
         return dotIndex >= 0 ? dottedName[..dotIndex] : dottedName;
     }
 

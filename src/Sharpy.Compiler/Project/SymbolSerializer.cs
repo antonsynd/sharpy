@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Utilities;
 using TypeAnnotation = Sharpy.Compiler.Parser.Ast.TypeAnnotation;
@@ -436,7 +437,7 @@ internal static class SymbolSerializer
         }
 
         // Handle direct boolean or other IConvertible
-        return Convert.ToBoolean(value);
+        return Convert.ToBoolean(value, CultureInfo.InvariantCulture);
     }
 
     private static ModuleSymbol DeserializeModuleSymbol(
@@ -546,7 +547,7 @@ internal static class SymbolSerializer
         if (string.IsNullOrEmpty(typeId))
             return SemanticType.Unknown;
 
-        var colonIndex = typeId.IndexOf(':');
+        var colonIndex = typeId.IndexOf(':', StringComparison.Ordinal);
         if (colonIndex < 0)
             return SemanticType.Unknown;
 
@@ -601,7 +602,7 @@ internal static class SymbolSerializer
     private static SemanticType ResolveGenericType(string value)
     {
         // Format: Name[Type1,Type2,...]
-        var bracketIndex = value.IndexOf('[');
+        var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
         if (bracketIndex < 0)
             return new GenericType { Name = value, TypeArguments = new List<SemanticType>() };
 
@@ -641,7 +642,7 @@ internal static class SymbolSerializer
     private static SemanticType ResolveResultType(string value)
     {
         // Format: OkType!ErrorType
-        var bangIndex = value.IndexOf('!');
+        var bangIndex = value.IndexOf('!', StringComparison.Ordinal);
         if (bangIndex < 0)
             return SemanticType.Unknown;
 
@@ -655,7 +656,7 @@ internal static class SymbolSerializer
         // Format: FunctionName[Type1,Type2,...]
         // Note: We can't fully restore GenericFunctionType without the FunctionSymbol,
         // which requires the full symbol table. Return a placeholder that stores the name.
-        var bracketIndex = value.IndexOf('[');
+        var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
         if (bracketIndex < 0)
         {
             // No type arguments, just the function name - return Unknown
@@ -673,7 +674,7 @@ internal static class SymbolSerializer
     private static SemanticType ResolveUnionType(string value)
     {
         // Format: UnionName[CaseType1,CaseType2,...]
-        var bracketIndex = value.IndexOf('[');
+        var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
         if (bracketIndex < 0)
             return new UnionType { Name = value, CaseTypes = new List<SemanticType>() };
 
@@ -791,7 +792,7 @@ internal static class SymbolSerializer
         }
 
         // Check for type arguments (name[arg1,arg2])
-        var bracketIndex = s.IndexOf('[');
+        var bracketIndex = s.IndexOf('[', StringComparison.Ordinal);
         if (bracketIndex > 0 && s[^1] == ']')
         {
             var name = s[..bracketIndex];

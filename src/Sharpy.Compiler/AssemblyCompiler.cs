@@ -1,4 +1,5 @@
 extern alias SharpyRT;
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -239,7 +240,7 @@ internal class AssemblyCompiler
         }
 
         return new CompilerDiagnostic(
-            diagnostic.GetMessage(),
+            diagnostic.GetMessage(CultureInfo.InvariantCulture),
             severity,
             line,
             column,

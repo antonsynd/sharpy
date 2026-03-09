@@ -663,10 +663,10 @@ internal class ModuleLoader
         for (int i = cycleStartIndex; i < entries.Count; i++)
         {
             var entry = entries[i];
-            chain.AppendLine($"  -> {Path.GetFileName(entry.ModulePath)}");
+            chain.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  -> {Path.GetFileName(entry.ModulePath)}");
         }
 
-        chain.AppendLine($"  -> {Path.GetFileName(cycleStartModule)} (cycle)");
+        chain.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  -> {Path.GetFileName(cycleStartModule)} (cycle)");
 
         return chain.ToString().TrimEnd();
     }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Xunit;
 using Sharpy;
 
@@ -65,7 +66,7 @@ public class OptionalTests
     public void Map_TransformsValueWhenSome()
     {
         var opt = Optional<int>.Some(42);
-        var mapped = opt.Map(x => x.ToString());
+        var mapped = opt.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.True(mapped.IsSome);
         Assert.Equal("42", mapped.Unwrap());
     }
@@ -74,7 +75,7 @@ public class OptionalTests
     public void Map_ReturnsNoneWhenNone()
     {
         var opt = Optional<int>.None;
-        var mapped = opt.Map(x => x.ToString());
+        var mapped = opt.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.True(mapped.IsNone);
     }
 

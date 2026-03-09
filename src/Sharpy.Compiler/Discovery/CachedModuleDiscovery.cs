@@ -167,7 +167,7 @@ internal class CachedModuleDiscovery
         {
             // Strip generic arity suffix for OverloadExpander type name matching
             var expanderTypeName = typeInfo.Name;
-            var backtick = expanderTypeName.IndexOf('`');
+            var backtick = expanderTypeName.IndexOf('`', StringComparison.Ordinal);
             if (backtick >= 0)
                 expanderTypeName = expanderTypeName[..backtick];
 
@@ -260,7 +260,7 @@ internal class CachedModuleDiscovery
                 {
                     var name = t.Name;
                     // Strip generic arity suffix (e.g., List`1 -> List)
-                    var backtickIndex = name.IndexOf('`');
+                    var backtickIndex = name.IndexOf('`', StringComparison.Ordinal);
                     if (backtickIndex >= 0)
                         name = name[..backtickIndex];
                     return string.Equals(name, clrName, StringComparison.Ordinal);
@@ -481,8 +481,8 @@ internal class CachedModuleDiscovery
             return new GenericType
             {
                 // Extract base name before '[' if present; otherwise use the whole name.
-                Name = signature.Name.Contains('[')
-                    ? signature.Name[..signature.Name.IndexOf('[')]
+                Name = signature.Name.Contains('[', StringComparison.Ordinal)
+                    ? signature.Name[..signature.Name.IndexOf('[', StringComparison.Ordinal)]
                     : signature.Name,
                 TypeArguments = signature.TypeArguments
                     .Select(ta => ConvertTypeSignature(ta, sharedTypeParams))

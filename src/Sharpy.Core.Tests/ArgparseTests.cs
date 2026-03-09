@@ -173,7 +173,7 @@ namespace Sharpy.Tests
             choices.Append("info");
             parser.AddOptionalArgument("--level", choices: choices);
             var ex = Assert.Throws<ArgumentError>(() => parser.ParseArgs(new[] { "--level", "error" }));
-            Assert.Contains("invalid choice", ex.Message);
+            Assert.Contains("invalid choice", ex.Message, StringComparison.Ordinal);
         }
 
         #endregion
@@ -242,7 +242,7 @@ namespace Sharpy.Tests
         {
             var parser = new ArgumentParser(addHelp: false);
             var ex = Assert.Throws<ArgumentError>(() => parser.ParseArgs(new[] { "--unknown" }));
-            Assert.Contains("unrecognized", ex.Message);
+            Assert.Contains("unrecognized", ex.Message, StringComparison.Ordinal);
         }
 
         #endregion
@@ -265,10 +265,10 @@ namespace Sharpy.Tests
             parser.AddOptionalArgument("--output", shortName: "-o", help: "output file");
 
             string help = parser.FormatHelp();
-            Assert.Contains("A test program", help);
-            Assert.Contains("myapp", help);
-            Assert.Contains("input", help);
-            Assert.Contains("output file", help);
+            Assert.Contains("A test program", help, StringComparison.Ordinal);
+            Assert.Contains("myapp", help, StringComparison.Ordinal);
+            Assert.Contains("input", help, StringComparison.Ordinal);
+            Assert.Contains("output file", help, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -276,8 +276,8 @@ namespace Sharpy.Tests
         {
             var parser = new ArgumentParser();
             string help = parser.FormatHelp();
-            Assert.Contains("-h, --help", help);
-            Assert.Contains("show this help message and exit", help);
+            Assert.Contains("-h, --help", help, StringComparison.Ordinal);
+            Assert.Contains("show this help message and exit", help, StringComparison.Ordinal);
         }
 
         #endregion
@@ -329,9 +329,9 @@ namespace Sharpy.Tests
             var ns = parser.ParseArgs(new[] { "--verbose" });
 
             string s = ns.ToString();
-            Assert.Contains("Namespace(", s);
-            Assert.Contains("name='test'", s);
-            Assert.Contains("verbose=True", s);
+            Assert.Contains("Namespace(", s, StringComparison.Ordinal);
+            Assert.Contains("name='test'", s, StringComparison.Ordinal);
+            Assert.Contains("verbose=True", s, StringComparison.Ordinal);
         }
 
         #endregion

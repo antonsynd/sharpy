@@ -1415,7 +1415,7 @@ internal partial class TypeChecker
             return caseSymbol;
 
         // Long form: "UnionName.CaseName" — the TypeAnnotation name includes the dot
-        if (typeName.Contains('.'))
+        if (typeName.Contains('.', StringComparison.Ordinal))
         {
             var parts = typeName.Split('.');
             if (parts.Length == 2 && parts[0] == unionSymbol.Name)

@@ -515,7 +515,7 @@ internal class GenericTypeInferenceService
 
         // Check for generic constraint like IComparable[int]
         // Parse out the base name from IComparable[int] -> IComparable
-        var bracketIndex = constraintTypeName.IndexOf('[');
+        var bracketIndex = constraintTypeName.IndexOf('[', StringComparison.Ordinal);
         if (bracketIndex > 0)
         {
             var baseName = constraintTypeName.Substring(0, bracketIndex);

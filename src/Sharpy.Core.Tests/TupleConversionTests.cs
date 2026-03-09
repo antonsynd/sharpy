@@ -1,3 +1,4 @@
+using System;
 using Xunit;
 using Sharpy;
 
@@ -32,8 +33,8 @@ public class TupleConversionTests
         var source = new System.Collections.Generic.List<object> { 1, 2, 3 };
 
         var ex = Assert.Throws<ValueError>(() => Builtins.Tuple<int, int>(source));
-        Assert.Contains("Expected 2 items", ex.Message);
-        Assert.Contains("got 3", ex.Message);
+        Assert.Contains("Expected 2 items", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("got 3", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -42,8 +43,8 @@ public class TupleConversionTests
         var source = new System.Collections.Generic.List<object> { 1, 2 };
 
         var ex = Assert.Throws<ValueError>(() => Builtins.Tuple<int, int, int>(source));
-        Assert.Contains("Expected 3 items", ex.Message);
-        Assert.Contains("got 2", ex.Message);
+        Assert.Contains("Expected 3 items", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("got 2", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -81,8 +82,8 @@ public class TupleConversionTests
         list.Add(1);
 
         var ex = Assert.Throws<ValueError>(() => Builtins.Tuple<int, int>(list));
-        Assert.Contains("Expected 2 items", ex.Message);
-        Assert.Contains("got 1", ex.Message);
+        Assert.Contains("Expected 2 items", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("got 1", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -95,8 +96,8 @@ public class TupleConversionTests
         list.Add(4);
 
         var ex = Assert.Throws<ValueError>(() => Builtins.Tuple<int, int, int>(list));
-        Assert.Contains("Expected 3 items", ex.Message);
-        Assert.Contains("got 4", ex.Message);
+        Assert.Contains("Expected 3 items", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("got 4", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

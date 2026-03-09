@@ -1,3 +1,5 @@
+using System;
+using System.Globalization;
 using Xunit;
 using Sharpy;
 
@@ -28,7 +30,7 @@ public class ResultTests
     {
         var result = Result<int, string>.Err("failed");
         var ex = Assert.Throws<InvalidOperationException>(() => result.Unwrap());
-        Assert.Contains("failed", ex.Message);
+        Assert.Contains("failed", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -74,7 +76,7 @@ public class ResultTests
     public void Map_TransformsValueWhenOk()
     {
         var result = Result<int, string>.Ok(42);
-        var mapped = result.Map(x => x.ToString());
+        var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.True(mapped.IsOk);
         Assert.Equal("42", mapped.Unwrap());
     }
@@ -83,7 +85,7 @@ public class ResultTests
     public void Map_PreservesErrorWhenErr()
     {
         var result = Result<int, string>.Err("failed");
-        var mapped = result.Map(x => x.ToString());
+        var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.True(mapped.IsErr);
         Assert.Equal("failed", mapped.UnwrapErr());
     }
@@ -152,7 +154,7 @@ public class ResultTests
     [Fact]
     public void Try_SuccessfulExpression_ReturnsOk()
     {
-        var result = Result.Try(() => int.Parse("42"));
+        var result = Result.Try(() => int.Parse("42", CultureInfo.InvariantCulture));
         Assert.True(result.IsOk);
         Assert.Equal(42, result.Unwrap());
     }
@@ -160,7 +162,7 @@ public class ResultTests
     [Fact]
     public void Try_ThrowingExpression_ReturnsErr()
     {
-        var result = Result.Try(() => int.Parse("not a number"));
+        var result = Result.Try(() => int.Parse("not a number", CultureInfo.InvariantCulture));
         Assert.True(result.IsErr);
         Assert.IsType<FormatException>(result.UnwrapErr());
     }
@@ -168,7 +170,7 @@ public class ResultTests
     [Fact]
     public void Try_Typed_MatchingException_ReturnsErr()
     {
-        var result = Result.Try<int, FormatException>(() => int.Parse("not a number"));
+        var result = Result.Try<int, FormatException>(() => int.Parse("not a number", CultureInfo.InvariantCulture));
         Assert.True(result.IsErr);
         Assert.IsType<FormatException>(result.UnwrapErr());
     }
@@ -179,14 +181,14 @@ public class ResultTests
         Assert.Throws<FormatException>(() =>
         {
             // InvalidOperationException doesn't match FormatException, so it should propagate
-            Result.Try<int, InvalidOperationException>(() => int.Parse("not a number"));
+            Result.Try<int, InvalidOperationException>(() => int.Parse("not a number", CultureInfo.InvariantCulture));
         });
     }
 
     [Fact]
     public void Try_Typed_SuccessfulExpression_ReturnsOk()
     {
-        var result = Result.Try<int, FormatException>(() => int.Parse("42"));
+        var result = Result.Try<int, FormatException>(() => int.Parse("42", CultureInfo.InvariantCulture));
         Assert.True(result.IsOk);
         Assert.Equal(42, result.Unwrap());
     }

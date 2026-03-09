@@ -50,7 +50,7 @@ public static class VersionInfo
     private static string ExtractCommitHash()
     {
         var info = InformationalVersion;
-        var plusIndex = info.IndexOf('+');
+        var plusIndex = info.IndexOf('+', StringComparison.Ordinal);
         return plusIndex >= 0 ? info[(plusIndex + 1)..] : "unknown";
     }
 }

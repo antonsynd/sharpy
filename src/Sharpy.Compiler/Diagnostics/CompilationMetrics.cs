@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
@@ -221,31 +222,31 @@ public class CompilationMetrics
 
         if (!string.IsNullOrEmpty(_projectName))
         {
-            sb.AppendLine($"Project: {_projectName}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Project: {_projectName}");
         }
 
         if (!string.IsNullOrEmpty(_fileName))
         {
-            sb.AppendLine($"File: {_fileName}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"File: {_fileName}");
         }
 
         if (!string.IsNullOrEmpty(_configuration))
         {
-            sb.AppendLine($"Configuration: {_configuration}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Configuration: {_configuration}");
         }
 
         sb.AppendLine(FormattableString.Invariant($"Timestamp: {_startTime:yyyy-MM-dd HH:mm:ss} UTC"));
         sb.AppendLine();
 
         sb.AppendLine("Phase Breakdown:");
-        sb.AppendLine($"{"Phase",-30} {"Duration",-15} {"Memory Delta",-20}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"{"Phase",-30} {"Duration",-15} {"Memory Delta",-20}");
         sb.AppendLine(new string('-', 65));
 
         foreach (var phase in _phases)
         {
             var durationStr = FormattableString.Invariant($"{phase.Duration.TotalMilliseconds:F2} ms");
             var memoryStr = FormatMemoryDelta(phase.MemoryDelta);
-            sb.AppendLine($"{phase.Name,-30} {durationStr,-15} {memoryStr,-20}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{phase.Name,-30} {durationStr,-15} {memoryStr,-20}");
         }
 
         sb.AppendLine(new string('-', 65));
@@ -256,13 +257,13 @@ public class CompilationMetrics
         {
             sb.AppendLine();
             sb.AppendLine("Validator Breakdown:");
-            sb.AppendLine($"{"Validator",-40} {"Duration",-15}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{"Validator",-40} {"Duration",-15}");
             sb.AppendLine(new string('-', 55));
 
             foreach (var (validator, duration) in _validatorTimes.OrderByDescending(kvp => kvp.Value))
             {
                 var durationStr = FormattableString.Invariant($"{duration.TotalMilliseconds:F2} ms");
-                sb.AppendLine($"{validator,-40} {durationStr,-15}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"{validator,-40} {durationStr,-15}");
             }
         }
 
@@ -508,14 +509,14 @@ public class ProjectCompilationMetrics
         var sb = new StringBuilder();
 
         sb.AppendLine("=== Project Compilation Metrics ===");
-        sb.AppendLine($"Project: {_projectName}");
-        sb.AppendLine($"Configuration: {_configuration}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"Project: {_projectName}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"Configuration: {_configuration}");
         sb.AppendLine(FormattableString.Invariant($"Timestamp: {_startTime:yyyy-MM-dd HH:mm:ss} UTC"));
         sb.AppendLine(FormattableString.Invariant($"Files Compiled: {TotalFiles}"));
         sb.AppendLine();
 
         sb.AppendLine("Aggregate Phase Breakdown:");
-        sb.AppendLine($"{"Phase",-30} {"Total Duration",-15} {"Total Memory Delta",-20}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"{"Phase",-30} {"Total Duration",-15} {"Total Memory Delta",-20}");
         sb.AppendLine(new string('-', 65));
 
         var aggregates = AggregatePhaseMetrics;
@@ -523,7 +524,7 @@ public class ProjectCompilationMetrics
         {
             var durationStr = FormattableString.Invariant($"{metrics.Duration.TotalMilliseconds:F2} ms");
             var memoryStr = FormatMemoryDelta(metrics.MemoryDelta);
-            sb.AppendLine($"{phase,-30} {durationStr,-15} {memoryStr,-20}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{phase,-30} {durationStr,-15} {memoryStr,-20}");
         }
 
         // Add assembly compilation metrics if available
@@ -535,7 +536,7 @@ public class ProjectCompilationMetrics
             {
                 var durationStr = FormattableString.Invariant($"{phase.Duration.TotalMilliseconds:F2} ms");
                 var memoryStr = FormatMemoryDelta(phase.MemoryDelta);
-                sb.AppendLine($"{phase.Name,-30} {durationStr,-15} {memoryStr,-20}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"{phase.Name,-30} {durationStr,-15} {memoryStr,-20}");
             }
         }
 

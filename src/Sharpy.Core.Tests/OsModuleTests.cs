@@ -181,7 +181,7 @@ namespace Sharpy.Core.Tests
                 // Verify we moved somewhere that contains the temp dir name component
                 var cwd = Os.Getcwd();
                 var dirName = System.IO.Path.GetFileName(_tempDir);
-                Assert.Contains(dirName, cwd);
+                Assert.Contains(dirName, cwd, StringComparison.Ordinal);
             }
             finally
             {

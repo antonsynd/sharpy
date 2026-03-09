@@ -1117,7 +1117,7 @@ internal partial class RoslynEmitter
     {
         // Check for collision: when the module name matches the type name,
         // the type IS the module class, not nested inside it.
-        var lastSegment = moduleNamespace.Contains('.')
+        var lastSegment = moduleNamespace.Contains('.', StringComparison.Ordinal)
             ? moduleNamespace.Split('.').Last()
             : moduleNamespace;
 
@@ -1781,7 +1781,7 @@ internal partial class RoslynEmitter
         var csharpTypeName = NameMangler.ToPascalCase(originalName);
         var fqn = GetFullyQualifiedTypeName(typeSymbol, originalName);
 
-        if (fqn.Contains('.'))
+        if (fqn.Contains('.', StringComparison.Ordinal))
         {
             var parts = fqn.Split('.');
             return parts.Skip(1).Aggregate(

@@ -1041,7 +1041,7 @@ internal partial class RoslynEmitter
 
     private static bool IsAlignChar(char c) => c == '<' || c == '>' || c == '^' || c == '=';
 
-    private static bool IsTypeChar(char c) => "bcdeEfFgGnosxX%".IndexOf(c) >= 0;
+    private static bool IsTypeChar(char c) => "bcdeEfFgGnosxX%".IndexOf(c, StringComparison.Ordinal) >= 0;
 
     private static FormatSpecResult ComposeFormatSpecResult(
         char? fillChar, char? alignmentMode, bool zeroPad,

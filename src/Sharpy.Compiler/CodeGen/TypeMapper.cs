@@ -448,7 +448,7 @@ internal class TypeMapper
         // Check for collision: when the file/directory name (PascalCase) matches the type name,
         // the type IS the module class (collision merge), not nested inside it.
         // e.g., animal.spy with class Animal → type is Sharpy.Test.Animal, not Sharpy.Test.Animal.Animal
-        var lastSegment = moduleNamespace.Contains('.')
+        var lastSegment = moduleNamespace.Contains('.', StringComparison.Ordinal)
             ? moduleNamespace.Split('.').Last()
             : moduleNamespace;
 

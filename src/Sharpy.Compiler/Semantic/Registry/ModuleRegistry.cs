@@ -290,7 +290,7 @@ internal class ModuleRegistry
         var typeName = clrType.Name;
         if (clrType.IsGenericType || clrType.IsGenericTypeDefinition)
         {
-            var backtickIndex = typeName.IndexOf('`');
+            var backtickIndex = typeName.IndexOf('`', StringComparison.Ordinal);
             if (backtickIndex >= 0)
             {
                 typeName = typeName.Substring(0, backtickIndex);

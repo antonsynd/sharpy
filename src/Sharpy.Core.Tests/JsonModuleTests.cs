@@ -527,8 +527,8 @@ namespace Sharpy.Tests
             var ex = Assert.Throws<JSONDecodeError>(() => Json.Loads("invalid"));
             Assert.Equal("invalid", ex.Doc);
             Assert.Equal(0, ex.Pos);
-            Assert.Contains("line 1", ex.Message);
-            Assert.Contains("column 1", ex.Message);
+            Assert.Contains("line 1", ex.Message, StringComparison.Ordinal);
+            Assert.Contains("column 1", ex.Message, StringComparison.Ordinal);
         }
 
         #endregion

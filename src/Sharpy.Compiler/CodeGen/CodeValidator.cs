@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -38,13 +39,13 @@ internal class CodeValidator
             if (diagnostic.Severity == DiagnosticSeverity.Error)
             {
                 _diagnostics.AddError(
-                    $"Syntax error at {diagnostic.Location.GetLineSpan()}: {diagnostic.GetMessage()}",
+                    $"Syntax error at {diagnostic.Location.GetLineSpan()}: {diagnostic.GetMessage(CultureInfo.InvariantCulture)}",
                     line, column, filePath, diagnostic.Id, CompilerPhase.CodeGeneration);
             }
             else if (diagnostic.Severity == DiagnosticSeverity.Warning)
             {
                 _diagnostics.AddWarning(
-                    $"Syntax warning at {diagnostic.Location.GetLineSpan()}: {diagnostic.GetMessage()}",
+                    $"Syntax warning at {diagnostic.Location.GetLineSpan()}: {diagnostic.GetMessage(CultureInfo.InvariantCulture)}",
                     line, column, filePath, diagnostic.Id, CompilerPhase.CodeGeneration);
             }
         }

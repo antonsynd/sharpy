@@ -263,7 +263,7 @@ internal class DiagnosticRenderer
     /// </summary>
     private static string ExpandTabs(string line)
     {
-        if (!line.Contains('\t'))
+        if (!line.Contains('\t', StringComparison.Ordinal))
             return line;
 
         var sb = new System.Text.StringBuilder(line.Length + 8);

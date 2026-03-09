@@ -215,8 +215,8 @@ internal partial class RoslynEmitter
 
         // Append 'd' suffix to force Roslyn to preserve double literal semantics.
         // Without it, Roslyn may normalize whole-number doubles (e.g., 5.0 -> 5).
-        var literalText = literal.Value.Contains('.') || literal.Value.Contains('e')
-            || literal.Value.Contains('E')
+        var literalText = literal.Value.Contains('.', StringComparison.Ordinal) || literal.Value.Contains('e', StringComparison.Ordinal)
+            || literal.Value.Contains('E', StringComparison.Ordinal)
             ? literal.Value + "d"
             : literal.Value + ".0d";
         return LiteralExpression(SyntaxKind.NumericLiteralExpression,

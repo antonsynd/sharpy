@@ -365,7 +365,7 @@ public static class CompilerInvariants
             .ToList();
         if (parseDiagnostics.Count > 0)
         {
-            var details = string.Join("; ", parseDiagnostics.Take(3).Select(d => d.GetMessage()));
+            var details = string.Join("; ", parseDiagnostics.Take(3).Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)));
             diagnostics.AddError(
                 $"Internal error: generated C# contains {parseDiagnostics.Count} syntax error(s): {details}. This is a compiler bug -- please report it.",
                 code: DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError,

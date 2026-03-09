@@ -44,7 +44,7 @@ internal static class NameFormDetector
         if (nameBody.Contains("__", StringComparison.Ordinal))
             return NameForm.Unrecognized;
 
-        bool hasUnderscore = nameBody.Contains('_');
+        bool hasUnderscore = nameBody.Contains('_', StringComparison.Ordinal);
 
         if (!hasUnderscore)
         {
