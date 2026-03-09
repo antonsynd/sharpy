@@ -237,6 +237,11 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "for additional behavior. Change `class C(A, B):` to `class C(A, IB):` "
         "where `IB` is an interface.",
     ),
+    (
+        r"CS1729.*Exception",
+        "Custom exception with `pass` body has no constructor accepting arguments. "
+        "Add `def __init__(self, message: str): super().__init__(message)` to accept a message.",
+    ),
 ]
 
 
@@ -293,6 +298,7 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Generic invariance**: Generic collections are INVARIANT. `list[Child]` cannot be assigned to `list[Parent]`. Declare the collection with the base/interface type. Use `out`/`in` variance only on interfaces and delegates.
 - **Optional usage**: `Some()` and `None()` can only be used where the target type is `T?` (Optional). Cannot pass `None()` where a non-optional type is expected.
 - **Virtual/override required for polymorphism**: Polymorphic dispatch requires `@virtual` on the base class method AND `@override` on each subclass method. Without these decorators, the base class method is called even when the object is a subclass instance.
+- **Custom exception constructors**: Custom exception classes with `pass` body have NO message constructor. To accept messages, define `__init__(self, message: str): super().__init__(message)`.
 - **Custom exception hierarchy**: Classes used with `raise` or `except` MUST extend `Exception` (or a builtin exception type like `ValueError`, `RuntimeError`). A plain class cannot be raised or caught.
 - **`__eq__` parameter type**: `__eq__` parameter must be typed as `object`: `def __eq__(self, other: object) -> bool:` — NOT `def __eq__(self, other: MyClass) -> bool:`.
 - **Private field access**: Private fields (prefixed with `_`) cannot be accessed from outside the class — use properties to expose them.
@@ -560,6 +566,7 @@ ALLOWED_FEATURES_SECTION = """\
 - **Try/except/else/finally**: Full exception handling pattern
 - **Raise**: `raise ValueError("message")`
 - **Available exception types**: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
+- **Custom exceptions**: `class MyError(Exception): pass` (no message constructor). To accept messages: `class MyError(Exception):` with `def __init__(self, message: str): super().__init__(message)`
 
 #### Lambda Expressions (0.1.14)
 - **Lambdas**: `lambda x: x * 2`, `lambda a, b: a + b`
