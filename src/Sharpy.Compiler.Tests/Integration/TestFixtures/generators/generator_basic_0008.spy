@@ -1,0 +1,11 @@
+# Generator with conditional yielding - only yields even numbers
+def evens_up_to(n: int) -> int:
+    i = 0
+    while i <= n:
+        if i % 2 == 0:
+            yield i
+        i += 1
+
+def main():
+    for x in evens_up_to(10):
+        print(x)

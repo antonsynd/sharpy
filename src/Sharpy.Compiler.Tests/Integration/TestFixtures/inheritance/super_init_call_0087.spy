@@ -1,0 +1,88 @@
+# Test super().__init__() with deep inheritance chain
+class Node:
+    label: str
+    _children: list[int]
+    depth: int
+    
+    def __init__(self, label: str):
+        self.label = label
+        self._children = []
+        self.depth = 0
+    
+    def add_child(self, item: int) -> None:
+        self._children.append(item)
+    
+    def child_count(self) -> int:
+        return len(self._children)
+
+class BranchNode(Node):
+    node_type: str
+    max_depth: int
+    
+    def __init__(self, label: str, max_depth: int):
+        super().__init__(label)
+        self.node_type = "branch"
+        self.max_depth = max_depth
+    
+    def traverse(self) -> list[str]:
+        results: list[str] = [self.label]
+        for i in self._children:
+            path: str = f"{self.label}/{i}"
+            results.append(path)
+        return results
+    
+    @virtual
+    def validate(self) -> bool:
+        return self.max_depth > 0
+
+class TreeNode(BranchNode):
+    accumulated: int
+    
+    def __init__(self, label: str, max_depth: int, initial: int):
+        super().__init__(label, max_depth)
+        self.accumulated = initial
+    
+    @override
+    def validate(self) -> bool:
+        return self.max_depth > 0 and self.child_count() <= self.max_depth
+    
+    def process(self) -> int:
+        total: int = self.accumulated
+        for child in self._children:
+            total += child
+        return total
+
+class BinaryLeaf(TreeNode):
+    capacity: int
+    
+    def __init__(self, label: str, max_depth: int, initial: int, capacity: int):
+        super().__init__(label, max_depth, initial)
+        self.capacity = capacity
+    
+    def is_full(self) -> bool:
+        return self.child_count() >= self.capacity
+
+def main():
+    # Test deep inheritance via super().__init__() chain
+    leaf: BinaryLeaf = BinaryLeaf("leafA", 5, 100, 2)
+    print(leaf.label)
+    print(leaf.node_type)
+    print(leaf.max_depth)
+    print(leaf.accumulated)
+    
+    # Add children and test methods
+    leaf.add_child(10)
+    leaf.add_child(20)
+    leaf.add_child(30)
+    print(leaf.child_count())
+    print(leaf.is_full())
+    print(leaf.process())
+    
+    # Test inherited traversal
+    tree_root: TreeNode = TreeNode("root", 10, 50)
+    tree_root.add_child(5)
+    tree_root.add_child(7)
+    paths: list[str] = tree_root.traverse()
+    for p in paths:
+        print(p)
+    print(tree_root.validate())
