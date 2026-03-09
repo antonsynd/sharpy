@@ -321,7 +321,7 @@ internal class PropertyValidator : SemanticValidatorBase
         // Check each constructor
         foreach (var initMethod in initMethods)
         {
-            var assignedNames = CollectGuaranteedSelfAssignments(initMethod.Body);
+            var assignedNames = CollectGuaranteedSelfAssignments(initMethod.Body, initPropsWithoutDefaults.Select(p => p.Name));
             foreach (var prop in initPropsWithoutDefaults)
             {
                 if (!assignedNames.Contains(prop.Name))
@@ -340,7 +340,7 @@ internal class PropertyValidator : SemanticValidatorBase
     /// Collects names of members that are guaranteed to be assigned via self.{name} = ...
     /// on all paths through the method body, using CFG-based forward "must-assign" analysis.
     /// </summary>
-    private static HashSet<string> CollectGuaranteedSelfAssignments(IReadOnlyList<Statement> body)
+    private static HashSet<string> CollectGuaranteedSelfAssignments(IReadOnlyList<Statement> body, IEnumerable<string> allProperties)
     {
         var builder = new ControlFlowGraphBuilder();
         var cfg = builder.Build(body);
@@ -370,10 +370,19 @@ internal class PropertyValidator : SemanticValidatorBase
         // mustAssignOut[block] = mustAssignIn[block] union blockAssignments[block]
         var mustAssignIn = new Dictionary<BasicBlock, HashSet<string>>();
         var mustAssignOut = new Dictionary<BasicBlock, HashSet<string>>();
+        var universalSet = new HashSet<string>(allProperties);
         foreach (var block in cfg.Blocks)
         {
-            mustAssignIn[block] = new HashSet<string>();
-            mustAssignOut[block] = new HashSet<string>();
+            if (block == cfg.Entry)
+            {
+                mustAssignIn[block] = new HashSet<string>();
+                mustAssignOut[block] = new HashSet<string>();
+            }
+            else
+            {
+                mustAssignIn[block] = new HashSet<string>(universalSet);
+                mustAssignOut[block] = new HashSet<string>(universalSet);
+            }
         }
 
         var changed = true;
