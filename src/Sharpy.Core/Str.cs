@@ -60,7 +60,7 @@ namespace Sharpy
         /// </summary>
         public static string Str(int i)
         {
-            return i.ToString();
+            return i.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace Sharpy
         /// </summary>
         public static string Str(long l)
         {
-            return l.ToString();
+            return l.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
         /// <summary>

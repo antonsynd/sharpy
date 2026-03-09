@@ -44,7 +44,7 @@ namespace Sharpy
                 }
             }
 
-            return msg + ": line " + line.ToString() + " column " + (col + 1).ToString() + " (char " + pos.ToString() + ")";
+            return msg + ": line " + line.ToString(System.Globalization.CultureInfo.InvariantCulture) + " column " + (col + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + " (char " + pos.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")";
         }
     }
 }

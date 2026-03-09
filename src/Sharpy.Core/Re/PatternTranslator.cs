@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -22,7 +23,7 @@ namespace Sharpy
             }
 
             // Fast path: no Python-specific syntax
-            if (pattern.IndexOf("(?P") < 0)
+            if (pattern.IndexOf("(?P", StringComparison.Ordinal) < 0)
             {
                 return pattern;
             }
