@@ -252,6 +252,20 @@ def _get_remediation_hint(validation_error: str) -> str:
 
 BEHAVIORAL_RULES_SECTION = """\
 ### ⚠️ CRITICAL BEHAVIORAL RULES — Common pitfalls:
+- CRITICAL: **Abstract class decorator**: When using `@abstract` methods, the containing class MUST also be decorated with `@abstract`. Both decorators are required:
+  ```
+  @abstract
+  class Shape:
+      @abstract
+      def area(self) -> float: ...
+  ```
+  When overriding abstract methods in subclasses, ALWAYS use `@override`:
+  ```
+  class Circle(Shape):
+      @override
+      def area(self) -> float:
+          return 3.14159 * self.radius ** 2
+  ```
 - **Interface vs override**: When implementing interface methods, do NOT use `@override`. `@override` is ONLY for overriding `@virtual` or `@abstract` methods from base classes.
 - **Struct constructors**: Structs require an explicit `__init__` to accept constructor arguments. There is no auto-generated positional constructor.
 - **String char type**: String indexing `s[i]` and iteration `for c in s` yield C# `char`, not `str`. You MUST wrap with `str()` before comparing or assigning: `str(s[i]) == "a"` (NOT `s[i] == "a"`), `c: str = str(s[i])` (NOT `c: str = s[i]`). Also use `str(c)` in for-each loops over strings.
@@ -270,7 +284,6 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Instance fields not static by default**: Class fields are INSTANCE fields by default. To make a class-level static field, use the `@static` decorator: `@static` then `FIELD_NAME: type = value`. Access via `ClassName.FIELD_NAME`.
 - **Struct inheritance forbidden**: Classes CANNOT inherit from structs. Structs are sealed value types.
 - **Generic invariance**: Generic collections are INVARIANT. `list[Child]` cannot be assigned to `list[Parent]`. Declare the collection with the base/interface type. Use `out`/`in` variance only on interfaces and delegates.
-- **Abstract class decorator**: When using `@abstract` methods, the containing class MUST also be decorated with `@abstract`.
 - **Optional usage**: `Some()` and `None()` can only be used where the target type is `T?` (Optional). Cannot pass `None()` where a non-optional type is expected.
 - **Virtual/override required for polymorphism**: Polymorphic dispatch requires `@virtual` on the base class method AND `@override` on each subclass method. Without these decorators, the base class method is called even when the object is a subclass instance.
 - **Custom exception hierarchy**: Classes used with `raise` or `except` MUST extend `Exception` (or a builtin exception type like `ValueError`, `RuntimeError`). A plain class cannot be raised or caught.
@@ -710,6 +723,7 @@ FORBIDDEN_FEATURES_SECTION = """\
 - **NO `hex()`, `oct()`, `bin()` builtins**: These conversion functions are not available. Use string formatting instead.
 - **NO `sum()` builtin**: `sum()` is not available. Use a loop or `reduce()` to sum values.
 - **NO `@virtual` or `@override` on struct methods**: Structs are sealed value types — their methods cannot be virtual or overridden.
+- **NEVER define `@abstract` methods in a non-`@abstract` class**: The class MUST have `@abstract` decorator if any method has `@abstract`.
 - **NO list comprehensions**: `[x for x in ...]` is not supported. Use a loop with `.append()` instead."""
 
 NAMING_RULES_SECTION = """\
