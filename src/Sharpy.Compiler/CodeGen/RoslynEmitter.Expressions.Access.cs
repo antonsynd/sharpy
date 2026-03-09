@@ -1220,8 +1220,15 @@ internal partial class RoslynEmitter
 
         var tempName = GenerateTempVarName("opt");
         var tempIdent = IdentifierName(tempName);
+
+        // Parenthesize conditional expressions (ternaries) so that the `is var`
+        // pattern captures the entire expression, not just the false branch.
+        // Without this, `a ? b : c is var t` parses as `a ? b : (c is var t)`.
+        var captureTarget = generated is ConditionalExpressionSyntax
+            ? ParenthesizedExpression(generated)
+            : generated;
         var capture = IsPatternExpression(
-            generated,
+            captureTarget,
             VarPattern(SingleVariableDesignation(Identifier(tempName))));
         return (tempIdent, capture);
     }
