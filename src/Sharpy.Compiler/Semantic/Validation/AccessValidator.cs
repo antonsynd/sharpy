@@ -325,33 +325,11 @@ internal class AccessValidator : SemanticValidatorBase
         return AccessLevel.Public;
     }
 
-    private TypeSymbol? GetBaseType(TypeSymbol symbol)
-        => _context.SemanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
-
     private bool IsInHierarchy(TypeSymbol currentClass, TypeSymbol targetClass)
     {
-        // Same class
         if (currentClass == targetClass)
             return true;
-
-        // Check if currentClass is a subclass of targetClass
-        var baseType = GetBaseType(currentClass);
-        while (baseType != null)
-        {
-            if (baseType == targetClass)
-                return true;
-            baseType = GetBaseType(baseType);
-        }
-
-        // Check if currentClass is a superclass of targetClass
-        baseType = GetBaseType(targetClass);
-        while (baseType != null)
-        {
-            if (baseType == currentClass)
-                return true;
-            baseType = GetBaseType(baseType);
-        }
-
-        return false;
+        return TypeHierarchyService.InheritsFrom(currentClass, targetClass, _context.SemanticBinding)
+            || TypeHierarchyService.InheritsFrom(targetClass, currentClass, _context.SemanticBinding);
     }
 }
