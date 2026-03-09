@@ -231,6 +231,12 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "'event' is a reserved keyword in Sharpy (used for event declarations). "
         "Use a different identifier name like 'evt', 'e', or 'event_data'.",
     ),
+    (
+        r"CS1721",
+        "Sharpy only supports single inheritance. Use one base class and interfaces "
+        "for additional behavior. Change `class C(A, B):` to `class C(A, IB):` "
+        "where `IB` is an interface.",
+    ),
 ]
 
 
@@ -266,6 +272,7 @@ BEHAVIORAL_RULES_SECTION = """\
       def area(self) -> float:
           return 3.14159 * self.radius ** 2
   ```
+- CRITICAL: **Single class inheritance only**: Sharpy supports single class inheritance only. `class C(A, B):` is INVALID if both A and B are classes. For multiple behaviors, use interfaces: `class C(A, IB):` where `IB` is an interface.
 - **Interface vs override**: When implementing interface methods, do NOT use `@override`. `@override` is ONLY for overriding `@virtual` or `@abstract` methods from base classes.
 - **Struct constructors**: Structs require an explicit `__init__` to accept constructor arguments. There is no auto-generated positional constructor.
 - **String char type**: String indexing `s[i]` and iteration `for c in s` yield C# `char`, not `str`. You MUST wrap with `str()` before comparing or assigning: `str(s[i]) == "a"` (NOT `s[i] == "a"`), `c: str = str(s[i])` (NOT `c: str = s[i]`). Also use `str(c)` in for-each loops over strings.
@@ -724,6 +731,7 @@ FORBIDDEN_FEATURES_SECTION = """\
 - **NO `sum()` builtin**: `sum()` is not available. Use a loop or `reduce()` to sum values.
 - **NO `@virtual` or `@override` on struct methods**: Structs are sealed value types — their methods cannot be virtual or overridden.
 - **NEVER define `@abstract` methods in a non-`@abstract` class**: The class MUST have `@abstract` decorator if any method has `@abstract`.
+- **NO multiple class inheritance**: `class C(A, B):` where both A and B are classes is invalid. Use single class + interfaces for additional behavior.
 - **NO list comprehensions**: `[x for x in ...]` is not supported. Use a loop with `.append()` instead."""
 
 NAMING_RULES_SECTION = """\
