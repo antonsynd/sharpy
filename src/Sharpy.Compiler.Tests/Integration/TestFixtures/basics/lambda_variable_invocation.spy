@@ -1,0 +1,7 @@
+def main():
+    doubler: (int) -> int = lambda x: x + x
+    result: int = doubler(5)
+    print(result)
+
+    greet: (str) -> str = lambda name: "hello " + name
+    print(greet("world"))

@@ -1,0 +1,10 @@
+class Calculator:
+    def _double(self, x: int) -> int:
+        return x * 2
+
+    def compute(self, value: int) -> int:
+        return self._double(value) + 1
+
+def main():
+    c: Calculator = Calculator()
+    print(c.compute(5))
