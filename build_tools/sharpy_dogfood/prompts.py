@@ -248,6 +248,10 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "Either: (1) define the missing method/property in the class definition, "
         "(2) check for typos in the member name, or (3) use a different member that exists.",
     ),
+    (
+        r"CS0246.*Staticmethod",
+        "Use `@static` not `@staticmethod`. Sharpy uses `@static` for static methods.",
+    ),
 ]
 
 
@@ -759,6 +763,7 @@ FORBIDDEN_FEATURES_SECTION = """\
 - **NO `@virtual` or `@override` on struct methods**: Structs are sealed value types — their methods cannot be virtual or overridden.
 - **NEVER define `@abstract` methods in a non-`@abstract` class**: The class MUST have `@abstract` decorator if any method has `@abstract`.
 - **NO multiple class inheritance**: `class C(A, B):` where both A and B are classes is invalid. Use single class + interfaces for additional behavior.
+- **NO `@staticmethod` decorator**: Use `@static` instead — Sharpy uses `@static` for static methods.
 - **NO list comprehensions**: `[x for x in ...]` is not supported. Use a loop with `.append()` instead."""
 
 NAMING_RULES_SECTION = """\
