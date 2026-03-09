@@ -1,0 +1,39 @@
+class City:
+    name: str
+    def __init__(self, name: str):
+        self.name = name
+    def get_name(self) -> str:
+        return self.name
+
+class Address:
+    city: City? = None()
+    def __init__(self, city: City?):
+        self.city = city
+    def get_city(self) -> City?:
+        return self.city
+
+class Person:
+    address: Address? = None()
+    def __init__(self, address: Address?):
+        self.address = address
+    def get_address(self) -> Address?:
+        return self.address
+
+def main():
+    # Full chain resolves: person -> address -> city -> name
+    city: City = City("Tokyo")
+    addr: Address = Address(Some(city))
+    p1: Person = Person(Some(addr))
+    r1: str? = p1.get_address()?.get_city()?.get_name()
+    print(r1)
+
+    # First link is None: person has no address
+    p2: Person = Person(None())
+    r2: str? = p2.get_address()?.get_city()?.get_name()
+    print(r2)
+
+    # Middle link is None: address exists but city is None
+    addr2: Address = Address(None())
+    p3: Person = Person(Some(addr2))
+    r3: str? = p3.get_address()?.get_city()?.get_name()
+    print(r3)
