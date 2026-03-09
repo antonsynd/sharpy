@@ -1827,8 +1827,6 @@ internal partial class RoslynEmitter
                         ? $"{baseName}_{_variableVersions[baseName]}"
                         : baseName;
 
-                    _sourceVariableNames.Add(baseName);
-
                     var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
                     var declaration = CatchDeclaration(exceptionType, Identifier(exceptionVar));
 

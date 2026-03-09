@@ -255,7 +255,7 @@ internal partial class RoslynEmitter
         {
             // For self.x, look up on the current type
             if (memberAccess.Object is Identifier obj
-                && string.Equals(obj.Name, "self", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(obj.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase)
                 && _currentTypeSymbol is not null)
             {
                 var field = _currentTypeSymbol.Fields.Find(f => f.Name == memberAccess.Member);
