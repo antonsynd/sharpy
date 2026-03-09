@@ -1,0 +1,15 @@
+from priorities import Priority
+from statuses import Status
+
+def main():
+    p = Priority.HIGH
+    s = Status.ACTIVE
+    # Direct enum .name and .value
+    print(p.name)
+    print(p.value)
+    print(s.name)
+    print(s.value)
+    # Through variable reassignment
+    p2 = Priority.LOW
+    print(p2.name)
+    print(p2.value)

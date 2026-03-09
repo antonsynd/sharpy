@@ -1,0 +1,4 @@
+enum Status:
+    PENDING = 10
+    ACTIVE = 20
+    CLOSED = 30
