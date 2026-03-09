@@ -901,7 +901,8 @@ internal partial class RoslynEmitter
 
                     // For floating-point types without a format spec, wrap in FormatFloat()
                     // to ensure Python-compatible formatting (e.g., 5.0 instead of 5).
-                    var exprType = GetExpressionSemanticType(part.Expression);
+                    var exprType = GetExpressionSemanticType(part.Expression)
+                        ?? ResolveExpressionTypeFromSymbols(part.Expression);
                     if (exprType == SemanticType.Float ||
                         exprType == SemanticType.Double ||
                         exprType == SemanticType.Float32)
