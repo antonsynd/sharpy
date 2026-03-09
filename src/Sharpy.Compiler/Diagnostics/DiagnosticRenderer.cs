@@ -1,3 +1,4 @@
+using System.Globalization;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Diagnostics;
@@ -119,7 +120,7 @@ internal class DiagnosticRenderer
         // Source context: only if we have a line number
         if (line.HasValue && sourceText != null && line.Value >= 1 && line.Value <= sourceText.LineCount)
         {
-            var lineNumberWidth = line.Value.ToString().Length;
+            var lineNumberWidth = line.Value.ToString(CultureInfo.InvariantCulture).Length;
             // Ensure at least 2 chars for gutter width for visual consistency
             if (lineNumberWidth < 2)
                 lineNumberWidth = 2;
@@ -133,7 +134,7 @@ internal class DiagnosticRenderer
             // Source line (expand tabs for consistent display)
             var sourceLineText = sourceText.GetLineText(line.Value);
             var displayLine = ExpandTabs(sourceLineText);
-            var lineNumStr = line.Value.ToString().PadLeft(lineNumberWidth);
+            var lineNumStr = line.Value.ToString(CultureInfo.InvariantCulture).PadLeft(lineNumberWidth);
             lines.Add($" {Colorize(lineNumStr, AnsiColor.Cyan)} {pipe} {displayLine}");
 
             // Underline/caret line

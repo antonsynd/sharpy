@@ -1,3 +1,4 @@
+using System.Globalization;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
@@ -758,7 +759,7 @@ internal partial class TypeChecker
             var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
             if (hasVariadic)
                 return $"{required}+";
-            return required == total ? total.ToString() : $"{required}-{total}";
+            return required == total ? total.ToString(CultureInfo.InvariantCulture) : $"{required}-{total}";
         }).Distinct());
         AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {totalArgCount}",
             call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,

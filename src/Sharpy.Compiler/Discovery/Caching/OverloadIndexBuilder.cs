@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
@@ -303,7 +304,7 @@ internal class OverloadIndexBuilder
             return "builtins";
         if (ns == "Sharpy" || ns.StartsWith("Sharpy."))
             return "builtins";
-        return ns.ToLowerInvariant().Replace(".", "_");
+        return ns.ToLowerInvariant().Replace(".", "_", StringComparison.Ordinal);
     }
 
     private string DeriveModuleName(Type exportType)
@@ -533,8 +534,8 @@ internal class OverloadIndexBuilder
             char c => $"'{c}'",
             bool b => b.ToString().ToLowerInvariant(),
             int or long or short or byte or sbyte or uint or ulong or ushort => value.ToString(),
-            float f => f.ToString("G9"),
-            double d => d.ToString("G17"),
+            float f => f.ToString("G9", CultureInfo.InvariantCulture),
+            double d => d.ToString("G17", CultureInfo.InvariantCulture),
             _ => null
         };
     }

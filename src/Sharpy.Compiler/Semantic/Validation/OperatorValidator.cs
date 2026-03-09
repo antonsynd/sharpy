@@ -320,7 +320,7 @@ internal class OperatorValidator : SemanticValidatorBase
         {
             foreach (var constraint in typeParam.Constraints)
             {
-                if (constraint is TypeConstraint tc && tc.Type.Name.Contains("Comparable"))
+                if (constraint is TypeConstraint tc && tc.Type.Name.Contains("Comparable", StringComparison.Ordinal))
                     return true;
             }
         }

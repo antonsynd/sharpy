@@ -296,7 +296,7 @@ internal class TypeInferenceService
                 // Check if the constraint type name contains "Comparable"
                 // This covers IComparable, IComparable[T], System.IComparable, etc.
                 var typeName = typeConstraint.Type.Name;
-                if (typeName.Contains("Comparable"))
+                if (typeName.Contains("Comparable", StringComparison.Ordinal))
                     return true;
             }
         }

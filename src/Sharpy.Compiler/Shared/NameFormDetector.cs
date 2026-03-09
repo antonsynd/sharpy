@@ -41,7 +41,7 @@ internal static class NameFormDetector
             return NameForm.Literal;
 
         // Consecutive underscores → Unrecognized
-        if (nameBody.Contains("__"))
+        if (nameBody.Contains("__", StringComparison.Ordinal))
             return NameForm.Unrecognized;
 
         bool hasUnderscore = nameBody.Contains('_');
@@ -125,7 +125,7 @@ internal static class NameFormDetector
     /// </summary>
     public static bool HasConsecutiveUnderscores(string nameBody)
     {
-        return nameBody.Contains("__");
+        return nameBody.Contains("__", StringComparison.Ordinal);
     }
 
     /// <summary>
