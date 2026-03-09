@@ -498,7 +498,7 @@ internal class AstDumper
 
             case FloatLiteral floatLit:
                 var floatSuffix = floatLit.Suffix != null ? $" ({floatLit.Suffix})" : "";
-                _output.AppendLine($"{indent}{prefix}FloatLiteral: {floatLit.Value}{floatSuffix} @ L{node.LineStart}:C{node.ColumnStart}");
+                _output.AppendLine(FormattableString.Invariant($"{indent}{prefix}FloatLiteral: {floatLit.Value}{floatSuffix} @ L{node.LineStart}:C{node.ColumnStart}"));
                 break;
 
             case StringLiteral strLit:

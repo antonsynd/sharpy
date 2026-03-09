@@ -234,7 +234,7 @@ public class CompilationMetrics
             sb.AppendLine($"Configuration: {_configuration}");
         }
 
-        sb.AppendLine($"Timestamp: {_startTime:yyyy-MM-dd HH:mm:ss} UTC");
+        sb.AppendLine(FormattableString.Invariant($"Timestamp: {_startTime:yyyy-MM-dd HH:mm:ss} UTC"));
         sb.AppendLine();
 
         sb.AppendLine("Phase Breakdown:");
@@ -243,13 +243,13 @@ public class CompilationMetrics
 
         foreach (var phase in _phases)
         {
-            var durationStr = $"{phase.Duration.TotalMilliseconds:F2} ms";
+            var durationStr = FormattableString.Invariant($"{phase.Duration.TotalMilliseconds:F2} ms");
             var memoryStr = FormatMemoryDelta(phase.MemoryDelta);
             sb.AppendLine($"{phase.Name,-30} {durationStr,-15} {memoryStr,-20}");
         }
 
         sb.AppendLine(new string('-', 65));
-        sb.AppendLine($"{"TOTAL",-30} {TotalDuration.TotalMilliseconds:F2} ms{"",-4} {FormatMemoryDelta(TotalMemoryDelta),-20}");
+        sb.AppendLine(FormattableString.Invariant($"{"TOTAL",-30} {TotalDuration.TotalMilliseconds:F2} ms{"",-4} {FormatMemoryDelta(TotalMemoryDelta),-20}"));
 
         // Validator timing breakdown (if available)
         if (_validatorTimes != null && _validatorTimes.Count > 0)
@@ -261,7 +261,7 @@ public class CompilationMetrics
 
             foreach (var (validator, duration) in _validatorTimes.OrderByDescending(kvp => kvp.Value))
             {
-                var durationStr = $"{duration.TotalMilliseconds:F2} ms";
+                var durationStr = FormattableString.Invariant($"{duration.TotalMilliseconds:F2} ms");
                 sb.AppendLine($"{validator,-40} {durationStr,-15}");
             }
         }
@@ -272,13 +272,13 @@ public class CompilationMetrics
             sb.AppendLine();
             sb.AppendLine("Artifact Counts:");
             if (TokenCount > 0)
-                sb.AppendLine($"  Tokens: {TokenCount:N0}");
+                sb.AppendLine(FormattableString.Invariant($"  Tokens: {TokenCount:N0}"));
             if (AstNodeCount > 0)
-                sb.AppendLine($"  AST Nodes: {AstNodeCount:N0}");
+                sb.AppendLine(FormattableString.Invariant($"  AST Nodes: {AstNodeCount:N0}"));
             if (SymbolCount > 0)
-                sb.AppendLine($"  Symbols: {SymbolCount:N0}");
+                sb.AppendLine(FormattableString.Invariant($"  Symbols: {SymbolCount:N0}"));
             if (DiagnosticCount > 0)
-                sb.AppendLine($"  Diagnostics: {DiagnosticCount:N0}");
+                sb.AppendLine(FormattableString.Invariant($"  Diagnostics: {DiagnosticCount:N0}"));
         }
 
         return sb.ToString();
@@ -510,8 +510,8 @@ public class ProjectCompilationMetrics
         sb.AppendLine("=== Project Compilation Metrics ===");
         sb.AppendLine($"Project: {_projectName}");
         sb.AppendLine($"Configuration: {_configuration}");
-        sb.AppendLine($"Timestamp: {_startTime:yyyy-MM-dd HH:mm:ss} UTC");
-        sb.AppendLine($"Files Compiled: {TotalFiles}");
+        sb.AppendLine(FormattableString.Invariant($"Timestamp: {_startTime:yyyy-MM-dd HH:mm:ss} UTC"));
+        sb.AppendLine(FormattableString.Invariant($"Files Compiled: {TotalFiles}"));
         sb.AppendLine();
 
         sb.AppendLine("Aggregate Phase Breakdown:");
@@ -521,7 +521,7 @@ public class ProjectCompilationMetrics
         var aggregates = AggregatePhaseMetrics;
         foreach (var (phase, metrics) in aggregates.OrderBy(kvp => kvp.Key))
         {
-            var durationStr = $"{metrics.Duration.TotalMilliseconds:F2} ms";
+            var durationStr = FormattableString.Invariant($"{metrics.Duration.TotalMilliseconds:F2} ms");
             var memoryStr = FormatMemoryDelta(metrics.MemoryDelta);
             sb.AppendLine($"{phase,-30} {durationStr,-15} {memoryStr,-20}");
         }
@@ -533,14 +533,14 @@ public class ProjectCompilationMetrics
             sb.AppendLine("Assembly Compilation:");
             foreach (var phase in _assemblyMetrics.Phases)
             {
-                var durationStr = $"{phase.Duration.TotalMilliseconds:F2} ms";
+                var durationStr = FormattableString.Invariant($"{phase.Duration.TotalMilliseconds:F2} ms");
                 var memoryStr = FormatMemoryDelta(phase.MemoryDelta);
                 sb.AppendLine($"{phase.Name,-30} {durationStr,-15} {memoryStr,-20}");
             }
         }
 
         sb.AppendLine(new string('-', 65));
-        sb.AppendLine($"{"TOTAL",-30} {TotalDuration.TotalMilliseconds:F2} ms{"",-4} {FormatMemoryDelta(TotalMemoryDelta),-20}");
+        sb.AppendLine(FormattableString.Invariant($"{"TOTAL",-30} {TotalDuration.TotalMilliseconds:F2} ms{"",-4} {FormatMemoryDelta(TotalMemoryDelta),-20}"));
 
         return sb.ToString();
     }
