@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS1061]: 'Geometry.ShapeType' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Geometry.ShapeType' could be found (are you missing a using directive or an assembly reference?)
-  --> /tmp/tmp109ai3d8/main.spy:24:47
-    |
- 24 |         type_name: str = shape.get_type().name
-    |                                               ^
-    |
-

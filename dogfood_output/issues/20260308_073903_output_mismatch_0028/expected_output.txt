@@ -1,7 +1,0 @@
-Shape MyCircle
-Shape MyRect
-78.53975
-31.4159
-24.0
-20.0
-102.53975

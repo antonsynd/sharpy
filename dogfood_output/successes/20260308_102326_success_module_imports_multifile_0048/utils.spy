@@ -1,6 +1,0 @@
-# Utility functions for mathematical and string operations
-def double_value(x: int) -> int:
-    return x * 2
-
-def combine_strings(a: str, b: str) -> str:
-    return f"{a}-{b}"

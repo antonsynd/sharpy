@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0220]: Cannot pass argument of type 'None' to parameter of type 'DataSource?'
-  --> /tmp/tmpik98qbc0/dogfood_test.spy:85:28
-    |
- 85 |     print(get_cached_value(None))
-    |                            ^^^^
-    |
-

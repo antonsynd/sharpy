@@ -1,9 +1,0 @@
-5.83 units
-24.00 sq
-28.27 sq
-Drawing rectangle: 4.0 x 6.0
-Drawing circle: radius 3.0
-Red
-50.00 sq
-#FFFF00
-3.14

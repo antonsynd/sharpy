@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0738]: 'DogfoodTest.DoublingProcessor' does not implement interface member 'DogfoodTest.IAsyncProcessor<int>.Process(int)'. 'DogfoodTest.DoublingProcessor.Process(int)' cannot implement 'DogfoodTest.IAsyncProcessor<int>.Process(int)' because it does not have the matching return type of 'int'.
-  --> /tmp/tmpe9fpmimn/dogfood_test.spy:25:38
-    |
- 25 |         i = 0
-    |              ^
-    |
-

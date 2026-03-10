@@ -1,6 +1,0 @@
-def main():
-    scores: dict[str, int] = {"alice": 85, "bob": 92, "carol": 78}
-    total: int = 0
-    for score in scores.values():
-        total += score
-    print(total)

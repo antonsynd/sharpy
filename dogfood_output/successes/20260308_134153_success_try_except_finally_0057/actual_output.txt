@@ -1,4 +1,0 @@
-success: got value 20
-caught_error: index 5 out of range
-success: got value 10
-stats: 2 processed, 3 cleanups

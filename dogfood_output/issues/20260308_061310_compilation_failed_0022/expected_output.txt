@@ -1,7 +1,0 @@
-Green
-Rectangle(MyRect, (10.0, 20.0))
-15.0
-Circle(MyCircle, r=10.0)
-314.159
-[Drawing BigCircle as circle at (0.0, 0.0)]
-5.0

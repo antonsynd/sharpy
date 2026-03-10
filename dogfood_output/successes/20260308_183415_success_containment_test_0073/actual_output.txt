@@ -1,7 +1,0 @@
-3
-2
-active:urgent
-inactive:low-priority
-active:review
-inactive:draft
-active:approved

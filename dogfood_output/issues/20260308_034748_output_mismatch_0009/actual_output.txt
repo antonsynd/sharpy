@@ -1,5 +1,0 @@
-INFO: test message
-hello...
-30
-100
-INFO: average is 20.0

@@ -1,7 +1,0 @@
-Processed count: 3
-Applied twice: 18
-Conditional(4): 8
-Conditional(5): 15
-Chained(10): 12
-First processed: 9
-Second processed: 49

@@ -1,7 +1,0 @@
-5.0
-78.53975
-A circle with radius 5.0
-Drawing circle at (0.0, 0.0)
-22.0
-4.0
-3

@@ -1,8 +1,0 @@
-15.0
-16.0
-60.0
-Circle is valid
-88.566370000000002
-VALID: Rectangle[10.0x6.0] at (0.0, 0.0)
-VALID: Circle[r=2.0] at (0.0, 0.0)
-VALID: Triangle at (0.0, 0.0)

@@ -1,6 +1,0 @@
-[Book: Python Guide]
-Code Patterns
-'Python Guide' by Alice Smith
-Code Patterns
-Bob Jones
-2

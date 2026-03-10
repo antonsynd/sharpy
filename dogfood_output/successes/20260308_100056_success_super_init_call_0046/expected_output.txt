@@ -1,6 +1,0 @@
-2
-Bicycle has 2 wheels
-4
-75.0
-Tesla (EV) with 75.0 kWh battery
-75.0

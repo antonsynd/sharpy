@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS1503]: Argument 1: cannot convert from 'Utils.ConsoleLogger' to 'Utils.ILogger'
-  --> /tmp/tmp7fn4s7yw/main.spy:26:64
-    |
- 26 |     analyzer: ShapeAnalyzer = ShapeAnalyzer(logger)
-    |                                                    ^
-    |
-

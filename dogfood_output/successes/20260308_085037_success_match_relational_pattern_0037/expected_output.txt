@@ -1,8 +1,0 @@
-Outstanding: 98
-Excellent: 92
-Good: 80
-Needs improvement
-Boiling
-High fever
-Normal
-Freezing

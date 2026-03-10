@@ -1,7 +1,0 @@
-Item 0 processed
-Item 1 processed
-Item 2 processed
-1550
-OK
-PROC_ERR
-VALID_ERR

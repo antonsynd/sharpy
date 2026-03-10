@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0103]: The name 'multiplier' does not exist in the current context
-  --> /tmp/tmpgfvsmq4b/utils.spy:24:20
-    |
- 24 | 
-    | ^
-    |
-

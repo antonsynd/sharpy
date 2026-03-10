@@ -1,3 +1,0 @@
-Area: 12.0, Perimeter: 14.0
-Area: 78.53975, Perimeter: 31.4159
-90.53975

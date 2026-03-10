@@ -1,8 +1,0 @@
-5.0
-Geometric
-Circle 'Sun' at (0, 0) with radius 5.0
-Rectangle 'Box' at (1, 1) sized 4.0x3.0
-90.53975
-[Circle: r=5.0]
-[Rectangle: 4.0x3.0]
-0.0

@@ -1,5 +1,0 @@
-Button 'Submit' clicked!
-Button 'Submit' clicked!
-Count: 2
-Button 'Submit' clicked!
-Final: 2

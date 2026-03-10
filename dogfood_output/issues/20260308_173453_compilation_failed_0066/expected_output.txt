@@ -1,8 +1,0 @@
-10.0
-3.0
-4.0
-97.38945
-Circle: Sun
-Rectangle: Door
-red
-blue

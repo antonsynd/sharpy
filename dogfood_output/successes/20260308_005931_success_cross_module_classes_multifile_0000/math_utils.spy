@@ -1,6 +1,0 @@
-def square(x: float) -> float:
-    return x * x
-
-class MathHelper:
-    @static
-    PI: float = 3.14

@@ -1,9 +1,0 @@
-Repeated identical compiler error (likely compiler bug): Compilation errors:
-
-error[SPY0103]: Expected end of statement, got Comma
-  --> /tmp/tmpoc9ft64y/dogfood_test.spy:5:27
-    |
-  5 |     first, second = second, first
-    |                           ^
-    |
-

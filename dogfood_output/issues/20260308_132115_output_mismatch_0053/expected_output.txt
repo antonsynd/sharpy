@@ -1,8 +1,0 @@
-4
-HELLO WORLD FROM SHARPY
-hello worl...
-49.0
-30.0
-100
-120
-3.14159

@@ -1,9 +1,0 @@
-Math grades: [85.0, 92.0, 78.0]
-Math count: 3
-Math average: 85.0
-Removed lowest: 78.0
-Has Math: True
---- All Grades ---
-Math: 92.0 85.0 
-Science: 90.0 88.0 
-Courses: ['Math', 'Science']

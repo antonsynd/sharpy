@@ -1,8 +1,0 @@
-# utils.spy - Utility module with helper functions
-from shapes import IShape
-
-def sum_areas(shapes: list[IShape]) -> float:
-    total: float = 0.0
-    for shape in shapes:
-        total += shape.area()
-    return total

@@ -1,8 +1,0 @@
-Discounted prices under $100:
-22.5
-67.5
-9.0
-Premium items:
-laptop
-monitor
-300.0

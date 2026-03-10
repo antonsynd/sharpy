@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS1061]: 'Shapes.Color' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'Shapes.Color' could be found (are you missing a using directive or an assembly reference?)
-  --> /tmp/tmpolk_g0li/main.spy:25:48
-    |
- 25 |     print(c2.color.value)
-    |                          ^
-    |
-

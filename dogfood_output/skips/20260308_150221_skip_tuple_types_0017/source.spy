@@ -1,7 +1,0 @@
-# Test: Tuple unpacking for value swapping (Pythonic pattern)
-def main():
-    first: int = 7
-    second: int = 12
-    first, second = second, first
-    print(first)
-    print(second)

@@ -1,8 +1,0 @@
-314.0
-78.5
-50.0
-12.0
-Circle with radius 10.0
-Rectangle 10.0x5.0
-392.5
-62.0

@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS1061]: 'ShapesBase.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'ShapesBase.Color' could be found (are you missing a using directive or an assembly reference?)
-  --> /tmp/tmphkyufdoe/shapes_base.spy:29:31
-    |
- 29 |     
-    |     ^
-    |
-

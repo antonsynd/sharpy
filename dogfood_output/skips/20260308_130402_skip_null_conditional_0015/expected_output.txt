@@ -1,9 +1,0 @@
-NO_NAME
-NO_NAME
-CAROL
-NO_FRIEND
-NO_DATA
-Alice
-Metropolis
-123 MAIN ST
-Metropolis

@@ -1,4 +1,0 @@
-Unhandled exception. Sharpy.ValueError: 204 is not in list
-   at Sharpy.List`1.Index(T x, Int32 start, Int32 end)
-   at DogfoodTest.Warehouse.FindOrderIndex(Int32 target) in /tmp/tmpglyi3ncg/dogfood_test.spy:line 85
-   at DogfoodTest.Main() in /tmp/tmpglyi3ncg/dogfood_test.spy:line 124

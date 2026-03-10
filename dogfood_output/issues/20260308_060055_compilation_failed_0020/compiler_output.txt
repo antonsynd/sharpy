@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'Color' is never used
-  --> /tmp/tmpolk_g0li/utils.spy:2:20
-    |
-  2 | from shapes import Color, IDrawable
-    |                    ^^^^^
-    |
-

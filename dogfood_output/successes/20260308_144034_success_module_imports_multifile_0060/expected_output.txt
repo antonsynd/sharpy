@@ -1,7 +1,0 @@
-109.10611
-1.0
-Drawing Circle
-12.56636
-12.0
-6.0
-Shape: Circle, Color: Green

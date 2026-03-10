@@ -1,7 +1,0 @@
-A circle with radius 3.0, area: 28.274309999999996
-A rectangle 4.0 by 6.0, area: 24.0
-A circle with radius 3.0
-A rectangle 4.0 by 6.0
-28.274309999999996
-24.0
-52.27431

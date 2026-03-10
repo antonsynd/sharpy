@@ -1,9 +1,0 @@
-Internal compiler error: Compilation errors:
-
-error[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.
-  --> /tmp/tmpa_hgguqh/dogfood_test.spy:7:24
-    |
-  7 |         self._kelvin = self._to_kelvin(celsius)
-    |                        ^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-

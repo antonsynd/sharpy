@@ -1,3 +1,0 @@
-def format_entry(index: int, entry: str) -> str:
-    """Format a log entry with an index."""
-    return f"[{index + 1}] {entry}"

@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'Shape' is never used
-  --> /tmp/tmpejz0xj45/main.spy:3:20
-    |
-  3 | from shapes import Shape, Rectangle, Circle
-    |                    ^^^^^
-    |
-

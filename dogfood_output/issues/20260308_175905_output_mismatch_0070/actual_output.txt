@@ -1,8 +1,0 @@
-ValueError: Sharpy.ValueError: Negative values not allowed
-   at DogfoodTest.DataProcessor.ValidateAndAdd(Int32 value) in /tmp/tmpkaq4p57l/dogfood_test.spy:line 29
-ValidationError: Value exceeds maximum of 100
-Processed: 2
-Errors: 2
-Data: 2
-50
-75

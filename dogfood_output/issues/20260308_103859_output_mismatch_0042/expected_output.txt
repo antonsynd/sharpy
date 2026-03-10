@@ -1,7 +1,0 @@
-3
-50.0
-28.27431
-113.27431
-Rectangle R1: 3.0 x 4.0
-Circle C1: radius=2.0
-Rectangle R2: 5.0 x 6.0

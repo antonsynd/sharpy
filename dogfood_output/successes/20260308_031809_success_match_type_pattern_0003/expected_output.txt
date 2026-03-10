@@ -1,7 +1,0 @@
-neg_int:-25
-zero
-pos_int:42
-short_str:2
-long_str:hello
-small_float:0.5
-big_float:99.9

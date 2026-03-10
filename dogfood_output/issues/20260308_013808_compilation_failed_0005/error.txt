@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS1061]: 'Utils.Box<T>' does not contain a definition for '_Value' and no accessible extension method '_Value' accepting a first argument of type 'Utils.Box<T>' could be found (are you missing a using directive or an assembly reference?)
-  --> /tmp/tmpehops7fr/utils.spy:24:25
-    |
- 24 |     print(reverse_string("hello"))
-    |                         ^
-    |
-
