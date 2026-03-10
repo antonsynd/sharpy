@@ -1,0 +1,57 @@
+# Build artifacts & .NET output
+**/bin/
+**/obj/
+build/
+dist/
+
+# Dependencies
+node_modules/
+
+# Test fixtures (compiled .cs from .spy, not real source)
+src/Sharpy.Compiler.Tests/Integration/TestFixtures/**/*.cs
+
+# Dogfood output (generated test sessions)
+dogfood_output/
+
+# Build tools state
+build_tools/sharpy_auto_builder/state/
+
+# Documentation site output
+_site/
+docs/_build/
+
+# Editor/IDE configs
+.vscode/
+.serena/
+editors/
+
+# Claude/Copilot tooling
+.claude/
+.task_cache/
+.github/
+
+# Benchmarks (not core logic)
+benchmarks/
+src/Sharpy.Compiler.Benchmarks/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Binary/generated files
+*.dll
+*.pdb
+*.db
+*.png
+*.so
+
+# OS files
+.DS_Store
+
+# Logs & temp
+*.log
+*.swp
+screenlog.*
+**/TestResults/
