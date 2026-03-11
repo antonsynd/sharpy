@@ -1,0 +1,13 @@
+# Test: variables declared in if/else branches are independent (#363)
+# Variable declared only in one branch should not cause conflicts
+
+def main():
+    x: int = 10
+    if x > 5:
+        a: str = "then"
+        print(a)
+    else:
+        b: int = 99
+        print(b)
+    # After the if, neither a nor b should affect outer scope
+    print("done")

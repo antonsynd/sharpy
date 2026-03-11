@@ -1,0 +1,14 @@
+# Test: same variable name declared with different types in if/elif/else branches
+# Each branch is independent — variables should not leak between branches (#363)
+
+def main():
+    x: int = 42
+    if x > 100:
+        p: int = 1
+        print(p)
+    elif x > 20:
+        p: str = "hello"
+        print(p)
+    else:
+        p: float = 3.14
+        print(p)
