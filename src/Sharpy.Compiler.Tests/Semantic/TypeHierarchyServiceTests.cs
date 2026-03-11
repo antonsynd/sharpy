@@ -225,6 +225,107 @@ public class TypeHierarchyServiceTests
         TypeHierarchyService.InheritsFrom(cls, iface).Should().BeTrue();
     }
 
+    // ─── InheritsFrom (module-qualified identity) ─────────────────────
+
+    [Fact]
+    public void InheritsFrom_SameNameDifferentModule_ReturnsFalse()
+    {
+        var parentA = new TypeSymbol
+        {
+            Name = "Foo",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            DefiningModule = "module_a"
+        };
+        var parentB = new TypeSymbol
+        {
+            Name = "Foo",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            DefiningModule = "module_b"
+        };
+        var child = new TypeSymbol
+        {
+            Name = "Child",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            BaseType = parentA,
+            DefiningModule = "module_a"
+        };
+
+        // Child inherits from module_a.Foo, but not from module_b.Foo
+        TypeHierarchyService.InheritsFrom(child, parentA).Should().BeTrue();
+        TypeHierarchyService.InheritsFrom(child, parentB).Should().BeFalse();
+    }
+
+    [Fact]
+    public void InheritsFrom_SameNameSameModule_ReturnsTrue()
+    {
+        var parent = new TypeSymbol
+        {
+            Name = "Base",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            DefiningModule = "shared_module"
+        };
+        // Simulate cross-module type identity: different instance, same module+name
+        var parentAlias = new TypeSymbol
+        {
+            Name = "Base",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            DefiningModule = "shared_module"
+        };
+        var child = new TypeSymbol
+        {
+            Name = "Child",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            BaseType = parent
+        };
+
+        TypeHierarchyService.InheritsFrom(child, parentAlias).Should().BeTrue();
+    }
+
+    [Fact]
+    public void InheritsFrom_SameNameDifferentFilePath_ReturnsFalse()
+    {
+        var parentA = new TypeSymbol
+        {
+            Name = "Config",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            DefiningFilePath = "/src/a/config.spy"
+        };
+        var parentB = new TypeSymbol
+        {
+            Name = "Config",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            DefiningFilePath = "/src/b/config.spy"
+        };
+        var child = new TypeSymbol
+        {
+            Name = "MyConfig",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            BaseType = parentA
+        };
+
+        TypeHierarchyService.InheritsFrom(child, parentA).Should().BeTrue();
+        TypeHierarchyService.InheritsFrom(child, parentB).Should().BeFalse();
+    }
+
+    [Fact]
+    public void InheritsFrom_ReferenceEquality_StillWorks()
+    {
+        // Verify the primary path (reference equality) still works
+        var parent = MakeClass("Parent");
+        var child = MakeClass("Child", parent);
+
+        TypeHierarchyService.InheritsFrom(child, parent).Should().BeTrue();
+    }
+
     // ─── FindField ───────────────────────────────────────────────────
 
     [Fact]
