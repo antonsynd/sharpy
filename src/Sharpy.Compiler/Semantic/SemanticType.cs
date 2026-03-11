@@ -309,8 +309,11 @@ public sealed record UserDefinedType : SemanticType
 
         if (other is UserDefinedType otherUdt)
         {
-            // Name-based comparison works even when Symbol is null
-            // (e.g., imported function return types don't have Symbol resolved)
+            // Name-based comparison as first check — necessary when Symbol is null
+            // (e.g., CLR types, imported function return types without resolved symbols).
+            // When both symbols are available, InheritsFrom uses module-qualified
+            // identity (IsSameType) which avoids false positives for same-named types
+            // in different modules.
             if (Name == otherUdt.Name)
                 return true;
 
@@ -321,8 +324,9 @@ public sealed record UserDefinedType : SemanticType
                     return true;
 
                 // When target symbol is available, use TypeHierarchyService for full
-                // hierarchy + interface check. When null (e.g., cross-module imports
-                // where the symbol isn't resolved), fall back to name-based base chain walk.
+                // hierarchy + interface check (uses module-qualified identity internally).
+                // When null (e.g., cross-module imports where the symbol isn't resolved),
+                // fall back to name-based base chain walk.
                 if (otherUdt.Symbol != null)
                 {
                     return TypeHierarchyService.InheritsFrom(Symbol, otherUdt.Symbol);

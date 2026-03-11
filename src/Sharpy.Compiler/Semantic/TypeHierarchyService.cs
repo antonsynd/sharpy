@@ -80,13 +80,10 @@ internal static class TypeHierarchyService
         visited.Add(derived);
 
         // Walk base class chain
-        // TODO(#361): Name equality is a fallback for cross-module type identity where
-        // different TypeSymbol instances may represent the same logical type. This is an
-        // approximation — unrelated types with the same short name will incorrectly match.
         var current = ResolveBaseType(derived, binding);
         while (current != null && visited.Add(current))
         {
-            if (ReferenceEquals(current, baseType) || current.Name == baseType.Name)
+            if (IsSameType(current, baseType))
                 return true;
             current = ResolveBaseType(current, binding);
         }
@@ -94,7 +91,7 @@ internal static class TypeHierarchyService
         // Check all interfaces transitively (base class interfaces + interface inheritance)
         foreach (var iface in GetAllInterfaces(derived, binding))
         {
-            if (ReferenceEquals(iface, baseType) || iface.Name == baseType.Name)
+            if (IsSameType(iface, baseType))
                 return true;
         }
 
@@ -133,7 +130,7 @@ internal static class TypeHierarchyService
         // Search interfaces if requested
         if (searchInterfaces)
         {
-            foreach (var iface in ResolveInterfaces(type, binding))
+            foreach (var iface in GetDirectInterfaces(type, binding))
             {
                 var member = FindByName(memberSelector(iface), name);
                 if (member != null)
@@ -235,16 +232,39 @@ internal static class TypeHierarchyService
     // ─── Private helpers ──────────────────────────────────────────────
 
     /// <summary>
+    /// Checks whether two TypeSymbol instances represent the same logical type.
+    /// Uses reference equality as the fast path. For cross-module type identity,
+    /// uses (DefiningModule, Name) or (DefiningFilePath, Name) when available.
+    /// Does NOT fall back to name-only comparison to avoid false positives.
+    /// </summary>
+    private static bool IsSameType(TypeSymbol a, TypeSymbol b)
+    {
+        if (ReferenceEquals(a, b))
+            return true;
+
+        // Cross-module: both have DefiningModule set
+        if (a.DefiningModule != null && b.DefiningModule != null)
+            return a.DefiningModule == b.DefiningModule && a.Name == b.Name;
+
+        // Same-project cross-file: both have DefiningFilePath set
+        if (a.DefiningFilePath != null && b.DefiningFilePath != null)
+            return a.DefiningFilePath == b.DefiningFilePath && a.Name == b.Name;
+
+        // Cannot determine identity without module/file context — conservative false
+        return false;
+    }
+
+    /// <summary>
     /// Resolves the base type for a symbol, checking the binding first then the symbol property.
     /// </summary>
     private static TypeSymbol? ResolveBaseType(TypeSymbol symbol, SemanticBinding? binding)
         => binding?.GetBaseType(symbol) ?? symbol.BaseType;
 
     /// <summary>
-    /// Resolves the direct interfaces for a symbol, checking the binding first then the symbol property.
-    /// Returns the TypeSymbol definitions (unwraps InterfaceReference).
+    /// Returns the direct interfaces for a symbol (non-transitive), checking the binding first
+    /// then the symbol property. Returns the TypeSymbol definitions (unwraps InterfaceReference).
     /// </summary>
-    private static IReadOnlyList<TypeSymbol> ResolveInterfaces(TypeSymbol symbol, SemanticBinding? binding)
+    internal static IReadOnlyList<TypeSymbol> GetDirectInterfaces(TypeSymbol symbol, SemanticBinding? binding = null)
     {
         IReadOnlyList<InterfaceReference>? refs = null;
         if (binding != null)
@@ -261,18 +281,14 @@ internal static class TypeHierarchyService
 
     /// <summary>
     /// Enqueues direct interface TypeSymbols from a type into the BFS queue.
+    /// Delegates to <see cref="GetDirectInterfaces"/> to avoid duplicate logic.
     /// </summary>
     private static void EnqueueDirectInterfaces(
         TypeSymbol symbol, SemanticBinding? binding, Queue<TypeSymbol> queue)
     {
-        IReadOnlyList<InterfaceReference>? refs = null;
-        if (binding != null)
-            refs = binding.GetInterfaces(symbol);
-
-        var interfaces = refs ?? (IReadOnlyList<InterfaceReference>)symbol.Interfaces;
-        foreach (var iface in interfaces)
+        foreach (var iface in GetDirectInterfaces(symbol, binding))
         {
-            queue.Enqueue(iface.Definition);
+            queue.Enqueue(iface);
         }
     }
 
