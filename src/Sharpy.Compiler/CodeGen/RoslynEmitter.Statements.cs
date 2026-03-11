@@ -974,6 +974,11 @@ internal partial class RoslynEmitter
 
         var condition = GenerateExpression(ifStmt.Test);
 
+        // Save scope before the if statement so each branch (then/elif/else)
+        // gets an independent copy. This prevents variable declarations in one
+        // branch from leaking into sibling branches (fixes #363).
+        var preIfScope = SaveScope();
+
         // Generate then-block with narrowing if applicable
         BlockSyntax thenBlock;
 
@@ -1004,6 +1009,11 @@ internal partial class RoslynEmitter
                 PopIsInstanceNarrowing(varName);
         }
 
+        // Save scope after then-block so we can restore it after all branches.
+        // Post-if code needs to see then-block's variable declarations for correct
+        // C# redeclaration handling (e.g., versioning same-named variables).
+        var postThenScope = SaveScope();
+
         ElseClauseSyntax? elseClause = null;
 
         // Process elif clauses from last to first to build nested if-else structure
@@ -1014,6 +1024,9 @@ internal partial class RoslynEmitter
             // Start with the final else block if it exists
             if (ifStmt.ElseBody.Length > 0)
             {
+                // Restore to pre-if scope so else doesn't see then-block variables (#363)
+                RestoreScope(preIfScope);
+
                 // Push isinstance narrowings for else-body when NarrowInThen is false
                 // (i.e., `not isinstance(x, T)` → narrow x to T in else branch)
                 if (isInstanceNarrowingInfo.HasValue && !isInstanceNarrowingInfo.Value.NarrowInThen)
@@ -1042,11 +1055,15 @@ internal partial class RoslynEmitter
                     foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
                         PopIsInstanceNarrowing(varName);
                 }
+
             }
 
             // Process elif clauses in reverse order
             for (int i = ifStmt.ElifClauses.Length - 1; i >= 0; i--)
             {
+                // Restore to pre-if scope so elif doesn't see then-block or other elif variables (#363)
+                RestoreScope(preIfScope);
+
                 var elif = ifStmt.ElifClauses[i];
                 var elifCondition = GenerateExpression(elif.Test);
 
@@ -1093,6 +1110,10 @@ internal partial class RoslynEmitter
                 elseClause = ElseClause(currentElse);
             }
         }
+
+        // Restore to post-then scope so code after the if sees then-block's
+        // variable declarations for correct C# redeclaration handling.
+        RestoreScope(postThenScope);
 
         return IfStatement(condition, thenBlock, elseClause);
     }
