@@ -1,0 +1,13 @@
+# Test: method call on interface-typed variable (#364)
+
+interface IDevice:
+    def read(self) -> str:
+        ...
+
+class Sensor(IDevice):
+    def read(self) -> str:
+        return "42"
+
+def main():
+    sensor: IDevice = Sensor()
+    print(sensor.read())

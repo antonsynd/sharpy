@@ -1,0 +1,21 @@
+# Test: method call through parent interface on child interface variable (#364)
+
+interface IBase:
+    def name(self) -> str:
+        ...
+
+interface IChild(IBase):
+    def value(self) -> int:
+        ...
+
+class Widget(IChild):
+    def name(self) -> str:
+        return "widget"
+
+    def value(self) -> int:
+        return 99
+
+def main():
+    w: IChild = Widget()
+    print(w.name())
+    print(w.value())
