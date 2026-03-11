@@ -6,12 +6,21 @@ using Sharpy.Compiler.Parser.Ast;
 namespace Sharpy.Compiler.Parser;
 
 /// <summary>
-/// Utility class for dumping AST nodes in a human-readable tree format
+/// Utility class for dumping AST nodes in a human-readable tree format.
+/// Inherits from <see cref="AstVisitor"/> to leverage centralized node dispatch,
+/// eliminating a duplicate switch statement for AST node types.
 /// </summary>
-internal class AstDumper
+internal class AstDumper : AstVisitor
 {
     private readonly StringBuilder _output;
     private const string IndentUnit = "  ";
+
+    // Context fields set before each Visit dispatch
+    private int _depth;
+    private bool _isLast;
+    private string _indent = "";
+    private string _prefix = "";
+    private string _childPrefix = "";
 
     public AstDumper()
     {
@@ -35,738 +44,996 @@ internal class AstDumper
 
         for (int i = 0; i < module.Body.Length; i++)
         {
-            DumpNode(module.Body[i], 2, i == module.Body.Length - 1);
+            VisitChild(module.Body[i], 2, i == module.Body.Length - 1);
         }
 
         return _output.ToString();
     }
 
-    private void DumpNode(Node node, int depth, bool isLast)
+    /// <summary>
+    /// Visit a child node with specific depth and isLast context.
+    /// Sets up the indent/prefix fields and dispatches via AstVisitor.
+    /// </summary>
+    private void VisitChild(Node node, int depth, bool isLast)
     {
-        var indent = new string(' ', depth * IndentUnit.Length);
-        var prefix = isLast ? "└─ " : "├─ ";
-        var childPrefix = isLast ? "   " : "│  ";
+        _depth = depth;
+        _isLast = isLast;
+        _indent = new string(' ', depth * IndentUnit.Length);
+        _prefix = isLast ? "└─ " : "├─ ";
+        _childPrefix = isLast ? "   " : "│  ";
+        Visit(node);
+    }
 
-        switch (node)
+    #region Default handling
+
+    public override void DefaultVisit(Node node)
+    {
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}{node.GetType().Name} @ L{node.LineStart}:C{node.ColumnStart}");
+    }
+
+    #endregion
+
+    #region Statements - Simple
+
+    public override void VisitExpressionStatement(ExpressionStatement node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ExpressionStatement @ L{node.LineStart}:C{node.ColumnStart}");
+        VisitChild(node.Expression, depth + 1, true);
+    }
+
+    public override void VisitAssignment(Assignment node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}Assignment @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Operator: {node.Operator}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Target:");
+        VisitChild(node.Target, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Value:");
+        VisitChild(node.Value, depth + 2, true);
+    }
+
+    public override void VisitVariableDeclaration(VariableDeclaration node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}VariableDeclaration @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {node.Name}");
+        DumpDecorators(node.Decorators, depth, indent, childPrefix);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}IsConst: {node.IsConst}");
+        if (node.Type != null)
         {
-            // Statements
-            case ExpressionStatement exprStmt:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ExpressionStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                DumpNode(exprStmt.Expression, depth + 1, true);
-                break;
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Type:");
+            DumpTypeAnnotation(node.Type, depth + 2, node.InitialValue == null);
+        }
+        if (node.InitialValue != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}InitialValue:");
+            VisitChild(node.InitialValue, depth + 2, true);
+        }
+    }
 
-            case Assignment assignment:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}Assignment @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Operator: {assignment.Operator}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Target:");
-                DumpNode(assignment.Target, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Value:");
-                DumpNode(assignment.Value, depth + 2, true);
-                break;
+    public override void VisitReturnStatement(ReturnStatement node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ReturnStatement @ L{node.LineStart}:C{node.ColumnStart}");
+        if (node.Value != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Value:");
+            VisitChild(node.Value, depth + 1, true);
+        }
+    }
 
-            case VariableDeclaration varDecl:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}VariableDeclaration @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {varDecl.Name}");
-                DumpDecorators(varDecl.Decorators, depth, indent, childPrefix);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}IsConst: {varDecl.IsConst}");
-                if (varDecl.Type != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Type:");
-                    DumpTypeAnnotation(varDecl.Type, depth + 2, varDecl.InitialValue == null);
-                }
-                if (varDecl.InitialValue != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}InitialValue:");
-                    DumpNode(varDecl.InitialValue, depth + 2, true);
-                }
-                break;
+    public override void VisitPassStatement(PassStatement node)
+    {
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}PassStatement @ L{node.LineStart}:C{node.ColumnStart}");
+    }
 
-            case ReturnStatement returnStmt:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ReturnStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                if (returnStmt.Value != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Value:");
-                    DumpNode(returnStmt.Value, depth + 1, true);
-                }
-                break;
+    public override void VisitBreakStatement(BreakStatement node)
+    {
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}BreakStatement @ L{node.LineStart}:C{node.ColumnStart}");
+    }
 
-            case PassStatement:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}PassStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                break;
+    public override void VisitContinueStatement(ContinueStatement node)
+    {
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}ContinueStatement @ L{node.LineStart}:C{node.ColumnStart}");
+    }
 
-            case BreakStatement:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}BreakStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                break;
+    public override void VisitRaiseStatement(RaiseStatement node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}RaiseStatement @ L{node.LineStart}:C{node.ColumnStart}");
+        if (node.Exception != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Exception:");
+            VisitChild(node.Exception, depth + 1, true);
+        }
+    }
 
-            case ContinueStatement:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ContinueStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                break;
+    public override void VisitAssertStatement(AssertStatement node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}AssertStatement @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Test:");
+        VisitChild(node.Test, depth + 1, node.Message == null);
+        if (node.Message != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Message:");
+            VisitChild(node.Message, depth + 1, true);
+        }
+    }
 
-            case RaiseStatement raiseStmt:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}RaiseStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                if (raiseStmt.Exception != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Exception:");
-                    DumpNode(raiseStmt.Exception, depth + 1, true);
-                }
-                break;
+    public override void VisitYieldStatement(YieldStatement node)
+    {
+        DefaultVisit(node);
+    }
 
-            case AssertStatement assertStmt:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}AssertStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Test:");
-                DumpNode(assertStmt.Test, depth + 1, assertStmt.Message == null);
-                if (assertStmt.Message != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Message:");
-                    DumpNode(assertStmt.Message, depth + 1, true);
-                }
-                break;
+    public override void VisitBreakWithFlagStatement(BreakWithFlagStatement node)
+    {
+        DefaultVisit(node);
+    }
 
-            case IfStatement ifStmt:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}IfStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Test:");
-                DumpNode(ifStmt.Test, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ThenBody: [{ifStmt.ThenBody.Length} statement(s)]");
-                for (int i = 0; i < ifStmt.ThenBody.Length; i++)
-                {
-                    DumpNode(ifStmt.ThenBody[i], depth + 2, i == ifStmt.ThenBody.Length - 1);
-                }
-                if (ifStmt.ElifClauses.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ElifClauses: [{ifStmt.ElifClauses.Length}]");
-                    for (int i = 0; i < ifStmt.ElifClauses.Length; i++)
-                    {
-                        var elif = ifStmt.ElifClauses[i];
-                        var elifIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var elifPrefix = i == ifStmt.ElifClauses.Length - 1 && ifStmt.ElseBody.Length == 0 ? "└─ " : "├─ ";
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{elifIndent}{elifPrefix}ElifClause @ L{elif.LineStart}:C{elif.ColumnStart}");
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{elifIndent}   Test:");
-                        DumpNode(elif.Test, depth + 3, false);
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{elifIndent}   Body: [{elif.Body.Length} statement(s)]");
-                        for (int j = 0; j < elif.Body.Length; j++)
-                        {
-                            DumpNode(elif.Body[j], depth + 3, j == elif.Body.Length - 1);
-                        }
-                    }
-                }
-                if (ifStmt.ElseBody.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ElseBody: [{ifStmt.ElseBody.Length} statement(s)]");
-                    for (int i = 0; i < ifStmt.ElseBody.Length; i++)
-                    {
-                        DumpNode(ifStmt.ElseBody[i], depth + 2, i == ifStmt.ElseBody.Length - 1);
-                    }
-                }
-                break;
+    #endregion
 
-            case WhileStatement whileStmt:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}WhileStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Test:");
-                DumpNode(whileStmt.Test, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{whileStmt.Body.Length} statement(s)]");
-                for (int i = 0; i < whileStmt.Body.Length; i++)
-                {
-                    DumpNode(whileStmt.Body[i], depth + 2, i == whileStmt.Body.Length - 1);
-                }
-                break;
+    #region Statements - Compound
 
-            case ForStatement forStmt:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ForStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Target:");
-                DumpNode(forStmt.Target, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Iterator:");
-                DumpNode(forStmt.Iterator, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{forStmt.Body.Length} statement(s)]");
-                for (int i = 0; i < forStmt.Body.Length; i++)
+    public override void VisitIfStatement(IfStatement node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}IfStatement @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Test:");
+        VisitChild(node.Test, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ThenBody: [{node.ThenBody.Length} statement(s)]");
+        for (int i = 0; i < node.ThenBody.Length; i++)
+        {
+            VisitChild(node.ThenBody[i], depth + 2, i == node.ThenBody.Length - 1);
+        }
+        if (node.ElifClauses.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ElifClauses: [{node.ElifClauses.Length}]");
+            for (int i = 0; i < node.ElifClauses.Length; i++)
+            {
+                var elif = node.ElifClauses[i];
+                var elifIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+                var elifPrefix = i == node.ElifClauses.Length - 1 && node.ElseBody.Length == 0 ? "└─ " : "├─ ";
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{elifIndent}{elifPrefix}ElifClause @ L{elif.LineStart}:C{elif.ColumnStart}");
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{elifIndent}   Test:");
+                VisitChild(elif.Test, depth + 3, false);
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{elifIndent}   Body: [{elif.Body.Length} statement(s)]");
+                for (int j = 0; j < elif.Body.Length; j++)
                 {
-                    DumpNode(forStmt.Body[i], depth + 2, i == forStmt.Body.Length - 1);
+                    VisitChild(elif.Body[j], depth + 3, j == elif.Body.Length - 1);
                 }
-                break;
+            }
+        }
+        if (node.ElseBody.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ElseBody: [{node.ElseBody.Length} statement(s)]");
+            for (int i = 0; i < node.ElseBody.Length; i++)
+            {
+                VisitChild(node.ElseBody[i], depth + 2, i == node.ElseBody.Length - 1);
+            }
+        }
+    }
 
-            case TryStatement tryStmt:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TryStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{tryStmt.Body.Length} statement(s)]");
-                for (int i = 0; i < tryStmt.Body.Length; i++)
-                {
-                    DumpNode(tryStmt.Body[i], depth + 2, i == tryStmt.Body.Length - 1);
-                }
-                if (tryStmt.Handlers.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Handlers: [{tryStmt.Handlers.Length}]");
-                    for (int i = 0; i < tryStmt.Handlers.Length; i++)
-                    {
-                        var handler = tryStmt.Handlers[i];
-                        var handlerIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var handlerPrefix = i == tryStmt.Handlers.Length - 1 && tryStmt.ElseBody.Length == 0 && tryStmt.FinallyBody.Length == 0 ? "└─ " : "├─ ";
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}{handlerPrefix}ExceptHandler @ L{handler.LineStart}:C{handler.ColumnStart}");
-                        if (handler.ExceptionType != null)
-                        {
-                            _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}   ExceptionType:");
-                            DumpTypeAnnotation(handler.ExceptionType, depth + 3, handler.Name == null);
-                        }
-                        if (handler.Name != null)
-                        {
-                            _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}   Name: {handler.Name}");
-                        }
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}   Body: [{handler.Body.Length} statement(s)]");
-                        for (int j = 0; j < handler.Body.Length; j++)
-                        {
-                            DumpNode(handler.Body[j], depth + 3, j == handler.Body.Length - 1);
-                        }
-                    }
-                }
-                if (tryStmt.ElseBody.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ElseBody: [{tryStmt.ElseBody.Length} statement(s)]");
-                    for (int i = 0; i < tryStmt.ElseBody.Length; i++)
-                    {
-                        DumpNode(tryStmt.ElseBody[i], depth + 2, i == tryStmt.ElseBody.Length - 1 && tryStmt.FinallyBody.Length == 0);
-                    }
-                }
-                if (tryStmt.FinallyBody.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}FinallyBody: [{tryStmt.FinallyBody.Length} statement(s)]");
-                    for (int i = 0; i < tryStmt.FinallyBody.Length; i++)
-                    {
-                        DumpNode(tryStmt.FinallyBody[i], depth + 2, i == tryStmt.FinallyBody.Length - 1);
-                    }
-                }
-                break;
+    public override void VisitWhileStatement(WhileStatement node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}WhileStatement @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Test:");
+        VisitChild(node.Test, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
+        for (int i = 0; i < node.Body.Length; i++)
+        {
+            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
+        }
+    }
 
-            case FunctionDef funcDef:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}FunctionDef @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {funcDef.Name}");
-                if (funcDef.DocString != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(funcDef.DocString)}\"");
-                }
-                DumpDecorators(funcDef.Decorators, depth, indent, childPrefix);
-                if (funcDef.Parameters.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parameters: [{funcDef.Parameters.Length}]");
-                    for (int i = 0; i < funcDef.Parameters.Length; i++)
-                    {
-                        DumpParameter(funcDef.Parameters[i], depth + 2, i == funcDef.Parameters.Length - 1);
-                    }
-                }
-                if (funcDef.ReturnType != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ReturnType:");
-                    DumpTypeAnnotation(funcDef.ReturnType, depth + 2, false);
-                }
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{funcDef.Body.Length} statement(s)]");
-                for (int i = 0; i < funcDef.Body.Length; i++)
-                {
-                    DumpNode(funcDef.Body[i], depth + 2, i == funcDef.Body.Length - 1);
-                }
-                break;
+    public override void VisitForStatement(ForStatement node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ForStatement @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Target:");
+        VisitChild(node.Target, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Iterator:");
+        VisitChild(node.Iterator, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
+        for (int i = 0; i < node.Body.Length; i++)
+        {
+            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
+        }
+    }
 
-            case ClassDef classDef:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ClassDef @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {classDef.Name}");
-                if (classDef.DocString != null)
+    public override void VisitTryStatement(TryStatement node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TryStatement @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
+        for (int i = 0; i < node.Body.Length; i++)
+        {
+            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
+        }
+        if (node.Handlers.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Handlers: [{node.Handlers.Length}]");
+            for (int i = 0; i < node.Handlers.Length; i++)
+            {
+                var handler = node.Handlers[i];
+                var handlerIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+                var handlerPrefix = i == node.Handlers.Length - 1 && node.ElseBody.Length == 0 && node.FinallyBody.Length == 0 ? "└─ " : "├─ ";
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}{handlerPrefix}ExceptHandler @ L{handler.LineStart}:C{handler.ColumnStart}");
+                if (handler.ExceptionType != null)
                 {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(classDef.DocString)}\"");
+                    _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}   ExceptionType:");
+                    DumpTypeAnnotation(handler.ExceptionType, depth + 3, handler.Name == null);
                 }
-                if (classDef.TypeParameters.Length > 0)
+                if (handler.Name != null)
                 {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}TypeParameters: [{string.Join(", ", classDef.TypeParameters.Select(FormatTypeParam))}]");
+                    _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}   Name: {handler.Name}");
                 }
-                DumpDecorators(classDef.Decorators, depth, indent, childPrefix);
-                if (classDef.BaseClasses.Length > 0)
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}   Body: [{handler.Body.Length} statement(s)]");
+                for (int j = 0; j < handler.Body.Length; j++)
                 {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}BaseClasses: [{classDef.BaseClasses.Length}]");
-                    for (int i = 0; i < classDef.BaseClasses.Length; i++)
-                    {
-                        DumpTypeAnnotation(classDef.BaseClasses[i], depth + 2, i == classDef.BaseClasses.Length - 1);
-                    }
+                    VisitChild(handler.Body[j], depth + 3, j == handler.Body.Length - 1);
                 }
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{classDef.Body.Length} statement(s)]");
-                for (int i = 0; i < classDef.Body.Length; i++)
-                {
-                    DumpNode(classDef.Body[i], depth + 2, i == classDef.Body.Length - 1);
-                }
-                break;
+            }
+        }
+        if (node.ElseBody.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ElseBody: [{node.ElseBody.Length} statement(s)]");
+            for (int i = 0; i < node.ElseBody.Length; i++)
+            {
+                VisitChild(node.ElseBody[i], depth + 2, i == node.ElseBody.Length - 1 && node.FinallyBody.Length == 0);
+            }
+        }
+        if (node.FinallyBody.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}FinallyBody: [{node.FinallyBody.Length} statement(s)]");
+            for (int i = 0; i < node.FinallyBody.Length; i++)
+            {
+                VisitChild(node.FinallyBody[i], depth + 2, i == node.FinallyBody.Length - 1);
+            }
+        }
+    }
 
-            case StructDef structDef:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}StructDef @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {structDef.Name}");
-                if (structDef.DocString != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(structDef.DocString)}\"");
-                }
-                DumpDecorators(structDef.Decorators, depth, indent, childPrefix);
-                if (structDef.TypeParameters.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}TypeParameters: [{string.Join(", ", structDef.TypeParameters.Select(FormatTypeParam))}]");
-                }
-                if (structDef.BaseClasses.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}BaseClasses: [{structDef.BaseClasses.Length}]");
-                    for (int i = 0; i < structDef.BaseClasses.Length; i++)
-                    {
-                        DumpTypeAnnotation(structDef.BaseClasses[i], depth + 2, i == structDef.BaseClasses.Length - 1);
-                    }
-                }
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{structDef.Body.Length} statement(s)]");
-                for (int i = 0; i < structDef.Body.Length; i++)
-                {
-                    DumpNode(structDef.Body[i], depth + 2, i == structDef.Body.Length - 1);
-                }
-                break;
+    public override void VisitWithStatement(WithStatement node)
+    {
+        DefaultVisit(node);
+    }
 
-            case InterfaceDef interfaceDef:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}InterfaceDef @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {interfaceDef.Name}");
-                if (interfaceDef.DocString != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(interfaceDef.DocString)}\"");
-                }
-                if (interfaceDef.TypeParameters.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}TypeParameters: [{string.Join(", ", interfaceDef.TypeParameters.Select(FormatTypeParam))}]");
-                }
-                if (interfaceDef.BaseInterfaces.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}BaseInterfaces: [{interfaceDef.BaseInterfaces.Length}]");
-                    for (int i = 0; i < interfaceDef.BaseInterfaces.Length; i++)
-                    {
-                        DumpTypeAnnotation(interfaceDef.BaseInterfaces[i], depth + 2, i == interfaceDef.BaseInterfaces.Length - 1);
-                    }
-                }
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{interfaceDef.Body.Length} statement(s)]");
-                for (int i = 0; i < interfaceDef.Body.Length; i++)
-                {
-                    DumpNode(interfaceDef.Body[i], depth + 2, i == interfaceDef.Body.Length - 1);
-                }
-                break;
+    #endregion
 
-            case EnumDef enumDef:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}EnumDef @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {enumDef.Name}");
-                if (enumDef.DocString != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(enumDef.DocString)}\"");
-                }
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Members: [{enumDef.Members.Length}]");
-                for (int i = 0; i < enumDef.Members.Length; i++)
-                {
-                    var member = enumDef.Members[i];
-                    var memIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                    var memPrefix = i == enumDef.Members.Length - 1 ? "└─ " : "├─ ";
-                    if (member.Value != null)
-                    {
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{memIndent}{memPrefix}{member.Name} @ L{member.LineStart}:C{member.ColumnStart} =");
-                        DumpNode(member.Value, depth + 3, true);
-                    }
-                    else
-                    {
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{memIndent}{memPrefix}{member.Name} @ L{member.LineStart}:C{member.ColumnStart}");
-                    }
-                }
-                break;
+    #region Statements - Definitions
 
-            case DelegateDef delegateDef:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}DelegateDef @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {delegateDef.Name}");
-                if (delegateDef.DocString != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(delegateDef.DocString)}\"");
-                }
-                if (delegateDef.TypeParameters.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}TypeParameters: [{string.Join(", ", delegateDef.TypeParameters.Select(FormatTypeParam))}]");
-                }
-                if (delegateDef.Parameters.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parameters: [{delegateDef.Parameters.Length}]");
-                    for (int i = 0; i < delegateDef.Parameters.Length; i++)
-                    {
-                        DumpParameter(delegateDef.Parameters[i], depth + 2, i == delegateDef.Parameters.Length - 1);
-                    }
-                }
-                if (delegateDef.ReturnType != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ReturnType:");
-                    DumpTypeAnnotation(delegateDef.ReturnType, depth + 2, true);
-                }
-                break;
+    public override void VisitFunctionDef(FunctionDef node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}FunctionDef @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {node.Name}");
+        if (node.DocString != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(node.DocString)}\"");
+        }
+        DumpDecorators(node.Decorators, depth, indent, childPrefix);
+        if (node.Parameters.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parameters: [{node.Parameters.Length}]");
+            for (int i = 0; i < node.Parameters.Length; i++)
+            {
+                DumpParameter(node.Parameters[i], depth + 2, i == node.Parameters.Length - 1);
+            }
+        }
+        if (node.ReturnType != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ReturnType:");
+            DumpTypeAnnotation(node.ReturnType, depth + 2, false);
+        }
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
+        for (int i = 0; i < node.Body.Length; i++)
+        {
+            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
+        }
+    }
 
-            case PropertyDef propDef:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}PropertyDef @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {propDef.Name}");
-                DumpDecorators(propDef.Decorators, depth, indent, childPrefix);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Accessor: {propDef.Accessor}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}FunctionStyle: {propDef.IsFunctionStyle}");
-                if (propDef.ExplicitInterface != null)
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ExplicitInterface: {propDef.ExplicitInterface}");
-                if (propDef.Type != null)
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Type: {propDef.Type.Name}");
-                if (propDef.ReturnType != null)
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ReturnType: {propDef.ReturnType.Name}");
-                if (propDef.DefaultValue != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DefaultValue:");
-                    DumpNode(propDef.DefaultValue, depth + 2, true);
-                }
-                if (propDef.IsFunctionStyle && propDef.Body.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{propDef.Body.Length}]");
-                    for (int i = 0; i < propDef.Body.Length; i++)
-                    {
-                        DumpNode(propDef.Body[i], depth + 2, i == propDef.Body.Length - 1);
-                    }
-                }
-                break;
+    public override void VisitClassDef(ClassDef node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ClassDef @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {node.Name}");
+        if (node.DocString != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(node.DocString)}\"");
+        }
+        if (node.TypeParameters.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}TypeParameters: [{string.Join(", ", node.TypeParameters.Select(FormatTypeParam))}]");
+        }
+        DumpDecorators(node.Decorators, depth, indent, childPrefix);
+        if (node.BaseClasses.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}BaseClasses: [{node.BaseClasses.Length}]");
+            for (int i = 0; i < node.BaseClasses.Length; i++)
+            {
+                DumpTypeAnnotation(node.BaseClasses[i], depth + 2, i == node.BaseClasses.Length - 1);
+            }
+        }
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
+        for (int i = 0; i < node.Body.Length; i++)
+        {
+            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
+        }
+    }
 
-            case EventDef eventDef:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}EventDef @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {eventDef.Name}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Accessor: {eventDef.Accessor}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}FunctionStyle: {eventDef.IsFunctionStyle}");
-                if (eventDef.Type != null)
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Type: {eventDef.Type.Name}");
-                if (eventDef.Parameters.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parameters: [{eventDef.Parameters.Length}]");
-                    for (int i = 0; i < eventDef.Parameters.Length; i++)
-                    {
-                        DumpParameter(eventDef.Parameters[i], depth + 2, i == eventDef.Parameters.Length - 1);
-                    }
-                }
-                if (eventDef.IsFunctionStyle && eventDef.Body.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{eventDef.Body.Length}]");
-                    for (int i = 0; i < eventDef.Body.Length; i++)
-                    {
-                        DumpNode(eventDef.Body[i], depth + 2, i == eventDef.Body.Length - 1);
-                    }
-                }
-                DumpDecorators(eventDef.Decorators, depth, indent, childPrefix);
-                break;
+    public override void VisitStructDef(StructDef node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}StructDef @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {node.Name}");
+        if (node.DocString != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(node.DocString)}\"");
+        }
+        DumpDecorators(node.Decorators, depth, indent, childPrefix);
+        if (node.TypeParameters.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}TypeParameters: [{string.Join(", ", node.TypeParameters.Select(FormatTypeParam))}]");
+        }
+        if (node.BaseClasses.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}BaseClasses: [{node.BaseClasses.Length}]");
+            for (int i = 0; i < node.BaseClasses.Length; i++)
+            {
+                DumpTypeAnnotation(node.BaseClasses[i], depth + 2, i == node.BaseClasses.Length - 1);
+            }
+        }
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
+        for (int i = 0; i < node.Body.Length; i++)
+        {
+            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
+        }
+    }
 
-            case ImportStatement importStmt:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ImportStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Names: [{importStmt.Names.Length}]");
-                for (int i = 0; i < importStmt.Names.Length; i++)
-                {
-                    var import = importStmt.Names[i];
-                    var impIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                    var impPrefix = i == importStmt.Names.Length - 1 ? "└─ " : "├─ ";
-                    if (import.AsName != null)
-                    {
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
-                    }
-                    else
-                    {
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} @ L{import.LineStart}:C{import.ColumnStart}");
-                    }
-                }
-                break;
+    public override void VisitInterfaceDef(InterfaceDef node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}InterfaceDef @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {node.Name}");
+        if (node.DocString != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(node.DocString)}\"");
+        }
+        if (node.TypeParameters.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}TypeParameters: [{string.Join(", ", node.TypeParameters.Select(FormatTypeParam))}]");
+        }
+        if (node.BaseInterfaces.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}BaseInterfaces: [{node.BaseInterfaces.Length}]");
+            for (int i = 0; i < node.BaseInterfaces.Length; i++)
+            {
+                DumpTypeAnnotation(node.BaseInterfaces[i], depth + 2, i == node.BaseInterfaces.Length - 1);
+            }
+        }
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
+        for (int i = 0; i < node.Body.Length; i++)
+        {
+            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
+        }
+    }
 
-            case FromImportStatement fromImportStmt:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}FromImportStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Module: {fromImportStmt.Module}");
-                if (fromImportStmt.ImportAll)
+    public override void VisitEnumDef(EnumDef node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}EnumDef @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {node.Name}");
+        if (node.DocString != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(node.DocString)}\"");
+        }
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Members: [{node.Members.Length}]");
+        for (int i = 0; i < node.Members.Length; i++)
+        {
+            var member = node.Members[i];
+            var memIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+            var memPrefix = i == node.Members.Length - 1 ? "└─ " : "├─ ";
+            if (member.Value != null)
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{memIndent}{memPrefix}{member.Name} @ L{member.LineStart}:C{member.ColumnStart} =");
+                VisitChild(member.Value, depth + 3, true);
+            }
+            else
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{memIndent}{memPrefix}{member.Name} @ L{member.LineStart}:C{member.ColumnStart}");
+            }
+        }
+    }
+
+    public override void VisitDelegateDef(DelegateDef node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}DelegateDef @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {node.Name}");
+        if (node.DocString != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DocString: \"{EscapeString(node.DocString)}\"");
+        }
+        if (node.TypeParameters.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}TypeParameters: [{string.Join(", ", node.TypeParameters.Select(FormatTypeParam))}]");
+        }
+        if (node.Parameters.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parameters: [{node.Parameters.Length}]");
+            for (int i = 0; i < node.Parameters.Length; i++)
+            {
+                DumpParameter(node.Parameters[i], depth + 2, i == node.Parameters.Length - 1);
+            }
+        }
+        if (node.ReturnType != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ReturnType:");
+            DumpTypeAnnotation(node.ReturnType, depth + 2, true);
+        }
+    }
+
+    public override void VisitPropertyDef(PropertyDef node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}PropertyDef @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {node.Name}");
+        DumpDecorators(node.Decorators, depth, indent, childPrefix);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Accessor: {node.Accessor}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}FunctionStyle: {node.IsFunctionStyle}");
+        if (node.ExplicitInterface != null)
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ExplicitInterface: {node.ExplicitInterface}");
+        if (node.Type != null)
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Type: {node.Type.Name}");
+        if (node.ReturnType != null)
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ReturnType: {node.ReturnType.Name}");
+        if (node.DefaultValue != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}DefaultValue:");
+            VisitChild(node.DefaultValue, depth + 2, true);
+        }
+        if (node.IsFunctionStyle && node.Body.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length}]");
+            for (int i = 0; i < node.Body.Length; i++)
+            {
+                VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
+            }
+        }
+    }
+
+    public override void VisitEventDef(EventDef node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}EventDef @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {node.Name}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Accessor: {node.Accessor}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}FunctionStyle: {node.IsFunctionStyle}");
+        if (node.Type != null)
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Type: {node.Type.Name}");
+        if (node.Parameters.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parameters: [{node.Parameters.Length}]");
+            for (int i = 0; i < node.Parameters.Length; i++)
+            {
+                DumpParameter(node.Parameters[i], depth + 2, i == node.Parameters.Length - 1);
+            }
+        }
+        if (node.IsFunctionStyle && node.Body.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length}]");
+            for (int i = 0; i < node.Body.Length; i++)
+            {
+                VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
+            }
+        }
+        DumpDecorators(node.Decorators, depth, indent, childPrefix);
+    }
+
+    public override void VisitTypeAlias(TypeAlias node)
+    {
+        DefaultVisit(node);
+    }
+
+    #endregion
+
+    #region Statements - Imports
+
+    public override void VisitImportStatement(ImportStatement node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ImportStatement @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Names: [{node.Names.Length}]");
+        for (int i = 0; i < node.Names.Length; i++)
+        {
+            var import = node.Names[i];
+            var impIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+            var impPrefix = i == node.Names.Length - 1 ? "└─ " : "├─ ";
+            if (import.AsName != null)
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
+            }
+            else
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} @ L{import.LineStart}:C{import.ColumnStart}");
+            }
+        }
+    }
+
+    public override void VisitFromImportStatement(FromImportStatement node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}FromImportStatement @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Module: {node.Module}");
+        if (node.ImportAll)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ImportAll: true");
+        }
+        else
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Names: [{node.Names.Length}]");
+            for (int i = 0; i < node.Names.Length; i++)
+            {
+                var import = node.Names[i];
+                var impIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+                var impPrefix = i == node.Names.Length - 1 ? "└─ " : "├─ ";
+                if (import.AsName != null)
                 {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ImportAll: true");
+                    _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
                 }
                 else
                 {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Names: [{fromImportStmt.Names.Length}]");
-                    for (int i = 0; i < fromImportStmt.Names.Length; i++)
-                    {
-                        var import = fromImportStmt.Names[i];
-                        var impIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var impPrefix = i == fromImportStmt.Names.Length - 1 ? "└─ " : "├─ ";
-                        if (import.AsName != null)
-                        {
-                            _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
-                        }
-                        else
-                        {
-                            _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} @ L{import.LineStart}:C{import.ColumnStart}");
-                        }
-                    }
+                    _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} @ L{import.LineStart}:C{import.ColumnStart}");
                 }
-                break;
-
-            // Expressions
-            case IntegerLiteral intLit:
-                var intSuffix = intLit.Suffix != null ? $" ({intLit.Suffix})" : "";
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}IntegerLiteral: {intLit.Value}{intSuffix} @ L{node.LineStart}:C{node.ColumnStart}");
-                break;
-
-            case FloatLiteral floatLit:
-                var floatSuffix = floatLit.Suffix != null ? $" ({floatLit.Suffix})" : "";
-                _output.AppendLine(FormattableString.Invariant($"{indent}{prefix}FloatLiteral: {floatLit.Value}{floatSuffix} @ L{node.LineStart}:C{node.ColumnStart}"));
-                break;
-
-            case StringLiteral strLit:
-                var strPrefix = strLit.IsRaw ? "r" : "";
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}StringLiteral: {strPrefix}\"{EscapeString(strLit.Value)}\" @ L{node.LineStart}:C{node.ColumnStart}");
-                break;
-
-            case FStringLiteral fstrLit:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}FStringLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parts: [{fstrLit.Parts.Length}]");
-                for (int i = 0; i < fstrLit.Parts.Length; i++)
-                {
-                    var part = fstrLit.Parts[i];
-                    var partIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                    var partPrefix = i == fstrLit.Parts.Length - 1 ? "└─ " : "├─ ";
-                    if (part.Text != null)
-                    {
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Text: \"{EscapeString(part.Text)}\"");
-                    }
-                    else if (part.Expression != null)
-                    {
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Expression:");
-                        DumpNode(part.Expression, depth + 3, true);
-                    }
-                }
-                break;
-
-            case BooleanLiteral boolLit:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}BooleanLiteral: {boolLit.Value} @ L{node.LineStart}:C{node.ColumnStart}");
-                break;
-
-            case NoneLiteral:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}NoneLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                break;
-
-            case EllipsisLiteral:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}EllipsisLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                break;
-
-            case ListLiteral listLit:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ListLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Elements: [{listLit.Elements.Length}]");
-                for (int i = 0; i < listLit.Elements.Length; i++)
-                {
-                    DumpNode(listLit.Elements[i], depth + 2, i == listLit.Elements.Length - 1);
-                }
-                break;
-
-            case DictLiteral dictLit:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}DictLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Entries: [{dictLit.Entries.Length}]");
-                for (int i = 0; i < dictLit.Entries.Length; i++)
-                {
-                    var entry = dictLit.Entries[i];
-                    var entryIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                    var entryPrefix = i == dictLit.Entries.Length - 1 ? "└─ " : "├─ ";
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{entryIndent}{entryPrefix}Entry:");
-                    if (entry.Key != null)
-                    {
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{entryIndent}   Key:");
-                        DumpNode(entry.Key, depth + 3, false);
-                    }
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{entryIndent}   Value:");
-                    DumpNode(entry.Value, depth + 3, true);
-                }
-                break;
-
-            case SetLiteral setLit:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}SetLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Elements: [{setLit.Elements.Length}]");
-                for (int i = 0; i < setLit.Elements.Length; i++)
-                {
-                    DumpNode(setLit.Elements[i], depth + 2, i == setLit.Elements.Length - 1);
-                }
-                break;
-
-            case TupleLiteral tupleLit:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TupleLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Elements: [{tupleLit.Elements.Length}]");
-                for (int i = 0; i < tupleLit.Elements.Length; i++)
-                {
-                    DumpNode(tupleLit.Elements[i], depth + 2, i == tupleLit.Elements.Length - 1);
-                }
-                break;
-
-            case ListComprehension listComp:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ListComprehension @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Element:");
-                DumpNode(listComp.Element, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Clauses: [{listComp.Clauses.Length}]");
-                for (int i = 0; i < listComp.Clauses.Length; i++)
-                {
-                    DumpComprehensionClause(listComp.Clauses[i], depth + 2, i == listComp.Clauses.Length - 1);
-                }
-                break;
-
-            case SetComprehension setComp:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}SetComprehension @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Element:");
-                DumpNode(setComp.Element, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Clauses: [{setComp.Clauses.Length}]");
-                for (int i = 0; i < setComp.Clauses.Length; i++)
-                {
-                    DumpComprehensionClause(setComp.Clauses[i], depth + 2, i == setComp.Clauses.Length - 1);
-                }
-                break;
-
-            case DictComprehension dictComp:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}DictComprehension @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Key:");
-                DumpNode(dictComp.Key, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Value:");
-                DumpNode(dictComp.Value, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Clauses: [{dictComp.Clauses.Length}]");
-                for (int i = 0; i < dictComp.Clauses.Length; i++)
-                {
-                    DumpComprehensionClause(dictComp.Clauses[i], depth + 2, i == dictComp.Clauses.Length - 1);
-                }
-                break;
-
-            case Identifier ident:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}Identifier: {ident.Name} @ L{node.LineStart}:C{node.ColumnStart}");
-                break;
-
-            case MemberAccess memberAccess:
-                var nullCond = memberAccess.IsNullConditional ? "?." : ".";
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}MemberAccess ({nullCond}) @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Object:");
-                DumpNode(memberAccess.Object, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Member: {memberAccess.Member}");
-                break;
-
-            case IndexAccess indexAccess:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}IndexAccess @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Object:");
-                DumpNode(indexAccess.Object, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Index:");
-                DumpNode(indexAccess.Index, depth + 2, true);
-                break;
-
-            case SliceAccess sliceAccess:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}SliceAccess @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Object:");
-                DumpNode(sliceAccess.Object, depth + 2, false);
-                if (sliceAccess.Start != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Start:");
-                    DumpNode(sliceAccess.Start, depth + 2, sliceAccess.Stop == null && sliceAccess.Step == null);
-                }
-                if (sliceAccess.Stop != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Stop:");
-                    DumpNode(sliceAccess.Stop, depth + 2, sliceAccess.Step == null);
-                }
-                if (sliceAccess.Step != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Step:");
-                    DumpNode(sliceAccess.Step, depth + 2, true);
-                }
-                break;
-
-            case FunctionCall funcCall:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}FunctionCall @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Function:");
-                DumpNode(funcCall.Function, depth + 2, false);
-                if (funcCall.Arguments.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Arguments: [{funcCall.Arguments.Length}]");
-                    for (int i = 0; i < funcCall.Arguments.Length; i++)
-                    {
-                        DumpNode(funcCall.Arguments[i], depth + 2, i == funcCall.Arguments.Length - 1 && funcCall.KeywordArguments.Length == 0);
-                    }
-                }
-                if (funcCall.KeywordArguments.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}KeywordArguments: [{funcCall.KeywordArguments.Length}]");
-                    for (int i = 0; i < funcCall.KeywordArguments.Length; i++)
-                    {
-                        var kwarg = funcCall.KeywordArguments[i];
-                        var kwIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var kwPrefix = i == funcCall.KeywordArguments.Length - 1 ? "└─ " : "├─ ";
-                        _output.AppendLine(CultureInfo.InvariantCulture, $"{kwIndent}{kwPrefix}{kwarg.Name} @ L{kwarg.LineStart}:C{kwarg.ColumnStart}:");
-                        DumpNode(kwarg.Value, depth + 3, true);
-                    }
-                }
-                break;
-
-            case UnaryOp unaryOp:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}UnaryOp: {unaryOp.Operator} @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Operand:");
-                DumpNode(unaryOp.Operand, depth + 2, true);
-                break;
-
-            case BinaryOp binaryOp:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}BinaryOp: {binaryOp.Operator} @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Left:");
-                DumpNode(binaryOp.Left, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Right:");
-                DumpNode(binaryOp.Right, depth + 2, true);
-                break;
-
-            case ComparisonChain compChain:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ComparisonChain @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Operands: [{compChain.Operands.Length}]");
-                for (int i = 0; i < compChain.Operands.Length; i++)
-                {
-                    DumpNode(compChain.Operands[i], depth + 2, i == compChain.Operands.Length - 1);
-                }
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Operators: [{string.Join(", ", compChain.Operators)}]");
-                break;
-
-            case ConditionalExpression condExpr:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ConditionalExpression @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Test:");
-                DumpNode(condExpr.Test, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ThenValue:");
-                DumpNode(condExpr.ThenValue, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ElseValue:");
-                DumpNode(condExpr.ElseValue, depth + 2, true);
-                break;
-
-            case LambdaExpression lambdaExpr:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}LambdaExpression @ L{node.LineStart}:C{node.ColumnStart}");
-                if (lambdaExpr.Parameters.Length > 0)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parameters: [{lambdaExpr.Parameters.Length}]");
-                    for (int i = 0; i < lambdaExpr.Parameters.Length; i++)
-                    {
-                        DumpParameter(lambdaExpr.Parameters[i], depth + 2, i == lambdaExpr.Parameters.Length - 1);
-                    }
-                }
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body:");
-                DumpNode(lambdaExpr.Body, depth + 2, true);
-                break;
-
-            case TypeCoercion typeCoercion:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TypeCoercion @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Value:");
-                DumpNode(typeCoercion.Value, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}TargetType:");
-                DumpTypeAnnotation(typeCoercion.TargetType, depth + 2, true);
-                break;
-
-            case TypeCheck typeCheck:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TypeCheck @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Value:");
-                DumpNode(typeCheck.Value, depth + 2, false);
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}CheckType:");
-                DumpTypeAnnotation(typeCheck.CheckType, depth + 2, true);
-                break;
-
-            case Parenthesized paren:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}Parenthesized @ L{node.LineStart}:C{node.ColumnStart}");
-                DumpNode(paren.Expression, depth + 1, true);
-                break;
-
-            default:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}{node.GetType().Name} @ L{node.LineStart}:C{node.ColumnStart}");
-                break;
+            }
         }
+    }
+
+    #endregion
+
+    #region Statements - Future
+
+    public override void VisitMatchStatement(MatchStatement node)
+    {
+        DefaultVisit(node);
+    }
+
+    public override void VisitUnionDef(UnionDef node)
+    {
+        DefaultVisit(node);
+    }
+
+    #endregion
+
+    #region Expressions - Literals
+
+    public override void VisitIntegerLiteral(IntegerLiteral node)
+    {
+        var intSuffix = node.Suffix != null ? $" ({node.Suffix})" : "";
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}IntegerLiteral: {node.Value}{intSuffix} @ L{node.LineStart}:C{node.ColumnStart}");
+    }
+
+    public override void VisitFloatLiteral(FloatLiteral node)
+    {
+        var floatSuffix = node.Suffix != null ? $" ({node.Suffix})" : "";
+        _output.AppendLine(FormattableString.Invariant($"{_indent}{_prefix}FloatLiteral: {node.Value}{floatSuffix} @ L{node.LineStart}:C{node.ColumnStart}"));
+    }
+
+    public override void VisitStringLiteral(StringLiteral node)
+    {
+        var strPrefix = node.IsRaw ? "r" : "";
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}StringLiteral: {strPrefix}\"{EscapeString(node.Value)}\" @ L{node.LineStart}:C{node.ColumnStart}");
+    }
+
+    public override void VisitFStringLiteral(FStringLiteral node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}FStringLiteral @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parts: [{node.Parts.Length}]");
+        for (int i = 0; i < node.Parts.Length; i++)
+        {
+            var part = node.Parts[i];
+            var partIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+            var partPrefix = i == node.Parts.Length - 1 ? "└─ " : "├─ ";
+            if (part.Text != null)
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Text: \"{EscapeString(part.Text)}\"");
+            }
+            else if (part.Expression != null)
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Expression:");
+                VisitChild(part.Expression, depth + 3, true);
+            }
+        }
+    }
+
+    public override void VisitBooleanLiteral(BooleanLiteral node)
+    {
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}BooleanLiteral: {node.Value} @ L{node.LineStart}:C{node.ColumnStart}");
+    }
+
+    public override void VisitNoneLiteral(NoneLiteral node)
+    {
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}NoneLiteral @ L{node.LineStart}:C{node.ColumnStart}");
+    }
+
+    public override void VisitEllipsisLiteral(EllipsisLiteral node)
+    {
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}EllipsisLiteral @ L{node.LineStart}:C{node.ColumnStart}");
+    }
+
+    #endregion
+
+    #region Expressions - Collections
+
+    public override void VisitListLiteral(ListLiteral node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ListLiteral @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Elements: [{node.Elements.Length}]");
+        for (int i = 0; i < node.Elements.Length; i++)
+        {
+            VisitChild(node.Elements[i], depth + 2, i == node.Elements.Length - 1);
+        }
+    }
+
+    public override void VisitDictLiteral(DictLiteral node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}DictLiteral @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Entries: [{node.Entries.Length}]");
+        for (int i = 0; i < node.Entries.Length; i++)
+        {
+            var entry = node.Entries[i];
+            var entryIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+            var entryPrefix = i == node.Entries.Length - 1 ? "└─ " : "├─ ";
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{entryIndent}{entryPrefix}Entry:");
+            if (entry.Key != null)
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{entryIndent}   Key:");
+                VisitChild(entry.Key, depth + 3, false);
+            }
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{entryIndent}   Value:");
+            VisitChild(entry.Value, depth + 3, true);
+        }
+    }
+
+    public override void VisitSetLiteral(SetLiteral node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}SetLiteral @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Elements: [{node.Elements.Length}]");
+        for (int i = 0; i < node.Elements.Length; i++)
+        {
+            VisitChild(node.Elements[i], depth + 2, i == node.Elements.Length - 1);
+        }
+    }
+
+    public override void VisitTupleLiteral(TupleLiteral node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TupleLiteral @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Elements: [{node.Elements.Length}]");
+        for (int i = 0; i < node.Elements.Length; i++)
+        {
+            VisitChild(node.Elements[i], depth + 2, i == node.Elements.Length - 1);
+        }
+    }
+
+    #endregion
+
+    #region Expressions - Comprehensions
+
+    public override void VisitListComprehension(ListComprehension node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ListComprehension @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Element:");
+        VisitChild(node.Element, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Clauses: [{node.Clauses.Length}]");
+        for (int i = 0; i < node.Clauses.Length; i++)
+        {
+            DumpComprehensionClause(node.Clauses[i], depth + 2, i == node.Clauses.Length - 1);
+        }
+    }
+
+    public override void VisitSetComprehension(SetComprehension node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}SetComprehension @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Element:");
+        VisitChild(node.Element, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Clauses: [{node.Clauses.Length}]");
+        for (int i = 0; i < node.Clauses.Length; i++)
+        {
+            DumpComprehensionClause(node.Clauses[i], depth + 2, i == node.Clauses.Length - 1);
+        }
+    }
+
+    public override void VisitDictComprehension(DictComprehension node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}DictComprehension @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Key:");
+        VisitChild(node.Key, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Value:");
+        VisitChild(node.Value, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Clauses: [{node.Clauses.Length}]");
+        for (int i = 0; i < node.Clauses.Length; i++)
+        {
+            DumpComprehensionClause(node.Clauses[i], depth + 2, i == node.Clauses.Length - 1);
+        }
+    }
+
+    #endregion
+
+    #region Expressions - Primaries
+
+    public override void VisitIdentifier(Identifier node)
+    {
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}Identifier: {node.Name} @ L{node.LineStart}:C{node.ColumnStart}");
+    }
+
+    public override void VisitMemberAccess(MemberAccess node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        var nullCond = node.IsNullConditional ? "?." : ".";
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}MemberAccess ({nullCond}) @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Object:");
+        VisitChild(node.Object, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Member: {node.Member}");
+    }
+
+    public override void VisitIndexAccess(IndexAccess node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}IndexAccess @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Object:");
+        VisitChild(node.Object, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Index:");
+        VisitChild(node.Index, depth + 2, true);
+    }
+
+    public override void VisitSliceAccess(SliceAccess node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}SliceAccess @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Object:");
+        VisitChild(node.Object, depth + 2, false);
+        if (node.Start != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Start:");
+            VisitChild(node.Start, depth + 2, node.Stop == null && node.Step == null);
+        }
+        if (node.Stop != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Stop:");
+            VisitChild(node.Stop, depth + 2, node.Step == null);
+        }
+        if (node.Step != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Step:");
+            VisitChild(node.Step, depth + 2, true);
+        }
+    }
+
+    public override void VisitFunctionCall(FunctionCall node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}FunctionCall @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Function:");
+        VisitChild(node.Function, depth + 2, false);
+        if (node.Arguments.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Arguments: [{node.Arguments.Length}]");
+            for (int i = 0; i < node.Arguments.Length; i++)
+            {
+                VisitChild(node.Arguments[i], depth + 2, i == node.Arguments.Length - 1 && node.KeywordArguments.Length == 0);
+            }
+        }
+        if (node.KeywordArguments.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}KeywordArguments: [{node.KeywordArguments.Length}]");
+            for (int i = 0; i < node.KeywordArguments.Length; i++)
+            {
+                var kwarg = node.KeywordArguments[i];
+                var kwIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+                var kwPrefix = i == node.KeywordArguments.Length - 1 ? "└─ " : "├─ ";
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{kwIndent}{kwPrefix}{kwarg.Name} @ L{kwarg.LineStart}:C{kwarg.ColumnStart}:");
+                VisitChild(kwarg.Value, depth + 3, true);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Expressions - Operators
+
+    public override void VisitUnaryOp(UnaryOp node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}UnaryOp: {node.Operator} @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Operand:");
+        VisitChild(node.Operand, depth + 2, true);
+    }
+
+    public override void VisitBinaryOp(BinaryOp node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}BinaryOp: {node.Operator} @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Left:");
+        VisitChild(node.Left, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Right:");
+        VisitChild(node.Right, depth + 2, true);
+    }
+
+    public override void VisitComparisonChain(ComparisonChain node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ComparisonChain @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Operands: [{node.Operands.Length}]");
+        for (int i = 0; i < node.Operands.Length; i++)
+        {
+            VisitChild(node.Operands[i], depth + 2, i == node.Operands.Length - 1);
+        }
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Operators: [{string.Join(", ", node.Operators)}]");
+    }
+
+    #endregion
+
+    #region Expressions - Advanced
+
+    public override void VisitConditionalExpression(ConditionalExpression node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ConditionalExpression @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Test:");
+        VisitChild(node.Test, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ThenValue:");
+        VisitChild(node.ThenValue, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ElseValue:");
+        VisitChild(node.ElseValue, depth + 2, true);
+    }
+
+    public override void VisitLambdaExpression(LambdaExpression node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}LambdaExpression @ L{node.LineStart}:C{node.ColumnStart}");
+        if (node.Parameters.Length > 0)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parameters: [{node.Parameters.Length}]");
+            for (int i = 0; i < node.Parameters.Length; i++)
+            {
+                DumpParameter(node.Parameters[i], depth + 2, i == node.Parameters.Length - 1);
+            }
+        }
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body:");
+        VisitChild(node.Body, depth + 2, true);
+    }
+
+    public override void VisitTypeCoercion(TypeCoercion node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TypeCoercion @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Value:");
+        VisitChild(node.Value, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}TargetType:");
+        DumpTypeAnnotation(node.TargetType, depth + 2, true);
+    }
+
+    public override void VisitTypeCheck(TypeCheck node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TypeCheck @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Value:");
+        VisitChild(node.Value, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}CheckType:");
+        DumpTypeAnnotation(node.CheckType, depth + 2, true);
+    }
+
+    public override void VisitParenthesized(Parenthesized node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}Parenthesized @ L{node.LineStart}:C{node.ColumnStart}");
+        VisitChild(node.Expression, depth + 1, true);
+    }
+
+    public override void VisitSuperExpression(SuperExpression node)
+    {
+        DefaultVisit(node);
+    }
+
+    public override void VisitWalrusExpression(WalrusExpression node)
+    {
+        DefaultVisit(node);
+    }
+
+    public override void VisitTryExpression(TryExpression node)
+    {
+        DefaultVisit(node);
+    }
+
+    public override void VisitMaybeExpression(MaybeExpression node)
+    {
+        DefaultVisit(node);
+    }
+
+    public override void VisitStarExpression(StarExpression node)
+    {
+        DefaultVisit(node);
+    }
+
+    public override void VisitSpreadElement(SpreadElement node)
+    {
+        DefaultVisit(node);
+    }
+
+    public override void VisitAwaitExpression(AwaitExpression node)
+    {
+        DefaultVisit(node);
+    }
+
+    public override void VisitMatchExpression(MatchExpression node)
+    {
+        DefaultVisit(node);
+    }
+
+    #endregion
+
+    #region Helper methods
+
+    /// <summary>
+    /// Captures the current context fields before they are mutated by child visits.
+    /// </summary>
+    private (string indent, string prefix, int depth) CaptureContext()
+    {
+        return (_indent, _prefix, _depth);
     }
 
     private void DumpParameter(Parameter param, int depth, bool isLast)
     {
         var indent = new string(' ', depth * IndentUnit.Length);
         var prefix = isLast ? "└─ " : "├─ ";
-        var childPrefix = isLast ? "   " : "│  ";
 
         _output.Append(CultureInfo.InvariantCulture, $"{indent}{prefix}Parameter: {param.Name} @ L{param.LineStart}:C{param.ColumnStart}");
         if (param.Type != null)
@@ -776,7 +1043,7 @@ internal class AstDumper
         if (param.DefaultValue != null)
         {
             _output.AppendLine(" =");
-            DumpNode(param.DefaultValue, depth + 1, true);
+            VisitChild(param.DefaultValue, depth + 1, true);
         }
         else
         {
@@ -852,7 +1119,7 @@ internal class AstDumper
                 foreach (var arg in decorator.Arguments)
                 {
                     argIndex++;
-                    DumpNode(arg, argDepth, argIndex == totalArgs);
+                    VisitChild(arg, argDepth, argIndex == totalArgs);
                 }
                 foreach (var kwarg in decorator.KeywordArguments)
                 {
@@ -860,7 +1127,7 @@ internal class AstDumper
                     var kwargIsLast = argIndex == totalArgs;
                     var kwPrefix = kwargIsLast ? "└─ " : "├─ ";
                     _output.AppendLine(CultureInfo.InvariantCulture, $"{argIndent}{kwPrefix}{kwarg.Name}=");
-                    DumpNode(kwarg.Value, argDepth + 1, true);
+                    VisitChild(kwarg.Value, argDepth + 1, true);
                 }
             }
             else
@@ -881,15 +1148,15 @@ internal class AstDumper
             case ForClause forClause:
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ForClause @ L{clause.LineStart}:C{clause.ColumnStart}");
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Target:");
-                DumpNode(forClause.Target, depth + 2, false);
+                VisitChild(forClause.Target, depth + 2, false);
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Iterator:");
-                DumpNode(forClause.Iterator, depth + 2, true);
+                VisitChild(forClause.Iterator, depth + 2, true);
                 break;
 
             case IfClause ifClause:
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}IfClause @ L{clause.LineStart}:C{clause.ColumnStart}");
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Condition:");
-                DumpNode(ifClause.Condition, depth + 2, true);
+                VisitChild(ifClause.Condition, depth + 2, true);
                 break;
 
             default:
@@ -897,4 +1164,6 @@ internal class AstDumper
                 break;
         }
     }
+
+    #endregion
 }
