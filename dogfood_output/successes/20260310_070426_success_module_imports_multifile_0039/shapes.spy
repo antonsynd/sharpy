@@ -1,0 +1,17 @@
+# Shape classes using math utilities
+from math_core import square
+
+class Rectangle:
+    width: float
+    height: float
+    
+    def __init__(self, w: float, h: float):
+        self.width = w
+        self.height = h
+    
+    def area(self) -> float:
+        return self.width * self.height
+    
+    def diagonal(self) -> float:
+        # Sum of squares of sides
+        return square(self.width) + square(self.height)

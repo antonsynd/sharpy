@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'ColorsModule.Color' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'ColorsModule.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpr03dse72/main.spy:30:47
+    |
+ 30 |     print(r.color.value)
+    |                         ^
+    |
+

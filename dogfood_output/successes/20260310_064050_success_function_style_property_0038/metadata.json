@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T06:39:24.583971",
+  "generated_code": "# Test function-style computed properties with backing fields\nclass Rectangle:\n    _width: float\n    _height: float\n    \n    def __init__(self, w: float, h: float):\n        self._width = w\n        self._height = h\n    \n    property get area(self) -> float:\n        return self._width * self._height\n    \n    property get perimeter(self) -> float:\n        return 2.0 * (self._width + self._height)\n\ndef main():\n    r = Rectangle(5.0, 3.0)\n    print(r.area)\n    print(r.perimeter)\n",
+  "expected_output": "15.0\n16.0\n",
+  "actual_output": "15.0\n16.0",
+  "feature_focus": "function_style_property",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 75.30609345436096,
+  "execution_duration": 4.845777988433838,
+  "source_files": null
+}

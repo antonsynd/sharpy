@@ -1,0 +1,6 @@
+# Test list literal with indexing and arithmetic operations
+def main():
+    nums: list[int] = [10, 20, 30, 40, 50]
+    print(nums[0] + nums[2])
+    print(nums[1] * nums[3])
+    print(len(nums))

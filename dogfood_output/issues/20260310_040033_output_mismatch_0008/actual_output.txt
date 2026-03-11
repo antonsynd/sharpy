@@ -1,0 +1,6 @@
+50.0
+28.274333882308138
+Rendering RRect at (5.0, 5.0) with color Red
+Rendering RCircle centered at (10.0, 10.0) with color Blue
+356.814150222053
+5.0

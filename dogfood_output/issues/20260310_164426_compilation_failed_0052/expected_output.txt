@@ -1,0 +1,13 @@
+=== Shape Details ===
+Circle(radius=5.0) has area=78.54 and perimeter=31.42
+Rectangle(width=4.0, height=6.0) has area=24.00 and perimeter=20.00
+Square(side=4.0) has area=9.00 and perimeter=12.00
+
+=== Totals ===
+Total area: 111.54
+Total perimeter: 63.42
+
+=== Individual Shapes ===
+Circle area: 28.27
+Rectangle perimeter: 12.00
+Square side: 5.0

@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-10T11:27:44.589117",
+  "generated_code": "def scale_value(item: object) -> int:\n    if isinstance(item, int):\n        n: int = item\n        return n * 5\n    elif isinstance(item, str):\n        s: str = item\n        return len(s) * 2\n    else:\n        return 0\n\ndef main():\n    print(scale_value(7))\n    print(scale_value(\"hi\"))\n    print(scale_value(True))\n",
+  "expected_output": "35\n4\n5",
+  "actual_output": "35\n4\n0",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "match_type_pattern",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 203.0366358757019,
+  "compilation_duration": null,
+  "execution_duration": 4.926861524581909,
+  "source_files": null
+}

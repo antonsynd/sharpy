@@ -1,0 +1,44 @@
+from geometry import Point, Color, Shape, make_point
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, pos: Point, r: float, c: Color):
+        super().__init__(pos, c)
+        self.radius = r
+
+    @override
+    def get_name(self) -> str:
+        return "Circle"
+
+    @override
+    def calculate_area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, pos: Point, w: float, h: float, c: Color):
+        super().__init__(pos, c)
+        self.width = w
+        self.height = h
+
+    @override
+    def get_name(self) -> str:
+        return "Rectangle"
+
+    @override
+    def calculate_area(self) -> float:
+        return self.width * self.height
+
+def main():
+    p: Point = make_point(1.0, 2.0)
+    c: Circle = Circle(p, 2.0, Color.RED)
+    r: Rectangle = Rectangle(p, 3.0, 4.0, Color.BLUE)
+
+    print(c.get_name())
+    print(r.get_name())
+    print(c.calculate_area())
+    print(r.calculate_area())
+    print(c.color.name)

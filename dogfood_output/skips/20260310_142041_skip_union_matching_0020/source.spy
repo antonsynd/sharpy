@@ -1,0 +1,48 @@
+union ProcessResult:
+    case Success(value: str)
+    case Failure(code: int)
+    case Timeout()
+    case Cancelled()
+
+def classify_duration(result: ProcessResult) -> str:
+    match result:
+        case Success(v):
+            if v != "":
+                return "valid"
+            else:
+                return "empty"
+        case Failure(c):
+            if c >= 500:
+                return "server_error"
+            else:
+                return "client_error"
+        case Timeout():
+            return "timed_out"
+        case Cancelled():
+            return "cancelled"
+    return ""
+
+def main():
+    results = [
+        ProcessResult.Success("data"),
+        ProcessResult.Failure(404),
+        ProcessResult.Failure(503),
+        ProcessResult.Timeout(),
+        ProcessResult.Success(""),
+        ProcessResult.Cancelled()
+    ]
+    valid_count = 0
+    error_count = 0
+    other_count = 0
+    for r in results:
+        category = classify_duration(r)
+        if category == "valid":
+            valid_count += 1
+        elif category == "empty" or category == "cancelled":
+            other_count += 1
+        else:
+            error_count += 1
+        print(category)
+    print(valid_count)
+    print(error_count)
+    print(other_count)

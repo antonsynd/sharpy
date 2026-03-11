@@ -1,0 +1,265 @@
+# Skipped Dogfood Run
+
+**Timestamp:** 2026-03-10T13:08:34.608025
+**Skip Reason:** Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0102]: Expected newline, got Class
+  --> /tmp/tmpibbr9w2o/dogfood_test.spy:4:11
+    |
+  4 | @abstract class DataValidator:
+    |           ^^^^^
+    |
+
+
+**Feature Focus:** abstract_class
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Complex abstract class test: Template Method Pattern
+# A validation framework with abstract base and concrete implementations
+
+@abstract class DataValidator:
+    # Protected field - must be set by subclasses
+    _field_name: str
+    
+    def __init__(self, field_name: str):
+        self._field_name = field_name
+    
+    # Add public getter to allow external access
+    def get_field_name(self) -> str:
+        return self._field_name
+    
+    @virtual
+    def validate_format(self, value: str) -> bool:
+        # Default: accept any non-empty string
+        return len(value) > 0
+    
+    @abstract
+    def validate_type(self, value: str) -> bool:
+        ...
+    
+    @virtual
+    def transform_value(self, value: str) -> str:
+        return value
+    
+    @virtual
+    def get_error_message(self) -> str:
+        # Default error message
+        return f"Validation failed for {self._field_name}"
+    
+    def get_validation_result(self, value: str) -> str:
+        # Template method - orchestrates validation steps
+        if not self.validate_format(value):
+            return f"Format error in {self._field_name}: {value}"
+        if not self.validate_type(value):
+            return self.get_error_message()
+        transformed: str = self.transform_value(value)
+        return f"Valid: {transformed}"
+
+class IntegerValidator(DataValidator):
+    def __init__(self, field_name: str):
+        super().__init__(field_name)
+    
+    @override
+    def validate_format(self, value: str) -> bool:
+        # Check if it's all digits (and optionally starts with -)
+        if len(value) == 0:
+            return False
+        if str(value[0]) == "-":
+            if len(value) == 1:
+                return False
+            i: int = 1
+            while i < len(value):
+                if not str(value[i]).isdigit():
+                    return False
+                i += 1
+            return True
+        i = 0
+        while i < len(value):
+            if not str(value[i]).isdigit():
+                return False
+            i += 1
+        return True
+    
+    @override
+    def validate_type(self, value: str) -> bool:
+        return True
+    
+    @override
+    def transform_value(self, value: str) -> str:
+        return f"{self._field_name}={value}"
+    
+    @override
+    def get_error_message(self) -> str:
+        return f"Value for {self._field_name} must be an integer"
+
+class RangeValidator(IntegerValidator):
+    _min: int
+    _max: int
+    
+    def __init__(self, field_name: str, min_val: int, max_val: int):
+        super().__init__(field_name)
+        self._min = min_val
+        self._max = max_val
+    
+    @override
+    def validate_type(self, value: str) -> bool:
+        # Parse the integer
+        sign: int = 1
+        start: int = 0
+        if str(value[0]) == "-":
+            sign = -1
+            start = 1
+        result: int = 0
+        i: int = start
+        while i < len(value):
+            digit: int = int(str(value[i]))
+            result = result * 10 + digit
+            i += 1
+        result = result * sign
+        return result >= self._min and result <= self._max
+    
+    @override
+    def get_error_message(self) -> str:
+        return f"Value for {self._field_name} must be between {self._min} and {self._max}"
+
+class EmailValidator(DataValidator):
+    def __init__(self):
+        super().__init__("email")
+    
+    @override
+    def validate_type(self, value: str) -> bool:
+        return "@" in value
+    
+    @override
+    def transform_value(self, value: str) -> str:
+        return value.lower()
+    
+    @override
+    def get_error_message(self) -> str:
+        return "Invalid email format: must contain @"
+
+class PhoneValidator(DataValidator):
+    _country_code: str
+    
+    def __init__(self, country_code: str = "+1"):
+        super().__init__("phone")
+        self._country_code = country_code
+    
+    @override
+    def validate_format(self, value: str) -> bool:
+        # Remove spaces and dashes for format check
+        clean: str = ""
+        i: int = 0
+        while i < len(value):
+            ch: str = str(value[i])
+            if ch != " " and ch != "-":
+                clean += ch
+            i += 1
+        # Should be only digits (and optional + at start)
+        if len(clean) == 0:
+            return False
+        j: int = 0
+        if str(clean[0]) == "+":
+            if len(clean) == 1:
+                return False
+            j = 1
+        while j < len(clean):
+            if not str(clean[j]).isdigit():
+                return False
+            j += 1
+        return True
+    
+    @override
+    def validate_type(self, value: str) -> bool:
+        # Remove non-digits and check length
+        clean: str = ""
+        i: int = 0
+        while i < len(value):
+            ch: str = str(value[i])
+            if ch.isdigit():
+                clean += ch
+            i += 1
+        return len(clean) >= 7 and len(clean) <= 15
+    
+    @override
+    def transform_value(self, value: str) -> str:
+        clean: str = ""
+        i: int = 0
+        while i < len(value):
+            ch: str = str(value[i])
+            if ch.isdigit():
+                clean += ch
+            i += 1
+        return f"{self._country_code} {clean}"
+
+class FormValidator:
+    _validators: list[DataValidator]
+    
+    def __init__(self):
+        self._validators = []
+    
+    def add_validator(self, validator: DataValidator):
+        self._validators.append(validator)
+    
+    def validate_field(self, name: str, value: str):
+        # Find validator by field name and run validation
+        i: int = 0
+        while i < len(self._validators):
+            v: DataValidator = self._validators[i]
+            if v.get_field_name() == name:
+                print(v.get_validation_result(value))
+                return
+            i += 1
+        print(f"No validator for field: {name}")
+
+def main():
+    # Test the validation framework
+    form: FormValidator = FormValidator()
+    
+    # Create validators
+    age_validator: RangeValidator = RangeValidator("age", 18, 120)
+    email_validator: EmailValidator = EmailValidator()
+    phone_validator: PhoneValidator = PhoneValidator("+1")
+    
+    # Add to form
+    form.add_validator(age_validator)
+    form.add_validator(email_validator)
+    form.add_validator(phone_validator)
+    
+    # Test age validation
+    print("--- Age Tests ---")
+    form.validate_field("age", "25")
+    form.validate_field("age", "200")
+    form.validate_field("age", "teen")
+    form.validate_field("age", "-5")
+    
+    # Test email validation
+    print("--- Email Tests ---")
+    form.validate_field("email", "User@Domain.COM")
+    form.validate_field("email", "invalid.email")
+    form.validate_field("email", "")
+    
+    # Test phone validation
+    print("--- Phone Tests ---")
+    form.validate_field("phone", "555-1234")
+    form.validate_field("phone", "+1 555 123 4567")
+    form.validate_field("phone", "abc")
+    form.validate_field("phone", "123")
+
+```
+
+## Timing
+
+- Generation: 859.87s
+
+## Notes
+
+This iteration was skipped because the generated code didn't pass validation.
+This is typically due to the AI generating code with unsupported features
+or syntax that doesn't match the Sharpy spec (phases 0.1.0-0.2.6).
+
+This output is saved for inspection to help improve prompting.

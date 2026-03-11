@@ -1,0 +1,16 @@
+Repeated identical compiler error (likely compiler bug): Compilation errors:
+
+error[SPY0220]: Cannot pass argument of type 'Circle' to parameter of type 'IScalable'
+  --> /tmp/tmpwe0ocx2o/main.spy:16:30
+    |
+ 16 |     ShapeFactory.scale_shape(c, 2.0)
+    |                              ^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'Rectangle' to parameter of type 'IScalable'
+  --> /tmp/tmpwe0ocx2o/main.spy:17:30
+    |
+ 17 |     ShapeFactory.scale_shape(r, 0.5)
+    |                              ^
+    |
+

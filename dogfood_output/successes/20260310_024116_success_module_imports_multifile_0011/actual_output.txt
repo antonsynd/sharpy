@@ -1,0 +1,4 @@
+Value: 13
+Value: 7
+Value: 30
+Result: 3.33

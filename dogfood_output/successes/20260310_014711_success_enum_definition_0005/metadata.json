@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T01:46:11.242267",
+  "generated_code": "# Test enum definition with function parameter and match\nenum Priority:\n    LOW = 10\n    MEDIUM = 20\n    HIGH = 30\n\ndef priority_name(p: Priority) -> str:\n    match p:\n        case Priority.LOW:\n            return \"low\"\n        case Priority.MEDIUM:\n            return \"medium\"\n        case Priority.HIGH:\n            return \"high\"\n        case _:\n            return \"unknown\"\n\ndef main():\n    task_priority = Priority.MEDIUM\n    print(task_priority.value)\n    print(priority_name(task_priority))\n    \n    urgent = Priority.HIGH\n    print(urgent.value)\n    print(priority_name(urgent))\n",
+  "expected_output": "20\nmedium\n30\nhigh\n",
+  "actual_output": "20\nmedium\n30\nhigh",
+  "feature_focus": "enum_definition",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 48.838029623031616,
+  "execution_duration": 5.150461435317993,
+  "source_files": null
+}

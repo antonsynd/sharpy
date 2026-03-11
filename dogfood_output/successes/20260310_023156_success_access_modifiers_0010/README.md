@@ -1,0 +1,118 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-03-10T02:27:10.311209
+**Feature Focus:** access_modifiers
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+# Test access modifiers with protected properties and method visibility
+# Explores: @protected, @private, inheritance, properties, and access in subclasses
+
+class Resource:
+    _owner_id: int
+    resource_id: int
+    @protected
+    property access_count: int = 0
+    
+    def __init__(self, res_id: int, owner: int):
+        self.resource_id = res_id
+        self._owner_id = owner
+    
+    @public
+    def check_ownership(self, user_id: int) -> bool:
+        if user_id == self._owner_id:
+            return True
+        return False
+    
+    @protected
+    def increment_counter(self) -> None:
+        # Accessing protected property - can access directly or through accessor
+        self.access_count += 1
+    
+    @private
+    def _log_access(self, user: int) -> None:
+        print(self.resource_id)
+
+class SecureFile(Resource):
+    encrypted: bool
+    _security_level: int
+    
+    def __init__(self, res_id: int, owner: int, level: int):
+        super().__init__(res_id, owner)
+        self._security_level = level
+        self.encrypted = True
+    
+    def get_security_level(self) -> int:
+        return self._security_level
+    
+    def attempt_access(self, user_id: int) -> bool:
+        # Can access protected methods from parent
+        owned: bool = self.check_ownership(user_id)
+        if owned:
+            # Owner always has access - call protected increment
+            self.increment_counter()
+            print(900)
+            return True
+        
+        # Non-owner: check security level
+        if self._security_level < 5:
+            print(400)
+            return True
+        
+        print(403)
+        return False
+
+def main():
+    # Create secure file
+    file: SecureFile = SecureFile(42, 1001, 3)
+    
+    # Access resource_id (public by default)
+    print(file.resource_id)
+    
+    # Check ownership
+    print(file.check_ownership(1001))
+    print(file.check_ownership(999))
+    
+    # Get security level
+    print(file.get_security_level())
+    
+    # Attempt access for owner
+    file.attempt_access(1001)
+    
+    # Attempt access for non-owner with low security
+    file.attempt_access(500)
+    
+    # Create high security file
+    secret: SecureFile = SecureFile(99, 1001, 10)
+    print(secret.attempt_access(500))
+
+```
+
+## Output
+
+```
+42
+True
+False
+3
+900
+400
+403
+False
+```
+
+## Timing
+
+- Generation: 262.97s
+- Execution: 5.11s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

@@ -1,0 +1,20 @@
+# Module: geometry_defs
+# Defines interfaces for geometric shapes
+
+interface IShape:
+    def area(self) -> float:
+        ...
+
+    def perimeter(self) -> float:
+        ...
+
+interface IColorable:
+    def get_color(self) -> str:
+        ...
+
+    def set_color(self, color: str) -> None:
+        ...
+
+interface IMovable:
+    def move(self, dx: float, dy: float) -> None:
+        ...

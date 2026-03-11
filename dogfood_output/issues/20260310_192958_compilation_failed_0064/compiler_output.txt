@@ -1,0 +1,7 @@
+warning[SPY0452]: Imported name 'ShapeType' is never used
+  --> /tmp/tmppnqbe15r/main.spy:4:28
+    |
+  4 | from geometry_types import ShapeType, IMeasurable
+    |                            ^^^^^^^^^
+    |
+

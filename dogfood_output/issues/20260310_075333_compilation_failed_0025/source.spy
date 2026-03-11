@@ -1,0 +1,87 @@
+# Test: Complex exception hierarchy with re-raise and multiple exception types
+# Features: Custom exceptions, inheritance, try/except/else/finally, re-raise
+
+class ValidationError(Exception):
+    code: int
+    def __init__(self, message: str, code: int):
+        super().__init__(message)
+        self.code = code
+
+class ValueTooSmallError(ValidationError):
+    min_required: int
+    def __init__(self, value: int, minimum: int):
+        super().__init__(f"Value {value} below minimum {minimum}", 1001)
+        self.min_required = minimum
+
+class ValueTooLargeError(ValidationError):
+    max_allowed: int
+    def __init__(self, value: int, maximum: int):
+        super().__init__(f"Value {value} exceeds maximum {maximum}", 1002)
+        self.max_allowed = maximum
+
+class RangeValidator:
+    min_val: int
+    max_val: int
+    def __init__(self, minimum: int, maximum: int):
+        self.min_val = minimum
+        self.max_val = maximum
+    
+    def validate(self, value: int) -> ValidationError?:
+        if value < self.min_val:
+            return ValueTooSmallError(value, self.min_val)
+        if value > self.max_val:
+            return ValueTooLargeError(value, self.max_val)
+        return None()
+
+def process_value(validator: RangeValidator, value: int) -> str?:
+    result: int = 0
+    processed: bool = False
+    try:
+        error = validator.validate(value)
+        if error is not None:
+            # After type narrowing, error is ValidationError (not Optional)
+            # So we just raise it directly - no .unwrap() needed
+            raise error
+        result = value * 2
+        processed = True
+    except ValueTooSmallError as e:
+        print(f"TooSmallError: {e.min_required}")
+        raise
+    except ValueTooLargeError as e:
+        print(f"TooLargeError: {e.max_allowed}")
+        return None()
+    else:
+        print(f"Valid: {value}")
+        return f"processed_{result}"
+    finally:
+        print("Cleanup")
+
+def main():
+    validator = RangeValidator(10, 100)
+    
+    # Test 1: Valid value
+    result1 = process_value(validator, 50)
+    if result1 is not None:
+        print(result1.unwrap())
+    
+    # Test 2: Too small - will be caught and re-raised
+    try:
+        process_value(validator, 5)
+    except ValidationError as e:
+        print(f"Caught: {e.code}")
+    
+    # Test 3: Too large - handled internally
+    result2 = process_value(validator, 200)
+    print(result2.unwrap() if result2 is not None else "handled")
+    
+    # Test 4: Bare raise in nested context
+    try:
+        try:
+            raise ValueTooSmallError(3, 10)
+        except Exception:
+            print("Inner caught")
+            raise
+    except ValueTooSmallError as outer:
+        print(f"Outer: {outer.min_required}")
+    
+    print("done")

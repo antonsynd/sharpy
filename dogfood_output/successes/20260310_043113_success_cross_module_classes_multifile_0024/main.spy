@@ -1,0 +1,41 @@
+# Module: main
+# Entry point demonstrating cross-module class usage
+
+from geometry import Point, Color, IScalable
+from shapes import Circle, Rectangle
+from utils import Container, format_color, describe_shape
+
+def main():
+    # Create points using struct from geometry module
+    origin: Point = Point(0.0, 0.0)
+    
+    # Verify struct field access works cross-module
+    print(origin.x)
+    
+    # Create shapes using classes from shapes module
+    circle: Circle = Circle(origin, 5.0, Color.RED)
+    rect: Rectangle = Rectangle(10.0, 20.0, Color.BLUE)
+    
+    # Test computed properties (areas)
+    circle_area: float = circle.area()
+    rect_area: float = rect.area()
+    print(circle_area)
+    print(rect_area)
+    
+    # Test polymorphic method dispatch via imported function
+    desc: str = describe_shape(circle)
+    print(desc)
+    
+    # Test enum handling via imported function
+    color_name: str = format_color(circle.color)
+    print(color_name)
+    
+    # Test interface method (scaling)
+    circle.scale(2.0)
+    print(circle.radius)
+    
+    # Test generic container with interface constraint
+    scalable_items: Container[IScalable] = Container[IScalable]()
+    scalable_items.add(circle)
+    scalable_items.add(rect)
+    print(scalable_items.total_count())

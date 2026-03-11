@@ -1,0 +1,6 @@
+Woof! - A Dog (Golden Retriever) named Buddy
+Meow! - A Cat named Whiskers with 9 lives
+True
+False
+66
+59

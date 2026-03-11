@@ -1,0 +1,20 @@
+# Interface definitions for data processing pipeline
+
+interface IDataSource:
+    def fetch_record(self, id: int) -> Record
+    def count(self) -> int
+
+interface IProcessable:
+    def process(self) -> float
+    def is_valid(self) -> bool
+
+@final
+class Record:
+    id: int
+    value: float
+    category: int
+
+    def __init__(self, id: int, value: float, category: int):
+        self.id = id
+        self.value = value
+        self.category = category

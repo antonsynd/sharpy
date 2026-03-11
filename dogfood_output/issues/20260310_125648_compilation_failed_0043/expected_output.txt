@@ -1,0 +1,19 @@
+50.0
+30.0
+Rectangle box: 10.0 x 5.0
+Shape: wheel
+Rectangle square: 4.0 x 4.0
+50.0
+78.53975
+16.0
+50.2654825
+box
+wheel
+10.0
+5.0
+5.0
+50.0
+78.53975
+16.0
+144.80525
+done

@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0102]: Expected newline, got Class
+  --> /tmp/tmpibbr9w2o/dogfood_test.spy:4:11
+    |
+  4 | @abstract class DataValidator:
+    |           ^^^^^
+    |
+

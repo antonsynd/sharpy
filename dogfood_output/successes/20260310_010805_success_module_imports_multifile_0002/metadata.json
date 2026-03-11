@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-03-10T01:00:27.094821",
+  "generated_code": "# Main entry point - demonstrates polymorphism across module boundaries\nfrom shape_base import Shape\nfrom point import Point\nfrom shapes import Rectangle, Circle\n\ndef describe_shape(s: Shape) -> str:\n    return s.describe()\n\ndef main():\n    origin = Point(0.0, 0.0)\n\n    rect = Rectangle(5.0, 3.0, origin)\n    circle = Circle(2.0)\n\n    print(rect.get_area())\n    print(rect.get_perimeter())\n    print(circle.get_area())\n    print(circle.get_circumference())\n    print(describe_shape(rect))\n    print(describe_shape(circle))\n",
+  "expected_output": "15.0\n16.0\n12.56636\n12.56636\nRectangle: area = 15.0\nCircle: area = 12.56636\n",
+  "actual_output": "15.0\n16.0\n12.56636\n12.56636\nRectangle: area = 15.0\nCircle: area = 12.56636",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 416.1282567977905,
+  "execution_duration": 5.086212158203125,
+  "source_files": {
+    "shape_base.spy": "# Base shape module - provides abstract base class for geometric shapes\n@abstract\nclass Shape:\n    _name: str = \"Shape\"\n\n    @abstract\n    def get_area(self) -> float:\n        ...\n\n    def describe(self) -> str:\n        return f\"{self._name}: area = {self.get_area()}\"\n",
+    "point.spy": "# Point module - simple coordinate class\nclass Point:\n    x: float\n    y: float\n\n    def __init__(self, x: float, y: float):\n        self.x = x\n        self.y = y\n\n    def __str__(self) -> str:\n        return f\"Point({self.x}, {self.y})\"\n",
+    "shapes.spy": "# Concrete shape implementations\nfrom shape_base import Shape\nfrom point import Point\n\nclass Rectangle(Shape):\n    _width: float\n    _height: float\n    _origin: Point\n\n    def __init__(self, width: float, height: float, origin: Point):\n        self._name = \"Rectangle\"\n        self._width = width\n        self._height = height\n        self._origin = origin\n\n    @override\n    def get_area(self) -> float:\n        return self._width * self._height\n\n    def get_perimeter(self) -> float:\n        return 2.0 * (self._width + self._height)\n\nclass Circle(Shape):\n    _radius: float\n\n    def __init__(self, radius: float):\n        self._name = \"Circle\"\n        self._radius = radius\n\n    @override\n    def get_area(self) -> float:\n        return 3.14159 * self._radius * self._radius\n\n    def get_circumference(self) -> float:\n        return 2.0 * 3.14159 * self._radius\n",
+    "main.spy": "# Main entry point - demonstrates polymorphism across module boundaries\nfrom shape_base import Shape\nfrom point import Point\nfrom shapes import Rectangle, Circle\n\ndef describe_shape(s: Shape) -> str:\n    return s.describe()\n\ndef main():\n    origin = Point(0.0, 0.0)\n\n    rect = Rectangle(5.0, 3.0, origin)\n    circle = Circle(2.0)\n\n    print(rect.get_area())\n    print(rect.get_perimeter())\n    print(circle.get_area())\n    print(circle.get_circumference())\n    print(describe_shape(rect))\n    print(describe_shape(circle))\n"
+  }
+}

@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Optional<DogfoodTest.Document>' does not contain a definition for 'Header' and no accessible extension method 'Header' accepting a first argument of type 'Optional<DogfoodTest.Document>' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp7_yvvt0q/dogfood_test.spy:63:50
+    |
+ 63 |     temp_header: HeaderElement? = doc.header
+    |                                             ^
+    |
+
+error[CS1061]: 'Optional<DogfoodTest.HeaderElement>' does not contain a definition for 'GetContent' and no accessible extension method 'GetContent' accepting a first argument of type 'Optional<DogfoodTest.HeaderElement>' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp7_yvvt0q/dogfood_test.spy:66:40
+    |
+ 66 |     header_line: str = temp_header.get_content()
+    |                                        ^
+    |
+
+error[CS1061]: 'string' does not contain a definition for 'Len' and no accessible extension method 'Len' accepting a first argument of type 'string' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp7_yvvt0q/dogfood_test.spy:56:39
+    |
+ 56 |             return title.len()
+    |                               ^
+    |
+

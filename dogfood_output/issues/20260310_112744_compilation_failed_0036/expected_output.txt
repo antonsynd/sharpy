@@ -1,0 +1,7 @@
+1
+TestEntity
+0
+Dragon
+5.0
+42
+22

@@ -1,0 +1,11 @@
+True
+False
+True
+True
+True
+False
+4
+origin-point
+red-point
+255
+12.23606797749979

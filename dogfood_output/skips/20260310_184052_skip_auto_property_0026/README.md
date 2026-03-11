@@ -1,0 +1,241 @@
+# Skipped Dogfood Run
+
+**Timestamp:** 2026-03-10T18:32:43.321781
+**Skip Reason:** Sharpy compiler error after 3 attempts: Compilation errors:
+
+Type errors:
+error[SPY0220]: Cannot pass argument of type 'Player' to parameter of type 'Entity'
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:150:22
+     |
+ 150 |     show_entity_info(p)
+     |                      ^
+     |
+
+Validation errors:
+error[SPY0411]: Property 'display_name' in 'Player' is marked @override but no matching property exists in base class 'Unit'
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:68:5
+    |
+ 68 |     property get display_name(self) -> str:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0411]: Property 'category' in 'Player' is marked @override but no matching property exists in base class 'Unit'
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:72:5
+    |
+ 72 |     property get category(self) -> str:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0411]: Cannot override property 'max_health' because the base class property in 'Unit' is not marked @virtual or @abstract
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:76:5
+    |
+ 76 |     property get max_health(self) -> int:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0411]: Property 'display_name' in 'Bot' is marked @override but no matching property exists in base class 'Unit'
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:98:5
+    |
+ 98 |     property get display_name(self) -> str:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0411]: Property 'category' in 'Bot' is marked @override but no matching property exists in base class 'Unit'
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:102:5
+     |
+ 102 |     property get category(self) -> str:
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+
+error[SPY0411]: Cannot override property 'max_health' because the base class property in 'Unit' is not marked @virtual or @abstract
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:106:5
+     |
+ 106 |     property get max_health(self) -> int:
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+
+
+**Feature Focus:** auto_property
+**Complexity:** complex
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+@abstract
+class Entity:
+    @abstract
+    property get display_name(self) -> str:
+        pass
+
+    @abstract
+    property get category(self) -> str:
+        pass
+
+interface IIdentifiable:
+    property get id(self) -> int:
+        pass
+
+interface IVersioned:
+    property get version(self) -> int:
+        pass
+
+class Unit:
+    _health: int
+
+    property get max_health(self) -> int:
+        return 100
+
+    def __init__(self):
+        self._health = 100
+
+class Player(Unit, IIdentifiable, IVersioned):
+    _id: int
+    _name: str
+    _level: int
+    _token: str
+
+    property get id(self) -> int:
+        return self._id
+
+    property get version(self) -> int:
+        return 1
+
+    property get name(self) -> str:
+        return self._name
+
+    property set name(self, value: str):
+        self._name = value
+
+    property get level(self) -> int:
+        return self._level
+
+    property get token(self) -> str:
+        return self._token
+
+    @static
+    _active_count: int = 0
+
+    @static
+    property get active_count() -> int:
+        return Player._active_count
+
+    def __init__(self, id: int, name: str):
+        super().__init__()
+        self._id = id
+        self._name = name
+        self._level = 1
+        self._token = f"player-{id}"
+        Player._active_count += 1
+
+    @override
+    property get display_name(self) -> str:
+        return f"Player: {self._name} (Lv.{self._level})"
+
+    @override
+    property get category(self) -> str:
+        return "Player"
+
+    @override
+    property get max_health(self) -> int:
+        return 100 + (self._level - 1) * 10
+
+class Bot(Unit, IIdentifiable):
+    _id: int
+    _base_difficulty: int
+
+    property get id(self) -> int:
+        return self._id
+
+    property get difficulty(self) -> int:
+        return self._base_difficulty
+
+    property get threat_level(self) -> int:
+        return self._base_difficulty * 10
+
+    def __init__(self, id: int, difficulty: int):
+        super().__init__()
+        self._id = id
+        self._base_difficulty = difficulty
+
+    @override
+    property get display_name(self) -> str:
+        return f"Bot-{self._id}"
+
+    @override
+    property get category(self) -> str:
+        return "NPC"
+
+    @override
+    property get max_health(self) -> int:
+        return 50 + self._base_difficulty * 5
+
+    @virtual
+    property get attack_power(self) -> int:
+        return self._base_difficulty * 2
+
+class EliteBot(Bot):
+    def __init__(self, id: int, difficulty: int):
+        super().__init__(id, difficulty)
+
+    @override
+    property get display_name(self) -> str:
+        return f"EliteBot-{self._id}"
+
+    @override
+    property get attack_power(self) -> int:
+        return self._base_difficulty * 4
+
+def show_entity_info(e: Entity):
+    print(e.display_name)
+    print(e.category)
+
+def show_unit_info(u: Unit):
+    print(u.max_health)
+
+def show_identifiable(i: IIdentifiable):
+    print(i.id)
+
+def main():
+    p: Player = Player(1, "Hero")
+    b: Bot = Bot(2, 5)
+    e: EliteBot = EliteBot(3, 10)
+
+    print(p.display_name)
+    print(p.category)
+    print(p.id)
+    print(p.version)
+    print(p.name)
+    print(p.level)
+    print(p.token)
+    print(Player.active_count)
+    print(p.max_health)
+
+    show_entity_info(p)
+    show_unit_info(p)
+    show_identifiable(p)
+
+    print(b.display_name)
+    print(b.difficulty)
+    print(b.threat_level)
+    print(b.max_health)
+
+    print(e.display_name)
+    print(e.attack_power)
+
+    p2: Player = Player(4, "Sidekick")
+    print(Player.active_count)
+
+```
+
+## Timing
+
+- Generation: 472.25s
+
+## Notes
+
+This iteration was skipped because the generated code didn't pass validation.
+This is typically due to the AI generating code with unsupported features
+or syntax that doesn't match the Sharpy spec (phases 0.1.0-0.2.6).
+
+This output is saved for inspection to help improve prompting.

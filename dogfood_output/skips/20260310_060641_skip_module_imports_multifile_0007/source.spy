@@ -1,0 +1,35 @@
+# Main entry point - demonstrates complex cross-module imports
+from types import Color, Point
+from shapes import Circle, Rectangle, Shape
+from utils import create_circle_at_origin, get_color_name, ShapeUtils
+
+def process_shape(s: Shape) -> None:
+    ShapeUtils.increment_count()
+    print(s.draw())
+    print(get_color_name(s.get_color()))
+
+def main():
+    # Test 1: Create circle via factory and process it
+    c = create_circle_at_origin(Color.RED, 5.0)
+    process_shape(c)
+    
+    # Test 2: Move the circle and verify position
+    c.move(3.0, 4.0)
+    pos = c.get_position()
+    print(str(pos.x))
+    print(str(pos.y))
+    
+    # Test 3: Create rectangle directly and process
+    r = Rectangle(Color.GREEN, Point(1.0, 2.0), 10.0, 20.0)
+    process_shape(r)
+    
+    # Test 4: Get rectangle dimensions
+    print(str(r.get_width()))
+    print(str(r.get_height()))
+    
+    # Test 5: Verify static counter
+    print(str(ShapeUtils.get_count()))
+    
+    # Test 6: Reset and verify
+    ShapeUtils.reset_count()
+    print(str(ShapeUtils.get_count()))

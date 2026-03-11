@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Geometry.Color' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Geometry.Color' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpb6a5abxx/main.spy:44:47
+    |
+ 44 |     print(c.color.name)
+    |                        ^
+    |
+

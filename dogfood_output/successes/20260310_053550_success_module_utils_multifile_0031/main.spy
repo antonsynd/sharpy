@@ -1,0 +1,12 @@
+from implementations import Circle, Rectangle, DoubleValue
+
+def main():
+    c = Circle("round", 2.5)
+    r = Rectangle("box", 3.0, 4.0)
+    d = DoubleValue(10.0)
+    
+    print(c.draw())
+    print(c.area())
+    print(r.draw())
+    print(r.area())
+    print(d.compute())

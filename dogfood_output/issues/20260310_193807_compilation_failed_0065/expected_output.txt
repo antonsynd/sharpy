@@ -1,0 +1,10 @@
+Distance: 5.0
+Drawing rectangle 5.0x3.0
+Drawing circle with radius 2.5
+Total area: 34.53975
+Color Red = 1
+Color Green = 2
+Color Blue = 3
+Color Yellow = 4
+Default rect area: 50.0
+Shape with color Red

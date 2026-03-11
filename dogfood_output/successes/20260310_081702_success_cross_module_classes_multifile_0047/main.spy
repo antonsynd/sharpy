@@ -1,0 +1,32 @@
+# Main entry point importing from multiple modules
+from shapes import Shape, Rectangle
+from drawable import DrawableRectangle, Circle, get_total_area
+
+def main():
+    # Create instances of classes from different modules
+    rect: Rectangle = Rectangle("BasicRect", 5.0, 3.0)
+    drect: DrawableRectangle = DrawableRectangle("GraphicRect", 4.0, 6.0)
+    circ: Circle = Circle("RoundOne", 2.5)
+    
+    # Test polymorphic method dispatch (virtual/override)
+    print("=== Descriptions ===")
+    print(rect.describe())
+    print(drect.describe())
+    print(circ.describe())
+    
+    # Test draw methods
+    print("=== Drawing ===")
+    print(drect.draw())
+    print(circ.draw())
+    
+    # Test area calculations
+    print("=== Areas ===")
+    print(rect.area())
+    print(drect.area())
+    print(circ.area())
+    
+    # Test polymorphic collection with mixed types
+    shapes: list[Shape] = [rect, drect, circ]
+    total: float = get_total_area(shapes)
+    print("=== Total ===")
+    print(total)

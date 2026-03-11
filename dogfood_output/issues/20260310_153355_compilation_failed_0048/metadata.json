@@ -1,0 +1,22 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-10T15:33:03.013960",
+  "generated_code": "# Main entry point - imports from multiple modules\nfrom utils import Formatter, double_value\nfrom math_ops import Calculator, scale_and_format, calculate_average\n\ndef main():\n    # Test utility functions\n    result: int = double_value(5)\n    print(result)\n    \n    # Test utility class\n    fmt: Formatter = Formatter(\"Result=\")\n    formatted: str = fmt.format(42)\n    print(formatted)\n    \n    # Test math operations\n    avg: float = calculate_average(10, 20)\n    print(avg)\n    \n    # Test Calculator class\n    calc: Calculator = Calculator(\"Basic\")\n    desc: str = calc.describe()\n    print(desc)\n    \n    # Test cross-module dependency\n    scaled: str = scale_and_format(3, 4)\n    print(scaled)\n",
+  "expected_output": "10\nResult=42\n15.0\nCalculator: Basic\nValue: 24.00\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0161]: 'MathOps.ScaleAndFormat(int, int)': not all code paths return a value\n  --> /tmp/tmpft3jaquh/math_ops.spy:9:26\n    |\n  9 |     \n    |     ^\n    |\n\n",
+  "compiler_output": "warning[SPY0451]: Local variable 'doubled' is assigned but never used\n  --> /tmp/tmpft3jaquh/math_ops.spy:11:1\n    |\n 11 |     fmt: Formatter = Formatter(\"Result=\")\n    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\nwarning[SPY0452]: Imported name 'format_number' is never used\n  --> /tmp/tmpft3jaquh/math_ops.spy:2:15\n    |\n  2 | from utils import Formatter, double_value\n    |               ^^^^^^^^^^^^^\n    |\n\n",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 35.325215101242065,
+  "compilation_duration": null,
+  "execution_duration": 5.030559539794922,
+  "source_files": {
+    "utils.spy": "# Utility module providing helper functions and formatting\n\ndef format_number(n: float) -> str:\n    return f\"Value: {n:.2f}\"\n\ndef double_value(x: int) -> int:\n    return x * 2\n\nclass Formatter:\n    prefix: str\n    \n    def __init__(self, prefix: str):\n        self.prefix = prefix\n    \n    def format(self, value: int) -> str:\n        return f\"{self.prefix}{value}\"\n",
+    "math_ops.spy": "# Math operations module that depends on utils\nfrom utils import format_number, double_value\n\ndef calculate_average(a: int, b: int) -> float:\n    total: int = a + b\n    return total / 2.0\n\ndef scale_and_format(base: int, multiplier: int) -> str:\n    scaled: int = base * multiplier\n    doubled: int = double_value(scaled)\n    return format_number(doubled as float)\n\nclass Calculator:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    def compute(self, x: int, y: int) -> float:\n        return calculate_average(x, y) * 2.0\n    \n    def describe(self) -> str:\n        return f\"Calculator: {self.name}\"\n",
+    "main.spy": "# Main entry point - imports from multiple modules\nfrom utils import Formatter, double_value\nfrom math_ops import Calculator, scale_and_format, calculate_average\n\ndef main():\n    # Test utility functions\n    result: int = double_value(5)\n    print(result)\n    \n    # Test utility class\n    fmt: Formatter = Formatter(\"Result=\")\n    formatted: str = fmt.format(42)\n    print(formatted)\n    \n    # Test math operations\n    avg: float = calculate_average(10, 20)\n    print(avg)\n    \n    # Test Calculator class\n    calc: Calculator = Calculator(\"Basic\")\n    desc: str = calc.describe()\n    print(desc)\n    \n    # Test cross-module dependency\n    scaled: str = scale_and_format(3, 4)\n    print(scaled)\n"
+  }
+}

@@ -1,0 +1,46 @@
+# Main entry point demonstrating cross-module imports and usage
+
+from models import Entity, Status, Point, IIdentifiable
+from services import User, EntityService
+from utils import MAX_ENTITIES, format_status, is_active_status, Counter
+
+def main():
+    print("=== Module Imports Test ===")
+
+    # Test 1: Access constants from utils
+    print(f"App: {MAX_ENTITIES}")
+
+    # Test 2: Create and use struct from models
+    p = Point(3.0, 4.0)
+    distance = p.distance_from_origin()
+    print(f"Distance: {distance}")
+
+    # Test 3: Create User (cross-module inheritance)
+    user = User(1, "alice", "alice@example.com")
+    print(f"User: {user.get_name()}")
+
+    # Test 4: Interface implementation works
+    identifiable: IIdentifiable = user
+    print(f"ID: {identifiable.get_id()}")
+
+    # Test 5: Method override dispatch
+    print(f"Desc: {user.describe()}")
+
+    # Test 6: Enum usage and helper functions
+    status = user.get_status()
+    print(f"Status: {format_status(status)}")
+
+    # Test 7: EntityService with polymorphism
+    service = EntityService()
+    service.add(user)
+
+    base_entity = Entity(2)
+    service.add(base_entity)
+
+    active_count = service.count_by_status(Status.ACTIVE)
+    print(f"Active: {active_count}")
+
+    # Test 8: Counter from utils
+    counter = Counter(10)
+    new_val = counter.increment()
+    print(f"Count: {new_val}")

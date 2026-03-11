@@ -1,0 +1,30 @@
+# Module: utils - Enums, Structs, and helper types
+enum Color:
+    RED = 0
+    GREEN = 1
+    BLUE = 2
+    CUSTOM = 3
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_from_origin(self) -> float:
+        return (self.x ** 2.0 + self.y ** 2.0) ** 0.5
+
+def format_color(c: Color) -> str:
+    if c == Color.RED:
+        return "red"
+    elif c == Color.GREEN:
+        return "green"
+    elif c == Color.BLUE:
+        return "blue"
+    else:
+        return "custom"
+
+def make_point(x: float, y: float) -> Point:
+    return Point(x, y)

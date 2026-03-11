@@ -1,0 +1,35 @@
+# Geometry shapes module
+# Provides shape classes with area calculations
+
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float: ...
+
+class Rectangle(Shape):
+    width: float
+    height: float
+    
+    def __init__(self, w: float, h: float):
+        self.width = w
+        self.height = h
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, r: float):
+        self.radius = r
+    
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+def total_area(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for shape in shapes:
+        total = total + shape.area()
+    return total

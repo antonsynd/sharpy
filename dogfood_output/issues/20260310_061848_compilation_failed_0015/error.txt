@@ -1,0 +1,30 @@
+Assembly compilation failed:
+
+error[CS1729]: 'DogfoodTest.RangeError' does not contain a constructor that takes 1 arguments
+  --> /tmp/tmpqptqx81s/dogfood_test.spy:102:27
+     |
+ 102 |             raise RangeError("too large")
+     |                           ^
+     |
+
+error[CS0165]: Use of unassigned local variable 'result'
+  --> /tmp/tmpqptqx81s/dogfood_test.spy:101:17
+     |
+ 101 |         if result > 50:
+     |                 ^
+     |
+
+error[CS1729]: 'DogfoodTest.ValidationError' does not contain a constructor that takes 1 arguments
+  --> /tmp/tmpqptqx81s/dogfood_test.spy:76:27
+    |
+ 76 |             raise ValidationError("below minimum")
+    |                           ^
+    |
+
+error[CS1729]: 'DogfoodTest.ValidationError' does not contain a constructor that takes 1 arguments
+  --> /tmp/tmpqptqx81s/dogfood_test.spy:78:27
+    |
+ 78 |             raise ValidationError("above maximum")
+    |                           ^
+    |
+

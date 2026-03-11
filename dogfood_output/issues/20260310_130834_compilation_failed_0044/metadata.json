@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-10T13:05:25.970628",
+  "generated_code": "# Test access modifiers with protected inheritance and encapsulation\n\nclass BankAccount:\n    _balance: float\n    _transaction_count: int\n\n    def __init__(self, initial: float):\n        self._balance = initial\n        self._transaction_count = 0\n\n    @protected\n    def record_transaction(self) -> None:\n        self._transaction_count += 1\n\n    @protected\n    def get_balance(self) -> float:\n        return self._balance\n\n    @private\n    def audit_log(self, msg: str) -> None:\n        print(f\"Audit: {msg}\")\n\n    @virtual\n    def deposit(self, amount: float) -> None:\n        self._balance += amount\n        self.record_transaction()\n\nclass SavingsAccount(BankAccount):\n    interest_rate: float\n\n    def __init__(self, initial: float, rate: float):\n        super().__init__(initial)\n        self.interest_rate = rate\n\n    @override\n    def deposit(self, amount: float) -> None:\n        # Can access protected members from subclass\n        current = self.get_balance()\n        self._balance = current + amount\n        self.record_transaction()\n\n    def apply_interest(self) -> None:\n        interest = self.get_balance() * self.interest_rate\n        self._balance += interest\n\ndef main():\n    account = SavingsAccount(100.0, 0.05)\n    account.deposit(50.0)\n    account.apply_interest()\n    # Verify protected access works (visible within class hierarchy)\n    print(account.get_balance())\n",
+  "expected_output": "157.5\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0122]: 'DogfoodTest.BankAccount.GetBalance()' is inaccessible due to its protection level\n  --> /tmp/tmppkn79wpt/dogfood_test.spy:51:47\n    |\n 51 |     print(account.get_balance())\n    |                                 ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmppkn79wpt/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "access_modifiers",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 167.98774123191833,
+  "compilation_duration": null,
+  "execution_duration": 4.9654200077056885,
+  "source_files": null
+}

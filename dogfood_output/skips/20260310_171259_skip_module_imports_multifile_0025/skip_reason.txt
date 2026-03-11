@@ -1,0 +1,30 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'NamedPoint' has no member 'status'. Did you mean '_status'?
+  --> /tmp/tmpw5g7f9y3/main.spy:9:5
+    |
+  9 |     p3.status = Status.INACTIVE
+    |     ^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'NamedPoint' has no member 'id'
+  --> /tmp/tmpw5g7f9y3/main.spy:14:11
+    |
+ 14 |     print(p1.id)
+    |           ^^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type '(double) -> double' to parameter of type 'Transform'
+  --> /tmp/tmpw5g7f9y3/main.spy:20:55
+    |
+ 20 |     doubled_distances = process_points(active_points, lambda d: d * 2.0)
+    |                                                       ^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0203]: Type 'IIdentifiable' has no member 'id'
+  --> /tmp/tmpw5g7f9y3/main.spy:27:11
+    |
+ 27 |     print(identifiable.id)
+    |           ^^^^^^^^^^^^^^^
+    |
+

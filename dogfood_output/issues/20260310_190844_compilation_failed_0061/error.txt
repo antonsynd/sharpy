@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0115]: 'ConcreteShapes.Circle.Scale(double)': no suitable method found to override
+  --> /tmp/tmpgrpii0qi/concrete_shapes.spy:41:30
+    |
+ 41 |     # Test 7: Rectangle area (interface implementation)
+    |                              ^
+    |
+

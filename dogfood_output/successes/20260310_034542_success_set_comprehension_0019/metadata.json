@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T03:44:58.012241",
+  "generated_code": "# Test set comprehension with filtering and transformation\ndef main():\n    # Create a set of squares of odd numbers from 0-9\n    odd_squares: set[int] = {n * n for n in range(10) if n % 2 == 1}\n    \n    # Print the size and elements (sorted for deterministic output)\n    print(len(odd_squares))\n    for x in sorted(odd_squares):\n        print(x)\n",
+  "expected_output": "5\n1\n9\n25\n49\n81\n",
+  "actual_output": "5\n1\n9\n25\n49\n81",
+  "feature_focus": "set_comprehension",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 33.668771266937256,
+  "execution_duration": 5.153762340545654,
+  "source_files": null
+}

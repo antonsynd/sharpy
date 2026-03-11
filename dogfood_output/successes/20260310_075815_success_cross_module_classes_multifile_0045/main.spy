@@ -1,0 +1,17 @@
+from vehicle import Vehicle
+from car_module import ElectricCar, Electric
+
+def main():
+    car = ElectricCar("Nissan", 350)
+    print(car.brand)
+    print(car.range_km)
+    
+    description: str = car.describe()
+    print(description)
+    
+    ev: Electric = car
+    level: int = ev.charge_level()
+    print(level)
+    
+    vehicle: Vehicle = car
+    print(vehicle.describe())

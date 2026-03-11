@@ -1,0 +1,5 @@
+large int
+small int
+some string
+something else
+small int

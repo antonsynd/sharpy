@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0513]: 'Geometry.Shape.Area()' is abstract but it is contained in non-abstract type 'Geometry.Shape'
+  --> geometry.cs:15:32
+    |
+ 15 |     print(is_prime(2))
+    |                       ^
+    |
+
+error[CS0513]: 'Geometry.Shape.Perimeter()' is abstract but it is contained in non-abstract type 'Geometry.Shape'
+  --> geometry.cs:16:32
+    |
+ 16 |     print(is_prime(17))
+    |                        ^
+    |
+

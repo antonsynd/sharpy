@@ -1,0 +1,15 @@
+from shapes import Rectangle, Circle
+from utils import create_shapes, sum_areas, print_shape_info
+
+def main():
+    shapes: list = create_shapes()
+    
+    print("Shape descriptions:")
+    for s in shapes:
+        print_shape_info(s)
+    
+    total_area: float = sum_areas(shapes)
+    print(f"Total area: {total_area:.2f}")
+    
+    r: Rectangle = Rectangle(5.0, 6.0)
+    print(f"New rectangle area: {r.area():.2f}")

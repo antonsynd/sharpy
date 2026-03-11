@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-10T02:25:12.816418",
+  "generated_code": "enum Priority:\n    LOW = 1\n    MEDIUM = 2\n    HIGH = 3\n\nclass TaskConfig:\n    priority: Priority?\n    timeout: int?\n\n    def __init__(self, priority: Priority?, timeout: int?):\n        self.priority = priority\n        self.timeout = timeout\n\ndef get_effective_priority(primary: TaskConfig, defaults: TaskConfig) -> Priority:\n    # Chain of null coalescing with fallback\n    return primary.priority ?? defaults.priority ?? Priority.MEDIUM\n\ndef get_effective_timeout(primary: TaskConfig, defaults: TaskConfig) -> int:\n    # Chain of null coalescing\n    return primary.timeout ?? defaults.timeout ?? 30\n\ndef main():\n    defaults: TaskConfig = TaskConfig(None(), 60)\n    task1: TaskConfig = TaskConfig(Some(Priority.HIGH), None())\n    task2: TaskConfig = TaskConfig(None(), 15)\n    task3: TaskConfig = TaskConfig(None(), None())\n    \n    # Test triple-chained ?? operator\n    print(get_effective_priority(task1, defaults).value)\n    print(get_effective_timeout(task1, defaults))\n    print(get_effective_priority(task2, defaults).value)\n    print(get_effective_priority(task3, defaults).value)\n    print(get_effective_timeout(task3, defaults))\n",
+  "expected_output": "3\n60\n2\n2\n30\n",
+  "actual_output": "3\n60\n2\n2\n60",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "null_coalescing",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 92.53035163879395,
+  "compilation_duration": null,
+  "execution_duration": 4.951913833618164,
+  "source_files": null
+}

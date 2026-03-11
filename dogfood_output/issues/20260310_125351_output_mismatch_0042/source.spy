@@ -1,0 +1,105 @@
+type Position = tuple[x: int, y: int]
+
+enum EntityState:
+    IDLE = 0
+    MOVING = 1
+    ATTACKING = 2
+
+struct Velocity:
+    dx: int
+    dy: int
+
+    def __init__(self, dx: int, dy: int):
+        self.dx = dx
+        self.dy = dy
+
+@abstract
+class Entity:
+    position: Position
+    state: EntityState
+
+    def __init__(self, pos: Position):
+        self.position = pos
+        self.state = EntityState.IDLE
+
+    @virtual
+    def update(self, vel: Velocity) -> str:
+        ...
+
+    def get_location(self) -> str:
+        px: int = self.position.x
+        py: int = self.position.y
+        return f"({px},{py})"
+
+class Player(Entity):
+    health: int
+
+    def __init__(self, pos: Position, hp: int):
+        super().__init__(pos)
+        self.health = hp
+
+    @override
+    def update(self, vel: Velocity) -> str:
+        old_x: int = self.position.x
+        old_y: int = self.position.y
+        new_x: int = old_x + vel.dx
+        new_y: int = old_y + vel.dy
+
+        if self.health > 50 and (vel.dx != 0 or vel.dy != 0):
+            self.state = EntityState.MOVING
+            self.position = (new_x, new_y)
+            return f"player healthy move to {self.get_location()}"
+        elif self.health > 0:
+            self.state = EntityState.IDLE
+            if vel.dx != 0 and vel.dy != 0:
+                self.position = (new_x, new_y)
+                return f"player weakened but moved to {self.get_location()}"
+            else:
+                return "player weakened, staying put"
+        else:
+            return "player defeated"
+
+class Enemy(Entity):
+    aggression: int
+
+    def __init__(self, pos: Position, aggro: int):
+        super().__init__(pos)
+        self.aggression = aggro
+
+    @override
+    def update(self, vel: Velocity) -> str:
+        dist: int = abs(vel.dx) + abs(vel.dy)
+
+        if self.aggression >= dist and not (vel.dx == 0 and vel.dy == 0):
+            self.state = EntityState.ATTACKING
+            return f"enemy attacking from {self.get_location()}"
+        elif dist > 0:
+            old_x: int = self.position.x
+            old_y: int = self.position.y
+            self.position = (old_x + vel.dx // 2, old_y + vel.dy // 2)
+            self.state = EntityState.MOVING
+            return f"enemy pursuing to {self.get_location()}"
+        else:
+            return "enemy waiting"
+
+def simulate(entities: list[Entity], velocities: list[Velocity]) -> None:
+    i: int = 0
+    while i < len(entities):
+        vel: Velocity = velocities[i] if i < len(velocities) else Velocity(0, 0)
+        result: str = entities[i].update(vel)
+        print(result)
+        i = i + 1
+
+def main():
+    player: Player = Player((10, 10), 75)
+    weak_player: Player = Player((5, 5), 25)
+    defeated: Player = Player((0, 0), 0)
+    enemy: Enemy = Enemy((20, 20), 10)
+    passive: Enemy = Enemy((1, 1), 0)
+
+    print(player.update(Velocity(2, 2)))
+    print(weak_player.update(Velocity(3, 4)))
+    print(defeated.update(Velocity(1, 1)))
+    print(enemy.update(Velocity(5, 5)))
+    print(enemy.update(Velocity(0, 0)))
+    print(passive.update(Velocity(2, 0)))

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T16:50:02.703105",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0100]: Unexpected token: Less\n  --> /tmp/tmp31uoyzxq/dogfood_test.spy:39:1\n    |\n 39 | </expected>\n    | ^\n    |\n\n",
+  "generated_code": "def sum_three(a: int, b: int, c: int) -> int:\n    return a + b + c\n\ndef sum_variadic(*args: int) -> int:\n    total: int = 0\n    for x in args:\n        total = total + x\n    return total\n\ndef main():\n    nums: list[int] = [1, 2, 3]\n\n    # Call fixed-params function directly with individual args\n    result1: int = sum_three(nums[0], nums[1], nums[2])\n    print(result1)\n\n    # Spread list into variadic function\n    result2: int = sum_variadic(*nums)\n    print(result2)\n\n    # Tuple spread into variadic\n    coords: tuple[int, int, int] = (10, 20, 30)\n    result3: int = sum_variadic(*coords)\n    print(result3)\n\n    # Multiple spreads in one call\n    first: list[int] = [1, 2]\n    second: list[int] = [3, 4]\n    result4: int = sum_variadic(*first, *second)\n    print(result4)\n\n    # Mixed spread and individual args\n    result5: int = sum_variadic(0, *first, 5)\n    print(result5)\n\n    # Spread from list literal (variadic)\n    result6: int = sum_variadic(*[10, 20, 30])\n    print(result6)\n</expected>\n\n6\n6\n60\n10\n8\n60\n",
+  "expected_output": null,
+  "feature_focus": "spread_call",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 277.83958101272583,
+  "source_files": null,
+  "validation_output": null
+}

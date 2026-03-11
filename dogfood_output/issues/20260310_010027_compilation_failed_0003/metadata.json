@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-10T00:58:45.953048",
+  "generated_code": "# Complex virtual/override hierarchy with abstract classes and multiple inheritance levels\n\n@abstract\nclass Animal:\n    _name: str\n    \n    def __init__(self, name: str):\n        self._name = name\n    \n    @abstract\n    def speak(self) -> str:\n        ...\n    \n    @abstract\n    def get_species(self) -> str:\n        ...\n    \n    @virtual\n    def describe(self) -> str:\n        return f\"A {self.get_species()} named {self._name}\"\n    \n    @virtual\n    def calculate_score(self, base: int) -> int:\n        return base + len(self._name)\n\nclass Mammal(Animal):\n    @override\n    def get_species(self) -> str:\n        return \"Unknown Mammal\"\n    \n    @virtual\n    def is_domestic(self) -> bool:\n        return False\n\nclass Dog(Mammal):\n    _breed: str\n    \n    def __init__(self, name: str, breed: str):\n        super().__init__(name)\n        self._breed = breed\n    \n    @override\n    def speak(self) -> str:\n        return \"Woof!\"\n    \n    @override\n    def get_species(self) -> str:\n        return f\"Dog ({self._breed})\"\n    \n    @override\n    def is_domestic(self) -> bool:\n        return True\n    \n    @override\n    def calculate_score(self, base: int) -> int:\n        score = super().calculate_score(base)\n        if self._breed == \"Golden Retriever\":\n            score += 10\n        return score\n\nclass Cat(Mammal):\n    _lives: int\n    \n    def __init__(self, name: str, lives: int):\n        super().__init__(name)\n        self._lives = lives\n    \n    @override\n    def speak(self) -> str:\n        return \"Meow!\"\n    \n    @override\n    def get_species(self) -> str:\n        return \"Cat\"\n    \n    @override\n    def describe(self) -> str:\n        base = super().describe()\n        return f\"{base} with {self._lives} lives\"\n\ndef make_animals_speak(animals: list[Animal]) -> None:\n    for animal in animals:\n        msg = animal.speak()\n        desc = animal.describe()\n        print(f\"{msg} - {desc}\")\n\ndef main():\n    dog = Dog(\"Buddy\", \"Golden Retriever\")\n    cat = Cat(\"Whiskers\", 9)\n    \n    animals: list[Animal] = [dog, cat]\n    make_animals_speak(animals)\n    \n    print(dog.is_domestic())\n    print(cat.is_domestic())\n    \n    dog_score = dog.calculate_score(50)\n    cat_score = cat.calculate_score(50)\n    print(dog_score)\n    print(cat_score)\n",
+  "expected_output": "Woof! - A Dog (Golden Retriever) named Buddy\nMeow! - A Cat named Whiskers with 9 lives\nTrue\nFalse\n66\n59\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0534]: 'DogfoodTest.Mammal' does not implement inherited abstract member 'DogfoodTest.Animal.Speak()'\n  --> /tmp/tmpvzoeoho1/dogfood_test.spy:12:18\n    |\n 12 |         ...\n    |            ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmpvzoeoho1/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "virtual_override",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 86.35304069519043,
+  "compilation_duration": null,
+  "execution_duration": 4.875124454498291,
+  "source_files": null
+}

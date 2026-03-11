@@ -1,0 +1,41 @@
+# Module: math_utils
+# Math utilities and structs
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return f"({self.x}, {self.y})"
+
+struct Bounds:
+    min_x: float
+    min_y: float
+    max_x: float
+    max_y: float
+
+    def __init__(self, min_x: float, min_y: float, max_x: float, max_y: float):
+        self.min_x = min_x
+        self.min_y = min_y
+        self.max_x = max_x
+        self.max_y = max_y
+
+    def width(self) -> float:
+        return self.max_x - self.min_x
+
+    def height(self) -> float:
+        return self.max_y - self.min_y
+
+const PI: float = 3.14159
+
+def calculate_diagonal(bounds: Bounds) -> float:
+    width: float = bounds.width()
+    height: float = bounds.height()
+    return (width * width + height * height) ** 0.5
+
+def midpoint(b: Bounds) -> Point:
+    return Point((b.min_x + b.max_x) / 2.0, (b.min_y + b.max_y) / 2.0)

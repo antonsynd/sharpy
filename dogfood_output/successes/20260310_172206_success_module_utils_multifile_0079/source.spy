@@ -1,0 +1,30 @@
+# Main entry point - uses shape utilities
+from shape_utils import Shape, Rectangle, create_square, shape_info
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, radius: float):
+        super().__init__("Circle")
+        self.radius = radius
+    
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self.radius
+
+def main():
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    print(shape_info(rect))
+    
+    square: Rectangle = create_square(4.0)
+    print(shape_info(square))
+    
+    circle: Circle = Circle(2.5)
+    print(shape_info(circle))
+    
+    total_area: float = rect.area() + square.area() + circle.area()
+    print(total_area)

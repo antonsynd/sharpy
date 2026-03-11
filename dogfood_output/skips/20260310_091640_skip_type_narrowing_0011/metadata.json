@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T09:11:35.641775",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0220]: Cannot pass argument of type 'None' to parameter of type 'int?'\n  --> /tmp/tmpgkvxhexf/dogfood_test.spy:30:17\n    |\n 30 |     data.append(None)\n    |                 ^^^^\n    |\n\nerror[SPY0220]: Cannot pass argument of type 'None' to parameter of type 'int?'\n  --> /tmp/tmpgkvxhexf/dogfood_test.spy:33:17\n    |\n 33 |     data.append(None)\n    |                 ^^^^\n    |\n\n",
+  "generated_code": "def process_values(values: list[int?]) -> tuple[int, int]:\n    # Sum of non-null values and count of nulls\n    total: int = 0\n    null_count: int = 0\n    for v in values:\n        if v is not None:\n            # Type narrowing: v is now int, not int?\n            total += v\n        else:\n            null_count += 1\n    return (total, null_count)\n\ndef find_and_validate(values: list[int?]) -> str:\n    count: int = 0\n    idx: int = 0\n    while idx < len(values):\n        item = values[idx]\n        # Must narrow first before using operators\n        if item is not None:\n            if item > 0:\n                # Now item is int, can use >\n                count += 1\n        idx += 1\n    return f\"found {count} positive\"\n\ndef main():\n    # Use empty list and append to avoid type inference issues with list literals\n    data: list[int?] = []\n    data.append(10)\n    data.append(None)\n    data.append(-5)\n    data.append(20)\n    data.append(None)\n    data.append(30)\n    \n    # Test type narrowing in loop\n    result = process_values(data)\n    print(result[0])  # Sum of non-null values\n    print(result[1])  # Count of nulls\n    \n    # Test type narrowing with walrus in condition first\n    first = data[0]\n    if first is not None:\n        # first is narrowed to int here\n        print(first * 2)\n    \n    # Test type narrowing with compound condition\n    print(find_and_validate(data))\n",
+  "expected_output": "75\n2\n20\nfound 3 positive\n",
+  "feature_focus": "type_narrowing",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 286.7716360092163,
+  "source_files": null,
+  "validation_output": null
+}

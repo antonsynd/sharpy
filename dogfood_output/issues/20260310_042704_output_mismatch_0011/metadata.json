@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-10T04:19:20.916329",
+  "generated_code": "# Generic type aliases with various arities and concrete instantiation\ntype Predicate[T] = (T) -> bool\ntype Mapper[T, U] = (T) -> U\ntype Container[T] = tuple[list[T], int]\n\n@abstract\nclass Processor[T]:\n    _prefix: str\n    \n    def __init__(self, prefix: str):\n        self._prefix = prefix\n    \n    @abstract\n    def transform(self, item: str) -> str:\n        ...\n    \n    property get prefix(self) -> str:\n        return self._prefix\n\nclass StringProcessor(Processor[str]):\n    @override\n    def transform(self, item: str) -> str:\n        return f\"{self._prefix}{item.upper()}\"\n\ndef process_list[T, U](items: list[T], pred: Predicate[T], mapper: Mapper[T, U]) -> Container[U]:\n    matched: list[U] = []\n    for item in items:\n        if pred(item):\n            matched.append(mapper(item))\n    return (matched, len(matched))\n\ndef main():\n    data: list[str] = [\"hi\", \"hello\", \"ok\", \"magnificent\"]\n    processor: StringProcessor = StringProcessor(\">\")\n    \n    long_check: Predicate[str] = lambda s: len(s) > 5\n    len_mapper: Mapper[str, int] = lambda s: len(s)\n    \n    result: Container[int] = process_list[str, int](data, long_check, len_mapper)\n    lengths, count = result\n    \n    print(processor.prefix)\n    print(count)\n    print(len(lengths))\n    \n    # Use explicit StringProcessor for transform\n    for s in data:\n        if len(s) > 3:\n            print(processor.transform(s))\n",
+  "expected_output": ">\n2\n2\n>HELLO\n>MAGNIFICENT\n",
+  "actual_output": ">\n1\n1\n>HELLO\n>MAGNIFICENT",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "generic_type_alias",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 411.46315741539,
+  "compilation_duration": null,
+  "execution_duration": 5.200571775436401,
+  "source_files": null
+}

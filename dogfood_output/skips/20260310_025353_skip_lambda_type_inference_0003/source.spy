@@ -1,0 +1,41 @@
+# Test lambda type inference in higher-order function composition
+# Tests: Multi-parameter lambda inference, closure capture,
+# and type inference through function composition contexts
+
+def process_pipeline(items: list[int], filter_fn: (int) -> bool, map_fn: (int) -> int) -> list[int]:
+    result: list[int] = []
+    for item in items:
+        if filter_fn(item):
+            result.append(map_fn(item))
+    return result
+
+def combine_transforms(first: (int) -> int, second: (int) -> int) -> (int) -> int:
+    return lambda x: second(first(x))
+
+def make_scaler(base: int) -> (int) -> int:
+    offset: int = 10
+    return combine_transforms(
+        lambda v: v + offset,
+        lambda v: base * v
+    )
+
+def main():
+    values: list[int] = [3, 7, 2, 9, 4, 8, 1, 6]
+    # Lambdas with inferred parameter types from context
+    filtered = process_pipeline(
+        values,
+        lambda n: n > 4,
+        lambda n: n - 1
+    )
+    # Create composed transform - use type inference here
+    doubled_offset = make_scaler(2)
+    # Apply using inferred types
+    final = process_pipeline(
+        [5, 6, 7],
+        lambda x: x % 2 == 1,
+        doubled_offset
+    )
+    print(len(filtered))
+    print(filtered[0])
+    print(doubled_offset(5))
+    print(final[1])

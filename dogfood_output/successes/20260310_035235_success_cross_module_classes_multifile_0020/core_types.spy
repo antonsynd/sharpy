@@ -1,0 +1,16 @@
+# Base module defining an abstract Task class
+# Used to test cross-module inheritance with virtual/abstract methods
+
+@abstract
+class Task:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def description(self) -> str:
+        return f"Base task {self.name}"
+    
+    @abstract
+    def execute(self) -> int: ...

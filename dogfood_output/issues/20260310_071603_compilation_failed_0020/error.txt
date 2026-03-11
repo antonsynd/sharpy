@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Utils.Calculator' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Utils.Calculator' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpi5gljqjp/utils.spy:15:63
+    |
+ 15 |     print(f"Sum: {format_result(sum_result, 2)}")
+    |                                                  ^
+    |
+
+error[CS1061]: 'Utils.Calculator' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Utils.Calculator' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpi5gljqjp/utils.spy:12:18
+    |
+ 12 |     
+    |     ^
+    |
+

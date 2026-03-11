@@ -1,0 +1,16 @@
+# utils.spy - Utility functions for shape calculations
+
+from geometry import ShapeCategory
+from shapes import ShapeBase
+
+def format_shape_info(shape: ShapeBase, category: ShapeCategory) -> str:
+    cat_name: str = category.name
+    area_val: float = shape.area()
+    perim_val: float = shape.perimeter()
+    return "[" + cat_name + "] Area=" + str(area_val) + ", Perim=" + str(perim_val)
+
+def calculate_total_area(shapes: list[ShapeBase]) -> float:
+    total: float = 0.0
+    for s in shapes:
+        total += s.area()
+    return total

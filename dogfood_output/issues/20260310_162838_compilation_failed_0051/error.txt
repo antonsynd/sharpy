@@ -1,0 +1,5 @@
+Assembly compilation failed:
+
+error[CS0266]: Cannot implicitly convert type 'T' to 'GeoUtils.IMeasurable'. An explicit conversion exists (are you missing a cast?)
+  --> /tmp/tmpx3edzryh/shapes.spy:115:51
+

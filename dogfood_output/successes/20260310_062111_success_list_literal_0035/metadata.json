@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T06:20:38.244029",
+  "generated_code": "# Test list literal with indexing and arithmetic operations\ndef main():\n    nums: list[int] = [10, 20, 30, 40, 50]\n    print(nums[0] + nums[2])\n    print(nums[1] * nums[3])\n    print(len(nums))\n",
+  "expected_output": "40\n800\n5\n",
+  "actual_output": "40\n800\n5",
+  "feature_focus": "list_literal",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 21.882744312286377,
+  "execution_duration": 4.846151828765869,
+  "source_files": null
+}

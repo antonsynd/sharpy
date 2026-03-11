@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T08:35:12.856933",
+  "generated_code": "# Test: Simple custom decorator application\n# Demonstrates @system.serializable on class and @obsolete on method\n\n@system.serializable\nclass ThresholdConfig:\n    limit: float\n    \n    def __init__(self, limit: float):\n        self.limit = limit\n    \n    @obsolete(\"Use check_bounds instead\")\n    def old_check(self, val: float) -> bool:\n        return val < self.limit\n    \n    def check_bounds(self, val: float) -> bool:\n        return val < self.limit\n\ndef main():\n    config = ThresholdConfig(100.0)\n    \n    # Print the threshold to verify object creation\n    print(config.limit)\n    \n    # Test with multiple values\n    values: list[float] = [50.0, 150.0, 99.0]\n    passed: int = 0\n    \n    for v in values:\n        if config.check_bounds(v):\n            print(\"pass\")\n            passed = passed + 1\n        else:\n            print(\"fail\")\n    \n    print(passed)\n",
+  "expected_output": "100.0\npass\nfail\npass\n2\n",
+  "actual_output": "100.0\npass\nfail\npass\n2",
+  "feature_focus": "custom_decorator_simple",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 152.6454610824585,
+  "execution_duration": 5.261472702026367,
+  "source_files": null
+}

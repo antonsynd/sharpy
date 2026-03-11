@@ -1,0 +1,19 @@
+# Module importing core_types and providing concrete implementations
+# Tests that derived classes across modules properly override base methods
+
+from core_types import Task
+
+class DownloadTask(Task):
+    url: str
+    
+    def __init__(self, name: str, url: str):
+        super().__init__(name)
+        self.url = url
+    
+    @override
+    def description(self) -> str:
+        return f"Download {self.name} from {self.url}"
+    
+    @override
+    def execute(self) -> int:
+        return 200

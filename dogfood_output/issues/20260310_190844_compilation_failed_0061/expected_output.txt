@@ -1,0 +1,8 @@
+78.53975
+Drawing circle 'MyCircle' with radius 5.0
+Circular
+Blue
+130.53975
+MyCircle
+24.0
+12.0

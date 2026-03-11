@@ -1,0 +1,32 @@
+# Shape classes using utilities module
+from utilities import Point
+
+class Rectangle:
+    top_left: Point
+    width: float
+    height: float
+    
+    def __init__(self, x: float, y: float, width: float, height: float):
+        self.top_left = Point(x, y)
+        self.width = width
+        self.height = height
+    
+    def area(self) -> float:
+        return self.width * self.height
+    
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+class Circle:
+    center: Point
+    radius: float
+    
+    def __init__(self, x: float, y: float, radius: float):
+        self.center = Point(x, y)
+        self.radius = radius
+    
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    def diameter(self) -> float:
+        return 2.0 * self.radius

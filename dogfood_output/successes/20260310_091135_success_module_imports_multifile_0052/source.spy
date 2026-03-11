@@ -1,0 +1,22 @@
+# Main entry point - imports from multiple modules
+from math_utils import square, times_two, Calculator
+from geometry import Circle
+
+def main():
+    # Test function import from math_utils
+    result: float = square(4.0)
+    print(result)
+
+    # Test another function import (renamed from double to times_two)
+    doubled: int = times_two(7)
+    print(doubled)
+
+    # Test class import from math_utils
+    calc = Calculator(100)
+    calc.add(25)
+    print(calc.value)
+
+    # Test geometry module that imports PI internally
+    circle = Circle(2.0)
+    area_result: float = circle.area()
+    print(area_result)

@@ -1,0 +1,45 @@
+# Shapes module - imports and extends math utilities
+
+from math_utils import Vector2D, scale_vector, pi
+
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float: ...
+    
+    @abstract
+    def perimeter(self) -> float: ...
+
+class Circle(Shape):
+    center: Vector2D
+    radius: float
+    
+    def __init__(self, cx: float, cy: float, r: float):
+        self.center = Vector2D(cx, cy)
+        self.radius = r
+    
+    @override
+    def area(self) -> float:
+        return pi * self.radius * self.radius
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * pi * self.radius
+
+class Rectangle(Shape):
+    position: Vector2D
+    width: float
+    height: float
+    
+    def __init__(self, x: float, y: float, w: float, h: float):
+        self.position = Vector2D(x, y)
+        self.width = w
+        self.height = h
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-10T14:31:32.563399",
+  "generated_code": "from math_ops import add, Calculator\nfrom string_utils import LabelGenerator\n\ndef main():\n    # Test imported function\n    sum_result: int = add(10, 20)\n    print(sum_result)\n    \n    # Test imported class from first module\n    calc = Calculator(100)\n    calc.add_to(50)\n    print(calc.get_result())\n    \n    # Test class from second module that internally uses first module\n    generator = LabelGenerator(\"ITEM\")\n    print(generator.next_label())\n    print(generator.next_label())\n",
+  "expected_output": "30\n150\nITEM_1\nITEM_2\n",
+  "actual_output": "30\n150\nITEM_1\nITEM_2",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 257.4128358364105,
+  "execution_duration": 5.148407459259033,
+  "source_files": {
+    "math_ops.spy": "def add(a: int, b: int) -> int:\n    return a + b\n\ndef multiply(a: int, b: int) -> int:\n    return a * b\n\nclass Calculator:\n    result: int\n    \n    def __init__(self, initial: int = 0):\n        self.result = initial\n    \n    def add_to(self, value: int) -> int:\n        self.result = self.result + value\n        return self.result\n    \n    def get_result(self) -> int:\n        return self.result\n    \n    def reset(self) -> None:\n        self.result = 0\n",
+    "string_utils.spy": "from math_ops import Calculator\n\nclass LabelGenerator:\n    prefix: str\n    counter: Calculator\n    \n    def __init__(self, prefix: str):\n        self.prefix = prefix\n        self.counter = Calculator(1)\n    \n    def next_label(self) -> str:\n        num: int = self.counter.get_result()\n        self.counter.add_to(1)\n        return f\"{self.prefix}_{num}\"\n",
+    "main.spy": "from math_ops import add, Calculator\nfrom string_utils import LabelGenerator\n\ndef main():\n    # Test imported function\n    sum_result: int = add(10, 20)\n    print(sum_result)\n    \n    # Test imported class from first module\n    calc = Calculator(100)\n    calc.add_to(50)\n    print(calc.get_result())\n    \n    # Test class from second module that internally uses first module\n    generator = LabelGenerator(\"ITEM\")\n    print(generator.next_label())\n    print(generator.next_label())\n"
+  }
+}

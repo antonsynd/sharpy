@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1503]: Argument 1: cannot convert from 'Sharpy.List<DogfoodTest.Product>' to 'Sharpy.List<DogfoodTest.Identifiable>'
+  --> /tmp/tmptnk_ug1g/dogfood_test.spy:89:60
+    |
+ 89 |     ids: set[int] = SetAnalyzer.analyze_unique_ids(products)
+    |                                                            ^
+    |
+

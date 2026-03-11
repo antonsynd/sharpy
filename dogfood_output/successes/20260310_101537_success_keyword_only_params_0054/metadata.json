@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T10:02:38.207434",
+  "generated_code": "class TextFormatter:\n    margin: int\n    \n    def __init__(self, margin: int):\n        self.margin = margin\n    \n    def format(self, text: str, pad_char: str, align: str) -> str:\n        left_pad = \"\"\n        right_pad = \"\"\n        if align == \"center\":\n            left_pad = pad_char * self.margin\n            right_pad = pad_char * self.margin\n        elif align == \"right\":\n            left_pad = pad_char * (self.margin * 2)\n        else:\n            right_pad = pad_char * (self.margin * 2)\n        return f\"[{left_pad}{text}{right_pad}]\"\n\ndef main():\n    fmt = TextFormatter(2)\n    print(fmt.format(\"hello\", \" \", \"left\"))\n    print(fmt.format(\"hi\", \"-\", \"left\"))\n    print(fmt.format(\"test\", \"*\", \"center\"))\n    print(fmt.format(\"ok\", \".\", \"right\"))\n",
+  "expected_output": "[hello    ]\n[hi----]\n[**test**]\n[....ok]\n",
+  "actual_output": "[hello    ]\n[hi----]\n[**test**]\n[....ok]",
+  "feature_focus": "keyword_only_params",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 755.4459278583527,
+  "execution_duration": 5.183820009231567,
+  "source_files": null
+}

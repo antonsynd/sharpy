@@ -1,0 +1,14 @@
+warning[SPY0452]: Imported name 'geometric_shapes' is never used
+  --> /tmp/tmpwa0rvyyk/math_utils.spy:2:14
+    |
+  2 | from geometric_shapes import Point, Rectangle, Circle, ShapeCollection, Shape
+    |              ^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Shape' is never used
+  --> /tmp/tmpwa0rvyyk/main.spy:2:73
+    |
+  2 | from geometric_shapes import Point, Rectangle, Circle, ShapeCollection, Shape
+    |                                                                         ^^^^^
+    |
+

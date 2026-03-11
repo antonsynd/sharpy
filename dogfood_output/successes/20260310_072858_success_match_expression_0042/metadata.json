@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T07:24:21.766889",
+  "generated_code": "# Test: Complex match expressions with inheritance, enums, and guard clauses\n\nenum Category:\n    TINY = 1\n    SMALL = 2\n    MEDIUM = 3\n    LARGE = 4\n    HUGE = 5\n\n@abstract\nclass Widget:\n    @abstract\n    def weight(self) -> float: ...\n\nclass Button(Widget):\n    _weight: float\n    def __init__(self, w: float):\n        self._weight = w\n    @override\n    def weight(self) -> float:\n        return self._weight\n\nclass Slider(Widget):\n    _weight: float\n    _length: float\n    def __init__(self, w: float, l: float):\n        self._weight = w\n        self._length = l\n    @override\n    def weight(self) -> float:\n        return self._weight\n    def length(self) -> float:\n        return self._length\n\nclass Panel(Widget):\n    items: list[Widget]\n    _base: float\n    def __init__(self, b: float):\n        self._base = b\n        self.items = []\n    @override\n    def weight(self) -> float:\n        total = self._base\n        for i in self.items:\n            total += i.weight()\n        return total\n    def add(self, w: Widget) -> None:\n        self.items.append(w)\n\ndef categorize(w: Widget) -> Category:\n    return match w:\n        case Button() as b if b.weight() < 10.0: Category.TINY\n        case Button() as b if b.weight() < 50.0: Category.SMALL\n        case Button(): Category.MEDIUM\n        case Slider() as s if s.length() > 100.0: Category.LARGE\n        case Slider(): Category.MEDIUM\n        case Panel() as p if len(p.items) == 0: Category.TINY\n        case Panel() as p if len(p.items) > 5: Category.HUGE\n        case Panel(): Category.SMALL\n        case _: Category.MEDIUM\n\ndef main():\n    b1 = Button(5.0)\n    b2 = Button(30.0)\n    b3 = Button(75.0)\n    s1 = Slider(40.0, 50.0)\n    s2 = Slider(60.0, 200.0)\n    p1 = Panel(10.0)\n    p2 = Panel(10.0)\n    p2.add(b1)\n    p2.add(b2)\n    \n    items: list[Widget] = [b1, b2, b3, s1, s2, p1, p2]\n    for item in items:\n        cat = categorize(item)\n        wt = item.weight()\n        print(f\"{cat.value},{wt}\")\n",
+  "expected_output": "1,5.0\n2,30.0\n3,75.0\n3,40.0\n4,60.0\n1,10.0\n2,45.0\n",
+  "actual_output": "1,5.0\n2,30.0\n3,75.0\n3,40.0\n4,60.0\n1,10.0\n2,45.0",
+  "feature_focus": "match_expression",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 265.1503541469574,
+  "execution_duration": 5.445736408233643,
+  "source_files": null
+}

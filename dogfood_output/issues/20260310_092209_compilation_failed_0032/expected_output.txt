@@ -1,0 +1,11 @@
+5.0
+78.53975
+80.0
+172.7574375
+1
+Circle at (3.0, 4.0) radius=5.0
+Rectangle 10.0x8.0
+Circle(radius=5.0)
+Rectangle(10.0x8.0)
+Red
+65280

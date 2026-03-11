@@ -1,0 +1,44 @@
+Assembly compilation failed:
+
+error[CS0708]: 'MathUtils.GeometryUtils.PI': cannot declare instance members in a static class
+  --> /tmp/tmpmk7f_bs4/math_utils.spy:15:23
+    |
+ 15 |     circle: Circle = Circle(1, origin, 5.0)
+    |                       ^
+    |
+
+error[CS0246]: The type or namespace name 'StaticmethodAttribute' could not be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpmk7f_bs4/math_utils.spy:16:10
+    |
+ 16 |     rectangle: Rectangle = Rectangle(2, corner, 10.0, 20.0)
+    |          ^
+    |
+
+error[CS0246]: The type or namespace name 'StaticmethodAttribute' could not be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpmk7f_bs4/math_utils.spy:28:10
+    |
+ 28 |             shape_type = "Circle"
+    |          ^
+    |
+
+error[CS0117]: 'MathUtils.GeometryUtils' does not contain a definition for 'Pi'
+  --> /tmp/tmpmk7f_bs4/math_utils.spy:25:44
+    |
+ 25 |         shape_type: str = "Unknown"
+    |                                    ^
+    |
+
+error[CS0117]: 'MathUtils.GeometryUtils' does not contain a definition for 'Pi'
+  --> /tmp/tmpmk7f_bs4/shapes.spy:36:34
+    |
+ 36 |     measurables.append(rectangle)
+    |                                  ^
+    |
+
+error[CS0117]: 'MathUtils.GeometryUtils' does not contain a definition for 'Pi'
+  --> /tmp/tmpmk7f_bs4/shapes.spy:40:41
+    |
+ 40 |         measurement: tuple[float, str] = m.measure()
+    |                                         ^
+    |
+

@@ -1,0 +1,7 @@
+warning[SPY0452]: Imported name 'IIdentifiable' is never used
+  --> /tmp/tmph_9r4524/main.spy:3:62
+    |
+  3 | from utils import IdGenerator, NamedShape, MetricsCollector, IIdentifiable
+    |                                                              ^^^^^^^^^^^^^
+    |
+

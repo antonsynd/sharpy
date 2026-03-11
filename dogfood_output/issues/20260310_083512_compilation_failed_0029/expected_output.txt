@@ -1,0 +1,25 @@
+=== Math Utils Test ===
+150.0
+30.0
+=== Statistics Test ===
+10.0
+15.0
+5.0
+=== Point Test ===
+5.0
+=== Shape Test ===
+15.0
+16.0
+12.56636
+12.56636
+=== Collection Test ===
+27.56636
+28.56636
+=== Enum Test ===
+1
+524288
+=== Struct Test ===
+24.0
+=== Config Test ===
+circle
+rectangle

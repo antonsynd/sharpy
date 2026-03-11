@@ -1,0 +1,17 @@
+# Entry point - tests importing from multiple modules
+from shapes import Rectangle
+from math_core import sum_values
+
+def main():
+    # Test importing and using a class from shapes module
+    rect = Rectangle(3.0, 4.0)
+    area: float = rect.area()
+    print(area)
+    
+    # Test that shapes module correctly uses its import from math_core
+    diag: float = rect.diagonal()
+    print(diag)
+    
+    # Test importing and using a function directly from math_core
+    total: int = sum_values(10, 20)
+    print(total)

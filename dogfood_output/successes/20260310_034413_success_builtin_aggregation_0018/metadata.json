@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T03:38:27.976442",
+  "generated_code": "# Test builtin aggregation functions with manual comparison\n# Uses min/max with manual key comparison, all/any for validation\n\nclass Student:\n    name: str\n    score: int\n    \n    def __init__(self, name: str, score: int):\n        self.name = name\n        self.score = score\n\nclass GradeBook:\n    students: list[Student]\n    \n    def __init__(self):\n        self.students = []\n    \n    def add_student(self, name: str, score: int) -> None:\n        self.students.append(Student(name, score))\n\ndef analyze_grades(book: GradeBook) -> None:\n    scores: list[int] = []\n    for s in book.students:\n        scores.append(s.score)\n    \n    # Check if all students passed (score >= 60)\n    all_passed: bool = all([s >= 60 for s in scores])\n    print(all_passed)\n    \n    # Check if any student got perfect score (100)\n    has_perfect: bool = any([s == 100 for s in scores])\n    print(has_perfect)\n    \n    if len(scores) > 0:\n        # Find student with highest score manually\n        top_student: Student = book.students[0]\n        for s in book.students:\n            if s.score > top_student.score:\n                top_student = s\n        print(top_student.name)\n        print(top_student.score)\n        \n        # Find student with lowest score manually\n        bottom_student: Student = book.students[0]\n        for s in book.students:\n            if s.score < bottom_student.score:\n                bottom_student = s\n        print(bottom_student.score)\n        \n        # Calculate total manually\n        total: int = 0\n        for s in scores:\n            total += s\n        print(total)\n\ndef main():\n    book: GradeBook = GradeBook()\n    book.add_student(\"Alice\", 85)\n    book.add_student(\"Bob\", 72)\n    book.add_student(\"Carol\", 100)\n    book.add_student(\"David\", 60)\n    analyze_grades(book)\n",
+  "expected_output": "True\nTrue\nCarol\n100\n60\n317\n",
+  "actual_output": "True\nTrue\nCarol\n100\n60\n317",
+  "feature_focus": "builtin_aggregation",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 328.2200825214386,
+  "execution_duration": 5.4434826374053955,
+  "source_files": null
+}

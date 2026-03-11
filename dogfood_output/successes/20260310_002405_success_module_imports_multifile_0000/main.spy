@@ -1,0 +1,14 @@
+# Main entry point - imports and uses shape classes
+
+from shapes import Circle, Rectangle
+from utils import PI
+
+def main():
+    c: Circle = Circle(5.0)
+    r: Rectangle = Rectangle(4.0, 6.0)
+    
+    print(c.name)
+    print(r.describe())
+    print(c.draw())
+    print(c.area())
+    print(r.area())

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T14:36:06.590630",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0260]: Cannot return type 'tuple[None, None]' from function expecting 'tuple[list[str], list[int]]'\n  --> /tmp/tmpxgo85uis/dogfood_test.spy:18:5\n    |\n 18 |     return (str_results, int_results)\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\n",
+  "generated_code": "import asyncio\n\nasync def fetch_str(label: str, delay_ms: int) -> str:\n    await asyncio.sleep(0.001)\n    return f\"{label}_data\"\n\nasync def fetch_int(base: int, mult: int) -> int:\n    await asyncio.sleep(0.001)\n    return base * mult + len(str(base))\n\nasync def collect_results() -> tuple[list[str], list[int]]:\n    str_task1 = fetch_str(\"alpha\", 1)\n    str_task2 = fetch_str(\"beta\", 2)\n    int_task1 = fetch_int(5, 3)\n    int_task2 = fetch_int(10, 2)\n    str_results = await asyncio.gather(str_task1, str_task2)\n    int_results = await asyncio.gather(int_task1, int_task2)\n    return (str_results, int_results)\n\nasync def main():\n    results = await collect_results()\n    str_vals = results[0]\n    int_vals = results[1]\n    print(len(str_vals))\n    print(len(int_vals))\n    for s in str_vals:\n        print(s)\n    total: int = 0\n    for n in int_vals:\n        total += n\n    print(total)\n",
+  "expected_output": "2\n2\nalpha_data\nbeta_data\n37\n",
+  "feature_focus": "asyncio_gather",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 1148.2500550746918,
+  "source_files": null,
+  "validation_output": null
+}

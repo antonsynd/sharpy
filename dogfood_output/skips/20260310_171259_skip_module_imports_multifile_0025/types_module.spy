@@ -1,0 +1,27 @@
+enum Status:
+    INACTIVE = 0
+    ACTIVE = 1
+    PENDING = 2
+
+interface IIdentifiable:
+    property get id(self) -> int
+    def describe(self) -> str
+
+@abstract
+class Entity:
+    _status: Status
+
+    def __init__(self):
+        self._status = Status.ACTIVE
+
+    @virtual
+    def describe(self) -> str:
+        return "Entity"
+
+    @virtual
+    property get status(self) -> Status:
+        return self._status
+
+    @virtual
+    property set status(self, value: Status):
+        self._status = value

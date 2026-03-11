@@ -1,0 +1,18 @@
+interface Drawable:
+    def draw(self) -> str: ...
+
+@abstract
+class Shape:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @abstract
+    def area(self) -> float: ...
+    
+    def describe(self) -> str:
+        return f"Shape: {self.name}"
+
+interface Computable[T]:
+    def compute(self) -> T: ...

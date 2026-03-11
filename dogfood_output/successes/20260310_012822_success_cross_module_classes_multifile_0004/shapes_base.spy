@@ -1,0 +1,14 @@
+# Base module defining the Shape base class
+class Shape:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def describe(self) -> str:
+        return "Generic shape named " + self.name
+    
+    @virtual
+    def sides(self) -> int:
+        return 0

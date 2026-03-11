@@ -1,0 +1,20 @@
+from module_shapes import Dimension
+from module_base import Status
+
+def get_area(dim: Dimension) -> float:
+    return dim.width * dim.height
+
+def status_to_string(s: Status) -> str:
+    if s == Status.ACTIVE:
+        return "Active"
+    elif s == Status.INACTIVE:
+        return "Inactive"
+    elif s == Status.PENDING:
+        return "Pending"
+    return "Unknown"
+
+def validate_numbers(items: list[int], validator: (int) -> bool) -> bool:
+    for item in items:
+        if not validator(item):
+            return False
+    return True

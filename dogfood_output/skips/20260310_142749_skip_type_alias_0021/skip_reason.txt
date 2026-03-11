@@ -1,0 +1,37 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'ConfigValue' has no member 'unwrap'
+  --> /tmp/tmp89_9x0md/dogfood_test.spy:47:14
+    |
+ 47 |         tv = timeout_val.unwrap()
+    |              ^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0202]: Unknown type 'IntValue' in positional pattern
+  --> /tmp/tmp89_9x0md/dogfood_test.spy:49:18
+    |
+ 49 |             case IntValue(v):
+    |                  ^^^^^^^^^^^
+    |
+
+error[SPY0202]: Unknown type 'StrValue' in positional pattern
+  --> /tmp/tmp89_9x0md/dogfood_test.spy:51:18
+    |
+ 51 |             case StrValue(v):
+    |                  ^^^^^^^^^^^
+    |
+
+error[SPY0202]: Type 'IntValue' not found
+  --> /tmp/tmp89_9x0md/dogfood_test.spy:49:18
+    |
+ 49 |             case IntValue(v):
+    |                  ^^^^^^^^
+    |
+
+error[SPY0202]: Type 'StrValue' not found
+  --> /tmp/tmp89_9x0md/dogfood_test.spy:51:18
+    |
+ 51 |             case StrValue(v):
+    |                  ^^^^^^^^
+    |
+

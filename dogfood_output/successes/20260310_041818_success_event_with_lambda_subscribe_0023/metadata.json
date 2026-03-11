@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T04:16:56.683218",
+  "generated_code": "# Define a delegate type for click events\ndelegate ClickHandler() -> None\n\nclass Button:\n    event on_click: ClickHandler\n    \n    def click(self) -> None:\n        self.on_click?.invoke()\n\ndef main():\n    b = Button()\n    # Subscribe multiple lambdas to the event\n    b.on_click += lambda: print(\"Clicked!\")\n    b.on_click += lambda: print(\"Also clicked!\")\n    # Raise the event\n    b.click()\n",
+  "expected_output": "Clicked!\nAlso clicked!\n",
+  "actual_output": "Clicked!\nAlso clicked!",
+  "feature_focus": "event_with_lambda_subscribe",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 64.49464249610901,
+  "execution_duration": 5.049334526062012,
+  "source_files": null
+}

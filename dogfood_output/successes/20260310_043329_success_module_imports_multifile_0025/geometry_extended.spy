@@ -1,0 +1,33 @@
+# Extended geometry module that imports from base
+
+from geometry_base import Shape, IMeasurable, Rectangle
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, radius: float):
+        super().__init__("Circle")
+        self.radius = radius
+    
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    @override
+    def describe(self) -> str:
+        return f"{self.name} r={self.radius}"
+
+class Square(Rectangle):
+    side: float
+    
+    def __init__(self, side: float):
+        super().__init__(side, side)
+        self.name = "Square"
+        self.side = side
+    
+    @override
+    def describe(self) -> str:
+        return f"{self.name} side={self.side}"
+
+def create_shape_summary(shape: Shape) -> str:
+    return f"{shape.describe()} -> area={shape.area()}"

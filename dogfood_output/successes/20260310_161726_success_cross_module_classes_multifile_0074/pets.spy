@@ -1,0 +1,32 @@
+# Pets module extending animals from another module
+from animals import Animal
+
+class Dog(Animal):
+    breed: str
+    
+    def __init__(self, name: str, breed: str):
+        super().__init__(name)
+        self.breed = breed
+    
+    @override
+    def speak(self) -> str:
+        return "Woof!"
+    
+    @override
+    def describe(self) -> str:
+        return f"{self.name} is a {self.breed}"
+
+class Cat(Animal):
+    color: str
+    
+    def __init__(self, name: str, color: str):
+        super().__init__(name)
+        self.color = color
+    
+    @override
+    def speak(self) -> str:
+        return "Meow!"
+    
+    @override
+    def describe(self) -> str:
+        return f"{self.name} is a {self.color} cat"

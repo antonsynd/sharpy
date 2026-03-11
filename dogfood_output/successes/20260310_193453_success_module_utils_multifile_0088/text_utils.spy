@@ -1,0 +1,29 @@
+# Text processing utilities - imports from utils module
+
+from utils import Counter, IFormatter
+
+class StepCounter(Counter):
+    _step: int
+    
+    def __init__(self, start: int = 0, step: int = 1):
+        super().__init__(start)
+        self._step = step
+    
+    @override
+    def increment(self) -> int:
+        self._count = self._count + self._step
+        return self._count
+
+class NumberFormatter(IFormatter):
+    _prefix: str
+    
+    def __init__(self, prefix: str = "Value: "):
+        self._prefix = prefix
+    
+    def format(self, value: int) -> str:
+        return self._prefix + str(value)
+
+def truncate(text: str, max_len: int) -> str:
+    if len(text) <= max_len:
+        return text
+    return text[0:max_len] + "..."

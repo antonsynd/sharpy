@@ -1,0 +1,38 @@
+# main.spy - Entry point demonstrating cross-module imports and polymorphism
+
+from shapes import ShapeBase, IDrawable
+from geometry import Rectangle, Circle, Point, ShapeCategory
+from utils import format_shape_info, calculate_total_area
+
+def main():
+    # Create shapes using cross-module classes
+    rect: Rectangle = Rectangle(0.0, 0.0, 5.0, 3.0)
+    circ: Circle = Circle(10.0, 10.0, 2.5)
+    
+    # Test interface implementation via IDrawable
+    print(rect.draw())
+    print(circ.draw())
+    
+    # Test inherited virtual method
+    print(rect.describe())
+    
+    # Test enum and formatting utilities (cross-module function calls)
+    print(format_shape_info(rect, ShapeCategory.POLYGON))
+    print(format_shape_info(circ, ShapeCategory.CIRCLE))
+    
+    # Calculate total area using polymorphic list
+    shapes: list[ShapeBase] = [rect, circ]
+    total: float = calculate_total_area(shapes)
+    print("Total area: " + str(total))
+    
+    # Test struct usage from geometry module
+    p: Point = Point(1.0, 2.0)
+    p_x: str = str(p.x)
+    p_y: str = str(p.y)
+    print("Point: (" + p_x + ", " + p_y + ")")
+    
+    # Demonstrate polymorphic method dispatch
+    rect.move_to(5.0, 5.0)
+    rect_x: str = str(rect.x)
+    rect_y: str = str(rect.y)
+    print("Moved rect to (" + rect_x + ", " + rect_y + ")")

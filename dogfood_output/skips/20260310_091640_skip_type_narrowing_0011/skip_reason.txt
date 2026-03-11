@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot pass argument of type 'None' to parameter of type 'int?'
+  --> /tmp/tmpgkvxhexf/dogfood_test.spy:30:17
+    |
+ 30 |     data.append(None)
+    |                 ^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type 'None' to parameter of type 'int?'
+  --> /tmp/tmpgkvxhexf/dogfood_test.spy:33:17
+    |
+ 33 |     data.append(None)
+    |                 ^^^^
+    |
+

@@ -1,0 +1,14 @@
+def scale_value(item: object) -> int:
+    if isinstance(item, int):
+        n: int = item
+        return n * 5
+    elif isinstance(item, str):
+        s: str = item
+        return len(s) * 2
+    else:
+        return 0
+
+def main():
+    print(scale_value(7))
+    print(scale_value("hi"))
+    print(scale_value(True))

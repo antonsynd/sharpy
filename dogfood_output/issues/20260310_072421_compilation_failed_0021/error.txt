@@ -1,0 +1,5 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Models.Status' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Models.Status' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpbd6g23km/handlers.spy:44:89
+

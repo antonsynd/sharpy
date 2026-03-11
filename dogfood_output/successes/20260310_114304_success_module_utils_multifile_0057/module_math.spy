@@ -1,0 +1,22 @@
+# Math utilities module with functions and a base class
+
+class Calculator:
+    """Base calculator class with virtual methods"""
+    multiplier: int
+    
+    def __init__(self, multiplier: int):
+        self.multiplier = multiplier
+    
+    @virtual
+    def compute(self, x: int) -> int:
+        return x * self.multiplier
+    
+    @virtual
+    def describe(self) -> str:
+        return "Base Calculator"
+
+def add_numbers(a: int, b: int) -> int:
+    return a + b
+
+def multiply_numbers(a: int, b: int) -> int:
+    return a * b

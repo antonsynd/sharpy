@@ -1,0 +1,5 @@
+Rectangle(5.0, 3.0) area=15.00
+Rectangle(4.0, 4.0) area=16.00
+Circle(r=2.5) area=19.63
+Circle(r=1.0) area=3.14
+53.77

@@ -1,0 +1,16 @@
+Repeated identical compiler error (likely compiler bug): Compilation errors:
+
+error[SPY0220]: Cannot assign type 'list[Shape]' to variable of type 'list[IMeasurable]'
+  --> /tmp/tmphm3khxn5/main.spy:20:5
+    |
+ 20 |     shapes: list[IMeasurable] = [rect1, circle1, square1]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type 'list[Shape]' to variable of type 'list[IDrawable]'
+  --> /tmp/tmphm3khxn5/main.spy:24:5
+    |
+ 24 |     drawables: list[IDrawable] = [rect1, circle1, square1]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

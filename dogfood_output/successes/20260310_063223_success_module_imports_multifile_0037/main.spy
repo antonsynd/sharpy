@@ -1,0 +1,30 @@
+# Main entry point - tests cross-module imports and inheritance
+
+from shapes import Circle, Rectangle, Shape
+from math_utils import scale_vector, pi, Vector2D
+
+def calculate_total_area(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for s in shapes:
+        total += s.area()
+    return total
+
+def main():
+    # Create shapes using imported classes
+    circle = Circle(0.0, 0.0, 5.0)
+    rect = Rectangle(0.0, 0.0, 3.0, 4.0)
+    
+    # Test cross-module inheritance
+    print(circle.area())
+    print(rect.perimeter())
+    
+    # Test utility function import and inheritance
+    scaled = scale_vector(Vector2D(3.0, 4.0), 2.0)
+    print(scaled)
+    
+    # Test polymorphic list
+    shapes: list[Shape] = [circle, rect]
+    print(calculate_total_area(shapes))
+    
+    # Verify imported constant
+    print(pi)

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T18:55:12.851628",
+  "skip_reason": "Non-code response after 3 attempts: Response too short (2 chars, minimum 20)",
+  "generated_code": " \n",
+  "expected_output": null,
+  "feature_focus": "async_with",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 229.45147013664246,
+  "source_files": null,
+  "validation_output": null
+}

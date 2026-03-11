@@ -1,0 +1,12 @@
+42
+1001
+Widget
+Entity Widget has ID 1001
+0
+Pending
+10.0x5.0
+Box
+10
+20
+30
+66.0

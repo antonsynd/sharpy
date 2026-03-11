@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-03-10T14:02:57.156058",
+  "generated_code": "# Main entry point - tests shape hierarchy and polymorphism\nfrom shapes import Shape, Rectangle, Circle, total_area\n\ndef main():\n    rect1: Rectangle = Rectangle(5.0, 3.0)\n    rect2: Rectangle = Rectangle(4.0, 4.0)\n    circ: Circle = Circle(2.0)\n    \n    print(rect1.area())\n    print(rect2.area())\n    print(circ.area())\n    \n    shapes: list[Shape] = [rect1, rect2, circ]\n    print(total_area(shapes))\n",
+  "expected_output": "15.0\n16.0\n12.56636\n43.56636\n",
+  "actual_output": "15.0\n16.0\n12.56636\n43.56636",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 97.56951522827148,
+  "execution_duration": 5.056870222091675,
+  "source_files": {
+    "shapes.spy": "# Geometry shapes module\n# Provides shape classes with area calculations\n\n@abstract\nclass Shape:\n    @abstract\n    def area(self) -> float: ...\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, w: float, h: float):\n        self.width = w\n        self.height = h\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, r: float):\n        self.radius = r\n    \n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n\ndef total_area(shapes: list[Shape]) -> float:\n    total: float = 0.0\n    for shape in shapes:\n        total = total + shape.area()\n    return total\n",
+    "main.spy": "# Main entry point - tests shape hierarchy and polymorphism\nfrom shapes import Shape, Rectangle, Circle, total_area\n\ndef main():\n    rect1: Rectangle = Rectangle(5.0, 3.0)\n    rect2: Rectangle = Rectangle(4.0, 4.0)\n    circ: Circle = Circle(2.0)\n    \n    print(rect1.area())\n    print(rect2.area())\n    print(circ.area())\n    \n    shapes: list[Shape] = [rect1, rect2, circ]\n    print(total_area(shapes))\n"
+  }
+}

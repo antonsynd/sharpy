@@ -1,0 +1,42 @@
+warning[SPY0452]: Imported name 'Rectangle' is never used
+  --> /tmp/tmpx3edzryh/shape_comparators.spy:2:42
+    |
+  2 | from shapes import Shape, Rectangle, Circle, ShapeFactory, ShapeCollection
+    |                                          ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Circle' is never used
+  --> /tmp/tmpx3edzryh/shape_comparators.spy:2:53
+    |
+  2 | from shapes import Shape, Rectangle, Circle, ShapeFactory, ShapeCollection
+    |                                                     ^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Point' is never used
+  --> /tmp/tmpx3edzryh/shape_comparators.spy:3:7
+    |
+  3 | from shape_comparators import ShapeComparer, ShapeAnalyzer
+    |       ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Color' is never used
+  --> /tmp/tmpx3edzryh/shape_comparators.spy:3:14
+    |
+  3 | from shape_comparators import ShapeComparer, ShapeAnalyzer
+    |              ^^^^^
+    |
+
+warning[SPY0451]: Local variable 'col' is assigned but never used
+  --> /tmp/tmpx3edzryh/main.spy:87:5
+    |
+ 87 |     col: Color = Color.RED
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'st' is assigned but never used
+  --> /tmp/tmpx3edzryh/main.spy:88:5
+    |
+ 88 |     st: ShapeType = ShapeType.CIRCLE
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

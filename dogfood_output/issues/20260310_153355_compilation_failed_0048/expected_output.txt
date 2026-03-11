@@ -1,0 +1,5 @@
+10
+Result=42
+15.0
+Calculator: Basic
+Value: 24.00

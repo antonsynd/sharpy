@@ -1,0 +1,53 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Type errors:
+error[SPY0220]: Cannot pass argument of type 'Player' to parameter of type 'Entity'
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:150:22
+     |
+ 150 |     show_entity_info(p)
+     |                      ^
+     |
+
+Validation errors:
+error[SPY0411]: Property 'display_name' in 'Player' is marked @override but no matching property exists in base class 'Unit'
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:68:5
+    |
+ 68 |     property get display_name(self) -> str:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0411]: Property 'category' in 'Player' is marked @override but no matching property exists in base class 'Unit'
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:72:5
+    |
+ 72 |     property get category(self) -> str:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0411]: Cannot override property 'max_health' because the base class property in 'Unit' is not marked @virtual or @abstract
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:76:5
+    |
+ 76 |     property get max_health(self) -> int:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0411]: Property 'display_name' in 'Bot' is marked @override but no matching property exists in base class 'Unit'
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:98:5
+    |
+ 98 |     property get display_name(self) -> str:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0411]: Property 'category' in 'Bot' is marked @override but no matching property exists in base class 'Unit'
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:102:5
+     |
+ 102 |     property get category(self) -> str:
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+
+error[SPY0411]: Cannot override property 'max_health' because the base class property in 'Unit' is not marked @virtual or @abstract
+  --> /tmp/tmp0jcfs6qv/dogfood_test.spy:106:5
+     |
+ 106 |     property get max_health(self) -> int:
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+

@@ -1,0 +1,44 @@
+Assembly compilation failed:
+
+error[CS1950]: The best overloaded Add method 'List<string>.Add(string)' for the collection initializer has some invalid arguments
+  --> /tmp/tmp69mtm54m/main.spy:21:84
+    |
+ 21 |     descriptions: list[str] = describe_all([rect, circle, square])
+    |                                                                   ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'Shapes.Rectangle' to 'string'
+  --> /tmp/tmp69mtm54m/main.spy:21:84
+    |
+ 21 |     descriptions: list[str] = describe_all([rect, circle, square])
+    |                                                                   ^
+    |
+
+error[CS1950]: The best overloaded Add method 'List<string>.Add(string)' for the collection initializer has some invalid arguments
+  --> /tmp/tmp69mtm54m/main.spy:21:90
+    |
+ 21 |     descriptions: list[str] = describe_all([rect, circle, square])
+    |                                                                   ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'Shapes.Circle' to 'string'
+  --> /tmp/tmp69mtm54m/main.spy:21:90
+    |
+ 21 |     descriptions: list[str] = describe_all([rect, circle, square])
+    |                                                                   ^
+    |
+
+error[CS1950]: The best overloaded Add method 'List<string>.Add(string)' for the collection initializer has some invalid arguments
+  --> /tmp/tmp69mtm54m/main.spy:21:98
+    |
+ 21 |     descriptions: list[str] = describe_all([rect, circle, square])
+    |                                                                   ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'Shapes.Rectangle' to 'string'
+  --> /tmp/tmp69mtm54m/main.spy:21:98
+    |
+ 21 |     descriptions: list[str] = describe_all([rect, circle, square])
+    |                                                                   ^
+    |
+

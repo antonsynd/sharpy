@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T09:36:41.705879",
+  "generated_code": "# Test: Dotted decorator on function with message argument\n# Tests: @system.obsolete applied to a function\n@system.obsolete(\"Use calculate_area() instead\")\ndef get_area_legacy(width: int, height: int) -> int:\n    return width * height\n\ndef calculate_area(width: int, height: int) -> int:\n    return width * height\n\ndef main():\n    result: int = get_area_legacy(5, 3)\n    print(result)\n",
+  "expected_output": "15\n",
+  "actual_output": "15",
+  "feature_focus": "custom_decorator_dotted",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 92.98802351951599,
+  "execution_duration": 4.905031204223633,
+  "source_files": null
+}

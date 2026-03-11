@@ -1,0 +1,192 @@
+# Expression evaluator using classes and inheritance
+# Demonstrates: classes, polymorphism, enums, and isinstance checks
+
+# Enum for operation types
+enum OpType:
+    ADD = 1
+    SUB = 2
+    MUL = 3
+    DIV = 4
+
+# Base class for expressions
+class Expr:
+    pass
+
+# Number expression - holds a float value
+class Number(Expr):
+    value: float
+    
+    def __init__(self, value: float):
+        self.value = value
+
+# Variable expression - holds a variable name
+class Variable(Expr):
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+
+# Unary negation expression
+class Negate(Expr):
+    inner: Expr
+    
+    def __init__(self, inner: Expr):
+        self.inner = inner
+
+# Binary operation expression
+class Binary(Expr):
+    left: Expr
+    op: OpType
+    right: Expr
+    
+    def __init__(self, left: Expr, op: OpType, right: Expr):
+        self.left = left
+        self.op = op
+        self.right = right
+
+# Conditional expression
+class Conditional(Expr):
+    condition: Expr
+    if_true: Expr
+    if_false: Expr
+    
+    def __init__(self, condition: Expr, if_true: Expr, if_false: Expr):
+        self.condition = condition
+        self.if_true = if_true
+        self.if_false = if_false
+
+# Context for variable lookup
+class EvalContext:
+    vars: dict[str, float]
+    
+    def __init__(self):
+        self.vars = {}
+    
+    def set(self, name: str, value: float) -> None:
+        self.vars[name] = value
+    
+    def get(self, name: str) -> float !str:
+        if name in self.vars:
+            return Ok(self.vars[name])
+        return Err(f"Unknown variable: {name}")
+
+# Expression evaluator using isinstance and polymorphism
+def eval_expr(e: Expr, ctx: EvalContext) -> float !str:
+    if isinstance(e, Number):
+        return Ok(e.value)
+    
+    if isinstance(e, Variable):
+        return ctx.get(e.name)
+    
+    if isinstance(e, Negate):
+        inner_result = eval_expr(e.inner, ctx)
+        if inner_result.is_ok():
+            v = inner_result.unwrap()
+            return Ok(-v)
+        else:
+            return inner_result
+    
+    if isinstance(e, Binary):
+        # Evaluate left and right
+        left_result = eval_expr(e.left, ctx)
+        right_result = eval_expr(e.right, ctx)
+        
+        # Check left for error
+        if left_result.is_err():
+            return left_result
+        
+        # Check right for error
+        if right_result.is_err():
+            return right_result
+        
+        # Both are Ok, extract values
+        lv = left_result.unwrap()
+        rv = right_result.unwrap()
+        
+        # Perform operation based on op type
+        if e.op == OpType.ADD:
+            return Ok(lv + rv)
+        elif e.op == OpType.SUB:
+            return Ok(lv - rv)
+        elif e.op == OpType.MUL:
+            return Ok(lv * rv)
+        elif e.op == OpType.DIV:
+            if rv == 0.0:
+                return Err("Division by zero")
+            return Ok(lv / rv)
+        else:
+            return Err("Unknown operator")
+    
+    if isinstance(e, Conditional):
+        cond_result = eval_expr(e.condition, ctx)
+        if cond_result.is_err():
+            # Propagate error with message
+            return Err(f"Condition error: {cond_result.unwrap_err()}")
+        
+        # Non-zero is truthy
+        if cond_result.unwrap() != 0.0:
+            return eval_expr(e.if_true, ctx)
+        else:
+            return eval_expr(e.if_false, ctx)
+    
+    return Err("Unknown expression type")
+
+# Format a Result value
+def format_result(r: float !str) -> str:
+    if r.is_ok():
+        v = r.unwrap()
+        return f"= {v}"
+    else:
+        m = r.unwrap_err()
+        return f"Error: {m}"
+
+# Main entry point
+def main():
+    ctx = EvalContext()
+    ctx.set("x", 10.0)
+    ctx.set("y", 3.0)
+    
+    # Test 1: Simple number
+    print("Test 1: Simple number")
+    simple = Number(42.0)
+    print(format_result(eval_expr(simple, ctx)))
+    
+    # Test 2: Variable lookup
+    print("Test 2: Variable lookup")
+    var_expr = Variable("x")
+    print(format_result(eval_expr(var_expr, ctx)))
+    
+    # Test 3: Negation
+    print("Test 3: Negation")
+    negated = Negate(Number(5.0))
+    print(format_result(eval_expr(negated, ctx)))
+    
+    # Test 4: Binary multiplication (10 * 3 = 30)
+    print("Test 4: Binary multiplication")
+    product = Binary(Variable("x"), OpType.MUL, Variable("y"))
+    print(format_result(eval_expr(product, ctx)))
+    
+    # Test 5: Conditional expression
+    # (5 - 5 = 0, which is falsey) so should return false_branch (200)
+    print("Test 5: Conditional")
+    cond = Binary(Number(5.0), OpType.SUB, Number(5.0))
+    true_branch = Number(100.0)
+    false_branch = Number(200.0)
+    conditional = Conditional(cond, true_branch, false_branch)
+    print(format_result(eval_expr(conditional, ctx)))
+    
+    # Test 6: Division by zero error
+    print("Test 6: Division by zero")
+    division = Binary(Number(10.0), OpType.DIV, Number(0.0))
+    print(format_result(eval_expr(division, ctx)))
+    
+    # Test 7: Nested binary expression ((10 + 5) * 2 = 30)
+    print("Test 7: Nested expression")
+    inner_add = Binary(Variable("x"), OpType.ADD, Number(5.0))
+    nested = Binary(inner_add, OpType.MUL, Number(2.0))
+    print(format_result(eval_expr(nested, ctx)))
+    
+    # Test 8: Subtraction
+    print("Test 8: Subtraction")
+    sub_expr = Binary(Number(15.0), OpType.SUB, Number(7.0))
+    print(format_result(eval_expr(sub_expr, ctx)))

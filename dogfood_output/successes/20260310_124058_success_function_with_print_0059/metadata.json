@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T12:34:52.648847",
+  "generated_code": "# Partial application with accumulation loop\n# Tests _ placeholder and loop accumulation pattern\n\ndef calculate(base: int, offset: int) -> int:\n    return base * 2 + offset\n\ndef main():\n    # Create partial with offset fixed to 5\n    calc_with_offset_5 = calculate(_, 5)\n    \n    values: list[int] = [1, 2, 3, 4]\n    total: int = 0\n    \n    for v in values:\n        result: int = calc_with_offset_5(v)\n        print(result)\n        total += result\n    \n    print(total)\n",
+  "expected_output": "7\n9\n11\n13\n40\n",
+  "actual_output": "7\n9\n11\n13\n40",
+  "feature_focus": "function_with_print",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 353.9932670593262,
+  "execution_duration": 5.313411235809326,
+  "source_files": null
+}

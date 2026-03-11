@@ -1,0 +1,30 @@
+# Main entry point using imports from multiple modules
+
+from utils import Color, Point, format_color, square
+from interfaces import IMeasurable
+from shapes import Rectangle, Circle
+
+def main():
+    # Create points using struct from utils
+    origin: Point = Point(0.0, 0.0)
+    offset: Point = Point(3.0, 4.0)
+    
+    # Calculate distance between points
+    dist: float = origin.distance_to(offset)
+    print(dist)
+    
+    # Create shapes using cross-module types
+    rect: Rectangle = Rectangle(Color.RED, origin, 5.0, 3.0)
+    circle: Circle = Circle(Color.BLUE, offset, 2.5)
+    
+    # Display colors using enum formatter
+    print(format_color(rect.color))
+    print(format_color(circle.color))
+    
+    # Polymorphic behavior through interface
+    shapes: list[IMeasurable] = [rect, circle]
+    for s in shapes:
+        print(s.measure())
+    
+    # Use utility function
+    print(square(4.0))

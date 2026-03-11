@@ -1,0 +1,63 @@
+# Main entry point - demonstrates cross-module inheritance, interfaces, structs, enums
+
+from module_shapes import Rectangle, Circle, Color, Shape, IMeasurable
+from module_utils import Point, Dimension, ShapeFactory, format_measurement, calculate_diagonal
+
+def main():
+    # Test enum from module_shapes
+    rect_color: Color = Color.BLUE
+    
+    # Test classes with inheritance from module_shapes
+    rect: Rectangle = Rectangle(5.0, 3.0, rect_color)
+    circle: Circle = Circle(2.5, Color.RED)
+    
+    # Print 1: Rectangle area
+    rect_area: float = rect.area()
+    print(format_measurement(rect_area, " sq units"))
+    
+    # Print 2: Rectangle color name
+    print(rect.get_color_name())
+    
+    # Print 3: Circle area
+    circle_area: float = circle.area()
+    print(format_measurement(circle_area, " sq units"))
+    
+    # Print 4: Compare areas
+    larger: str = compare_areas(rect, circle)
+    print(larger)
+    
+    # Print 5: Circle draw result
+    print(circle.draw())
+    
+    # Test struct from module_utils
+    dim: Dimension = Dimension()
+    dim.width = 10.0
+    dim.height = 20.0
+    
+    # Print 6: Diagonal calculation via struct
+    diag: float = calculate_diagonal(dim)
+    print(format_measurement(diag, " units"))
+    
+    # Print 7: Point distance from origin
+    point: Point = Point(3.0, 4.0)
+    dist: float = point.distance_from_origin()
+    print(format_measurement(dist, " units"))
+    
+    # Test static class from module_utils
+    factory_result: tuple[Dimension, Point] = ShapeFactory.create_square(6.0)
+    square_dim: Dimension = factory_result[0]
+    square_center: Point = factory_result[1]
+    
+    # Print 8: ShapeFactory counter
+    count: int = ShapeFactory.increment_counter()
+    print(count)
+
+def compare_areas(s1: Shape, s2: Shape) -> str:
+    a1: float = s1.area()
+    a2: float = s2.area()
+    if a1 > a2:
+        return "first"
+    elif a2 > a1:
+        return "second"
+    else:
+        return "equal"

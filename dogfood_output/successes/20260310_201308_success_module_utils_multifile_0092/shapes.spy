@@ -1,0 +1,43 @@
+# Shapes module with class hierarchy
+class Shape:
+    """Base class for geometric shapes."""
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    def get_name(self) -> str:
+        return self.name
+    
+    def area(self) -> float:
+        return 0.0
+
+class Rectangle(Shape):
+    """Rectangle with width and height."""
+    width: float
+    height: float
+    
+    def __init__(self, width: float, height: float):
+        super().__init__("Rectangle")
+        self.width = width
+        self.height = height
+    
+    def area(self) -> float:
+        return self.width * self.height
+    
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+class Circle(Shape):
+    """Circle with radius."""
+    radius: float
+    
+    def __init__(self, radius: float):
+        super().__init__("Circle")
+        self.radius = radius
+    
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    def circumference(self) -> float:
+        return 2.0 * 3.14159 * self.radius

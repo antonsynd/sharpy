@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-10T00:18:42.361551",
+  "generated_code": "# Main entry point - imports and uses shape classes\n\nfrom shapes import Circle, Rectangle\nfrom utils import PI\n\ndef main():\n    c: Circle = Circle(5.0)\n    r: Rectangle = Rectangle(4.0, 6.0)\n    \n    print(c.name)\n    print(r.describe())\n    print(c.draw())\n    print(c.area())\n    print(r.area())\n",
+  "expected_output": "Circle\nRectangle with area 24.00\nCircle(r=5.0)\n78.53975\n24.0\n",
+  "actual_output": "Circle\nRectangle with area 24.00\nCircle(r=5.0)\n78.53975\n24.0",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 306.0825972557068,
+  "execution_duration": 5.091564416885376,
+  "source_files": {
+    "utils.spy": "# Utilities module - constants and helper functions\n\nconst PI: float = 3.14159\n\ndef square(x: float) -> float:\n    return x * x\n\ndef format_number(n: float) -> str:\n    return f\"{n:.2f}\"\n",
+    "shapes.spy": "# Shape definitions - abstract base class with inheritance\n\nfrom utils import PI, square, format_number\n\n@abstract\nclass Shape:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    @abstract\n    def area(self) -> float: ...\n    \n    def describe(self) -> str:\n        return f\"{self.name} with area {format_number(self.area())}\"\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, r: float):\n        super().__init__(\"Circle\")\n        self.radius = r\n    \n    @override\n    def area(self) -> float:\n        return PI * square(self.radius)\n    \n    def draw(self) -> str:\n        return f\"Circle(r={self.radius})\"\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, w: float, h: float):\n        super().__init__(\"Rectangle\")\n        self.width = w\n        self.height = h\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n    \n    def draw(self) -> str:\n        return f\"Rectangle({self.width}x{self.height})\"\n",
+    "main.spy": "# Main entry point - imports and uses shape classes\n\nfrom shapes import Circle, Rectangle\nfrom utils import PI\n\ndef main():\n    c: Circle = Circle(5.0)\n    r: Rectangle = Rectangle(4.0, 6.0)\n    \n    print(c.name)\n    print(r.describe())\n    print(c.draw())\n    print(c.area())\n    print(r.area())\n"
+  }
+}

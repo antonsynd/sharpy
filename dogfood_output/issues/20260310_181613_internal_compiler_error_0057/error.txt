@@ -1,0 +1,9 @@
+Internal compiler error: Compilation errors:
+
+error[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.
+  --> /tmp/tmp8uax2l5x/dogfood_test.spy:16:21
+    |
+ 16 |         processed = self.process_value(value)
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

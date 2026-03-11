@@ -1,0 +1,17 @@
+from shapes_impl import Circle, Rectangle
+from shapes_base import IMeasurable, Shape
+
+def get_description(s: Shape) -> str:
+    return s.describe()
+
+def get_area(m: IMeasurable) -> float:
+    return m.area()
+
+def main():
+    circle = Circle("unit", 1.0)
+    rect = Rectangle("box", 2.0, 3.0)
+    
+    print(get_description(circle))
+    print(get_area(circle))
+    print(get_description(rect))
+    print(get_area(rect))

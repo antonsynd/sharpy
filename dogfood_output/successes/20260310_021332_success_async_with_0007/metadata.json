@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T02:07:12.188951",
+  "generated_code": "import asyncio\n\n# Test async_with for async resource management\nclass AsyncConnection:\n    _connected: bool\n    \n    def __init__(self):\n        self._connected = False\n    \n    async def __aenter__(self) -> AsyncConnection:\n        await asyncio.sleep(0.01)\n        self._connected = True\n        return self\n    \n    async def __aexit__(self):\n        self._connected = False\n    \n    def status(self) -> str:\n        if self._connected:\n            return \"connected\"\n        return \"disconnected\"\n    \n    async def fetch(self, id: int) -> str:\n        if not self._connected:\n            return \"error: not connected\"\n        await asyncio.sleep(0.01)\n        return f\"data-{id}\"\n\nasync def process_data() -> str:\n    async with AsyncConnection() as conn:\n        print(conn.status())\n        result1 = await conn.fetch(1)\n        result2 = await conn.fetch(2)\n        return f\"{result1},{result2}\"\n\nasync def main():\n    final = await process_data()\n    print(final)\n    print(\"done\")\n",
+  "expected_output": "connected\ndata-1,data-2\ndone\n",
+  "actual_output": "connected\ndata-1,data-2\ndone",
+  "feature_focus": "async_with",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 356.64694023132324,
+  "execution_duration": 5.3485119342803955,
+  "source_files": null
+}

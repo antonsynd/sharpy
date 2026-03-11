@@ -1,0 +1,15 @@
+Rectangle: 5.0x3.0
+15.0
+16.0
+Blue
+Circle: radius=4.0
+50.26544
+Square: side=6.0
+36.0
+rect drawable: Drawing rectangle
+circle drawable: Drawing circle at (0.0, 0.0)
+101.26544
+1.7777777777777777
+5.0
+1
+2

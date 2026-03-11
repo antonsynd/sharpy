@@ -1,0 +1,4 @@
+Rectangle: area=15.0, perimeter=16.0
+Rectangle: area=16.0, perimeter=16.0
+Circle: area=19.6349375, perimeter=15.70795
+50.6349375

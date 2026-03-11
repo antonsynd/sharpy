@@ -1,0 +1,28 @@
+warning[SPY0452]: Imported name 'utilities' is never used
+  --> /tmp/tmpmdvy1nbx/geometry.spy:2:5
+    |
+  2 | from utilities import Color, Point, ScalableRectangle, get_color_name, make_point, ScaleRecord, IScalable
+    |     ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'ScaleRecord' is never used
+  --> /tmp/tmpmdvy1nbx/main.spy:2:84
+    |
+  2 | from utilities import Color, Point, ScalableRectangle, get_color_name, make_point, ScaleRecord, IScalable
+    |                                                                                    ^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IScalable' is never used
+  --> /tmp/tmpmdvy1nbx/main.spy:2:97
+    |
+  2 | from utilities import Color, Point, ScalableRectangle, get_color_name, make_point, ScaleRecord, IScalable
+    |                                                                                                 ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'create_rectangle' is never used
+  --> /tmp/tmpmdvy1nbx/main.spy:3:48
+    |
+  3 | from geometry import Shape, Rectangle, Circle, create_rectangle, total_area
+    |                                                ^^^^^^^^^^^^^^^^
+    |
+

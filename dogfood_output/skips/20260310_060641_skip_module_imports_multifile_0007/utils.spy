@@ -1,0 +1,33 @@
+# Utils module - helper functions
+# Demonstrates: module imports, utility functions
+
+from types import Color, Point
+from shapes import Circle
+
+def create_circle_at_origin(color: Color, radius: float) -> Circle:
+    origin = Point(0.0, 0.0)
+    return Circle(color, origin, radius)
+
+def get_color_name(color: Color) -> str:
+    if color == Color.RED:
+        return "red"
+    elif color == Color.GREEN:
+        return "green"
+    else:
+        return "blue"
+
+class ShapeUtils:
+    @static
+    SHAPE_COUNT: int = 0
+    
+    @static
+    def increment_count() -> None:
+        ShapeUtils.SHAPE_COUNT = ShapeUtils.SHAPE_COUNT + 1
+    
+    @static
+    def get_count() -> int:
+        return ShapeUtils.SHAPE_COUNT
+    
+    @static
+    def reset_count() -> None:
+        ShapeUtils.SHAPE_COUNT = 0

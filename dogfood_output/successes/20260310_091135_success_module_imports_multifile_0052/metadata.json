@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-10T09:06:55.852501",
+  "generated_code": "# Main entry point - imports from multiple modules\nfrom math_utils import square, times_two, Calculator\nfrom geometry import Circle\n\ndef main():\n    # Test function import from math_utils\n    result: float = square(4.0)\n    print(result)\n\n    # Test another function import (renamed from double to times_two)\n    doubled: int = times_two(7)\n    print(doubled)\n\n    # Test class import from math_utils\n    calc = Calculator(100)\n    calc.add(25)\n    print(calc.value)\n\n    # Test geometry module that imports PI internally\n    circle = Circle(2.0)\n    area_result: float = circle.area()\n    print(area_result)\n",
+  "expected_output": "16.0\n14\n125\n12.56636\n",
+  "actual_output": "16.0\n14\n125\n12.56636",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 251.40543794631958,
+  "execution_duration": 5.085820913314819,
+  "source_files": {
+    "math_utils.spy": "# Math utilities module with constants and utilities\nconst PI: float = 3.14159\n\ndef square(x: float) -> float:\n    return x * x\n\ndef times_two(x: int) -> int:\n    return x * 2\n\nclass Calculator:\n    value: int\n\n    def __init__(self, initial: int):\n        self.value = initial\n\n    def add(self, x: int) -> int:\n        self.value = self.value + x\n        return self.value\n",
+    "geometry.spy": "# Geometry module using math utilities\nfrom math_utils import PI\n\nclass Circle:\n    radius: float\n\n    def __init__(self, radius: float):\n        self.radius = radius\n\n    def area(self) -> float:\n        return PI * self.radius * self.radius\n\n    def circumference(self) -> float:\n        return 2.0 * PI * self.radius\n",
+    "main.spy": "# Main entry point - imports from multiple modules\nfrom math_utils import square, times_two, Calculator\nfrom geometry import Circle\n\ndef main():\n    # Test function import from math_utils\n    result: float = square(4.0)\n    print(result)\n\n    # Test another function import (renamed from double to times_two)\n    doubled: int = times_two(7)\n    print(doubled)\n\n    # Test class import from math_utils\n    calc = Calculator(100)\n    calc.add(25)\n    print(calc.value)\n\n    # Test geometry module that imports PI internally\n    circle = Circle(2.0)\n    area_result: float = circle.area()\n    print(area_result)\n"
+  }
+}

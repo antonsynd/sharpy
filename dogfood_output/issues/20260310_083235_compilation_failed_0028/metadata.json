@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-10T08:30:54.901863",
+  "generated_code": "# Test custom decorators on classes with various argument types\n# Comprehensive test of compile-time attribute generation\n\n@system.serializable\nclass ConfigData:\n    name: str\n    version: int\n    \n    def __init__(self, name: str, version: int):\n        self.name = name\n        self.version = version\n\n@obsolete(\"Use EnhancedSettings instead\")\nclass DeprecatedSettings:\n    value: int\n    \n    def __init__(self, v: int):\n        self.value = v\n\n@system.diagnostics.conditional(\"DEBUG\")\nclass DebugHelper:\n    message: str\n    \n    def __init__(self, msg: str):\n        self.message = msg\n\nclass EnhancedSettings:\n    config: ConfigData\n    debug_mode: bool\n    \n    def __init__(self, cfg: ConfigData, debug: bool = False):\n        self.config = cfg\n        self.debug_mode = debug\n    \n    def describe(self) -> str:\n        if self.debug_mode:\n            return f\"{self.config.name} (v{self.config.version}) - DEBUG\"\n        return f\"{self.config.name} (v{self.config.version})\"\n\ndef main():\n    # Create instances and verify basic functionality\n    cfg = ConfigData(\"TestApp\", 2)\n    settings = EnhancedSettings(cfg, True)\n    \n    # Test inheritance pattern with decorated parent\n    deprecated = DeprecatedSettings(100)\n    \n    # Control flow: if with walrus in condition\n    if (s := settings.describe()) == \"TestApp (v2) - DEBUG\":\n        print(\"Debug mode active\")\n    else:\n        print(\"Release mode\")\n    \n    print(cfg.name)\n    print(cfg.version)\n    \n    # Loop with pattern\n    items: list[int] = [deprecated.value, cfg.version * 2, 42]\n    total = 0\n    for i, val in enumerate(items):\n        total += val\n        print(f\"item {i}: {val}\")\n    \n    print(total)\n",
+  "expected_output": "Debug mode active\nTestApp\n2\nitem 0: 100\nitem 1: 4\nitem 2: 42\n146\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS1689]: Attribute 'System.Diagnostics.Conditional' is only valid on methods or attribute classes\n  --> /tmp/tmpgx83r9wn/dogfood_test.spy:22:6\n    |\n 22 |     message: str\n    |      ^\n    |\n\n",
+  "compiler_output": "warning[SPY0451]: Local variable 's' is assigned but never used\n  --> /tmp/tmpgx83r9wn/dogfood_test.spy:49:9\n    |\n 49 |     if (s := settings.describe()) == \"TestApp (v2) - DEBUG\":\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\n",
+  "generated_cs": "warning[SPY0451]: Local variable 's' is assigned but never used\n  --> /tmp/tmpgx83r9wn/dogfood_test.spy:49:9\n    |\n 49 |     if (s := settings.describe()) == \"TestApp (v2) - DEBUG\":\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\nGenerated C# code written to: /tmp/tmpgx83r9wn/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "custom_decorator_on_class",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 85.99489092826843,
+  "compilation_duration": null,
+  "execution_duration": 4.7569756507873535,
+  "source_files": null
+}

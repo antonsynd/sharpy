@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0136]: A local or parameter named 's' cannot be declared in this scope because that name is used in an enclosing local scope to define a local or parameter
+  --> /tmp/tmpie0y5pv1/main.spy:9:17
+    |
+  9 |     print("")
+    |              ^
+    |
+

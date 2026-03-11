@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-10T16:05:59.792441",
+  "generated_code": "# Complex test for dunder __eq__ and __hash__ with inheritance and collections\n\nclass Point:\n    x: int\n    y: int\n    \n    def __init__(self, x: int, y: int):\n        self.x = x\n        self.y = y\n    \n    def __eq__(self, other: object) -> bool:\n        if other is None:\n            return False\n        if isinstance(other, Point):\n            p = other\n            return self.x == p.x and self.y == p.y\n        return False\n    \n    def __hash__(self) -> int:\n        return self.x * 31 + self.y\n    \n    def magnitude(self) -> float:\n        return (self.x * self.x + self.y * self.y) ** 0.5\n\nclass ColoredPoint(Point):\n    color: str\n    \n    def __init__(self, x: int, y: int, color: str):\n        super().__init__(x, y)\n        self.color = color\n    \n    @override\n    def __eq__(self, other: object) -> bool:\n        if isinstance(other, ColoredPoint):\n            cp = other\n            return self.x == cp.x and self.y == cp.y and self.color == cp.color\n        elif isinstance(other, Point):\n            return super().__eq__(other)\n        return False\n    \n    @override\n    def __hash__(self) -> int:\n        result: int = super().__hash__()\n        color_hash: int = 0\n        for c in self.color:\n            color_hash = color_hash * 31 + ord(c)\n        return result * 31 + color_hash\n\ndef add_to_point_dict(points: list[Point], values: list[float]) -> dict[Point, float]:\n    result: dict[Point, float] = {}\n    i: int = 0\n    while i < len(points) and i < len(values):\n        result[points[i]] = values[i]\n        i += 1\n    return result\n\ndef main():\n    p1 = Point(3, 4)\n    p2 = Point(3, 4)\n    p3 = Point(1, 2)\n    cp1 = ColoredPoint(3, 4, \"red\")\n    cp2 = ColoredPoint(3, 4, \"red\")\n    cp3 = ColoredPoint(3, 4, \"blue\")\n    \n    # Test basic equality\n    print(p1 == p2)\n    print(p1 == p3)\n    \n    # Test cross-type equality (ColoredPoint as Point)\n    print(p1 == cp1)\n    print(cp1 == p1)\n    \n    # Test colored point equality (includes color)\n    print(cp1 == cp2)\n    print(cp1 == cp3)\n    \n    # Test in sets\n    unique: set[Point] = {p1, p3, cp1, cp3}\n    unique.add(p2)\n    unique.add(cp2)\n    print(len(unique))\n    \n    # Test as dict keys\n    lookup: dict[Point, str] = {}\n    lookup[p1] = \"origin-point\"\n    lookup[cp1] = \"red-point\"\n    print(lookup[p2])\n    print(lookup[cp2])\n    \n    # Pattern match and access\n    match cp1:\n        case ColoredPoint():\n            if cp1.color == \"red\":\n                print(255)\n    \n    # Compute with points\n    points: list[Point] = [p1, p2, p3]\n    total: float = 0.0\n    for p in points:\n        total += p.magnitude()\n    print(total)\n",
+  "expected_output": "True\nFalse\nTrue\nTrue\nTrue\nFalse\n4\norigin-point\nred-point\n255\n12.0\n",
+  "actual_output": "True\nFalse\nTrue\nTrue\nTrue\nFalse\n4\norigin-point\nred-point\n255\n12.23606797749979",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "dunder_eq_hash",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 474.65492486953735,
+  "compilation_duration": null,
+  "execution_duration": 5.610295534133911,
+  "source_files": null
+}

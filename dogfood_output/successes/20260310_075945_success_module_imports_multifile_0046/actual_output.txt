@@ -1,0 +1,8 @@
+30
+30
+120
+Hello, World!
+XXX
+True
+False
+3.14159

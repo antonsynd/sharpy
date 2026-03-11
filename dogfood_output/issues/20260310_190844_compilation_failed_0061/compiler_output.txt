@@ -1,0 +1,7 @@
+warning[SPY0458]: @virtual is redundant on '__str__' in 'Shape' — it always overrides Object.ToString(). The @virtual decorator will be ignored.
+  --> /tmp/tmpgrpii0qi/geometry_base.spy:8:33
+    |
+  8 |     origin: Point = Point(0.0, 0.0)
+    |                                 ^^^
+    |
+

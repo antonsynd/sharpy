@@ -1,0 +1,16 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Type 'Circle' has no member 'name'
+  --> /tmp/tmp0f6vm_zr/main.spy:18:19
+    |
+ 18 |     c_name: str = c.name
+    |                   ^^^^^^
+    |
+
+error[SPY0203]: Type 'Rectangle' has no member 'name'
+  --> /tmp/tmp0f6vm_zr/main.spy:19:19
+    |
+ 19 |     r_name: str = r.name
+    |                   ^^^^^^
+    |
+

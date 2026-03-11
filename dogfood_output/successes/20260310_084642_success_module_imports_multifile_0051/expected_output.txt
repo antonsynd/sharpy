@@ -1,0 +1,10 @@
+Position(0.0, 0.0)
+Position(3.0, 4.0)
+5.0
+Entity 1 with health 100
+Entity 2 with health 30
+Creature(Dragon) at Position(0.0, 0.0)
+2
+1
+False
+65.0

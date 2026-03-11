@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T13:23:06.086205",
+  "generated_code": "# Test match or-patterns with operator aliases in expression evaluator\n# Groups related operators using or-patterns in match expressions\ndef evaluate_with_alias(op: str, a: int, b: int) -> float:\n    return match op:\n        case \"+\" | \"add\" | \"plus\": float(a + b)\n        case \"-\" | \"sub\" | \"minus\": float(a - b)\n        case \"*\" | \"mul\" | \"times\": float(a * b)\n        case \"/\" | \"div\": float(a) / float(b)\n        case _: 0.0\n\ndef main():\n    result1 = evaluate_with_alias(\"+\", 5, 3)\n    print(result1)\n    result2 = evaluate_with_alias(\"times\", 4, 7)\n    print(result2)\n    result3 = evaluate_with_alias(\"minus\", 10, 4)\n    print(result3)\n    result4 = evaluate_with_alias(\"div\", 20, 4)\n    print(result4)\n    result5 = evaluate_with_alias(\"unknown\", 1, 1)\n    print(result5)\n",
+  "expected_output": "8.0\n28.0\n6.0\n5.0\n0.0\n",
+  "actual_output": "8.0\n28.0\n6.0\n5.0\n0.0",
+  "feature_focus": "match_or_pattern",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 529.4088022708893,
+  "execution_duration": 5.241021394729614,
+  "source_files": null
+}

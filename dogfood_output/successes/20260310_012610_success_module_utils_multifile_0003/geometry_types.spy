@@ -1,0 +1,40 @@
+# Geometry types - structs and enums
+PI_CONSTANT: float = 3.14159
+
+enum Quadrant:
+    ORIGIN = 0
+    FIRST = 1
+    SECOND = 2
+    THIRD = 3
+    FOURTH = 4
+    ON_X_AXIS = 5
+    ON_Y_AXIS = 6
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x_val: float, y_val: float):
+        self.x = x_val
+        self.y = y_val
+
+    def distance_to_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5
+
+    def classify_quadrant(self) -> Quadrant:
+        if self.x == 0.0 and self.y == 0.0:
+            return Quadrant.ORIGIN
+        if self.x == 0.0:
+            return Quadrant.ON_Y_AXIS
+        if self.y == 0.0:
+            return Quadrant.ON_X_AXIS
+        if self.x > 0.0 and self.y > 0.0:
+            return Quadrant.FIRST
+        if self.x < 0.0 and self.y > 0.0:
+            return Quadrant.SECOND
+        if self.x < 0.0 and self.y < 0.0:
+            return Quadrant.THIRD
+        return Quadrant.FOURTH
+
+def scale_point(p: Point, factor: float) -> Point:
+    return Point(p.x * factor, p.y * factor)

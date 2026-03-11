@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T05:35:50.921322",
+  "generated_code": "def main():\n    results: list[int] = []\n    \n    # Test where no exception is raised - else should execute\n    result: int = 0\n    try:\n        x: int = 10\n        y: int = 2\n        result = x // y\n    except ZeroDivisionError:\n        results.append(-1)\n    except ValueError:\n        results.append(-2)\n    else:\n        results.append(result)\n    \n    # Test where exception IS raised - else should NOT execute\n    value: int = 0\n    try:\n        a: int = 5\n        b: int = 0\n        value = a // b\n    except ZeroDivisionError:\n        results.append(0)\n    else:\n        results.append(999)\n    \n    # Verify results: first try succeeded (else ran), second failed (except ran)\n    for r in results:\n        print(r)\n",
+  "expected_output": "5\n0\n",
+  "actual_output": "5\n0",
+  "feature_focus": "try_except_else",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 144.51226139068604,
+  "execution_duration": 5.106567144393921,
+  "source_files": null
+}

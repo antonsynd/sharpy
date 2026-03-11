@@ -1,0 +1,29 @@
+# Main entry point - demonstrates cross-module polymorphism
+
+from geometry_base import Shape, IDrawable
+from geometry_shapes import Rectangle, Circle, create_shape_center, scale_rectangle
+
+def process_drawable(item: IDrawable) -> str:
+    """Polymorphic function accepting any IDrawable"""
+    return item.draw()
+
+def main():
+    # Create instances from imported classes
+    rect: Rectangle = Rectangle(0.0, 0.0, 10.0, 5.0)
+    circle: Circle = Circle(5.0, 5.0, 3.0)
+    
+    # Test inherited methods from base class (cross-module)
+    print(rect.describe())
+    print(circle.describe())
+    
+    # Test interface implementation (cross-module polymorphism)
+    print(process_drawable(rect))
+    print(process_drawable(circle))
+    
+    # Test utility function that works with base class
+    cx, cy = create_shape_center(rect)
+    print(f"Center: ({cx}, {cy})")
+    
+    # Test cross-module utility function
+    scaled: Rectangle = scale_rectangle(rect, 2.0)
+    print(scaled.describe())

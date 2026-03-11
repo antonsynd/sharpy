@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Utils.BorderStyle' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Utils.BorderStyle' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmpipbnp5jt/utils.spy:30:49
+    |
+ 30 |     for s in shapes:
+    |                     ^
+    |
+

@@ -1,0 +1,14 @@
+# Main entry point - tests shape hierarchy and polymorphism
+from shapes import Shape, Rectangle, Circle, total_area
+
+def main():
+    rect1: Rectangle = Rectangle(5.0, 3.0)
+    rect2: Rectangle = Rectangle(4.0, 4.0)
+    circ: Circle = Circle(2.0)
+    
+    print(rect1.area())
+    print(rect2.area())
+    print(circ.area())
+    
+    shapes: list[Shape] = [rect1, rect2, circ]
+    print(total_area(shapes))

@@ -1,0 +1,12 @@
+Assembly compilation failed:
+
+error[CS0506]: 'Shapes.Rectangle.Area()': cannot override inherited member 'Shapes.Shape.Area()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmp_ikxsxwy/shapes.spy:15:32
+    |
+ 15 |     # Test method in imported class
+    |                                ^
+    |
+
+error[CS0506]: 'Shapes.Rectangle.Describe()': cannot override inherited member 'Shapes.Shape.Describe()' because it is not marked virtual, abstract, or override
+  --> /tmp/tmp_ikxsxwy/shapes.spy:29:32
+

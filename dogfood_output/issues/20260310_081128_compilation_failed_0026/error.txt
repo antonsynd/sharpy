@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0246]: The type or namespace name 'StaticmethodAttribute' could not be found (are you missing a using directive or an assembly reference?)
+  --> utils.cs:26:10
+    |
+ 26 |     # Use static utility class from utils module
+    |          ^
+    |
+
+error[CS0103]: The name 'pi' does not exist in the current context
+  --> /tmp/tmph_9r4524/shapes.spy:22:20
+    |
+ 22 |     # Print descriptions and areas
+    |                    ^
+    |
+

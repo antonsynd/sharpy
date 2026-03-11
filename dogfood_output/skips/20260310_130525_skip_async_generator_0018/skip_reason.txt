@@ -1,0 +1,44 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0224]: Function expects 1 arguments but got 0
+  --> /tmp/tmpsv4ra7_c/dogfood_test.spy:5:28
+    |
+  5 |         async for value in source():
+    |                            ^^^^^^^^
+    |
+
+error[SPY0248]: Cannot override 'transform' because the base class method in 'AbstractStreamProcessor' is not marked @virtual or @abstract. Add @virtual to the method in the base class.
+  --> /tmp/tmpsv4ra7_c/dogfood_test.spy:28:5
+    |
+ 28 |     async def transform(self, source: (int) -> int) -> int:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0224]: Function expects 1 arguments but got 0
+  --> /tmp/tmpsv4ra7_c/dogfood_test.spy:29:28
+    |
+ 29 |         async for value in source():
+    |                            ^^^^^^^^
+    |
+
+error[SPY0220]: Cannot pass argument of type '() -> IAsyncEnumerable[int]' to parameter of type '(int) -> int'
+  --> /tmp/tmpsv4ra7_c/dogfood_test.spy:46:42
+    |
+ 46 |     async for val in processor.transform(source_a2.generator):
+    |                                          ^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type 'IAsyncEnumerable[int]' to variable of type 'int'
+  --> /tmp/tmpsv4ra7_c/dogfood_test.spy:50:5
+    |
+ 50 |     gen_b: int = source_b.generator()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type 'IAsyncEnumerable[int]' to variable of type 'int'
+  --> /tmp/tmpsv4ra7_c/dogfood_test.spy:51:5
+    |
+ 51 |     gen_c: int = source_c.generator()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

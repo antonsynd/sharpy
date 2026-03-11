@@ -1,0 +1,33 @@
+# Utility module with structs and helper functions
+struct Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    def get_distance_from_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5
+    
+    def get_coords(self) -> str:
+        return f"({self.x},{self.y})"
+
+def calculate_perimeter(width: float, height: float) -> float:
+    return 2.0 * (width + height)
+
+def format_number(n: float, precision: int) -> str:
+    # Simple formatting based on precision
+    if precision == 0:
+        return str(int(n))
+    
+    factor: float = 10.0
+    if precision == 2:
+        factor = 100.0
+    elif precision == 3:
+        factor = 1000.0
+    
+    scaled: float = n * factor
+    rounded: float = round(scaled)
+    result: float = rounded / factor
+    return str(result)

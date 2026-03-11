@@ -1,0 +1,93 @@
+import asyncio
+
+class AsyncRange:
+    start: int
+    end: int
+    delay: float
+
+    def __init__(self, start: int, end: int, delay: float = 0.01):
+        self.start = start
+        self.end = end
+        self.delay = delay
+
+    async def generate(self) -> int:
+        i = self.start
+        while i < self.end:
+            await asyncio.sleep(self.delay)
+            yield i
+            i += 1
+
+class AsyncBuffer:
+    items: list[int]
+
+    def __init__(self):
+        self.items = []
+
+    def add(self, item: int) -> None:
+        self.items.append(item)
+
+    async def fetch_all(self) -> int:
+        for item in self.items:
+            await asyncio.sleep(0.005)
+            yield item
+
+class Doubler:
+    def transform(self, item: int) -> int:
+        return item * 2
+
+class AsyncPipeline:
+    source: AsyncBuffer
+    processor: Doubler
+
+    def __init__(self, source: AsyncBuffer, processor: Doubler):
+        self.source = source
+        self.processor = processor
+
+    async def process_all(self) -> list[int]:
+        result: list[int] = []
+        async for item in self.source.fetch_all():
+            result.append(self.processor.transform(item))
+        return result
+
+async def do_async_work() -> None:
+    # Test 1: Async generator with range
+    range_gen = AsyncRange(0, 3)
+    doubled: list[int] = []
+    async for val in range_gen.generate():
+        doubled.append(val * 2)
+    print(doubled[0])
+    print(doubled[1])
+    print(doubled[2])
+
+    # Test 2: Async buffer and pipeline
+    buffer = AsyncBuffer()
+    buffer.add(10)
+    buffer.add(20)
+    buffer.add(30)
+
+    doubler = Doubler()
+    pipeline = AsyncPipeline(buffer, doubler)
+    processed = await pipeline.process_all()
+
+    sum_val: int = 0
+    for p in processed:
+        sum_val = sum_val + p
+    print(sum_val)
+
+    # Test 3: Direct async iteration with filtering
+    final_result: int = 0
+    async for x in AsyncRange(5, 7).generate():
+        if x > 5:
+            final_result = final_result + x
+    print(final_result)
+
+    # Test 4: Nested async generators
+    nested_sum: int = 0
+    async for i in range_gen.generate():
+        inner_range = AsyncRange(0, 2)
+        async for j in inner_range.generate():
+            nested_sum = nested_sum + 1
+    print(nested_sum)
+
+def main():
+    asyncio.run(do_async_work())

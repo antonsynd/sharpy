@@ -1,0 +1,83 @@
+# Function calling function in data transformation pipeline
+type TransformFunc = (int) -> int
+
+class Pipeline:
+    steps: list[TransformFunc]
+    
+    def __init__(self):
+        self.steps = []
+    
+    def add_step(self, transform: TransformFunc) -> None:
+        self.steps.append(transform)
+    
+    @virtual
+    def process(self, value: int) -> int:
+        result = value
+        for step in self.steps:
+            result = step(result)
+        return result
+
+class BoundedPipeline(Pipeline):
+    min_bound: int
+    max_bound: int
+    fallback: TransformFunc
+    
+    def __init__(self, fallback: TransformFunc, min_bound: int, max_bound: int):
+        super().__init__()
+        self.fallback = fallback
+        self.min_bound = min_bound
+        self.max_bound = max_bound
+    
+    @override
+    def process(self, value: int) -> int:
+        result = value
+        if len(self.steps) == 0:
+            result = self.fallback(result)
+        else:
+            result = super().process(result)
+        if result < self.min_bound:
+            return self.min_bound
+        if result > self.max_bound:
+            return self.max_bound
+        return result
+
+def main():
+    def double_value(x: int) -> int:
+        return x * 2
+    
+    def add_ten(x: int) -> int:
+        return x + 10
+    
+    def halve_value(x: int) -> int:
+        return x // 2
+    
+    def apply_twice(fn: TransformFunc, x: int) -> int:
+        return fn(fn(x))
+    
+    def chain_functions(fn1: TransformFunc, fn2: TransformFunc, fn3: TransformFunc, x: int) -> int:
+        return fn1(fn2(fn3(x)))
+    
+    def compose_and_apply(fn1: TransformFunc, fn2: TransformFunc, value: int) -> int:
+        combined: TransformFunc = lambda y: fn1(fn2(y))
+        return combined(value)
+    
+    empty_bounded = BoundedPipeline(double_value, 0, 100)
+    print(empty_bounded.process(5))
+    
+    active_pipeline = Pipeline()
+    active_pipeline.add_step(add_ten)
+    active_pipeline.add_step(double_value)
+    print(active_pipeline.process(8))
+    
+    bounded_active = BoundedPipeline(add_ten, 0, 50)
+    bounded_active.add_step(lambda x: x * 3)
+    print(bounded_active.process(20))
+    
+    twice_result = apply_twice(double_value, 3)
+    print(twice_result)
+    
+    chained_result = chain_functions(add_ten, double_value, halve_value, 10)
+    print(chained_result)
+    
+    composed_result = compose_and_apply(halve_value, double_value, 8)
+    print(composed_result)

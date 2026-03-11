@@ -1,0 +1,18 @@
+from types_module import Status
+from data_module import NamedPoint
+
+# Define Transform type alias for the delegate
+type Transform = (float) -> float
+
+def process_points(points: list[NamedPoint], transform: Transform) -> list[float]:
+    results: list[float] = []
+    for p in points:
+        results.append(transform(p.distance_from_origin()))
+    return results
+
+def filter_by_status(items: list[NamedPoint], status: Status) -> list[NamedPoint]:
+    result: list[NamedPoint] = []
+    for item in items:
+        if item.status == status:
+            result.append(item)
+    return result

@@ -1,0 +1,37 @@
+# Shape utilities module - provides base shapes and factory functions
+class Shape:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def area(self) -> float:
+        return 0.0
+    
+    @virtual
+    def perimeter(self) -> float:
+        return 0.0
+
+class Rectangle(Shape):
+    width: float
+    height: float
+    
+    def __init__(self, width: float, height: float):
+        super().__init__("Rectangle")
+        self.width = width
+        self.height = height
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+def create_square(side: float) -> Rectangle:
+    return Rectangle(side, side)
+
+def shape_info(s: Shape) -> str:
+    return f"{s.name}: area={s.area()}, perimeter={s.perimeter()}"

@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0203]: Module 'asyncio' has no member 'run'
+  --> /tmp/tmp142n2d2t/dogfood_test.spy:93:5
+    |
+ 93 |     asyncio.run(do_async_work())
+    |     ^^^^^^^^^^^
+    |
+

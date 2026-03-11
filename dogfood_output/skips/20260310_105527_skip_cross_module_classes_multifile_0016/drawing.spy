@@ -1,0 +1,65 @@
+# drawing.spy - Concrete implementations using cross-module inheritance
+from shapes import Shape, IMeasurable, INamed, IRenderable
+from widgets import Color, Position, Widget, IResizable
+
+class Circle(Shape, IMeasurable, INamed, IRenderable, IResizable):
+    radius: float
+
+    def __init__(self, x: float, y: float, radius: float):
+        super().__init__(x, y)
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def describe(self) -> str:
+        r_str: str = str(self.radius)
+        return "Circle(r=" + r_str + ")"
+
+    # Implement INamed interface
+    property get name: str:
+        return "Circle"
+
+    @override
+    def resize(self, factor: float) -> float:
+        self.radius = self.radius * factor
+        return self.radius
+
+    def render(self) -> str:
+        return self.describe()
+
+class Rectangle(Shape, IMeasurable, INamed):
+    width: float
+    height: float
+
+    def __init__(self, x: float, y: float, width: float, height: float):
+        super().__init__(x, y)
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def describe(self) -> str:
+        width_str: str = str(self.width)
+        height_str: str = str(self.height)
+        return "Rectangle(" + width_str + "x" + height_str + ")"
+
+    # Implement INamed interface
+    property get name: str:
+        return "Rectangle"
+
+    @override
+    def position(self) -> str:
+        x_str: str = str(self.x)
+        y_str: str = str(self.y)
+        return "rect at [" + x_str + ", " + y_str + "]"
+
+def create_widget() -> Widget:
+    pos: Position = Position(10, 20)
+    w: Widget = Widget("test", Color.GREEN, pos)
+    return w

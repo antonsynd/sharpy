@@ -1,0 +1,24 @@
+# Geometry module importing from module_math
+from module_math import Calculator, add_numbers
+
+class SquareCalculator(Calculator):
+    side: int
+    
+    def __init__(self, side: int, multiplier: int):
+        super().__init__(multiplier)
+        self.side = side
+    
+    @override
+    def compute(self, x: int) -> int:
+        base: int = super().compute(x)
+        return base + self.side * self.side
+    
+    @override
+    def describe(self) -> str:
+        return "Square Calculator"
+
+def calculate_perimeter(sides: list[int]) -> int:
+    total: int = 0
+    for s in sides:
+        total = add_numbers(total, s)
+    return total

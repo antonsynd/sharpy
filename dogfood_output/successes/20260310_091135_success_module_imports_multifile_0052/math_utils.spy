@@ -1,0 +1,18 @@
+# Math utilities module with constants and utilities
+const PI: float = 3.14159
+
+def square(x: float) -> float:
+    return x * x
+
+def times_two(x: int) -> int:
+    return x * 2
+
+class Calculator:
+    value: int
+
+    def __init__(self, initial: int):
+        self.value = initial
+
+    def add(self, x: int) -> int:
+        self.value = self.value + x
+        return self.value

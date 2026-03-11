@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'GeometryTypes.ShapeType' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'GeometryTypes.ShapeType' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmppnqbe15r/main.spy:21:51
+    |
+ 21 |     print(c.get_type().name)
+    |                             ^
+    |
+

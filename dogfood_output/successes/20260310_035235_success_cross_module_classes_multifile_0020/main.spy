@@ -1,0 +1,22 @@
+# Main entry point
+# Tests polymorphic dispatch across module boundaries
+
+from core_types import Task
+from task_impl import DownloadTask
+
+def main():
+    # Create concrete task instance
+    download = DownloadTask("config", "api.example.com")
+    
+    # Test 1: Direct call to overridden method
+    print(download.description())
+    
+    # Test 2: Polymorphic access through base class type
+    task: Task = download
+    print(task.description())
+    
+    # Test 3: Call abstract method implementation
+    print(download.execute())
+    
+    # Test 4: Polymorphic call to abstract method implementation
+    print(task.execute())

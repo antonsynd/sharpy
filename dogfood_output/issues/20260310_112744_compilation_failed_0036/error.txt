@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS1061]: 'TypesModule.Status' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'TypesModule.Status' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp1r2g5q2y/main.spy:13:39
+    |
+ 13 |     status_val: int = entity.status.value
+    |                                       ^
+    |
+

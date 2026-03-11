@@ -1,0 +1,8 @@
+Rectangle(5.0, 3.0)
+Circle(r=2.5)
+Shape at (0.0, 0.0)
+[Polygon] Area=15.0, Perim=16.0
+[Circle] Area=19.6349375, Perim=15.70795
+Total area: 34.6349375
+Point: (1.0, 2.0)
+Moved rect to (5.0, 5.0)

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T10:39:47.387820",
+  "generated_code": "# Test multi-argument lambdas with coordinate transformations\n# Uses binary lambdas (2 params) for various geometric operations\n\nstruct Point2D:\n    x: float\n    y: float\n    \n    def __init__(self, x: float, y: float):\n        self.x = x\n        self.y = y\n\nclass CoordinateTransformer:\n    # Applies a binary lambda to transform a point\n    def transform(self, p: Point2D, operation: (Point2D, float) -> Point2D, factor: float) -> Point2D:\n        return operation(p, factor)\n    \n    # Combines two points using a binary lambda\n    def combine(self, p1: Point2D, p2: Point2D, operation: (Point2D, Point2D) -> Point2D) -> Point2D:\n        return operation(p1, p2)\n\ndef main():\n    origin = Point2D(0.0, 0.0)\n    p1 = Point2D(3.0, 4.0)\n    p2 = Point2D(1.5, 2.5)\n    \n    transformer = CoordinateTransformer()\n    \n    # Multi-arg lambda: scale point by factor\n    scaled = transformer.transform(p1, lambda pt, factor: Point2D(pt.x * factor, pt.y * factor), 2.0)\n    print(scaled.x)\n    print(scaled.y)\n    \n    # Multi-arg lambda: translate point by offset\n    translated = transformer.transform(p1, lambda pt, offset: Point2D(pt.x + offset, pt.y + offset), 5.0)\n    print(translated.x)\n    \n    # Multi-arg lambda: combine two points (add their coordinates)\n    combined = transformer.combine(p1, p2, lambda a, b: Point2D(a.x + b.x, a.y + b.y))\n    print(combined.x)\n    print(combined.y)\n",
+  "expected_output": "6.0\n8.0\n8.0\n4.5\n6.5\n",
+  "actual_output": "6.0\n8.0\n8.0\n4.5\n6.5",
+  "feature_focus": "lambda_multiarg",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 113.58904218673706,
+  "execution_duration": 4.87738299369812,
+  "source_files": null
+}

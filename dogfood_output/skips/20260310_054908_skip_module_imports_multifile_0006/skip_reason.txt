@@ -1,0 +1,9 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+error[SPY0220]: Cannot assign type 'Container[Point]' to variable of type 'Container[Point]'
+  --> /tmp/tmperlz7agh/main.spy:49:5
+    |
+ 49 |     points: Container[Point] = create_point_container()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+

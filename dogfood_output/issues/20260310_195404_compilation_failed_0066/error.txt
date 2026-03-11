@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS8121]: An expression of type 'Optional<DogfoodTest.User>' cannot be handled by a pattern of type 'DogfoodTest.User'.
+  --> /tmp/tmpv53ar__n/dogfood_test.spy:64:22
+    |
+ 64 |                 hits += 1
+    |                      ^
+    |
+

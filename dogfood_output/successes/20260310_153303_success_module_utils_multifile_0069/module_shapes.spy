@@ -1,0 +1,33 @@
+from module_base import Entity, IIdentifiable, Status
+
+struct Dimension:
+    width: float
+    height: float
+
+    def __init__(self, width: float, height: float):
+        self.width = width
+        self.height = height
+
+class Rectangle(Entity, IIdentifiable):
+    dim: Dimension
+    status: Status
+
+    def __init__(self, name: str, width: float, height: float, status: Status):
+        super().__init__(name)
+        self.dim = Dimension(width, height)
+        self.status = status
+
+    @override
+    def get_id(self) -> str:
+        return "ID: " + self.name
+
+    @override
+    def describe(self) -> str:
+        status_str: str = "unknown"
+        if self.status == Status.ACTIVE:
+            status_str = "active"
+        elif self.status == Status.INACTIVE:
+            status_str = "inactive"
+        elif self.status == Status.PENDING:
+            status_str = "pending"
+        return self.name + " is " + status_str

@@ -1,0 +1,41 @@
+# Entry point demonstrating cross-module complex interactions
+from geometry_core import Point, ShapeCategory, IGeometry
+from shapes import Rectangle, Circle, Shape
+from transforms import Transformations, apply_transforms, bounding_diagonal
+
+def process_shape(s: IGeometry) -> None:
+    print(s.area())
+    print(s.perimeter())
+
+def main():
+    # Create some points
+    origin: Point = Point(0.0, 0.0)
+    offset: Point = Point(3.0, 4.0)
+
+    # Test point distance calculation (3-4-5 triangle)
+    dist: float = origin.distance_to(offset)
+    print(dist)
+
+    # Use static transform
+    moved: Point = Transformations.invert(offset)
+    print(moved.x)
+    print(moved.y)
+
+    # Create shapes and test polymorphism
+    rect: Rectangle = Rectangle(origin, 5.0, 3.0)
+    circle: Circle = Circle(offset, 2.0)
+
+    # Test area calculations
+    print(rect.area())
+    print(circle.area())
+
+    # Multi-shape processing with interface
+    shapes: list[IGeometry] = [rect, circle]
+    total_area: float = 0.0
+    for s in shapes:
+        total_area += s.area()
+    print(total_area)
+
+    # Test category name through inheritance
+    print(rect.get_category_name())
+    print(circle.describe())

@@ -1,0 +1,23 @@
+# Main entry point - imports and uses geometry and utils
+from geometry import Circle, Rectangle, Shape
+from utils import square, sum_areas, PI
+
+def main():
+    # Create shapes
+    c: Circle = Circle(3.0)
+    r: Rectangle = Rectangle(3.0, 4.0)
+    
+    # Print areas and perimeters
+    print(c.area())
+    print(c.perimeter())
+    print(r.area())
+    print(r.perimeter())
+    
+    # Test polymorphic list processing from utils
+    shapes: list[Shape] = [c, r]
+    total: float = sum_areas(shapes)
+    print(total)
+    
+    # Test utility functions
+    print(square(5.0))
+    print(PI)

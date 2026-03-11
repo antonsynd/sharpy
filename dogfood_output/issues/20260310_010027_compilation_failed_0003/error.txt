@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0534]: 'DogfoodTest.Mammal' does not implement inherited abstract member 'DogfoodTest.Animal.Speak()'
+  --> /tmp/tmpvzoeoho1/dogfood_test.spy:12:18
+    |
+ 12 |         ...
+    |            ^
+    |
+

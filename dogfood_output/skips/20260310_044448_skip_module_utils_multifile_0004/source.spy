@@ -1,0 +1,30 @@
+# Main entry point - demonstrates cross-module complex features
+from shapes import Shape, Circle, Rectangle, IScalable
+from utils import Color, Point, format_color, calculate_area
+from factories import ShapeFactory, process_shapes
+
+def main():
+    # Create shapes using factory
+    c: Circle = ShapeFactory.create_circle()
+    r: Rectangle = ShapeFactory.create_rectangle()
+
+    # Print initial areas
+    print(c.area())
+    print(r.area())
+
+    # Scale both shapes using interface through factory
+    ShapeFactory.scale_shape(c, 2.0)
+    ShapeFactory.scale_shape(r, 0.5)
+
+    # Print scaled areas
+    print(c.area())
+    print(r.area())
+
+    # Test Point struct distance
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+    print(p1.distance_to(p2))
+
+    # Test enum formatting and value access
+    print(format_color(c.color))
+    print(Color.GREEN.value)

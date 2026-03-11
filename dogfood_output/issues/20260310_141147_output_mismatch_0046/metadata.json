@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-10T14:04:48.762059",
+  "generated_code": "# Test: Nested if statements in loop for number categorization\n# Simple numeric analysis with multiple decision layers\ndef analyze_numbers() -> None:\n    nums: list[int] = [5, 12, 8, 15, 3, 20, 7]\n    for n in nums:\n        if n > 10:\n            if n % 2 == 0:\n                print(\"large-even\")\n            else:\n                print(\"large-odd\")\n        else:\n            if n < 5:\n                print(\"small\")\n            else:\n                print(\"medium\")\n        if n % 3 == 0:\n            if n > 9:\n                print(\"div3-big\")\n            else:\n                print(\"div3-small\")\n\ndef main():\n    analyze_numbers()\n",
+  "expected_output": "medium\ndiv3-small\nlarge-even\ndiv3-big\nlarge-odd\nmedium\nsmall\ndiv3-small\nlarge-even\ndiv3-big\nmedium\ndiv3-small\nlarge-odd\n",
+  "actual_output": "medium\nlarge-even\ndiv3-big\nmedium\nlarge-odd\ndiv3-big\nsmall\ndiv3-small\nlarge-even\nmedium",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "nested_if_in_loop",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 153.35225820541382,
+  "compilation_duration": null,
+  "execution_duration": 5.141227960586548,
+  "source_files": null
+}

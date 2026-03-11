@@ -1,0 +1,8 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'sides' does not exist in the current context
+  --> /tmp/tmpb71kgzhy/shapes.spy:70:115
+
+error[CS0103]: The name 'sides' does not exist in the current context
+  --> /tmp/tmpb71kgzhy/shapes.spy:88:53
+

@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'p' does not exist in the current context
+  --> /tmp/tmp840d13wv/dogfood_test.spy:60:17
+    |
+ 60 |             p = ProductProcessor()
+    |                 ^
+    |
+
+error[CS0103]: The name 'p' does not exist in the current context
+  --> /tmp/tmp840d13wv/dogfood_test.spy:61:24
+    |
+ 61 |             return p.process(data)
+    |                        ^
+    |
+

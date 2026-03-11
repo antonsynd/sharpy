@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS1061]: 'Inventory.VehicleStatus' does not contain a definition for 'Name' and no accessible extension method 'Name' accepting a first argument of type 'Inventory.VehicleStatus' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4zg3euqi/main.spy:62:49
+    |
+ 62 |     print(vr.status.name)
+    |                          ^
+    |
+
+error[CS1061]: 'Inventory.Priority' does not contain a definition for 'Value' and no accessible extension method 'Value' accepting a first argument of type 'Inventory.Priority' could be found (are you missing a using directive or an assembly reference?)
+  --> /tmp/tmp4zg3euqi/main.spy:63:51
+    |
+ 63 |     print(vr.priority.value)
+    |                             ^
+    |
+

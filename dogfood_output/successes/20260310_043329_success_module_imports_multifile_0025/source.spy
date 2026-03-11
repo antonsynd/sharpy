@@ -1,0 +1,24 @@
+# Main entry point - imports from multiple modules
+
+from geometry_base import Shape, Rectangle, calculate_total_area
+from geometry_extended import Circle, Square, create_shape_summary
+
+def main():
+    # Create shapes using imported classes
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    circle: Circle = Circle(2.5)
+    square: Square = Square(4.0)
+    
+    # Test single shape description
+    print(create_shape_summary(rect))
+    
+    # Test inherited class
+    print(create_shape_summary(circle))
+    
+    # Test class that inherits from imported class
+    print(create_shape_summary(square))
+    
+    # Test function from base module with cross-module shapes
+    shapes: list[Shape] = [rect, circle, square]
+    total: float = calculate_total_area(shapes)
+    print(total)

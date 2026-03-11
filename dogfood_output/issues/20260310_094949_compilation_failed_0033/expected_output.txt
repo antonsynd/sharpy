@@ -1,0 +1,8 @@
+12.0
+12.56
+Rectangle
+Drawing rectangle
+Drawing circle
+2
+5.0
+1

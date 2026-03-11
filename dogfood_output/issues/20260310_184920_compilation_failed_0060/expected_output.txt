@@ -1,0 +1,5 @@
+Shape descriptions:
+Rectangle(3.0, 4.0): area = 12.00
+Circle(2.0): area = 12.57
+Total area: 37.26
+New rectangle area: 30.00

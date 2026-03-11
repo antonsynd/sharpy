@@ -1,0 +1,64 @@
+# Gallery of shapes - interfaces and concrete implementations
+interface IShape:
+    def get_area(self) -> float: ...
+    def get_perimeter(self) -> float: ...
+
+class Shape:
+    _name: str
+
+    def __init__(self, name: str):
+        self._name = name
+
+    def describe(self) -> str:
+        return self._name
+
+@abstract
+class AbstractShape(Shape):
+    @abstract
+    def get_area(self) -> float: ...
+
+    @abstract
+    def get_perimeter(self) -> float: ...
+
+class Rectangle(AbstractShape, IShape):
+    _width: float
+    _height: float
+
+    def __init__(self, width: float, height: float):
+        super().__init__("Rectangle")
+        self._width = width
+        self._height = height
+
+    def get_width(self) -> float:
+        return self._width
+
+    def get_height(self) -> float:
+        return self._height
+
+    @override
+    def get_area(self) -> float:
+        return self._width * self._height
+
+    @override
+    def get_perimeter(self) -> float:
+        return 2.0 * (self._width + self._height)
+
+class Circle(AbstractShape, IShape):
+    _radius: float
+
+    def __init__(self, radius: float):
+        super().__init__("Circle")
+        self._radius = radius
+
+    def get_radius(self) -> float:
+        return self._radius
+
+    @override
+    def get_area(self) -> float:
+        PI: float = 3.14159
+        return PI * self._radius * self._radius
+
+    @override
+    def get_perimeter(self) -> float:
+        PI: float = 3.14159
+        return 2.0 * PI * self._radius

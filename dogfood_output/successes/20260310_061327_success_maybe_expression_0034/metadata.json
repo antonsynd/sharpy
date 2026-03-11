@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T06:06:41.783862",
+  "generated_code": "def safe_divide(numerator: int, denominator: int) -> int?:\n    if denominator == 0:\n        return None()\n    return Some(numerator // denominator)\n\ndef main():\n    # Test successful division - unwraps to the value\n    result_a: int? = safe_divide(100, 5)\n    print(result_a.unwrap_or(-1))\n\n    # Test division by zero - returns default\n    result_b: int? = safe_divide(50, 0)\n    print(result_b.unwrap_or(-1))\n\n    # Test map operation on Some value\n    doubled: int? = result_a.map(lambda x: x * 3)\n    print(doubled.unwrap_or(0))\n\n    # Test default fallback on None\n    fallback: int = result_b.unwrap_or(999)\n    print(fallback)\n",
+  "expected_output": "20\n-1\n60\n999\n",
+  "actual_output": "20\n-1\n60\n999",
+  "feature_focus": "maybe_expression",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 380.54931139945984,
+  "execution_duration": 5.253968238830566,
+  "source_files": null
+}

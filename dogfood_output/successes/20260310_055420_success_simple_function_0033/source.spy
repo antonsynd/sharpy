@@ -1,0 +1,83 @@
+# Test: Complex function interactions with overloading, generics, and higher-order functions
+# Combines: function overloading, virtual/override, higher-order functions, type aliases
+
+type NumberList = list[float]
+
+@abstract
+class Processor:
+    @abstract
+    def transform(self, values: NumberList) -> float:
+        ...
+    
+    @abstract
+    def transform(self, value: float) -> float:
+        ...
+
+class MathProcessor(Processor):
+    factor: float
+    
+    def __init__(self, factor: float):
+        self.factor = factor
+    
+    @override
+    def transform(self, values: NumberList) -> float:
+        result = 0.0
+        for v in values:
+            result += v * self.factor
+        return result
+    
+    @override
+    def transform(self, value: float) -> float:
+        return value * self.factor
+
+def apply_func(fn: (float) -> float, x: float) -> float:
+    return fn(x)
+
+def sum_all(data: NumberList) -> float:
+    total = 0.0
+    for d in data:
+        total += d
+    return total
+
+def find_max(data: NumberList) -> float:
+    if len(data) == 0:
+        return 0.0
+    m = data[0]
+    for d in data:
+        if d > m:
+            m = d
+    return m
+
+def main():
+    processor = MathProcessor(2.0)
+    values: NumberList = [1.5, 2.5, 3.5]
+    values2: NumberList = [10.0, 20.0, 30.0]
+    
+    # Test method overloading with list
+    result1 = processor.transform(values)
+    print(result1)
+    
+    # Test method overloading with scalar
+    result2 = processor.transform(5.0)
+    print(result2)
+    
+    # Test higher-order function with lambda
+    double: (float) -> float = lambda x: x * 2.0
+    result3 = apply_func(double, 3.0)
+    print(result3)
+    
+    # Test sum_all function
+    result4 = sum_all(values)
+    print(result4)
+    
+    # Test find_max function
+    result5 = find_max(values2)
+    print(result5)
+    
+    # Test combining results
+    combined = processor.transform(sum_all(values))
+    print(combined)
+    
+    # Test with nested lambda application
+    result6 = apply_func(lambda x: x + 1.0, find_max([1.0, 2.0, 3.0]))
+    print(result6)

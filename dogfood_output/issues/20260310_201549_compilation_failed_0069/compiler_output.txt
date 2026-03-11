@@ -1,0 +1,49 @@
+warning[SPY0452]: Imported name 'ShapeCategory' is never used
+  --> /tmp/tmpb71kgzhy/shapes.spy:2:21
+    |
+  2 | from shapes import Shape, Polygon, Triangle, Square, IDrawable, IMeasurable
+    |                     ^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'format_measurement' is never used
+  --> /tmp/tmpb71kgzhy/shapes.spy:2:36
+    |
+  2 | from shapes import Shape, Polygon, Triangle, Square, IDrawable, IMeasurable
+    |                                    ^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'calculate_perimeter' is never used
+  --> /tmp/tmpb71kgzhy/geometry.spy:2:34
+    |
+  2 | from shapes import Shape, Polygon, Triangle, Square, IDrawable, IMeasurable
+    |                                  ^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Shape' is never used
+  --> /tmp/tmpb71kgzhy/main.spy:2:20
+    |
+  2 | from shapes import Shape, Polygon, Triangle, Square, IDrawable, IMeasurable
+    |                    ^^^^^
+    |
+
+warning[SPY0452]: Imported name 'Polygon' is never used
+  --> /tmp/tmpb71kgzhy/main.spy:2:27
+    |
+  2 | from shapes import Shape, Polygon, Triangle, Square, IDrawable, IMeasurable
+    |                           ^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IDrawable' is never used
+  --> /tmp/tmpb71kgzhy/main.spy:2:54
+    |
+  2 | from shapes import Shape, Polygon, Triangle, Square, IDrawable, IMeasurable
+    |                                                      ^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'IMeasurable' is never used
+  --> /tmp/tmpb71kgzhy/main.spy:2:65
+    |
+  2 | from shapes import Shape, Polygon, Triangle, Square, IDrawable, IMeasurable
+    |                                                                 ^^^^^^^^^^^
+    |
+

@@ -1,0 +1,77 @@
+# Module: shape_impls
+# Concrete shape implementations
+
+from geometry_defs import IShape, IColorable, IMovable
+
+class Circle(IShape, IColorable, IMovable):
+    _radius: float
+    _color: str
+    _x: float
+    _y: float
+
+    def __init__(self, radius: float):
+        self._radius = radius
+        self._color = "white"
+        self._x = 0.0
+        self._y = 0.0
+
+    @virtual
+    def area(self) -> float:
+        return 3.14159 * self._radius * self._radius
+
+    @virtual
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self._radius
+
+    @virtual
+    def get_color(self) -> str:
+        return self._color
+
+    @virtual
+    def set_color(self, color: str) -> None:
+        self._color = color
+
+    @virtual
+    def move(self, dx: float, dy: float) -> None:
+        self._x += dx
+        self._y += dy
+
+    @virtual
+    def __str__(self) -> str:
+        return f"Circle(r={self._radius}, color={self._color})"
+
+class Rectangle(IShape, IColorable):
+    _width: float
+    _height: float
+    _color: str
+
+    def __init__(self, width: float, height: float):
+        self._width = width
+        self._height = height
+        self._color = "gray"
+
+    @virtual
+    def area(self) -> float:
+        return self._width * self._height
+
+    @virtual
+    def perimeter(self) -> float:
+        return 2.0 * (self._width + self._height)
+
+    @virtual
+    def get_color(self) -> str:
+        return self._color
+
+    @virtual
+    def set_color(self, color: str) -> None:
+        self._color = color
+
+    @virtual
+    def __str__(self) -> str:
+        return f"Rectangle({self._width}x{self._height})"
+
+enum ShapeType:
+    CIRCLE = 1
+    RECTANGLE = 2
+    TRIANGLE = 3
+    POLYGON = 4

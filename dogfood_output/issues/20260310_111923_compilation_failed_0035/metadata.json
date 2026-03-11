@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-03-10T11:16:01.886553",
+  "generated_code": "# Test dotted custom decorators with various .NET attributes\n# Simple attribute on class\n@system.serializable\nclass Configuration:\n    name: str\n    version: int\n    \n    def __init__(self, name: str, version: int):\n        self.name = name\n        self.version = version\n    \n    def get_display_name(self) -> str:\n        return f\"{self.name} v{self.version}\"\n\n# Attribute with message argument on function\n@system.obsolete(\"Use calculate_area() instead\")\ndef get_area_legacy(width: int, height: int) -> int:\n    return width * height\n\ndef calculate_area(width: int, height: int) -> int:\n    return width * height\n\n# Attribute with error=True on class\n@system.obsolete(\"Use ServiceV2 instead\", error=True)\nclass LegacyService:\n    pass\n\ndef process_config(config: Configuration) -> str:\n    return config.get_display_name()\n\ndef main():\n    config = Configuration(\"MyApp\", 2)\n    print(config.name)\n    print(config.version)\n    print(config.get_display_name())\n    \n    # Call the obsolete function\n    result: int = get_area_legacy(5, 3)\n    print(result)\n    \n    print(\"done\")\n",
+  "expected_output": "MyApp\n2\nMyApp v2\n15\ndone\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0246]: The type or namespace name 'Error' could not be found (are you missing a using directive or an assembly reference?)\n  --> /tmp/tmp5j5z1cf8/dogfood_test.spy:24:47\n    |\n 24 | @system.obsolete(\"Use ServiceV2 instead\", error=True)\n    |                                               ^\n    |\n\n",
+  "compiler_output": "",
+  "generated_cs": "Generated C# code written to: /tmp/tmp5j5z1cf8/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "custom_decorator_dotted",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 181.59376454353333,
+  "compilation_duration": null,
+  "execution_duration": 4.67011570930481,
+  "source_files": null
+}

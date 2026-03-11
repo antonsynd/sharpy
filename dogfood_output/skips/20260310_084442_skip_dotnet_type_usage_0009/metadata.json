@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T08:38:58.089711",
+  "skip_reason": "Non-code response after 3 attempts: Response too short (2 chars, minimum 20)",
+  "generated_code": " \n",
+  "expected_output": null,
+  "feature_focus": "dotnet_type_usage",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 333.2295663356781,
+  "source_files": null,
+  "validation_output": null
+}

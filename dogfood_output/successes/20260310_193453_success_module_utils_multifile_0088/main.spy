@@ -1,0 +1,28 @@
+# Main entry point - imports from both modules
+
+from utils import square, clamp, Counter, is_even
+from text_utils import StepCounter, NumberFormatter, truncate
+
+def main():
+    # Test basic utility functions
+    num: int = 7
+    squared: int = square(num)
+    print(squared)
+    
+    # Test clamp function
+    clamped: int = clamp(150, 0, 100)
+    print(clamped)
+    
+    # Test class inheritance across modules
+    stepper: StepCounter = StepCounter(0, 3)
+    stepper.increment()
+    stepper.increment()
+    print(stepper.get_count())
+    
+    # Test interface implementation
+    formatter: NumberFormatter = NumberFormatter("Count: ")
+    print(formatter.format(42))
+    
+    # Test local utility function
+    long_text: str = "This is a very long string"
+    print(truncate(long_text, 10))

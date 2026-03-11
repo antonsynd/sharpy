@@ -1,0 +1,49 @@
+# Concrete shapes module - implements geometry
+
+from geometry_base import Shape, IDrawable
+
+class Rectangle(Shape, IDrawable):
+    width: float
+    height: float
+    
+    def __init__(self, x: float, y: float, width: float, height: float):
+        super().__init__(x, y)
+        self.width = width
+        self.height = height
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def describe(self) -> str:
+        return f"Rectangle at ({self.x}, {self.y}) sized {self.width}x{self.height}"
+    
+    def draw(self) -> str:
+        return f"Drawing rectangle with area {self.area()}"
+
+class Circle(Shape, IDrawable):
+    radius: float
+    
+    def __init__(self, x: float, y: float, radius: float):
+        super().__init__(x, y)
+        self.radius = radius
+    
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    @override
+    def describe(self) -> str:
+        return f"Circle at ({self.x}, {self.y}) with radius {self.radius}"
+    
+    def draw(self) -> str:
+        return f"Drawing circle with area {self.area()}"
+
+def create_shape_center(shape: Shape) -> tuple[float, float]:
+    """Utility function that works with any Shape"""
+    return (shape.x, shape.y)
+
+def scale_rectangle(rect: Rectangle, factor: float) -> Rectangle:
+    """Returns a new scaled rectangle"""
+    return Rectangle(rect.x, rect.y, rect.width * factor, rect.height * factor)

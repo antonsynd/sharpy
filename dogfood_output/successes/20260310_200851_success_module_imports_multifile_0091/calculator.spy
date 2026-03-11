@@ -1,0 +1,20 @@
+from converters import celsius_to_fahrenheit, fahrenheit_to_celsius
+
+class TemperatureConverter:
+    history: list[float]
+    
+    def __init__(self):
+        self.history = []
+    
+    def convert_and_store(self, celsius: float) -> float:
+        result: float = celsius_to_fahrenheit(celsius)
+        self.history.append(result)
+        return result
+    
+    def get_average(self) -> float:
+        if len(self.history) == 0:
+            return 0.0
+        total: float = 0.0
+        for temp in self.history:
+            total += temp
+        return total / len(self.history)

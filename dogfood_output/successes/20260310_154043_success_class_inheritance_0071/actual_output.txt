@@ -1,0 +1,10 @@
+bark
+meow
+vocalization
+Golden Retriever dog makes bark
+cat makes meow
+mammal makes vocalization
+True
+dog
+cat
+bark

@@ -1,0 +1,14 @@
+warning[SPY0451]: Local variable 'doubled' is assigned but never used
+  --> /tmp/tmpft3jaquh/math_ops.spy:11:1
+    |
+ 11 |     fmt: Formatter = Formatter("Result=")
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0452]: Imported name 'format_number' is never used
+  --> /tmp/tmpft3jaquh/math_ops.spy:2:15
+    |
+  2 | from utils import Formatter, double_value
+    |               ^^^^^^^^^^^^^
+    |
+

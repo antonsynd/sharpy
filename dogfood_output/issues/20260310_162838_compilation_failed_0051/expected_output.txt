@@ -1,0 +1,16 @@
+Shapes created
+Desc: A rectangle with width 10.0 and height 5.0, Area: 50.0, Perimeter: 30.0
+Desc: A circle with radius 3.0, Area: 28.2741, Perimeter: 18.84954
+Desc: A rectangle with width 4.0 and height 4.0, Area: 16.0, Perimeter: 16.0
+Desc: A circle with radius 2.0, Area: 12.56636, Perimeter: 12.56636
+First is larger
+50.0
+Before scaling
+15.0
+60.0
+12.56636
+50.26544
+After scale area
+Enum values work
+2
+46.0

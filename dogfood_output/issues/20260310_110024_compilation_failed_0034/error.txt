@@ -1,0 +1,14 @@
+Assembly compilation failed:
+
+error[CS0509]: 'Utilities.ScalableRectangle': cannot derive from sealed type 'Utilities.Point'
+  --> /tmp/tmpmdvy1nbx/utilities.spy:41:38
+
+error[CS1729]: 'object' does not contain a constructor that takes 2 arguments
+  --> /tmp/tmpmdvy1nbx/utilities.spy:68:85
+
+error[CS0117]: 'Geometry.Circle' does not contain a definition for 'Pi'
+  --> /tmp/tmpmdvy1nbx/geometry.spy:70:27
+
+error[CS0117]: 'Geometry.Circle' does not contain a definition for 'Pi'
+  --> /tmp/tmpmdvy1nbx/geometry.spy:75:34
+

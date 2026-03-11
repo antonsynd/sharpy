@@ -1,0 +1,5 @@
+15.0
+19.6349375
+Drawing rectangle 'BigBox' (5.0 x 3.0)
+55.6349375
+[PerfectSquare with area 16.0]

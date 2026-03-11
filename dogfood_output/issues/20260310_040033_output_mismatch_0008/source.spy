@@ -1,0 +1,24 @@
+# Main entry point
+from graphics import Color, Point
+from geometry import Shape, Rectangle, Circle
+from shape_renderer import RenderableRectangle, RenderableCircle, calculate_total_area
+
+def main():
+    rect: Rectangle = Rectangle("BasicRectangle", 1, 10.0, 5.0)
+    circle: Circle = Circle("BasicCircle", 2, 3.0)
+    print(rect.area())
+    print(circle.area())
+    
+    renderable_rect: RenderableRectangle = RenderableRectangle("RRect", 3, 20.0, 10.0, 5.0, 5.0)
+    renderable_circle: RenderableCircle = RenderableCircle("RCircle", 4, 5.0, 10.0, 10.0)
+    print(renderable_rect.render(Color.RED))
+    print(renderable_circle.render(Color.BLUE))
+    
+    shapes: list[Shape] = [rect, circle]
+    shapes.append(renderable_rect)
+    shapes.append(renderable_circle)
+    total: float = calculate_total_area(shapes)
+    print(total)
+    
+    p: Point = Point(3.0, 4.0)
+    print(p.distance_from_origin())

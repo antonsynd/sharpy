@@ -1,0 +1,7 @@
+Triangle
+Three-sided polygon: Triangle
+3
+Square
+Four-sided polygon: Square
+4
+25.0

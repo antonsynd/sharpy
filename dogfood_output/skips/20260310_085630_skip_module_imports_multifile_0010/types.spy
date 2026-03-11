@@ -1,0 +1,26 @@
+# Core types module: defines contracts and value types
+# Note: Enums, structs, and interfaces for the shapes system
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+interface IDrawable:
+    def draw(self) -> str:
+        ...
+
+interface IMeasurable:
+    def area(self) -> float:
+        ...
+
+struct Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_from_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5

@@ -1,0 +1,15 @@
+warning[SPY0450]: Unreachable code detected
+  --> /tmp/tmpqptqx81s/dogfood_test.spy:110:5
+     |
+ 110 |     return -3
+     |     ^^^^^^^^^
+     |
+
+warning[SPY0450]: Unreachable code detected
+  --> /tmp/tmpqptqx81s/dogfood_test.spy:108:9
+     |
+ 108 |         print(source.get_name())
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+
+Generated C# code written to: /tmp/tmpqptqx81s/dogfood_test.cs

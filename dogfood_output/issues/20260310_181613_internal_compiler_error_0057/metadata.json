@@ -1,0 +1,18 @@
+{
+  "issue_type": "internal_compiler_error",
+  "timestamp": "2026-03-10T18:10:09.705781",
+  "generated_code": "# Events with custom delegates in inheritance hierarchy\n# Demonstrates virtual/override events with custom delegate types\n\ndelegate DataHandler(value: int) -> None\n\nclass DataSource:\n    _buffer: list[int]\n    _handlers: list[DataHandler]\n\n    def __init__(self):\n        self._buffer = []\n        self._handlers = []\n\n    @virtual\n    def add_data(self, value: int) -> None:\n        processed = self.process_value(value)\n        self._buffer.append(processed)\n        self.notify_handlers(processed)\n\n    def process_value(self, x: int) -> int:\n        return x * 2\n\n    def get_buffer(self) -> list[int]:\n        return self._buffer\n\n    def add_handler(self, handler: DataHandler) -> None:\n        self._handlers.append(handler)\n\n    def notify_handlers(self, value: int) -> None:\n        for h in self._handlers:\n            h(value)\n\ndelegate DataProcessor(value: int) -> int\n\nclass FilteredDataSource(DataSource):\n    min_threshold: int\n\n    def __init__(self, threshold: int):\n        super().__init__()\n        self.min_threshold = threshold\n\n    @override\n    def add_data(self, value: int) -> None:\n        if value >= self.min_threshold:\n            super().add_data(value)\n\nclass DataPipeline:\n    _source: FilteredDataSource\n    _handlers: list[DataProcessor]\n    _results: list[int]\n\n    def __init__(self, source: FilteredDataSource):\n        self._source = source\n        self._handlers = []\n        self._results = []\n        handler: DataHandler = lambda v: self.on_data_received(v)\n        self._source.add_handler(handler)\n\n    def add_handler(self, handler: DataProcessor) -> None:\n        self._handlers.append(handler)\n\n    def on_data_received(self, value: int) -> None:\n        current = value\n        for h in self._handlers:\n            current = h(current)\n        self._results.append(current)\n\n    def run_pipeline(self, inputs: list[int]) -> list[int]:\n        self._results = []\n        for val in inputs:\n            self._source.add_data(val)\n        return self._results\n\ndef main():\n    source = FilteredDataSource(5)\n    pipeline = DataPipeline(source)\n\n    pipeline.add_handler(lambda x: x + 10)\n    pipeline.add_handler(lambda x: x * 3)\n\n    inputs: list[int] = [3, 5, 7, 2, 10, 4]\n    results = pipeline.run_pipeline(inputs)\n\n    print(len(results))\n    for r in results:\n        print(r)\n\n    buffer = source.get_buffer()\n    print(len(buffer))\n    for b in buffer:\n        print(b)\n",
+  "expected_output": "2\n30\n54\n2\n10\n20\n",
+  "actual_output": null,
+  "error_message": "Internal compiler error: Compilation errors:\n\nerror[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.\n  --> /tmp/tmp8uax2l5x/dogfood_test.spy:16:21\n    |\n 16 |         processed = self.process_value(value)\n    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\n",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "event_with_delegate",
+  "complexity": "complex",
+  "backend_used": "klaude",
+  "generation_duration": 345.84620904922485,
+  "compilation_duration": null,
+  "execution_duration": null,
+  "source_files": null
+}

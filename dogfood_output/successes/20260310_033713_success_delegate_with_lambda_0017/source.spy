@@ -1,0 +1,11 @@
+# Test: Delegate with lambda - simple arithmetic transformation
+# Verifies that lambda expressions can be passed to functions expecting delegate types
+delegate IntOp(x: int) -> int
+
+def apply_twice(op: IntOp, val: int) -> int:
+    return op(op(val))
+
+def main():
+    # Lambda adds 5, applied twice: ((3 + 5) + 5) = 13
+    result = apply_twice(lambda n: n + 5, 3)
+    print(result)

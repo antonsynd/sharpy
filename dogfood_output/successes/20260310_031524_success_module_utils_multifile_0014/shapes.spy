@@ -1,0 +1,92 @@
+# Shapes module with classes implementing interfaces
+from types import Color, ShapeType, IShape, IDrawable, IMeasurable
+from utils import Point
+
+# Abstract base shape class
+@abstract
+class BaseShape(IShape):
+    _color: Color
+
+    def __init__(self, c: Color):
+        self._color = c
+
+    @virtual
+    def describe(self) -> str:
+        return "A shape"
+
+    @virtual
+    def area(self) -> float:
+        return 0.0
+
+    @virtual
+    def perimeter(self) -> float:
+        return 0.0
+
+    # Getter method for color instead of property for reliability
+    def get_color(self) -> Color:
+        return self._color
+
+# Rectangle class implementing multiple interfaces
+class Rectangle(BaseShape, IDrawable, IMeasurable):
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float, c: Color):
+        super().__init__(c)
+        self.width = w
+        self.height = h
+
+    @override
+    def describe(self) -> str:
+        return "Rectangle: " + str(self.width) + "x" + str(self.height)
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+    def draw(self) -> str:
+        return "Drawing rectangle"
+
+    def get_measurements(self) -> list[float]:
+        result: list[float] = []
+        result.append(self.width)
+        result.append(self.height)
+        return result
+
+# Circle class
+class Circle(BaseShape, IDrawable):
+    radius: float
+    center: Point
+
+    def __init__(self, r: float, ctr: Point, c: Color):
+        super().__init__(c)
+        self.radius = r
+        self.center = ctr
+
+    @override
+    def describe(self) -> str:
+        return "Circle: radius=" + str(self.radius)
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self.radius
+
+    def draw(self) -> str:
+        return "Drawing circle at (" + str(self.center.x) + ", " + str(self.center.y) + ")"
+
+# Square (specialized rectangle) - tests inheritance chain
+class Square(Rectangle):
+    def __init__(self, side: float, c: Color):
+        super().__init__(side, side, c)
+
+    @override
+    def describe(self) -> str:
+        return "Square: side=" + str(self.width)

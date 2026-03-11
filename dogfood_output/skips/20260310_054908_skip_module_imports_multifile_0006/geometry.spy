@@ -1,0 +1,79 @@
+# Geometry module that depends on utils
+
+from utils import Container, MathUtils
+
+class Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_from_origin(self) -> float:
+        return (self.x ** 2.0 + self.y ** 2.0) ** 0.5
+
+    def __str__(self) -> str:
+        return "(" + str(self.x) + ", " + str(self.y) + ")"
+
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float:
+        ...
+
+    @virtual
+    def description(self) -> str:
+        return "A shape"
+
+@abstract
+class Polygon(Shape):
+    @abstract
+    def perimeter(self) -> float:
+        ...
+
+class Circle(Shape):
+    center: Point
+    radius: float
+
+    def __init__(self, center: Point, radius: float):
+        self.center = center
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return MathUtils.PI * self.radius * self.radius
+
+    def is_containing_point(self, p: Point) -> bool:
+        dx: float = self.center.x - p.x
+        dy: float = self.center.y - p.y
+        dist: float = (dx * dx + dy * dy) ** 0.5
+        return dist <= self.radius
+
+    @override
+    def description(self) -> str:
+        return "A circle with radius " + str(self.radius)
+
+class Rectangle(Polygon):
+    position: Point
+    width: float
+    height: float
+
+    def __init__(self, position: Point, width: float, height: float):
+        self.position = position
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+def create_point_list() -> list[Point]:
+    return []
+
+def create_point_container() -> Container[Point]:
+    return Container[Point]()

@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-03-10T18:40:52.386636",
+  "generated_code": "def categorize_value(value: object) -> str:\n    # Use isinstance checks before match to categorize\n    if isinstance(value, int):\n        n: int = value\n        if n > 100:\n            return \"large int\"\n        else:\n            return \"small int\"\n    elif isinstance(value, str):\n        return \"some string\"\n    else:\n        return \"something else\"\n\ndef main():\n    print(categorize_value(150))\n    print(categorize_value(42))\n    print(categorize_value(\"hello\"))\n    print(categorize_value(3.14))\n    print(categorize_value(True))\n",
+  "expected_output": "large int\nsmall int\nsome string\nsomething else\nsmall int\n",
+  "actual_output": "large int\nsmall int\nsome string\nsomething else\nsomething else",
+  "error_message": "AI explicitly reported mismatch",
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "match_wildcard",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 93.5879123210907,
+  "compilation_duration": null,
+  "execution_duration": 5.131143093109131,
+  "source_files": null
+}

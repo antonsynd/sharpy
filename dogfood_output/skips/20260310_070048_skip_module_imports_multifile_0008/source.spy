@@ -1,0 +1,52 @@
+# Main entry point demonstrating complex cross-module imports
+
+from interfaces import Record, IDataSource
+from data import DataStore, StatCollector, process_batch
+from utils import Color, Vector2D, clamp_value, max_float
+
+def main():
+    # Create a data store and populate it
+    store: DataStore = DataStore()
+
+    # Add records with different values and categories
+    store.add_record(Record(id=1, value=10.5, category=Color.RED))
+    store.add_record(Record(id=2, value=25.0, category=Color.GREEN))
+    store.add_record(Record(id=3, value=15.75, category=Color.BLUE))
+    store.add_record(Record(id=4, value=40.25, category=Color.YELLOW))
+    store.add_record(Record(id=5, value=30.5, category=Color.RED))
+
+    # Test DataStore count via interface
+    count: int = store.count()
+    print(count)
+
+    # Test fetching record
+    rec: Record = store.fetch_record(3)
+    print(rec.id)
+    print(rec.value)
+
+    # Test StatCollector with cross-module types
+    collector: StatCollector = StatCollector(store)
+    avg: float = collector.average_value()
+    print(avg)
+
+    # Test range calculation
+    range_result: tuple[float, float] = collector.find_range()
+    min_val: float = range_result[0]
+    max_val: float = range_result[1]
+    print(min_val)
+    print(max_val)
+
+    # Test utils module Vector2D and functions
+    v1: Vector2D = Vector2D(3.0, 4.0)
+    v2: Vector2D = Vector2D(1.0, 2.0)
+    v3: Vector2D = v1 + v2
+    print(v3.x)
+    print(v3.y)
+
+    # Test clamp_value from utils
+    clamped: float = clamp_value(50.0, 0.0, 35.0)
+    print(clamped)
+
+    # Test process_batch function
+    batch_avg: float = process_batch(store)
+    print(batch_avg)

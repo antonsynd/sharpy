@@ -1,0 +1,58 @@
+Assembly compilation failed:
+
+error[CS1503]: Argument 1: cannot convert from 'DogfoodTest.BinaryExpression' to 'DogfoodTest.ConstantExpression'
+  --> /tmp/tmpjaxjjbuk/dogfood_test.spy:87:42
+    |
+ 87 |     minus = BinaryExpression(inner, step3, "-")
+    |                                          ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'DogfoodTest.BinaryExpression' to 'DogfoodTest.ConstantExpression'
+  --> /tmp/tmpjaxjjbuk/dogfood_test.spy:88:42
+    |
+ 88 |     power = BinaryExpression(minus, step4, "**")
+    |                                          ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'DogfoodTest.BinaryExpression' to 'DogfoodTest.ConstantExpression'
+  --> /tmp/tmpjaxjjbuk/dogfood_test.spy:89:43
+    |
+ 89 |     divide = BinaryExpression(power, step5, "/")
+    |                                           ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'DogfoodTest.NegatedExpression' to 'DogfoodTest.ConstantExpression'
+  --> /tmp/tmpjaxjjbuk/dogfood_test.spy:91:43
+    |
+ 91 |     modulo = BinaryExpression(neg, step7, "%")
+    |                                           ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'DogfoodTest.BinaryExpression' to 'DogfoodTest.ConstantExpression'
+  --> /tmp/tmpjaxjjbuk/dogfood_test.spy:92:42
+    |
+ 92 |     final = BinaryExpression(divide, modulo, "+")
+    |                                          ^
+    |
+
+error[CS1503]: Argument 2: cannot convert from 'DogfoodTest.BinaryExpression' to 'DogfoodTest.ConstantExpression'
+  --> /tmp/tmpjaxjjbuk/dogfood_test.spy:92:50
+    |
+ 92 |     final = BinaryExpression(divide, modulo, "+")
+    |                                                  ^
+    |
+
+error[CS1503]: Argument 1: cannot convert from 'DogfoodTest.BinaryExpression' to 'DogfoodTest.ConstantExpression'
+  --> /tmp/tmpjaxjjbuk/dogfood_test.spy:116:47
+     |
+ 116 |     precedence = BinaryExpression(p1, p2, "*")
+     |                                               ^
+     |
+
+error[CS1503]: Argument 2: cannot convert from 'DogfoodTest.BinaryExpression' to 'DogfoodTest.ConstantExpression'
+  --> /tmp/tmpjaxjjbuk/dogfood_test.spy:116:51
+     |
+ 116 |     precedence = BinaryExpression(p1, p2, "*")
+     |                                               ^
+     |
+

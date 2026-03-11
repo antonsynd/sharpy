@@ -1,0 +1,76 @@
+# Successful Dogfood Run
+
+**Timestamp:** 2026-03-10T02:57:14.885898
+**Feature Focus:** constructor_chaining
+**Complexity:** medium
+**Backend:** klaude
+
+## Generated Sharpy Code
+
+```python
+class Person:
+    name: str
+    age: int
+    
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+    
+    def __str__(self) -> str:
+        return f"{self.name}, {self.age} years old"
+
+class Employee(Person):
+    employee_id: int
+    
+    def __init__(self, name: str, age: int, employee_id: int):
+        super().__init__(name, age)
+        self.employee_id = employee_id
+    
+    def __str__(self) -> str:
+        base = super().__str__()
+        return f"{base} (ID: {self.employee_id})"
+
+class Rectangle:
+    width: float
+    height: float
+    
+    def __init__(self, width: float, height: float):
+        self.width = width
+        self.height = height
+    
+    def __init__(self, side: float):
+        self.__init__(side, side)
+    
+    def __str__(self) -> str:
+        return f"Rectangle({self.width} x {self.height})"
+
+def main():
+    emp = Employee("Alice", 30, 1001)
+    print(emp)
+    square = Rectangle(5.0)
+    print(square)
+    rect = Rectangle(3.0, 4.0)
+    print(rect)
+
+```
+
+## Output
+
+```
+Alice, 30 years old (ID: 1001)
+Rectangle(5.0 x 5.0)
+Rectangle(3.0 x 4.0)
+```
+
+## Timing
+
+- Generation: 241.17s
+- Execution: 4.92s
+
+## Converting to Integration Test
+
+To convert this to an integration test, run:
+
+```bash
+python -m sharpy_dogfood convert <this_directory_name>
+```

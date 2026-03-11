@@ -1,0 +1,37 @@
+# main.spy - Entry point demonstrating cross-module class usage
+from shapes import Shape, IMeasurable, INamed, IRenderable
+from widgets import Color, Position, Widget, IResizable
+from drawing import Circle, Rectangle, create_widget
+
+def main():
+    # Create shapes and test polymorphism across modules
+    c: Circle = Circle(0.0, 0.0, 5.0)
+    r: Rectangle = Rectangle(10.0, 10.0, 4.0, 6.0)
+
+    # Test IMeasurable interface (cross-module)
+    c_area: float = c.area()
+    r_area: float = r.area()
+    print(c_area)
+    print(r_area)
+
+    # Test INamed interface property access (cross-module)
+    c_name: str = c.name
+    r_name: str = r.name
+    print(c_name)
+    print(r_name)
+
+    # Test virtual method override
+    c_pos: str = c.position()
+    r_pos: str = r.position()
+    print(c_pos)
+    print(r_pos)
+
+    # Test enum usage across modules
+    pos: Position = Position(100, 200)
+    offset_pos: Position = pos.offset(50, 75)
+    print(offset_pos.x)
+    print(offset_pos.y)
+
+    # Test widget with enums
+    w: Widget = Widget("Panel", Color.BLUE, Position(5, 5))
+    print(w.color.value)

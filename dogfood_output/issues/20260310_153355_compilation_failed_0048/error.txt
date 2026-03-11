@@ -1,0 +1,9 @@
+Assembly compilation failed:
+
+error[CS0161]: 'MathOps.ScaleAndFormat(int, int)': not all code paths return a value
+  --> /tmp/tmpft3jaquh/math_ops.spy:9:26
+    |
+  9 |     
+    |     ^
+    |
+

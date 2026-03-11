@@ -1,0 +1,19 @@
+# Base module defining abstract shape hierarchy
+# Tests cross-module class inheritance with @virtual/@override
+
+class Shape:
+    """Base class for geometric shapes."""
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def area(self) -> float:
+        """Calculate the area of the shape."""
+        return 0.0
+    
+    @virtual
+    def describe(self) -> str:
+        """Return a description of the shape."""
+        return f"Shape({self.name})"

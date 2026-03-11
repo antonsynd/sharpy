@@ -1,0 +1,7 @@
+Debug mode active
+TestApp
+2
+item 0: 100
+item 1: 4
+item 2: 42
+146

@@ -1,0 +1,20 @@
+# Base geometry module - defines interfaces and abstract base class
+
+interface IDrawable:
+    def draw(self) -> str: ...
+
+@abstract
+class Shape:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    @abstract
+    def area(self) -> float: ...
+    
+    @virtual
+    def describe(self) -> str:
+        return f"Shape at ({self.x}, {self.y})"

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T02:41:16.438115",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0103]: Expected end of statement, got Identifier\n  --> /tmp/tmp5ulne6pr/dogfood_test.spy:31:5\n    |\n 31 |     doubled_offset = make_scaler(2)\n    |     ^^^^^^^^^^^^^^\n    |\n\nerror[SPY0103]: Expected end of statement, got Identifier\n  --> /tmp/tmp5ulne6pr/dogfood_test.spy:38:5\n    |\n 38 |     print(len(filtered))\n    |     ^^^^^\n    |\n\n",
+  "generated_code": "# Test lambda type inference in higher-order function composition\n# Tests: Multi-parameter lambda inference, closure capture,\n# and type inference through function composition contexts\n\ndef process_pipeline(items: list[int], filter_fn: (int) -> bool, map_fn: (int) -> int) -> list[int]:\n    result: list[int] = []\n    for item in items:\n        if filter_fn(item):\n            result.append(map_fn(item))\n    return result\n\ndef combine_transforms(first: (int) -> int, second: (int) -> int) -> (int) -> int:\n    return lambda x: second(first(x))\n\ndef make_scaler(base: int) -> (int) -> int:\n    offset: int = 10\n    return combine_transforms(\n        lambda v: v + offset,\n        lambda v: base * v\n    )\n\ndef main():\n    values: list[int] = [3, 7, 2, 9, 4, 8, 1, 6]\n    # Lambdas with inferred parameter types from context\n    filtered = process_pipeline(\n        values,\n        lambda n: n > 4,\n        lambda n: n - 1\n    )\n    # Create composed transform - use type inference here\n    doubled_offset = make_scaler(2)\n    # Apply using inferred types\n    final = process_pipeline(\n        [5, 6, 7],\n        lambda x: x % 2 == 1,\n        doubled_offset\n    )\n    print(len(filtered))\n    print(filtered[0])\n    print(doubled_offset(5))\n    print(final[1])\n",
+  "expected_output": "4\n6\n30.0\n34.0\n",
+  "feature_focus": "lambda_type_inference",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 740.2804801464081,
+  "source_files": null,
+  "validation_output": null
+}

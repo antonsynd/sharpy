@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-10T20:07:12.039759",
+  "generated_code": "from converters import celsius_to_fahrenheit\nfrom calculator import TemperatureConverter\n\ndef main():\n    freezing_f: float = celsius_to_fahrenheit(0.0)\n    print(freezing_f)\n    \n    converter: TemperatureConverter = TemperatureConverter()\n    boiling: float = converter.convert_and_store(100.0)\n    print(boiling)\n    \n    room_temp: float = converter.convert_and_store(20.0)\n    print(room_temp)\n    \n    avg: float = converter.get_average()\n    print(avg)\n",
+  "expected_output": "32.0\n212.0\n68.0\n140.0\n",
+  "actual_output": "32.0\n212.0\n68.0\n140.0",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 82.74205017089844,
+  "execution_duration": 5.413518190383911,
+  "source_files": {
+    "converters.spy": "def celsius_to_fahrenheit(c: float) -> float:\n    return (c * 9.0 / 5.0) + 32.0\n\ndef fahrenheit_to_celsius(f: float) -> float:\n    return (f - 32.0) * 5.0 / 9.0\n",
+    "calculator.spy": "from converters import celsius_to_fahrenheit, fahrenheit_to_celsius\n\nclass TemperatureConverter:\n    history: list[float]\n    \n    def __init__(self):\n        self.history = []\n    \n    def convert_and_store(self, celsius: float) -> float:\n        result: float = celsius_to_fahrenheit(celsius)\n        self.history.append(result)\n        return result\n    \n    def get_average(self) -> float:\n        if len(self.history) == 0:\n            return 0.0\n        total: float = 0.0\n        for temp in self.history:\n            total += temp\n        return total / len(self.history)\n",
+    "main.spy": "from converters import celsius_to_fahrenheit\nfrom calculator import TemperatureConverter\n\ndef main():\n    freezing_f: float = celsius_to_fahrenheit(0.0)\n    print(freezing_f)\n    \n    converter: TemperatureConverter = TemperatureConverter()\n    boiling: float = converter.convert_and_store(100.0)\n    print(boiling)\n    \n    room_temp: float = converter.convert_and_store(20.0)\n    print(room_temp)\n    \n    avg: float = converter.get_average()\n    print(avg)\n"
+  }
+}

@@ -1,0 +1,56 @@
+# Shapes module - inheritance demonstration
+# Demonstrates: inheritance, virtual/override methods
+
+from types import Color, Point
+
+class Shape:
+    _color: Color
+    _position: Point
+    
+    def __init__(self, color: Color, pos: Point):
+        self._color = color
+        self._position = pos
+    
+    def get_color(self) -> Color:
+        return self._color
+    
+    def get_position(self) -> Point:
+        return self._position
+    
+    def move(self, dx: float, dy: float) -> None:
+        self._position.x = self._position.x + dx
+        self._position.y = self._position.y + dy
+    
+    def draw(self) -> str:
+        return "Shape"
+
+class Circle(Shape):
+    _radius: float
+    
+    def __init__(self, color: Color, pos: Point, radius: float):
+        super().__init__(color, pos)
+        self._radius = radius
+    
+    def draw(self) -> str:
+        return "Circle(r=" + str(self._radius) + ")"
+    
+    def get_radius(self) -> float:
+        return self._radius
+
+class Rectangle(Shape):
+    _width: float
+    _height: float
+    
+    def __init__(self, color: Color, pos: Point, width: float, height: float):
+        super().__init__(color, pos)
+        self._width = width
+        self._height = height
+    
+    def draw(self) -> str:
+        return "Rectangle(w=" + str(self._width) + ",h=" + str(self._height) + ")"
+    
+    def get_width(self) -> float:
+        return self._width
+    
+    def get_height(self) -> float:
+        return self._height

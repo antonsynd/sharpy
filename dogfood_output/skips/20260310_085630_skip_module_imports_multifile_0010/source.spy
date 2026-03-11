@@ -1,0 +1,30 @@
+# Main entry point - orchestrates cross-module functionality
+from types import Color, Point, IDrawable, IMeasurable
+from shapes import Rectangle, Circle
+from utils import total_area, draw_all, ShapeFactory, Square
+
+def main():
+    # Create shapes using factory and direct construction
+    rect1: Rectangle = ShapeFactory.create_red_rectangle(5.0, 3.0)
+    circle1: Circle = Circle(2.5, Color.BLUE, Point(0.0, 0.0))
+    
+    # Cross-module inheritance: Square extends Rectangle
+    square1: Square = Square(3.0, Color.GREEN, Point(1.0, 1.0))
+    
+    # Test describe methods for different shape types
+    print(rect1.describe())
+    print(circle1.describe())
+    print(square1.describe())
+    
+    # Calculate total area using interface-based polymorphism
+    shapes: list[IMeasurable] = [rect1, circle1, square1]
+    print(total_area(shapes))
+    
+    # Test drawable interface with for-loop output
+    drawables: list[IDrawable] = [rect1, circle1, square1]
+    descriptions: list[str] = draw_all(drawables)
+    for desc in descriptions:
+        print(desc)
+    
+    # Test enum name access across modules
+    print(Color.GREEN.name)

@@ -1,0 +1,25 @@
+# Test: Custom decorators on functions and structs
+
+@system.serializable
+struct Config:
+    setting: int
+
+    def __init__(self, val: int):
+        self.setting = val
+
+@system.obsolete("Use enhanced_compute instead")
+def compute(x: int) -> int:
+    return x + 1
+
+def enhanced_compute(x: int) -> int:
+    return x * 2 + 1
+
+def main():
+    cfg = Config(5)
+    print(cfg.setting)
+
+    old_result = compute(3)
+    print(old_result)
+
+    new_result = enhanced_compute(3)
+    print(new_result)

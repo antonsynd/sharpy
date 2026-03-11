@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-10T07:00:48.814923",
+  "generated_code": "# Entry point - tests importing from multiple modules\nfrom shapes import Rectangle\nfrom math_core import sum_values\n\ndef main():\n    # Test importing and using a class from shapes module\n    rect = Rectangle(3.0, 4.0)\n    area: float = rect.area()\n    print(area)\n    \n    # Test that shapes module correctly uses its import from math_core\n    diag: float = rect.diagonal()\n    print(diag)\n    \n    # Test importing and using a function directly from math_core\n    total: int = sum_values(10, 20)\n    print(total)\n",
+  "expected_output": "12.0\n25.0\n30\n",
+  "actual_output": "12.0\n25.0\n30",
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 201.04750967025757,
+  "execution_duration": 5.135534286499023,
+  "source_files": {
+    "math_core.spy": "# Mathematical utility functions\n\ndef square(x: float) -> float:\n    return x * x\n\ndef sum_values(a: int, b: int) -> int:\n    return a + b\n",
+    "shapes.spy": "# Shape classes using math utilities\nfrom math_core import square\n\nclass Rectangle:\n    width: float\n    height: float\n    \n    def __init__(self, w: float, h: float):\n        self.width = w\n        self.height = h\n    \n    def area(self) -> float:\n        return self.width * self.height\n    \n    def diagonal(self) -> float:\n        # Sum of squares of sides\n        return square(self.width) + square(self.height)\n",
+    "main.spy": "# Entry point - tests importing from multiple modules\nfrom shapes import Rectangle\nfrom math_core import sum_values\n\ndef main():\n    # Test importing and using a class from shapes module\n    rect = Rectangle(3.0, 4.0)\n    area: float = rect.area()\n    print(area)\n    \n    # Test that shapes module correctly uses its import from math_core\n    diag: float = rect.diagonal()\n    print(diag)\n    \n    # Test importing and using a function directly from math_core\n    total: int = sum_values(10, 20)\n    print(total)\n"
+  }
+}

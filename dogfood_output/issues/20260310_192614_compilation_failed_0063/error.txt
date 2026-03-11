@@ -1,0 +1,65 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'v' does not exist in the current context
+  --> /tmp/tmpvl90n8if/dogfood_test.spy:33:31
+    |
+ 33 |         self._value = v
+    |                        ^
+    |
+
+error[CS0070]: The event 'DogfoodTest.ValueMonitor.OnUpdate' can only appear on the left hand side of += or -= (except when used from within the type 'DogfoodTest.ValueMonitor')
+  --> /tmp/tmpvl90n8if/dogfood_test.spy:35:22
+    |
+ 35 |         self.on_update?.invoke(prev, v)
+    |                      ^
+    |
+
+error[CS0103]: The name 'v' does not exist in the current context
+  --> /tmp/tmpvl90n8if/dogfood_test.spy:35:45
+    |
+ 35 |         self.on_update?.invoke(prev, v)
+    |                                        ^
+    |
+
+error[CS0103]: The name 'v' does not exist in the current context
+  --> /tmp/tmpvl90n8if/dogfood_test.spy:37:21
+    |
+ 37 |         if v >= self.upper_limit and not self._breached:
+    |                     ^
+    |
+
+error[CS0103]: The name 'v' does not exist in the current context
+  --> /tmp/tmpvl90n8if/dogfood_test.spy:50:31
+    |
+ 50 |         self._value = v
+    |                        ^
+    |
+
+error[CS0070]: The event 'DogfoodTest.ValueMonitor.OnUpdate' can only appear on the left hand side of += or -= (except when used from within the type 'DogfoodTest.ValueMonitor')
+  --> /tmp/tmpvl90n8if/dogfood_test.spy:52:22
+    |
+ 52 |         self.on_update?.invoke(prev, v)
+    |                      ^
+    |
+
+error[CS0103]: The name 'v' does not exist in the current context
+  --> /tmp/tmpvl90n8if/dogfood_test.spy:52:45
+    |
+ 52 |         self.on_update?.invoke(prev, v)
+    |                                        ^
+    |
+
+error[CS0103]: The name 'v' does not exist in the current context
+  --> /tmp/tmpvl90n8if/dogfood_test.spy:54:21
+    |
+ 54 |         if v >= self.upper_limit:
+    |                     ^
+    |
+
+error[CS0070]: The event 'DogfoodTest.ThresholdMonitor.OnThresholdCrossed' can only appear on the left hand side of += or -= (except when used from within the type 'DogfoodTest.ThresholdMonitor')
+  --> /tmp/tmpvl90n8if/dogfood_test.spy:56:26
+    |
+ 56 |             self.on_threshold_crossed?.invoke(self.monitor_name, self.upper_limit)
+    |                          ^
+    |
+

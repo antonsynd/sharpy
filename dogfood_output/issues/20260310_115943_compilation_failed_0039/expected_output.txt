@@ -1,0 +1,10 @@
+Origin: (0.0, 0.0)
+Corner: (5.0, 5.0)
+Distance: 7.0710678118654755
+Shape Circle: area=78.53975, perimeter=31.4159
+Shape Rectangle: area=200.0, perimeter=60.0
+Measurement: 78.53975 square units
+Measurement: 60.0 linear units
+Average measurement: 69.269875
+Circle 5.0 at (0.0, 0.0)
+Rectangle 10.0x20.0 at (5.0, 5.0)

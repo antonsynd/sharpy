@@ -1,0 +1,14 @@
+warning[SPY0450]: Unreachable code detected
+  --> /tmp/tmpt8x2ftmu/dogfood_test.spy:57:9
+    |
+ 57 |         print("Cleanup")
+    |         ^^^^^^^^^^^^^^^^
+    |
+
+warning[SPY0451]: Local variable 'processed' is assigned but never used
+  --> /tmp/tmpt8x2ftmu/dogfood_test.spy:46:9
+    |
+ 46 |         processed = True
+    |         ^^^^^^^^^^^^^^^^
+    |
+

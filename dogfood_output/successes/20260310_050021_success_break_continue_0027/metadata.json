@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T04:58:01.102914",
+  "generated_code": "# Test: break and continue working together in a while loop\n# Finds the first number greater than 10 that's divisible by 3\ndef main():\n    n: int = 1\n    result: int = 0\n    \n    while n <= 20:\n        n += 1\n        \n        # Skip numbers 10 or below using continue\n        if n <= 10:\n            continue\n        \n        # Check if divisible by 3\n        if n % 3 == 0:\n            result = n\n            break  # Found the first match\n    \n    print(result)\n    \n    # Verify continue path was working by checking total iterations\n    # n should be 12 when we broke (11 checked, then 12 matched)\n    print(n)\n",
+  "expected_output": "12\n12\n",
+  "actual_output": "12\n12",
+  "feature_focus": "break_continue",
+  "complexity": "simple",
+  "backend_used": "klaude",
+  "generation_duration": 129.41600918769836,
+  "execution_duration": 4.868148565292358,
+  "source_files": null
+}

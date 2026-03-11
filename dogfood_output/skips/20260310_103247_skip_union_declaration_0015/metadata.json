@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T10:25:53.779579",
+  "skip_reason": "Sharpy compiler error after 3 attempts: Compilation errors:\n\nerror[SPY0104]: Expected Colon, got LeftParen\n  --> /tmp/tmprz3kfj9u/dogfood_test.spy:8:26\n    |\n  8 |         case Shape.Circle(r):\n    |                          ^\n    |\n\nerror[SPY0100]: Unexpected token: Case\n  --> /tmp/tmprz3kfj9u/dogfood_test.spy:10:9\n    |\n 10 |         case Shape.Rectangle(w, h):\n    |         ^^^^\n    |\n\nerror[SPY0100]: Unexpected token: Case\n  --> /tmp/tmprz3kfj9u/dogfood_test.spy:12:9\n    |\n 12 |         case Shape.Point(x, y):\n    |         ^^^^\n    |\n\nerror[SPY0100]: Unexpected token: Case\n  --> /tmp/tmprz3kfj9u/dogfood_test.spy:14:9\n    |\n 14 |         case _:\n    |         ^^^^\n    |\n\nerror[SPY0100]: Unexpected token: Dedent\n  --> /tmp/tmprz3kfj9u/dogfood_test.spy:17:1\n    |\n 17 | def calculate_area(shape: Shape) -> float:\n    | ^\n    |\n\n",
+  "generated_code": "union Shape:\n    case Circle(radius: float)\n    case Rectangle(width: float, height: float)\n    case Point(x: float, y: float)\n\ndef describe_shape(shape: Shape) -> str:\n    match shape:\n        case Shape.Circle(r):\n            return f\"Circle with radius {r}\"\n        case Shape.Rectangle(w, h):\n            return f\"Rectangle {w} x {h}\"\n        case Shape.Point(x, y):\n            return f\"Point at ({x}, {y})\"\n        case _:\n            return \"Unknown shape\"\n\ndef calculate_area(shape: Shape) -> float:\n    match shape:\n        case Shape.Circle(r):\n            return 3.14159 * r * r\n        case Shape.Rectangle(w, h):\n            return w * h\n        case Shape.Point(x, y):\n            return 0.0\n        case _:\n            return 0.0\n\ndef main():\n    c: Shape = Shape.Circle(5.0)\n    r: Shape = Shape.Rectangle(3.0, 4.0)\n    p: Shape = Shape.Point(1.0, 2.0)\n    \n    print(describe_shape(c))\n    print(describe_shape(r))\n    print(describe_shape(p))\n    \n    print(calculate_area(c))\n    print(calculate_area(r))\n    print(calculate_area(p))\n",
+  "expected_output": "Circle with radius 5.0\nRectangle 3.0 x 4.0\nPoint at (1.0, 2.0)\n78.53975\n12.0\n0.0\n",
+  "feature_focus": "union_declaration",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 397.80389285087585,
+  "source_files": null,
+  "validation_output": null
+}

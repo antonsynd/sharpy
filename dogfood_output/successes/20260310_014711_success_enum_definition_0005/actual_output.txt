@@ -1,0 +1,4 @@
+20
+medium
+30
+high

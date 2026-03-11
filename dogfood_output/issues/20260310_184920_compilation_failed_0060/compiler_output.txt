@@ -1,0 +1,7 @@
+warning[SPY0452]: Imported name 'Circle' is never used
+  --> /tmp/tmp6gqxh0gv/main.spy:1:31
+    |
+  1 | from shapes import Rectangle, Circle
+    |                               ^^^^^^
+    |
+

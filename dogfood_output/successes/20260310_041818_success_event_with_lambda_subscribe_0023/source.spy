@@ -1,0 +1,16 @@
+# Define a delegate type for click events
+delegate ClickHandler() -> None
+
+class Button:
+    event on_click: ClickHandler
+    
+    def click(self) -> None:
+        self.on_click?.invoke()
+
+def main():
+    b = Button()
+    # Subscribe multiple lambdas to the event
+    b.on_click += lambda: print("Clicked!")
+    b.on_click += lambda: print("Also clicked!")
+    # Raise the event
+    b.click()

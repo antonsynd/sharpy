@@ -1,0 +1,9 @@
+class Entity:
+    id: int
+    
+    def __init__(self, entity_id: int):
+        self.id = entity_id
+    
+    @virtual
+    def describe(self) -> str:
+        return "Entity " + str(self.id)

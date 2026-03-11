@@ -1,0 +1,17 @@
+enum Status:
+    INACTIVE = 0
+    ACTIVE = 1
+    PENDING = 2
+
+interface IIdentifiable:
+    def get_id(self) -> str: ...
+
+@abstract
+class Entity:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @abstract
+    def describe(self) -> str: ...

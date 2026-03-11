@@ -1,0 +1,114 @@
+Assembly compilation failed:
+
+error[CS0112]: A static member cannot be marked as 'virtual'
+  --> dogfood_test.cs:19:38
+    |
+ 19 | 
+    | ^
+    |
+
+error[CS0112]: A static member cannot be marked as 'override'
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:23:39
+    |
+ 23 | class Rectangle(Shape):
+    |                        ^
+    |
+
+error[CS0112]: A static member cannot be marked as 'override'
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:41:39
+    |
+ 41 |         return self._rect_id
+    |                             ^
+    |
+
+error[CS0026]: Keyword 'this' is not valid in a static property, static method, or static field initializer
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:21:24
+    |
+ 21 |         return self._area
+    |                        ^
+    |
+
+error[CS0026]: Keyword 'this' is not valid in a static property, static method, or static field initializer
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:41:24
+    |
+ 41 |         return self._rect_id
+    |                        ^
+    |
+
+error[CS0026]: Keyword 'this' is not valid in a static property, static method, or static field initializer
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:56:31
+    |
+ 56 |         return 4.0 * self.side_length
+    |                               ^
+    |
+
+error[CS0176]: Member 'DogfoodTest.Rectangle.ShapeId' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:63:39
+    |
+ 63 |     print(r.shape_id)
+    |                      ^
+    |
+
+error[CS0176]: Member 'DogfoodTest.Rectangle.ScaleFactor' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:64:39
+    |
+ 64 |     print(r.scale_factor)
+    |                          ^
+    |
+
+error[CS0176]: Member 'DogfoodTest.Shape.Measurement' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:65:39
+    |
+ 65 |     print(r.measurement)
+    |                         ^
+    |
+
+error[CS0176]: Member 'DogfoodTest.Rectangle.ShapeId' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:68:39
+    |
+ 68 |     print(sq.shape_id)
+    |                       ^
+    |
+
+error[CS0176]: Member 'DogfoodTest.Square.ScaleFactor' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:69:39
+    |
+ 69 |     print(sq.scale_factor)
+    |                           ^
+    |
+
+error[CS0176]: Member 'DogfoodTest.Square.Perimeter' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:70:39
+    |
+ 70 |     print(sq.perimeter)
+    |                        ^
+    |
+
+error[CS0176]: Member 'DogfoodTest.Shape.Measurement' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:71:39
+    |
+ 71 |     print(sq.measurement)
+    |                          ^
+    |
+
+error[CS0176]: Member 'DogfoodTest.Shape.ScaleFactor' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:78:43
+    |
+ 78 |         print(s.scale_factor)
+    |                              ^
+    |
+
+error[CS0176]: Member 'DogfoodTest.Shape.Measurement' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:79:43
+    |
+ 79 |         print(s.measurement)
+    |                             ^
+    |
+
+error[CS0176]: Member 'DogfoodTest.Shape.Measurement' cannot be accessed with an instance reference; qualify it with a type name instead
+  --> /tmp/tmp2dnlytq3/dogfood_test.spy:86:37
+    |
+ 86 |         total_area += s.measurement
+    |                                    ^
+    |
+

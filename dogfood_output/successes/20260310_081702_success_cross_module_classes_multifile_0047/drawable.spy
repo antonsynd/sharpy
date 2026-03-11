@@ -1,0 +1,33 @@
+# Module with drawable shape implementations
+from shapes import Shape, Rectangle
+
+class DrawableRectangle(Rectangle):
+    def __init__(self, name: str, width: float, height: float):
+        super().__init__(name, width, height)
+    
+    def draw(self) -> str:
+        return f"Drawing rectangle {self.name}"
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, name: str, radius: float):
+        super().__init__(name)
+        self.radius = radius
+    
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    @override
+    def describe(self) -> str:
+        return f"Circle {self.name}: radius={self.radius}"
+    
+    def draw(self) -> str:
+        return f"Drawing circle {self.name}"
+
+def get_total_area(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for shape in shapes:
+        total = total + shape.area()
+    return total

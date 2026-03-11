@@ -1,0 +1,20 @@
+# Main entry point - demonstrates polymorphism across module boundaries
+from shape_base import Shape
+from point import Point
+from shapes import Rectangle, Circle
+
+def describe_shape(s: Shape) -> str:
+    return s.describe()
+
+def main():
+    origin = Point(0.0, 0.0)
+
+    rect = Rectangle(5.0, 3.0, origin)
+    circle = Circle(2.0)
+
+    print(rect.get_area())
+    print(rect.get_perimeter())
+    print(circle.get_area())
+    print(circle.get_circumference())
+    print(describe_shape(rect))
+    print(describe_shape(circle))

@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-03-10T08:17:02.831137",
+  "generated_code": "# Main entry point - demonstrates cross-module class inheritance\n\nfrom shapes import Shape, describe_shape\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, width: float, height: float):\n        super().__init__(\"Rectangle\")\n        self.width = width\n        self.height = height\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, radius: float):\n        super().__init__(\"Circle\")\n        self.radius = radius\n    \n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n\ndef main():\n    r: Rectangle = Rectangle(5.0, 3.0)\n    c: Circle = Circle(2.0)\n    \n    print(r.area())\n    print(c.area())\n    \n    shapes: list[Shape] = [r, c]\n    print(len(shapes))\n    \n    desc_r: str = describe_shape(r)\n    print(desc_r)\n    \n    desc_c: str = describe_shape(c)\n    print(desc_c)\n",
+  "expected_output": "15.0\n12.56636\n2\nRectangle has area 15.0\nCircle has area 12.56636\n",
+  "actual_output": "15.0\n12.56636\n2\nRectangle has area 15.0\nCircle has area 12.56636",
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 179.52334547042847,
+  "execution_duration": 5.270781755447388,
+  "source_files": {
+    "shapes.spy": "# Base shapes module providing geometric shape base class\n\nclass Shape:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    @virtual\n    def area(self) -> float:\n        return 0.0\n\ndef describe_shape(s: Shape) -> str:\n    return f\"{s.name} has area {s.area()}\"\n",
+    "main.spy": "# Main entry point - demonstrates cross-module class inheritance\n\nfrom shapes import Shape, describe_shape\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n    \n    def __init__(self, width: float, height: float):\n        super().__init__(\"Rectangle\")\n        self.width = width\n        self.height = height\n    \n    @override\n    def area(self) -> float:\n        return self.width * self.height\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, radius: float):\n        super().__init__(\"Circle\")\n        self.radius = radius\n    \n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n\ndef main():\n    r: Rectangle = Rectangle(5.0, 3.0)\n    c: Circle = Circle(2.0)\n    \n    print(r.area())\n    print(c.area())\n    \n    shapes: list[Shape] = [r, c]\n    print(len(shapes))\n    \n    desc_r: str = describe_shape(r)\n    print(desc_r)\n    \n    desc_c: str = describe_shape(c)\n    print(desc_c)\n"
+  }
+}

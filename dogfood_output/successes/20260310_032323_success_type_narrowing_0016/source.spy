@@ -1,0 +1,11 @@
+# Test type narrowing: after `is not None`, optional becomes the underlying type
+def main():
+    score: int? = Some(100)
+    
+    # In the else branch, score is narrowed from int? to int
+    if score is None:
+        print(0)
+    else:
+        # Can use score directly without .unwrap() after narrowing
+        result = score + 50
+        print(result)

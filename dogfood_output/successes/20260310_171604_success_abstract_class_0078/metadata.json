@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-10T17:12:59.065462",
+  "generated_code": "# Test: Abstract class with inheritance and polymorphic dispatch\n# Abstract base class with field and constructor, concrete subclasses\n# implement abstract method with different behaviors\n\n@abstract\nclass Unit:\n    power: int\n    \n    def __init__(self, power: int):\n        self.power = power\n    \n    @abstract\n    def attack(self) -> int: ...\n\nclass Warrior(Unit):\n    crit: int\n    \n    def __init__(self, power: int):\n        super().__init__(power)\n        self.crit = 2\n    \n    @override\n    def attack(self) -> int:\n        return self.power * self.crit\n\nclass Mage(Unit):\n    mana: int\n    \n    def __init__(self, power: int):\n        super().__init__(power)\n        self.mana = 3\n    \n    @override\n    def attack(self) -> int:\n        return self.power + self.mana * 5\n\ndef simulate_battle(units: list[Unit]) -> int:\n    total: int = 0\n    for u in units:\n        total += u.attack()\n    return total\n\ndef main():\n    units: list[Unit] = [Warrior(5), Mage(4)]\n    print(Warrior(3).attack())\n    print(Mage(2).attack())\n    print(simulate_battle(units))\n",
+  "expected_output": "6\n17\n29\n",
+  "actual_output": "6\n17\n29",
+  "feature_focus": "abstract_class",
+  "complexity": "medium",
+  "backend_used": "klaude",
+  "generation_duration": 174.5065574645996,
+  "execution_duration": 4.972656488418579,
+  "source_files": null
+}

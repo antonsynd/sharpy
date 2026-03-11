@@ -1,0 +1,64 @@
+# Module providing geometric shapes with inheritance and interfaces
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+interface IDrawable:
+    def draw(self) -> str:
+        ...
+
+interface IMeasurable:
+    def get_area(self) -> float:
+        ...
+
+@abstract
+class Shape(IDrawable, IMeasurable):
+    
+    _color: Color
+    
+    def __init__(self, color: Color):
+        self._color = color
+    
+    property get color(self) -> Color:
+        return self._color
+
+    @abstract
+    def get_description(self) -> str:
+        ...
+
+class Circle(Shape):
+    
+    radius: float
+    
+    def __init__(self, color: Color, radius: float):
+        super().__init__(color)
+        self.radius = radius
+    
+    def get_area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    def draw(self) -> str:
+        return f"Circle(r={self.radius})"
+    
+    def get_description(self) -> str:
+        return "A circle"
+
+class Rectangle(Shape):
+    
+    width: float
+    height: float
+    
+    def __init__(self, color: Color, width: float, height: float):
+        super().__init__(color)
+        self.width = width
+        self.height = height
+    
+    def get_area(self) -> float:
+        return self.width * self.height
+    
+    def draw(self) -> str:
+        return f"Rect(w={self.width},h={self.height})"
+    
+    def get_description(self) -> str:
+        return "A rectangle"

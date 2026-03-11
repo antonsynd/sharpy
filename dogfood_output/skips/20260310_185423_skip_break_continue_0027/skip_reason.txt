@@ -1,0 +1,32 @@
+Sharpy compiler error after 3 attempts: Compilation errors:
+
+Type errors:
+error[SPY0220]: Cannot assign type 'EarlyExitSearcher[int]' to variable of type 'ITraverser[int]'
+  --> /tmp/tmpt67y1ock/dogfood_test.spy:81:5
+    |
+ 81 |     searcher: ITraverser[int] = EarlyExitSearcher[int]()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+error[SPY0220]: Cannot assign type 'CounterTraverser[int]' to variable of type 'ITraverser[int]'
+  --> /tmp/tmpt67y1ock/dogfood_test.spy:85:5
+    |
+ 85 |     counter: ITraverser[int] = CounterTraverser[int](3)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+Validation errors:
+error[SPY0418]: Covariant type parameter 'T' cannot appear in contravariant position (parameter type)
+  --> /tmp/tmpt67y1ock/dogfood_test.spy:7:36
+    |
+  7 |     def traverse(self, items: list[T], pred: NodePredicate[T]) -> T?
+    |                                    ^
+    |
+
+error[SPY0418]: Covariant type parameter 'T' cannot appear in contravariant position (parameter type)
+  --> /tmp/tmpt67y1ock/dogfood_test.spy:7:60
+    |
+  7 |     def traverse(self, items: list[T], pred: NodePredicate[T]) -> T?
+    |                                                            ^
+    |
+
