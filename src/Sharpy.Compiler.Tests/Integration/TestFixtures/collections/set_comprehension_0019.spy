@@ -1,0 +1,9 @@
+# Test set comprehension with filtering and transformation
+def main():
+    # Create a set of squares of odd numbers from 0-9
+    odd_squares: set[int] = {n * n for n in range(10) if n % 2 == 1}
+    
+    # Print the size and elements (sorted for deterministic output)
+    print(len(odd_squares))
+    for x in sorted(odd_squares):
+        print(x)
