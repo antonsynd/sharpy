@@ -1,5 +1,0 @@
-2
-2
-alpha_data
-beta_data
-37

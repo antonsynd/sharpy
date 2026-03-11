@@ -1,5 +1,0 @@
-MyApp
-2
-MyApp v2
-15
-done

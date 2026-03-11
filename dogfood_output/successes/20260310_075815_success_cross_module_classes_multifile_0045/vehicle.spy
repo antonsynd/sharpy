@@ -1,9 +1,0 @@
-@abstract
-class Vehicle:
-    brand: str
-    
-    def __init__(self, brand: str):
-        self.brand = brand
-    
-    @abstract
-    def describe(self) -> str: ...

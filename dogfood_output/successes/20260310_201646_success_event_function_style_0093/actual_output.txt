@@ -1,5 +1,0 @@
-Added: 2
-H1: hello
-H2: hello
-Removed: 1
-H2: world

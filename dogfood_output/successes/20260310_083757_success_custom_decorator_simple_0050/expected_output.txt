@@ -1,5 +1,0 @@
-100.0
-pass
-fail
-pass
-2

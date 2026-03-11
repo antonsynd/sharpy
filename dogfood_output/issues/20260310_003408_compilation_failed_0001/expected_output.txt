@@ -1,5 +1,0 @@
-Shape: Rect1, Rectangle 5.0x3.0
-Shape: Circle1
-Total area: 65.2656
-Average area: 32.6328
-Total perimeter: 41.13272

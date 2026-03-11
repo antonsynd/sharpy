@@ -1,7 +1,0 @@
-False
-True
-warn
-Error
-6
-Error
-Maintenance

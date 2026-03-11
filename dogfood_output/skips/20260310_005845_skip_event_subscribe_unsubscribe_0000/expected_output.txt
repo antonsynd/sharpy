@@ -1,7 +1,0 @@
-2
-LivingRoom:26.5
-LivingRoom:27.0
-2
-LivingRoom:26.5
-LivingRoom:29.0
-5

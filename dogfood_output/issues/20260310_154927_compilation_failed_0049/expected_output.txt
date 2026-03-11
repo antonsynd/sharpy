@@ -1,6 +1,0 @@
-15.0
-Rectangle Bob
-16.0
-Square Alice side=4.0
-5.0
-12.56636

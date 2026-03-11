@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0100]: Unexpected token: Less
-  --> /tmp/tmp31uoyzxq/dogfood_test.spy:39:1
-    |
- 39 | </expected>
-    | ^
-    |
-

@@ -1,9 +1,0 @@
-Repeated identical compiler error (likely compiler bug): Compilation errors:
-
-error[SPY0222]: Type 'Vector2D' does not support operator '+' with operand of type 'Vector2D'
-  --> /tmp/tmpydxj3bs0/main.spy:42:20
-    |
- 42 |     v3: Vector2D = v1 + v2
-    |                    ^^^^^^^
-    |
-

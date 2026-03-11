@@ -1,7 +1,0 @@
-True
-55.0
-80.0
-ALERT
-STABLE
-1
-25.0

@@ -1,9 +1,0 @@
-=== Module Imports Test ===
-App: 100
-Distance: 5.0
-User: alice
-ID: 1
-Desc: User(alice)
-Status: [Active]
-Active: 1
-Count: 11

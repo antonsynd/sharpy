@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'IDrawable' is never used
-  --> /tmp/tmpnwo4cne6/utils.spy:3:25
-    |
-  3 | from shapes import Shape, Rectangle, Circle, DrawablePoint, IDrawable
-    |                         ^^^^^^^^^
-    |
-

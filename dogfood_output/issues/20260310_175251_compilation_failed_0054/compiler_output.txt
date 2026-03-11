@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'Dimensions' is never used
-  --> /tmp/tmp3mba10dd/main.spy:2:34
-    |
-  2 | from containers import ShapeBox, Dimensions
-    |                                  ^^^^^^^^^^
-    |
-

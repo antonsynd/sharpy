@@ -1,4 +1,0 @@
-Hot: 35 > 30
-Cold: 5 < 10
-Cold: 5 < 10
-Freezing alert: 5

@@ -1,7 +1,0 @@
-# Interface definitions for measurable and displayable objects
-
-interface IMeasurable:
-    def measure(self) -> float: ...
-
-interface IDisplayable:
-    def display(self) -> str: ...

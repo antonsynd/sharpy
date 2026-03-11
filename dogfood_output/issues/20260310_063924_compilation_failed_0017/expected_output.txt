@@ -1,8 +1,0 @@
-78.53975
-24.0
-Circle (radius 5.0): area=78.53975
-Rectangle (4.0 x 6.0): area=24.0
-Blue
-1.5
-Green
-78.53975

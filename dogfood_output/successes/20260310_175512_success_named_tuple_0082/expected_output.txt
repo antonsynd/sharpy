@@ -1,6 +1,0 @@
-Apple
-Cherry
-2
-3.0
-Apple
-0.5

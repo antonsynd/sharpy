@@ -1,7 +1,0 @@
-Shapes created: 0
-Point distance: 5.0
-Shapes created: 3
-Rectangle color: Red
-Rectangle area: 15.0
-Scaled circle area: 50.265
-Scaled square area: 4.0

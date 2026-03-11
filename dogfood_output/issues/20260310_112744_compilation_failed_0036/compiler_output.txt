@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'Status' is never used
-  --> /tmp/tmp1r2g5q2y/main.spy:3:26
-    |
-  3 | from types_module import Status, Point
-    |                          ^^^^^^
-    |
-

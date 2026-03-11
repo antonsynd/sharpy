@@ -1,3 +1,0 @@
-Alice, 30 years old (ID: 1001)
-Rectangle(5.0 x 5.0)
-Rectangle(3.0 x 4.0)

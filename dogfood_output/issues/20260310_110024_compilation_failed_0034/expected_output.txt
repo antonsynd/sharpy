@@ -1,9 +1,0 @@
-Shape: Rectangle with 4 sides
-Shape: Circle
-15.0
-12.56636
-27.56636
-Green
-5.0
-20.0
-15.0

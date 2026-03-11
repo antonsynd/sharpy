@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0708]: 'MathUtils.PI': cannot declare instance members in a static class
-  --> math_utils.cs:12:19
-    |
- 12 |     print(avg)
-    |               ^
-    |
-

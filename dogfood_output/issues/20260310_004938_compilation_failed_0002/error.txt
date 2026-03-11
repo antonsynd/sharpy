@@ -1,5 +1,0 @@
-Assembly compilation failed:
-
-error[CS0117]: 'Shapes.Circle' does not contain a definition for 'Pi'
-  --> /tmp/tmpnwo4cne6/shapes.spy:48:27
-

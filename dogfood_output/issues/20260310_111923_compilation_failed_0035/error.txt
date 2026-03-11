@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0246]: The type or namespace name 'Error' could not be found (are you missing a using directive or an assembly reference?)
-  --> /tmp/tmp5j5z1cf8/dogfood_test.spy:24:47
-    |
- 24 | @system.obsolete("Use ServiceV2 instead", error=True)
-    |                                               ^
-    |
-

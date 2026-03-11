@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0260]: Cannot return type 'tuple[None, None]' from function expecting 'tuple[list[str], list[int]]'
-  --> /tmp/tmpxgo85uis/dogfood_test.spy:18:5
-    |
- 18 |     return (str_results, int_results)
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-

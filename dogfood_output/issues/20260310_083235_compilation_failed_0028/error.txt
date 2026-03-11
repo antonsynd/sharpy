@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS1689]: Attribute 'System.Diagnostics.Conditional' is only valid on methods or attribute classes
-  --> /tmp/tmpgx83r9wn/dogfood_test.spy:22:6
-    |
- 22 |     message: str
-    |      ^
-    |
-

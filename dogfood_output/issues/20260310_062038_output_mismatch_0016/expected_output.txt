@@ -1,2 +1,0 @@
-Hot: 35.0 > 30.0
-Freezing alert: 5.0

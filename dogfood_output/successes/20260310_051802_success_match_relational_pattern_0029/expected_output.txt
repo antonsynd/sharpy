@@ -1,6 +1,0 @@
-huge
-large
-medium
-small
-negative small
-very negative

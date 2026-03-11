@@ -1,8 +1,0 @@
-warning[SPY0451]: Local variable 's' is assigned but never used
-  --> /tmp/tmpgx83r9wn/dogfood_test.spy:49:9
-    |
- 49 |     if (s := settings.describe()) == "TestApp (v2) - DEBUG":
-    |         ^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-
-Generated C# code written to: /tmp/tmpgx83r9wn/dogfood_test.cs

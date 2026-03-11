@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0619]: 'DogfoodTest.LegacyConfig' is obsolete: 'Use ConfigManager instead'
-  --> /tmp/tmpy7iem_vf/dogfood_test.spy:30:23
-    |
- 30 |     cfg = LegacyConfig("test", 100).update(200).update(300)
-    |                       ^
-    |
-

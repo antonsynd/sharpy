@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'Shape' is never used
-  --> /tmp/tmphh0h0pix/main.spy:3:22
-    |
-  3 | from geometry import Shape
-    |                      ^^^^^
-    |
-

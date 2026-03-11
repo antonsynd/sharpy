@@ -1,5 +1,0 @@
-Alice (Manager)
-Total Salary: 255000.0
-Total Bonus: 25900.0
-Manager Count: 1
-Developer count: 2

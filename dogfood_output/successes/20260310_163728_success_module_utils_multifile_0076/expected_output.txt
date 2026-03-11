@@ -1,4 +1,0 @@
-Circle(unit, r=1.0)
-3.14159
-Rectangle(box, 2.0x3.0)
-6.0

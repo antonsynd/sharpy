@@ -1,6 +1,0 @@
-True
-True
-Carol
-100
-60
-317

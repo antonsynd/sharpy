@@ -1,7 +1,0 @@
-Completed
-Widget:50.0
-85.0
-SKU:ABC-123|$49.99
-Item(ABC-123)
-Processing|Completed
-1

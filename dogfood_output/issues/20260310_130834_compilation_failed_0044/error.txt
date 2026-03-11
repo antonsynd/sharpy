@@ -1,9 +1,0 @@
-Assembly compilation failed:
-
-error[CS0122]: 'DogfoodTest.BankAccount.GetBalance()' is inaccessible due to its protection level
-  --> /tmp/tmppkn79wpt/dogfood_test.spy:51:47
-    |
- 51 |     print(account.get_balance())
-    |                                 ^
-    |
-

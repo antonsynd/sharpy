@@ -1,4 +1,0 @@
-Widget x0
-80.0
-108.0
-Widget

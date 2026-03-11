@@ -1,6 +1,0 @@
-player healthy move to (12,12)
-player weakened but moved to (8,9)
-player defeated
-enemy attacking from (20,20)
-enemy waiting
-enemy waiting

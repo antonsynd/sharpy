@@ -1,7 +1,0 @@
-warning[SPY0452]: Imported name 'create_origin' is never used
-  --> /tmp/tmpkef78aya/utils.spy:2:23
-    |
-  2 | from geometry import Shape, Circle, Rectangle, Point, Color, calculate_total, create_origin, color_name
-    |                       ^^^^^^^^^^^^^
-    |
-

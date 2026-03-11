@@ -1,9 +1,0 @@
-valid
-client_error
-server_error
-timed_out
-empty
-cancelled
-1
-3
-2

@@ -1,7 +1,0 @@
-int:42
-negative_int:-5
-null
-agg_int:10_sum=10
-agg_int:20_sum=30
-agg_str
-total:30

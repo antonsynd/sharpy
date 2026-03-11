@@ -1,8 +1,0 @@
-category: literal
-category: named
-category: other
-category: other
-literal token
-named token
-symbol with operator kind
-unrecognized token

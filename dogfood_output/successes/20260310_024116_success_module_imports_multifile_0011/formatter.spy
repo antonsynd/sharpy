@@ -1,5 +1,0 @@
-def format_number(n: float) -> str:
-    return f"Result: {n:.2f}"
-
-def format_int(n: int) -> str:
-    return f"Value: {n}"
