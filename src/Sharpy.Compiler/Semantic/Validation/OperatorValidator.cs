@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 internal class OperatorValidator : SemanticValidatorBase
 {
     public override string Name => "OperatorValidator";
-    public override int Order => 500; // Same as ProtocolValidator (after access validation)
+    public override int Order => 501; // After ProtocolValidator (500)
 
     private ICompilerLogger _logger = NullLogger.Instance;
     private SemanticContext _context = null!;

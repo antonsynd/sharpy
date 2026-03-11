@@ -1176,8 +1176,3 @@ internal partial class TypeChecker
         return FindEventInHierarchy(owningType, memberAccess.Member);
     }
 }
-
-internal class SemanticAnalysisException : Exception
-{
-    public SemanticAnalysisException(string message) : base(message) { }
-}
