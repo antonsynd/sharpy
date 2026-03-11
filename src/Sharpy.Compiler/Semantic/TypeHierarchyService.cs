@@ -237,7 +237,7 @@ internal static class TypeHierarchyService
     /// uses (DefiningModule, Name) or (DefiningFilePath, Name) when available.
     /// Does NOT fall back to name-only comparison to avoid false positives.
     /// </summary>
-    private static bool IsSameType(TypeSymbol a, TypeSymbol b)
+    internal static bool IsSameType(TypeSymbol a, TypeSymbol b)
     {
         if (ReferenceEquals(a, b))
             return true;
@@ -250,7 +250,14 @@ internal static class TypeHierarchyService
         if (a.DefiningFilePath != null && b.DefiningFilePath != null)
             return a.DefiningFilePath == b.DefiningFilePath && a.Name == b.Name;
 
-        // Cannot determine identity without module/file context — conservative false
+        // Neither symbol has module/file context — this happens for CLR-discovered types
+        // (e.g., Exception, List<T>) which are identified by name alone. User-defined types
+        // always have DefiningFilePath set, so they never reach this path.
+        if (a.DefiningModule == null && a.DefiningFilePath == null
+            && b.DefiningModule == null && b.DefiningFilePath == null)
+            return a.Name == b.Name;
+
+        // Mixed context (one has module/file, the other doesn't) — conservative false
         return false;
     }
 

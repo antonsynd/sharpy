@@ -309,30 +309,22 @@ public sealed record UserDefinedType : SemanticType
 
         if (other is UserDefinedType otherUdt)
         {
-            // Name-based comparison as first check — necessary when Symbol is null
-            // (e.g., CLR types, imported function return types without resolved symbols).
-            // When both symbols are available, InheritsFrom uses module-qualified
-            // identity (IsSameType) which avoids false positives for same-named types
-            // in different modules.
-            if (Name == otherUdt.Name)
-                return true;
-
-            if (Symbol != null)
+            if (Symbol != null && otherUdt.Symbol != null)
             {
-                // Reference-based same-type check
-                if (Symbol == otherUdt.Symbol)
+                // Same-type check using module-qualified identity
+                if (TypeHierarchyService.IsSameType(Symbol, otherUdt.Symbol))
                     return true;
 
-                // When target symbol is available, use TypeHierarchyService for full
-                // hierarchy + interface check (uses module-qualified identity internally).
-                // When null (e.g., cross-module imports where the symbol isn't resolved),
-                // fall back to name-based base chain walk.
-                if (otherUdt.Symbol != null)
-                {
-                    return TypeHierarchyService.InheritsFrom(Symbol, otherUdt.Symbol);
-                }
+                // Inheritance/interface check using full hierarchy walk
+                return TypeHierarchyService.InheritsFrom(Symbol, otherUdt.Symbol);
+            }
 
-                // Name-based fallback: walk base chain comparing names
+            if (Symbol != null && otherUdt.Symbol == null)
+            {
+                // Target symbol is null (e.g., CLR types without resolved symbols) —
+                // walk base chain comparing names
+                if (Symbol.Name == otherUdt.Name)
+                    return true;
                 var current = Symbol.BaseType;
                 while (current != null)
                 {
@@ -341,6 +333,11 @@ public sealed record UserDefinedType : SemanticType
                     current = current.BaseType;
                 }
             }
+
+            // Our Symbol is null (e.g., CLR types, imported function return types
+            // without resolved symbols) — fall back to name comparison.
+            if (Symbol == null && Name == otherUdt.Name)
+                return true;
         }
 
         return false;
