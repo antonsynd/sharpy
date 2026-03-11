@@ -73,6 +73,8 @@ public class CompilationMetrics
     /// <summary>
     /// Gets the duration of the type resolution phase.
     /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
+    /// Note: In single-file compilation, type resolution is folded into the
+    /// "Type Checking" phase and this property returns <see cref="TimeSpan.Zero"/>.
     /// </summary>
     public TimeSpan TypeResolutionTime => GetPhaseDuration("Type Resolution");
 

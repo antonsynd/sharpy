@@ -17,7 +17,6 @@ internal class AstDumper : AstVisitor
 
     // Context fields set before each Visit dispatch
     private int _depth;
-    private bool _isLast;
     private string _indent = "";
     private string _prefix = "";
     private string _childPrefix = "";
@@ -57,7 +56,6 @@ internal class AstDumper : AstVisitor
     private void VisitChild(Node node, int depth, bool isLast)
     {
         _depth = depth;
-        _isLast = isLast;
         _indent = new string(' ', depth * IndentUnit.Length);
         _prefix = isLast ? "└─ " : "├─ ";
         _childPrefix = isLast ? "   " : "│  ";
