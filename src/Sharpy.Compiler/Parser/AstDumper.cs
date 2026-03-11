@@ -15,7 +15,10 @@ internal class AstDumper : AstVisitor
     private readonly StringBuilder _output;
     private const string IndentUnit = "  ";
 
-    // Context fields set before each Visit dispatch
+    // Tree-drawing context: these fields are set by VisitChild() before dispatching
+    // each child node. Any Visit*() override that calls VisitChild() multiple times
+    // must call CaptureContext() FIRST to snapshot the current values, because each
+    // VisitChild() call overwrites them.
     private int _depth;
     private string _indent = "";
     private string _prefix = "";

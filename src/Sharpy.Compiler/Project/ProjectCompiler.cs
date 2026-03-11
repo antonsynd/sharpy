@@ -179,7 +179,7 @@ internal partial class ProjectCompiler
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 5: Perform semantic analysis on all files
-            if (!PerformSemanticAnalysis(config, cancellationToken))
+            if (!PerformSemanticAnalysis(compilationPipeline, config, cancellationToken))
             {
                 return CreateFailureResult();
             }

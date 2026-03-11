@@ -314,6 +314,9 @@ public class Compiler
             // Type-check imported .spy modules so that SemanticInfo is populated for
             // all their expressions. Without this, GetExpressionSemanticType() returns
             // null for cross-module AST nodes during codegen (root cause of #167).
+            // NOTE: This intentionally bypasses FileCompilationPipeline because imported
+            // modules need different semantics: errors are suppressed (transitive imports
+            // may be unresolvable), and only warnings are merged into the main diagnostics.
             foreach (var (modulePath, moduleInfo) in importResolver.LoadedSpyModules)
             {
                 if (string.Equals(Path.GetFullPath(modulePath), Path.GetFullPath(filePath),

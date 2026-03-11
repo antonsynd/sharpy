@@ -305,11 +305,9 @@ internal partial class ProjectCompiler
     /// <summary>
     /// Phase 5: Perform semantic analysis (type checking) on all modules
     /// </summary>
-    private bool PerformSemanticAnalysis(ProjectConfig config, CancellationToken cancellationToken = default)
+    private bool PerformSemanticAnalysis(FileCompilationPipeline compilationPipeline, ProjectConfig config, CancellationToken cancellationToken = default)
     {
         _logger.LogInfo("Phase 5: Semantic Analysis");
-
-        var compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel!.SemanticBinding, _logger);
 
         // Process modules in dependency order (dependencies before dependents)
         // This ensures proper symbol resolution across modules
