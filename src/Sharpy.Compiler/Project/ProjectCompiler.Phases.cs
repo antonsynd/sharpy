@@ -1,6 +1,5 @@
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
-using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
@@ -310,6 +309,8 @@ internal partial class ProjectCompiler
     {
         _logger.LogInfo("Phase 5: Semantic Analysis");
 
+        var compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel!.SemanticBinding, _logger);
+
         // Process modules in dependency order (dependencies before dependents)
         // This ensures proper symbol resolution across modules
         IEnumerable<string> modulesToProcess;
@@ -347,32 +348,16 @@ internal partial class ProjectCompiler
             if (fileMetrics == null)
                 continue;
 
-            // Type resolution
-            fileMetrics.StartPhase("Type Resolution");
-            var typeResolver = new TypeResolver(SymbolTable, SemanticInfo, _logger, cancellationToken);
-            fileMetrics.EndPhase();
-
-            // Type checking
+            // Type checking via shared pipeline
             fileMetrics.StartPhase("Type Checking");
-            var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
-            var semanticMaxErrors = _maxErrors > 0 ? _maxErrors : 100;
-            var typeChecker = new TypeChecker(SymbolTable, SemanticInfo, typeResolver, _logger, pipeline)
-            {
-                CurrentFilePath = unit.FilePath,
-                SemanticBinding = _projectModel.SemanticBinding,
-                MaxErrors = semanticMaxErrors
-            };
-
-            // Import root causes from import resolution so TypeChecker can suppress cascading errors
-            typeChecker.ImportRootCauses(_diagnostics);
-
-            // Determine if this file is the entry point for module-level validation
             var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
-            try
-            {
-                typeChecker.CheckModule(unit.Ast, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo, isEntryPoint: isEntryPoint, cancellationToken);
-            }
-            catch (SemanticAnalysisException)
+            var typeCheckResult = compilationPipeline.TypeCheck(
+                unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
+                computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,
+                cancellationToken: cancellationToken);
+            var typeChecker = typeCheckResult.TypeChecker;
+
+            if (typeCheckResult.Aborted)
             {
                 // End the Type Checking phase even on error for consistent metrics
                 fileMetrics.EndPhase();

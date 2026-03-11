@@ -1,3 +1,6 @@
+<!-- Verified by /verify-plan on 2026-03-10 -->
+<!-- Verification result: PASS WITH CORRECTIONS -->
+
 # Sharpy LSP Maturity Plan
 
 > Staff engineer assessment — phased plan to evolve the Sharpy LSP from functional to mature.
@@ -5,7 +8,7 @@
 
 ## Current State
 
-The LSP is surprisingly far along for a young project. 17 handlers, ~6,400 lines of C# implementation, VS Code extension, E2E test infrastructure.
+The LSP is surprisingly far along for a young project. 17 handlers, ~3,500 lines of C# implementation [CORRECTED: actual is ~3,500 lines across handlers + supporting files; handlers alone are ~2,750 lines], VS Code extension, E2E test infrastructure.
 
 | Feature | Status |
 |---|---|
@@ -81,7 +84,7 @@ These features are high-value and the compiler already has the data — they jus
 
 `callHierarchy/incomingCalls`, `callHierarchy/outgoingCalls`
 
-`SemanticInfo.GetReferences(symbol)` already tracks all call sites with file/span/line/col. For outgoing calls, walk the function body AST and collect `FunctionCallExpression` nodes, resolve each via `GetCallTarget()`. For incoming, use the existing reference tracking. This is mostly wiring.
+`SemanticInfo.GetReferences(symbol)` already tracks all call sites with file/span/line/col. For outgoing calls, walk the function body AST and collect `FunctionCall` nodes [CORRECTED: AST node is `FunctionCall`, not `FunctionCallExpression`], resolve each via `GetCallTarget()`. For incoming, use the existing reference tracking. This is mostly wiring.
 
 ### 1.2 — Type Hierarchy
 
@@ -175,7 +178,7 @@ tools:
   - get_semantic_context(file, line_range) -> annotated code with types
 ```
 
-This is relatively straightforward — the data already exists in `SemanticInfo`, `SymbolTable`, and the handlers. You're building a JSON API on top of the same queries the handlers use. The compiler already has `SemanticQuery` as a clean read-only interface.
+This is relatively straightforward — the data already exists in `SemanticInfo`, `SymbolTable`, and the handlers. You're building a JSON API on top of the same queries the handlers use. The compiler already has `ISemanticQuery` as a clean read-only interface [CORRECTED: interface is `ISemanticQuery`, not `SemanticQuery`].
 
 ### 4.2 — Diagnostic Quick-Fix Suggestions for AI
 
@@ -197,7 +200,7 @@ Currently only full-document formatting. Add `textDocument/rangeFormatting` to f
 
 ### 5.2 — Selection Range
 
-`textDocument/selectionRange` — expand selection to next syntactic scope (expression -> statement -> block -> function -> class -> module). Walk the AST containment hierarchy using `AstPositionIndex.FindAllContainingNodes()`.
+`textDocument/selectionRange` — expand selection to next syntactic scope (expression -> statement -> block -> function -> class -> module). Walk the AST containment hierarchy using `AstPositionService.FindAllContainingNodes()` [CORRECTED: method is on `AstPositionService`, not `AstPositionIndex`].
 
 ### 5.3 — Linked Editing Ranges
 
@@ -270,3 +273,50 @@ After Phase 0, **Phase 1** next because it's high-value, low-effort (the data al
 | Cross-file | None | Full project | Single-file | Full project |
 | AI Support | None | MCP/structured context | None | MCP + semantic graph |
 | Performance | Full reparse | Incremental | Debounced full | Incremental + partial |
+
+---
+
+## Verification Summary
+
+**Result:** PASS WITH CORRECTIONS
+**Verified on:** 2026-03-10
+**Plan file:** `docs/implementation_planning/lsp_maturity_plan.md`
+
+### Corrections Made
+
+1. **Line count** — Changed "~6,400 lines" to "~3,500 lines". Actual LSP implementation is ~3,500 lines total (handlers ~2,750 lines + supporting files ~750 lines). Handler count of 17 is correct.
+2. **`FunctionCallExpression`** → `FunctionCall` (Section 1.1). The AST node is `FunctionCall`, not `FunctionCallExpression`.
+3. **`SemanticQuery`** → `ISemanticQuery` (Section 4.1). It's an interface `ISemanticQuery` in `Services/ISemanticQuery.cs`, not a class.
+4. **`AstPositionIndex.FindAllContainingNodes()`** → `AstPositionService.FindAllContainingNodes()` (Section 5.2). The method exists on `AstPositionService`, not `AstPositionIndex`. (`AstPositionIndex` has a separate `FindNodesAtPosition()` using offsets.)
+
+### Warnings
+
+- **Missing feature in status table**: `CompletionHandler` exists (156 lines) but is not listed in the "Current State" feature table. Consider adding it.
+- **`SourceText` is immutable**: Section 0.1 proposes adding `ApplyChange(range, newText)` to `SourceText`. This is architecturally sound as a proposal, but note that `SourceText` is currently fully immutable with no mutation methods — implementation would likely return a new `SourceText` instance.
+- **`SemanticInfo` thread safety is partial**: Section 0.3 claims `DiagnosticBag` is thread-safe (confirmed, uses `lock`), but `SemanticInfo` uses `ConcurrentDictionary` for some fields and plain `HashSet` for others. Full parallel analysis would need to verify `SemanticInfo` thread safety.
+
+### Missing Steps Added
+
+- None required. The plan is comprehensive in its phasing and correctly identifies Phase 0.2 as the critical prerequisite.
+
+### Unchecked Claims
+
+- **Performance claims** ("seconds, not minutes" for 200-file projects) — cannot verify without benchmarking.
+- **Comparison to rust-analyzer, gopls, Pyright, clangd** — feature parity claims against external tools not verified.
+
+### Verified Infrastructure (All Confirmed)
+
+All referenced compiler infrastructure exists and matches plan descriptions:
+- `ProjectCompiler` (7 partial files in `Project/`)
+- `DependencyGraph` with `GetAffectedFiles()` and `GetParallelizableGroups()`
+- `IncrementalCompilationCache` with SHA-256 content hashing
+- `SymbolCache` and `SymbolSerializer`
+- `SymbolTable`, `DiagnosticBag` (thread-safe), `NameMangler`
+- `SemanticInfo` with `GetReferences()`, `GetExpressionType()`, `GetCallTarget()`
+- `ISemanticQuery` interface (9 query methods)
+- `CompilerApi` with `Parse()` and `Analyze()` methods
+- `CompilerServices` / `CompilerServicesBuilder` (adapter pattern)
+- `InterfaceConflictValidator` (Order 170), `UnusedImportValidator` (Order 430)
+- `TypeSymbol.BaseType/Interfaces/Methods`, `FunctionSymbol.IsAbstract/IsVirtual/IsOverride`
+- `TextDocumentSyncKind.Full`, 300ms debounce — both confirmed
+- VS Code extension at `editors/vscode/`, E2E tests at `src/Sharpy.Lsp.Tests/E2E/`

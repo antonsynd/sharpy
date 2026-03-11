@@ -174,12 +174,8 @@ internal partial class ProjectCompiler
             // then resolve inheritance for imported types.
             // ResolveInheritanceRelationships() handles types declared within the project,
             // but imported types from external modules still have unresolved base names.
-            var inheritanceResolver = new InheritanceResolver(SymbolTable, _logger, _projectModel.SemanticBinding);
-            inheritanceResolver.ResolveAll(ImportResolver);
-            _projectModel.SemanticBinding.MaterializeInheritance();
-            DualWriteAssertions.AssertInheritanceConsistency(SymbolTable, _projectModel.SemanticBinding);
-            _projectModel.SemanticBinding.FreezeInheritance();
-            _projectModel.SemanticBinding.FreezeNetModules();
+            var compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel.SemanticBinding, _logger);
+            compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver);
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 5: Perform semantic analysis on all files
@@ -187,12 +183,7 @@ internal partial class ProjectCompiler
             {
                 return CreateFailureResult();
             }
-            _projectModel.SemanticBinding.MaterializeCodeGenInfo();
-            _projectModel.SemanticBinding.MaterializeVariableTypes();
-            DualWriteAssertions.AssertCodeGenInfoConsistency(SymbolTable, _projectModel.SemanticBinding);
-            DualWriteAssertions.AssertVariableTypeConsistency(SymbolTable, _projectModel.SemanticBinding);
-            _projectModel.SemanticBinding.FreezeVariableTypes();
-            _projectModel.SemanticBinding.FreezeCodeGenInfo();
+            compilationPipeline.MaterializeTypeInfo();
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 6: Generate C# code for all files
