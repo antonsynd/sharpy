@@ -245,25 +245,19 @@ public class Compiler
             // Pass 1b: Resolve inheritance (after imports, so imported base types are available)
             nameResolver.ResolveInheritance(cancellationToken);
 
-            // Resolve inheritance for imported types (transitive base types + imported type inheritance)
-            var inheritanceResolver = new InheritanceResolver(symbolTable, _logger, semanticBinding);
-            inheritanceResolver.ResolveAll(importResolver);
+            // Resolve inheritance for imported types and materialize
+            var compilationPipeline = new FileCompilationPipeline(symbolTable, semanticInfo, semanticBinding, _logger);
+            compilationPipeline.ResolveImportedInheritanceAndMaterialize(importResolver);
 
             // Assertions: After name resolution + inheritance, verify symbol table integrity
             assertionTimer.Restart();
             CompilerInvariants.AssertPostNameResolution(symbolTable, diagnostics);
             assertionTimer.Stop();
             _logger.LogDebug($"Post-name-resolution assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
-
-            // Materialize inheritance data onto Symbol properties, then verify and freeze
-            semanticBinding.MaterializeInheritance();
-            DualWriteAssertions.AssertInheritanceConsistency(symbolTable, semanticBinding);
             assertionTimer.Restart();
             CompilerInvariants.AssertPostInheritance(symbolTable, diagnostics);
             assertionTimer.Stop();
             _logger.LogDebug($"Post-inheritance assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
-            semanticBinding.FreezeInheritance();
-            semanticBinding.FreezeNetModules();
 
             LogPhaseEnd(filePath, importResolver.Diagnostics.ErrorCount);
             metrics.EndPhase();
@@ -289,33 +283,15 @@ public class Compiler
             cancellationToken.ThrowIfCancellationRequested();
 
             // Pass 2: Type resolution and type checking
-            metrics.StartPhase("Type Resolution");
-            LogPhaseStart("Type Resolution", filePath);
-            var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger, cancellationToken);
-            LogPhaseEnd(filePath);
-            metrics.EndPhase();
-
             metrics.StartPhase("Type Checking");
             LogPhaseStart("Type Checking", filePath);
-            var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
-            var semanticMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 100;
-            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline)
-            {
-                CurrentFilePath = filePath,
-                SemanticBinding = semanticBinding,
-                MaxErrors = semanticMaxErrors
-            };
-
-            // Import root causes from import resolution so TypeChecker can suppress cascading errors
-            typeChecker.ImportRootCauses(diagnostics);
-
             var isEntryPoint = _options.OutputType.Equals("exe", StringComparison.OrdinalIgnoreCase);
+            var typeCheckResult = compilationPipeline.TypeCheck(
+                module, filePath, isEntryPoint, _options.MaxErrors, diagnostics,
+                computeCodeGenInfo: true, cancellationToken: cancellationToken);
+            var typeChecker = typeCheckResult.TypeChecker;
 
-            try
-            {
-                typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: isEntryPoint, cancellationToken);
-            }
-            catch (SemanticAnalysisException)
+            if (typeCheckResult.Aborted)
             {
                 // Preserve all accumulated diagnostics from the type checker
                 LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
@@ -359,8 +335,10 @@ public class Compiler
                     }
                 }
 
+                var moduleTypeResolver = new TypeResolver(symbolTable, semanticInfo, _logger, cancellationToken);
+                var modulePipeline = ValidationPipelineFactory.CreateDefault(_logger);
                 var moduleTypeChecker = new TypeChecker(
-                    symbolTable, semanticInfo, typeResolver, _logger, pipeline)
+                    symbolTable, semanticInfo, moduleTypeResolver, _logger, modulePipeline)
                 {
                     CurrentFilePath = modulePath,
                     SemanticBinding = semanticBinding,
@@ -400,15 +378,10 @@ public class Compiler
             Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0,
                 "Type checker should record at least one expression type for non-empty modules");
             // Materialize CodeGenInfo and VariableType data onto Symbol properties, then verify and freeze
-            semanticBinding.MaterializeCodeGenInfo();
-            semanticBinding.MaterializeVariableTypes();
             assertionTimer.Restart();
-            DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, semanticBinding);
-            DualWriteAssertions.AssertVariableTypeConsistency(symbolTable, semanticBinding);
+            compilationPipeline.MaterializeTypeInfo();
             assertionTimer.Stop();
             _logger.LogDebug($"Post-materialization assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
-            semanticBinding.FreezeVariableTypes();
-            semanticBinding.FreezeCodeGenInfo();
 
             // Capture symbol count and validator times after type checking
             // (available even if code generation fails)
