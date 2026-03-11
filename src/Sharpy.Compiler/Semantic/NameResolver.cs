@@ -25,14 +25,6 @@ internal partial class NameResolver
         _semanticBinding = semanticBinding ?? new SemanticBinding();
     }
 
-    private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-    {
-        var refs = _semanticBinding.GetInterfaces(symbol);
-        if (refs != null)
-            return refs.Select(r => r.Definition).ToList();
-        return symbol.Interfaces.Select(r => r.Definition).ToList();
-    }
-
     public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
@@ -173,7 +165,7 @@ internal partial class NameResolver
                 continue;
             }
 
-            foreach (var iface in GetInterfaces(current))
+            foreach (var iface in TypeHierarchyService.GetDirectInterfaces(current, _semanticBinding))
             {
                 queue.Enqueue(iface);
             }
@@ -200,7 +192,7 @@ internal partial class NameResolver
                 continue;
             }
 
-            foreach (var iface in GetInterfaces(current))
+            foreach (var iface in TypeHierarchyService.GetDirectInterfaces(current, _semanticBinding))
             {
                 queue.Enqueue(iface);
             }
@@ -406,7 +398,7 @@ internal partial class NameResolver
             interfaceSymbol.Methods.Select(m => GetMethodSignature(m)));
 
         var visited = new HashSet<string> { interfaceSymbol.Name };
-        var queue = new Queue<TypeSymbol>(GetInterfaces(interfaceSymbol));
+        var queue = new Queue<TypeSymbol>(TypeHierarchyService.GetDirectInterfaces(interfaceSymbol, _semanticBinding));
 
         while (queue.Count > 0)
         {
@@ -427,7 +419,7 @@ internal partial class NameResolver
             }
 
             // Add base interface's bases to the queue
-            foreach (var grandBase in GetInterfaces(baseInterface))
+            foreach (var grandBase in TypeHierarchyService.GetDirectInterfaces(baseInterface, _semanticBinding))
             {
                 queue.Enqueue(grandBase);
             }
