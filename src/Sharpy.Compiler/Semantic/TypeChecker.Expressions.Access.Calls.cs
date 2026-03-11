@@ -884,6 +884,14 @@ internal partial class TypeChecker
                 return overloads;
         }
 
+        // Check interfaces — handles interface-typed variables and interface
+        // methods not found via base class chain (#364)
+        foreach (var iface in TypeHierarchyService.GetAllInterfaces(type, SemanticBinding))
+        {
+            if (iface.MethodOverloads.TryGetValue(methodName, out overloads) && overloads.Count > 0)
+                return overloads;
+        }
+
         return null;
     }
 
