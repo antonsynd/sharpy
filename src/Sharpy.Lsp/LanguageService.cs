@@ -29,7 +29,8 @@ internal sealed class LanguageService : IDisposable
     // Background indexing
     private ProgressReporter? _progressReporter;
     private CancellationTokenSource? _indexingCts;
-    private volatile bool _isReady;
+    private volatile bool _isReady = true;
+    private volatile bool _isIndexing;
 
     public LanguageService(SharplyWorkspace workspace, CompilerApi api, ILogger<LanguageService> logger)
     {
@@ -54,9 +55,9 @@ internal sealed class LanguageService : IDisposable
 
     /// <summary>
     /// Whether background indexing has completed and project-level results are available.
-    /// Returns true when no project is loaded (single-file mode is always ready).
+    /// Returns true when no project is loaded and no indexing is in progress.
     /// </summary>
-    public bool IsReady => !HasProject || _isReady;
+    public bool IsReady => _isReady && !_isIndexing;
 
     /// <summary>
     /// The current project analysis result, if available.
@@ -171,6 +172,9 @@ internal sealed class LanguageService : IDisposable
         _indexingCts?.Cancel();
         _indexingCts?.Dispose();
 
+        _isIndexing = true;
+        _isReady = false;
+
         var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _indexingCts = cts;
 
@@ -187,6 +191,10 @@ internal sealed class LanguageService : IDisposable
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Background indexing failed");
+            }
+            finally
+            {
+                _isIndexing = false;
             }
         }, cts.Token);
     }

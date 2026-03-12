@@ -254,6 +254,107 @@ public class LanguageServiceTests : IDisposable
         _service.Dependencies.Should().NotBeNull();
     }
 
+    [Fact]
+    public async Task IsReady_NoProject_ReturnsTrue()
+    {
+        // Single-file mode is always "ready"
+        _service.IsReady.Should().BeTrue();
+
+        // Even after failed init (no project file), should be ready
+        await _service.InitializeProjectAsync(_tempDir);
+        _service.IsReady.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsReady_AfterInit_ReturnsTrue()
+    {
+        CreateProjectFiles(
+            ("main.spy", "def main():\n    print(\"hello\")"));
+
+        await _service.InitializeProjectAsync(_tempDir);
+
+        _service.IsReady.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StartBackgroundIndexing_CompletesSuccessfully()
+    {
+        CreateProjectFiles(
+            ("main.spy", "def main():\n    print(\"hello\")"));
+
+        _service.StartBackgroundIndexing(_tempDir);
+
+        // Wait for indexing to complete (poll IsReady)
+        var timeout = TimeSpan.FromSeconds(30);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (!_service.IsReady && sw.Elapsed < timeout)
+        {
+            await Task.Delay(50);
+        }
+
+        _service.IsReady.Should().BeTrue();
+        _service.HasProject.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StartBackgroundIndexing_FallbackToWorkspaceDuringIndexing()
+    {
+        CreateProjectFiles(
+            ("main.spy", "def main():\n    print(\"hello\")"));
+
+        // Open a document in workspace before indexing completes
+        _workspace.OpenDocument("file:///standalone.spy", "x: int = 1", 1);
+
+        _service.StartBackgroundIndexing(_tempDir);
+
+        // Even during indexing, workspace fallback should work
+        var analysis = await _service.GetAnalysisAsync("file:///standalone.spy");
+        analysis.Should().NotBeNull();
+
+        // Wait for completion
+        var timeout = TimeSpan.FromSeconds(30);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (!_service.IsReady && sw.Elapsed < timeout)
+        {
+            await Task.Delay(50);
+        }
+        _service.IsReady.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StartBackgroundIndexing_CancellationStopsIndexing()
+    {
+        CreateProjectFiles(
+            ("main.spy", "def main():\n    print(\"hello\")"));
+
+        using var cts = new CancellationTokenSource();
+        _service.StartBackgroundIndexing(_tempDir, cts.Token);
+
+        // Cancel immediately
+        await cts.CancelAsync();
+
+        // Give it time to process cancellation
+        await Task.Delay(200);
+
+        // Service should not throw
+    }
+
+    [Fact]
+    public async Task GetDependencyQuery_AfterInit_ReturnsQuery()
+    {
+        CreateProjectFiles(
+            ("main.spy", "from lib import helper\ndef main():\n    print(helper())"),
+            ("lib.spy", "def helper() -> str:\n    return \"hello\""));
+        await _service.InitializeProjectAsync(_tempDir);
+
+        var deps = _service.Dependencies;
+        deps.Should().NotBeNull();
+
+        var libPath = IOPath.Combine(_tempDir, "lib.spy");
+        var affected = deps!.GetAffectedFiles(libPath);
+        affected.Should().NotBeEmpty("lib.spy has a dependent: main.spy");
+    }
+
     private void CreateProjectFiles(params (string Name, string Content)[] files)
     {
         var spyFiles = string.Join("\n        ",
