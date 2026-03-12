@@ -212,6 +212,37 @@ public sealed class SourceText
     }
 
     /// <summary>
+    /// Returns a new SourceText with the specified changes applied.
+    /// </summary>
+    /// <param name="changes">The text changes to apply.</param>
+    /// <returns>A new SourceText with the changes applied.</returns>
+    /// <remarks>
+    /// Changes are applied in reverse offset order to maintain position validity.
+    /// </remarks>
+    public SourceText WithChanges(IEnumerable<TextChange> changes)
+    {
+        var sortedChanges = changes
+            .OrderByDescending(c => c.Span.Start)
+            .ToList();
+
+        if (sortedChanges.Count == 0)
+        {
+            return new SourceText(_text, FilePath);
+        }
+
+        var result = _text;
+        foreach (var change in sortedChanges)
+        {
+            result = string.Concat(
+                result.AsSpan(0, change.Span.Start),
+                change.NewText,
+                result.AsSpan(change.Span.End));
+        }
+
+        return new SourceText(result, FilePath);
+    }
+
+    /// <summary>
     /// Computes the starting character position of each line.
     /// </summary>
     private static int[] ComputeLineStarts(string text)
