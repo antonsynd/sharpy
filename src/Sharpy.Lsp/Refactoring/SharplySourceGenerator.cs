@@ -11,6 +11,8 @@ namespace Sharpy.Lsp.Refactoring;
 /// </summary>
 internal static class SharplySourceGenerator
 {
+    private const int MaxDetectableIndent = 8;
+
     /// <summary>
     /// Formats a SemanticType as a Sharpy type annotation string.
     /// </summary>
@@ -266,7 +268,7 @@ internal static class SharplySourceGenerator
                     break;
             }
 
-            if (spaces > 0 && spaces <= 8)
+            if (spaces > 0 && spaces <= MaxDetectableIndent)
                 return new string(' ', spaces);
         }
 

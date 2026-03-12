@@ -164,4 +164,70 @@ def main():
         scopeInfo.DeclaredInScope.Should().BeEmpty();
         scopeInfo.ContainsReturn.Should().BeFalse();
     }
+
+    [Fact]
+    public void AnalyzeScope_ContainsBreak_FlagsBreak()
+    {
+        var source = @"
+def target():
+    for i in range(10):
+        if i == 5:
+            break
+        print(i)
+
+def main():
+    pass
+";
+        var body = GetFunctionBody(source);
+
+        // Select the for loop which contains a break
+        var selected = new System.Collections.Generic.List<Statement> { body[0] };
+
+        var scopeInfo = ScopeAnalyzer.AnalyzeScope(selected, body, null);
+
+        scopeInfo.ContainsBreak.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnalyzeScope_ContainsContinue_FlagsContinue()
+    {
+        var source = @"
+def target():
+    for i in range(10):
+        if i == 5:
+            continue
+        print(i)
+
+def main():
+    pass
+";
+        var body = GetFunctionBody(source);
+
+        // Select the for loop which contains a continue
+        var selected = new System.Collections.Generic.List<Statement> { body[0] };
+
+        var scopeInfo = ScopeAnalyzer.AnalyzeScope(selected, body, null);
+
+        scopeInfo.ContainsContinue.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnalyzeScope_ContainsYield_FlagsYield()
+    {
+        var source = @"
+def target():
+    yield 42
+
+def main():
+    pass
+";
+        var body = GetFunctionBody(source);
+
+        // Select the yield statement
+        var selected = new System.Collections.Generic.List<Statement> { body[0] };
+
+        var scopeInfo = ScopeAnalyzer.AnalyzeScope(selected, body, null);
+
+        scopeInfo.ContainsYield.Should().BeTrue();
+    }
 }

@@ -117,4 +117,35 @@ public class ExtractVariableProviderTests
         // String literals are valid expressions for extraction
         actions.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public async Task ExtractVariable_FunctionCallResult_ReturnsAction()
+    {
+        var source = "def get_value() -> int:\n    return 42\n\ndef main():\n    print(get_value() + 1)";
+        var provider = new ExtractVariableProvider();
+
+        // Select the "get_value() + 1" expression on line 4
+        var range = new LspRange(new Position(4, 10), new Position(4, 25));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        actions.Should().NotBeEmpty();
+        var action = actions[0];
+        action.Kind.Should().Be(CodeActionKind.RefactorExtract);
+        action.Title.Should().Contain("Extract variable");
+    }
+
+    [Fact]
+    public async Task ExtractVariable_InsideClassMethod_ReturnsAction()
+    {
+        var source = "class Calc:\n    def compute(self) -> int:\n        return 10 + 20\n\ndef main():\n    c: Calc = Calc()\n    print(c.compute())";
+        var provider = new ExtractVariableProvider();
+
+        // Select the "10 + 20" expression inside the class method
+        var range = new LspRange(new Position(2, 15), new Position(2, 22));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        actions.Should().NotBeEmpty();
+        var action = actions[0];
+        action.Kind.Should().Be(CodeActionKind.RefactorExtract);
+    }
 }

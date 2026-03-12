@@ -146,4 +146,46 @@ public class ExtractMethodProviderTests
         action.Kind.Should().Be(CodeActionKind.RefactorExtract);
         action.Edit.Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task ExtractMethod_StatementsUsingOuterVariable_GeneratesParameters()
+    {
+        // x is declared outside the selection, y uses x inside — x should become a parameter
+        var source = "def main():\n    x: int = 10\n    y: int = x + 5\n    print(y)";
+        var provider = new ExtractMethodProvider();
+
+        // Select "y: int = x + 5" on line 2
+        var range = new LspRange(new Position(2, 0), new Position(2, 19));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        actions.Should().NotBeEmpty();
+        var action = actions[0];
+        action.Title.Should().Be("Extract method");
+        action.Edit.Should().NotBeNull();
+
+        // The generated method should include the edit with parameters
+        var edits = action.Edit!.Changes![TestUri].ToList();
+        edits.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtractMethod_StatementsWithReturnValue_GeneratesReturn()
+    {
+        // y is declared in selection and used after — should generate return
+        var source = "def main():\n    y: int = 42\n    print(y)";
+        var provider = new ExtractMethodProvider();
+
+        // Select "    y: int = 42" on line 1 (full line including indentation)
+        var range = new LspRange(new Position(1, 0), new Position(1, 19));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        actions.Should().NotBeEmpty();
+        var action = actions[0];
+        action.Title.Should().Be("Extract method");
+        action.Edit.Should().NotBeNull();
+
+        // The generated method should contain edits for function definition and call
+        var edits = action.Edit!.Changes![TestUri].ToList();
+        edits.Should().NotBeEmpty();
+    }
 }

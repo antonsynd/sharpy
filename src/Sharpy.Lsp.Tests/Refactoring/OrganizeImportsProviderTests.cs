@@ -110,4 +110,40 @@ public class OrganizeImportsProviderTests
 
         actions.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task OrganizeImports_RemovesUnusedImports()
+    {
+        // 'sys' is imported but never used; 'math' is used
+        var source = "import sys\nimport math\n\ndef main():\n    print(math.floor(1.5))";
+        var provider = new OrganizeImportsProvider();
+
+        // Create a diagnostic for unused import SPY0452
+        var diagnostics = new Container<Diagnostic>(new Diagnostic
+        {
+            Range = new LspRange(new Position(0, 0), new Position(0, 10)),
+            Code = "SPY0452",
+            Message = "Unused import 'sys'",
+            Severity = DiagnosticSeverity.Warning
+        });
+
+        var analysis = _api.Analyze(source, CancellationToken.None);
+        var context = new CodeActionProviderContext(
+            TestUri,
+            new LspRange(new Position(0, 0), new Position(0, 0)),
+            diagnostics,
+            analysis,
+            source,
+            _api);
+        var actions = await provider.GetCodeActionsAsync(context, CancellationToken.None);
+
+        actions.Should().ContainSingle();
+        var edits = actions[0].Edit!.Changes![TestUri].ToList();
+        var newText = edits[0].NewText;
+
+        // The unused import 'sys' should be removed
+        newText.Should().NotContain("import sys");
+        // The used import 'math' should be kept
+        newText.Should().Contain("import math");
+    }
 }

@@ -141,4 +141,34 @@ public class InlineProviderTests
         inlineAction!.Kind.Should().Be(CodeActionKind.RefactorInline);
         inlineAction.Edit.Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task InlineFunction_MultipleCallSites_ReturnsNoAction()
+    {
+        // Function called twice — should not be offered for inlining
+        var source = "def double(n: int) -> int:\n    return n * 2\n\ndef main():\n    print(double(5))\n    print(double(10))";
+        var provider = new InlineProvider();
+
+        // Cursor on first call to double
+        var range = new LspRange(new Position(4, 10), new Position(4, 10));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var inlineAction = actions.FirstOrDefault(a => a.Title.Contains("Inline function"));
+        inlineAction.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task InlineFunction_RecursiveFunction_ReturnsNoAction()
+    {
+        // Recursive function — should not be offered for inlining
+        var source = "def factorial(n: int) -> int:\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n\ndef main():\n    print(factorial(5))";
+        var provider = new InlineProvider();
+
+        // Cursor on the call to factorial in main
+        var range = new LspRange(new Position(6, 10), new Position(6, 10));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var inlineAction = actions.FirstOrDefault(a => a.Title.Contains("Inline function"));
+        inlineAction.Should().BeNull();
+    }
 }
