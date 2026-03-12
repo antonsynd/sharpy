@@ -212,7 +212,7 @@ public class MultiFileTests : IAsyncLifetime
             "fixed code should clear diagnostics");
     }
 
-    [Fact(Skip = "Requires background indexing completion signaling — hover falls back to single-file analysis before project indexing finishes")]
+    [Fact]
     public async Task MultiFile_HoverOnImportedSymbol_ReturnsInfo()
     {
         CreateProjectFiles(
@@ -226,15 +226,39 @@ public class MultiFileTests : IAsyncLifetime
         var mainText = File.ReadAllText(System.IO.Path.Combine(_tempDir, "main.spy"));
         await _client.DidOpenAsync(mainUri, mainText);
 
-        // Wait for analysis to complete
+        // Wait for initial didOpen diagnostics
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
             TimeSpan.FromSeconds(15));
 
-        // Hover over 'helper' call at line 2, character 4
-        var hover = await _client.HoverAsync(mainUri, 2, 4);
+        // Poll hover until background indexing completes and project-level analysis
+        // resolves the imported symbol. Single-file analysis returns null for cross-file
+        // symbols, but once project indexing finishes, the cached result includes imports.
+        JsonNode? hover = null;
+        var timeout = TimeSpan.FromSeconds(30);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (sw.Elapsed < timeout)
+        {
+            // Drain any pending diagnostics notifications (from background indexing)
+            try
+            {
+                await _client.WaitForNotificationAsync(
+                    "textDocument/publishDiagnostics",
+                    TimeSpan.FromMilliseconds(500));
+            }
+            catch (TimeoutException)
+            {
+                // No pending notifications
+            }
 
-        hover.Should().NotBeNull("hovering over an imported function should return info");
+            hover = await _client.HoverAsync(mainUri, 2, 4);
+            if (hover != null)
+                break;
+
+            await Task.Delay(200);
+        }
+
+        hover.Should().NotBeNull("hovering over an imported function should return info after project indexing completes");
     }
 
     private void CreateProjectFiles(params (string Name, string Content)[] files)
