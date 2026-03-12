@@ -6,6 +6,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Lsp.Handlers;
+using Sharpy.Lsp.Refactoring;
 using Xunit;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
@@ -19,13 +20,16 @@ public class CodeActionTests : IDisposable
 {
     private readonly CompilerApi _api = new();
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly SharplyCodeActionHandler _handler;
     private static readonly DocumentUri TestUri = DocumentUri.From("file:///test.spy");
 
     public CodeActionTests()
     {
         _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
-        _handler = new SharplyCodeActionHandler(_workspace);
+        _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
+        ICodeActionProvider[] providers = [new DiagnosticQuickFixProvider()];
+        _handler = new SharplyCodeActionHandler(_languageService, _api, _workspace, providers);
     }
 
     public void Dispose()

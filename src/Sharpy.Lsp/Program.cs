@@ -4,6 +4,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Server;
 using Sharpy.Compiler;
 using Sharpy.Lsp.Handlers;
+using Sharpy.Lsp.Refactoring;
 
 namespace Sharpy.Lsp;
 
@@ -47,6 +48,8 @@ public class Program
                     services.AddSingleton<SharplyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
                     services.AddSingleton<LanguageService>();
+                    // Code action providers
+                    services.AddSingleton<ICodeActionProvider, DiagnosticQuickFixProvider>();
                 })
                 .OnInitialize(async (server, request, token) =>
                 {

@@ -1,175 +1,73 @@
-using Newtonsoft.Json.Linq;
-using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using Sharpy.Compiler.Diagnostics;
-using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
+using Sharpy.Compiler;
+using Sharpy.Lsp.Refactoring;
 
 namespace Sharpy.Lsp.Handlers;
 
 /// <summary>
 /// Handles textDocument/codeAction requests.
-/// Provides quick fixes for common diagnostics (unused imports, unused variables, naming conventions).
+/// Delegates to registered ICodeActionProvider instances for extensible code action support.
 /// </summary>
 internal sealed class SharplyCodeActionHandler : CodeActionHandlerBase
 {
+    private readonly LanguageService _languageService;
+    private readonly CompilerApi _compilerApi;
     private readonly SharplyWorkspace _workspace;
+    private readonly IEnumerable<ICodeActionProvider> _providers;
 
-    public SharplyCodeActionHandler(SharplyWorkspace workspace)
+    public SharplyCodeActionHandler(
+        LanguageService languageService,
+        CompilerApi compilerApi,
+        SharplyWorkspace workspace,
+        IEnumerable<ICodeActionProvider> providers)
     {
+        _languageService = languageService;
+        _compilerApi = compilerApi;
         _workspace = workspace;
+        _providers = providers;
     }
 
-    public override Task<CommandOrCodeActionContainer?> Handle(
+    public override async Task<CommandOrCodeActionContainer?> Handle(
         CodeActionParams request,
         CancellationToken ct)
     {
-        var actions = new List<CommandOrCodeAction>();
         var uri = request.TextDocument.Uri;
 
-        // Get document text for computing edits
+        // Get document text
         var doc = _workspace.GetDocument(uri.ToString());
         var text = doc?.Text;
 
-        foreach (var diag in request.Context.Diagnostics)
+        // Get semantic analysis (project-aware if available)
+        SemanticResult? analysis = null;
+        if (_languageService.IsReady)
         {
-            var code = diag.Code?.String;
-            if (code == null)
-                continue;
+            analysis = await _languageService.GetAnalysisAsync(uri.ToString(), ct).ConfigureAwait(false);
+        }
+        analysis ??= doc?.CachedAnalysis;
 
-            switch (code)
+        // Build provider context
+        var context = new Refactoring.CodeActionProviderContext(
+            uri,
+            request.Range,
+            request.Context.Diagnostics,
+            analysis,
+            text,
+            _compilerApi);
+
+        // Collect actions from all providers
+        var actions = new List<CommandOrCodeAction>();
+        foreach (var provider in _providers)
+        {
+            var providerActions = await provider.GetCodeActionsAsync(context, ct).ConfigureAwait(false);
+            foreach (var action in providerActions)
             {
-                case DiagnosticCodes.Validation.UnusedImport:
-                    actions.Add(CreateRemoveImportAction(uri, diag, text));
-                    break;
-
-                case DiagnosticCodes.Validation.UnusedVariable:
-                    actions.Add(CreatePrefixUnderscoreAction(uri, diag));
-                    break;
-
-                case DiagnosticCodes.Validation.NamingConventionWarning:
-                    {
-                        var renameAction = CreateNamingFixAction(uri, diag);
-                        if (renameAction != null)
-                            actions.Add(renameAction);
-                        break;
-                    }
+                actions.Add(new CommandOrCodeAction(action));
             }
         }
 
-        return Task.FromResult<CommandOrCodeActionContainer?>(new CommandOrCodeActionContainer(actions));
-    }
-
-    private static CommandOrCodeAction CreateRemoveImportAction(
-        DocumentUri uri,
-        Diagnostic diag,
-        string? documentText)
-    {
-        // Remove the entire line containing the unused import
-        var range = diag.Range;
-
-        // Extend range to cover the full line including the newline
-        LspRange deleteRange;
-        if (documentText != null)
-        {
-            var lines = documentText.Split('\n');
-            var lineIndex = range.Start.Line;
-            if (lineIndex >= 0 && lineIndex < lines.Length)
-            {
-                // Delete from start of line to start of next line (including newline)
-                deleteRange = new LspRange(
-                    new Position(lineIndex, 0),
-                    new Position(lineIndex + 1, 0));
-            }
-            else
-            {
-                deleteRange = range;
-            }
-        }
-        else
-        {
-            deleteRange = range;
-        }
-
-        var edit = new WorkspaceEdit
-        {
-            Changes = new Dictionary<DocumentUri, IEnumerable<TextEdit>>
-            {
-                [uri] = [new TextEdit { Range = deleteRange, NewText = "" }]
-            }
-        };
-
-        return new CommandOrCodeAction(new CodeAction
-        {
-            Title = "Remove unused import",
-            Kind = CodeActionKind.QuickFix,
-            Diagnostics = new Container<Diagnostic>(diag),
-            Edit = edit
-        });
-    }
-
-    private static CommandOrCodeAction CreatePrefixUnderscoreAction(
-        DocumentUri uri,
-        Diagnostic diag)
-    {
-        // Extract the variable name from the diagnostic range and prefix with _
-        var range = diag.Range;
-
-        // We prefix the variable name at the diagnostic range with _
-        var edit = new WorkspaceEdit
-        {
-            Changes = new Dictionary<DocumentUri, IEnumerable<TextEdit>>
-            {
-                [uri] = [new TextEdit { Range = new LspRange(range.Start, range.Start), NewText = "_" }]
-            }
-        };
-
-        return new CommandOrCodeAction(new CodeAction
-        {
-            Title = "Prefix with '_' to mark as intentionally unused",
-            Kind = CodeActionKind.QuickFix,
-            Diagnostics = new Container<Diagnostic>(diag),
-            Edit = edit
-        });
-    }
-
-    private static CommandOrCodeAction? CreateNamingFixAction(
-        DocumentUri uri,
-        Diagnostic diag)
-    {
-        // Extract suggested name from structured diagnostic data
-        var suggestedName = ExtractSuggestedNameFromData(diag.Data);
-
-        if (string.IsNullOrEmpty(suggestedName))
-            return null;
-
-        var edit = new WorkspaceEdit
-        {
-            Changes = new Dictionary<DocumentUri, IEnumerable<TextEdit>>
-            {
-                [uri] = [new TextEdit { Range = diag.Range, NewText = suggestedName }]
-            }
-        };
-
-        return new CommandOrCodeAction(new CodeAction
-        {
-            Title = $"Rename to '{suggestedName}'",
-            Kind = CodeActionKind.QuickFix,
-            Diagnostics = new Container<Diagnostic>(diag),
-            Edit = edit
-        });
-    }
-
-    private static string? ExtractSuggestedNameFromData(JToken? data)
-    {
-        if (data is JObject obj && obj.TryGetValue("suggestedName", out var token))
-        {
-            var value = token.Value<string>();
-            if (!string.IsNullOrEmpty(value))
-                return value;
-        }
-        return null;
+        return new CommandOrCodeActionContainer(actions);
     }
 
     public override Task<CodeAction> Handle(CodeAction request, CancellationToken ct)
@@ -185,7 +83,13 @@ internal sealed class SharplyCodeActionHandler : CodeActionHandlerBase
         return new CodeActionRegistrationOptions
         {
             DocumentSelector = TextDocumentSelector.ForPattern("**/*.spy"),
-            CodeActionKinds = new Container<CodeActionKind>(CodeActionKind.QuickFix)
+            CodeActionKinds = new Container<CodeActionKind>(
+                CodeActionKind.QuickFix,
+                CodeActionKind.Refactor,
+                CodeActionKind.RefactorExtract,
+                CodeActionKind.RefactorInline,
+                CodeActionKind.Source,
+                CodeActionKind.SourceOrganizeImports)
         };
     }
 }
