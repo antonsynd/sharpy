@@ -148,6 +148,95 @@ public class MultiFileTests : IAsyncLifetime
             "importing a non-existent symbol should produce a diagnostic");
     }
 
+    [Fact]
+    public async Task MultiFile_CrossFileTypeError_ProducesDiagnostic()
+    {
+        // main.spy uses helper() result as int, but it returns str
+        CreateProjectFiles(
+            ("main.spy", "from lib import helper\ndef main():\n    x: int = helper()\n    print(x)"),
+            ("lib.spy", "def helper() -> str:\n    return \"hello\""));
+
+        var rootUri = new Uri(_tempDir).AbsoluteUri;
+        await _client.InitializeAsync(rootUri);
+
+        var mainUri = new Uri(System.IO.Path.Combine(_tempDir, "main.spy")).AbsoluteUri;
+        var mainText = File.ReadAllText(System.IO.Path.Combine(_tempDir, "main.spy"));
+        await _client.DidOpenAsync(mainUri, mainText);
+
+        var notification = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+
+        var diagnostics = notification["diagnostics"]?.AsArray();
+        diagnostics.Should().NotBeNull();
+        diagnostics!.Count.Should().BeGreaterThan(0,
+            "type mismatch from cross-file import should produce a diagnostic");
+    }
+
+    [Fact]
+    public async Task MultiFile_EditIntroducesError_ThenFixes()
+    {
+        // Start with valid code
+        CreateProjectFiles(
+            ("main.spy", "def main():\n    x: int = 42\n    print(x)"));
+
+        var rootUri = new Uri(_tempDir).AbsoluteUri;
+        await _client.InitializeAsync(rootUri);
+
+        var mainUri = new Uri(System.IO.Path.Combine(_tempDir, "main.spy")).AbsoluteUri;
+        var mainText = File.ReadAllText(System.IO.Path.Combine(_tempDir, "main.spy"));
+        await _client.DidOpenAsync(mainUri, mainText);
+
+        var firstDiag = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+        firstDiag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
+            "initial valid code should have no diagnostics");
+
+        // Introduce a type error
+        await _client.DidChangeAsync(mainUri, "def main():\n    x: int = \"bad\"\n    print(x)", 2);
+
+        var secondDiag = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+        secondDiag["diagnostics"]!.AsArray()!.Count.Should().BeGreaterThan(0,
+            "type error should produce diagnostics");
+
+        // Fix the error
+        await _client.DidChangeAsync(mainUri, "def main():\n    x: int = 99\n    print(x)", 3);
+
+        var thirdDiag = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+        thirdDiag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
+            "fixed code should clear diagnostics");
+    }
+
+    [Fact]
+    public async Task MultiFile_HoverOnImportedSymbol_ReturnsInfo()
+    {
+        CreateProjectFiles(
+            ("main.spy", "from lib import helper\ndef main():\n    helper()"),
+            ("lib.spy", "def helper() -> str:\n    return \"hello\""));
+
+        var rootUri = new Uri(_tempDir).AbsoluteUri;
+        await _client.InitializeAsync(rootUri);
+
+        var mainUri = new Uri(System.IO.Path.Combine(_tempDir, "main.spy")).AbsoluteUri;
+        var mainText = File.ReadAllText(System.IO.Path.Combine(_tempDir, "main.spy"));
+        await _client.DidOpenAsync(mainUri, mainText);
+
+        // Wait for analysis to complete
+        await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+
+        // Hover over 'helper' call at line 2, character 4
+        var hover = await _client.HoverAsync(mainUri, 2, 4);
+
+        hover.Should().NotBeNull("hovering over an imported function should return info");
+    }
+
     private void CreateProjectFiles(params (string Name, string Content)[] files)
     {
         // Create .spyproj
