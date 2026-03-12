@@ -157,6 +157,7 @@ internal sealed class LanguageService : IDisposable
         catch (OperationCanceledException)
         {
             _logger.LogInformation("Project initialization cancelled");
+            Interlocked.Exchange(ref _state, StateReady);
             throw;
         }
         catch (Exception ex)
@@ -282,7 +283,7 @@ internal sealed class LanguageService : IDisposable
         var deps = _projectAnalysis?.Dependencies;
         var affectedPaths = deps != null
             ? deps.GetAffectedFiles(changedFilePath)
-            : new[] { changedFilePath }.ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
+            : new[] { PathNormalizer.Normalize(changedFilePath) }.ToImmutableHashSet();
 
         _logger.LogInformation(
             "Document changed: {File}, {Count} affected file(s)",

@@ -102,7 +102,8 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
             RecordImportDependencies(uri, result.Ast);
         }
 
-        // Notify LanguageService for project-aware reanalysis of affected files
+        // TODO(#377): Forward CancellationToken to OnDocumentChangedAsync/GetAnalysisAsync
+        // to avoid backlog of stale reanalysis under rapid editing.
         if (_languageService.IsProjectFile(uri))
         {
             try

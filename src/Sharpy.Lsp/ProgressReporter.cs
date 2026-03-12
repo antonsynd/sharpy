@@ -75,7 +75,7 @@ internal sealed class ProgressScope : IDisposable
 
     private readonly IWorkDoneObserver? _observer;
     private readonly ILogger? _logger;
-    private bool _disposed;
+    private int _disposed; // 0 = active, 1 = disposed; use Interlocked for thread-safety
 
     internal ProgressScope(IWorkDoneObserver? observer, ILogger? logger)
     {
@@ -90,7 +90,7 @@ internal sealed class ProgressScope : IDisposable
     /// <param name="percentage">Optional percentage (0-100).</param>
     public void Report(string message, int? percentage = null)
     {
-        if (_observer == null || _disposed)
+        if (_observer == null || Volatile.Read(ref _disposed) != 0)
             return;
 
         try
@@ -114,10 +114,8 @@ internal sealed class ProgressScope : IDisposable
     /// <param name="message">Optional completion message.</param>
     public void Complete(string? message = null)
     {
-        if (_observer == null || _disposed)
+        if (_observer == null || Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
             return;
-
-        _disposed = true;
 
         try
         {
@@ -135,9 +133,6 @@ internal sealed class ProgressScope : IDisposable
 
     public void Dispose()
     {
-        if (!_disposed)
-        {
-            Complete();
-        }
+        Complete();
     }
 }

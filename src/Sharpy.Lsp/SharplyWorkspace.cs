@@ -115,16 +115,17 @@ internal sealed class DocumentState : IDisposable
             }
 
             // Cancel any previous pending analysis
-            if (_pendingCts != null)
+            var newCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var oldCts = Interlocked.Exchange(ref _pendingCts, newCts);
+            if (oldCts != null)
             {
-                await _pendingCts.CancelAsync().ConfigureAwait(false);
-                _pendingCts.Dispose();
+                await oldCts.CancelAsync().ConfigureAwait(false);
+                oldCts.Dispose();
             }
-            _pendingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
             var result = await Task.Run(
-                () => api.Analyze(text, _pendingCts.Token),
-                _pendingCts.Token
+                () => api.Analyze(text, newCts.Token),
+                newCts.Token
             ).ConfigureAwait(false);
 
             lock (_stateLock)
@@ -141,12 +142,7 @@ internal sealed class DocumentState : IDisposable
 
     public void Dispose()
     {
-        CancellationTokenSource? cts;
-        lock (_stateLock)
-        {
-            cts = _pendingCts;
-            _pendingCts = null;
-        }
+        var cts = Interlocked.Exchange(ref _pendingCts, null);
         cts?.Cancel();
         cts?.Dispose();
         _analysisSemaphore.Dispose();
