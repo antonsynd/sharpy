@@ -68,9 +68,10 @@ internal sealed class ProgressReporter
 internal sealed class ProgressScope : IDisposable
 {
     /// <summary>
-    /// A no-op progress scope that does nothing.
+    /// Creates a new no-op progress scope that does nothing.
+    /// Returns a fresh instance each time to avoid shared mutable state.
     /// </summary>
-    public static readonly ProgressScope NoOp = new(null, null);
+    public static ProgressScope NoOp => new(null, null);
 
     private readonly IWorkDoneObserver? _observer;
     private readonly ILogger? _logger;

@@ -172,7 +172,7 @@ public class LanguageServiceTests : IDisposable
         File.WriteAllText(
             IOPath.Combine(_tempDir, "lib.spy"),
             "def helper() -> str:\n    return \"world\"");
-        UpdateProjectFile(("main.spy", null!), ("lib.spy", null!));
+        UpdateProjectFile();
 
         var reloaded = await _service.ReloadProjectAsync();
         reloaded.Should().BeTrue();
@@ -384,7 +384,7 @@ public class LanguageServiceTests : IDisposable
         }
     }
 
-    private void UpdateProjectFile(params (string Name, string? _)[] files)
+    private void UpdateProjectFile()
     {
         var allFiles = Directory.GetFiles(_tempDir, "*.spy")
             .Select(f => IOPath.GetFileName(f));

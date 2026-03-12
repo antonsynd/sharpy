@@ -29,8 +29,11 @@ internal sealed class LanguageService : IDisposable
     // Background indexing
     private ProgressReporter? _progressReporter;
     private CancellationTokenSource? _indexingCts;
-    private volatile bool _isReady = true;
-    private volatile bool _isIndexing;
+
+    // Atomic state: 0 = Ready, 1 = Indexing
+    private const int StateReady = 0;
+    private const int StateIndexing = 1;
+    private volatile int _state = StateReady;
 
     public LanguageService(SharplyWorkspace workspace, CompilerApi api, ILogger<LanguageService> logger)
     {
@@ -62,7 +65,7 @@ internal sealed class LanguageService : IDisposable
     /// Whether background indexing has completed and project-level results are available.
     /// Returns true when no project is loaded and no indexing is in progress.
     /// </summary>
-    public bool IsReady => _isReady && !_isIndexing;
+    public bool IsReady => _state == StateReady;
 
     /// <summary>
     /// The current project analysis result, if available.
@@ -87,7 +90,7 @@ internal sealed class LanguageService : IDisposable
         if (projectFilePath == null)
         {
             _logger.LogInformation("No .spyproj file found in {Root}", workspaceRoot);
-            _isReady = true;
+            Interlocked.Exchange(ref _state, StateReady);
             return false;
         }
 
@@ -102,7 +105,7 @@ internal sealed class LanguageService : IDisposable
             var config = project.ToProjectConfig();
             _workspaceRoot = workspaceRoot;
             _projectConfig = config;
-            _isReady = false;
+            Interlocked.Exchange(ref _state, StateIndexing);
 
             var progress = _progressReporter != null
                 ? await _progressReporter.BeginAsync("Indexing Sharpy project", ct).ConfigureAwait(false)
@@ -131,7 +134,7 @@ internal sealed class LanguageService : IDisposable
                         }
                     }
 
-                    _isReady = true;
+                    Interlocked.Exchange(ref _state, StateReady);
 
                     _logger.LogInformation(
                         "Project analysis {Status} with {ErrorCount} error(s), {FileCount} file result(s) cached",
@@ -159,7 +162,7 @@ internal sealed class LanguageService : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize project from {Path}", projectFilePath);
-            _isReady = true; // Mark ready even on failure to avoid blocking handlers
+            Interlocked.Exchange(ref _state, StateReady); // Mark ready even on failure to avoid blocking handlers
             return false;
         }
     }
@@ -178,8 +181,7 @@ internal sealed class LanguageService : IDisposable
         _indexingCts?.Cancel();
         _indexingCts?.Dispose();
 
-        _isIndexing = true;
-        _isReady = false;
+        Interlocked.Exchange(ref _state, StateIndexing);
 
         var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _indexingCts = cts;
@@ -204,7 +206,7 @@ internal sealed class LanguageService : IDisposable
             }
             finally
             {
-                _isIndexing = false;
+                Interlocked.CompareExchange(ref _state, StateReady, StateIndexing);
             }
         }, cts.Token);
     }

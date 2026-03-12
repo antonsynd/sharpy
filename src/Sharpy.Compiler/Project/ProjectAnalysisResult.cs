@@ -53,7 +53,7 @@ public sealed class ProjectAnalysisResult
         if (unit == null)
             return null;
 
-        var succeeded = unit.Phase is CompilationPhase.TypeChecked or CompilationPhase.CodeGenerated;
+        var succeeded = unit.Phase == CompilationPhase.TypeChecked;
 
         return new FileAnalysisResult(
             Success: succeeded,
