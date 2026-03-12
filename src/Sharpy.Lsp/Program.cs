@@ -50,6 +50,15 @@ public class Program
                     services.AddSingleton<LanguageService>();
                     // Code action providers
                     services.AddSingleton<ICodeActionProvider, DiagnosticQuickFixProvider>();
+                    services.AddSingleton<ICodeActionProvider, OrganizeImportsProvider>();
+                    services.AddSingleton<ICodeActionProvider, ImplementInterfaceProvider>();
+                    services.AddSingleton<ICodeActionProvider, ExtractVariableProvider>();
+                    services.AddSingleton<ICodeActionProvider, ExtractMethodProvider>();
+                    services.AddSingleton<ICodeActionProvider, ConvertFormsProvider>();
+                    services.AddSingleton<ICodeActionProvider, InlineProvider>();
+                    services.AddSingleton<ICodeActionProvider, ExtractVariableProvider>();
+                    services.AddSingleton<ICodeActionProvider, ExtractMethodProvider>();
+                    services.AddSingleton<ICodeActionProvider, InlineProvider>();
                 })
                 .OnInitialize(async (server, request, token) =>
                 {
