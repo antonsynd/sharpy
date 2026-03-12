@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Project;
@@ -160,6 +161,81 @@ internal sealed class LanguageService : IDisposable
             return false;
 
         return _fileResults.ContainsKey(filePath);
+    }
+
+    /// <summary>
+    /// Called when a document changes. If the file is part of a project, re-runs
+    /// project-level analysis and updates cached results for all affected files.
+    /// Returns the URIs of files whose analysis results changed (for diagnostic publishing).
+    /// </summary>
+    /// <param name="uri">The URI of the changed document.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>
+    /// URIs of files whose analysis results were updated, or empty if the file
+    /// is not part of a project or no project is loaded.
+    /// </returns>
+    public async Task<IReadOnlyList<string>> OnDocumentChangedAsync(string uri, CancellationToken ct = default)
+    {
+        var config = _projectConfig;
+        if (config == null)
+            return Array.Empty<string>();
+
+        var changedFilePath = UriToFilePath(uri);
+        if (changedFilePath == null || !_fileResults.ContainsKey(changedFilePath))
+            return Array.Empty<string>();
+
+        // Determine affected files using the dependency graph
+        var deps = _projectAnalysis?.Dependencies;
+        var affectedPaths = deps != null
+            ? deps.GetAffectedFiles(changedFilePath)
+            : new[] { changedFilePath }.ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
+
+        _logger.LogInformation(
+            "Document changed: {File}, {Count} affected file(s)",
+            System.IO.Path.GetFileName(changedFilePath), affectedPaths.Count);
+
+        // Re-run full project analysis (ProjectCompiler assumes single-use lifecycle)
+        await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var result = await Task.Run(
+                () => _api.AnalyzeProject(config, ct), ct).ConfigureAwait(false);
+
+            _projectAnalysis = result;
+
+            // Update cached results for all project files
+            var updatedUris = new List<string>();
+            foreach (var filePath in config.SourceFiles)
+            {
+                var fileResult = ExtractFileResult(filePath, result);
+                if (fileResult != null)
+                {
+                    _fileResults[filePath] = fileResult;
+
+                    // Only report affected files as updated
+                    if (affectedPaths.Contains(filePath))
+                    {
+                        updatedUris.Add(FilePathToUri(filePath));
+                    }
+                }
+            }
+
+            return updatedUris;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Reanalysis cancelled for {File}", System.IO.Path.GetFileName(changedFilePath));
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reanalyze project after change to {File}", changedFilePath);
+            return Array.Empty<string>();
+        }
+        finally
+        {
+            _analysisLock.Release();
+        }
     }
 
     /// <summary>
