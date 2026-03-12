@@ -105,4 +105,40 @@ public class InlineProviderTests
         var inlineVarAction = actions.FirstOrDefault(a => a.Title.Contains("Inline variable"));
         inlineVarAction.Should().BeNull();
     }
+
+    [Fact]
+    public async Task InlineVariable_ArithmeticInitializer_ReturnsAction()
+    {
+        // Arithmetic expression initializer is side-effect free, so should offer inline
+        var source = "def main():\n    x: int = 2 + 3\n    print(x)";
+        var provider = new InlineProvider();
+
+        // Cursor on the variable declaration
+        var range = new LspRange(new Position(1, 4), new Position(1, 4));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var inlineAction = actions.FirstOrDefault(a =>
+            a.Title.Contains("Inline variable") && a.Title.Contains("x"));
+        inlineAction.Should().NotBeNull();
+        inlineAction!.Kind.Should().Be(CodeActionKind.RefactorInline);
+        inlineAction.Edit.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task InlineFunction_SingleExpressionBody_ReturnsAction()
+    {
+        var source = "def double(n: int) -> int:\n    return n * 2\n\ndef main():\n    print(double(5))";
+        var provider = new InlineProvider();
+
+        // Cursor on the function call double(5) - line 4, inside the print() call
+        // The FunctionCall for double(5) starts at column 11 (0-based: 10) on line 5 (0-based: 4)
+        var range = new LspRange(new Position(4, 10), new Position(4, 10));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var inlineAction = actions.FirstOrDefault(a =>
+            a.Title.Contains("Inline function") && a.Title.Contains("double"));
+        inlineAction.Should().NotBeNull();
+        inlineAction!.Kind.Should().Be(CodeActionKind.RefactorInline);
+        inlineAction.Edit.Should().NotBeNull();
+    }
 }

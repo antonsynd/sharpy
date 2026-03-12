@@ -101,4 +101,49 @@ public class ExtractMethodProviderTests
 
         actions.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task ExtractMethod_SelectionWithBreak_ReturnsNoAction()
+    {
+        var source = "def main():\n    for i in range(10):\n        if i == 5:\n            break\n        print(i)";
+        var provider = new ExtractMethodProvider();
+
+        // Select the if/break statement inside the loop
+        var range = new LspRange(new Position(2, 0), new Position(3, 17));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        // Should not offer extract method because selection contains break
+        actions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtractMethod_SelectionWithContinue_ReturnsNoAction()
+    {
+        var source = "def main():\n    for i in range(10):\n        if i == 5:\n            continue\n        print(i)";
+        var provider = new ExtractMethodProvider();
+
+        // Select the if/continue statement inside the loop
+        var range = new LspRange(new Position(2, 0), new Position(3, 20));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        // Should not offer extract method because selection contains continue
+        actions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtractMethod_InsideClassMethod_ReturnsAction()
+    {
+        var source = "class Calculator:\n    def compute(self) -> int:\n        x: int = 10\n        y: int = 20\n        return x + y\n\ndef main():\n    c: Calculator = Calculator()\n    print(c.compute())";
+        var provider = new ExtractMethodProvider();
+
+        // Select the two assignment statements inside the class method
+        var range = new LspRange(new Position(2, 0), new Position(3, 18));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        actions.Should().NotBeEmpty();
+        var action = actions[0];
+        action.Title.Should().Be("Extract method");
+        action.Kind.Should().Be(CodeActionKind.RefactorExtract);
+        action.Edit.Should().NotBeNull();
+    }
 }

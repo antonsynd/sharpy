@@ -134,4 +134,75 @@ public class ConvertFormsProviderTests
 
         actions.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task ConvertIfToMatch_SimpleEqualityChecks_ReturnsAction()
+    {
+        var source = @"def main():
+    x: int = 1
+    if x == 1:
+        print('one')
+    elif x == 2:
+        print('two')
+    else:
+        print('other')";
+
+        var provider = new ConvertFormsProvider();
+
+        // Cursor on the if statement
+        var range = new LspRange(new Position(2, 4), new Position(2, 4));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var convertAction = actions.FirstOrDefault(a => a.Title.Contains("Convert to match statement"));
+        convertAction.Should().NotBeNull();
+        convertAction!.Kind.Should().Be(CodeActionKind.Refactor);
+        convertAction.Edit.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ConvertMatchToIf_LiteralPatterns_ReturnsAction()
+    {
+        var source = @"def main():
+    x: int = 1
+    match x:
+        case 1:
+            print('one')
+        case 2:
+            print('two')
+        case _:
+            print('other')";
+
+        var provider = new ConvertFormsProvider();
+
+        // Cursor on the match statement
+        var range = new LspRange(new Position(2, 4), new Position(2, 4));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var convertAction = actions.FirstOrDefault(a => a.Title.Contains("Convert to if/elif/else"));
+        convertAction.Should().NotBeNull();
+        convertAction!.Kind.Should().Be(CodeActionKind.Refactor);
+        convertAction.Edit.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ConvertIfToMatch_NonEqualityCondition_ReturnsNoConvertAction()
+    {
+        var source = @"def main():
+    x: int = 1
+    if x > 1:
+        print('big')
+    elif x < 0:
+        print('negative')
+    else:
+        print('other')";
+
+        var provider = new ConvertFormsProvider();
+
+        // Cursor on the if statement
+        var range = new LspRange(new Position(2, 4), new Position(2, 4));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var convertAction = actions.FirstOrDefault(a => a.Title.Contains("Convert to match statement"));
+        convertAction.Should().BeNull();
+    }
 }
