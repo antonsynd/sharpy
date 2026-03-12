@@ -227,7 +227,7 @@ public sealed class LspTestClient : IAsyncDisposable
     }
 
     /// <summary>
-    /// Sends a textDocument/didChange notification (full content).
+    /// Sends a textDocument/didChange notification (full content, no range — full sync fallback).
     /// </summary>
     public Task DidChangeAsync(string uri, string text, int version, CancellationToken ct = default)
     {
@@ -241,6 +241,42 @@ public sealed class LspTestClient : IAsyncDisposable
             ["contentChanges"] = new JsonArray(
                 new JsonObject { ["text"] = text }
             )
+        };
+        return SendNotificationAsync("textDocument/didChange", @params, ct);
+    }
+
+    /// <summary>
+    /// Sends a textDocument/didChange notification with range-based incremental changes.
+    /// Lines and characters are 0-based per LSP spec.
+    /// </summary>
+    public Task DidChangeIncrementalAsync(
+        string uri,
+        int version,
+        (int startLine, int startChar, int endLine, int endChar, string text)[] changes,
+        CancellationToken ct = default)
+    {
+        var contentChanges = new JsonArray();
+        foreach (var (startLine, startChar, endLine, endChar, text) in changes)
+        {
+            contentChanges.Add(new JsonObject
+            {
+                ["range"] = new JsonObject
+                {
+                    ["start"] = new JsonObject { ["line"] = startLine, ["character"] = startChar },
+                    ["end"] = new JsonObject { ["line"] = endLine, ["character"] = endChar }
+                },
+                ["text"] = text
+            });
+        }
+
+        var @params = new JsonObject
+        {
+            ["textDocument"] = new JsonObject
+            {
+                ["uri"] = uri,
+                ["version"] = version
+            },
+            ["contentChanges"] = contentChanges
         };
         return SendNotificationAsync("textDocument/didChange", @params, ct);
     }

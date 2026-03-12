@@ -248,6 +248,133 @@ public class ProtocolTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task IncrementalDidChange_RangeBasedEdit_UpdatesDiagnostics()
+    {
+        await _client.InitializeAsync();
+
+        var uri = "file:///test_incremental.spy";
+
+        // Open with invalid code: x: int = "bad"
+        await _client.DidOpenAsync(uri, "x: int = \"bad\"");
+        var firstDiag = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+        firstDiag["diagnostics"]!.AsArray()!.Count.Should().BeGreaterThan(0,
+            "invalid code should have diagnostics");
+
+        // Incrementally replace the entire content with valid code
+        // Original text: x: int = "bad"  (14 chars, 1 line)
+        // Replace range [0:0 .. 0:14] with valid code
+        await _client.DidChangeIncrementalAsync(uri, 2,
+        [
+            (0, 0, 0, 14, "def main():\n    x: int = 42\n    print(x)")
+        ]);
+
+        var secondDiag = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+        secondDiag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
+            "fixed code should have no diagnostics");
+    }
+
+    [Fact]
+    public async Task IncrementalDidChange_SmallEdit_PreservesContext()
+    {
+        await _client.InitializeAsync();
+
+        var uri = "file:///test_small_edit.spy";
+
+        // Open with valid code
+        await _client.DidOpenAsync(uri, "def main():\n    x: int = 1\n    print(x)");
+        var firstDiag = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+        firstDiag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
+            "valid code should have no diagnostics");
+
+        // Change just the number: replace "1" at line 1, char 13 with "99"
+        // Line 1: "    x: int = 1" — char 13 is the digit '1'
+        await _client.DidChangeIncrementalAsync(uri, 2,
+        [
+            (1, 13, 1, 14, "99")
+        ]);
+
+        var secondDiag = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+        secondDiag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
+            "small edit should preserve validity");
+    }
+
+    [Fact]
+    public async Task IncrementalDidChange_RapidSequentialEdits_ProducesCorrectResult()
+    {
+        await _client.InitializeAsync();
+
+        var uri = "file:///test_rapid_incremental.spy";
+
+        // Open with valid code
+        await _client.DidOpenAsync(uri, "def main():\n    x: int = 1\n    print(x)");
+        await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+
+        // Send multiple rapid incremental changes
+        // Line 1: "    x: int = 1" — char 13 is the digit
+        for (var i = 2; i <= 5; i++)
+        {
+            var prevLen = (i - 1).ToString().Length;
+            await _client.DidChangeIncrementalAsync(uri, i,
+            [
+                (1, 13, 1, 13 + prevLen, i.ToString())
+            ]);
+        }
+
+        // Drain all diagnostics and verify the last one is clean
+        JsonNode? lastNotification = null;
+        while (true)
+        {
+            try
+            {
+                lastNotification = await _client.WaitForNotificationAsync(
+                    "textDocument/publishDiagnostics",
+                    TimeSpan.FromSeconds(5));
+            }
+            catch (TimeoutException)
+            {
+                break;
+            }
+        }
+
+        lastNotification.Should().NotBeNull();
+        lastNotification!["diagnostics"]!.AsArray()!.Count.Should().Be(0,
+            "final valid code should produce no diagnostics");
+    }
+
+    [Fact]
+    public async Task IncrementalDidChange_FullSyncFallback_Works()
+    {
+        await _client.InitializeAsync();
+
+        var uri = "file:///test_full_fallback.spy";
+
+        // Open with valid code
+        await _client.DidOpenAsync(uri, "def main():\n    x: int = 1\n    print(x)");
+        await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+
+        // Send a full-content change (no range) — this is the fallback path
+        await _client.DidChangeAsync(uri, "def main():\n    y: str = \"hello\"\n    print(y)", 2);
+
+        var diag = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+        diag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
+            "full-sync fallback should work correctly");
+    }
+
+    [Fact]
     public async Task Shutdown_RespondsSuccessfully()
     {
         await _client.InitializeAsync();
