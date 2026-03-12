@@ -20,7 +20,7 @@ public class FileWatcherTests : IDisposable
     {
         _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
-        _handler = new FileWatcherHandler(_workspace, _languageService);
+        _handler = new FileWatcherHandler(_languageService);
     }
 
     [Fact]

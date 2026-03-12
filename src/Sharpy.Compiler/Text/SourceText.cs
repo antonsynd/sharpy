@@ -230,6 +230,17 @@ public sealed class SourceText
             return new SourceText(_text, FilePath);
         }
 
+        // Validate that changes don't overlap (descending order, so each span
+        // must end at or before the next span's start)
+        for (int i = 0; i < sortedChanges.Count - 1; i++)
+        {
+            if (sortedChanges[i + 1].Span.End > sortedChanges[i].Span.Start)
+            {
+                throw new ArgumentException(
+                    $"Text changes overlap: [{sortedChanges[i + 1].Span.Start}..{sortedChanges[i + 1].Span.End}) and [{sortedChanges[i].Span.Start}..{sortedChanges[i].Span.End})");
+            }
+        }
+
         var result = _text;
         foreach (var change in sortedChanges)
         {

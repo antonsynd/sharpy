@@ -63,7 +63,7 @@ internal sealed class LanguageService : IDisposable
     /// <summary>
     /// Whether a project has been loaded.
     /// </summary>
-    public bool HasProject => _projectConfig != null;
+    public bool HasProject => Volatile.Read(ref _projectConfig) != null;
 
     /// <summary>
     /// Whether background indexing has completed and project-level results are available.
@@ -74,12 +74,12 @@ internal sealed class LanguageService : IDisposable
     /// <summary>
     /// The current project analysis result, if available.
     /// </summary>
-    internal ProjectAnalysisResult? ProjectAnalysis => _projectAnalysis;
+    internal ProjectAnalysisResult? ProjectAnalysis => Volatile.Read(ref _projectAnalysis);
 
     /// <summary>
     /// Read-only dependency query from the last project analysis.
     /// </summary>
-    public IDependencyQuery? Dependencies => _projectAnalysis?.Dependencies;
+    public IDependencyQuery? Dependencies => Volatile.Read(ref _projectAnalysis)?.Dependencies;
 
     /// <summary>
     /// Discovers a .spyproj file in the workspace root, loads it, and runs
@@ -107,8 +107,8 @@ internal sealed class LanguageService : IDisposable
                 project.RootNamespace, project.SourceFiles.Count);
 
             var config = project.ToProjectConfig();
-            _workspaceRoot = workspaceRoot;
-            _projectConfig = config;
+            Volatile.Write(ref _workspaceRoot, workspaceRoot);
+            Volatile.Write(ref _projectConfig, config);
             Interlocked.Exchange(ref _state, StateIndexing);
 
             var progress = _progressReporter != null
@@ -125,7 +125,7 @@ internal sealed class LanguageService : IDisposable
                     var result = await Task.Run(
                         () => _api.AnalyzeProject(config, ct), ct).ConfigureAwait(false);
 
-                    _projectAnalysis = result;
+                    Volatile.Write(ref _projectAnalysis, result);
 
                     // Populate per-file result cache
                     _fileResults.Clear();
@@ -226,7 +226,11 @@ internal sealed class LanguageService : IDisposable
     /// <returns>The semantic analysis result, or null if the document is not tracked.</returns>
     public async Task<SemanticResult?> GetAnalysisAsync(string uri, CancellationToken ct = default)
     {
-        // Try project-level cached result first
+        // Try project-level cached result first.
+        // Note: This may return a stale result if a document was just edited and project
+        // reanalysis hasn't completed yet. This is a deliberate trade-off — returning the
+        // last-known-good project result is faster than blocking on reanalysis, and handlers
+        // receive updated results once OnDocumentChangedAsync completes in the background.
         var filePath = UriToFilePath(uri);
         if (filePath != null && _fileResults.TryGetValue(filePath, out var cached))
             return cached;
@@ -334,7 +338,7 @@ internal sealed class LanguageService : IDisposable
             var result = await Task.Run(
                 () => _api.AnalyzeProject(config, linkedToken), linkedToken).ConfigureAwait(false);
 
-            _projectAnalysis = result;
+            Volatile.Write(ref _projectAnalysis, result);
 
             // Update cached results for all project files
             var updatedUris = new List<string>();
@@ -380,7 +384,7 @@ internal sealed class LanguageService : IDisposable
     /// <returns>True if reanalysis succeeded.</returns>
     public async Task<bool> ReloadProjectAsync(CancellationToken ct = default)
     {
-        var root = _workspaceRoot;
+        var root = Volatile.Read(ref _workspaceRoot);
         if (root == null)
         {
             _logger.LogWarning("Cannot reload project: no workspace root set");

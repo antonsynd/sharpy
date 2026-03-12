@@ -13,7 +13,7 @@ internal sealed class FileWatcherHandler : IDidChangeWatchedFilesHandler
 {
     private readonly LanguageService _languageService;
 
-    public FileWatcherHandler(SharplyWorkspace workspace, LanguageService languageService)
+    public FileWatcherHandler(LanguageService languageService)
     {
         _languageService = languageService;
     }

@@ -196,8 +196,7 @@ internal static class TypeHierarchyService
         }
 
         // Add object as ultimate base if not already there
-        var lastTypeName = chain[^1].GetDisplayName().ToLowerInvariant();
-        if (lastTypeName != "object" && lastTypeName != "system.object")
+        if (!ReferenceEquals(chain[^1], SemanticType.Object))
         {
             chain.Add(SemanticType.Object);
         }
