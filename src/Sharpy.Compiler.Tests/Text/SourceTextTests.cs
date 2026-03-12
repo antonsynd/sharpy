@@ -263,4 +263,152 @@ public class SourceTextTests
             Assert.Equal(pos, roundTripped);
         }
     }
+
+    [Fact]
+    public void WithChanges_SingleInsertion_InsertsText()
+    {
+        var sourceText = new SourceText("helloworld");
+        var changes = new[] { new TextChange(new TextSpan(5, 0), " ") };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("hello world", result.ToString());
+    }
+
+    [Fact]
+    public void WithChanges_SingleDeletion_RemovesText()
+    {
+        var sourceText = new SourceText("hello world");
+        var changes = new[] { new TextChange(new TextSpan(5, 1), "") };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("helloworld", result.ToString());
+    }
+
+    [Fact]
+    public void WithChanges_SingleReplacement_ReplacesText()
+    {
+        var sourceText = new SourceText("hello world");
+        var changes = new[] { new TextChange(new TextSpan(6, 5), "there") };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("hello there", result.ToString());
+    }
+
+    [Fact]
+    public void WithChanges_MultipleNonOverlapping_AppliesAll()
+    {
+        var sourceText = new SourceText("aaa bbb ccc");
+        var changes = new[]
+        {
+            new TextChange(new TextSpan(0, 3), "xxx"),
+            new TextChange(new TextSpan(8, 3), "zzz"),
+        };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("xxx bbb zzz", result.ToString());
+    }
+
+    [Fact]
+    public void WithChanges_EmptyChanges_ReturnsEquivalentText()
+    {
+        var sourceText = new SourceText("hello", "/test.spy");
+        var changes = Array.Empty<TextChange>();
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("hello", result.ToString());
+        Assert.Equal("/test.spy", result.FilePath);
+    }
+
+    [Fact]
+    public void WithChanges_AtDocumentStart_AppliesCorrectly()
+    {
+        var sourceText = new SourceText("hello");
+        var changes = new[] { new TextChange(new TextSpan(0, 0), "say ") };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("say hello", result.ToString());
+    }
+
+    [Fact]
+    public void WithChanges_AtDocumentEnd_AppliesCorrectly()
+    {
+        var sourceText = new SourceText("hello");
+        var changes = new[] { new TextChange(new TextSpan(5, 0), " world") };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("hello world", result.ToString());
+    }
+
+    [Fact]
+    public void WithChanges_InsertNewline_UpdatesLineCount()
+    {
+        var sourceText = new SourceText("helloworld");
+        var changes = new[] { new TextChange(new TextSpan(5, 0), "\n") };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("hello\nworld", result.ToString());
+        Assert.Equal(2, result.LineCount);
+    }
+
+    [Fact]
+    public void WithChanges_DeleteNewline_UpdatesLineCount()
+    {
+        var sourceText = new SourceText("hello\nworld");
+        var changes = new[] { new TextChange(new TextSpan(5, 1), "") };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("helloworld", result.ToString());
+        Assert.Equal(1, result.LineCount);
+    }
+
+    [Fact]
+    public void WithChanges_PreservesFilePath()
+    {
+        var sourceText = new SourceText("hello", "/path/to/file.spy");
+        var changes = new[] { new TextChange(new TextSpan(0, 5), "world") };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("/path/to/file.spy", result.FilePath);
+    }
+
+    [Fact]
+    public void WithChanges_GetLineAndColumn_CorrectAfterChanges()
+    {
+        var sourceText = new SourceText("line1\nline2");
+        // Insert a new line between the existing lines
+        var changes = new[] { new TextChange(new TextSpan(6, 0), "new\n") };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("line1\nnew\nline2", result.ToString());
+        Assert.Equal(3, result.LineCount);
+        // 'l' in "line2" is now at position 10
+        var (line, column) = result.GetLineAndColumn(10);
+        Assert.Equal(3, line);
+        Assert.Equal(1, column);
+    }
+
+    [Fact]
+    public void WithChanges_ReplacementWithDifferentLength_UpdatesCorrectly()
+    {
+        var sourceText = new SourceText("ab\ncd\nef");
+        // Replace "cd" with "longer text"
+        var changes = new[] { new TextChange(new TextSpan(3, 2), "longer text") };
+
+        var result = sourceText.WithChanges(changes);
+
+        Assert.Equal("ab\nlonger text\nef", result.ToString());
+        Assert.Equal(3, result.LineCount);
+        Assert.Equal("longer text", result.GetLineText(2));
+    }
 }
