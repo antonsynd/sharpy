@@ -11,12 +11,14 @@ public class DocumentHighlightTests : IDisposable
 {
     private readonly CompilerApi _api = new();
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly SharplyDocumentHighlightHandler _handler;
 
     public DocumentHighlightTests()
     {
         _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
-        _handler = new SharplyDocumentHighlightHandler(_workspace, _api);
+        _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
+        _handler = new SharplyDocumentHighlightHandler(_languageService, _api);
     }
 
     private async Task<DocumentHighlightContainer?> GetHighlightsAsync(string source, int line, int col)
@@ -75,6 +77,7 @@ public class DocumentHighlightTests : IDisposable
 
     public void Dispose()
     {
+        _languageService.Dispose();
         _workspace.Dispose();
     }
 }

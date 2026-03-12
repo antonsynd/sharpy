@@ -11,12 +11,14 @@ public class FoldingRangeTests : IDisposable
 {
     private readonly CompilerApi _api = new();
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly SharplyFoldingRangeHandler _handler;
 
     public FoldingRangeTests()
     {
         _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
-        _handler = new SharplyFoldingRangeHandler(_workspace);
+        _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
+        _handler = new SharplyFoldingRangeHandler(_languageService);
     }
 
     private async Task<Container<FoldingRange>?> GetFoldingRangesAsync(string source)
@@ -104,6 +106,7 @@ public class FoldingRangeTests : IDisposable
 
     public void Dispose()
     {
+        _languageService.Dispose();
         _workspace.Dispose();
     }
 }

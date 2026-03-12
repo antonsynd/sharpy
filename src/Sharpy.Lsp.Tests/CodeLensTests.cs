@@ -11,12 +11,14 @@ public class CodeLensTests : IDisposable
 {
     private readonly CompilerApi _api = new();
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly SharplyCodeLensHandler _handler;
 
     public CodeLensTests()
     {
         _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
-        _handler = new SharplyCodeLensHandler(_workspace);
+        _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
+        _handler = new SharplyCodeLensHandler(_languageService);
     }
 
     private async Task<CodeLensContainer?> GetCodeLensesAsync(string source)
@@ -92,6 +94,7 @@ public class CodeLensTests : IDisposable
 
     public void Dispose()
     {
+        _languageService.Dispose();
         _workspace.Dispose();
     }
 }

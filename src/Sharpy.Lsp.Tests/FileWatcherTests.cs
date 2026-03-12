@@ -13,12 +13,14 @@ public class FileWatcherTests : IDisposable
 {
     private readonly CompilerApi _api = new();
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly FileWatcherHandler _handler;
 
     public FileWatcherTests()
     {
         _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
-        _handler = new FileWatcherHandler(_workspace);
+        _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
+        _handler = new FileWatcherHandler(_workspace, _languageService);
     }
 
     [Fact]
@@ -69,6 +71,7 @@ public class FileWatcherTests : IDisposable
 
     public void Dispose()
     {
+        _languageService.Dispose();
         _workspace.Dispose();
     }
 }

@@ -12,12 +12,14 @@ public class InlayHintTests : IDisposable
 {
     private readonly CompilerApi _api = new();
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly SharplyInlayHintHandler _handler;
 
     public InlayHintTests()
     {
         _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
-        _handler = new SharplyInlayHintHandler(_workspace);
+        _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
+        _handler = new SharplyInlayHintHandler(_languageService);
     }
 
     private async Task<InlayHintContainer?> GetHintsAsync(string source, int startLine = 0, int endLine = 100)
@@ -121,6 +123,7 @@ public class InlayHintTests : IDisposable
 
     public void Dispose()
     {
+        _languageService.Dispose();
         _workspace.Dispose();
     }
 }

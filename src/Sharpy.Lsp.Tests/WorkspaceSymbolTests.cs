@@ -11,12 +11,14 @@ public class WorkspaceSymbolTests : IDisposable
 {
     private readonly CompilerApi _api = new();
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly SharplyWorkspaceSymbolHandler _handler;
 
     public WorkspaceSymbolTests()
     {
         _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
-        _handler = new SharplyWorkspaceSymbolHandler(_workspace);
+        _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
+        _handler = new SharplyWorkspaceSymbolHandler(_workspace, _languageService);
     }
 
     private async Task<Container<WorkspaceSymbol>?> SearchSymbolsAsync(string query)
@@ -74,6 +76,7 @@ public class WorkspaceSymbolTests : IDisposable
 
     public void Dispose()
     {
+        _languageService.Dispose();
         _workspace.Dispose();
     }
 }
