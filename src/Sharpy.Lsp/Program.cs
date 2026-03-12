@@ -118,7 +118,7 @@ public class Program
                 .WithHandler<SharplyInlayHintHandler>()
                 .WithHandler<SharplyDocumentHighlightHandler>()
                 .WithHandler<SharplyCodeLensHandler>()
-                // Phase 5 handlers
+                // Phase 1 — Deep Structural Navigation handlers
                 .WithHandler<SharplyCallHierarchyPrepareHandler>()
                 .WithHandler<SharplyCallHierarchyIncomingHandler>()
                 .WithHandler<SharplyCallHierarchyOutgoingHandler>()

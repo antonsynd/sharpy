@@ -285,6 +285,59 @@ public class TypeHierarchyTests : IDisposable
         result!.Should().Contain(item => item.Name == "Circle");
     }
 
+    [Fact]
+    public async Task PrepareHandler_OnNonType_ReturnsNullAsync()
+    {
+        var source = "x: int = 42\ndef main():\n    print(x)";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // Cursor on variable `x` (line 1, col 1 → 0-based: line 0, col 0)
+        var result = await _prepareHandler.Handle(
+            new TypeHierarchyPrepareParams
+            {
+                TextDocument = new TextDocumentIdentifier("file:///test.spy"),
+                Position = new Position(0, 0)
+            },
+            CancellationToken.None);
+
+        result.Should().BeNull("cursor is on a variable, not a type");
+    }
+
+    [Fact]
+    public async Task SupertypesHandler_ClassWithInterfaces_ReturnsBothAsync()
+    {
+        var source = @"
+interface Drawable:
+    def draw(self) -> None:
+        ...
+class Shape:
+    def __init__(self):
+        pass
+class Circle(Shape, Drawable):
+    def draw(self) -> None:
+        pass
+    def __init__(self):
+        super().__init__()
+def main():
+    c = Circle()
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        var circleSymbol = analysis!.SymbolTable?.Lookup("Circle") as TypeSymbol;
+        circleSymbol.Should().NotBeNull();
+        var circleItem = TypeHierarchyHelper.CreateItem(circleSymbol!, "file:///test.spy");
+        circleItem.Should().NotBeNull();
+
+        var result = await _supertypesHandler.Handle(
+            new TypeHierarchySupertypesParams { Item = circleItem! },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Should().Contain(item => item.Name == "Shape", "Circle extends Shape");
+        result!.Should().Contain(item => item.Name == "Drawable", "Circle implements Drawable");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();

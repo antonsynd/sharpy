@@ -5,8 +5,6 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
-using Sharpy.Compiler.Text;
-
 namespace Sharpy.Lsp.Handlers;
 
 /// <summary>
@@ -44,7 +42,7 @@ internal sealed class SharplyDefinitionHandler : DefinitionHandlerBase
         if (symbol == null)
             return null;
 
-        var location = GetSymbolLocation(symbol, uri);
+        var location = SymbolLocationHelper.GetSymbolLocation(symbol, uri);
         if (location == null)
             return null;
 
@@ -87,33 +85,6 @@ internal sealed class SharplyDefinitionHandler : DefinitionHandlerBase
         }
 
         return null;
-    }
-
-    private static Location? GetSymbolLocation(Symbol symbol, string fallbackUri)
-    {
-        if (symbol.DeclarationSpan == null)
-            return null;
-
-        var filePath = symbol.DeclaringFilePath ?? fallbackUri;
-        var uri = filePath.StartsWith("file://", StringComparison.Ordinal)
-            ? DocumentUri.From(filePath)
-            : DocumentUri.FromFileSystemPath(filePath);
-
-        // Use DeclarationLine/Column if available (1-based → 0-based)
-        var startLine = System.Math.Max(0, (symbol.DeclarationLine ?? 1) - 1);
-        var startCol = System.Math.Max(0, (symbol.DeclarationColumn ?? 1) - 1);
-
-        // For end position, estimate based on name length
-        var endCol = startCol + symbol.Name.Length;
-
-        return new Location
-        {
-            Uri = uri,
-            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
-                new Position(startLine, startCol),
-                new Position(startLine, endCol)
-            )
-        };
     }
 
     protected override DefinitionRegistrationOptions CreateRegistrationOptions(

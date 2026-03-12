@@ -154,30 +154,31 @@ internal sealed class SharplyImplementationHandler : ImplementationHandlerBase
     {
         if (symbol is TypeSymbol typeSymbol)
         {
-            return FindTypeImplementations(typeSymbol, symbolTable, fallbackUri);
+            // Only interfaces and abstract classes have implementations to find.
+            if (typeSymbol.TypeKind != TypeKind.Interface && !typeSymbol.IsAbstract)
+            {
+                var loc = SymbolLocationHelper.GetSymbolLocation(typeSymbol, fallbackUri);
+                return loc != null ? new System.Collections.Generic.List<Location> { loc } : null;
+            }
+
+            var index = TypeHierarchyIndex.Build(symbolTable);
+            return FindTypeImplementations(typeSymbol, index, fallbackUri);
         }
 
         if (symbol is FunctionSymbol funcSymbol && (funcSymbol.IsAbstract || funcSymbol.IsVirtual))
         {
-            return FindMethodImplementations(funcSymbol, symbolTable, fallbackUri);
+            var index = TypeHierarchyIndex.Build(symbolTable);
+            return FindMethodImplementations(funcSymbol, symbolTable, index, fallbackUri);
         }
 
         // For concrete, non-virtual symbols, fall back to the definition location.
-        var defLocation = GetSymbolLocation(symbol, fallbackUri);
+        var defLocation = SymbolLocationHelper.GetSymbolLocation(symbol, fallbackUri);
         return defLocation != null ? new System.Collections.Generic.List<Location> { defLocation } : null;
     }
 
     private static System.Collections.Generic.List<Location>? FindTypeImplementations(
-        TypeSymbol typeSymbol, SymbolTable symbolTable, string fallbackUri)
+        TypeSymbol typeSymbol, TypeHierarchyIndex index, string fallbackUri)
     {
-        // Only interfaces and abstract classes have implementations to find.
-        if (typeSymbol.TypeKind != TypeKind.Interface && !typeSymbol.IsAbstract)
-        {
-            var loc = GetSymbolLocation(typeSymbol, fallbackUri);
-            return loc != null ? new System.Collections.Generic.List<Location> { loc } : null;
-        }
-
-        var index = TypeHierarchyIndex.Build(symbolTable);
         var subtypes = index.GetDirectSubtypes(typeSymbol);
 
         if (subtypes.Count == 0)
@@ -186,7 +187,7 @@ internal sealed class SharplyImplementationHandler : ImplementationHandlerBase
         var locations = new System.Collections.Generic.List<Location>();
         foreach (var subtype in subtypes)
         {
-            var loc = GetSymbolLocation(subtype, fallbackUri);
+            var loc = SymbolLocationHelper.GetSymbolLocation(subtype, fallbackUri);
             if (loc != null)
                 locations.Add(loc);
         }
@@ -195,7 +196,8 @@ internal sealed class SharplyImplementationHandler : ImplementationHandlerBase
     }
 
     private static System.Collections.Generic.List<Location>? FindMethodImplementations(
-        FunctionSymbol funcSymbol, SymbolTable symbolTable, string fallbackUri)
+        FunctionSymbol funcSymbol, SymbolTable symbolTable, TypeHierarchyIndex index,
+        string fallbackUri)
     {
         // Find the declaring type by matching method name and declaration line.
         TypeSymbol? declaringType = null;
@@ -213,7 +215,6 @@ internal sealed class SharplyImplementationHandler : ImplementationHandlerBase
         if (declaringType == null)
             return null;
 
-        var index = TypeHierarchyIndex.Build(symbolTable);
         var subtypes = index.GetDirectSubtypes(declaringType);
 
         var locations = new System.Collections.Generic.List<Location>();
@@ -224,36 +225,13 @@ internal sealed class SharplyImplementationHandler : ImplementationHandlerBase
                 && m.IsOverride);
             if (overridingMethod != null)
             {
-                var loc = GetSymbolLocation(overridingMethod, fallbackUri);
+                var loc = SymbolLocationHelper.GetSymbolLocation(overridingMethod, fallbackUri);
                 if (loc != null)
                     locations.Add(loc);
             }
         }
 
         return locations.Count > 0 ? locations : null;
-    }
-
-    private static Location? GetSymbolLocation(Symbol symbol, string fallbackUri)
-    {
-        if (symbol.DeclarationSpan == null)
-            return null;
-
-        var filePath = symbol.DeclaringFilePath ?? fallbackUri;
-        var uri = filePath.StartsWith("file://", StringComparison.Ordinal)
-            ? DocumentUri.From(filePath)
-            : DocumentUri.FromFileSystemPath(filePath);
-
-        var startLine = System.Math.Max(0, (symbol.DeclarationLine ?? 1) - 1);
-        var startCol = System.Math.Max(0, (symbol.DeclarationColumn ?? 1) - 1);
-        var endCol = startCol + symbol.Name.Length;
-
-        return new Location
-        {
-            Uri = uri,
-            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
-                new Position(startLine, startCol),
-                new Position(startLine, endCol))
-        };
     }
 
     protected override ImplementationRegistrationOptions CreateRegistrationOptions(

@@ -112,7 +112,9 @@ internal sealed class SharplyCallHierarchyPrepareHandler : CallHierarchyPrepareH
         var data = new JObject
         {
             ["name"] = symbol.Name,
-            ["filePath"] = filePath
+            ["filePath"] = filePath,
+            ["line"] = symbol.DeclarationLine,
+            ["col"] = symbol.DeclarationColumn
         };
 
         return new CallHierarchyItem
