@@ -61,8 +61,32 @@ internal sealed class SharplyCallHierarchyPrepareHandler : CallHierarchyPrepareH
         {
             Identifier id => query.GetIdentifierSymbol(id),
             FunctionCall call => query.GetCallTarget(call),
+            FunctionDef fd => ResolveFunctionDef(fd, analysis),
             _ => null
         };
+    }
+
+    private static Symbol? ResolveFunctionDef(FunctionDef fd, SemanticResult analysis)
+    {
+        if (analysis.SymbolTable == null)
+            return null;
+
+        // Try top-level function first.
+        var sym = analysis.SymbolTable.Lookup(fd.Name);
+        if (sym is FunctionSymbol)
+            return sym;
+
+        // Search class methods by name + line.
+        foreach (var ts in analysis.SymbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        {
+            var method = ts.Methods.Find(m =>
+                string.Equals(m.Name, fd.Name, StringComparison.Ordinal)
+                && m.DeclarationLine == fd.LineStart);
+            if (method != null)
+                return method;
+        }
+
+        return null;
     }
 
     internal static CallHierarchyItem? CreateCallHierarchyItem(FunctionSymbol symbol, string fallbackUri)
@@ -83,7 +107,6 @@ internal sealed class SharplyCallHierarchyPrepareHandler : CallHierarchyPrepareH
             new Position(startLine, startCol),
             new Position(startLine, endCol));
 
-        // Use a broader range for the full function if DeclarationSpan is available
         var range = selectionRange;
 
         var data = new JObject

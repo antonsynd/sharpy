@@ -38,8 +38,12 @@ internal sealed class SharplyCallHierarchyIncomingHandler : CallHierarchyIncomin
 
         var results = new List<CallHierarchyIncomingCall>();
 
-        // Search all workspace files for references to this function
-        var allUris = _workspace.GetAllDocumentUris();
+        // Search open documents and project files for references to this function.
+        var allUris = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var uri in _workspace.GetAllDocumentUris())
+            allUris.Add(uri);
+        foreach (var uri in _languageService.GetProjectFileUris())
+            allUris.Add(uri);
 
         foreach (var uri in allUris)
         {
@@ -49,7 +53,15 @@ internal sealed class SharplyCallHierarchyIncomingHandler : CallHierarchyIncomin
                 if (analysis?.Ast == null || analysis.SemanticQuery == null)
                     continue;
 
+                // Try identity-based lookup first, then fall back to name-based
+                // (handles cases where DeclaringFilePath differs from the stored URI).
                 var references = analysis.SemanticQuery.FindReferencesBySymbolIdentity(symbolName, filePath);
+                if (references.Count == 0)
+                {
+                    var sym = analysis.SymbolTable?.Lookup(symbolName);
+                    if (sym != null)
+                        references = analysis.SemanticQuery.GetReferences(sym);
+                }
                 foreach (var refLoc in references)
                 {
                     // Find the containing function at the reference location
@@ -85,9 +97,10 @@ internal sealed class SharplyCallHierarchyIncomingHandler : CallHierarchyIncomin
             {
                 throw;
             }
-            catch
+            catch (Exception)
             {
-                // Skip files that fail to analyze
+                // Skip files that fail to analyze — analysis errors in one file
+                // should not prevent finding callers in other files.
             }
         }
 

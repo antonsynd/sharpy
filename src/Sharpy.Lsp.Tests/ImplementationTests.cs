@@ -5,7 +5,6 @@ using Sharpy.Compiler;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Lsp.Handlers;
 using Xunit;
-using IOPath = System.IO.Path;
 
 namespace Sharpy.Lsp.Tests;
 
@@ -20,18 +19,12 @@ public class ImplementationTests : IDisposable
     private readonly SharplyWorkspace _workspace;
     private readonly LanguageService _languageService;
     private readonly SharplyImplementationHandler _handler;
-    private readonly string _tempDir;
 
     public ImplementationTests()
     {
         _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
         _handler = new SharplyImplementationHandler(_languageService, _api);
-
-        _tempDir = IOPath.Combine(
-            IOPath.GetTempPath(),
-            $"sharpy_impl_test_{Guid.NewGuid()}");
-        Directory.CreateDirectory(_tempDir);
     }
 
     [Fact]
@@ -207,14 +200,5 @@ def main():
     {
         _languageService.Dispose();
         _workspace.Dispose();
-
-        try
-        {
-            Directory.Delete(_tempDir, recursive: true);
-        }
-        catch
-        {
-            // Best-effort cleanup
-        }
     }
 }

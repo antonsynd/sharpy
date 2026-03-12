@@ -48,9 +48,11 @@ internal sealed class SharplyCallHierarchyOutgoingHandler : CallHierarchyOutgoin
         if (funcDef == null)
             return null;
 
-        // Walk the function body to find all function calls
-        var results = new List<CallHierarchyOutgoingCall>();
+        // Walk the function body to find all function calls.
+        // Group by target symbol so the same callee appears once with all call ranges.
         var callNodes = CollectFunctionCalls(funcDef);
+        var grouped = new Dictionary<string, (CallHierarchyItem Item, List<LspRange> Ranges)>(
+            StringComparer.Ordinal);
 
         foreach (var call in callNodes)
         {
@@ -58,25 +60,30 @@ internal sealed class SharplyCallHierarchyOutgoingHandler : CallHierarchyOutgoin
             if (targetSymbol == null)
                 continue;
 
-            var targetItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(targetSymbol, uri);
-            if (targetItem == null)
-                continue;
+            var key = $"{targetSymbol.Name}|{targetSymbol.DeclaringFilePath}";
 
-            // The fromRanges indicate where in the source function the call occurs
+            if (!grouped.ContainsKey(key))
+            {
+                var targetItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(targetSymbol, uri);
+                if (targetItem == null)
+                    continue;
+                grouped[key] = (targetItem, new List<LspRange>());
+            }
+
             var callLine = System.Math.Max(0, call.LineStart - 1);
             var callCol = System.Math.Max(0, call.ColumnStart - 1);
             var callEndLine = System.Math.Max(0, call.LineEnd - 1);
             var callEndCol = System.Math.Max(0, call.ColumnEnd - 1);
-            var fromRange = new LspRange(
+            grouped[key].Ranges.Add(new LspRange(
                 new Position(callLine, callCol),
-                new Position(callEndLine, callEndCol));
-
-            results.Add(new CallHierarchyOutgoingCall
-            {
-                To = targetItem,
-                FromRanges = new Container<LspRange>(fromRange)
-            });
+                new Position(callEndLine, callEndCol)));
         }
+
+        var results = grouped.Values.Select(g => new CallHierarchyOutgoingCall
+        {
+            To = g.Item,
+            FromRanges = new Container<LspRange>(g.Ranges)
+        }).ToList();
 
         return new Container<CallHierarchyOutgoingCall>(results);
     }

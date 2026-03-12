@@ -24,37 +24,37 @@ internal sealed class SharplyTypeHierarchySupertypesHandler : TypeHierarchySuper
         var uri = request.Item.Uri.ToString();
         var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
-        var typeSymbol = TypeHierarchyHelper.ResolveFromItem(request.Item, analysis?.SymbolTable);
+        // Use the same symbol table for both resolution and supertype lookup
+        // to ensure reference equality works with ReferenceEqualityComparer.
+        var symbolTable = _languageService.ProjectAnalysis?.ProjectModel.GlobalSymbols
+            ?? analysis?.SymbolTable;
+        if (symbolTable == null)
+            return null;
+
+        var typeSymbol = TypeHierarchyHelper.ResolveFromItem(request.Item, symbolTable);
         if (typeSymbol == null)
             return null;
 
-        var index = BuildIndex(analysis?.SymbolTable);
-        if (index == null)
-            return null;
-
-        var supertypes = index.GetDirectSupertypes(typeSymbol);
-        if (supertypes.Count == 0)
-            return null;
-
-        var filePath = request.Item.Uri.ToString();
+        // Read supertypes directly from the resolved TypeSymbol (no index needed).
         var items = new List<TypeHierarchyItem>();
-        foreach (var supertype in supertypes)
+
+        if (typeSymbol.BaseType != null)
         {
-            var item = TypeHierarchyHelper.CreateItem(supertype, filePath);
+            var item = TypeHierarchyHelper.CreateItem(typeSymbol.BaseType, uri);
             if (item != null)
                 items.Add(item);
         }
 
+        foreach (var iface in typeSymbol.Interfaces)
+        {
+            if (iface.Definition != null)
+            {
+                var item = TypeHierarchyHelper.CreateItem(iface.Definition, uri);
+                if (item != null)
+                    items.Add(item);
+            }
+        }
+
         return items.Any() ? new Container<TypeHierarchyItem>(items) : null;
-    }
-
-    private TypeHierarchyIndex? BuildIndex(SymbolTable? singleFileTable)
-    {
-        var projectAnalysis = _languageService.ProjectAnalysis;
-        var symbolTable = projectAnalysis?.ProjectModel.GlobalSymbols ?? singleFileTable;
-        if (symbolTable == null)
-            return null;
-
-        return TypeHierarchyIndex.Build(symbolTable);
     }
 }

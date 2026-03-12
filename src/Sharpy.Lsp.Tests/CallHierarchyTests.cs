@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -10,17 +11,24 @@ using Xunit;
 namespace Sharpy.Lsp.Tests;
 
 /// <summary>
-/// Tests call hierarchy functionality by verifying that the compiler API
-/// can resolve call relationships between functions.
+/// Tests call hierarchy functionality including handler-level integration tests.
 /// </summary>
 public class CallHierarchyTests : IDisposable
 {
     private readonly CompilerApi _api = new();
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
+    private readonly SharplyCallHierarchyPrepareHandler _prepareHandler;
+    private readonly SharplyCallHierarchyIncomingHandler _incomingHandler;
+    private readonly SharplyCallHierarchyOutgoingHandler _outgoingHandler;
 
     public CallHierarchyTests()
     {
         _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
+        _prepareHandler = new SharplyCallHierarchyPrepareHandler(_languageService, _api);
+        _incomingHandler = new SharplyCallHierarchyIncomingHandler(_workspace, _languageService, _api);
+        _outgoingHandler = new SharplyCallHierarchyOutgoingHandler(_languageService, _api);
     }
 
     [Fact]
@@ -137,6 +145,153 @@ public class CallHierarchyTests : IDisposable
         data!["name"]!.ToString().Should().Be("greet");
     }
 
+    [Fact]
+    public async Task PrepareHandler_OnFunctionCall_ReturnsItemAsync()
+    {
+        var source = "def greet() -> str:\n    return \"hello\"\ndef main():\n    greet()";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // Cursor on `greet()` call (line 4, col 5 → 0-based: line 3, col 4)
+        var result = await _prepareHandler.Handle(
+            new CallHierarchyPrepareParams
+            {
+                TextDocument = new TextDocumentIdentifier("file:///test.spy"),
+                Position = new Position(3, 4)
+            },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.First().Name.Should().Be("greet");
+    }
+
+    [Fact]
+    public async Task PrepareHandler_OnMethodDef_ReturnsItemAsync()
+    {
+        var source = @"
+class Calc:
+    def add(self, a: int, b: int) -> int:
+        return a + b
+    def __init__(self):
+        pass
+def main():
+    c = Calc()
+    c.add(1, 2)
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // Cursor on `add` method definition (line 3, col 9 → 0-based: line 2, col 8)
+        var result = await _prepareHandler.Handle(
+            new CallHierarchyPrepareParams
+            {
+                TextDocument = new TextDocumentIdentifier("file:///test.spy"),
+                Position = new Position(2, 8)
+            },
+            CancellationToken.None);
+
+        // add is on self.add which resolves to an identifier
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task IncomingHandler_FindsCallersAsync()
+    {
+        var source = "def helper() -> int:\n    return 1\ndef foo() -> int:\n    return helper()\ndef main():\n    helper()";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // Prepare an item for helper
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        var symbol = analysis!.SymbolTable?.Lookup("helper") as FunctionSymbol;
+        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        preparedItem.Should().NotBeNull();
+
+        var result = await _incomingHandler.Handle(
+            new CallHierarchyIncomingCallsParams { Item = preparedItem! },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Should().HaveCountGreaterThanOrEqualTo(2,
+            "helper is called from both foo and main");
+    }
+
+    [Fact]
+    public async Task IncomingHandler_NoCallers_ReturnsEmptyAsync()
+    {
+        var source = "def unused() -> int:\n    return 1\ndef main():\n    pass";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        var symbol = analysis!.SymbolTable?.Lookup("unused") as FunctionSymbol;
+        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        preparedItem.Should().NotBeNull();
+
+        var result = await _incomingHandler.Handle(
+            new CallHierarchyIncomingCallsParams { Item = preparedItem! },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task OutgoingHandler_FindsCallsAsync()
+    {
+        var source = "def a() -> int:\n    return 1\ndef b() -> int:\n    return 2\ndef caller() -> int:\n    return a() + b()\ndef main():\n    caller()";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        var symbol = analysis!.SymbolTable?.Lookup("caller") as FunctionSymbol;
+        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        preparedItem.Should().NotBeNull();
+
+        var result = await _outgoingHandler.Handle(
+            new CallHierarchyOutgoingCallsParams { Item = preparedItem! },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Should().HaveCountGreaterThanOrEqualTo(2,
+            "caller calls both a and b");
+    }
+
+    [Fact]
+    public async Task OutgoingHandler_NoCalls_ReturnsEmptyAsync()
+    {
+        var source = "def empty() -> int:\n    return 42\ndef main():\n    empty()";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        var symbol = analysis!.SymbolTable?.Lookup("empty") as FunctionSymbol;
+        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        preparedItem.Should().NotBeNull();
+
+        var result = await _outgoingHandler.Handle(
+            new CallHierarchyOutgoingCallsParams { Item = preparedItem! },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task OutgoingHandler_DeduplicatesMultipleCallsToSameTargetAsync()
+    {
+        var source = "def helper() -> int:\n    return 1\ndef caller() -> int:\n    return helper() + helper()\ndef main():\n    caller()";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        var symbol = analysis!.SymbolTable?.Lookup("caller") as FunctionSymbol;
+        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        preparedItem.Should().NotBeNull();
+
+        var result = await _outgoingHandler.Handle(
+            new CallHierarchyOutgoingCallsParams { Item = preparedItem! },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        // helper() called twice → should appear once with 2 fromRanges
+        result!.Should().HaveCount(1, "same callee should be deduplicated");
+        result!.First().FromRanges.Should().HaveCount(2, "two call sites for helper()");
+    }
+
     private static void CollectCalls(Node node, List<FunctionCall> calls)
     {
         if (node is FunctionCall call)
@@ -148,6 +303,7 @@ public class CallHierarchyTests : IDisposable
 
     public void Dispose()
     {
+        _languageService.Dispose();
         _workspace.Dispose();
     }
 }

@@ -48,6 +48,10 @@ internal sealed class SharplyImplementationHandler : ImplementationHandlerBase
         if (symbolTable == null)
             return null;
 
+        // Re-resolve the symbol from the best symbol table so that reference
+        // equality works when the TypeHierarchyIndex is built from the same table.
+        symbol = ReResolveInTable(symbol, symbolTable) ?? symbol;
+
         var locations = FindImplementations(symbol, symbolTable, uri);
         if (locations is not { Count: > 0 })
             return null;
@@ -114,6 +118,30 @@ internal sealed class SharplyImplementationHandler : ImplementationHandlerBase
         return null;
     }
 
+    private static Symbol? ReResolveInTable(Symbol symbol, SymbolTable symbolTable)
+    {
+        if (symbol is TypeSymbol)
+            return symbolTable.Lookup(symbol.Name);
+
+        if (symbol is FunctionSymbol funcSym)
+        {
+            // Methods aren't top-level — search declaring types by name + line.
+            foreach (var ts in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+            {
+                var method = ts.Methods.Find(m =>
+                    string.Equals(m.Name, funcSym.Name, StringComparison.Ordinal)
+                    && m.DeclarationLine == funcSym.DeclarationLine);
+                if (method != null)
+                    return method;
+            }
+
+            // Fall back to top-level function.
+            return symbolTable.Lookup(symbol.Name);
+        }
+
+        return symbolTable.Lookup(symbol.Name);
+    }
+
     private SymbolTable? GetBestSymbolTable(SemanticResult analysis)
     {
         // Prefer project-wide symbol table for full type hierarchy coverage.
@@ -169,11 +197,13 @@ internal sealed class SharplyImplementationHandler : ImplementationHandlerBase
     private static System.Collections.Generic.List<Location>? FindMethodImplementations(
         FunctionSymbol funcSymbol, SymbolTable symbolTable, string fallbackUri)
     {
-        // Find the declaring type by searching all types for one that contains this method.
+        // Find the declaring type by matching method name and declaration line.
         TypeSymbol? declaringType = null;
         foreach (var sym in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
         {
-            if (sym.Methods.Contains(funcSymbol))
+            if (sym.Methods.Any(m =>
+                string.Equals(m.Name, funcSymbol.Name, StringComparison.Ordinal)
+                && m.DeclarationLine == funcSymbol.DeclarationLine))
             {
                 declaringType = sym;
                 break;

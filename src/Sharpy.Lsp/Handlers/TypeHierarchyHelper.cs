@@ -18,6 +18,10 @@ internal static class TypeHierarchyHelper
     /// </summary>
     public static TypeHierarchyItem? CreateItem(TypeSymbol type, string fallbackUri)
     {
+        // Skip builtins/CLR types that have no source location.
+        if (type.DeclarationSpan == null)
+            return null;
+
         var startLine = System.Math.Max(0, (type.DeclarationLine ?? 1) - 1);
         var startCol = System.Math.Max(0, (type.DeclarationColumn ?? 1) - 1);
         var endCol = startCol + type.Name.Length;
