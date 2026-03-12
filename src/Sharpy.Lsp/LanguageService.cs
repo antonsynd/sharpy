@@ -170,8 +170,9 @@ internal sealed class LanguageService : IDisposable
     /// Cancels any previously running background indexing.
     /// </summary>
     /// <param name="workspaceRoot">The workspace root directory path.</param>
+    /// <param name="onComplete">Optional callback invoked after successful indexing.</param>
     /// <param name="ct">Cancellation token linked to the server lifetime.</param>
-    public void StartBackgroundIndexing(string workspaceRoot, CancellationToken ct = default)
+    public void StartBackgroundIndexing(string workspaceRoot, Func<Task>? onComplete = null, CancellationToken ct = default)
     {
         // Cancel any previous indexing
         _indexingCts?.Cancel();
@@ -187,7 +188,11 @@ internal sealed class LanguageService : IDisposable
         {
             try
             {
-                await InitializeProjectAsync(workspaceRoot, cts.Token).ConfigureAwait(false);
+                var success = await InitializeProjectAsync(workspaceRoot, cts.Token).ConfigureAwait(false);
+                if (success && onComplete != null)
+                {
+                    await onComplete().ConfigureAwait(false);
+                }
             }
             catch (OperationCanceledException)
             {

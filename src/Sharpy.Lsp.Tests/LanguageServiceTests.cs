@@ -328,7 +328,7 @@ public class LanguageServiceTests : IDisposable
             ("main.spy", "def main():\n    print(\"hello\")"));
 
         using var cts = new CancellationTokenSource();
-        _service.StartBackgroundIndexing(_tempDir, cts.Token);
+        _service.StartBackgroundIndexing(_tempDir, ct: cts.Token);
 
         // Cancel immediately
         await cts.CancelAsync();

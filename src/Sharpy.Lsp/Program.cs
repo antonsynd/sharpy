@@ -84,8 +84,20 @@ public class Program
                         var progressReporter = new ProgressReporter(server.WorkDoneManager, progressLogger);
                         languageService.SetProgressReporter(progressReporter);
 
-                        // Start background indexing — returns immediately
-                        languageService.StartBackgroundIndexing(rootPath, token);
+                        // Start background indexing — returns immediately.
+                        // On completion, publish diagnostics for all project files.
+                        var diagnosticPublisher = server.Services.GetRequiredService<DiagnosticPublisher>();
+                        languageService.StartBackgroundIndexing(rootPath, async () =>
+                        {
+                            foreach (var fileUri in languageService.GetProjectFileUris())
+                            {
+                                var result = await languageService.GetAnalysisAsync(fileUri).ConfigureAwait(false);
+                                if (result != null)
+                                {
+                                    diagnosticPublisher.PublishDiagnostics(fileUri, result, sourceText: null);
+                                }
+                            }
+                        });
                     }
 
                     return Task.CompletedTask;
