@@ -71,7 +71,7 @@ public class Program
                         await Console.Error.WriteLineAsync($"[Warning] Workspace capability setup failed: {ex.Message}").ConfigureAwait(false);
                     }
                 })
-                .OnInitialized(async (server, request, response, token) =>
+                .OnInitialized((server, request, response, token) =>
                 {
                     var rootPath = workspaceRootUri?.LocalPath ?? request.RootPath;
                     if (rootPath != null)
@@ -80,8 +80,15 @@ public class Program
                         workspace.LoadProject(rootPath);
 
                         var languageService = server.Services.GetRequiredService<LanguageService>();
-                        await languageService.InitializeProjectAsync(rootPath, token).ConfigureAwait(false);
+                        var progressLogger = server.Services.GetRequiredService<ILogger<ProgressReporter>>();
+                        var progressReporter = new ProgressReporter(server.WorkDoneManager, progressLogger);
+                        languageService.SetProgressReporter(progressReporter);
+
+                        // Start background indexing — returns immediately
+                        languageService.StartBackgroundIndexing(rootPath, token);
                     }
+
+                    return Task.CompletedTask;
                 })
                 .WithHandler<TextDocumentSyncHandler>()
                 .WithHandler<SharplyHoverHandler>()

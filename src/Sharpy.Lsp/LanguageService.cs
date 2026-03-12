@@ -26,6 +26,11 @@ internal sealed class LanguageService : IDisposable
     private readonly ConcurrentDictionary<string, SemanticResult> _fileResults = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _analysisLock = new(1, 1);
 
+    // Background indexing
+    private ProgressReporter? _progressReporter;
+    private CancellationTokenSource? _indexingCts;
+    private volatile bool _isReady;
+
     public LanguageService(SharplyWorkspace workspace, CompilerApi api, ILogger<LanguageService> logger)
     {
         _workspace = workspace;
@@ -34,9 +39,24 @@ internal sealed class LanguageService : IDisposable
     }
 
     /// <summary>
+    /// Sets the progress reporter for background indexing notifications.
+    /// Must be called after the LSP server is initialized.
+    /// </summary>
+    public void SetProgressReporter(ProgressReporter reporter)
+    {
+        _progressReporter = reporter;
+    }
+
+    /// <summary>
     /// Whether a project has been loaded.
     /// </summary>
     public bool HasProject => _projectConfig != null;
+
+    /// <summary>
+    /// Whether background indexing has completed and project-level results are available.
+    /// Returns true when no project is loaded (single-file mode is always ready).
+    /// </summary>
+    public bool IsReady => !HasProject || _isReady;
 
     /// <summary>
     /// The current project analysis result, if available.
@@ -61,6 +81,7 @@ internal sealed class LanguageService : IDisposable
         if (projectFilePath == null)
         {
             _logger.LogInformation("No .spyproj file found in {Root}", workspaceRoot);
+            _isReady = true;
             return false;
         }
 
@@ -73,39 +94,55 @@ internal sealed class LanguageService : IDisposable
                 project.RootNamespace, project.SourceFiles.Count);
 
             var config = project.ToProjectConfig();
+            _workspaceRoot = workspaceRoot;
+            _projectConfig = config;
+            _isReady = false;
 
-            await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
-            try
+            var progress = _progressReporter != null
+                ? await _progressReporter.BeginAsync("Indexing Sharpy project", ct).ConfigureAwait(false)
+                : ProgressScope.NoOp;
+
+            using (progress)
             {
-                var result = await Task.Run(
-                    () => _api.AnalyzeProject(config, ct), ct).ConfigureAwait(false);
+                progress.Report($"Analyzing {config.SourceFiles.Count} file(s)...", 0);
 
-                _workspaceRoot = workspaceRoot;
-                _projectConfig = config;
-                _projectAnalysis = result;
-
-                // Populate per-file result cache
-                _fileResults.Clear();
-                foreach (var filePath in config.SourceFiles)
+                await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
+                try
                 {
-                    var fileResult = ExtractFileResult(filePath, result);
-                    if (fileResult != null)
+                    var result = await Task.Run(
+                        () => _api.AnalyzeProject(config, ct), ct).ConfigureAwait(false);
+
+                    _projectAnalysis = result;
+
+                    // Populate per-file result cache
+                    _fileResults.Clear();
+                    foreach (var filePath in config.SourceFiles)
                     {
-                        _fileResults[filePath] = fileResult;
+                        var fileResult = ExtractFileResult(filePath, result);
+                        if (fileResult != null)
+                        {
+                            _fileResults[filePath] = fileResult;
+                        }
                     }
+
+                    _isReady = true;
+
+                    _logger.LogInformation(
+                        "Project analysis {Status} with {ErrorCount} error(s), {FileCount} file result(s) cached",
+                        result.Success ? "succeeded" : "failed",
+                        result.Diagnostics.ErrorCount,
+                        _fileResults.Count);
+
+                    progress.Complete(result.Success
+                        ? $"Indexed {_fileResults.Count} file(s)"
+                        : $"Indexing completed with {result.Diagnostics.ErrorCount} error(s)");
+
+                    return result.Success;
                 }
-
-                _logger.LogInformation(
-                    "Project analysis {Status} with {ErrorCount} error(s), {FileCount} file result(s) cached",
-                    result.Success ? "succeeded" : "failed",
-                    result.Diagnostics.ErrorCount,
-                    _fileResults.Count);
-
-                return result.Success;
-            }
-            finally
-            {
-                _analysisLock.Release();
+                finally
+                {
+                    _analysisLock.Release();
+                }
             }
         }
         catch (OperationCanceledException)
@@ -116,8 +153,42 @@ internal sealed class LanguageService : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize project from {Path}", projectFilePath);
+            _isReady = true; // Mark ready even on failure to avoid blocking handlers
             return false;
         }
+    }
+
+    /// <summary>
+    /// Starts background indexing of the project. Returns immediately; the caller
+    /// can check <see cref="IsReady"/> to know when indexing completes.
+    /// Cancels any previously running background indexing.
+    /// </summary>
+    /// <param name="workspaceRoot">The workspace root directory path.</param>
+    /// <param name="ct">Cancellation token linked to the server lifetime.</param>
+    public void StartBackgroundIndexing(string workspaceRoot, CancellationToken ct = default)
+    {
+        // Cancel any previous indexing
+        _indexingCts?.Cancel();
+        _indexingCts?.Dispose();
+
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _indexingCts = cts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await InitializeProjectAsync(workspaceRoot, cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogDebug("Background indexing cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Background indexing failed");
+            }
+        }, cts.Token);
     }
 
     /// <summary>
@@ -317,6 +388,8 @@ internal sealed class LanguageService : IDisposable
 
     public void Dispose()
     {
+        _indexingCts?.Cancel();
+        _indexingCts?.Dispose();
         _analysisLock.Dispose();
     }
 }
