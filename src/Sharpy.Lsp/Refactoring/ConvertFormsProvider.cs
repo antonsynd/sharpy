@@ -5,6 +5,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Services;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
+using SCG = System.Collections.Generic;
 
 namespace Sharpy.Lsp.Refactoring;
 
@@ -26,7 +27,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         CodeActionProviderContext context,
         CancellationToken cancellationToken)
     {
-        var actions = new List<CodeAction>();
+        var actions = new SCG.List<CodeAction>();
 
         if (context.Analysis?.Ast is null || context.SourceText is null)
             return Task.FromResult<IReadOnlyList<CodeAction>>(actions);
@@ -61,7 +62,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         int line,
         int col,
         CodeActionProviderContext context,
-        List<CodeAction> actions)
+        SCG.List<CodeAction> actions)
     {
         var ifStmt = PositionService.FindNodeOfType<IfStatement>(ast, line, col);
         if (ifStmt is null)
@@ -72,7 +73,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         if (scrutinee is null)
             return;
 
-        var arms = new List<(string literalText, ImmutableArray<Statement> body)>();
+        var arms = new SCG.List<(string literalText, ImmutableArray<Statement> body)>();
 
         // Extract the literal from the if-condition
         var ifLiteral = ExtractLiteralFromEqualityCheck(ifStmt.Test, scrutinee);
@@ -230,7 +231,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         int line,
         int col,
         CodeActionProviderContext context,
-        List<CodeAction> actions)
+        SCG.List<CodeAction> actions)
     {
         var matchStmt = PositionService.FindNodeOfType<MatchStatement>(ast, line, col);
         if (matchStmt is null)
@@ -333,7 +334,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         int line,
         int col,
         CodeActionProviderContext context,
-        List<CodeAction> actions)
+        SCG.List<CodeAction> actions)
     {
         var varDecl = PositionService.FindNodeOfType<VariableDeclaration>(ast, line, col);
         if (varDecl is null)
@@ -384,7 +385,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         int line,
         int col,
         CodeActionProviderContext context,
-        List<CodeAction> actions)
+        SCG.List<CodeAction> actions)
     {
         var varDecl = PositionService.FindNodeOfType<VariableDeclaration>(ast, line, col);
         if (varDecl is null)
@@ -447,7 +448,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         Module ast,
         string sourceText,
         CodeActionProviderContext context,
-        List<CodeAction> actions)
+        SCG.List<CodeAction> actions)
     {
         // Only offer when the user has selected one or more statements
         var selectedStatements = SelectionAnalyzer.FindSelectedStatements(

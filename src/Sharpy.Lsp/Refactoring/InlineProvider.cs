@@ -3,6 +3,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Services;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
+using SCG = System.Collections.Generic;
 
 namespace Sharpy.Lsp.Refactoring;
 
@@ -26,7 +27,7 @@ internal sealed class InlineProvider : ICodeActionProvider
         CodeActionProviderContext context,
         CancellationToken cancellationToken)
     {
-        var actions = new List<CodeAction>();
+        var actions = new SCG.List<CodeAction>();
 
         if (context.SourceText is null || context.Analysis?.Ast is null)
             return Task.FromResult<IReadOnlyList<CodeAction>>(actions);
@@ -102,7 +103,7 @@ internal sealed class InlineProvider : ICodeActionProvider
         // Build text edits:
         // 1. Replace each reference with the initializer text
         // 2. Delete the variable declaration line
-        var edits = new List<TextEdit>();
+        var edits = new SCG.List<TextEdit>();
 
         // Replace all references with the initializer expression.
         // References are sorted by position; process them (order doesn't matter for
@@ -233,7 +234,7 @@ internal sealed class InlineProvider : ICodeActionProvider
         // Wrap in parentheses to preserve grouping at the call site
         var replacementText = $"({substitutionText})";
 
-        var edits = new List<TextEdit>
+        var edits = new SCG.List<TextEdit>
         {
             new TextEdit
             {

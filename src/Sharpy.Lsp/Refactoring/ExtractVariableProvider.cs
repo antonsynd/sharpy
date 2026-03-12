@@ -3,6 +3,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Services;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
+using SCG = System.Collections.Generic;
 
 namespace Sharpy.Lsp.Refactoring;
 
@@ -20,7 +21,7 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
         CodeActionProviderContext context,
         CancellationToken cancellationToken)
     {
-        var actions = new List<CodeAction>();
+        var actions = new SCG.List<CodeAction>();
 
         // We need a non-empty selection, source text, and a parsed AST
         if (context.SourceText is null || context.Analysis?.Ast is null)
@@ -79,7 +80,7 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
         // 1. Insert the variable declaration on a new line before the containing statement
         // 2. Replace the selected expression with the variable name
 
-        var edits = new List<TextEdit>();
+        var edits = new SCG.List<TextEdit>();
 
         // Edit 1: Insert variable declaration before the statement
         // Insert at the beginning of the containing statement's line

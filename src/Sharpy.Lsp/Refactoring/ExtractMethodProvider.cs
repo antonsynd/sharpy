@@ -4,6 +4,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Services;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
+using SCG = System.Collections.Generic;
 
 namespace Sharpy.Lsp.Refactoring;
 
@@ -123,7 +124,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
 
         // Sort parameter names for deterministic output.
         var sortedNames = readsFromOuterScope.OrderBy(n => n, StringComparer.Ordinal).ToList();
-        var parameters = new List<(string Name, SemanticType Type)>();
+        var parameters = new SCG.List<(string Name, SemanticType Type)>();
 
         foreach (var name in sortedNames)
         {
@@ -146,7 +147,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
             return Array.Empty<(string Name, SemanticType Type)>();
 
         var sortedNames = writesToOuterScope.OrderBy(n => n, StringComparer.Ordinal).ToList();
-        var returnValues = new List<(string Name, SemanticType Type)>();
+        var returnValues = new SCG.List<(string Name, SemanticType Type)>();
 
         foreach (var name in sortedNames)
         {
@@ -394,7 +395,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         string functionDef,
         string callSite)
     {
-        var edits = new List<TextEdit>();
+        var edits = new SCG.List<TextEdit>();
 
         // Edit 1: Insert new function definition.
         // Determine insertion point based on context.

@@ -2,6 +2,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Services;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
+using SCG = System.Collections.Generic;
 
 namespace Sharpy.Lsp.Refactoring;
 
@@ -107,7 +108,7 @@ internal static class SelectionAnalyzer
         var body = FindContainingBody(ast, startLine, startCol);
 
         // Collect statements from that body that are fully within the selection
-        var selected = new List<Statement>();
+        var selected = new SCG.List<Statement>();
         var inRange = false;
 
         foreach (var stmt in body)

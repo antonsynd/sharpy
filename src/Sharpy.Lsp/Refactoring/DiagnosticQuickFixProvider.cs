@@ -2,6 +2,7 @@ using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Diagnostics;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
+using SCG = System.Collections.Generic;
 
 namespace Sharpy.Lsp.Refactoring;
 
@@ -15,7 +16,7 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
         CodeActionProviderContext context,
         CancellationToken cancellationToken)
     {
-        var actions = new List<CodeAction>();
+        var actions = new SCG.List<CodeAction>();
 
         foreach (var diag in context.Diagnostics)
         {
