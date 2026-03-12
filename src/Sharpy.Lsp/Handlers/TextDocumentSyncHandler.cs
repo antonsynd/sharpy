@@ -11,7 +11,7 @@ namespace Sharpy.Lsp.Handlers;
 
 /// <summary>
 /// Handles textDocument/didOpen, didChange, didClose, and didSave notifications.
-/// Uses full document sync (the client sends the entire document content on each change).
+/// Uses incremental document sync (the client sends only changed ranges).
 /// </summary>
 internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
 {
@@ -52,9 +52,11 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         var changes = request.ContentChanges.ToArray();
         if (changes.Length > 0)
         {
-            // With Full sync, the last change event contains the entire document text.
-            var text = changes[^1].Text;
-            _workspace.UpdateDocument(uri, text, version);
+            // Map LSP content change events to (Range?, Text) tuples for incremental application
+            var mapped = changes
+                .Select(c => (c.Range, c.Text))
+                .ToList();
+            _workspace.ApplyChanges(uri, mapped, version);
         }
 
         return Unit.Task;
@@ -81,7 +83,7 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         return new TextDocumentSyncRegistrationOptions
         {
             DocumentSelector = TextDocumentSelector.ForPattern("**/*.spy"),
-            Change = TextDocumentSyncKind.Full,
+            Change = TextDocumentSyncKind.Incremental,
             Save = new SaveOptions { IncludeText = false }
         };
     }

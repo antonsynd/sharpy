@@ -202,6 +202,18 @@ internal sealed class SharplyWorkspace : IDisposable
         }
     }
 
+    public void ApplyChanges(
+        string uri,
+        IReadOnlyList<(OmniSharp.Extensions.LanguageServer.Protocol.Models.Range? Range, string Text)> changes,
+        int version)
+    {
+        if (_documents.TryGetValue(uri, out var state))
+        {
+            state.ApplyIncrementalChanges(changes, version);
+            ScheduleAnalysis(uri);
+        }
+    }
+
     public void CloseDocument(string uri)
     {
         if (_documents.TryRemove(uri, out var state))
