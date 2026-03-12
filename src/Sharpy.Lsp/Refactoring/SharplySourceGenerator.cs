@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Sharpy.Compiler.Semantic;
+using AstNode = Sharpy.Compiler.Parser.Ast.Node;
 
 namespace Sharpy.Lsp.Refactoring;
 
@@ -183,6 +184,66 @@ internal static class SharplySourceGenerator
             i++;
 
         return line[..i];
+    }
+
+    /// <summary>
+    /// Extracts the source text for a given AST node using its line/column positions.
+    /// </summary>
+    internal static string? GetNodeSourceText(string sourceText, AstNode node)
+    {
+        var lines = sourceText.Split('\n');
+
+        if (node.LineStart == 0 || node.LineEnd == 0)
+            return null;
+
+        var startLineIdx = node.LineStart - 1;
+        var endLineIdx = node.LineEnd - 1;
+
+        if (startLineIdx < 0 || startLineIdx >= lines.Length ||
+            endLineIdx < 0 || endLineIdx >= lines.Length)
+            return null;
+
+        if (startLineIdx == endLineIdx)
+        {
+            // Single-line node
+            var line = lines[startLineIdx];
+            var startCol = node.ColumnStart - 1;
+            var endCol = node.ColumnEnd - 1;
+
+            if (startCol < 0 || endCol < 0 || startCol > line.Length || endCol > line.Length)
+                return null;
+
+            return line[startCol..endCol];
+        }
+
+        // Multi-line node
+        var result = new StringBuilder();
+
+        // First line: from ColumnStart to end of line
+        var firstLine = lines[startLineIdx];
+        var firstStartCol = node.ColumnStart - 1;
+        if (firstStartCol >= 0 && firstStartCol <= firstLine.Length)
+            result.Append(firstLine[firstStartCol..]);
+        else
+            return null;
+
+        // Middle lines: complete lines
+        for (var idx = startLineIdx + 1; idx < endLineIdx; idx++)
+        {
+            result.Append('\n');
+            result.Append(lines[idx]);
+        }
+
+        // Last line: from start to ColumnEnd
+        result.Append('\n');
+        var lastLine = lines[endLineIdx];
+        var lastEndCol = node.ColumnEnd - 1;
+        if (lastEndCol >= 0 && lastEndCol <= lastLine.Length)
+            result.Append(lastLine[..lastEndCol]);
+        else
+            return null;
+
+        return result.ToString();
     }
 
     /// <summary>

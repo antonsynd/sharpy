@@ -96,7 +96,7 @@ internal sealed class InlineProvider : ICodeActionProvider
             return null;
 
         // Extract the initializer source text
-        var initializerText = GetNodeSourceText(sourceText, varDecl.InitialValue);
+        var initializerText = SharplySourceGenerator.GetNodeSourceText(sourceText, varDecl.InitialValue);
         if (initializerText is null)
             return null;
 
@@ -211,7 +211,7 @@ internal sealed class InlineProvider : ICodeActionProvider
             return null;
 
         // Build the replacement text by substituting parameter names in the return expression
-        var returnExprText = GetNodeSourceText(sourceText, returnStmt.Value);
+        var returnExprText = SharplySourceGenerator.GetNodeSourceText(sourceText, returnStmt.Value);
         if (returnExprText is null)
             return null;
 
@@ -220,7 +220,7 @@ internal sealed class InlineProvider : ICodeActionProvider
         for (var i = 0; i < effectiveParams.Length; i++)
         {
             var paramName = effectiveParams[i].Name;
-            var argText = GetNodeSourceText(sourceText, funcCall.Arguments[i]);
+            var argText = SharplySourceGenerator.GetNodeSourceText(sourceText, funcCall.Arguments[i]);
             if (argText is null)
                 return null;
 
@@ -520,63 +520,4 @@ internal sealed class InlineProvider : ICodeActionProvider
         return char.IsLetterOrDigit(c) || c == '_';
     }
 
-    /// <summary>
-    /// Extracts the source text for a given AST node using its line/column positions.
-    /// </summary>
-    private static string? GetNodeSourceText(string sourceText, Node node)
-    {
-        var lines = sourceText.Split('\n');
-
-        if (node.LineStart == 0 || node.LineEnd == 0)
-            return null;
-
-        var startLineIdx = node.LineStart - 1;
-        var endLineIdx = node.LineEnd - 1;
-
-        if (startLineIdx < 0 || startLineIdx >= lines.Length ||
-            endLineIdx < 0 || endLineIdx >= lines.Length)
-            return null;
-
-        if (startLineIdx == endLineIdx)
-        {
-            // Single-line node
-            var line = lines[startLineIdx];
-            var startCol = node.ColumnStart - 1;
-            var endCol = node.ColumnEnd - 1;
-
-            if (startCol < 0 || endCol < 0 || startCol > line.Length || endCol > line.Length)
-                return null;
-
-            return line[startCol..endCol];
-        }
-
-        // Multi-line node
-        var result = new System.Text.StringBuilder();
-
-        // First line: from ColumnStart to end of line
-        var firstLine = lines[startLineIdx];
-        var firstStartCol = node.ColumnStart - 1;
-        if (firstStartCol >= 0 && firstStartCol <= firstLine.Length)
-            result.Append(firstLine[firstStartCol..]);
-        else
-            return null;
-
-        // Middle lines: complete lines
-        for (var idx = startLineIdx + 1; idx < endLineIdx; idx++)
-        {
-            result.Append('\n');
-            result.Append(lines[idx]);
-        }
-
-        // Last line: from start to ColumnEnd
-        result.Append('\n');
-        var lastLine = lines[endLineIdx];
-        var lastEndCol = node.ColumnEnd - 1;
-        if (lastEndCol >= 0 && lastEndCol <= lastLine.Length)
-            result.Append(lastLine[..lastEndCol]);
-        else
-            return null;
-
-        return result.ToString();
-    }
 }

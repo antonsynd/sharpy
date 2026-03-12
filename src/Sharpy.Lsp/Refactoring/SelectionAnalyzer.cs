@@ -290,7 +290,7 @@ internal static class SelectionAnalyzer
     /// <summary>
     /// Checks if the selection is a zero-width cursor position (start == end).
     /// </summary>
-    private static bool IsZeroWidthSelection(LspRange selection)
+    internal static bool IsZeroWidthSelection(LspRange selection)
     {
         return selection.Start.Line == selection.End.Line &&
                selection.Start.Character == selection.End.Character;

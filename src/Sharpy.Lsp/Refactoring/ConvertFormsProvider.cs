@@ -458,7 +458,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
             return;
 
         // Don't offer if the selection is just a cursor (zero-width)
-        if (IsZeroWidthSelection(context.Range))
+        if (SelectionAnalyzer.IsZeroWidthSelection(context.Range))
             return;
 
         var firstStmt = selectedStatements[0];
@@ -489,11 +489,11 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         sb.Append("except Exception as e:");
         sb.AppendLine();
         sb.Append(bodyIndent);
-        sb.Append("raise");
+        sb.AppendLine("raise");
 
         var editRange = new LspRange(
-            PositionConverter.ToLsp(firstStmt.LineStart, firstStmt.ColumnStart),
-            PositionConverter.ToLsp(lastStmt.LineEnd, lastStmt.ColumnEnd));
+            PositionConverter.ToLsp(firstStmt.LineStart, 1),
+            PositionConverter.ToLsp(lastStmt.LineEnd + 1, 1));
         var edit = CreateWorkspaceEdit(context.DocumentUri, editRange, sb.ToString());
 
         actions.Add(new CodeAction
@@ -620,12 +620,6 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
                 [uri] = new[] { new TextEdit { Range = range, NewText = newText } }
             }
         };
-    }
-
-    private static bool IsZeroWidthSelection(LspRange range)
-    {
-        return range.Start.Line == range.End.Line
-            && range.Start.Character == range.End.Character;
     }
 
     #endregion

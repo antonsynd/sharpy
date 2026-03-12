@@ -7,7 +7,7 @@ namespace Sharpy.Lsp.Refactoring;
 /// Information about variable usage and control flow within a code selection.
 /// Used by extract method to determine parameters and return values.
 /// </summary>
-public sealed record ScopeInfo
+internal sealed record ScopeInfo
 {
     /// <summary>Variables read within the selection that are declared outside it.</summary>
     public IReadOnlySet<string> ReadsFromOuterScope { get; init; } = new HashSet<string>();

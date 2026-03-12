@@ -89,7 +89,8 @@ internal sealed class SharplyCodeActionHandler : CodeActionHandlerBase
                 CodeActionKind.RefactorExtract,
                 CodeActionKind.RefactorInline,
                 CodeActionKind.Source,
-                CodeActionKind.SourceOrganizeImports)
+                CodeActionKind.SourceOrganizeImports),
+            ResolveProvider = true
         };
     }
 }

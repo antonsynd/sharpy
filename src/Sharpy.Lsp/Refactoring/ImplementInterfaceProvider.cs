@@ -287,7 +287,7 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
         return new CodeAction
         {
             Title = title,
-            Kind = CodeActionKind.QuickFix,
+            Kind = CodeActionKind.Refactor,
             Edit = edit
         };
     }

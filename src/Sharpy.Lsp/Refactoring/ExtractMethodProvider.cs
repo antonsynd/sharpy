@@ -24,7 +24,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
             return Task.FromResult<IReadOnlyList<CodeAction>>(Array.Empty<CodeAction>());
 
         // Extract method requires a non-empty range selection.
-        if (IsZeroWidthSelection(context.Range))
+        if (SelectionAnalyzer.IsZeroWidthSelection(context.Range))
             return Task.FromResult<IReadOnlyList<CodeAction>>(Array.Empty<CodeAction>());
 
         // Find the statements fully contained within the selection.
@@ -452,15 +452,6 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         while (i < line.Length && (line[i] == ' ' || line[i] == '\t'))
             i++;
         return line[..i];
-    }
-
-    /// <summary>
-    /// Checks if the selection is a zero-width cursor position (start == end).
-    /// </summary>
-    private static bool IsZeroWidthSelection(LspRange selection)
-    {
-        return selection.Start.Line == selection.End.Line &&
-               selection.Start.Character == selection.End.Character;
     }
 
     /// <summary>

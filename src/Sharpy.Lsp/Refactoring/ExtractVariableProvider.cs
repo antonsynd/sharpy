@@ -30,7 +30,7 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
         var selection = context.Range;
 
         // Only trigger on non-empty (range) selections
-        if (IsZeroWidthSelection(selection))
+        if (SelectionAnalyzer.IsZeroWidthSelection(selection))
             return Task.FromResult<IReadOnlyList<CodeAction>>(actions);
 
         var ast = context.Analysis.Ast;
@@ -72,7 +72,7 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
             : $"{indentation}{DefaultVariableName} = ";
 
         // Get the expression source text from the original document
-        var expressionSourceText = GetNodeSourceText(sourceText, expression);
+        var expressionSourceText = SharplySourceGenerator.GetNodeSourceText(sourceText, expression);
         if (expressionSourceText is null)
             return Task.FromResult<IReadOnlyList<CodeAction>>(actions);
 
@@ -174,72 +174,6 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
         return null;
     }
 
-    /// <summary>
-    /// Extracts the source text for a given AST node using its line/column positions.
-    /// </summary>
-    private static string? GetNodeSourceText(string sourceText, Node node)
-    {
-        var lines = sourceText.Split('\n');
 
-        if (node.LineStart == 0 || node.LineEnd == 0)
-            return null;
 
-        var startLineIdx = node.LineStart - 1;
-        var endLineIdx = node.LineEnd - 1;
-
-        if (startLineIdx < 0 || startLineIdx >= lines.Length ||
-            endLineIdx < 0 || endLineIdx >= lines.Length)
-            return null;
-
-        if (startLineIdx == endLineIdx)
-        {
-            // Single-line expression
-            var line = lines[startLineIdx];
-            var startCol = node.ColumnStart - 1;
-            var endCol = node.ColumnEnd - 1;
-
-            if (startCol < 0 || endCol < 0 || startCol > line.Length || endCol > line.Length)
-                return null;
-
-            return line[startCol..endCol];
-        }
-
-        // Multi-line expression
-        var result = new System.Text.StringBuilder();
-
-        // First line: from ColumnStart to end of line
-        var firstLine = lines[startLineIdx];
-        var firstStartCol = node.ColumnStart - 1;
-        if (firstStartCol >= 0 && firstStartCol <= firstLine.Length)
-            result.Append(firstLine[firstStartCol..]);
-        else
-            return null;
-
-        // Middle lines: complete lines
-        for (var i = startLineIdx + 1; i < endLineIdx; i++)
-        {
-            result.Append('\n');
-            result.Append(lines[i]);
-        }
-
-        // Last line: from start to ColumnEnd
-        result.Append('\n');
-        var lastLine = lines[endLineIdx];
-        var lastEndCol = node.ColumnEnd - 1;
-        if (lastEndCol >= 0 && lastEndCol <= lastLine.Length)
-            result.Append(lastLine[..lastEndCol]);
-        else
-            return null;
-
-        return result.ToString();
-    }
-
-    /// <summary>
-    /// Checks if the selection is a zero-width cursor position (start == end).
-    /// </summary>
-    private static bool IsZeroWidthSelection(LspRange selection)
-    {
-        return selection.Start.Line == selection.End.Line &&
-               selection.Start.Character == selection.End.Character;
-    }
 }
