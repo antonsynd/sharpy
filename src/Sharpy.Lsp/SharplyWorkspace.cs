@@ -10,14 +10,15 @@ namespace Sharpy.Lsp;
 
 /// <summary>
 /// Document state for a single open document.
+/// SourceText is the primary text buffer; string Text is a computed property.
 /// </summary>
 internal sealed class DocumentState : IDisposable
 {
     public string Uri { get; }
-    public string Text { get; private set; }
+    public SourceText SourceText { get; private set; }
+    public string Text => SourceText.ToString();
     public int Version { get; private set; }
     public SemanticResult? CachedAnalysis { get; private set; }
-    public SourceText? CachedSourceText { get; private set; }
 
     private readonly SemaphoreSlim _analysisSemaphore = new(1, 1);
     private readonly object _stateLock = new();
@@ -26,7 +27,7 @@ internal sealed class DocumentState : IDisposable
     public DocumentState(string uri, string text, int version)
     {
         Uri = uri;
-        Text = text;
+        SourceText = new SourceText(text, uri);
         Version = version;
     }
 
@@ -34,21 +35,60 @@ internal sealed class DocumentState : IDisposable
     {
         lock (_stateLock)
         {
-            Text = text;
+            SourceText = new SourceText(text, Uri);
             Version = version;
             CachedAnalysis = null;
-            CachedSourceText = null;
         }
     }
 
     /// <summary>
-    /// Returns a consistent snapshot of Text and CachedSourceText.
+    /// Applies incremental text changes from LSP content change events.
+    /// Each change with a Range is mapped to a TextChange; changes without
+    /// a Range are treated as full-document replacements.
     /// </summary>
-    public (string Text, SourceText? CachedSourceText) GetTextSnapshot()
+    public void ApplyIncrementalChanges(
+        IReadOnlyList<(OmniSharp.Extensions.LanguageServer.Protocol.Models.Range? Range, string Text)> changes,
+        int version)
     {
         lock (_stateLock)
         {
-            return (Text, CachedSourceText);
+            var currentSource = SourceText;
+
+            foreach (var (range, text) in changes)
+            {
+                if (range == null)
+                {
+                    // Full sync fallback: replace entire document
+                    currentSource = new SourceText(text, Uri);
+                }
+                else
+                {
+                    // Convert LSP 0-based line/character to compiler 1-based, then to offset
+                    var startOffset = currentSource.GetPosition(
+                        range.Start.Line + 1, range.Start.Character + 1);
+                    var endOffset = currentSource.GetPosition(
+                        range.End.Line + 1, range.End.Character + 1);
+
+                    var span = TextSpan.FromBounds(startOffset, endOffset);
+                    var textChange = new TextChange(span, text);
+                    currentSource = currentSource.WithChanges([textChange]);
+                }
+            }
+
+            SourceText = currentSource;
+            Version = version;
+            CachedAnalysis = null;
+        }
+    }
+
+    /// <summary>
+    /// Returns the current SourceText snapshot.
+    /// </summary>
+    public SourceText GetSourceTextSnapshot()
+    {
+        lock (_stateLock)
+        {
+            return SourceText;
         }
     }
 
@@ -64,12 +104,14 @@ internal sealed class DocumentState : IDisposable
         try
         {
             string text;
+            SourceText sourceText;
             lock (_stateLock)
             {
                 // Double-check after acquiring lock
                 if (CachedAnalysis != null)
                     return CachedAnalysis;
-                text = Text;
+                sourceText = SourceText;
+                text = sourceText.ToString();
             }
 
             // Cancel any previous pending analysis
@@ -88,7 +130,6 @@ internal sealed class DocumentState : IDisposable
             lock (_stateLock)
             {
                 CachedAnalysis = result;
-                CachedSourceText = new SourceText(text, Uri);
             }
             return result;
         }
@@ -193,8 +234,7 @@ internal sealed class SharplyWorkspace : IDisposable
     {
         if (_documents.TryGetValue(uri, out var state))
         {
-            var (text, cachedSourceText) = state.GetTextSnapshot();
-            return cachedSourceText ?? new SourceText(text, uri);
+            return state.GetSourceTextSnapshot();
         }
         return null;
     }
