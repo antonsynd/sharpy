@@ -380,8 +380,8 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
     /// </summary>
     private static string FormatMethodStub(FunctionSymbol method, int indentLevel)
     {
-        var indent = new string(' ', indentLevel * 4);
-        var bodyIndent = new string(' ', (indentLevel + 1) * 4);
+        var indent = new string(' ', indentLevel * SharplySourceGenerator.DefaultIndentWidth);
+        var bodyIndent = new string(' ', (indentLevel + 1) * SharplySourceGenerator.DefaultIndentWidth);
         var sb = new StringBuilder();
 
         sb.Append(indent);

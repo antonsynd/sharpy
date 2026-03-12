@@ -171,4 +171,28 @@ public class InlineProviderTests
         var inlineAction = actions.FirstOrDefault(a => a.Title.Contains("Inline function"));
         inlineAction.Should().BeNull();
     }
+
+    [Fact]
+    public async Task InlineFunction_ParameterSubstitution_ReturnsCorrectEdit()
+    {
+        // Inline a single-expression function with a parameter
+        var source = "def add_one(n: int) -> int:\n    return n + 1\n\ndef main():\n    print(add_one(5))";
+        var provider = new InlineProvider();
+
+        // Cursor on the function call add_one(5)
+        var range = new LspRange(new Position(4, 10), new Position(4, 10));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var inlineAction = actions.FirstOrDefault(a =>
+            a.Title.Contains("Inline function") && a.Title.Contains("add_one"));
+        inlineAction.Should().NotBeNull();
+        inlineAction!.Kind.Should().Be(CodeActionKind.RefactorInline);
+        inlineAction.Edit.Should().NotBeNull();
+
+        // Verify the edit substitutes the parameter 'n' with the argument '5'
+        var edits = inlineAction.Edit!.Changes![TestUri].ToList();
+        edits.Should().NotBeEmpty();
+        var replacementEdit = edits.FirstOrDefault(e => e.NewText.Contains("5"));
+        replacementEdit.Should().NotBeNull();
+    }
 }

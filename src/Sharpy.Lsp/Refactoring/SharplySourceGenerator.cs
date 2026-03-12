@@ -11,6 +11,7 @@ namespace Sharpy.Lsp.Refactoring;
 /// </summary>
 internal static class SharplySourceGenerator
 {
+    internal const int DefaultIndentWidth = 4;
     private const int MaxDetectableIndent = 8;
 
     /// <summary>
@@ -96,8 +97,8 @@ internal static class SharplySourceGenerator
         int indentLevel,
         string? body = null)
     {
-        var indent = new string(' ', indentLevel * 4);
-        var bodyIndent = new string(' ', (indentLevel + 1) * 4);
+        var indent = new string(' ', indentLevel * DefaultIndentWidth);
+        var bodyIndent = new string(' ', (indentLevel + 1) * DefaultIndentWidth);
         var sb = new StringBuilder();
 
         sb.Append(indent);
@@ -138,8 +139,8 @@ internal static class SharplySourceGenerator
         bool hasSetter,
         int indentLevel)
     {
-        var indent = new string(' ', indentLevel * 4);
-        var bodyIndent = new string(' ', (indentLevel + 1) * 4);
+        var indent = new string(' ', indentLevel * DefaultIndentWidth);
+        var bodyIndent = new string(' ', (indentLevel + 1) * DefaultIndentWidth);
         var sb = new StringBuilder();
 
         if (hasGetter)

@@ -205,4 +205,35 @@ public class ConvertFormsProviderTests
         var convertAction = actions.FirstOrDefault(a => a.Title.Contains("Convert to match statement"));
         convertAction.Should().BeNull();
     }
+
+    [Fact]
+    public async Task ConvertIfToMatch_WithoutElse_ReturnsAction()
+    {
+        var source = @"def main():
+    x: int = 1
+    if x == 1:
+        print('one')
+    elif x == 2:
+        print('two')";
+
+        var provider = new ConvertFormsProvider();
+
+        // Cursor on the if statement
+        var range = new LspRange(new Position(2, 4), new Position(2, 4));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var convertAction = actions.FirstOrDefault(a => a.Title.Contains("Convert to match statement"));
+        convertAction.Should().NotBeNull();
+        convertAction!.Kind.Should().Be(CodeActionKind.Refactor);
+        convertAction.Edit.Should().NotBeNull();
+
+        // Verify the generated match does not contain case _: since there was no else
+        var edits = convertAction.Edit!.Changes![TestUri].ToList();
+        edits.Should().ContainSingle();
+        var newText = edits[0].NewText;
+        newText.Should().Contain("match x:");
+        newText.Should().Contain("case 1:");
+        newText.Should().Contain("case 2:");
+        newText.Should().NotContain("case _:");
+    }
 }

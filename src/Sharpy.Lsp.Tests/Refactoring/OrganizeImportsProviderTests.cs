@@ -146,4 +146,24 @@ public class OrganizeImportsProviderTests
         // The used import 'math' should be kept
         newText.Should().Contain("import math");
     }
+
+    [Fact]
+    public async Task OrganizeImports_MixedImportForms_SortedCorrectly()
+    {
+        // Mix of `import X` and `from X import Y` forms
+        var source = "from sys import argv\nimport math\nimport os\nfrom math import floor\n\ndef main():\n    print(argv)\n    print(math.pi)\n    print(os.getcwd())\n    print(floor(1.5))";
+        var provider = new OrganizeImportsProvider();
+
+        var actions = await GetActionsAsync(provider, source);
+
+        actions.Should().ContainSingle();
+        var edits = actions[0].Edit!.Changes![TestUri].ToList();
+        var newText = edits[0].NewText;
+
+        // All stdlib imports should be present
+        newText.Should().Contain("import math");
+        newText.Should().Contain("import os");
+        newText.Should().Contain("from math import floor");
+        newText.Should().Contain("from sys import argv");
+    }
 }

@@ -148,4 +148,37 @@ public class ExtractVariableProviderTests
         var action = actions[0];
         action.Kind.Should().Be(CodeActionKind.RefactorExtract);
     }
+
+    [Fact]
+    public async Task ExtractVariable_ListLiteral_ReturnsAction()
+    {
+        var source = "def main():\n    print([1, 2, 3])";
+        var provider = new ExtractVariableProvider();
+
+        // Select the list literal "[1, 2, 3]" at line 1, columns 10-19
+        var range = new LspRange(new Position(1, 10), new Position(1, 19));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        // List literals are valid expressions for extraction
+        actions.Should().NotBeEmpty();
+        var action = actions[0];
+        action.Kind.Should().Be(CodeActionKind.RefactorExtract);
+        action.Title.Should().Contain("Extract variable");
+    }
+
+    [Fact]
+    public async Task ExtractVariable_NumericLiteral_ReturnsAction()
+    {
+        var source = "def main():\n    x: int = 42 + 100";
+        var provider = new ExtractVariableProvider();
+
+        // Select "42 + 100" (entire binary operation)
+        var range = new LspRange(new Position(1, 13), new Position(1, 21));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        actions.Should().NotBeEmpty();
+        var action = actions[0];
+        action.Kind.Should().Be(CodeActionKind.RefactorExtract);
+        action.Title.Should().Contain("int");
+    }
 }

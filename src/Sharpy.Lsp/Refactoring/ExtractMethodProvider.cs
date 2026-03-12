@@ -15,6 +15,8 @@ namespace Sharpy.Lsp.Refactoring;
 /// </summary>
 internal sealed class ExtractMethodProvider : ICodeActionProvider
 {
+    private const string DefaultMethodName = "extracted_method";
+
     public Task<IReadOnlyList<CodeAction>> GetCodeActionsAsync(
         CodeActionProviderContext context,
         CancellationToken cancellationToken)
@@ -73,7 +75,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
 
         // Generate the new function definition.
         var functionDef = SharplySourceGenerator.FormatFunctionDef(
-            "extracted_method",
+            DefaultMethodName,
             parameters,
             returnType,
             functionIndentLevel,
@@ -82,7 +84,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         // Generate the call site that replaces the selected statements.
         var stmtIndent = SharplySourceGenerator.GetIndentation(
             context.SourceText, selectedStatements[0].LineStart - 1);
-        var callSite = BuildCallSite("extracted_method", parameters, returnValues, stmtIndent);
+        var callSite = BuildCallSite(DefaultMethodName, parameters, returnValues, stmtIndent);
 
         // Build the two text edits.
         var edits = BuildTextEdits(
@@ -277,7 +279,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         int functionIndentLevel)
     {
         var lines = sourceText.Split('\n');
-        var bodyIndent = new string(' ', (functionIndentLevel + 1) * 4);
+        var bodyIndent = new string(' ', (functionIndentLevel + 1) * SharplySourceGenerator.DefaultIndentWidth);
 
         // Determine the original indentation of the selected statements
         // by looking at the first selected statement's line.
