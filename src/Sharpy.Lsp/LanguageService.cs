@@ -19,6 +19,7 @@ internal sealed class LanguageService : IDisposable
     private readonly ILogger<LanguageService> _logger;
 
     // Project state
+    private string? _workspaceRoot;
     private ProjectConfig? _projectConfig;
     private ProjectAnalysisResult? _projectAnalysis;
     private readonly ConcurrentDictionary<string, SemanticResult> _fileResults = new(StringComparer.OrdinalIgnoreCase);
@@ -78,6 +79,7 @@ internal sealed class LanguageService : IDisposable
                 var result = await Task.Run(
                     () => _api.AnalyzeProject(config, ct), ct).ConfigureAwait(false);
 
+                _workspaceRoot = workspaceRoot;
                 _projectConfig = config;
                 _projectAnalysis = result;
 
@@ -236,6 +238,41 @@ internal sealed class LanguageService : IDisposable
         {
             _analysisLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Re-parses the .spyproj config and triggers a full project reanalysis.
+    /// Call when the .spyproj file itself changes.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>True if reanalysis succeeded.</returns>
+    public async Task<bool> ReloadProjectAsync(CancellationToken ct = default)
+    {
+        var root = _workspaceRoot;
+        if (root == null)
+        {
+            _logger.LogWarning("Cannot reload project: no workspace root set");
+            return false;
+        }
+
+        _logger.LogInformation("Reloading project from {Root}", root);
+        return await InitializeProjectAsync(root, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Handles a file changed outside the editor (detected by file watcher).
+    /// If the file is part of the project, triggers reanalysis of affected files.
+    /// </summary>
+    /// <param name="filePath">The absolute file path that changed on disk.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>URIs of files whose analysis results were updated.</returns>
+    public async Task<IReadOnlyList<string>> OnExternalFileChangedAsync(string filePath, CancellationToken ct = default)
+    {
+        if (!_fileResults.ContainsKey(filePath))
+            return Array.Empty<string>();
+
+        var uri = FilePathToUri(filePath);
+        return await OnDocumentChangedAsync(uri, ct).ConfigureAwait(false);
     }
 
     /// <summary>
