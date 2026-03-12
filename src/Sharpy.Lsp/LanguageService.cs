@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Lsp;
 
@@ -215,7 +216,8 @@ internal sealed class LanguageService : IDisposable
                     _fileResults[filePath] = fileResult;
 
                     // Only report affected files as updated
-                    if (affectedPaths.Contains(filePath))
+                    // affectedPaths uses normalized (lowercased on macOS) paths
+                    if (affectedPaths.Contains(PathNormalizer.Normalize(filePath)))
                     {
                         updatedUris.Add(FilePathToUri(filePath));
                     }
