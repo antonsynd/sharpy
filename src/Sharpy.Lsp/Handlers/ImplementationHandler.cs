@@ -1,0 +1,238 @@
+using OmniSharp.Extensions.LanguageServer.Protocol;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
+using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Sharpy.Compiler;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
+
+namespace Sharpy.Lsp.Handlers;
+
+/// <summary>
+/// Handles textDocument/implementation requests.
+/// Returns locations of implementing classes for interfaces/abstract classes,
+/// and overriding methods for abstract/virtual methods.
+/// </summary>
+internal sealed class SharplyImplementationHandler : ImplementationHandlerBase
+{
+    private readonly LanguageService _languageService;
+    private readonly CompilerApi _api;
+
+    public SharplyImplementationHandler(LanguageService languageService, CompilerApi api)
+    {
+        _languageService = languageService;
+        _api = api;
+    }
+
+    public override async Task<LocationOrLocationLinks?> Handle(
+        ImplementationParams request,
+        CancellationToken ct)
+    {
+        var uri = request.TextDocument.Uri.ToString();
+        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+
+        if (analysis?.Ast == null || analysis.SemanticQuery == null)
+            return null;
+
+        var (line, col) = PositionConverter.ToCompiler(request.Position);
+        var node = _api.FindNodeAtPosition(analysis.Ast, line, col);
+
+        if (node == null)
+            return null;
+
+        var symbol = ResolveSymbol(node, analysis);
+        if (symbol == null)
+            return null;
+
+        var symbolTable = GetBestSymbolTable(analysis);
+        if (symbolTable == null)
+            return null;
+
+        var locations = FindImplementations(symbol, symbolTable, uri);
+        if (locations is not { Count: > 0 })
+            return null;
+
+        return new LocationOrLocationLinks(
+            locations.Select(loc => new LocationOrLocationLink(loc)));
+    }
+
+    private static Symbol? ResolveSymbol(Node node, SemanticResult analysis)
+    {
+        var query = analysis.SemanticQuery!;
+
+        return node switch
+        {
+            Identifier id => query.GetIdentifierSymbol(id),
+            FunctionCall call => query.GetCallTarget(call),
+            MemberAccess ma => ResolveFromMemberAccess(ma, analysis),
+            ClassDef cd => analysis.SymbolTable?.Lookup(cd.Name),
+            InterfaceDef ifd => analysis.SymbolTable?.Lookup(ifd.Name),
+            FunctionDef fd => ResolveFunction(fd, analysis),
+            _ => null
+        };
+    }
+
+    private static Symbol? ResolveFunction(FunctionDef fd, SemanticResult analysis)
+    {
+        // For methods inside a class, search all type symbols for a matching method.
+        if (analysis.SymbolTable == null)
+            return null;
+
+        foreach (var sym in analysis.SymbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        {
+            var method = sym.Methods.Find(m =>
+                string.Equals(m.Name, fd.Name, StringComparison.Ordinal)
+                && m.DeclarationLine == fd.LineStart);
+            if (method != null)
+                return method;
+        }
+
+        // Fall back to top-level function lookup.
+        return analysis.SymbolTable.Lookup(fd.Name);
+    }
+
+    private static Symbol? ResolveFromMemberAccess(MemberAccess ma, SemanticResult analysis)
+    {
+        var query = analysis.SemanticQuery!;
+
+        var objType = query.GetEffectiveType(ma.Object);
+        if (objType is UserDefinedType udt && udt.Symbol != null)
+        {
+            var memberName = ma.Member;
+
+            var method = udt.Symbol.Methods.Find(m =>
+                string.Equals(m.Name, memberName, StringComparison.Ordinal));
+            if (method != null)
+                return method;
+
+            var field = udt.Symbol.Fields.Find(f =>
+                string.Equals(f.Name, memberName, StringComparison.Ordinal));
+            if (field != null)
+                return field;
+        }
+
+        return null;
+    }
+
+    private SymbolTable? GetBestSymbolTable(SemanticResult analysis)
+    {
+        // Prefer project-wide symbol table for full type hierarchy coverage.
+        var projectAnalysis = _languageService.ProjectAnalysis;
+        return projectAnalysis?.ProjectModel.GlobalSymbols ?? analysis.SymbolTable;
+    }
+
+    private static System.Collections.Generic.List<Location>? FindImplementations(
+        Symbol symbol, SymbolTable symbolTable, string fallbackUri)
+    {
+        if (symbol is TypeSymbol typeSymbol)
+        {
+            return FindTypeImplementations(typeSymbol, symbolTable, fallbackUri);
+        }
+
+        if (symbol is FunctionSymbol funcSymbol && (funcSymbol.IsAbstract || funcSymbol.IsVirtual))
+        {
+            return FindMethodImplementations(funcSymbol, symbolTable, fallbackUri);
+        }
+
+        // For concrete, non-virtual symbols, fall back to the definition location.
+        var defLocation = GetSymbolLocation(symbol, fallbackUri);
+        return defLocation != null ? new System.Collections.Generic.List<Location> { defLocation } : null;
+    }
+
+    private static System.Collections.Generic.List<Location>? FindTypeImplementations(
+        TypeSymbol typeSymbol, SymbolTable symbolTable, string fallbackUri)
+    {
+        // Only interfaces and abstract classes have implementations to find.
+        if (typeSymbol.TypeKind != TypeKind.Interface && !typeSymbol.IsAbstract)
+        {
+            var loc = GetSymbolLocation(typeSymbol, fallbackUri);
+            return loc != null ? new System.Collections.Generic.List<Location> { loc } : null;
+        }
+
+        var index = TypeHierarchyIndex.Build(symbolTable);
+        var subtypes = index.GetDirectSubtypes(typeSymbol);
+
+        if (subtypes.Count == 0)
+            return null;
+
+        var locations = new System.Collections.Generic.List<Location>();
+        foreach (var subtype in subtypes)
+        {
+            var loc = GetSymbolLocation(subtype, fallbackUri);
+            if (loc != null)
+                locations.Add(loc);
+        }
+
+        return locations;
+    }
+
+    private static System.Collections.Generic.List<Location>? FindMethodImplementations(
+        FunctionSymbol funcSymbol, SymbolTable symbolTable, string fallbackUri)
+    {
+        // Find the declaring type by searching all types for one that contains this method.
+        TypeSymbol? declaringType = null;
+        foreach (var sym in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        {
+            if (sym.Methods.Contains(funcSymbol))
+            {
+                declaringType = sym;
+                break;
+            }
+        }
+
+        if (declaringType == null)
+            return null;
+
+        var index = TypeHierarchyIndex.Build(symbolTable);
+        var subtypes = index.GetDirectSubtypes(declaringType);
+
+        var locations = new System.Collections.Generic.List<Location>();
+        foreach (var subtype in subtypes)
+        {
+            var overridingMethod = subtype.Methods.Find(m =>
+                string.Equals(m.Name, funcSymbol.Name, StringComparison.Ordinal)
+                && m.IsOverride);
+            if (overridingMethod != null)
+            {
+                var loc = GetSymbolLocation(overridingMethod, fallbackUri);
+                if (loc != null)
+                    locations.Add(loc);
+            }
+        }
+
+        return locations.Count > 0 ? locations : null;
+    }
+
+    private static Location? GetSymbolLocation(Symbol symbol, string fallbackUri)
+    {
+        if (symbol.DeclarationSpan == null)
+            return null;
+
+        var filePath = symbol.DeclaringFilePath ?? fallbackUri;
+        var uri = filePath.StartsWith("file://", StringComparison.Ordinal)
+            ? DocumentUri.From(filePath)
+            : DocumentUri.FromFileSystemPath(filePath);
+
+        var startLine = System.Math.Max(0, (symbol.DeclarationLine ?? 1) - 1);
+        var startCol = System.Math.Max(0, (symbol.DeclarationColumn ?? 1) - 1);
+        var endCol = startCol + symbol.Name.Length;
+
+        return new Location
+        {
+            Uri = uri,
+            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                new Position(startLine, startCol),
+                new Position(startLine, endCol))
+        };
+    }
+
+    protected override ImplementationRegistrationOptions CreateRegistrationOptions(
+        ImplementationCapability capability,
+        ClientCapabilities clientCapabilities)
+    {
+        return new ImplementationRegistrationOptions
+        {
+            DocumentSelector = TextDocumentSelector.ForPattern("**/*.spy")
+        };
+    }
+}

@@ -10,7 +10,7 @@ namespace Sharpy.Lsp.Handlers;
 
 /// <summary>
 /// Handles workspace/symbol requests.
-/// Searches all open documents for symbols matching the query string.
+/// Searches all open documents and project files for symbols matching the query string.
 /// </summary>
 internal sealed class SharplyWorkspaceSymbolHandler : WorkspaceSymbolsHandlerBase
 {
@@ -30,7 +30,14 @@ internal sealed class SharplyWorkspaceSymbolHandler : WorkspaceSymbolsHandlerBas
         var query = request.Query ?? "";
         var results = new List<WorkspaceSymbol>();
 
+        // Collect URIs from both open documents and project files, deduplicated.
+        var allUris = new HashSet<string>(StringComparer.Ordinal);
         foreach (var uri in _workspace.GetAllDocumentUris())
+            allUris.Add(uri);
+        foreach (var uri in _languageService.GetProjectFileUris())
+            allUris.Add(uri);
+
+        foreach (var uri in allUris)
         {
             var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
             if (analysis?.SymbolTable == null)
@@ -42,9 +49,10 @@ internal sealed class SharplyWorkspaceSymbolHandler : WorkspaceSymbolsHandlerBas
                 if (symbol.DeclarationLine == null)
                     continue;
 
-                // Case-insensitive substring match
+                // Case-insensitive substring match or camelCase fuzzy match
                 if (query.Length > 0 &&
-                    symbol.Name.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0)
+                    symbol.Name.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0 &&
+                    !MatchesCamelCase(symbol.Name, query))
                     continue;
 
                 var kind = MapSymbolKind(symbol);
@@ -95,6 +103,34 @@ internal sealed class SharplyWorkspaceSymbolHandler : WorkspaceSymbolsHandlerBas
             TypeAliasSymbol => LspSymbolKind.TypeParameter,
             _ => LspSymbolKind.Variable
         };
+    }
+
+    /// <summary>
+    /// Checks if the query matches the camelCase/PascalCase initials of the symbol name.
+    /// For example, "FBT" matches "FileBasedTest" (capitals F, B, T).
+    /// </summary>
+    internal static bool MatchesCamelCase(string symbolName, string query)
+    {
+        if (query.Length == 0)
+            return true;
+
+        // Extract uppercase letters at word boundaries from the symbol name.
+        // Word boundaries: start of string, after '_', or an uppercase letter following a lowercase.
+        var qi = 0;
+        for (var i = 0; i < symbolName.Length && qi < query.Length; i++)
+        {
+            var ch = symbolName[i];
+            var isWordStart = i == 0
+                || (i > 0 && symbolName[i - 1] == '_' && ch != '_')
+                || (char.IsUpper(ch) && i > 0 && char.IsLower(symbolName[i - 1]));
+
+            if (isWordStart && char.ToUpperInvariant(ch) == char.ToUpperInvariant(query[qi]))
+            {
+                qi++;
+            }
+        }
+
+        return qi == query.Length;
     }
 
     protected override WorkspaceSymbolRegistrationOptions CreateRegistrationOptions(

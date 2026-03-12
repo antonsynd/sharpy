@@ -118,6 +118,14 @@ public class Program
                 .WithHandler<SharplyInlayHintHandler>()
                 .WithHandler<SharplyDocumentHighlightHandler>()
                 .WithHandler<SharplyCodeLensHandler>()
+                // Phase 5 handlers
+                .WithHandler<SharplyCallHierarchyPrepareHandler>()
+                .WithHandler<SharplyCallHierarchyIncomingHandler>()
+                .WithHandler<SharplyCallHierarchyOutgoingHandler>()
+                .WithHandler<SharplyTypeHierarchyPrepareHandler>()
+                .WithHandler<SharplyTypeHierarchySupertypesHandler>()
+                .WithHandler<SharplyTypeHierarchySubtypesHandler>()
+                .WithHandler<SharplyImplementationHandler>()
         ).ConfigureAwait(false);
 
         await server.WaitForExit.ConfigureAwait(false);
