@@ -56,9 +56,6 @@ public class Program
                     services.AddSingleton<ICodeActionProvider, ExtractMethodProvider>();
                     services.AddSingleton<ICodeActionProvider, ConvertFormsProvider>();
                     services.AddSingleton<ICodeActionProvider, InlineProvider>();
-                    services.AddSingleton<ICodeActionProvider, ExtractVariableProvider>();
-                    services.AddSingleton<ICodeActionProvider, ExtractMethodProvider>();
-                    services.AddSingleton<ICodeActionProvider, InlineProvider>();
                 })
                 .OnInitialize(async (server, request, token) =>
                 {
