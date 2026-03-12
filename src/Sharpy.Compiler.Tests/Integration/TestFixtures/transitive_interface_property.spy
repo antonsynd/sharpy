@@ -1,0 +1,28 @@
+# Test: transitive interface property lookup via FindMember (#367)
+# IDerived extends IBase; Impl implements IDerived.
+# Both IBase.name and IDerived.value must be accessible on Impl.
+
+interface IBase:
+    property get name(self) -> str: ...
+
+interface IDerived(IBase):
+    property get value(self) -> int: ...
+
+class Impl(IDerived):
+    _name: str
+    _value: int
+
+    def __init__(self, name: str, value: int):
+        self._name = name
+        self._value = value
+
+    property get name(self) -> str:
+        return self._name
+
+    property get value(self) -> int:
+        return self._value
+
+def main():
+    obj: Impl = Impl("hello", 42)
+    print(obj.name)
+    print(obj.value)

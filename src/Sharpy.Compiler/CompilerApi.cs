@@ -169,12 +169,9 @@ public sealed class CompilerApi
     /// <returns>A <see cref="SemanticResult"/> with the analysis outcome.</returns>
     public SemanticResult Analyze(string source, CancellationToken cancellationToken = default)
     {
-        // Use the full Compile pipeline (which includes semantic analysis) and strip codegen.
-        // This is simpler and more correct than duplicating the semantic pipeline.
-        // The codegen overhead is minimal compared to semantic analysis.
         var opts = new CompilerOptions { OutputType = "library" };
         var compiler = new Compiler(opts, _logger);
-        var result = compiler.Compile(source, "<source>", cancellationToken);
+        var result = compiler.Analyze(source, "<source>", cancellationToken);
 
         return new SemanticResult
         {

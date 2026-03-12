@@ -130,7 +130,7 @@ internal static class TypeHierarchyService
         // Search interfaces if requested
         if (searchInterfaces)
         {
-            foreach (var iface in GetDirectInterfaces(type, binding))
+            foreach (var iface in GetAllInterfaces(type, binding))
             {
                 var member = FindByName(memberSelector(iface), name);
                 if (member != null)

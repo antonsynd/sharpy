@@ -11,12 +11,10 @@ namespace Sharpy.Lsp.Handlers;
 /// </summary>
 internal sealed class FileWatcherHandler : IDidChangeWatchedFilesHandler
 {
-    private readonly SharplyWorkspace _workspace;
     private readonly LanguageService _languageService;
 
     public FileWatcherHandler(SharplyWorkspace workspace, LanguageService languageService)
     {
-        _workspace = workspace;
         _languageService = languageService;
     }
 
@@ -28,12 +26,10 @@ internal sealed class FileWatcherHandler : IDidChangeWatchedFilesHandler
 
             if (path.EndsWith(".spyproj", StringComparison.OrdinalIgnoreCase))
             {
-                _workspace.ReloadProject();
                 await _languageService.ReloadProjectAsync(ct).ConfigureAwait(false);
             }
             else if (path.EndsWith(".spy", StringComparison.OrdinalIgnoreCase))
             {
-                _workspace.OnExternalFileChanged(path);
                 await _languageService.OnExternalFileChangedAsync(path, ct).ConfigureAwait(false);
             }
         }

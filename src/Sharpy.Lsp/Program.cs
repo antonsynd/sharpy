@@ -76,9 +76,6 @@ public class Program
                     var rootPath = workspaceRootUri?.LocalPath ?? request.RootPath;
                     if (rootPath != null)
                     {
-                        var workspace = server.Services.GetRequiredService<SharplyWorkspace>();
-                        workspace.LoadProject(rootPath);
-
                         var languageService = server.Services.GetRequiredService<LanguageService>();
                         var progressLogger = server.Services.GetRequiredService<ILogger<ProgressReporter>>();
                         var progressReporter = new ProgressReporter(server.WorkDoneManager, progressLogger);

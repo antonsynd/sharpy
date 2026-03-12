@@ -1012,6 +1012,15 @@ internal partial class RoslynEmitter
         // Save scope after then-block so we can restore it after all branches.
         // Post-if code needs to see then-block's variable declarations for correct
         // C# redeclaration handling (e.g., versioning same-named variables).
+        //
+        // DESIGN NOTE (#363): This is deliberately asymmetric — only the then-branch's
+        // scope is preserved for post-if code. Variable declarations in elif/else
+        // branches are discarded. This is correct for C# variable versioning because
+        // the emitter needs a single consistent variable version after the if-statement.
+        // The then-branch is chosen as the "winner" because it is the first branch
+        // encountered and thus the most natural continuation of the variable version
+        // sequence. SaveScope()/RestoreScope() snapshot and restore the _variableVersions
+        // and _scopeVariables dictionaries, enabling branch-isolated code generation.
         var postThenScope = SaveScope();
 
         ElseClauseSyntax? elseClause = null;
@@ -1113,6 +1122,8 @@ internal partial class RoslynEmitter
 
         // Restore to post-then scope so code after the if sees then-block's
         // variable declarations for correct C# redeclaration handling.
+        // See DESIGN NOTE at postThenScope declaration above for why only the
+        // then-branch scope is restored (deliberate asymmetry for variable versioning).
         RestoreScope(postThenScope);
 
         return IfStatement(condition, thenBlock, elseClause);

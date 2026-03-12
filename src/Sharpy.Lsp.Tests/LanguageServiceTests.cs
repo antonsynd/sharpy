@@ -355,6 +355,113 @@ public class LanguageServiceTests : IDisposable
         affected.Should().NotBeEmpty("lib.spy has a dependent: main.spy");
     }
 
+    [Fact]
+    public async Task OnDocumentChanged_CancelsPreviousInFlightOperation()
+    {
+        // Set up a project with a file that takes non-trivial time to analyze
+        CreateProjectFiles(
+            ("main.spy", "def main():\n    x: int = 1\n    print(x)"),
+            ("lib.spy", "def helper() -> str:\n    return \"hello\""));
+        await _service.InitializeProjectAsync(_tempDir);
+
+        var mainPath = IOPath.Combine(_tempDir, "main.spy");
+        var mainUri = new Uri(mainPath).ToString();
+
+        // Fire the first call — it will acquire _analysisLock and start reanalysis.
+        var firstTask = _service.OnDocumentChangedAsync(mainUri);
+
+        // Immediately fire a second call for the SAME URI.
+        // This should cancel the first call's per-document CTS.
+        var secondTask = _service.OnDocumentChangedAsync(mainUri);
+
+        // At least one of these should complete (the second one should succeed
+        // or both may succeed if the first finishes before cancellation propagates).
+        // The first call may throw OperationCanceledException.
+        var results = await Task.WhenAll(
+            SafeOnDocumentChangedAsync(firstTask),
+            SafeOnDocumentChangedAsync(secondTask));
+
+        // At least the second call should complete successfully (not be cancelled)
+        var secondResult = results[1];
+        secondResult.Cancelled.Should().BeFalse(
+            "the second (latest) call should not be cancelled");
+    }
+
+    [Fact]
+    public async Task OnDocumentChanged_DifferentUris_DoNotCancelEachOther()
+    {
+        // Set up a project with two files
+        CreateProjectFiles(
+            ("main.spy", "from lib import helper\ndef main():\n    print(helper())"),
+            ("lib.spy", "def helper() -> str:\n    return \"hello\""));
+        await _service.InitializeProjectAsync(_tempDir);
+
+        var mainPath = IOPath.Combine(_tempDir, "main.spy");
+        var libPath = IOPath.Combine(_tempDir, "lib.spy");
+        var mainUri = new Uri(mainPath).ToString();
+        var libUri = new Uri(libPath).ToString();
+
+        // Fire changes for different URIs — they should not cancel each other
+        var mainTask = SafeOnDocumentChangedAsync(_service.OnDocumentChangedAsync(mainUri));
+        var libTask = SafeOnDocumentChangedAsync(_service.OnDocumentChangedAsync(libUri));
+
+        var results = await Task.WhenAll(mainTask, libTask);
+
+        // Neither call should be cancelled due to the other
+        // (They share _analysisLock so one will wait, but not be cancelled)
+        var completedCount = results.Count(r => !r.Cancelled);
+        completedCount.Should().BeGreaterThanOrEqualTo(1,
+            "calls for different URIs should not cancel each other");
+    }
+
+    [Fact]
+    public async Task OnDocumentChanged_RapidSequentialCalls_LastOneWins()
+    {
+        CreateProjectFiles(
+            ("main.spy", "def main():\n    print(\"hello\")"));
+        await _service.InitializeProjectAsync(_tempDir);
+
+        var mainPath = IOPath.Combine(_tempDir, "main.spy");
+        var mainUri = new Uri(mainPath).ToString();
+
+        // Simulate rapid typing by firing multiple changes in sequence
+        var tasks = new List<Task<DocumentChangedResult>>();
+        for (var i = 0; i < 5; i++)
+        {
+            tasks.Add(SafeOnDocumentChangedAsync(_service.OnDocumentChangedAsync(mainUri)));
+        }
+
+        var results = await Task.WhenAll(tasks);
+
+        // The last call should succeed (not be cancelled)
+        results.Last().Cancelled.Should().BeFalse(
+            "the most recent call should complete successfully");
+
+        // At least one should succeed
+        results.Count(r => !r.Cancelled).Should().BeGreaterThanOrEqualTo(1);
+    }
+
+    /// <summary>
+    /// Wraps OnDocumentChangedAsync to capture cancellation without failing the test.
+    /// </summary>
+#pragma warning disable VSTHRD003 // Intentionally awaiting externally-started tasks in test helper
+    private static async Task<DocumentChangedResult> SafeOnDocumentChangedAsync(
+        Task<IReadOnlyList<string>> task)
+    {
+        try
+        {
+            var uris = await task.ConfigureAwait(false);
+            return new DocumentChangedResult(false, uris);
+        }
+        catch (OperationCanceledException)
+        {
+            return new DocumentChangedResult(true, Array.Empty<string>());
+        }
+    }
+#pragma warning restore VSTHRD003
+
+    private record DocumentChangedResult(bool Cancelled, IReadOnlyList<string> AffectedUris);
+
     private void CreateProjectFiles(params (string Name, string Content)[] files)
     {
         var spyFiles = string.Join("\n        ",

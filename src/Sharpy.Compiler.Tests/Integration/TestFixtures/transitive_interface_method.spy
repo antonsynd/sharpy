@@ -1,0 +1,21 @@
+# Test: transitive interface member lookup via FindMember (#367)
+# IDerived extends IBase; Impl implements IDerived.
+# Both IBase.get_name() and IDerived.get_id() must be callable on Impl.
+
+interface IBase:
+    def get_name(self) -> str: ...
+
+interface IDerived(IBase):
+    def get_id(self) -> int: ...
+
+class Impl(IDerived):
+    def get_name(self) -> str:
+        return "hello"
+
+    def get_id(self) -> int:
+        return 42
+
+def main():
+    obj: Impl = Impl()
+    print(obj.get_name())
+    print(obj.get_id())

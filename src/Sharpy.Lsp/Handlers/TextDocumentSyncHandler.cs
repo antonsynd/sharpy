@@ -5,7 +5,6 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
 using Sharpy.Compiler;
-using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Lsp.Handlers;
 
@@ -13,7 +12,7 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/didOpen, didChange, didClose, and didSave notifications.
 /// Uses incremental document sync (the client sends only changed ranges).
 /// </summary>
-internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
+internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDisposable
 {
     private readonly SharplyWorkspace _workspace;
     private readonly LanguageService _languageService;
@@ -28,7 +27,8 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         _languageService = languageService;
         _diagnosticPublisher = diagnosticPublisher;
 
-        // Subscribe to analysis completion to publish diagnostics
+        // Subscribe to analysis completion to publish single-file diagnostics.
+        // Project-file reanalysis is triggered directly in Handle(DidChange) instead.
         _workspace.DocumentAnalyzed += OnDocumentAnalyzedAsync;
     }
 
@@ -37,14 +37,21 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         return new TextDocumentAttributes(uri, "sharpy");
     }
 
-    public override Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken ct)
+    public override async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
         var text = request.TextDocument.Text;
         var version = request.TextDocument.Version ?? 0;
 
         _workspace.OpenDocument(uri, text, version);
-        return Unit.Task;
+
+        // For project files, trigger project-level reanalysis directly
+        if (_languageService.IsProjectFile(uri))
+        {
+            await TriggerProjectReanalysisAsync(uri, ct).ConfigureAwait(false);
+        }
+
+        return Unit.Value;
     }
 
     public override Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken ct)
@@ -60,6 +67,14 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
                 .Select(c => (c.Range, c.Text))
                 .ToList();
             _workspace.ApplyChanges(uri, mapped, version);
+        }
+
+        // For project files, kick off project-level reanalysis in the background.
+        // Single-file diagnostics are published by the workspace debounce → DocumentAnalyzed path.
+        // Project reanalysis updates the LanguageService cache for subsequent handler requests.
+        if (_languageService.IsProjectFile(uri))
+        {
+            _ = TriggerProjectReanalysisAsync(uri, ct);
         }
 
         return Unit.Task;
@@ -91,84 +106,37 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         };
     }
 
-    private async Task OnDocumentAnalyzedAsync(string uri, SemanticResult result)
+    /// <summary>
+    /// Triggers project-level reanalysis for a file. Updates the LanguageService
+    /// cache silently — diagnostic publishing is handled by the workspace's
+    /// DocumentAnalyzed event (single-file analysis via debounce).
+    /// </summary>
+    private async Task TriggerProjectReanalysisAsync(string uri, CancellationToken ct)
+    {
+        try
+        {
+            await _languageService.OnDocumentChangedAsync(uri, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when document changes rapidly
+        }
+    }
+
+    /// <summary>
+    /// Handles workspace single-file analysis completion. Publishes diagnostics
+    /// for the analyzed document. Project-level reanalysis for affected files is
+    /// triggered directly in Handle(DidOpen/DidChange) instead of cascading here.
+    /// </summary>
+    private Task OnDocumentAnalyzedAsync(string uri, SemanticResult result)
     {
         var sourceText = _workspace.GetSourceText(uri);
         _diagnosticPublisher.PublishDiagnostics(uri, result, sourceText);
-
-        // Populate dependency graph from import statements
-        if (result.Ast != null)
-        {
-            RecordImportDependencies(uri, result.Ast);
-        }
-
-        // TODO(#377): Forward CancellationToken to OnDocumentChangedAsync/GetAnalysisAsync
-        // to avoid backlog of stale reanalysis under rapid editing.
-        if (_languageService.IsProjectFile(uri))
-        {
-            try
-            {
-                var affectedUris = await _languageService.OnDocumentChangedAsync(uri).ConfigureAwait(false);
-                foreach (var affectedUri in affectedUris)
-                {
-                    if (string.Equals(affectedUri, uri, StringComparison.Ordinal))
-                        continue; // Already published above
-
-                    var affectedResult = await _languageService.GetAnalysisAsync(affectedUri).ConfigureAwait(false);
-                    if (affectedResult != null)
-                    {
-                        var affectedSourceText = _workspace.GetSourceText(affectedUri);
-                        _diagnosticPublisher.PublishDiagnostics(affectedUri, affectedResult, affectedSourceText);
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when document changes rapidly
-            }
-        }
+        return Task.CompletedTask;
     }
 
-    private void RecordImportDependencies(string currentUri, Module ast)
+    public void Dispose()
     {
-        foreach (var stmt in ast.Body)
-        {
-            switch (stmt)
-            {
-                case ImportStatement importStmt:
-                    foreach (var alias in importStmt.Names)
-                    {
-                        var importedUri = ResolveModuleToUri(alias.Name);
-                        if (importedUri != null)
-                        {
-                            _workspace.RecordDependency(importedUri, currentUri);
-                        }
-                    }
-                    break;
-
-                case FromImportStatement fromStmt:
-                    var moduleUri = ResolveModuleToUri(fromStmt.ResolvedModulePath ?? fromStmt.Module);
-                    if (moduleUri != null)
-                    {
-                        _workspace.RecordDependency(moduleUri, currentUri);
-                    }
-                    break;
-            }
-        }
+        _workspace.DocumentAnalyzed -= OnDocumentAnalyzedAsync;
     }
-
-    private string? ResolveModuleToUri(string moduleName)
-    {
-        // Convert module.submodule to module/submodule.spy path and check workspace
-        var relativePath = moduleName.Replace('.', '/') + ".spy";
-        foreach (var docUri in _workspace.GetAllDocumentUris())
-        {
-            if (docUri.EndsWith(relativePath, StringComparison.OrdinalIgnoreCase))
-            {
-                return docUri;
-            }
-        }
-        return null;
-    }
-
 }

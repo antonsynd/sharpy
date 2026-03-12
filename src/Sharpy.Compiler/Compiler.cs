@@ -108,12 +108,30 @@ public class Compiler
         return projectCompiler.Compile(projectConfig, cancellationToken);
     }
 
+    /// <summary>
+    /// Analyze Sharpy source code through phases 1–3 (Lexer → Parser → Semantic) without codegen.
+    /// Returns the same <see cref="CompilationResult"/> shape but with no generated C#.
+    /// </summary>
+    public CompilationResult Analyze(string sourceCode, string filePath) =>
+        Analyze(sourceCode, filePath, CancellationToken.None);
+
+    /// <summary>
+    /// Analyze Sharpy source code through phases 1–3 (Lexer → Parser → Semantic) without codegen.
+    /// Returns the same <see cref="CompilationResult"/> shape but with no generated C#.
+    /// </summary>
+    public CompilationResult Analyze(string sourceCode, string filePath, CancellationToken cancellationToken) =>
+        CompileInternal(sourceCode, filePath, cancellationToken, analyzeOnly: true);
+
     public CompilationResult Compile(string sourceCode, string filePath) =>
         Compile(sourceCode, filePath, CancellationToken.None);
 
-    public CompilationResult Compile(string sourceCode, string filePath, CancellationToken cancellationToken)
+    public CompilationResult Compile(string sourceCode, string filePath, CancellationToken cancellationToken) =>
+        CompileInternal(sourceCode, filePath, cancellationToken, analyzeOnly: false);
+
+    private CompilationResult CompileInternal(
+        string sourceCode, string filePath, CancellationToken cancellationToken, bool analyzeOnly)
     {
-        _logger.LogInfo($"Starting compilation of {filePath}");
+        _logger.LogInfo($"Starting {(analyzeOnly ? "analysis" : "compilation")} of {filePath}");
         var metrics = new CompilationMetrics(fileName: filePath);
         var diagnostics = new DiagnosticBag(_options.WarningsAsErrors, _options.SuppressedWarnings);
         var result = new CompilationResultBuilder(diagnostics, metrics);
@@ -405,6 +423,18 @@ public class Compiler
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Analyze-only: return after semantic analysis, skip codegen
+            if (analyzeOnly)
+            {
+                metrics.DiagnosticCount = diagnostics.GetAll().Count;
+                return result
+                    .WithSuccess(!diagnostics.HasErrors)
+                    .WithSymbolTable(symbolTable)
+                    .WithSemanticInfo(semanticInfo)
+                    .WithModuleRegistry(_moduleRegistry)
+                    .Build();
+            }
 
             // Phase 4: Code Generation - Generate C# code from AST using RoslynEmitter
             _logger.LogInfo("Phase 4: Code Generation");

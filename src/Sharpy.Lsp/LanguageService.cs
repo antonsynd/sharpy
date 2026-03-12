@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Text;
 using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Lsp;
@@ -25,6 +26,9 @@ internal sealed class LanguageService : IDisposable
     private ProjectAnalysisResult? _projectAnalysis;
     private readonly ConcurrentDictionary<string, SemanticResult> _fileResults = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _analysisLock = new(1, 1);
+
+    // Per-document cancellation: cancel stale reanalysis when newer edits arrive
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _documentCts = new(StringComparer.OrdinalIgnoreCase);
 
     // Background indexing
     private ProgressReporter? _progressReporter;
@@ -232,6 +236,28 @@ internal sealed class LanguageService : IDisposable
     }
 
     /// <summary>
+    /// Returns source text for a file. Checks workspace for open docs first,
+    /// then reads from disk for project files not currently open.
+    /// </summary>
+    public SourceText? GetSourceText(string uri)
+    {
+        // Check workspace first (open documents)
+        var wsText = _workspace.GetSourceText(uri);
+        if (wsText != null)
+            return wsText;
+
+        // For project files not open in the editor, read from disk
+        var filePath = UriToFilePath(uri);
+        if (filePath != null && _fileResults.ContainsKey(filePath) && File.Exists(filePath))
+        {
+            var text = File.ReadAllText(filePath);
+            return new SourceText(text, filePath);
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Returns URIs of all files in the current project.
     /// Empty if no project is loaded.
     /// </summary>
@@ -279,6 +305,18 @@ internal sealed class LanguageService : IDisposable
         if (changedFilePath == null || !_fileResults.ContainsKey(changedFilePath))
             return Array.Empty<string>();
 
+        // Cancel any in-flight reanalysis for this document and create a new linked CTS
+        var newCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        if (_documentCts.TryGetValue(uri, out var oldCts))
+        {
+            try
+            { await oldCts.CancelAsync().ConfigureAwait(false); }
+            catch (ObjectDisposedException) { }
+            oldCts.Dispose();
+        }
+        _documentCts[uri] = newCts;
+        var linkedToken = newCts.Token;
+
         // Determine affected files using the dependency graph
         var deps = _projectAnalysis?.Dependencies;
         var affectedPaths = deps != null
@@ -290,11 +328,11 @@ internal sealed class LanguageService : IDisposable
             System.IO.Path.GetFileName(changedFilePath), affectedPaths.Count);
 
         // Re-run full project analysis (ProjectCompiler assumes single-use lifecycle)
-        await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
+        await _analysisLock.WaitAsync(linkedToken).ConfigureAwait(false);
         try
         {
             var result = await Task.Run(
-                () => _api.AnalyzeProject(config, ct), ct).ConfigureAwait(false);
+                () => _api.AnalyzeProject(config, linkedToken), linkedToken).ConfigureAwait(false);
 
             _projectAnalysis = result;
 
@@ -411,6 +449,16 @@ internal sealed class LanguageService : IDisposable
     {
         _indexingCts?.Cancel();
         _indexingCts?.Dispose();
+
+        foreach (var kvp in _documentCts)
+        {
+            try
+            { kvp.Value.Cancel(); }
+            catch (ObjectDisposedException) { }
+            kvp.Value.Dispose();
+        }
+        _documentCts.Clear();
+
         _analysisLock.Dispose();
     }
 }
