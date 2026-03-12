@@ -78,28 +78,40 @@ internal sealed class SharplyRenameHandler : RenameHandlerBase
 
         // Edit references in other workspace files
         var allUris = _workspace.GetAllDocumentUris();
-        foreach (var otherUri in allUris)
+        var otherUris = allUris.Where(u => !string.Equals(u, uri, StringComparison.Ordinal)).ToList();
+
+        if (otherUris.Count > 0)
         {
-            if (string.Equals(otherUri, uri, StringComparison.Ordinal))
-                continue;
+            var reporter = _languageService.ProgressReporter;
+            using var progress = reporter != null
+                ? await reporter.BeginAsync("Renaming across files", ct).ConfigureAwait(false)
+                : ProgressScope.NoOp;
 
-            try
+            for (var i = 0; i < otherUris.Count; i++)
             {
-                var otherAnalysis = await _languageService.GetAnalysisAsync(otherUri, ct).ConfigureAwait(false);
-                if (otherAnalysis?.SemanticQuery == null)
-                    continue;
+                var otherUri = otherUris[i];
+                progress.Report(
+                    $"Renaming in {System.IO.Path.GetFileName(UriToFilePath(otherUri) ?? otherUri)}",
+                    (i + 1) * 100 / otherUris.Count);
 
-                var crossRefs = otherAnalysis.SemanticQuery.FindReferencesBySymbolIdentity(
-                    symbol.Name, symbol.DeclaringFilePath);
-                AddReferenceEdits(edits, crossRefs, symbol.Name, otherUri, newName);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch
-            {
-                // Skip files that fail to analyze
+                try
+                {
+                    var otherAnalysis = await _languageService.GetAnalysisAsync(otherUri, ct).ConfigureAwait(false);
+                    if (otherAnalysis?.SemanticQuery == null)
+                        continue;
+
+                    var crossRefs = otherAnalysis.SemanticQuery.FindReferencesBySymbolIdentity(
+                        symbol.Name, symbol.DeclaringFilePath);
+                    AddReferenceEdits(edits, crossRefs, symbol.Name, otherUri, newName);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch
+                {
+                    // Skip files that fail to analyze
+                }
             }
         }
 
@@ -153,6 +165,14 @@ internal sealed class SharplyRenameHandler : RenameHandlerBase
                 new Position(line, col + oldNameLength)),
             NewText = newName
         });
+    }
+
+    private static string? UriToFilePath(string uri)
+    {
+        if (Uri.TryCreate(uri, UriKind.Absolute, out var parsed) && parsed.IsFile)
+            return parsed.LocalPath;
+
+        return System.IO.Path.IsPathRooted(uri) ? uri : null;
     }
 
     private static bool IsValidIdentifier(string name)

@@ -49,6 +49,11 @@ internal sealed class LanguageService : IDisposable
     }
 
     /// <summary>
+    /// The progress reporter for background operations, if available.
+    /// </summary>
+    internal ProgressReporter? ProgressReporter => _progressReporter;
+
+    /// <summary>
     /// Whether a project has been loaded.
     /// </summary>
     public bool HasProject => _projectConfig != null;
