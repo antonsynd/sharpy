@@ -56,6 +56,16 @@ public abstract record Node : ILocatable
     {
         // Base validation: line/column should be set after parsing
         // Note: LineStart/ColumnStart of 0 is valid for synthetic nodes
+
+        // Span well-formedness: end must not precede start.
+        // Skip synthetic nodes where all positions are 0.
+        if (LineStart != 0 || ColumnStart != 0 || LineEnd != 0 || ColumnEnd != 0)
+        {
+            Debug.Assert(LineEnd >= LineStart,
+                $"{GetType().Name}: LineEnd ({LineEnd}) < LineStart ({LineStart})");
+            Debug.Assert(LineEnd != LineStart || ColumnEnd >= ColumnStart,
+                $"{GetType().Name}: same-line span has ColumnEnd ({ColumnEnd}) < ColumnStart ({ColumnStart})");
+        }
     }
 
     /// <summary>

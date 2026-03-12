@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -63,13 +64,14 @@ internal sealed class SharplyDocumentSymbolHandler : DocumentSymbolHandlerBase
         if (f.ReturnType != null)
             returnDetail = $" -> {f.ReturnType}";
 
+        var range = NodeToRange(f);
         return new DocumentSymbol
         {
             Name = f.Name,
             Kind = SymbolKind.Function,
             Detail = returnDetail,
-            Range = NodeToRange(f),
-            SelectionRange = NameToRange(f),
+            Range = range,
+            SelectionRange = NameSelectionRange(f, range),
         };
     }
 
@@ -87,12 +89,13 @@ internal sealed class SharplyDocumentSymbolHandler : DocumentSymbolHandlerBase
                 children.Add(child);
         }
 
+        var range = NodeToRange(node);
         return new DocumentSymbol
         {
             Name = name,
             Kind = kind,
-            Range = NodeToRange(node),
-            SelectionRange = NameToRange(node),
+            Range = range,
+            SelectionRange = NameSelectionRange(node, range),
             Children = new Container<DocumentSymbol>(children),
         };
     }
@@ -115,12 +118,13 @@ internal sealed class SharplyDocumentSymbolHandler : DocumentSymbolHandlerBase
             });
         }
 
+        var range = NodeToRange(e);
         return new DocumentSymbol
         {
             Name = e.Name,
             Kind = SymbolKind.Enum,
-            Range = NodeToRange(e),
-            SelectionRange = NameToRange(e),
+            Range = range,
+            SelectionRange = NameSelectionRange(e, range),
             Children = new Container<DocumentSymbol>(children),
         };
     }
@@ -129,58 +133,47 @@ internal sealed class SharplyDocumentSymbolHandler : DocumentSymbolHandlerBase
     {
         return stmt switch
         {
-            FunctionDef f => new DocumentSymbol
-            {
-                Name = f.Name,
-                Kind = SymbolKind.Method,
-                Range = NodeToRange(f),
-                SelectionRange = NameToRange(f),
-            },
-            PropertyDef p => new DocumentSymbol
-            {
-                Name = p.Name,
-                Kind = SymbolKind.Property,
-                Range = NodeToRange(p),
-                SelectionRange = NameToRange(p),
-            },
-            EventDef e => new DocumentSymbol
-            {
-                Name = e.Name,
-                Kind = SymbolKind.Event,
-                Range = NodeToRange(e),
-                SelectionRange = NameToRange(e),
-            },
-            VariableDeclaration v => new DocumentSymbol
-            {
-                Name = v.Name,
-                Kind = SymbolKind.Field,
-                Range = NodeToRange(v),
-                SelectionRange = NodeToRange(v),
-            },
+            FunctionDef f => MakeSymbol(f.Name, SymbolKind.Method, f),
+            PropertyDef p => MakeSymbol(p.Name, SymbolKind.Property, p),
+            EventDef e => MakeSymbol(e.Name, SymbolKind.Event, e),
+            VariableDeclaration v => MakeSymbol(v.Name, SymbolKind.Field, v),
             _ => null
         };
     }
 
     private static DocumentSymbol ConvertVariable(VariableDeclaration v)
     {
-        var name = v.Name;
+        var range = NodeToRange(v);
         return new DocumentSymbol
         {
-            Name = name,
+            Name = v.Name,
             Kind = SymbolKind.Variable,
-            Range = NodeToRange(v),
-            SelectionRange = NodeToRange(v),
+            Range = range,
+            SelectionRange = NameSelectionRange(v, range),
         };
     }
 
     private static DocumentSymbol ConvertTypeAlias(TypeAlias t)
     {
+        var range = NodeToRange(t);
         return new DocumentSymbol
         {
             Name = t.Name,
             Kind = SymbolKind.TypeParameter,
-            Range = NodeToRange(t),
-            SelectionRange = NameToRange(t),
+            Range = range,
+            SelectionRange = NameSelectionRange(t, range),
+        };
+    }
+
+    private static DocumentSymbol MakeSymbol(string name, SymbolKind kind, Node node)
+    {
+        var range = NodeToRange(node);
+        return new DocumentSymbol
+        {
+            Name = name,
+            Kind = kind,
+            Range = range,
+            SelectionRange = NameSelectionRange(node, range),
         };
     }
 
@@ -192,13 +185,43 @@ internal sealed class SharplyDocumentSymbolHandler : DocumentSymbolHandlerBase
         );
     }
 
-    private static LspRange NameToRange(Node node)
+    /// <summary>
+    /// Creates a selection range for the name portion of a node.
+    /// Falls back to the full range when a precise name range cannot be computed,
+    /// ensuring the LSP invariant (selectionRange ⊆ fullRange) always holds.
+    /// </summary>
+    private static LspRange NameSelectionRange(Node node, LspRange fullRange)
     {
-        // Use just the first line for the selection range (the name position)
-        return new LspRange(
-            PositionConverter.ToLsp(node.LineStart, node.ColumnStart),
-            PositionConverter.ToLsp(node.LineStart, node.ColumnEnd)
-        );
+        // For single-line nodes, the full range already covers just that line — use it directly.
+        if (node.LineStart == node.LineEnd)
+            return fullRange;
+
+        // For multi-line nodes, narrow to first line only (the declaration line).
+        // End at fullRange.End if it happens to be on the same line (shouldn't happen, but safe).
+        var start = fullRange.Start;
+        var end = fullRange.End.Line == start.Line ? fullRange.End : start;
+        var selectionRange = new LspRange(start, end);
+
+        AssertSelectionContained(selectionRange, fullRange, node.GetType().Name);
+        return selectionRange;
+    }
+
+    /// <summary>
+    /// Asserts that selectionRange is contained within fullRange.
+    /// Fires in DEBUG builds to catch bugs early.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private static void AssertSelectionContained(LspRange selectionRange, LspRange fullRange, string context)
+    {
+        bool startOk = selectionRange.Start.Line > fullRange.Start.Line
+            || (selectionRange.Start.Line == fullRange.Start.Line
+                && selectionRange.Start.Character >= fullRange.Start.Character);
+        bool endOk = selectionRange.End.Line < fullRange.End.Line
+            || (selectionRange.End.Line == fullRange.End.Line
+                && selectionRange.End.Character <= fullRange.End.Character);
+
+        Debug.Assert(startOk && endOk,
+            $"DocumentSymbol '{context}': selectionRange {selectionRange} not contained in fullRange {fullRange}");
     }
 
     protected override DocumentSymbolRegistrationOptions CreateRegistrationOptions(
