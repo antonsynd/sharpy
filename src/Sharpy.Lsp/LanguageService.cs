@@ -1,9 +1,8 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Sharpy.Compiler;
-using Sharpy.Compiler.Diagnostics;
-using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Project;
-using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Services;
 
 namespace Sharpy.Lsp;
 
@@ -12,49 +11,39 @@ namespace Sharpy.Lsp;
 /// Manages project-level compilation state and provides per-file analysis results
 /// that are compatible with the existing single-file <see cref="SemanticResult"/>.
 /// </summary>
-internal sealed class LanguageService
+internal sealed class LanguageService : IDisposable
 {
     private readonly SharplyWorkspace _workspace;
+    private readonly CompilerApi _api;
     private readonly ILogger<LanguageService> _logger;
 
     // Project state
-    private SpyProject? _project;
+    private ProjectConfig? _projectConfig;
     private ProjectAnalysisResult? _projectAnalysis;
-    private readonly object _projectLock = new();
+    private readonly ConcurrentDictionary<string, SemanticResult> _fileResults = new(StringComparer.OrdinalIgnoreCase);
+    private readonly SemaphoreSlim _analysisLock = new(1, 1);
 
-    public LanguageService(SharplyWorkspace workspace, ILogger<LanguageService> logger)
+    public LanguageService(SharplyWorkspace workspace, CompilerApi api, ILogger<LanguageService> logger)
     {
         _workspace = workspace;
+        _api = api;
         _logger = logger;
     }
 
     /// <summary>
     /// Whether a project has been loaded.
     /// </summary>
-    public bool HasProject
-    {
-        get
-        {
-            lock (_projectLock)
-            {
-                return _project != null;
-            }
-        }
-    }
+    public bool HasProject => _projectConfig != null;
 
     /// <summary>
     /// The current project analysis result, if available.
     /// </summary>
-    internal ProjectAnalysisResult? ProjectAnalysis
-    {
-        get
-        {
-            lock (_projectLock)
-            {
-                return _projectAnalysis;
-            }
-        }
-    }
+    internal ProjectAnalysisResult? ProjectAnalysis => _projectAnalysis;
+
+    /// <summary>
+    /// Read-only dependency query from the last project analysis.
+    /// </summary>
+    public IDependencyQuery? Dependencies => _projectAnalysis?.Dependencies;
 
     /// <summary>
     /// Discovers a .spyproj file in the workspace root, loads it, and runs
@@ -80,25 +69,40 @@ internal sealed class LanguageService
                 "Loaded project {Namespace} with {Count} source file(s)",
                 project.RootNamespace, project.SourceFiles.Count);
 
-            var result = await Task.Run(() =>
-            {
-                var compiler = new ProjectCompiler();
-                var config = project.ToProjectConfig();
-                return compiler.AnalyzeProject(config, ct);
-            }, ct).ConfigureAwait(false);
+            var config = project.ToProjectConfig();
 
-            lock (_projectLock)
+            await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
+            try
             {
-                _project = project;
+                var result = await Task.Run(
+                    () => _api.AnalyzeProject(config, ct), ct).ConfigureAwait(false);
+
+                _projectConfig = config;
                 _projectAnalysis = result;
+
+                // Populate per-file result cache
+                _fileResults.Clear();
+                foreach (var filePath in config.SourceFiles)
+                {
+                    var fileResult = ExtractFileResult(filePath, result);
+                    if (fileResult != null)
+                    {
+                        _fileResults[filePath] = fileResult;
+                    }
+                }
+
+                _logger.LogInformation(
+                    "Project analysis {Status} with {ErrorCount} error(s), {FileCount} file result(s) cached",
+                    result.Success ? "succeeded" : "failed",
+                    result.Diagnostics.ErrorCount,
+                    _fileResults.Count);
+
+                return result.Success;
             }
-
-            _logger.LogInformation(
-                "Project analysis {Status} with {ErrorCount} error(s)",
-                result.Success ? "succeeded" : "failed",
-                result.Diagnostics.ErrorCount);
-
-            return result.Success;
+            finally
+            {
+                _analysisLock.Release();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -122,36 +126,49 @@ internal sealed class LanguageService
     /// <returns>The semantic analysis result, or null if the document is not tracked.</returns>
     public async Task<SemanticResult?> GetAnalysisAsync(string uri, CancellationToken ct = default)
     {
-        // Try project-level analysis first
-        var projectResult = TryGetProjectFileResult(uri);
-        if (projectResult != null)
-            return projectResult;
+        // Try project-level cached result first
+        var filePath = UriToFilePath(uri);
+        if (filePath != null && _fileResults.TryGetValue(filePath, out var cached))
+            return cached;
 
         // Fall back to single-file analysis via workspace
         return await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Extracts a per-file <see cref="SemanticResult"/> from the project analysis,
-    /// or returns null if the file is not part of the project.
+    /// Returns URIs of all files in the current project.
+    /// Empty if no project is loaded.
     /// </summary>
-    private SemanticResult? TryGetProjectFileResult(string uri)
+    public IReadOnlyList<string> GetProjectFileUris()
     {
-        ProjectAnalysisResult? analysis;
-        lock (_projectLock)
-        {
-            analysis = _projectAnalysis;
-        }
+        var config = _projectConfig;
+        if (config == null)
+            return Array.Empty<string>();
 
-        if (analysis == null)
-            return null;
+        return config.SourceFiles
+            .Select(FilePathToUri)
+            .ToList();
+    }
 
-        // Convert URI to file path for lookup
+    /// <summary>
+    /// Checks if a URI belongs to the current project.
+    /// </summary>
+    public bool IsProjectFile(string uri)
+    {
         var filePath = UriToFilePath(uri);
         if (filePath == null)
-            return null;
+            return false;
 
-        var fileResult = analysis.GetFileResult(filePath);
+        return _fileResults.ContainsKey(filePath);
+    }
+
+    /// <summary>
+    /// Extracts a <see cref="SemanticResult"/> from a <see cref="ProjectAnalysisResult"/>
+    /// for a specific file.
+    /// </summary>
+    private static SemanticResult? ExtractFileResult(string filePath, ProjectAnalysisResult result)
+    {
+        var fileResult = result.GetFileResult(filePath);
         if (fileResult == null)
             return null;
 
@@ -171,9 +188,20 @@ internal sealed class LanguageService
             return parsed.LocalPath;
 
         // Already a file path
-        if (Path.IsPathRooted(uri))
+        if (System.IO.Path.IsPathRooted(uri))
             return uri;
 
         return null;
+    }
+
+    private static string FilePathToUri(string filePath)
+    {
+        var fullPath = System.IO.Path.GetFullPath(filePath);
+        return new Uri(fullPath).ToString();
+    }
+
+    public void Dispose()
+    {
+        _analysisLock.Dispose();
     }
 }
