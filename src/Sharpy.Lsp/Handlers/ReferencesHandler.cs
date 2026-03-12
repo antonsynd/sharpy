@@ -15,18 +15,20 @@ namespace Sharpy.Lsp.Handlers;
 internal sealed class SharplyReferencesHandler : ReferencesHandlerBase
 {
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyReferencesHandler(SharplyWorkspace workspace, CompilerApi api)
+    public SharplyReferencesHandler(SharplyWorkspace workspace, LanguageService languageService, CompilerApi api)
     {
         _workspace = workspace;
+        _languageService = languageService;
         _api = api;
     }
 
     public override async Task<LocationContainer?> Handle(ReferenceParams request, CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
         if (analysis?.Ast == null || analysis.SemanticQuery == null)
             return null;
@@ -84,7 +86,7 @@ internal sealed class SharplyReferencesHandler : ReferencesHandlerBase
 
             try
             {
-                var otherAnalysis = await _workspace.GetAnalysisAsync(otherUri, ct).ConfigureAwait(false);
+                var otherAnalysis = await _languageService.GetAnalysisAsync(otherUri, ct).ConfigureAwait(false);
                 if (otherAnalysis?.SemanticQuery == null)
                     continue;
 

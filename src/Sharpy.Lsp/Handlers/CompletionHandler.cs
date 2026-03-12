@@ -13,19 +13,19 @@ namespace Sharpy.Lsp.Handlers;
 /// </summary>
 internal sealed class SharplyCompletionHandler : CompletionHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyCompletionHandler(SharplyWorkspace workspace, CompilerApi api)
+    public SharplyCompletionHandler(LanguageService languageService, CompilerApi api)
     {
-        _workspace = workspace;
+        _languageService = languageService;
         _api = api;
     }
 
     public override async Task<CompletionList> Handle(CompletionParams request, CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
         if (analysis?.SymbolTable == null)
             return new CompletionList();

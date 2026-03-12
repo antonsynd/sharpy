@@ -13,11 +13,11 @@ namespace Sharpy.Lsp.Handlers;
 /// </summary>
 internal sealed class SharplyDocumentSymbolHandler : DocumentSymbolHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
 
-    public SharplyDocumentSymbolHandler(SharplyWorkspace workspace)
+    public SharplyDocumentSymbolHandler(LanguageService languageService)
     {
-        _workspace = workspace;
+        _languageService = languageService;
     }
 
     public override async Task<SymbolInformationOrDocumentSymbolContainer?> Handle(
@@ -25,7 +25,7 @@ internal sealed class SharplyDocumentSymbolHandler : DocumentSymbolHandlerBase
         CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
         if (analysis?.Ast == null)
             return null;

@@ -13,7 +13,7 @@ namespace Sharpy.Lsp.Handlers;
 /// </summary>
 internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
 
     // Token types registered in the legend — order must match indices used in Push calls.
     private static readonly string[] TokenTypes =
@@ -64,9 +64,9 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
     internal const int ModAsync = 1 << 3;
     internal const int ModReadonly = 1 << 4;
 
-    public SharplySemanticTokensHandler(SharplyWorkspace workspace)
+    public SharplySemanticTokensHandler(LanguageService languageService)
     {
-        _workspace = workspace;
+        _languageService = languageService;
     }
 
     protected override SemanticTokensRegistrationOptions CreateRegistrationOptions(
@@ -93,7 +93,7 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
         CancellationToken ct)
     {
         var uri = identifier.TextDocument.Uri.ToString();
-        var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
         if (analysis?.Ast == null)
             return;

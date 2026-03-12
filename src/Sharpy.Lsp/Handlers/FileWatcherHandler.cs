@@ -12,13 +12,15 @@ namespace Sharpy.Lsp.Handlers;
 internal sealed class FileWatcherHandler : IDidChangeWatchedFilesHandler
 {
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
 
-    public FileWatcherHandler(SharplyWorkspace workspace)
+    public FileWatcherHandler(SharplyWorkspace workspace, LanguageService languageService)
     {
         _workspace = workspace;
+        _languageService = languageService;
     }
 
-    public Task<Unit> Handle(DidChangeWatchedFilesParams request, CancellationToken ct)
+    public async Task<Unit> Handle(DidChangeWatchedFilesParams request, CancellationToken ct)
     {
         foreach (var change in request.Changes)
         {
@@ -27,14 +29,16 @@ internal sealed class FileWatcherHandler : IDidChangeWatchedFilesHandler
             if (path.EndsWith(".spyproj", StringComparison.OrdinalIgnoreCase))
             {
                 _workspace.ReloadProject();
+                await _languageService.ReloadProjectAsync(ct).ConfigureAwait(false);
             }
             else if (path.EndsWith(".spy", StringComparison.OrdinalIgnoreCase))
             {
                 _workspace.OnExternalFileChanged(path);
+                await _languageService.OnExternalFileChangedAsync(path, ct).ConfigureAwait(false);
             }
         }
 
-        return Unit.Task;
+        return Unit.Value;
     }
 
     public DidChangeWatchedFilesRegistrationOptions GetRegistrationOptions(

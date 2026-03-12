@@ -46,6 +46,7 @@ public class Program
                     services.AddSingleton<CompilerApi>();
                     services.AddSingleton<SharplyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
+                    services.AddSingleton<LanguageService>();
                 })
                 .OnInitialize(async (server, request, token) =>
                 {
@@ -70,16 +71,17 @@ public class Program
                         await Console.Error.WriteLineAsync($"[Warning] Workspace capability setup failed: {ex.Message}").ConfigureAwait(false);
                     }
                 })
-                .OnInitialized((server, request, response, token) =>
+                .OnInitialized(async (server, request, response, token) =>
                 {
                     var rootPath = workspaceRootUri?.LocalPath ?? request.RootPath;
                     if (rootPath != null)
                     {
                         var workspace = server.Services.GetRequiredService<SharplyWorkspace>();
                         workspace.LoadProject(rootPath);
-                    }
 
-                    return Task.CompletedTask;
+                        var languageService = server.Services.GetRequiredService<LanguageService>();
+                        await languageService.InitializeProjectAsync(rootPath, token).ConfigureAwait(false);
+                    }
                 })
                 .WithHandler<TextDocumentSyncHandler>()
                 .WithHandler<SharplyHoverHandler>()

@@ -16,13 +16,16 @@ namespace Sharpy.Lsp.Handlers;
 internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
 {
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly DiagnosticPublisher _diagnosticPublisher;
 
     public TextDocumentSyncHandler(
         SharplyWorkspace workspace,
+        LanguageService languageService,
         DiagnosticPublisher diagnosticPublisher)
     {
         _workspace = workspace;
+        _languageService = languageService;
         _diagnosticPublisher = diagnosticPublisher;
 
         // Subscribe to analysis completion to publish diagnostics
@@ -88,7 +91,7 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         };
     }
 
-    private Task OnDocumentAnalyzedAsync(string uri, SemanticResult result)
+    private async Task OnDocumentAnalyzedAsync(string uri, SemanticResult result)
     {
         var sourceText = _workspace.GetSourceText(uri);
         _diagnosticPublisher.PublishDiagnostics(uri, result, sourceText);
@@ -99,7 +102,30 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
             RecordImportDependencies(uri, result.Ast);
         }
 
-        return Task.CompletedTask;
+        // Notify LanguageService for project-aware reanalysis of affected files
+        if (_languageService.IsProjectFile(uri))
+        {
+            try
+            {
+                var affectedUris = await _languageService.OnDocumentChangedAsync(uri).ConfigureAwait(false);
+                foreach (var affectedUri in affectedUris)
+                {
+                    if (string.Equals(affectedUri, uri, StringComparison.Ordinal))
+                        continue; // Already published above
+
+                    var affectedResult = await _languageService.GetAnalysisAsync(affectedUri).ConfigureAwait(false);
+                    if (affectedResult != null)
+                    {
+                        var affectedSourceText = _workspace.GetSourceText(affectedUri);
+                        _diagnosticPublisher.PublishDiagnostics(affectedUri, affectedResult, affectedSourceText);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when document changes rapidly
+            }
+        }
     }
 
     private void RecordImportDependencies(string currentUri, Module ast)

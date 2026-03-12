@@ -11,11 +11,11 @@ namespace Sharpy.Lsp.Handlers;
 /// </summary>
 internal sealed class SharplyFoldingRangeHandler : FoldingRangeHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
 
-    public SharplyFoldingRangeHandler(SharplyWorkspace workspace)
+    public SharplyFoldingRangeHandler(LanguageService languageService)
     {
-        _workspace = workspace;
+        _languageService = languageService;
     }
 
     public override async Task<Container<FoldingRange>?> Handle(
@@ -23,7 +23,7 @@ internal sealed class SharplyFoldingRangeHandler : FoldingRangeHandlerBase
         CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
         if (analysis?.Ast == null)
             return null;

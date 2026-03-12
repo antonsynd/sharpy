@@ -15,10 +15,12 @@ namespace Sharpy.Lsp.Handlers;
 internal sealed class SharplyWorkspaceSymbolHandler : WorkspaceSymbolsHandlerBase
 {
     private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
 
-    public SharplyWorkspaceSymbolHandler(SharplyWorkspace workspace)
+    public SharplyWorkspaceSymbolHandler(SharplyWorkspace workspace, LanguageService languageService)
     {
         _workspace = workspace;
+        _languageService = languageService;
     }
 
     public override async Task<Container<WorkspaceSymbol>?> Handle(
@@ -30,7 +32,7 @@ internal sealed class SharplyWorkspaceSymbolHandler : WorkspaceSymbolsHandlerBas
 
         foreach (var uri in _workspace.GetAllDocumentUris())
         {
-            var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+            var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
             if (analysis?.SymbolTable == null)
                 continue;
 

@@ -14,17 +14,17 @@ namespace Sharpy.Lsp.Handlers;
 /// </summary>
 internal sealed class SharplyInlayHintHandler : InlayHintsHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
 
-    public SharplyInlayHintHandler(SharplyWorkspace workspace)
+    public SharplyInlayHintHandler(LanguageService languageService)
     {
-        _workspace = workspace;
+        _languageService = languageService;
     }
 
     public override async Task<InlayHintContainer?> Handle(InlayHintParams request, CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
         if (analysis?.Ast == null || analysis.SemanticQuery == null)
             return null;

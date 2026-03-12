@@ -15,12 +15,12 @@ namespace Sharpy.Lsp.Handlers;
 /// </summary>
 internal sealed class SharplyDefinitionHandler : DefinitionHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyDefinitionHandler(SharplyWorkspace workspace, CompilerApi api)
+    public SharplyDefinitionHandler(LanguageService languageService, CompilerApi api)
     {
-        _workspace = workspace;
+        _languageService = languageService;
         _api = api;
     }
 
@@ -29,7 +29,7 @@ internal sealed class SharplyDefinitionHandler : DefinitionHandlerBase
         CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
         if (analysis?.Ast == null || analysis.SemanticQuery == null)
             return null;
