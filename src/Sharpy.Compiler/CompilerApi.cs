@@ -187,6 +187,21 @@ public sealed class CompilerApi
     }
 
     /// <summary>
+    /// Analyzes a multi-file Sharpy project (Lexer → Parser → Semantic). No codegen.
+    /// Runs phases 1-5 of the project compilation pipeline.
+    /// </summary>
+    /// <param name="config">The project configuration.</param>
+    /// <param name="cancellationToken">Cancellation token for cooperative cancellation.</param>
+    /// <returns>A <see cref="ProjectAnalysisResult"/> with the analysis outcome.</returns>
+    public Project.ProjectAnalysisResult AnalyzeProject(
+        ProjectConfig config,
+        CancellationToken cancellationToken = default)
+    {
+        var compiler = new Project.ProjectCompiler(logger: _logger);
+        return compiler.AnalyzeProject(config, cancellationToken);
+    }
+
+    /// <summary>
     /// Finds the innermost AST node at the given source position.
     /// Delegates to <see cref="AstPositionService.FindInnermostNode"/>.
     /// </summary>
