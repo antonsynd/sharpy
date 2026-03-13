@@ -1,3 +1,6 @@
+<!-- Verified by /verify-plan on 2026-03-13 -->
+<!-- Verification result: PASS WITH CORRECTIONS -->
+
 # LSP Phase 3: Performance & Scale
 
 ## Context
@@ -95,10 +98,10 @@ Every handler currently goes through `LanguageService.GetAnalysisAsync()` → fu
    - Commit: `perf(lsp): switch DocumentSymbolHandler to parse-only fast path`
 
 5. **Switch `SemanticTokensHandler` to parse-only** — `src/Sharpy.Lsp/Handlers/SemanticTokensHandler.cs`
-   - The `CollectTokens` method takes `SemanticResult analysis` but never accesses `SemanticQuery` or `SymbolTable` — it only reads `Ast.Body`
+   - The `CollectTokens` method takes `SemanticResult analysis` but never accesses `SemanticQuery` or `SymbolTable` — the `analysis` parameter is threaded through the entire recursive call chain (`CollectTokens` → `CollectStatementTokens` → `CollectFunctionTokens`) without ever being dereferenced
    - Change `Tokenize()` to call `GetParseResultAsync()` instead of `GetAnalysisAsync()`
-   - Refactor `CollectTokens` and `CollectStatementTokens` signatures: replace `SemanticResult analysis` parameter with `Module ast` (since only `analysis.Ast.Body` is accessed)
-   - Update the internal test helper `CollectTokens` call in `SemanticTokensTests` accordingly
+   - Refactor `CollectTokens`, `CollectStatementTokens`, and `CollectFunctionTokens` signatures: remove the `SemanticResult analysis` parameter entirely (it is unused — the `IEnumerable<Statement> statements` parameter already carries the body) [CORRECTED: plan originally said "replace with `Module ast`" but `Module` is also unused; the parameter should simply be removed]
+   - Update the internal test helper `CollectTokensFrom` in `SemanticTokensTests` accordingly — it currently calls `SharplySemanticTokensHandler.CollectTokens(analysis.Ast!.Body, analysis, tokens)` and should change to `SharplySemanticTokensHandler.CollectTokens(parseResult.Ast!.Body, tokens)` [CORRECTED: test helper method is named `CollectTokensFrom`, not `CollectTokens`]
    - Acceptance: Semantic tokens work without waiting for semantic analysis; existing `SemanticTokensTests` pass
    - Commit: `perf(lsp): switch SemanticTokensHandler to parse-only fast path`
 
@@ -180,7 +183,7 @@ This is a significant compiler change split into sub-phases.
       1. Copy `previous.SemanticInfo` (or create a new one seeded with previous data)
       2. Extract the function at `functionIndex` from `newAst`
       3. Create a new `TypeChecker` with the existing `SymbolTable`
-      4. Run `CheckFunctionBody()` on just that function
+      4. Run type checking on just that function (note: `TypeChecker` has `CheckModule()` as entry point and private `CheckFunction(FunctionDef)` in `TypeChecker.Definitions.cs` — there is no public `CheckFunctionBody()` method, so `ScopedTypeChecker` will need to either expose a focused entry point or internally invoke the private checking logic) [CORRECTED: `CheckFunctionBody()` does not exist; `CheckFunction(FunctionDef)` is the closest but is private]
       5. Merge the new function's type info into the copied `SemanticInfo`
       6. Return updated `SemanticResult`
     - **Critical constraint**: `SemanticInfo` uses `ReferenceEqualityComparer` for AST nodes. Since the new AST has different node instances, we must map from old nodes → types for unchanged code and only add new mappings for the re-checked function.
@@ -292,3 +295,34 @@ No existing GitHub issues. Consider creating tracking issues:
 | Phase 3.4 | Low — simple lazy wrapper | Minimal behavior change |
 
 **Recommended implementation order**: 3.1 → 3.4 → 3.2 → 3.3 (easiest first; 3.3 is highest risk and should be last)
+
+## Verification Summary
+
+**Result:** PASS WITH CORRECTIONS
+**Verified on:** 2026-03-13
+**Plan file:** `docs/implementation_planning/lsp_phase3_performance.md`
+
+### Corrections Made
+
+1. **Task 5 (SemanticTokensHandler refactoring)**: Plan said "replace `SemanticResult analysis` parameter with `Module ast`". Corrected to "remove the `SemanticResult analysis` parameter entirely" — the `analysis` parameter is threaded through `CollectTokens` → `CollectStatementTokens` → `CollectFunctionTokens` recursion but never dereferenced. The `IEnumerable<Statement> statements` parameter already carries all needed data. Replacing with `Module ast` would introduce an equally unused parameter.
+
+2. **Task 5 (test helper name)**: Plan said "Update the internal test helper `CollectTokens` call". Corrected to `CollectTokensFrom` — the test helper in `SemanticTokensTests` is named `CollectTokensFrom(string source)` (line 17).
+
+3. **Task 13 (ScopedTypeChecker step 4)**: Plan referenced `CheckFunctionBody()`. Corrected — this method does not exist. `TypeChecker` has `CheckModule()` as its public entry point and `CheckFunction(FunctionDef)` as a private method in `TypeChecker.Definitions.cs`. `ScopedTypeChecker` will need to create a focused entry point or expose the private checking logic.
+
+### Warnings
+
+1. **Phase 3.3 complexity understatement**: `SemanticInfo` has 12 `ConcurrentDictionary`/`HashSet` fields all keyed by `ReferenceEqualityComparer.Instance`. Partial re-analysis requires mapping from old AST node instances to new ones for ALL 12 maps (not just "copy and merge" as the plan implies). Consider scoping Phase 3.3 to only update `_expressionTypes` and `_identifierSymbols` initially.
+
+2. **Phase 3.3 TypeChecker state**: `TypeChecker` maintains significant internal state (`_narrowingContext`, scope stacks, variable tracking). Creating a "scoped" re-check requires either re-creating all this state from the previous analysis or running the full pipeline up to the function's scope. The plan should address how `ScopedTypeChecker` bootstraps TypeChecker state.
+
+3. **Phase 3.2 Task 8**: The plan correctly notes that `OnDocumentChangedAsync` currently runs `AnalyzeProject(config)` (full project re-analysis), so per-document locks don't help much for that method. The plan acknowledges this but could be clearer: the per-document lock improvement mainly benefits `GetAnalysisAsync` (single-file workspace analysis), not project-level reanalysis.
+
+### Missing Steps Added
+
+- None required — the plan covers all phases of implementation including tests.
+
+### Unchecked Claims
+
+- **Performance claims** ("responding in milliseconds instead of hundreds of milliseconds"): Not verifiable without benchmarks; reasonable estimate given parse-only vs full semantic pipeline.
+- **Phase 3.3 correctness**: Whether partial re-analysis can produce correct results given SemanticInfo's 12 reference-keyed maps is a design question, not a codebase fact. The plan's fallback to full analysis mitigates this.
