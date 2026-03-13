@@ -24,6 +24,11 @@ namespace Sharpy
         /// Python: <c>str.upper()</c>
         /// </summary>
         /// <remarks>Uses invariant culture to match Python's culture-independent behavior.</remarks>
+        /// <example>
+        /// <code>
+        /// "hello".upper()    # "HELLO"
+        /// </code>
+        /// </example>
         public static string Upper(this string s)
         {
             return s.ToUpperInvariant();
@@ -34,6 +39,11 @@ namespace Sharpy
         /// Python: <c>str.lower()</c>
         /// </summary>
         /// <remarks>Uses invariant culture to match Python's culture-independent behavior.</remarks>
+        /// <example>
+        /// <code>
+        /// "HELLO".lower()    # "hello"
+        /// </code>
+        /// </example>
         public static string Lower(this string s)
         {
             return s.ToLowerInvariant();
@@ -43,6 +53,11 @@ namespace Sharpy
         /// Return a copy of the string with leading and trailing whitespace removed.
         /// Python: <c>str.strip()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "  hello  ".strip()    # "hello"
+        /// </code>
+        /// </example>
         public static string Strip(this string s)
         {
             return s.Trim();
@@ -53,6 +68,11 @@ namespace Sharpy
         /// <paramref name="chars"/> removed.
         /// Python: <c>str.strip(chars)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "xxhelloxx".strip("x")    # "hello"
+        /// </code>
+        /// </example>
         public static string Strip(this string s, string chars)
         {
             return s.Trim(chars.ToCharArray());
@@ -62,6 +82,11 @@ namespace Sharpy
         /// Return a copy of the string with leading whitespace removed.
         /// Python: <c>str.lstrip()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "  hello".lstrip()    # "hello"
+        /// </code>
+        /// </example>
         public static string Lstrip(this string s)
         {
             return s.TrimStart();
@@ -81,6 +106,11 @@ namespace Sharpy
         /// Return a copy of the string with trailing whitespace removed.
         /// Python: <c>str.rstrip()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hello  ".rstrip()    # "hello"
+        /// </code>
+        /// </example>
         public static string Rstrip(this string s)
         {
             return s.TrimEnd();
@@ -101,6 +131,11 @@ namespace Sharpy
         /// and the rest lowercased.
         /// Python: <c>str.capitalize()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hello world".capitalize()    # "Hello world"
+        /// </code>
+        /// </example>
         public static string Capitalize(this string s)
         {
             if (string.IsNullOrEmpty(s))
@@ -121,6 +156,12 @@ namespace Sharpy
         /// is found. Return -1 if <paramref name="sub"/> is not found.
         /// Python: <c>str.find(sub)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hello".find("ll")    # 2
+        /// "hello".find("xy")    # -1
+        /// </code>
+        /// </example>
         public static int Find(this string s, string sub)
         {
             return s.IndexOf(sub, StringComparison.Ordinal);
@@ -181,6 +222,11 @@ namespace Sharpy
         /// is found. Return -1 if <paramref name="sub"/> is not found.
         /// Python: <c>str.rfind(sub)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hello hello".rfind("hello")    # 6
+        /// </code>
+        /// </example>
         public static int Rfind(this string s, string sub)
         {
             return s.LastIndexOf(sub, StringComparison.Ordinal);
@@ -245,6 +291,11 @@ namespace Sharpy
         /// string providing this method.
         /// Python: <c>str.join(iterable)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// ", ".join(["a", "b", "c"])    # "a, b, c"
+        /// </code>
+        /// </example>
         public static string Join(this string s, IEnumerable<string> iterable)
         {
             return string.Join(s, iterable);
@@ -259,6 +310,11 @@ namespace Sharpy
         /// an upper case character and the remaining characters are lower case.
         /// Python: <c>str.title()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hello world".title()    # "Hello World"
+        /// </code>
+        /// </example>
         public static string Title(this string s)
         {
             if (string.IsNullOrEmpty(s))
@@ -298,6 +354,11 @@ namespace Sharpy
         /// lowercase and vice versa.
         /// Python: <c>str.swapcase()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "Hello World".swapcase()    # "hELLO wORLD"
+        /// </code>
+        /// </example>
         public static string Swapcase(this string s)
         {
             if (string.IsNullOrEmpty(s))
@@ -334,6 +395,11 @@ namespace Sharpy
         /// Performs full Unicode case folding matching Python behavior
         /// (e.g., ß → ss, ﬁ → fi).
         /// </remarks>
+        /// <example>
+        /// <code>
+        /// "Straße".casefold()    # "strasse"
+        /// </code>
+        /// </example>
         public static string Casefold(this string s)
         {
             var sb = new StringBuilder(s.Length);
@@ -526,6 +592,12 @@ namespace Sharpy
         /// there is at least one character, <c>false</c> otherwise.
         /// Python: <c>str.isdigit()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "123".isdigit()     # True
+        /// "12.3".isdigit()    # False
+        /// </code>
+        /// </example>
         public static bool Isdigit(this string s)
         {
             if (string.IsNullOrEmpty(s))
@@ -549,6 +621,12 @@ namespace Sharpy
         /// and there is at least one character, <c>false</c> otherwise.
         /// Python: <c>str.isalpha()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hello".isalpha()     # True
+        /// "hello1".isalpha()    # False
+        /// </code>
+        /// </example>
         public static bool Isalpha(this string s)
         {
             if (string.IsNullOrEmpty(s))
@@ -572,6 +650,12 @@ namespace Sharpy
         /// and there is at least one character, <c>false</c> otherwise.
         /// Python: <c>str.isalnum()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "abc123".isalnum()    # True
+        /// "abc 123".isalnum()   # False
+        /// </code>
+        /// </example>
         public static bool Isalnum(this string s)
         {
             if (string.IsNullOrEmpty(s))
@@ -676,6 +760,12 @@ namespace Sharpy
         /// <paramref name="sub"/> in the string.
         /// Python: <c>str.count(sub)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "banana".count("an")    # 2
+        /// "hello".count("x")      # 0
+        /// </code>
+        /// </example>
         public static int Count(this string s, string sub)
         {
             if (string.IsNullOrEmpty(sub))
@@ -701,6 +791,12 @@ namespace Sharpy
         /// (default is a space).
         /// Python: <c>str.center(width, fillchar)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hi".center(10)         # "    hi    "
+        /// "hi".center(10, "-")    # "----hi----"
+        /// </code>
+        /// </example>
         public static string Center(this string s, int width, char fillchar = ' ')
         {
             if (s.Length >= width)
@@ -754,6 +850,12 @@ namespace Sharpy
         /// character rather than before.
         /// Python: <c>str.zfill(width)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "42".zfill(5)     # "00042"
+        /// "-42".zfill(5)    # "-0042"
+        /// </code>
+        /// </example>
         public static string Zfill(this string s, int width)
         {
             if (s.Length >= width)
@@ -781,6 +883,11 @@ namespace Sharpy
         /// Recognizes all Python line boundaries: \n, \r\n, \r, \v (0x0B),
         /// \f (0x0C), \x1C, \x1D, \x1E, \x85 (NEL), \u2028 (LS), \u2029 (PS).
         /// </remarks>
+        /// <example>
+        /// <code>
+        /// "a\nb\nc".splitlines()    # ["a", "b", "c"]
+        /// </code>
+        /// </example>
         public static List<string> Splitlines(this string s)
         {
             return Splitlines(s, false);
@@ -862,6 +969,12 @@ namespace Sharpy
         /// the original string.
         /// Python: <c>str.removeprefix(prefix)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "HelloWorld".removeprefix("Hello")    # "World"
+        /// "HelloWorld".removeprefix("Bye")      # "HelloWorld"
+        /// </code>
+        /// </example>
         public static string Removeprefix(this string s, string prefix)
         {
             if (s.StartsWith(prefix, StringComparison.Ordinal))
@@ -878,6 +991,12 @@ namespace Sharpy
         /// the original string.
         /// Python: <c>str.removesuffix(suffix)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "HelloWorld".removesuffix("World")    # "Hello"
+        /// "HelloWorld".removesuffix("Bye")      # "HelloWorld"
+        /// </code>
+        /// </example>
         public static string Removesuffix(this string s, string suffix)
         {
             if (s.EndsWith(suffix, StringComparison.Ordinal))
@@ -897,6 +1016,11 @@ namespace Sharpy
         /// and leading/trailing whitespace is stripped.
         /// Python: <c>str.split()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "a b  c".split()    # ["a", "b", "c"]
+        /// </code>
+        /// </example>
         public static List<string> Split(this string s)
         {
             var result = new List<string>();
@@ -927,6 +1051,11 @@ namespace Sharpy
         /// Split the string on a separator string.
         /// Python: <c>str.split(sep)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "a,b,c".split(",")    # ["a", "b", "c"]
+        /// </code>
+        /// </example>
         public static List<string> Split(this string s, string sep)
         {
             return Split(s, sep, -1);
@@ -1043,6 +1172,11 @@ namespace Sharpy
         /// by <paramref name="new_"/>.
         /// Python: <c>str.replace(old, new)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hello world".replace("world", "there")    # "hello there"
+        /// </code>
+        /// </example>
         public static string Replace(this string s, string old, string new_)
         {
             if (old.Length == 0)
@@ -1128,6 +1262,12 @@ namespace Sharpy
         /// Return <c>true</c> if string starts with the <paramref name="prefix"/>.
         /// Python: <c>str.startswith(prefix)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hello".startswith("he")    # True
+        /// "hello".startswith("lo")    # False
+        /// </code>
+        /// </example>
         public static bool Startswith(this string s, string prefix)
         {
             return s.StartsWith(prefix, StringComparison.Ordinal);
@@ -1188,6 +1328,12 @@ namespace Sharpy
         /// Return <c>true</c> if string ends with the <paramref name="suffix"/>.
         /// Python: <c>str.endswith(suffix)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hello".endswith("lo")    # True
+        /// "hello".endswith("he")    # False
+        /// </code>
+        /// </example>
         public static bool Endswith(this string s, string suffix)
         {
             return s.EndsWith(suffix, StringComparison.Ordinal);
@@ -1339,6 +1485,11 @@ namespace Sharpy
         /// by two empty strings.
         /// Python: <c>str.partition(sep)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "a.b.c".partition(".")    # ("a", ".", "b.c")
+        /// </code>
+        /// </example>
         public static (string, string, string) Partition(this string s, string sep)
         {
             if (sep == null)
@@ -1365,6 +1516,11 @@ namespace Sharpy
         /// by the string itself.
         /// Python: <c>str.rpartition(sep)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "a.b.c".rpartition(".")    # ("a.b", ".", "c")
+        /// </code>
+        /// </example>
         public static (string, string, string) Rpartition(this string s, string sep)
         {
             if (sep == null)
@@ -1393,6 +1549,11 @@ namespace Sharpy
         /// <paramref name="tabsize"/> characters.
         /// Python: <c>str.expandtabs(tabsize=8)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "a\tb".expandtabs(4)    # "a   b"
+        /// </code>
+        /// </example>
         public static string Expandtabs(this string s, int tabsize = 8)
         {
             var result = new StringBuilder();
@@ -1432,6 +1593,12 @@ namespace Sharpy
         /// characters and lowercase characters only cased characters.
         /// Python: <c>str.istitle()</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "Hello World".istitle()    # True
+        /// "hello world".istitle()    # False
+        /// </code>
+        /// </example>
         public static bool Istitle(this string s)
         {
             if (string.IsNullOrEmpty(s))
@@ -1475,6 +1642,12 @@ namespace Sharpy
         /// Encode the string using the specified encoding and return as a byte array.
         /// Python: <c>str.encode(encoding='utf-8')</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// "hello".encode()           # b'hello'  (UTF-8)
+        /// "hello".encode("ascii")    # b'hello'  (ASCII)
+        /// </code>
+        /// </example>
         public static byte[] Encode(this string s, string encoding = "utf-8")
         {
 #pragma warning disable CA1307 // string.Replace(string, string, StringComparison) not available in netstandard2.0
@@ -1509,6 +1682,12 @@ namespace Sharpy
         /// to corresponding characters in <paramref name="y"/>.
         /// Python: <c>str.maketrans(x, y)</c>
         /// </summary>
+        /// <example>
+        /// <code>
+        /// t = str.maketrans("aeiou", "12345")
+        /// "apple".translate(t)    # "1ppl2"
+        /// </code>
+        /// </example>
         public static Dictionary<char, string> Maketrans(string x, string y)
         {
             if (x.Length != y.Length)

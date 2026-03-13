@@ -32,6 +32,16 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Return a shallow copy of the set.
+        /// </summary>
+        /// <returns>A new set with the same elements.</returns>
+        /// <example>
+        /// <code>
+        /// s = {1, 2, 3}
+        /// t = s.copy()    # {1, 2, 3}
+        /// </code>
+        /// </example>
         public Set<T> Copy()
         {
             var newSet = new Set<T>();
@@ -56,6 +66,15 @@ namespace Sharpy
         /// <summary>
         /// Returns whether this set is a subset of other (all elements in other).
         /// </summary>
+        /// <param name="other">The set to compare against.</param>
+        /// <returns><c>true</c> if every element in this set is also in <paramref name="other"/>.</returns>
+        /// <example>
+        /// <code>
+        /// a = {1, 2}
+        /// b = {1, 2, 3}
+        /// a.issubset(b)    # True
+        /// </code>
+        /// </example>
         public bool IsSubset(Set<T> other)
         {
             if (other is null)
@@ -82,6 +101,15 @@ namespace Sharpy
         /// <summary>
         /// Returns whether this set is a superset of other (contains all elements of other).
         /// </summary>
+        /// <param name="other">The set to compare against.</param>
+        /// <returns><c>true</c> if every element in <paramref name="other"/> is also in this set.</returns>
+        /// <example>
+        /// <code>
+        /// a = {1, 2, 3}
+        /// b = {1, 2}
+        /// a.issuperset(b)    # True
+        /// </code>
+        /// </example>
         public bool IsSuperset(Set<T> other)
         {
             if (other is null)
@@ -95,6 +123,15 @@ namespace Sharpy
         /// <summary>
         /// Returns a new set with elements from both sets.
         /// </summary>
+        /// <param name="other">The other set.</param>
+        /// <returns>A new set containing elements from both sets.</returns>
+        /// <example>
+        /// <code>
+        /// a = {1, 2}
+        /// b = {2, 3}
+        /// a.union(b)    # {1, 2, 3}
+        /// </code>
+        /// </example>
         public Set<T> Union(Set<T> other)
         {
             if (other is null)
@@ -115,6 +152,15 @@ namespace Sharpy
         /// <summary>
         /// Returns a new set with elements common to both sets.
         /// </summary>
+        /// <param name="other">The other set.</param>
+        /// <returns>A new set containing only elements found in both sets.</returns>
+        /// <example>
+        /// <code>
+        /// a = {1, 2, 3}
+        /// b = {2, 3, 4}
+        /// a.intersection(b)    # {2, 3}
+        /// </code>
+        /// </example>
         public Set<T> Intersection(Set<T> other)
         {
             if (other is null)
@@ -138,6 +184,15 @@ namespace Sharpy
         /// <summary>
         /// Returns a new set with elements in this set but not in other.
         /// </summary>
+        /// <param name="other">The other set.</param>
+        /// <returns>A new set with elements only in this set.</returns>
+        /// <example>
+        /// <code>
+        /// a = {1, 2, 3}
+        /// b = {2, 3, 4}
+        /// a.difference(b)    # {1}
+        /// </code>
+        /// </example>
         public Set<T> Difference(Set<T> other)
         {
             if (other is null)
@@ -161,6 +216,15 @@ namespace Sharpy
         /// <summary>
         /// Returns a new set with elements in either set but not both.
         /// </summary>
+        /// <param name="other">The other set.</param>
+        /// <returns>A new set with elements in exactly one of the two sets.</returns>
+        /// <example>
+        /// <code>
+        /// a = {1, 2, 3}
+        /// b = {2, 3, 4}
+        /// a.symmetric_difference(b)    # {1, 4}
+        /// </code>
+        /// </example>
         public Set<T> SymmetricDifference(Set<T> other)
         {
             if (other is null)

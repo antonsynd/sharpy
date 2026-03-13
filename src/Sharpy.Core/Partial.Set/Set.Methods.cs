@@ -16,26 +16,56 @@ namespace Sharpy
         /// <summary>
         /// Add an element to the set (no effect if already present).
         /// </summary>
+        /// <param name="x">The element to add.</param>
         /// <remarks>
         /// For initializer literals and part of
         /// System.Collections.Generic.ICollection interface.
         /// </remarks>
+        /// <example>
+        /// <code>
+        /// s = {1, 2}
+        /// s.add(3)    # {1, 2, 3}
+        /// s.add(2)    # {1, 2, 3}  (no change)
+        /// </code>
+        /// </example>
         public void Add(T x) => _set.Add(x);
 
         /// <summary>
         /// Remove an element from the set if present (no error if not present).
         /// </summary>
+        /// <param name="x">The element to discard.</param>
+        /// <example>
+        /// <code>
+        /// s = {1, 2, 3}
+        /// s.discard(2)    # {1, 3}
+        /// s.discard(9)    # {1, 3}  (no error)
+        /// </code>
+        /// </example>
         public void Discard(T x) => _set.Remove(x);
 
         /// <summary>
         /// Remove all elements from the set.
         /// </summary>
+        /// <example>
+        /// <code>
+        /// s = {1, 2, 3}
+        /// s.clear()    # set()
+        /// </code>
+        /// </example>
         public void Clear() => _set.Clear();
 
         /// <summary>
         /// Remove and return an arbitrary element from the set.
         /// Raises KeyError if the set is empty.
         /// </summary>
+        /// <returns>An arbitrary element from the set.</returns>
+        /// <exception cref="KeyError">Thrown if the set is empty.</exception>
+        /// <example>
+        /// <code>
+        /// s = {1, 2, 3}
+        /// s.pop()    # removes and returns an element
+        /// </code>
+        /// </example>
         public T Pop()
         {
             if (_set.Count == 0)
@@ -55,6 +85,14 @@ namespace Sharpy
         /// Remove an element from the set.
         /// Raises KeyError if the element is not present.
         /// </summary>
+        /// <param name="x">The element to remove.</param>
+        /// <exception cref="KeyError">Thrown if the element is not found.</exception>
+        /// <example>
+        /// <code>
+        /// s = {1, 2, 3}
+        /// s.remove(2)    # {1, 3}
+        /// </code>
+        /// </example>
         public void Remove(T x)
         {
             if (!_set.Remove(x))
@@ -66,11 +104,29 @@ namespace Sharpy
         /// <summary>
         /// Returns whether the item is in the set.
         /// </summary>
+        /// <param name="x">The element to check for.</param>
+        /// <returns><c>true</c> if the element is found; otherwise <c>false</c>.</returns>
+        /// <example>
+        /// <code>
+        /// s = {1, 2, 3}
+        /// 2 in s    # True
+        /// 5 in s    # False
+        /// </code>
+        /// </example>
         public bool Contains(T x) => _set.Contains(x);
 
         /// <summary>
         /// Returns whether this set has no elements in common with other.
         /// </summary>
+        /// <param name="other">The set to test against.</param>
+        /// <returns><c>true</c> if the sets have no common elements.</returns>
+        /// <example>
+        /// <code>
+        /// a = {1, 2}
+        /// b = {3, 4}
+        /// a.isdisjoint(b)    # True
+        /// </code>
+        /// </example>
         public bool IsDisjoint(Set<T> other)
         {
             if (other is null)

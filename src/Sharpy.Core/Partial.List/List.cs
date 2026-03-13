@@ -52,6 +52,13 @@ namespace Sharpy
         /// <summary>
         /// Return a shallow copy of the list.
         /// </summary>
+        /// <returns>A new list with the same elements.</returns>
+        /// <example>
+        /// <code>
+        /// x = [1, 2, 3]
+        /// y = x.copy()    # [1, 2, 3]
+        /// </code>
+        /// </example>
         public List<T> Copy()
         {
             var newList = new List<T>();
@@ -64,9 +71,17 @@ namespace Sharpy
         /// Sort the items of the list in place (the arguments can be used for
         /// sort customization, see Sorted() for their explanation).
         /// </summary>
+        /// <param name="reverse">If <c>true</c>, sort in descending order.</param>
         /// <remarks>
         /// This is not a stable sort.
         /// </remarks>
+        /// <example>
+        /// <code>
+        /// x = [3, 1, 2]
+        /// x.sort()             # [1, 2, 3]
+        /// x.sort(reverse=True) # [3, 2, 1]
+        /// </code>
+        /// </example>
         public void Sort(bool reverse = false)
         {
             Sort(value => value, reverse);
