@@ -143,6 +143,20 @@ internal sealed class DocumentState : IDisposable
             if (previousAnalysis != null && previousParse?.Ast != null && newParse.Ast != null)
             {
                 var change = AstFingerprint.Classify(previousParse.Ast, newParse.Ast);
+                if (change.Kind == AstChangeKind.NoChange)
+                {
+                    // AST is structurally identical — reuse the previous result
+                    lock (_stateLock)
+                    {
+                        if (_analysisVersion == versionAtStart)
+                        {
+                            _previousParseResult = newParse;
+                            CachedAnalysis = previousAnalysis;
+                            CachedParseResult = newParse;
+                        }
+                    }
+                    return previousAnalysis;
+                }
                 if (change.Kind == AstChangeKind.BodyOnly)
                 {
                     // Function body change only — use scoped re-check
@@ -162,6 +176,8 @@ internal sealed class DocumentState : IDisposable
                                 CachedAnalysis = partialResult;
                                 CachedParseResult = newParse;
                             }
+                            // Note: If version changed, we still return the result (best-effort).
+                            // The next analysis cycle will produce a fresh result for the new version.
                         }
                         return partialResult;
                     }
@@ -355,18 +371,29 @@ internal sealed class SharpyWorkspace : IDisposable
 
     private void ScheduleAnalysis(string uri)
     {
-        // Atomically replace the debounce timer to avoid race conditions
-        // between concurrent ScheduleAnalysis calls on the same URI.
-        _debounceTimers.AddOrUpdate(
+        // Create the new timer first, then atomically swap it in.
+        // This avoids a timer leak that AddOrUpdate's addValueFactory can cause
+        // when a concurrent CAS retry discards the factory result.
+        var newTimer = new Timer(_ => FireAndForgetAnalysis(uri),
+            null, DebounceDelay, Timeout.InfiniteTimeSpan);
+
+        var oldTimer = _debounceTimers.AddOrUpdate(
             uri,
-            _ => new Timer(_ => FireAndForgetAnalysis(uri),
-                null, DebounceDelay, Timeout.InfiniteTimeSpan),
-            (_, oldTimer) =>
+            newTimer,
+            (_, existing) =>
             {
-                oldTimer.Dispose();
-                return new Timer(_ => FireAndForgetAnalysis(uri),
-                    null, DebounceDelay, Timeout.InfiniteTimeSpan);
+                existing.Dispose();
+                return newTimer;
             });
+
+        // If AddOrUpdate returned an existing timer (not our new one), it means
+        // the updateValueFactory ran and disposed the old timer, returning newTimer.
+        // If a concurrent call won the race and addValueFactory was discarded,
+        // oldTimer == the other thread's timer, not ours — dispose our leaked timer.
+        if (!ReferenceEquals(oldTimer, newTimer))
+        {
+            newTimer.Dispose();
+        }
     }
 
     // Timer callbacks require void return; the full try-catch ensures no exceptions escape.

@@ -6,23 +6,19 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// Provides partial re-analysis for function-body-only changes.
 /// When only a function body has changed (no signature, import, or structural changes),
-/// re-runs the full semantic analysis on the new AST but reuses the existing SymbolTable
-/// from the previous analysis to speed up name resolution and import resolution.
+/// this helper re-runs the full semantic pipeline via <see cref="CompilerApi.Analyze"/>.
 ///
 /// This is a conservative implementation: rather than surgically updating SemanticInfo
 /// maps (which use ReferenceEqualityComparer for AST nodes), we re-run the full
-/// pipeline. The win comes from the caller having already parsed the new AST.
+/// pipeline. The win comes from the caller skipping analysis entirely for NoChange
+/// results, and from having already parsed the new AST for BodyOnly results.
+/// A future version could reuse the existing SymbolTable to skip name/import resolution.
 /// </summary>
 public static class ScopedTypeChecker
 {
     /// <summary>
     /// Re-checks a module after a function-body-only change.
     /// Re-runs full semantic analysis using <see cref="CompilerApi.Analyze"/> on the new source text.
-    /// The caller benefits because the <see cref="AstFingerprint.Classify"/> check avoided unnecessary
-    /// work when no change occurred (NoChange) or when only a body changed (BodyOnly).
-    ///
-    /// This is a conservative implementation: it re-runs the full pipeline rather than surgically
-    /// updating SemanticInfo maps (which use ReferenceEqualityComparer for AST nodes).
     /// Falls back to returning null if re-analysis fails, signaling the caller to use full analysis.
     /// </summary>
     /// <param name="api">The compiler API to use for re-analysis.</param>

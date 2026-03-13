@@ -182,14 +182,17 @@ internal sealed class LanguageService : IDisposable
     /// <param name="ct">Cancellation token linked to the server lifetime.</param>
     public void StartBackgroundIndexing(string workspaceRoot, Func<Task>? onComplete = null, CancellationToken ct = default)
     {
-        // Cancel any previous indexing
-        _indexingCts?.Cancel();
-        _indexingCts?.Dispose();
-
+        // Cancel any previous indexing (atomically swap to avoid races)
         Interlocked.Exchange(ref _state, StateIndexing);
 
         var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _indexingCts = cts;
+        var oldCts = Interlocked.Exchange(ref _indexingCts, cts);
+        try
+        {
+            oldCts?.Cancel();
+        }
+        catch (ObjectDisposedException) { }
+        oldCts?.Dispose();
 
         _ = Task.Run(async () =>
         {

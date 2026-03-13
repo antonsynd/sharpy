@@ -157,8 +157,26 @@ public static class AstFingerprint
             return true;
         if (a == null || b == null)
             return false;
-        // Compare the string representation — sufficient for signature comparison
-        return a.ToString() == b.ToString();
+        // Compare structural fields only — ignore position fields (LineStart, ColumnStart, etc.)
+        // which change on every edit even when the type annotation itself is unchanged.
+        return a.Name == b.Name
+            && a.IsOptional == b.IsOptional
+            && a.IsCSharpNullable == b.IsCSharpNullable
+            && TypeAnnotationEquals(a.ErrorType, b.ErrorType)
+            && TupleNamesEqual(a.TupleElementNames, b.TupleElementNames)
+            && TypeAnnotationsEqual(a.TypeArguments, b.TypeArguments);
+    }
+
+    private static bool TupleNamesEqual(ImmutableArray<string?> a, ImmutableArray<string?> b)
+    {
+        if (a.Length != b.Length)
+            return false;
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (a[i] != b[i])
+                return false;
+        }
+        return true;
     }
 
     private static bool TypeAnnotationsEqual(ImmutableArray<TypeAnnotation> a, ImmutableArray<TypeAnnotation> b)
@@ -180,6 +198,39 @@ public static class AstFingerprint
         for (int i = 0; i < a.Length; i++)
         {
             if (a[i].Name != b[i].Name)
+                return false;
+            // Decorator arguments affect semantics (e.g., @dll_import("old.dll") vs @dll_import("new.dll")).
+            // Conservatively treat any decorator with arguments as structural if arguments differ.
+            if (!ExpressionsEqual(a[i].Arguments, b[i].Arguments))
+                return false;
+            if (!KeywordArgumentsEqual(a[i].KeywordArguments, b[i].KeywordArguments))
+                return false;
+        }
+        return true;
+    }
+
+    private static bool ExpressionsEqual(ImmutableArray<Expression> a, ImmutableArray<Expression> b)
+    {
+        if (a.Length != b.Length)
+            return false;
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (!ExpressionEquals(a[i], b[i]))
+                return false;
+        }
+        return true;
+    }
+
+    private static bool KeywordArgumentsEqual(
+        ImmutableArray<KeywordArgument> a, ImmutableArray<KeywordArgument> b)
+    {
+        if (a.Length != b.Length)
+            return false;
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (a[i].Name != b[i].Name)
+                return false;
+            if (!ExpressionEquals(a[i].Value, b[i].Value))
                 return false;
         }
         return true;
