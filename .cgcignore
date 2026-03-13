@@ -56,5 +56,21 @@ __pycache__/
 # Logs & temp
 *.log
 *.swp
+*.swx
 screenlog.*
 **/TestResults/
+
+# .NET generated/temp files
+*.g.cs
+*.AssemblyInfo.cs
+*.cache
+*.nupkg
+*.snupkg
+
+# Docker & deployment
+Dockerfile
+docker-compose*
+k8s/
+
+# CGC own artifacts
+*.cgc
