@@ -298,10 +298,97 @@ public static class AstFingerprint
             (PassStatement, PassStatement) => true,
             (BreakStatement, BreakStatement) => true,
             (ContinueStatement, ContinueStatement) => true,
-            // For complex statements (if, for, while, etc.), conservatively return false
-            // This means body changes in nested control flow always trigger full re-analysis
+            (IfStatement ia, IfStatement ib) =>
+                ExpressionEquals(ia.Test, ib.Test)
+                && BodyEquals(ia.ThenBody, ib.ThenBody)
+                && ElifClausesEqual(ia.ElifClauses, ib.ElifClauses)
+                && BodyEquals(ia.ElseBody, ib.ElseBody),
+            (WhileStatement wa, WhileStatement wb) =>
+                ExpressionEquals(wa.Test, wb.Test)
+                && BodyEquals(wa.Body, wb.Body)
+                && BodyEquals(wa.ElseBody, wb.ElseBody),
+            (ForStatement fa, ForStatement fb) =>
+                fa.IsAsync == fb.IsAsync
+                && ExpressionEquals(fa.Target, fb.Target)
+                && ExpressionEquals(fa.Iterator, fb.Iterator)
+                && BodyEquals(fa.Body, fb.Body)
+                && BodyEquals(fa.ElseBody, fb.ElseBody),
+            (TryStatement ta, TryStatement tb) =>
+                BodyEquals(ta.Body, tb.Body)
+                && ExceptHandlersEqual(ta.Handlers, tb.Handlers)
+                && BodyEquals(ta.ElseBody, tb.ElseBody)
+                && BodyEquals(ta.FinallyBody, tb.FinallyBody),
+            (WithStatement wa, WithStatement wb) =>
+                wa.IsAsync == wb.IsAsync
+                && WithItemsEqual(wa.Items, wb.Items)
+                && BodyEquals(wa.Body, wb.Body),
+            (MatchStatement ma, MatchStatement mb) =>
+                ExpressionEquals(ma.Scrutinee, mb.Scrutinee)
+                && MatchCasesEqual(ma.Cases, mb.Cases),
+            // Conservative fallback for any remaining statement types
             _ => false
         };
+    }
+
+    private static bool ElifClausesEqual(ImmutableArray<ElifClause> a, ImmutableArray<ElifClause> b)
+    {
+        if (a.Length != b.Length)
+            return false;
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (!ExpressionEquals(a[i].Test, b[i].Test))
+                return false;
+            if (!BodyEquals(a[i].Body, b[i].Body))
+                return false;
+        }
+        return true;
+    }
+
+    private static bool ExceptHandlersEqual(ImmutableArray<ExceptHandler> a, ImmutableArray<ExceptHandler> b)
+    {
+        if (a.Length != b.Length)
+            return false;
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (a[i].Name != b[i].Name)
+                return false;
+            if (!TypeAnnotationEquals(a[i].ExceptionType, b[i].ExceptionType))
+                return false;
+            if (!BodyEquals(a[i].Body, b[i].Body))
+                return false;
+        }
+        return true;
+    }
+
+    private static bool WithItemsEqual(ImmutableArray<WithItem> a, ImmutableArray<WithItem> b)
+    {
+        if (a.Length != b.Length)
+            return false;
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (a[i].Name != b[i].Name)
+                return false;
+            if (!ExpressionEquals(a[i].ContextExpression, b[i].ContextExpression))
+                return false;
+        }
+        return true;
+    }
+
+    private static bool MatchCasesEqual(ImmutableArray<MatchCase> a, ImmutableArray<MatchCase> b)
+    {
+        if (a.Length != b.Length)
+            return false;
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (!ExpressionEquals(a[i].Guard, b[i].Guard))
+                return false;
+            if (!BodyEquals(a[i].Body, b[i].Body))
+                return false;
+            // Pattern comparison: conservative — different pattern types means changed
+            if (a[i].Pattern.GetType() != b[i].Pattern.GetType())
+                return false;
+        }
+        return true;
     }
 
     /// <summary>

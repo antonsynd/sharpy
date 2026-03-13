@@ -35,6 +35,10 @@ public sealed class LazySourceText
     /// </summary>
     public int Length => _inner.Value.Length;
 
-    /// <inheritdoc/>
-    public override string ToString() => _inner.Value.ToString();
+    /// <summary>
+    /// Returns a debug representation without forcing file I/O.
+    /// Use <see cref="Materialize()"/> to get the actual source text content.
+    /// </summary>
+    public override string ToString() =>
+        IsLoaded ? _inner.Value.ToString() : $"LazySourceText({FilePath}, not loaded)";
 }

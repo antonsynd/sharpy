@@ -69,7 +69,7 @@ public class LazySourceTextTests : IDisposable
     }
 
     [Fact]
-    public void ToString_ForcesLoad()
+    public void ToString_DoesNotForceLoad_WhenNotLoaded()
     {
         var filePath = IOPath.Combine(_tempDir, "test.spy");
         File.WriteAllText(filePath, "def main():\n    pass");
@@ -78,7 +78,22 @@ public class LazySourceTextTests : IDisposable
         lazy.IsLoaded.Should().BeFalse();
 
         var text = lazy.ToString();
+        lazy.IsLoaded.Should().BeFalse();
+        text.Should().Contain(filePath);
+        text.Should().Contain("not loaded");
+    }
+
+    [Fact]
+    public void ToString_ReturnsContent_WhenLoaded()
+    {
+        var filePath = IOPath.Combine(_tempDir, "test.spy");
+        File.WriteAllText(filePath, "def main():\n    pass");
+
+        var lazy = new LazySourceText(filePath);
+        _ = lazy.Materialize(); // force load
         lazy.IsLoaded.Should().BeTrue();
+
+        var text = lazy.ToString();
         text.Should().Be("def main():\n    pass");
     }
 

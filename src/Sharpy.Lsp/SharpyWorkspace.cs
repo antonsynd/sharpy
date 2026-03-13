@@ -225,18 +225,24 @@ internal sealed class DocumentState : IDisposable
         try
         {
             string text;
+            int versionAtStart;
             lock (_stateLock)
             {
                 if (CachedParseResult != null)
                     return CachedParseResult;
                 text = SourceText.ToString();
+                versionAtStart = _analysisVersion;
             }
 
             var result = api.Parse(text, ct);
 
             lock (_stateLock)
             {
-                CachedParseResult = result;
+                // Only cache if document hasn't changed during parse
+                if (_analysisVersion == versionAtStart)
+                {
+                    CachedParseResult = result;
+                }
             }
             return result;
         }

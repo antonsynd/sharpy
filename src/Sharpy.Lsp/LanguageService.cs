@@ -487,8 +487,11 @@ internal sealed class LanguageService : IDisposable
 
     public void Dispose()
     {
-        _indexingCts?.Cancel();
-        _indexingCts?.Dispose();
+        var cts = Interlocked.Exchange(ref _indexingCts, null);
+        try
+        { cts?.Cancel(); }
+        catch (ObjectDisposedException) { }
+        cts?.Dispose();
 
         foreach (var kvp in _documentCts)
         {
