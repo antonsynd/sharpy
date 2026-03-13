@@ -2,9 +2,11 @@ using FluentAssertions;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Semantic;
 using Sharpy.Lsp.Refactoring;
 using Xunit;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
+using SCG = System.Collections.Generic;
 
 namespace Sharpy.Lsp.Tests.Refactoring;
 
@@ -253,4 +255,164 @@ def main():
         // Fully implemented, so no actions
         actions.Should().BeEmpty();
     }
+
+    #region Positive-path stub generation tests
+
+    [Fact]
+    public void FormatMethodStub_SimpleNoParams_ProducesCorrectStub()
+    {
+        var method = new FunctionSymbol
+        {
+            Name = "do_work",
+            Parameters = new SCG.List<ParameterSymbol>
+            {
+                new() { Name = "self", Type = SemanticType.Unknown }
+            },
+            ReturnType = new VoidType()
+        };
+
+        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1);
+
+        result.Should().Contain("def do_work(self):");
+        result.Should().Contain("raise NotImplementedError()");
+        result.Should().NotContain("->");
+    }
+
+    [Fact]
+    public void FormatMethodStub_WithParameters_IncludesTypedParams()
+    {
+        var method = new FunctionSymbol
+        {
+            Name = "greet",
+            Parameters = new SCG.List<ParameterSymbol>
+            {
+                new() { Name = "self", Type = SemanticType.Unknown },
+                new() { Name = "name", Type = (BuiltinType)SemanticType.Str }
+            },
+            ReturnType = new VoidType()
+        };
+
+        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1);
+
+        result.Should().Contain("def greet(self, name: str):");
+        result.Should().Contain("raise NotImplementedError()");
+    }
+
+    [Fact]
+    public void FormatMethodStub_WithReturnType_IncludesArrow()
+    {
+        var method = new FunctionSymbol
+        {
+            Name = "get_count",
+            Parameters = new SCG.List<ParameterSymbol>
+            {
+                new() { Name = "self", Type = SemanticType.Unknown }
+            },
+            ReturnType = (BuiltinType)SemanticType.Int
+        };
+
+        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1);
+
+        result.Should().Contain("def get_count(self) -> int:");
+        result.Should().Contain("raise NotImplementedError()");
+    }
+
+    [Fact]
+    public void FormatMethodStub_NoSelfParam_AddsImplicitSelf()
+    {
+        var method = new FunctionSymbol
+        {
+            Name = "compute",
+            Parameters = new SCG.List<ParameterSymbol>(),
+            ReturnType = (BuiltinType)SemanticType.Float
+        };
+
+        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1);
+
+        result.Should().Contain("def compute(self) -> float:");
+    }
+
+    [Fact]
+    public void FormatPropertyDef_ReadOnly_ProducesGetterOnly()
+    {
+        var result = SharpySourceGenerator.FormatPropertyDef(
+            "count", (BuiltinType)SemanticType.Int,
+            hasGetter: true, hasSetter: false, indentLevel: 1);
+
+        result.Should().Contain("@property");
+        result.Should().Contain("def count(self) -> int:");
+        result.Should().Contain("raise NotImplementedError()");
+        result.Should().NotContain("@count.setter");
+    }
+
+    [Fact]
+    public void FormatPropertyDef_ReadWrite_ProducesGetterAndSetter()
+    {
+        var result = SharpySourceGenerator.FormatPropertyDef(
+            "name", (BuiltinType)SemanticType.Str,
+            hasGetter: true, hasSetter: true, indentLevel: 1);
+
+        result.Should().Contain("@property");
+        result.Should().Contain("def name(self) -> str:");
+        result.Should().Contain("@name.setter");
+        result.Should().Contain("def name(self, value: str):");
+    }
+
+    [Fact]
+    public void GenerateStubs_MethodsAndProperties_ProducesCorrectOutput()
+    {
+        var methods = new SCG.List<FunctionSymbol>
+        {
+            new()
+            {
+                Name = "process",
+                Parameters = new SCG.List<ParameterSymbol>
+                {
+                    new() { Name = "self", Type = SemanticType.Unknown },
+                    new() { Name = "data", Type = (BuiltinType)SemanticType.Str }
+                },
+                ReturnType = (BuiltinType)SemanticType.Bool
+            }
+        };
+
+        var properties = new SCG.List<PropertySymbol>
+        {
+            new()
+            {
+                Name = "status",
+                Type = (BuiltinType)SemanticType.Str,
+                HasGetter = true,
+                HasSetter = false
+            }
+        };
+
+        var result = ImplementInterfaceProvider.GenerateStubs(methods, properties, 1);
+
+        // Properties come first (convention)
+        var propIdx = result.IndexOf("@property", StringComparison.Ordinal);
+        var methodIdx = result.IndexOf("def process", StringComparison.Ordinal);
+        propIdx.Should().BeLessThan(methodIdx);
+
+        result.Should().Contain("def status(self) -> str:");
+        result.Should().Contain("def process(self, data: str) -> bool:");
+    }
+
+    [Fact]
+    public void GenerateStubs_EmptyLists_ReturnsEmptyString()
+    {
+        var result = ImplementInterfaceProvider.GenerateStubs(
+            new SCG.List<FunctionSymbol>(),
+            new SCG.List<PropertySymbol>(),
+            1);
+
+        result.Should().BeEmpty();
+    }
+
+    // Integration test limitation: the Sharpy compiler rejects classes with missing
+    // interface implementations (SPY0320 — ProtocolMissingMethod), causing SymbolTable
+    // to be null in the analysis result. This makes the full provider path unreachable
+    // from tests that compile source code. The stub generation logic is tested above
+    // via direct invocation of the internal static methods.
+
+    #endregion
 }

@@ -14,6 +14,8 @@
     <InternalsVisibleTo Include="sharpyc" />
     <!-- Allow benchmarks to access internal types for isolation benchmarks -->
     <InternalsVisibleTo Include="Sharpy.Compiler.Benchmarks" />
+    <!-- Allow LSP tests to construct FunctionSymbol with internal-set ReturnType -->
+    <InternalsVisibleTo Include="Sharpy.Lsp.Tests" />
   </ItemGroup>
 
   <ItemGroup>

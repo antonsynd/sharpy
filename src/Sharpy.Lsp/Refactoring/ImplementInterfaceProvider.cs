@@ -332,7 +332,7 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
     /// <summary>
     /// Generates Sharpy source stubs for missing methods and properties.
     /// </summary>
-    private static string GenerateStubs(
+    internal static string GenerateStubs(
         SCG.List<FunctionSymbol> missingMethods,
         SCG.List<PropertySymbol> missingProperties,
         int indentLevel)
@@ -378,7 +378,7 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
     /// Formats a method stub with proper handling of "self" parameter (no type annotation)
     /// and "raise NotImplementedError()" as the default body.
     /// </summary>
-    private static string FormatMethodStub(FunctionSymbol method, int indentLevel)
+    internal static string FormatMethodStub(FunctionSymbol method, int indentLevel)
     {
         var indent = new string(' ', indentLevel * SharpySourceGenerator.DefaultIndentWidth);
         var bodyIndent = new string(' ', (indentLevel + 1) * SharpySourceGenerator.DefaultIndentWidth);
