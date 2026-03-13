@@ -34,7 +34,7 @@ Every handler currently goes through `LanguageService.GetAnalysisAsync()` → fu
 
 ### Cancellation Infrastructure
 
-- `SharplyWorkspace.ScheduleAnalysis()` — 300ms debounce timer per document
+- `SharpyWorkspace.ScheduleAnalysis()` — 300ms debounce timer per document
 - `DocumentState._pendingCts` — cancels previous single-file analysis
 - `LanguageService._documentCts` — cancels previous project-level reanalysis per document
 - `LanguageService._analysisLock` — `SemaphoreSlim(1,1)` serializes all project reanalysis (head-of-line blocking)
@@ -52,7 +52,7 @@ Every handler currently goes through `LanguageService.GetAnalysisAsync()` → fu
 
 1. **Parse cache is separate from semantic cache** — `DocumentState` will have both `CachedParseResult` and `CachedAnalysis`. Parse cache invalidates on text change; semantic cache also invalidates but takes longer to recompute. This lets syntax-only handlers respond immediately after a keystroke.
 
-2. **No partial semantic results during indexing** — When background indexing is in progress, syntax-only handlers can still return results via the parse cache. Semantic handlers continue to fall back to single-file analysis via `SharplyWorkspace`.
+2. **No partial semantic results during indexing** — When background indexing is in progress, syntax-only handlers can still return results via the parse cache. Semantic handlers continue to fall back to single-file analysis via `SharpyWorkspace`.
 
 3. **Cancellation is per-document, not global** — Editing file A should not cancel analysis of file B. The `_analysisLock` serialization is a correctness issue (Phase 3.2 addresses it).
 
@@ -68,7 +68,7 @@ Every handler currently goes through `LanguageService.GetAnalysisAsync()` → fu
 
 #### Tasks
 
-1. **Add `CachedParseResult` to `DocumentState`** — `src/Sharpy.Lsp/SharplyWorkspace.cs`
+1. **Add `CachedParseResult` to `DocumentState`** — `src/Sharpy.Lsp/SharpyWorkspace.cs`
    - Add a `ParseResult? CachedParseResult` property alongside `CachedAnalysis`
    - In `Update()` and `ApplyIncrementalChanges()`, clear both caches
    - Add `GetOrRunParseAsync(CompilerApi api, CancellationToken ct)` method that calls `CompilerApi.Parse()` and caches the result
@@ -101,7 +101,7 @@ Every handler currently goes through `LanguageService.GetAnalysisAsync()` → fu
    - The `CollectTokens` method takes `SemanticResult analysis` but never accesses `SemanticQuery` or `SymbolTable` — the `analysis` parameter is threaded through the entire recursive call chain (`CollectTokens` → `CollectStatementTokens` → `CollectFunctionTokens`) without ever being dereferenced
    - Change `Tokenize()` to call `GetParseResultAsync()` instead of `GetAnalysisAsync()`
    - Refactor `CollectTokens`, `CollectStatementTokens`, and `CollectFunctionTokens` signatures: remove the `SemanticResult analysis` parameter entirely (it is unused — the `IEnumerable<Statement> statements` parameter already carries the body) [CORRECTED: plan originally said "replace with `Module ast`" but `Module` is also unused; the parameter should simply be removed]
-   - Update the internal test helper `CollectTokensFrom` in `SemanticTokensTests` accordingly — it currently calls `SharplySemanticTokensHandler.CollectTokens(analysis.Ast!.Body, analysis, tokens)` and should change to `SharplySemanticTokensHandler.CollectTokens(parseResult.Ast!.Body, tokens)` [CORRECTED: test helper method is named `CollectTokensFrom`, not `CollectTokens`]
+   - Update the internal test helper `CollectTokensFrom` in `SemanticTokensTests` accordingly — it currently calls `SharpySemanticTokensHandler.CollectTokens(analysis.Ast!.Body, analysis, tokens)` and should change to `SharpySemanticTokensHandler.CollectTokens(parseResult.Ast!.Body, tokens)` [CORRECTED: test helper method is named `CollectTokensFrom`, not `CollectTokens`]
    - Acceptance: Semantic tokens work without waiting for semantic analysis; existing `SemanticTokensTests` pass
    - Commit: `perf(lsp): switch SemanticTokensHandler to parse-only fast path`
 
@@ -118,7 +118,7 @@ Every handler currently goes through `LanguageService.GetAnalysisAsync()` → fu
 
 #### Tasks
 
-7. **Add `AnalysisVersionTracker` to `DocumentState`** — `src/Sharpy.Lsp/SharplyWorkspace.cs`
+7. **Add `AnalysisVersionTracker` to `DocumentState`** — `src/Sharpy.Lsp/SharpyWorkspace.cs`
    - Add an `int _analysisVersion` field (monotonically increasing) to `DocumentState`
    - Increment it in `Update()` and `ApplyIncrementalChanges()` (alongside cache invalidation)
    - Add `int AnalysisVersion { get; }` property
@@ -145,7 +145,7 @@ Every handler currently goes through `LanguageService.GetAnalysisAsync()` → fu
    - Acceptance: Replaces manual CTS management in DocumentState and LanguageService
    - Commit: `refactor(lsp): extract CancellableAnalysisScope for consistent cancellation`
 
-10. **Integrate `CancellableAnalysisScope` into `DocumentState` and `LanguageService`** — `src/Sharpy.Lsp/SharplyWorkspace.cs`, `src/Sharpy.Lsp/LanguageService.cs`
+10. **Integrate `CancellableAnalysisScope` into `DocumentState` and `LanguageService`** — `src/Sharpy.Lsp/SharpyWorkspace.cs`, `src/Sharpy.Lsp/LanguageService.cs`
     - In `DocumentState.GetOrRunAnalysisAsync`: replace manual `_pendingCts` management with `CancellableAnalysisScope`
     - In `LanguageService.OnDocumentChangedAsync`: replace manual `_documentCts` management with `CancellableAnalysisScope`
     - Acceptance: Existing cancellation tests pass; code is cleaner
@@ -190,7 +190,7 @@ This is a significant compiler change split into sub-phases.
     - Acceptance: Re-checking a single function produces correct type info
     - Commit: `feat(compiler): add ScopedTypeChecker for partial re-analysis`
 
-14. **Integrate partial re-analysis into `DocumentState`** — `src/Sharpy.Lsp/SharplyWorkspace.cs`
+14. **Integrate partial re-analysis into `DocumentState`** — `src/Sharpy.Lsp/SharpyWorkspace.cs`
     - In `GetOrRunAnalysisAsync`:
       1. Parse the current text (fast)
       2. If `CachedAnalysis != null` and parse succeeds, call `AstFingerprint.Classify(cached.Ast, newAst)`

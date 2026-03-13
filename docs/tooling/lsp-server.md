@@ -8,7 +8,7 @@ Sharpy includes a built-in Language Server Protocol (LSP) server, accessible via
 
 The LSP server consists of three main layers:
 
-- **SharplyWorkspace** -- Manages document state (open files, edits, file versions). Tracks document content in memory and synchronizes with the compiler.
+- **SharpyWorkspace** -- Manages document state (open files, edits, file versions). Tracks document content in memory and synchronizes with the compiler.
 - **CompilerApi** -- Provides analysis services (parsing, type checking, diagnostics) by invoking the Sharpy compiler pipeline on demand.
 - **Handlers** -- Implement individual LSP protocol methods, delegating to CompilerApi for analysis and returning results in the LSP wire format.
 
@@ -21,7 +21,7 @@ Editor <-> stdio (JSON-RPC) <-> LSP Server
                                   |           |
                                   |           +-- Sharpy Compiler Pipeline
                                   |
-                                  +-- SharplyWorkspace (document state)
+                                  +-- SharpyWorkspace (document state)
 ```
 
 ## Supported Features

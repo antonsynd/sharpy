@@ -47,10 +47,10 @@ Currently using `TextDocumentSyncKind.Full` — every keystroke sends the entire
 
 ### 0.2 — Project-Wide Semantic Model
 
-Build a `LanguageService` (or `ProjectAnalysisEngine`) that sits between `SharplyWorkspace` and the handlers:
+Build a `LanguageService` (or `ProjectAnalysisEngine`) that sits between `SharpyWorkspace` and the handlers:
 
 ```
-SharplyWorkspace (document state)
+SharpyWorkspace (document state)
     -> LanguageService (project-aware analysis)
         -> CompilerApi (single-file parse/analyze)
         -> ProjectCompiler (multi-file semantic model)
