@@ -292,12 +292,11 @@ internal sealed class LanguageService : IDisposable
         if (wsText != null)
             return wsText;
 
-        // For project files not open in the editor, read from disk
+        // For project files not open in the editor, lazy-load from disk
         var filePath = UriToFilePath(uri);
         if (filePath != null && _fileResults.ContainsKey(filePath) && File.Exists(filePath))
         {
-            var text = File.ReadAllText(filePath);
-            return new SourceText(text, filePath);
+            return new LazySourceText(filePath).Materialize();
         }
 
         return null;
