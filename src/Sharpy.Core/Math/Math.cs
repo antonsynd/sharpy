@@ -38,11 +38,27 @@ namespace Sharpy
         /// <summary>
         /// Return the ceiling of x, the smallest integer greater than or equal to x.
         /// </summary>
+        /// <param name="x">The value to ceil.</param>
+        /// <returns>The smallest integer greater than or equal to <paramref name="x"/>.</returns>
+        /// <example>
+        /// <code>
+        /// math.ceil(3.2)    # 4.0
+        /// math.ceil(-0.5)   # 0.0
+        /// </code>
+        /// </example>
         public static double Ceil(double x) => System.Math.Ceiling(x);
 
         /// <summary>
         /// Return the floor of x, the largest integer less than or equal to x.
         /// </summary>
+        /// <param name="x">The value to floor.</param>
+        /// <returns>The largest integer less than or equal to <paramref name="x"/>.</returns>
+        /// <example>
+        /// <code>
+        /// math.floor(3.7)    # 3.0
+        /// math.floor(-0.5)   # -1.0
+        /// </code>
+        /// </example>
         public static double Floor(double x) => System.Math.Floor(x);
 
         /// <summary>
@@ -62,6 +78,14 @@ namespace Sharpy
         /// <summary>
         /// Return the square root of x.
         /// </summary>
+        /// <param name="x">The value to compute the square root of.</param>
+        /// <returns>The square root of <paramref name="x"/>.</returns>
+        /// <example>
+        /// <code>
+        /// math.sqrt(16.0)    # 4.0
+        /// math.sqrt(2.0)     # 1.4142135623730951
+        /// </code>
+        /// </example>
         public static double Sqrt(double x) => System.Math.Sqrt(x);
 
         /// <summary>

@@ -38,6 +38,15 @@ namespace Sharpy
         /// <summary>
         /// Return a random integer N such that a &lt;= N &lt;= b.
         /// </summary>
+        /// <param name="a">The lower bound (inclusive).</param>
+        /// <param name="b">The upper bound (inclusive).</param>
+        /// <returns>A random integer between <paramref name="a"/> and <paramref name="b"/>.</returns>
+        /// <example>
+        /// <code>
+        /// random.randint(1, 6)    # 4 (random die roll)
+        /// random.randint(0, 1)    # 0 or 1
+        /// </code>
+        /// </example>
         public static int Randint(int a, int b)
         {
             lock (_lock)
@@ -61,6 +70,15 @@ namespace Sharpy
         /// <summary>
         /// Return a randomly selected element from a non-empty sequence.
         /// </summary>
+        /// <param name="seq">A non-empty sequence to choose from.</param>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <returns>A randomly selected element.</returns>
+        /// <example>
+        /// <code>
+        /// random.choice([1, 2, 3])       # 2 (random)
+        /// random.choice(["a", "b"])      # "a" or "b"
+        /// </code>
+        /// </example>
         public static T Choice<T>(IList<T> seq)
         {
             if (seq == null || seq.Count == 0)
@@ -95,6 +113,14 @@ namespace Sharpy
         /// <summary>
         /// Shuffle the sequence x in place.
         /// </summary>
+        /// <param name="x">The sequence to shuffle.</param>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <example>
+        /// <code>
+        /// items = [1, 2, 3, 4, 5]
+        /// random.shuffle(items)    # items is now shuffled in place
+        /// </code>
+        /// </example>
         public static void Shuffle<T>(IList<T> x)
         {
             if (x == null)

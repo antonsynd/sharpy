@@ -11,6 +11,15 @@ namespace Sharpy
     public static class OsPath
     {
         /// <summary>Join two or more path components.</summary>
+        /// <param name="a">The first path component.</param>
+        /// <param name="b">The second path component.</param>
+        /// <returns>The joined path.</returns>
+        /// <example>
+        /// <code>
+        /// os.path.join("/home", "user")    # "/home/user"
+        /// os.path.join("a", "b")           # "a/b"
+        /// </code>
+        /// </example>
         public static string Join(string a, string b)
         {
             return System.IO.Path.Combine(a, b);
@@ -29,6 +38,14 @@ namespace Sharpy
         }
 
         /// <summary>Test whether a path exists.</summary>
+        /// <param name="path">The path to test.</param>
+        /// <returns><c>true</c> if the path exists.</returns>
+        /// <example>
+        /// <code>
+        /// os.path.exists("/tmp")         # True
+        /// os.path.exists("/no/such")     # False
+        /// </code>
+        /// </example>
         public static bool Exists(string path)
         {
             return File.Exists(path) || Directory.Exists(path);
@@ -53,6 +70,14 @@ namespace Sharpy
         }
 
         /// <summary>Return the base name of pathname path (final component).</summary>
+        /// <param name="path">The pathname.</param>
+        /// <returns>The final component of the path.</returns>
+        /// <example>
+        /// <code>
+        /// os.path.basename("/home/user/file.txt")    # "file.txt"
+        /// os.path.basename("/home/user/")             # ""
+        /// </code>
+        /// </example>
         public static string Basename(string path)
         {
             return System.IO.Path.GetFileName(path);

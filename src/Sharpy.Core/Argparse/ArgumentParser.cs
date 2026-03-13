@@ -18,6 +18,7 @@ namespace Sharpy
         /// <summary>Program name for help text.</summary>
         public string Prog { get; set; }
 
+        /// <summary>Create a new argument parser.</summary>
         public ArgumentParser(string description = "", string prog = "", bool addHelp = true)
         {
             _description = description;
@@ -43,6 +44,18 @@ namespace Sharpy
         /// <summary>
         /// Add a positional argument.
         /// </summary>
+        /// <param name="name">The argument name.</param>
+        /// <param name="type">Value type: "str", "int", or "float".</param>
+        /// <param name="help">Help text for this argument.</param>
+        /// <param name="defaultValue">Default value if not provided.</param>
+        /// <param name="nargs">Number of arguments: "*", "+", or "?".</param>
+        /// <param name="choices">Restrict values to this set.</param>
+        /// <example>
+        /// <code>
+        /// parser = ArgumentParser(description="My tool")
+        /// parser.add_argument("filename", help="input file")
+        /// </code>
+        /// </example>
         public void AddArgument(
             string name,
             string type = "str",

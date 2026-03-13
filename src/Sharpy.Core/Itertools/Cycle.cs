@@ -4,6 +4,18 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>
+        /// Make an iterator returning elements from the iterable and saving a copy of each.
+        /// When the iterable is exhausted, repeat from the saved copy, indefinitely.
+        /// </summary>
+        /// <param name="iterable">The source iterable to cycle over.</param>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <returns>An infinite iterator cycling over the elements.</returns>
+        /// <example>
+        /// <code>
+        /// list(itertools.islice(itertools.cycle([1, 2, 3]), 7))    # [1, 2, 3, 1, 2, 3, 1]
+        /// </code>
+        /// </example>
         public static Iterator<T> Cycle<T>(IEnumerable<T> iterable)
         {
             return new CycleIterator<T>(iterable);

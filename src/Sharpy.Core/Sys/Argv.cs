@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Sharpy
 {
+    /// <summary>Provides access to system-specific parameters and functions, similar to Python's sys module.</summary>
     public sealed partial class Sys
     {
         private static readonly string[] _argv = Environment.GetCommandLineArgs();
@@ -19,7 +20,13 @@ namespace Sharpy
         /// <summary>
         /// Exit the program with the given status code.
         /// </summary>
-        /// <param name="code">The exit code (default is 0)</param>
+        /// <param name="code">The exit code (default is 0).</param>
+        /// <example>
+        /// <code>
+        /// sys.exit()     # exit with code 0
+        /// sys.exit(1)    # exit with code 1
+        /// </code>
+        /// </example>
         public static void Exit(int code = 0)
         {
             Environment.Exit(code);

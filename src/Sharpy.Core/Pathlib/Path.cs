@@ -35,6 +35,15 @@ namespace Sharpy
         // ===== Operator / for joining =====
 
         /// <summary>Join two paths with /.</summary>
+        /// <param name="left">The base path.</param>
+        /// <param name="right">The path segment to append.</param>
+        /// <returns>A new path joining <paramref name="left"/> and <paramref name="right"/>.</returns>
+        /// <example>
+        /// <code>
+        /// p = Path("/home") / "user" / "file.txt"
+        /// print(p)    # "/home/user/file.txt"
+        /// </code>
+        /// </example>
         public static Path operator /(Path left, string right)
         {
             return new Path(System.IO.Path.Combine(left._path, right));
@@ -130,6 +139,13 @@ namespace Sharpy
         // ===== Query Methods =====
 
         /// <summary>Whether the path exists on the filesystem.</summary>
+        /// <returns><c>true</c> if the path exists.</returns>
+        /// <example>
+        /// <code>
+        /// Path("/tmp").exists()        # True
+        /// Path("/no/such").exists()    # False
+        /// </code>
+        /// </example>
         public bool Exists()
         {
             return File.Exists(_path) || Directory.Exists(_path);
@@ -150,6 +166,14 @@ namespace Sharpy
         // ===== File I/O =====
 
         /// <summary>Read the file as text.</summary>
+        /// <param name="encoding">Text encoding (default: "utf-8").</param>
+        /// <returns>The file contents as a string.</returns>
+        /// <example>
+        /// <code>
+        /// p = Path("hello.txt")
+        /// text = p.read_text()    # "Hello, world!"
+        /// </code>
+        /// </example>
         public string ReadText(string encoding = "utf-8")
         {
             return File.ReadAllText(_path, GetEncoding(encoding));
@@ -355,6 +379,7 @@ namespace Sharpy
             return _path.GetHashCode();
         }
 
+        /// <summary>Determines whether two paths are equal.</summary>
         public static bool operator ==(Path? left, Path? right)
         {
             if (left is null)
@@ -362,6 +387,7 @@ namespace Sharpy
             return left.Equals(right);
         }
 
+        /// <summary>Determines whether two paths are not equal.</summary>
         public static bool operator !=(Path? left, Path? right)
         {
             return !(left == right);

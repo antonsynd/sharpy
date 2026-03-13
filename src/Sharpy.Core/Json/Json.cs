@@ -11,6 +11,14 @@ namespace Sharpy
         /// <summary>
         /// Serialize obj to a JSON formatted string.
         /// </summary>
+        /// <param name="obj">The object to serialize.</param>
+        /// <returns>A JSON string representation of <paramref name="obj"/>.</returns>
+        /// <example>
+        /// <code>
+        /// json.dumps({"key": "value"})    # '{"key": "value"}'
+        /// json.dumps([1, 2, 3])           # '[1, 2, 3]'
+        /// </code>
+        /// </example>
         public static string Dumps(object? obj)
         {
             return JsonSerializer.Serialize(obj);
@@ -33,6 +41,14 @@ namespace Sharpy
         /// Returns Dict&lt;string, object?&gt; for objects, List&lt;object?&gt; for arrays,
         /// string, int/long/double, bool, or null.
         /// </summary>
+        /// <param name="s">The JSON string to deserialize.</param>
+        /// <returns>The deserialized object.</returns>
+        /// <example>
+        /// <code>
+        /// json.loads('{"a": 1}')    # {"a": 1}
+        /// json.loads('[1, 2]')      # [1, 2]
+        /// </code>
+        /// </example>
         public static object? Loads(string s)
         {
             return JsonParser.Parse(s);
@@ -41,6 +57,15 @@ namespace Sharpy
         /// <summary>
         /// Serialize obj as a JSON formatted stream to a file.
         /// </summary>
+        /// <param name="obj">The object to serialize.</param>
+        /// <param name="fp">The file to write to.</param>
+        /// <example>
+        /// <code>
+        /// f = open("data.json", "w")
+        /// json.dump({"key": "value"}, f)
+        /// f.close()
+        /// </code>
+        /// </example>
         public static void Dump(object? obj, TextFile fp)
         {
             if (fp == null)

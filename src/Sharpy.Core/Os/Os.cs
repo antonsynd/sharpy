@@ -118,6 +118,14 @@ namespace Sharpy
         }
 
         /// <summary>List directory contents. Returns a list of entry names.</summary>
+        /// <param name="path">Directory path to list. Defaults to current directory.</param>
+        /// <returns>A list of file and directory names in the given path.</returns>
+        /// <example>
+        /// <code>
+        /// os.listdir(".")         # ["file.txt", "subdir"]
+        /// os.listdir("/tmp")      # ["a.log", "b.log"]
+        /// </code>
+        /// </example>
         public static List<string> Listdir(string path = ".")
         {
             if (!Directory.Exists(path))
@@ -133,6 +141,12 @@ namespace Sharpy
         }
 
         /// <summary>Get the current working directory.</summary>
+        /// <returns>The current working directory as a string.</returns>
+        /// <example>
+        /// <code>
+        /// os.getcwd()    # "/home/user/project"
+        /// </code>
+        /// </example>
         public static string Getcwd()
         {
             return Directory.GetCurrentDirectory();
@@ -151,6 +165,14 @@ namespace Sharpy
         // ===== Environment Variables =====
 
         /// <summary>Get an environment variable, returning None if not set.</summary>
+        /// <param name="key">The environment variable name.</param>
+        /// <returns>The value, or <c>null</c> if not set.</returns>
+        /// <example>
+        /// <code>
+        /// os.getenv("HOME")       # "/home/user"
+        /// os.getenv("MISSING")    # None
+        /// </code>
+        /// </example>
         public static string? Getenv(string key)
         {
             return Environment.GetEnvironmentVariable(key);
@@ -275,6 +297,7 @@ namespace Sharpy
         /// <summary>File mode / attributes.</summary>
         public int StMode { get; }
 
+        /// <summary>Create a new stat result.</summary>
         public StatResult(long stSize, double stMtime, double stCtime, double stAtime, int stMode)
         {
             StSize = stSize;

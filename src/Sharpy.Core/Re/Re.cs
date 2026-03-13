@@ -39,6 +39,16 @@ namespace Sharpy
         /// <summary>
         /// Scan through string looking for the first location where the pattern produces a match.
         /// </summary>
+        /// <param name="pattern">The regular expression pattern.</param>
+        /// <param name="s">The string to search.</param>
+        /// <param name="flags">Optional regex flags (e.g., re.IGNORECASE).</param>
+        /// <returns>A match object, or <c>null</c> if no match is found.</returns>
+        /// <example>
+        /// <code>
+        /// m = re.search(r"\d+", "abc123")
+        /// m.group()    # "123"
+        /// </code>
+        /// </example>
         public static ReMatch? Search(string pattern, string s, int flags = 0)
         {
             return Compile(pattern, flags).Search(s);
@@ -47,6 +57,16 @@ namespace Sharpy
         /// <summary>
         /// Try to apply the pattern at the start of the string.
         /// </summary>
+        /// <param name="pattern">The regular expression pattern.</param>
+        /// <param name="s">The string to match against.</param>
+        /// <param name="flags">Optional regex flags.</param>
+        /// <returns>A match object, or <c>null</c> if the pattern does not match at the start.</returns>
+        /// <example>
+        /// <code>
+        /// m = re.match(r"\d+", "123abc")
+        /// m.group()    # "123"
+        /// </code>
+        /// </example>
         public static ReMatch? Match(string pattern, string s, int flags = 0)
         {
             return Compile(pattern, flags).Match(s);
@@ -79,6 +99,17 @@ namespace Sharpy
         /// <summary>
         /// Return the string obtained by replacing the leftmost non-overlapping occurrences.
         /// </summary>
+        /// <param name="pattern">The regular expression pattern.</param>
+        /// <param name="repl">The replacement string.</param>
+        /// <param name="s">The string to search and replace in.</param>
+        /// <param name="count">Maximum number of replacements (0 = all).</param>
+        /// <param name="flags">Optional regex flags.</param>
+        /// <returns>The modified string.</returns>
+        /// <example>
+        /// <code>
+        /// re.sub(r"\d+", "N", "abc123def456")    # "abcNdefN"
+        /// </code>
+        /// </example>
         public static string Sub(string pattern, string repl, string s, int count = 0, int flags = 0)
         {
             return Compile(pattern, flags).Sub(repl, s, count);
