@@ -53,6 +53,18 @@ public abstract record Symbol
     public bool IsErrorRecovery { get; init; }
 
     /// <summary>
+    /// Documentation string for this symbol (from source docstrings or XML docs).
+    /// Null until documentation is populated during name resolution or assembly discovery.
+    /// </summary>
+    /// <remarks>
+    /// Uses 'internal set' because documentation is populated after symbol creation
+    /// (same pattern as CodeGenInfo). For Sharpy source, populated from AST DocString
+    /// during name resolution. For .NET assemblies, populated from XML doc files
+    /// during assembly discovery.
+    /// </remarks>
+    public string? Documentation { get; internal set; }
+
+    /// <summary>
     /// Code generation information computed during semantic analysis.
     /// Null until CodeGenInfo computation pass runs.
     /// </summary>
@@ -253,6 +265,10 @@ public record PropertySymbol
 {
     public string Name { get; init; } = string.Empty;
     public SemanticType Type { get; init; } = SemanticType.Unknown;
+    /// <summary>
+    /// Documentation for this property (from XML doc or source).
+    /// </summary>
+    public string? Documentation { get; init; }
     public bool HasGetter { get; init; }
     public bool HasSetter { get; init; }
     public bool HasInit { get; init; }
@@ -274,6 +290,10 @@ public record EventSymbol
 {
     public string Name { get; init; } = string.Empty;
     public SemanticType Type { get; init; } = SemanticType.Unknown;
+    /// <summary>
+    /// Documentation for this event (from XML doc or source).
+    /// </summary>
+    public string? Documentation { get; init; }
     public bool HasAdd { get; init; }
     public bool HasRemove { get; init; }
     public bool IsStatic { get; init; }
@@ -293,6 +313,10 @@ public record ParameterSymbol
 {
     public string Name { get; init; } = string.Empty;
     public SemanticType Type { get; init; } = SemanticType.Unknown;
+    /// <summary>
+    /// Documentation for this parameter (from XML doc &lt;param&gt; tags or source).
+    /// </summary>
+    public string? Documentation { get; init; }
     public bool HasDefault { get; init; }
     public Expression? DefaultValue { get; init; }
     /// <summary>
