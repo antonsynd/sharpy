@@ -11,6 +11,12 @@ namespace Sharpy
         /// <param name="cls">The class to check</param>
         /// <param name="classInfo">The base class to check against</param>
         /// <returns>True if cls is a subclass of classInfo, False otherwise</returns>
+        /// <example>
+        /// <code>
+        /// issubclass(bool, int)    # True
+        /// issubclass(int, str)     # False
+        /// </code>
+        /// </example>
         public static bool Issubclass(Type cls, Type classInfo)
         {
             if (cls is null)

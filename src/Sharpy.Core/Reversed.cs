@@ -12,6 +12,12 @@ namespace Sharpy
         /// For <see cref="IList{T}"/> implementations, iterates backwards efficiently.
         /// For other sequences, materializes the sequence and reverses using LINQ.
         /// </remarks>
+        /// <example>
+        /// <code>
+        /// list(reversed([1, 2, 3]))    # [3, 2, 1]
+        /// list(reversed("abc"))        # ["c", "b", "a"]
+        /// </code>
+        /// </example>
         public static Iterator<T> Reversed<T>(IEnumerable<T> sequence)
         {
             if (sequence is null)

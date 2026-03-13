@@ -13,6 +13,13 @@ namespace Sharpy
         /// This avoids overload ambiguity when a type implements both
         /// <see cref="ICollection{T}"/> and <see cref="IReadOnlyCollection{T}"/>.
         /// </remarks>
+        /// <example>
+        /// <code>
+        /// len([1, 2, 3])    # 3
+        /// len("hello")      # 5
+        /// len({})           # 0
+        /// </code>
+        /// </example>
         public static int Len(System.Collections.ICollection c)
         {
             if (c is null)

@@ -62,6 +62,13 @@ namespace Sharpy
         /// </summary>
         /// <param name="stop">The stopping value (exclusive)</param>
         /// <returns>A range iterator</returns>
+        /// <example>
+        /// <code>
+        /// list(range(5))         # [0, 1, 2, 3, 4]
+        /// list(range(2, 5))      # [2, 3, 4]
+        /// list(range(0, 10, 2))  # [0, 2, 4, 6, 8]
+        /// </code>
+        /// </example>
         public static RangeIterator Range(int stop)
         {
             return new RangeIterator(0, stop, 1);

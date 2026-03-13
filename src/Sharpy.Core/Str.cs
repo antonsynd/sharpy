@@ -9,6 +9,16 @@ namespace Sharpy
         /// Returns <c>"None"</c> for null, Python-style <c>"True"</c>/<c>"False"</c>
         /// for booleans, and <see cref="object.ToString"/> for everything else.
         /// </summary>
+        /// <param name="x">The object to convert</param>
+        /// <returns>The string representation</returns>
+        /// <example>
+        /// <code>
+        /// str(42)        # "42"
+        /// str(3.14)      # "3.14"
+        /// str(True)      # "True"
+        /// str(None)      # "None"
+        /// </code>
+        /// </example>
         public static string Str(object x)
         {
             if (x is null)

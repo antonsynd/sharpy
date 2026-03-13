@@ -3,13 +3,15 @@ using System.Globalization;
 namespace Sharpy
 {
     /// <summary>
-    /// Type conversion functions for double
+    /// Type conversion functions for double (Python's float maps to .NET double).
     /// </summary>
     public static partial class Builtins
     {
         /// <summary>
-        /// Convert bool to double
+        /// Convert bool to double. True becomes 1.0, False becomes 0.0.
         /// </summary>
+        /// <param name="b">The bool value</param>
+        /// <returns>1.0 for True, 0.0 for False</returns>
         public static double Double(bool b)
         {
             return b ? 1.0 : 0.0;

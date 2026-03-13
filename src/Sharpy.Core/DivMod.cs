@@ -10,6 +10,13 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
+        /// <example>
+        /// <code>
+        /// divmod(7, 2)     # (3, 1)
+        /// divmod(-7, 2)    # (-4, 1)
+        /// divmod(10, 3)    # (3, 1)
+        /// </code>
+        /// </example>
         public static (int, int) DivMod(int x, int y)
         {
             if (y == 0)

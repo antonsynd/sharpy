@@ -13,6 +13,15 @@ namespace Sharpy
         // Note: Removed Print(Object? obj, ...) and Print(object? obj, ...) overloads as they
         // conflict with Print(params object?[] values). Use PrintWithOptions for custom options.
 
+        /// <summary>
+        /// Print values using a <see cref="PrintArguments{T}"/> wrapper with full control
+        /// over separator, terminator, output stream, and flushing.
+        /// </summary>
+        /// <param name="args">The values to print, wrapped in PrintArguments</param>
+        /// <param name="sep">Separator between values (default: space)</param>
+        /// <param name="end">String appended after the last value (default: newline)</param>
+        /// <param name="file">Output stream (default: stdout)</param>
+        /// <param name="flush">Whether to flush the stream (default: false)</param>
         public static void Print(PrintArguments<object?> args, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
         {
             var lastIndex = (uint)args.args.Length - 1;
@@ -64,10 +73,20 @@ namespace Sharpy
         }
     }
 
+    /// <summary>
+    /// Wrapper for variadic print arguments, used for backwards compatibility
+    /// with code that explicitly constructs print argument lists.
+    /// </summary>
+    /// <typeparam name="T">The type of the arguments</typeparam>
     public class PrintArguments<T>
     {
+        /// <summary>The argument values.</summary>
         public readonly T[] args;
 
+        /// <summary>
+        /// Initializes a new instance with the specified arguments.
+        /// </summary>
+        /// <param name="args">The values to include</param>
         public PrintArguments(params T[] args)
         {
             this.args = args;

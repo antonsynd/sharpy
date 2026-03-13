@@ -8,6 +8,13 @@ namespace Sharpy
         /// <param name="x">The base</param>
         /// <param name="y">The exponent</param>
         /// <returns>x raised to the power y</returns>
+        /// <example>
+        /// <code>
+        /// pow(2, 3)      # 8.0
+        /// pow(4, 0.5)    # 2.0
+        /// pow(10, -1)    # 0.1
+        /// </code>
+        /// </example>
         public static double Pow(double x, double y)
         {
             return System.Math.Pow(x, y);

@@ -59,6 +59,12 @@ namespace Sharpy
         /// <param name="predicate">The predicate function to test each element</param>
         /// <param name="iterable">The iterable to filter</param>
         /// <returns>A filter iterator</returns>
+        /// <example>
+        /// <code>
+        /// list(filter(lambda x: x > 0, [-1, 0, 1, 2]))    # [1, 2]
+        /// list(filter(lambda s: len(s) > 3, ["hi", "hello"]))  # ["hello"]
+        /// </code>
+        /// </example>
         public static FilterIterator<T> Filter<T>(Func<T, bool> predicate, IEnumerable<T> iterable)
         {
             return new FilterIterator<T>(predicate, iterable);

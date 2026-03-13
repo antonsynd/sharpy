@@ -6,6 +6,15 @@ namespace Sharpy
         /// Return the absolute value of a number.
         /// Python: <c>abs(x)</c>
         /// </summary>
+        /// <param name="x">The number</param>
+        /// <returns>The absolute value</returns>
+        /// <example>
+        /// <code>
+        /// abs(-5)      # 5
+        /// abs(3)       # 3
+        /// abs(-2.5)    # 2.5
+        /// </code>
+        /// </example>
         public static int Abs(int x)
         {
             return System.Math.Abs(x);

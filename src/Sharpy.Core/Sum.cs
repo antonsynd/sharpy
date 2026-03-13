@@ -7,6 +7,15 @@ namespace Sharpy
         /// <summary>
         /// Sums a sequence of integers.
         /// </summary>
+        /// <param name="iterable">The sequence to sum</param>
+        /// <returns>The total sum</returns>
+        /// <example>
+        /// <code>
+        /// sum([1, 2, 3])       # 6
+        /// sum(range(10))       # 45
+        /// sum([])              # 0
+        /// </code>
+        /// </example>
         public static int Sum(IEnumerable<int> iterable)
         {
             if (iterable is null)

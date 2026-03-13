@@ -11,6 +11,13 @@ namespace Sharpy
         /// <typeparam name="T">The type to check against</typeparam>
         /// <param name="obj">The object to check</param>
         /// <returns>True if obj is an instance of T, False otherwise</returns>
+        /// <example>
+        /// <code>
+        /// isinstance(42, int)           # True
+        /// isinstance("hello", str)      # True
+        /// isinstance(42, str)           # False
+        /// </code>
+        /// </example>
         public static bool Isinstance<T>(object? obj)
         {
             return obj is T;

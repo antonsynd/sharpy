@@ -3,13 +3,24 @@ using System.Globalization;
 namespace Sharpy
 {
     /// <summary>
-    /// Type conversion functions for int
+    /// Type conversion functions for int.
+    /// Python's int() converts various types to integer, truncating floats.
     /// </summary>
     public static partial class Builtins
     {
         /// <summary>
-        /// Convert bool to int
+        /// Convert bool to int. True becomes 1, False becomes 0.
         /// </summary>
+        /// <param name="b">The bool value</param>
+        /// <returns>1 for True, 0 for False</returns>
+        /// <example>
+        /// <code>
+        /// int(True)      # 1
+        /// int(False)     # 0
+        /// int(3.9)       # 3 (truncates)
+        /// int("42")      # 42
+        /// </code>
+        /// </example>
         public static int Int(bool b)
         {
             return b ? 1 : 0;

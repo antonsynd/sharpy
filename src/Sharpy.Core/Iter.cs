@@ -14,6 +14,13 @@ namespace Sharpy
         /// Wraps the enumerator using EnumeratorIterator.
         /// This allows any C# IEnumerable to work seamlessly with Sharpy's iterator protocol.
         /// </remarks>
+        /// <example>
+        /// <code>
+        /// it = iter([1, 2, 3])
+        /// next(it)    # 1
+        /// next(it)    # 2
+        /// </code>
+        /// </example>
         public static Iterator<T> Iter<T>(IEnumerable<T> enumerable)
         {
             if (enumerable is null)

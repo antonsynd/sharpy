@@ -53,6 +53,15 @@ namespace Sharpy
         /// <param name="iterable">The iterable to enumerate</param>
         /// <param name="start">The starting index (default 0)</param>
         /// <returns>An enumerate iterator</returns>
+        /// <example>
+        /// <code>
+        /// for i, val in enumerate(["a", "b", "c"]):
+        ///     print(i, val)
+        /// # 0 a
+        /// # 1 b
+        /// # 2 c
+        /// </code>
+        /// </example>
         public static EnumerateIterator<T> Enumerate<T>(IEnumerable<T> iterable, int start = 0)
         {
             return new EnumerateIterator<T>(iterable, start);

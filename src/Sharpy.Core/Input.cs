@@ -7,6 +7,12 @@ namespace Sharpy
         /// Read a line from standard input.
         /// </summary>
         /// <returns>The input string (without trailing newline)</returns>
+        /// <example>
+        /// <code>
+        /// name = input("Enter your name: ")
+        /// print("Hello, " + name)
+        /// </code>
+        /// </example>
         public static string Input()
         {
             var line = Console.ReadLine();

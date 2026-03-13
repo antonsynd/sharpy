@@ -17,6 +17,13 @@ namespace Sharpy
         /// Values are converted to strings using ToString() and separated by the separator.
         /// </summary>
         /// <param name="values">Values to print</param>
+        /// <example>
+        /// <code>
+        /// print("hello")           # hello
+        /// print(1, 2, 3)           # 1 2 3
+        /// print("a", "b", sep=",") # a,b
+        /// </code>
+        /// </example>
         public static void Print(params object?[] values)
         {
             PrintWithOptions(values, sep: " ", end: "\n", file: Stdout, flush: false);

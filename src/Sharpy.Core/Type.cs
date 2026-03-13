@@ -9,6 +9,13 @@ namespace Sharpy
         /// </summary>
         /// <param name="obj">The object to get the type of</param>
         /// <returns>The type of the object</returns>
+        /// <example>
+        /// <code>
+        /// type(42)        # &lt;class 'int'&gt;
+        /// type("hello")   # &lt;class 'str'&gt;
+        /// type([1, 2])    # &lt;class 'list'&gt;
+        /// </code>
+        /// </example>
         public static Type Type(object? obj)
         {
             if (obj is null)

@@ -6,6 +6,16 @@ namespace Sharpy
         /// Return the Unicode code point for a one-character string.
         /// This is the inverse of chr().
         /// </summary>
+        /// <param name="s">A one-character string</param>
+        /// <returns>The Unicode code point of the character</returns>
+        /// <exception cref="TypeError">Thrown when the string is not exactly one character</exception>
+        /// <example>
+        /// <code>
+        /// ord("A")    # 65
+        /// ord("€")    # 8364
+        /// ord("a")    # 97
+        /// </code>
+        /// </example>
         public static int Ord(string s)
         {
             if (s == null || s.Length == 0)

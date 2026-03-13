@@ -10,6 +10,13 @@ namespace Sharpy
         /// <remarks>
         /// Uses .NET's banker's rounding (round half to even). For example, Round(2.5) returns 2, not 3.
         /// </remarks>
+        /// <example>
+        /// <code>
+        /// round(3.7)       # 4
+        /// round(2.5)       # 2 (banker's rounding)
+        /// round(3.14159, 2) # 3.14
+        /// </code>
+        /// </example>
         public static int Round(double x)
         {
             return (int)System.Math.Round(x);

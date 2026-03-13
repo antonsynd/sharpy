@@ -113,6 +113,12 @@ namespace Sharpy
         /// <param name="iterable1">The first iterable</param>
         /// <param name="iterable2">The second iterable</param>
         /// <returns>A zip iterator</returns>
+        /// <example>
+        /// <code>
+        /// list(zip([1, 2, 3], ["a", "b", "c"]))    # [(1, "a"), (2, "b"), (3, "c")]
+        /// list(zip([1, 2], [10, 20, 30]))           # [(1, 10), (2, 20)]
+        /// </code>
+        /// </example>
         public static ZipIterator<T1, T2> Zip<T1, T2>(IEnumerable<T1> iterable1, IEnumerable<T2> iterable2)
         {
             return new ZipIterator<T1, T2>(iterable1, iterable2);

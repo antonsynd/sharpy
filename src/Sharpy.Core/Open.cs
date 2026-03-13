@@ -10,6 +10,13 @@ namespace Sharpy
         /// </summary>
         /// <param name="path">Path to the file</param>
         /// <returns>A TextFile in read mode with UTF-8 encoding</returns>
+        /// <example>
+        /// <code>
+        /// f = open("file.txt")
+        /// f = open("output.txt", "w")
+        /// f = open("data.txt", "r", "utf-8")
+        /// </code>
+        /// </example>
         public static TextFile Open(string path)
         {
             return Open(path, "r", "utf-8");

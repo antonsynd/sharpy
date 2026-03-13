@@ -57,6 +57,12 @@ namespace Sharpy
         /// <param name="function">The function to apply to each element</param>
         /// <param name="iterable">The iterable to map over</param>
         /// <returns>A map iterator</returns>
+        /// <example>
+        /// <code>
+        /// list(map(lambda x: x * 2, [1, 2, 3]))    # [2, 4, 6]
+        /// list(map(str, [1, 2, 3]))                 # ["1", "2", "3"]
+        /// </code>
+        /// </example>
         public static MapIterator<TIn, TOut> Map<TIn, TOut>(Func<TIn, TOut> function, IEnumerable<TIn> iterable)
         {
             return new MapIterator<TIn, TOut>(function, iterable);
