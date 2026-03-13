@@ -65,40 +65,64 @@ internal sealed class SharpyCompletionHandler : CompletionHandlerBase
             if (method.Name.StartsWith("__") && method.Name.EndsWith("__"))
                 continue; // Skip dunder methods in completion
 
-            items.Add(new CompletionItem
+            var item = new CompletionItem
             {
                 Label = method.Name,
                 Kind = CompletionItemKind.Method,
                 Detail = SymbolFormatter.FormatSymbol(method),
-            });
+                Documentation = string.IsNullOrEmpty(method.Documentation) ? null : new MarkupContent
+                {
+                    Kind = MarkupKind.Markdown,
+                    Value = method.Documentation
+                },
+            };
+            items.Add(item);
         }
 
         foreach (var field in typeSymbol.Fields)
         {
-            items.Add(new CompletionItem
+            var item = new CompletionItem
             {
                 Label = field.Name,
                 Kind = CompletionItemKind.Field,
                 Detail = SymbolFormatter.FormatSymbol(field),
-            });
+                Documentation = string.IsNullOrEmpty(field.Documentation) ? null : new MarkupContent
+                {
+                    Kind = MarkupKind.Markdown,
+                    Value = field.Documentation
+                },
+            };
+            items.Add(item);
         }
 
         foreach (var prop in typeSymbol.Properties)
         {
-            items.Add(new CompletionItem
+            var item = new CompletionItem
             {
                 Label = prop.Name,
                 Kind = CompletionItemKind.Property,
-            });
+                Documentation = string.IsNullOrEmpty(prop.Documentation) ? null : new MarkupContent
+                {
+                    Kind = MarkupKind.Markdown,
+                    Value = prop.Documentation
+                },
+            };
+            items.Add(item);
         }
 
         foreach (var evt in typeSymbol.Events)
         {
-            items.Add(new CompletionItem
+            var item = new CompletionItem
             {
                 Label = evt.Name,
                 Kind = CompletionItemKind.Event,
-            });
+                Documentation = string.IsNullOrEmpty(evt.Documentation) ? null : new MarkupContent
+                {
+                    Kind = MarkupKind.Markdown,
+                    Value = evt.Documentation
+                },
+            };
+            items.Add(item);
         }
     }
 
@@ -114,12 +138,18 @@ internal sealed class SharpyCompletionHandler : CompletionHandlerBase
             _ => (CompletionItemKind.Text, symbol.Name)
         };
 
-        return new CompletionItem
+        var item = new CompletionItem
         {
             Label = symbol.Name,
             Kind = kind,
             Detail = detail,
+            Documentation = string.IsNullOrEmpty(symbol.Documentation) ? null : new MarkupContent
+            {
+                Kind = MarkupKind.Markdown,
+                Value = symbol.Documentation
+            },
         };
+        return item;
     }
 
     private static CompletionItemKind TypeKindToCompletionKind(TypeKind typeKind)

@@ -48,10 +48,16 @@ internal sealed class SharpySignatureHelpHandler : SignatureHelpHandlerBase
             if (param.Type != null)
                 label += $": {SymbolFormatter.FormatTypeInfo(param.Type)}";
 
-            parameters.Add(new ParameterInformation
+            var paramInfo = new ParameterInformation
             {
                 Label = new ParameterInformationLabel(label),
-            });
+                Documentation = string.IsNullOrEmpty(param.Documentation) ? null : new MarkupContent
+                {
+                    Kind = MarkupKind.Markdown,
+                    Value = param.Documentation
+                },
+            };
+            parameters.Add(paramInfo);
         }
 
         var signatureLabel = BuildSignatureLabel(funcSymbol);
@@ -59,7 +65,11 @@ internal sealed class SharpySignatureHelpHandler : SignatureHelpHandlerBase
         {
             Label = signatureLabel,
             Parameters = new Container<ParameterInformation>(parameters),
-
+            Documentation = string.IsNullOrEmpty(funcSymbol.Documentation) ? null : new MarkupContent
+            {
+                Kind = MarkupKind.Markdown,
+                Value = funcSymbol.Documentation
+            },
         };
 
         // Estimate active parameter from argument count before cursor

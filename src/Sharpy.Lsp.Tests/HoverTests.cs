@@ -90,6 +90,42 @@ public class HoverTests : IDisposable
         node.Should().BeNull();
     }
 
+    [Fact]
+    public async Task Hover_OverFunctionWithDocstring_IncludesDocumentation()
+    {
+        var source = "def greet(name: str) -> str:\n    \"\"\"Say hello to someone.\"\"\"\n    return \"hi \" + name\ndef main():\n    greet(\"world\")";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        analysis.Should().NotBeNull();
+
+        var symbol = analysis!.SymbolTable?.Lookup("greet");
+        symbol.Should().NotBeNull();
+
+        var formatted = SymbolFormatter.FormatSymbolWithDocs(symbol!);
+        formatted.Should().Contain("```sharpy");
+        formatted.Should().Contain("def greet");
+        formatted.Should().Contain("Say hello to someone.");
+    }
+
+    [Fact]
+    public async Task Hover_OverFunctionWithoutDocstring_StillWorks()
+    {
+        var source = "def greet(name: str) -> str:\n    return \"hi \" + name\ndef main():\n    greet(\"world\")";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        analysis.Should().NotBeNull();
+
+        var symbol = analysis!.SymbolTable?.Lookup("greet");
+        symbol.Should().NotBeNull();
+
+        var formatted = SymbolFormatter.FormatSymbolWithDocs(symbol!);
+        formatted.Should().Contain("```sharpy");
+        formatted.Should().Contain("def greet");
+        formatted.Should().EndWith("\n```");
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();

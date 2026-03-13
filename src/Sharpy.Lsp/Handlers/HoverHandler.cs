@@ -35,8 +35,8 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
         if (node == null)
             return null;
 
-        var hoverText = GetHoverText(node, analysis);
-        if (hoverText == null)
+        var hoverMarkdown = GetHoverMarkdown(node, analysis);
+        if (hoverMarkdown == null)
             return null;
 
         return new Hover
@@ -45,13 +45,13 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                 new MarkupContent
                 {
                     Kind = MarkupKind.Markdown,
-                    Value = $"```sharpy\n{hoverText}\n```"
+                    Value = hoverMarkdown
                 }
             )
         };
     }
 
-    private static string? GetHoverText(Node node, SemanticResult analysis)
+    private static string? GetHoverMarkdown(Node node, SemanticResult analysis)
     {
         var query = analysis.SemanticQuery!;
 
@@ -61,12 +61,12 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                 {
                     var symbol = query.GetIdentifierSymbol(id);
                     if (symbol != null)
-                        return SymbolFormatter.FormatSymbol(symbol);
+                        return SymbolFormatter.FormatSymbolWithDocs(symbol);
 
                     // Fall back to type info
                     var type = query.GetEffectiveType(id);
                     if (type != null)
-                        return $"{id.Name}: {SymbolFormatter.FormatTypeInfo(type)}";
+                        return $"```sharpy\n{id.Name}: {SymbolFormatter.FormatTypeInfo(type)}\n```";
 
                     return null;
                 }
@@ -75,7 +75,7 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                 {
                     var target = query.GetCallTarget(call);
                     if (target != null)
-                        return SymbolFormatter.FormatSymbol(target);
+                        return SymbolFormatter.FormatSymbolWithDocs(target);
                     break;
                 }
 
@@ -83,7 +83,7 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                 {
                     var type = query.GetEffectiveType(expr);
                     if (type != null)
-                        return SymbolFormatter.FormatTypeInfo(type);
+                        return $"```sharpy\n{SymbolFormatter.FormatTypeInfo(type)}\n```";
                     break;
                 }
         }

@@ -113,4 +113,28 @@ public class SignatureHelpTests
         var node = _api.FindNodeAtPosition(analysis.Ast!, 4, 5);
         node.Should().NotBeNull();
     }
+
+    [Fact]
+    public void FunctionWithDocstring_HasDocumentationOnSymbol()
+    {
+        var source = "def greet(name: str) -> str:\n    \"\"\"Greet a person by name.\"\"\"\n    return name\ndef main():\n    pass";
+        var analysis = _api.Analyze(source);
+        analysis.Success.Should().BeTrue();
+
+        var symbol = analysis.SymbolTable!.Lookup("greet") as FunctionSymbol;
+        symbol.Should().NotBeNull();
+        symbol!.Documentation.Should().Be("Greet a person by name.");
+    }
+
+    [Fact]
+    public void FunctionWithoutDocstring_HasNullDocumentation()
+    {
+        var source = "def greet(name: str) -> str:\n    return name\ndef main():\n    pass";
+        var analysis = _api.Analyze(source);
+        analysis.Success.Should().BeTrue();
+
+        var symbol = analysis.SymbolTable!.Lookup("greet") as FunctionSymbol;
+        symbol.Should().NotBeNull();
+        symbol!.Documentation.Should().BeNull();
+    }
 }

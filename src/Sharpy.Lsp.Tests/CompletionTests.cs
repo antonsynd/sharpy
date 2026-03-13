@@ -67,4 +67,28 @@ def main():
             udt.Symbol!.Methods.Should().Contain(m => m.Name == "speak");
         }
     }
+
+    [Fact]
+    public void SymbolWithDocumentation_HasDocumentationProperty()
+    {
+        var source = "def greet(name: str) -> str:\n    \"\"\"Say hello.\"\"\"\n    return \"hi \" + name\ndef main():\n    pass";
+        var analysis = _api.Analyze(source);
+        analysis.Success.Should().BeTrue();
+
+        var symbol = analysis.SymbolTable!.Lookup("greet");
+        symbol.Should().NotBeNull();
+        symbol!.Documentation.Should().Be("Say hello.");
+    }
+
+    [Fact]
+    public void SymbolWithoutDocumentation_HasNullDocumentation()
+    {
+        var source = "def greet(name: str) -> str:\n    return \"hi \" + name\ndef main():\n    pass";
+        var analysis = _api.Analyze(source);
+        analysis.Success.Should().BeTrue();
+
+        var symbol = analysis.SymbolTable!.Lookup("greet");
+        symbol.Should().NotBeNull();
+        symbol!.Documentation.Should().BeNull();
+    }
 }

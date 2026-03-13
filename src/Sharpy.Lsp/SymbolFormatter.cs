@@ -21,6 +21,26 @@ internal static class SymbolFormatter
         };
     }
 
+    /// <summary>
+    /// Formats a symbol as a markdown code block with optional documentation text below.
+    /// </summary>
+    public static string FormatSymbolWithDocs(Symbol symbol)
+    {
+        var signature = FormatSymbol(symbol);
+        var sb = new StringBuilder();
+        sb.Append("```sharpy\n");
+        sb.Append(signature);
+        sb.Append("\n```");
+
+        if (!string.IsNullOrEmpty(symbol.Documentation))
+        {
+            sb.Append("\n\n");
+            sb.Append(symbol.Documentation);
+        }
+
+        return sb.ToString();
+    }
+
     public static string FormatTypeInfo(SemanticType type)
     {
         return type.GetDisplayName();
