@@ -37,7 +37,7 @@ internal sealed class XmlDocReader
             var document = XDocument.Load(xmlFilePath);
             return new XmlDocReader(document);
         }
-        catch (Exception)
+        catch (Exception ex) when (ex is System.Xml.XmlException or IOException or UnauthorizedAccessException)
         {
             return null;
         }
@@ -98,7 +98,12 @@ internal sealed class XmlDocReader
             return null;
 
         // Get concatenated text content, stripping XML tags
-        var text = string.Concat(element.Nodes().Select(n => n is XText t ? t.Value : ((XElement)n).Value));
+        var text = string.Concat(element.Nodes().Select(n => n switch
+        {
+            XText t => t.Value,
+            XElement e => e.Value,
+            _ => string.Empty
+        }));
 
         // Normalize whitespace: collapse runs of whitespace into single spaces, then trim
         text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();

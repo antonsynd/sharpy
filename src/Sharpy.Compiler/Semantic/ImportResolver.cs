@@ -127,7 +127,8 @@ internal class ImportResolver
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
-                            NetNamespaceName = moduleInfo.NetNamespaceName
+                            NetNamespaceName = moduleInfo.NetNamespaceName,
+                            Documentation = moduleInfo.Module?.DocString
                         };
                         symbolTable.TryDefine(aliasedModule);
                     }
@@ -145,7 +146,8 @@ internal class ImportResolver
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
-                            NetNamespaceName = moduleInfo.NetNamespaceName
+                            NetNamespaceName = moduleInfo.NetNamespaceName,
+                            Documentation = moduleInfo.Module?.DocString
                         };
 
                         ModuleSymbol currentModule = leafModule;

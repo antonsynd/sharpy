@@ -139,7 +139,8 @@ internal partial class ProjectCompiler
                                 Kind = SymbolKind.Module,
                                 FilePath = moduleInfo.Path,
                                 Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
-                                FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads)
+                                FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                                Documentation = moduleInfo.Module?.DocString
                             };
                             SymbolTable.TryDefine(aliasedModule);
                             continue;
@@ -156,7 +157,8 @@ internal partial class ProjectCompiler
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
-                            FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads)
+                            FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                            Documentation = moduleInfo.Module?.DocString
                         };
 
                         // Build nested structure from inside out
