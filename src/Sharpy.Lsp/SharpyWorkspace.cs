@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Lsp;
@@ -23,6 +25,8 @@ internal sealed class DocumentState : IDisposable
     private readonly object _stateLock = new();
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _pendingCtsRegistry = new();
     private int _analysisVersion;
+    private SemanticResult? _previousAnalysis;
+    private ParseResult? _previousParseResult;
 
     /// <summary>
     /// Monotonically increasing version counter. Incremented on every edit.
@@ -118,6 +122,8 @@ internal sealed class DocumentState : IDisposable
         {
             string text;
             int versionAtStart;
+            SemanticResult? previousAnalysis;
+            ParseResult? previousParse;
             lock (_stateLock)
             {
                 // Double-check after acquiring lock
@@ -125,9 +131,43 @@ internal sealed class DocumentState : IDisposable
                     return CachedAnalysis;
                 text = SourceText.ToString();
                 versionAtStart = _analysisVersion;
+                previousAnalysis = _previousAnalysis;
+                previousParse = _previousParseResult;
             }
 
             using var scope = new CancellableAnalysisScope(_pendingCtsRegistry, Uri, ct);
+
+            // Try partial re-analysis: parse first, then check if only a function body changed
+            var newParse = api.Parse(text, scope.Token);
+
+            if (previousAnalysis != null && previousParse?.Ast != null && newParse.Ast != null)
+            {
+                var change = AstFingerprint.Classify(previousParse.Ast, newParse.Ast);
+                if (change.Kind == AstChangeKind.BodyOnly)
+                {
+                    // Function body change only — use scoped re-check
+                    var partialResult = await Task.Run(
+                        () => ScopedTypeChecker.RecheckFunction(api, text, scope.Token),
+                        scope.Token
+                    ).ConfigureAwait(false);
+
+                    if (partialResult != null)
+                    {
+                        lock (_stateLock)
+                        {
+                            if (_analysisVersion == versionAtStart)
+                            {
+                                _previousAnalysis = partialResult;
+                                _previousParseResult = newParse;
+                                CachedAnalysis = partialResult;
+                                CachedParseResult = newParse;
+                            }
+                        }
+                        return partialResult;
+                    }
+                    // Fall through to full analysis if partial failed
+                }
+            }
 
             var result = await Task.Run(
                 () => api.Analyze(text, scope.Token),
@@ -139,7 +179,10 @@ internal sealed class DocumentState : IDisposable
                 // Only cache if document hasn't changed during analysis
                 if (_analysisVersion == versionAtStart)
                 {
+                    _previousAnalysis = result;
+                    _previousParseResult = newParse;
                     CachedAnalysis = result;
+                    CachedParseResult = newParse;
                 }
             }
             return result;
