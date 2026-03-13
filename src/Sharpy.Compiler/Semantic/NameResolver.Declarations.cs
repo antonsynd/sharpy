@@ -82,7 +82,8 @@ internal partial class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = classDef.Span,
             DeclarationLine = classDef.LineStart,
-            DeclarationColumn = classDef.ColumnStart
+            DeclarationColumn = classDef.ColumnStart,
+            Documentation = classDef.DocString
         };
 
         // Define in current scope
@@ -155,7 +156,8 @@ internal partial class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = structDef.Span,
             DeclarationLine = structDef.LineStart,
-            DeclarationColumn = structDef.ColumnStart
+            DeclarationColumn = structDef.ColumnStart,
+            Documentation = structDef.DocString
         };
 
         _symbolTable.Define(typeSymbol);
@@ -226,7 +228,8 @@ internal partial class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = interfaceDef.Span,
             DeclarationLine = interfaceDef.LineStart,
-            DeclarationColumn = interfaceDef.ColumnStart
+            DeclarationColumn = interfaceDef.ColumnStart,
+            Documentation = interfaceDef.DocString
         };
 
         _symbolTable.Define(typeSymbol);
@@ -295,7 +298,8 @@ internal partial class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = delegateDef.Span,
             DeclarationLine = delegateDef.LineStart,
-            DeclarationColumn = delegateDef.ColumnStart
+            DeclarationColumn = delegateDef.ColumnStart,
+            Documentation = delegateDef.DocString
         };
 
         _symbolTable.EnterScope($"delegate:{delegateDef.Name}");
@@ -370,7 +374,8 @@ internal partial class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = enumDef.Span,
             DeclarationLine = enumDef.LineStart,
-            DeclarationColumn = enumDef.ColumnStart
+            DeclarationColumn = enumDef.ColumnStart,
+            Documentation = enumDef.DocString
         };
 
         // Register enum members as static fields so pattern matching and
@@ -417,7 +422,8 @@ internal partial class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = unionDef.Span,
             DeclarationLine = unionDef.LineStart,
-            DeclarationColumn = unionDef.ColumnStart
+            DeclarationColumn = unionDef.ColumnStart,
+            Documentation = unionDef.DocString
         };
 
         // Create case type symbols as nested types

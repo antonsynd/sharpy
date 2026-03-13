@@ -54,7 +54,8 @@ internal partial class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = functionDef.Span,
             DeclarationLine = functionDef.LineStart,
-            DeclarationColumn = functionDef.ColumnStart
+            DeclarationColumn = functionDef.ColumnStart,
+            Documentation = functionDef.DocString
         };
 
         _symbolTable.Define(funcSymbol);
@@ -121,7 +122,8 @@ internal partial class NameResolver
             DeclarationSpan = method.Span,
             DeclarationLine = method.LineStart,
             DeclarationColumn = method.ColumnStart,
-            SignatureKey = GetMethodSignatureKey(method)
+            SignatureKey = GetMethodSignatureKey(method),
+            Documentation = method.DocString
         };
 
         owningType.Methods.Add(funcSymbol);
