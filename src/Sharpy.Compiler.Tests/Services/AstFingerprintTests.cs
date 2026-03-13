@@ -114,4 +114,30 @@ public class AstFingerprintTests
 
         result.Kind.Should().Be(AstChangeKind.Structural);
     }
+
+    [Fact]
+    public void Classify_ClassBodyChange_ReturnsStructural()
+    {
+        var source1 = "class Point:\n    x: int\n    y: int\ndef main():\n    p = Point()\n    print(p.x)";
+        var source2 = "class Point:\n    x: int\n    y: int\n    z: int\ndef main():\n    p = Point()\n    print(p.x)";
+        var ast1 = _api.Parse(source1).Ast!;
+        var ast2 = _api.Parse(source2).Ast!;
+
+        var result = AstFingerprint.Classify(ast1, ast2);
+
+        result.Kind.Should().Be(AstChangeKind.Structural);
+    }
+
+    [Fact]
+    public void Classify_FunctionRemoved_ReturnsStructural()
+    {
+        var source1 = "def helper() -> int:\n    return 1\ndef main():\n    print(helper())";
+        var source2 = "def main():\n    print(1)";
+        var ast1 = _api.Parse(source1).Ast!;
+        var ast2 = _api.Parse(source2).Ast!;
+
+        var result = AstFingerprint.Classify(ast1, ast2);
+
+        result.Kind.Should().Be(AstChangeKind.Structural);
+    }
 }

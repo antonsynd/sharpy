@@ -17,11 +17,12 @@ public static class ScopedTypeChecker
 {
     /// <summary>
     /// Re-checks a module after a function-body-only change.
-    /// Re-runs full semantic analysis using <see cref="CompilerApi.Analyze"/> on the new AST text.
-    /// The caller benefits because:
-    /// 1. Parse is already done (passed in as <paramref name="newAst"/>)
-    /// 2. The <see cref="AstFingerprint.Classify"/> check avoided unnecessary work when no change occurred
+    /// Re-runs full semantic analysis using <see cref="CompilerApi.Analyze"/> on the new source text.
+    /// The caller benefits because the <see cref="AstFingerprint.Classify"/> check avoided unnecessary
+    /// work when no change occurred (NoChange) or when only a body changed (BodyOnly).
     ///
+    /// This is a conservative implementation: it re-runs the full pipeline rather than surgically
+    /// updating SemanticInfo maps (which use ReferenceEqualityComparer for AST nodes).
     /// Falls back to returning null if re-analysis fails, signaling the caller to use full analysis.
     /// </summary>
     /// <param name="api">The compiler API to use for re-analysis.</param>

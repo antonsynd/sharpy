@@ -346,6 +346,19 @@ public class LanguageServiceTests : IDisposable
     }
 
     [Fact]
+    public void CancellableAnalysisScope_DoubleDispose_DoesNotThrow()
+    {
+        var registry = new System.Collections.Concurrent.ConcurrentDictionary<string, CancellationTokenSource>();
+
+        var scope = new CancellableAnalysisScope(registry, "doc1", CancellationToken.None);
+        scope.Dispose();
+
+        // Second dispose should be a safe no-op
+        var act = () => scope.Dispose();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
     public async Task GetParseResult_ReturnsAstWithoutSemanticAnalysis()
     {
         _workspace.OpenDocument("file:///test.spy", "def greet() -> str:\n    return \"hi\"\ndef main():\n    print(greet())", 1);

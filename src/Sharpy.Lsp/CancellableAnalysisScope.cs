@@ -23,16 +23,31 @@ internal sealed class CancellableAnalysisScope : IDisposable
         _key = key;
         _cts = CancellationTokenSource.CreateLinkedTokenSource(external);
 
-        // Cancel and dispose any previous CTS for this key
-        if (_registry.TryGetValue(key, out var oldCts))
+        // Atomically swap the CTS for this key, cancelling any previous one.
+        // Uses CAS loop to avoid a race where two concurrent constructors for the
+        // same key both read the same oldCts, then one overwrites the other's CTS
+        // without cancelling it.
+        while (true)
         {
-            try
-            { oldCts.Cancel(); }
-            catch (ObjectDisposedException) { }
-            oldCts.Dispose();
+            if (_registry.TryGetValue(key, out var oldCts))
+            {
+                if (_registry.TryUpdate(key, _cts, oldCts))
+                {
+                    try
+                    { oldCts.Cancel(); }
+                    catch (ObjectDisposedException) { }
+                    oldCts.Dispose();
+                    break;
+                }
+                // Another thread updated the key concurrently; retry
+            }
+            else
+            {
+                if (_registry.TryAdd(key, _cts))
+                    break;
+                // Another thread added the key concurrently; retry
+            }
         }
-
-        _registry[key] = _cts;
     }
 
     /// <summary>
