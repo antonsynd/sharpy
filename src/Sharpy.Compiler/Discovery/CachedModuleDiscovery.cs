@@ -197,6 +197,7 @@ internal class CachedModuleDiscovery
                 Type = ConvertTypeSignature(p.PropertyType, sharedTypeParams),
                 HasGetter = p.HasGetter,
                 HasSetter = p.HasSetter,
+                Documentation = p.Documentation
             })
             .ToList();
 
@@ -212,6 +213,7 @@ internal class CachedModuleDiscovery
             OperatorMethods = operatorMethods,
             ProtocolMethods = protocolMethods,
             Properties = properties,
+            Documentation = typeInfo.Documentation
         };
     }
 
@@ -373,7 +375,8 @@ internal class CachedModuleDiscovery
                         : ConvertTypeSignature(p.Type, sharedTypeParams),
                     HasDefault = p.HasDefault,
                     DefaultValue = p.HasDefault ? DefaultValueParser.Parse(p.DefaultValue) : null,
-                    IsVariadic = p.IsVariadic
+                    IsVariadic = p.IsVariadic,
+                    Documentation = p.Documentation
                 })
                 .ToList(),
             AccessLevel = AccessLevel.Public,
@@ -381,7 +384,8 @@ internal class CachedModuleDiscovery
                 ? signature.TypeParameters
                     .Select(name => new Parser.Ast.TypeParameterDef { Name = name })
                     .ToList()
-                : new List<Parser.Ast.TypeParameterDef>()
+                : new List<Parser.Ast.TypeParameterDef>(),
+            Documentation = signature.Documentation
         };
     }
 

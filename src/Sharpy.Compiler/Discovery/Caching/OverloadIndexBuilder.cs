@@ -12,6 +12,7 @@ internal class OverloadIndexBuilder
 {
     private readonly ClrTypeMapper _typeMapper = new();
     private readonly ICompilerLogger _logger;
+    private XmlDocReader? _xmlDocReader;
 
     public OverloadIndexBuilder(ICompilerLogger? logger = null)
     {
@@ -24,6 +25,14 @@ internal class OverloadIndexBuilder
     /// </summary>
     public OverloadIndex BuildFromAssembly(Assembly assembly)
     {
+        // Try to load XML documentation file alongside the assembly
+        var assemblyLocation = assembly.Location;
+        if (!string.IsNullOrEmpty(assemblyLocation))
+        {
+            var xmlPath = Path.ChangeExtension(assemblyLocation, ".xml");
+            _xmlDocReader = XmlDocReader.TryCreate(xmlPath);
+        }
+
         var identity = AssemblyIdentity.FromAssembly(assembly);
         var index = new OverloadIndex
         {
@@ -91,6 +100,15 @@ internal class OverloadIndexBuilder
             var isModuleType = type.CustomAttributes.Any(
                 a => a.AttributeType.FullName == "Sharpy.SharpyModuleTypeAttribute");
 
+            // Look up XML documentation for this type
+            string? typeDoc = null;
+            if (_xmlDocReader != null)
+            {
+                var typeMemberId = "T:" + (type.FullName ?? type.Name).Replace('+', '.');
+                var doc = _xmlDocReader.GetMemberDoc(typeMemberId);
+                typeDoc = doc?.Summary;
+            }
+
             var typeInfo = new DiscoveredTypeInfo
             {
                 Name = type.Name,
@@ -99,7 +117,8 @@ internal class OverloadIndexBuilder
                 IsException = isException,
                 IsModuleType = isModuleType,
                 BaseTypeName = type.BaseType?.Name,
-                TypeKind = typeKind
+                TypeKind = typeKind,
+                Documentation = typeDoc
             };
 
             DiscoverTypeMethods(type, typeInfo);
@@ -258,12 +277,22 @@ internal class OverloadIndexBuilder
         {
             try
             {
+                // Look up XML documentation for this property
+                string? propDoc = null;
+                if (_xmlDocReader != null && property.DeclaringType != null)
+                {
+                    var propMemberId = "P:" + (property.DeclaringType.FullName ?? property.DeclaringType.Name).Replace('+', '.') + "." + property.Name;
+                    var doc = _xmlDocReader.GetMemberDoc(propMemberId);
+                    propDoc = doc?.Summary;
+                }
+
                 var propertyInfo = new DiscoveredPropertyInfo
                 {
                     Name = property.Name,
                     PropertyType = CreateTypeSignature(property.PropertyType),
                     HasGetter = property.GetGetMethod() != null,
-                    HasSetter = property.GetSetMethod() != null
+                    HasSetter = property.GetSetMethod() != null,
+                    Documentation = propDoc
                 };
 
                 typeInfo.Properties.Add(propertyInfo);
@@ -402,23 +431,39 @@ internal class OverloadIndexBuilder
                 .ToList();
         }
 
+        // Look up XML documentation for this method
+        XmlMemberDoc? methodDoc = null;
+        if (_xmlDocReader != null)
+        {
+            var memberId = BuildMethodMemberId(method);
+            methodDoc = _xmlDocReader.GetMemberDoc(memberId);
+            signature.Documentation = methodDoc?.Summary;
+        }
+
         foreach (var param in method.GetParameters())
         {
-            signature.Parameters.Add(CreateParameterSignature(param));
+            signature.Parameters.Add(CreateParameterSignature(param, methodDoc));
         }
 
         return signature;
     }
 
-    private ParameterSignature CreateParameterSignature(ParameterInfo param)
+    private ParameterSignature CreateParameterSignature(ParameterInfo param, XmlMemberDoc? methodDoc = null)
     {
+        string? paramDoc = null;
+        if (methodDoc != null && param.Name != null)
+        {
+            methodDoc.Parameters.TryGetValue(param.Name, out paramDoc);
+        }
+
         return new ParameterSignature
         {
             Name = param.Name ?? "arg",
             Type = CreateTypeSignature(param.ParameterType),
             HasDefault = param.HasDefaultValue,
             DefaultValue = param.HasDefaultValue ? ConvertDefaultValue(param.DefaultValue) : null,
-            IsVariadic = param.GetCustomAttribute<ParamArrayAttribute>() != null
+            IsVariadic = param.GetCustomAttribute<ParamArrayAttribute>() != null,
+            Documentation = paramDoc
         };
     }
 
@@ -520,6 +565,67 @@ internal class OverloadIndexBuilder
         var paramCount = method.GetParameters().Length;
 
         return $"{assemblyName}|{typeName}|{methodName}|{paramCount}";
+    }
+
+    /// <summary>
+    /// Builds an XML documentation member ID for a method.
+    /// Format: M:Namespace.Type.Method(ParamType1,ParamType2)
+    /// </summary>
+    private static string BuildMethodMemberId(MethodInfo method)
+    {
+        var declaringType = method.DeclaringType;
+        var typeName = (declaringType?.FullName ?? declaringType?.Name ?? "Unknown").Replace('+', '.');
+
+        var methodName = method.Name;
+
+        var parameters = method.GetParameters();
+        if (parameters.Length == 0)
+            return $"M:{typeName}.{methodName}";
+
+        var paramTypes = string.Join(",", parameters.Select(p => GetXmlDocTypeName(p.ParameterType)));
+        return $"M:{typeName}.{methodName}({paramTypes})";
+    }
+
+    /// <summary>
+    /// Converts a CLR type to its XML documentation ID format.
+    /// Handles arrays, generics, by-ref types, and nested types.
+    /// </summary>
+    private static string GetXmlDocTypeName(Type type)
+    {
+        if (type.IsByRef)
+            return GetXmlDocTypeName(type.GetElementType()!) + "@";
+
+        if (type.IsArray)
+        {
+            var rank = type.GetArrayRank();
+            var elementName = GetXmlDocTypeName(type.GetElementType()!);
+            return rank == 1
+                ? elementName + "[]"
+                : elementName + "[" + new string(',', rank - 1) + "]";
+        }
+
+        if (type.IsGenericType)
+        {
+            var genericDef = type.GetGenericTypeDefinition();
+            var baseName = (genericDef.FullName ?? genericDef.Name).Replace('+', '.');
+            // Strip everything after backtick (including arity and any assembly info)
+            var backtick = baseName.IndexOf('`', StringComparison.Ordinal);
+            if (backtick >= 0)
+                baseName = baseName[..backtick];
+
+            var typeArgs = string.Join(",", type.GetGenericArguments().Select(GetXmlDocTypeName));
+            return $"{baseName}{{{typeArgs}}}";
+        }
+
+        if (type.IsGenericParameter)
+        {
+            // Method-level type parameters use ``N, type-level use `N
+            return type.DeclaringMethod != null
+                ? $"``{type.GenericParameterPosition}"
+                : $"`{type.GenericParameterPosition}";
+        }
+
+        return (type.FullName ?? type.Name).Replace('+', '.');
     }
 
     private string? ConvertDefaultValue(object? value)
