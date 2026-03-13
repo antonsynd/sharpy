@@ -13,12 +13,14 @@ namespace Sharpy
         private readonly System.Collections.Generic.List<KeyValuePair<K, V>> _items;
         private readonly System.Collections.Generic.Dictionary<K, int> _index;
 
+        /// <summary>Create an empty ordered dictionary.</summary>
         public OrderedDict()
         {
             _items = new System.Collections.Generic.List<KeyValuePair<K, V>>();
             _index = new System.Collections.Generic.Dictionary<K, int>();
         }
 
+        /// <summary>Create an ordered dictionary from key-value pairs.</summary>
         public OrderedDict(IEnumerable<KeyValuePair<K, V>> items) : this()
         {
             foreach (var kvp in items)
@@ -27,6 +29,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Create an ordered dictionary from tuples.</summary>
         public OrderedDict(IEnumerable<(K, V)> items) : this()
         {
             foreach (var (key, value) in items)

@@ -4,8 +4,10 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>Base class for all Sharpy iterators.</summary>
     public abstract partial class Iterator<T>
     {
+        /// <summary>The current element. Set by subclasses in MoveNext.</summary>
         protected T? _current;
 
         /// <summary>

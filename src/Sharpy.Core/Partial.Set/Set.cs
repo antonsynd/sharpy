@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 namespace Sharpy
 {
+    /// <summary>
+    /// A mutable set of unique elements, similar to Python's set.
+    /// </summary>
     public sealed partial class Set<T>
         : System.Collections.Generic.ISet<T>,
           System.IEquatable<Set<T>>,
@@ -9,16 +12,19 @@ namespace Sharpy
         // Internal for SetIterator access to the underlying HashSet
         internal readonly HashSet<T> _set;
 
+        /// <summary>Create an empty set.</summary>
         public Set()
         {
             _set = new HashSet<T>();
         }
 
+        /// <summary>Create a set as a copy of another set.</summary>
         public Set(Set<T> set) : this()
         {
             _set.UnionWith(set._set);
         }
 
+        /// <summary>Create a set from an iterable.</summary>
         public Set(IEnumerable<T> enumerable) : this()
         {
             if (enumerable is null)
@@ -253,6 +259,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>Convert to a standard .NET HashSet.</summary>
         public HashSet<T> ToHashSet()
         {
             return new HashSet<T>(_set);

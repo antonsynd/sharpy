@@ -8,6 +8,7 @@ namespace Sharpy
     /// </summary>
     public class IndexError : Exception
     {
+        /// <summary>Create an IndexError with the specified message.</summary>
         public IndexError(string message) : base(message) { }
     }
 }

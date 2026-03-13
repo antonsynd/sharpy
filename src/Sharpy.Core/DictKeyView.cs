@@ -73,6 +73,7 @@ namespace Sharpy
             return true;
         }
 
+        /// <summary>Returns an enumerator that iterates through the keys.</summary>
         public IEnumerator<K> GetEnumerator()
         {
             foreach (var key in _keys)
@@ -198,6 +199,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>Union operator is not supported for DictKeyView; use Union() to get a Set instead.</summary>
         public static DictKeyView<K, V> operator |(DictKeyView<K, V> left, DictKeyView<K, V> right)
         {
             throw new NotSupportedException("Cannot create a DictKeyView from union operation. Use Union() to get a Set instead.");

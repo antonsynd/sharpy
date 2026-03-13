@@ -17,6 +17,7 @@ namespace Sharpy
         /// <summary>The index in doc where parsing failed.</summary>
         public int Pos { get; }
 
+        /// <summary>Create a JSONDecodeError with the specified message, document, and position.</summary>
         public JSONDecodeError(string msg, string doc, int pos)
             : base(FormatMessage(msg, doc, pos))
         {

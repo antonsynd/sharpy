@@ -8,6 +8,9 @@ namespace Sharpy
 
     using static Builtins;
 
+    /// <summary>
+    /// A dictionary that maps keys to values, similar to Python's dict.
+    /// </summary>
     public sealed partial class Dict<K, V>
         : IDictionary<K, V>,
           IReadOnlyDictionary<K, V>,
@@ -17,11 +20,13 @@ namespace Sharpy
     {
         private readonly Dictionary<K, V> _dict;
 
+        /// <summary>Create an empty dictionary.</summary>
         public Dict()
         {
             _dict = new Dictionary<K, V>();
         }
 
+        /// <summary>Create a dictionary from an existing mapping.</summary>
         public Dict(IReadOnlyDictionary<K, V> mapping) : this()
         {
             if (mapping is null)
@@ -35,6 +40,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Create a dictionary from an iterable of key-value tuples.</summary>
         public Dict(IEnumerable<(K, V)> iterable) : this()
         {
             if (iterable is null)
@@ -415,6 +421,7 @@ namespace Sharpy
         /// </summary>
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+        /// <summary>Convert to a standard .NET Dictionary.</summary>
         public Dictionary<K, V> ToDictionary()
         {
             return new Dictionary<K, V>(_dict);
@@ -432,16 +439,19 @@ namespace Sharpy
             return newDict;
         }
 
+        /// <summary>Returns a new merged dictionary (union operator).</summary>
         public static Dict<K, V> operator |(Dict<K, V> left, Dict<K, V> right)
         {
             return left.Merge(right);
         }
 
+        /// <summary>Determines whether two dictionaries are equal.</summary>
         public static bool operator ==(Dict<K, V>? left, Dict<K, V>? right)
         {
             return left?.Equals(right) ?? right is null;
         }
 
+        /// <summary>Determines whether two dictionaries are not equal.</summary>
         public static bool operator !=(Dict<K, V> left, Dict<K, V> right)
         {
             return !(left == right);
@@ -489,16 +499,19 @@ namespace Sharpy
             return builder.ToString();
         }
 
+        /// <summary>Returns true if the dictionary is non-empty.</summary>
         public static bool operator true(Dict<K, V>? dict)
         {
             return dict is not null && dict._dict.Count > 0;
         }
 
+        /// <summary>Returns true if the dictionary is empty or null.</summary>
         public static bool operator false(Dict<K, V>? dict)
         {
             return dict is null || dict._dict.Count == 0;
         }
 
+        /// <summary>Gets a value indicating whether the dictionary is read-only. Always false.</summary>
         public bool IsReadOnly
         {
             get

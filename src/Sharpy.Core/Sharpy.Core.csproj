@@ -8,10 +8,9 @@
     <RootNamespace>Sharpy</RootNamespace>
     <AssemblyName>Sharpy.Core</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!-- Suppress missing XML doc warnings - docs will be added incrementally -->
     <!-- CS8604: nullable parameter warnings in generic equality comparisons (Eq helper) -->
     <!-- CS1574/CS1580: XML doc cref resolution issues for generic/dunder methods -->
-    <NoWarn>CS1591;CS8604;CS1574;CS1580</NoWarn>
+    <NoWarn>CS8604;CS1574;CS1580</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

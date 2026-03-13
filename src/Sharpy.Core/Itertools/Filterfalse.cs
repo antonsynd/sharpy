@@ -5,12 +5,14 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>Make an iterator that filters elements from iterable returning only those for which the predicate is false.</summary>
         public static FilterfalseIterator<T> Filterfalse<T>(Func<T, bool> predicate, IEnumerable<T> iterable)
         {
             return new FilterfalseIterator<T>(predicate, iterable);
         }
     }
 
+    /// <summary>Iterator that yields elements for which the predicate returns false.</summary>
     public class FilterfalseIterator<T> : Iterator<T>
     {
         private readonly IEnumerator<T> _enumerator;
@@ -24,6 +26,7 @@ namespace Sharpy
             _exhausted = false;
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted)

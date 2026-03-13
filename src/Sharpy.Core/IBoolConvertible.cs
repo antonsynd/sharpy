@@ -8,6 +8,7 @@ namespace Sharpy
     /// </summary>
     public interface IBoolConvertible
     {
+        /// <summary>Returns true if the object is considered truthy.</summary>
         bool IsTrue { get; }
     }
 }

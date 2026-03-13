@@ -3,19 +3,23 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>Itertools module — tools for creating iterators.</summary>
     public static partial class Itertools
     {
+        /// <summary>Make an iterator that returns accumulated sums (or accumulated results of a binary function).</summary>
         public static AccumulateIterator<T> Accumulate<T>(IEnumerable<T> iterable, Func<T, T, T>? func = null)
         {
             return new AccumulateIterator<T>(iterable, func, default, false);
         }
 
+        /// <summary>Make an iterator that returns accumulated results with an initial value.</summary>
         public static AccumulateIterator<T> Accumulate<T>(IEnumerable<T> iterable, Func<T, T, T>? func, T initial)
         {
             return new AccumulateIterator<T>(iterable, func, initial, true);
         }
     }
 
+    /// <summary>Iterator that yields accumulated sums or results of a binary function.</summary>
     public class AccumulateIterator<T> : Iterator<T>
     {
         private readonly IEnumerator<T> _enumerator;
@@ -57,6 +61,7 @@ namespace Sharpy
             throw new TypeError("unsupported operand type(s) for accumulate default function");
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted)

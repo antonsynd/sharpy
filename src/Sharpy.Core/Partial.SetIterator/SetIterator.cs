@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 namespace Sharpy
 {
+    /// <summary>Iterator for Set.</summary>
     public sealed partial class SetIterator<T> : Iterator<T>
     {
         private readonly Set<T> _set;

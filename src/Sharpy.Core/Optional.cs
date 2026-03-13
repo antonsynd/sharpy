@@ -19,44 +19,53 @@ namespace Sharpy
             _hasValue = hasValue;
         }
 
-        // Factory methods
+        /// <summary>Create an Optional containing the given value.</summary>
         public static Optional<T> Some(T value) => new Optional<T>(value, true);
+        /// <summary>Get an empty Optional.</summary>
         public static Optional<T> None => new Optional<T>(default!, false);
 
-        // Properties
+        /// <summary>Returns true if this Optional contains a value.</summary>
         public bool IsSome => _hasValue;
+        /// <summary>Returns true if this Optional is empty.</summary>
         public bool IsNone => !_hasValue;
 
-        // Methods
+        /// <summary>Returns the contained value, or throws if empty.</summary>
         public T Unwrap() =>
             _hasValue ? _value : throw new InvalidOperationException("Called Unwrap on empty Optional");
 
+        /// <summary>Returns the contained value, or the provided default.</summary>
         public T UnwrapOr(T defaultValue) =>
             _hasValue ? _value : defaultValue;
 
+        /// <summary>Returns the contained value, or computes it from a function.</summary>
         public T UnwrapOrElse(Func<T> f) =>
             _hasValue ? _value : f();
 
+        /// <summary>Maps the contained value using the given function, or returns None if empty.</summary>
         public Optional<U> Map<U>(Func<T, U> f) =>
             _hasValue ? Optional<U>.Some(f(_value)) : Optional<U>.None;
 
-        // For pattern matching support (future)
+        /// <summary>Deconstructs the optional into its components for pattern matching.</summary>
         public void Deconstruct(out bool hasValue, out T value)
         {
             hasValue = _hasValue;
             value = _value;
         }
 
+        /// <summary>Returns a string representation of the optional.</summary>
         public override string ToString() =>
             _hasValue ? $"Some({_value})" : "None";
 
+        /// <summary>Determines whether this optional is equal to the specified object.</summary>
         public override bool Equals(object? obj) =>
             obj is Optional<T> other && Equals(other);
 
+        /// <summary>Determines whether this optional is equal to another optional.</summary>
         public bool Equals(Optional<T> other) =>
             _hasValue == other._hasValue &&
             (!_hasValue || EqualityComparer<T>.Default.Equals(_value, other._value));
 
+        /// <summary>Returns a hash code for the optional.</summary>
         public override int GetHashCode()
         {
             if (!_hasValue)
@@ -67,7 +76,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Determines whether two optionals are equal.</summary>
         public static bool operator ==(Optional<T> left, Optional<T> right) => left.Equals(right);
+        /// <summary>Determines whether two optionals are not equal.</summary>
         public static bool operator !=(Optional<T> left, Optional<T> right) => !left.Equals(right);
 
         /// <summary>
@@ -91,6 +102,7 @@ namespace Sharpy
         private static readonly Dictionary<Type, (PropertyInfo isSome, FieldInfo value)> ReflectionCache
             = new Dictionary<Type, (PropertyInfo, FieldInfo)>();
 
+        /// <summary>Create an Optional containing the given value.</summary>
         public static Optional<T> Some<T>(T value) => Optional<T>.Some(value);
 
         /// <summary>

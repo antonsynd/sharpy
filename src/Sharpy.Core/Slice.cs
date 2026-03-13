@@ -1,11 +1,18 @@
 namespace Sharpy
 {
+    /// <summary>
+    /// Represents a slice with start, end, and step, matching Python's slice semantics.
+    /// </summary>
     public readonly partial struct Slice
     {
+        /// <summary>The start index of the slice.</summary>
         public readonly int start;
+        /// <summary>The end index of the slice (exclusive).</summary>
         public readonly int end;
+        /// <summary>The step of the slice.</summary>
         public readonly int step;
 
+        /// <summary>Create a slice with the given start, end, and step.</summary>
         public Slice(int start, int end, int step = 1)
         {
             this.start = start;
@@ -24,6 +31,7 @@ namespace Sharpy
             this.end = end ?? (this.step > 0 ? int.MaxValue : int.MinValue);
         }
 
+        /// <summary>Compute the number of elements in a slice range.</summary>
         public static int Len(int start, int end, int step)
         {
             System.Diagnostics.Debug.Assert(step > 0, "Slice.Len requires a positive step");
@@ -32,6 +40,7 @@ namespace Sharpy
             return (length + step - 1) / step;
         }
 
+        /// <summary>Create a Slice from a System.Range.</summary>
         public static Slice FromRange(System.Range range)
         {
             return new Slice(range.Start.Value, range.End.Value);

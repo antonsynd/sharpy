@@ -159,6 +159,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>Returns a string representation of the compiled pattern.</summary>
         public override string ToString()
         {
             return "re.compile('" + PatternStr + "')";

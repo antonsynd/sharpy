@@ -5,12 +5,14 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>Return r-length combinations of elements allowing individual elements to be repeated.</summary>
         public static CombinationsWithReplacementIterator<T> CombinationsWithReplacement<T>(IEnumerable<T> iterable, int r)
         {
             return new CombinationsWithReplacementIterator<T>(iterable, r);
         }
     }
 
+    /// <summary>Iterator that yields r-length combinations with replacement.</summary>
     public class CombinationsWithReplacementIterator<T> : Iterator<T[]>
     {
         private readonly T[] _pool;
@@ -42,6 +44,7 @@ namespace Sharpy
             }
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted)

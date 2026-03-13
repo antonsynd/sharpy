@@ -6,6 +6,7 @@ namespace Sharpy
     /// </summary>
     public interface IReverseEnumerable<out T>
     {
+        /// <summary>Returns an enumerator that iterates through the collection in reverse order.</summary>
         System.Collections.Generic.IEnumerator<T> GetReverseEnumerator();
     }
 }

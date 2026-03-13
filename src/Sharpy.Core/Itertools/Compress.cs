@@ -5,12 +5,14 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>Make an iterator that filters elements from data returning only those that have a corresponding element in selectors that evaluates to true.</summary>
         public static CompressIterator<T> Compress<T>(IEnumerable<T> data, IEnumerable<bool> selectors)
         {
             return new CompressIterator<T>(data, selectors);
         }
     }
 
+    /// <summary>Iterator that filters elements based on corresponding selector values.</summary>
     public class CompressIterator<T> : Iterator<T>
     {
         private readonly IEnumerator<T> _data;
@@ -24,6 +26,7 @@ namespace Sharpy
             _exhausted = false;
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted)

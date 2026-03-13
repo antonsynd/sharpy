@@ -11,12 +11,14 @@ namespace Sharpy
         private readonly IEnumerator<(T1, T2)> _enumerator;
         private readonly Func<T1, T2, TResult> _func;
 
+        /// <summary>Create a starmap iterator.</summary>
         public StarmapIterator(IEnumerable<(T1, T2)> iterable, Func<T1, T2, TResult> func)
         {
             _enumerator = iterable.GetEnumerator();
             _func = func;
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (!_enumerator.MoveNext())

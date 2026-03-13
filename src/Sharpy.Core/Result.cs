@@ -20,34 +20,41 @@ namespace Sharpy
             _isOk = isOk;
         }
 
-        // Factory methods
+        /// <summary>Create an Ok result containing the given value.</summary>
         public static Result<T, E> Ok(T value) => new Result<T, E>(value, default!, true);
+        /// <summary>Create an Err result containing the given error.</summary>
         public static Result<T, E> Err(E error) => new Result<T, E>(default!, error, false);
 
-        // Properties
+        /// <summary>Returns true if this result is Ok.</summary>
         public bool IsOk => _isOk;
+        /// <summary>Returns true if this result is Err.</summary>
         public bool IsErr => !_isOk;
 
-        // Methods
+        /// <summary>Returns the contained Ok value, or throws if Err.</summary>
         public T Unwrap() =>
             _isOk ? _value : throw new InvalidOperationException($"Called Unwrap on Err: {_error}");
 
+        /// <summary>Returns the contained Ok value, or the provided default.</summary>
         public T UnwrapOr(T defaultValue) =>
             _isOk ? _value : defaultValue;
 
+        /// <summary>Returns the contained Ok value, or computes it from a function applied to the error.</summary>
         public T UnwrapOrElse(Func<E, T> f) =>
             _isOk ? _value : f(_error);
 
+        /// <summary>Returns the contained Err value, or throws if Ok.</summary>
         public E UnwrapErr() =>
             _isOk ? throw new InvalidOperationException($"Called UnwrapErr on Ok: {_value}") : _error;
 
+        /// <summary>Maps an Ok value using the given function, leaving Err unchanged.</summary>
         public Result<U, E> Map<U>(Func<T, U> f) =>
             _isOk ? Result<U, E>.Ok(f(_value)) : Result<U, E>.Err(_error);
 
+        /// <summary>Maps an Err value using the given function, leaving Ok unchanged.</summary>
         public Result<T, F> MapErr<F>(Func<E, F> f) =>
             _isOk ? Result<T, F>.Ok(_value) : Result<T, F>.Err(f(_error));
 
-        // For pattern matching support (future)
+        /// <summary>Deconstructs the result into its components for pattern matching.</summary>
         public void Deconstruct(out bool isOk, out T value, out E error)
         {
             isOk = _isOk;
@@ -55,18 +62,22 @@ namespace Sharpy
             error = _error;
         }
 
+        /// <summary>Returns a string representation of the result.</summary>
         public override string ToString() =>
             _isOk ? $"Ok({_value})" : $"Err({_error})";
 
+        /// <summary>Determines whether this result is equal to the specified object.</summary>
         public override bool Equals(object? obj) =>
             obj is Result<T, E> other && Equals(other);
 
+        /// <summary>Determines whether this result is equal to another result.</summary>
         public bool Equals(Result<T, E> other) =>
             _isOk == other._isOk &&
             (_isOk
                 ? EqualityComparer<T>.Default.Equals(_value, other._value)
                 : EqualityComparer<E>.Default.Equals(_error, other._error));
 
+        /// <summary>Returns a hash code for the result.</summary>
         public override int GetHashCode()
         {
             unchecked
@@ -78,7 +89,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Determines whether two results are equal.</summary>
         public static bool operator ==(Result<T, E> left, Result<T, E> right) => left.Equals(right);
+        /// <summary>Determines whether two results are not equal.</summary>
         public static bool operator !=(Result<T, E> left, Result<T, E> right) => !left.Equals(right);
     }
 
@@ -88,7 +101,9 @@ namespace Sharpy
     /// </summary>
     public static class Result
     {
+        /// <summary>Create an Ok result containing the given value.</summary>
         public static Result<T, E> Ok<T, E>(T value) => Result<T, E>.Ok(value);
+        /// <summary>Create an Err result containing the given error.</summary>
         public static Result<T, E> Err<T, E>(E error) => Result<T, E>.Err(error);
 
         /// <summary>

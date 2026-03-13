@@ -5,12 +5,14 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>Make an iterator that aggregates elements from each iterable, filling missing values with fillvalue.</summary>
         public static ZipLongestIterator<T> ZipLongest<T>(IEnumerable<T>[] iterables, T fillvalue = default!)
         {
             return new ZipLongestIterator<T>(iterables, fillvalue);
         }
     }
 
+    /// <summary>Iterator that aggregates elements from multiple iterables, filling missing values.</summary>
     public class ZipLongestIterator<T> : Iterator<T[]>
     {
         private readonly IEnumerator<T>[] _enumerators;
@@ -31,6 +33,7 @@ namespace Sharpy
             _allExhausted = false;
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_allExhausted)

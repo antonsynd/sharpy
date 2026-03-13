@@ -10,8 +10,10 @@ namespace Sharpy
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum, AllowMultiple = false)]
     public sealed class SharpyModuleTypeAttribute : Attribute
     {
+        /// <summary>The module name this type belongs to.</summary>
         public string ModuleName { get; }
 
+        /// <summary>Create a SharpyModuleTypeAttribute with the specified module name.</summary>
         public SharpyModuleTypeAttribute(string moduleName)
         {
             ModuleName = moduleName;

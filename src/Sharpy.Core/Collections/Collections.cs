@@ -8,15 +8,27 @@ namespace Sharpy
     /// A deque (double-ended queue) is a generalization of stacks and queues
     /// that supports adding and removing elements from either end.
     /// </summary>
+    /// <typeparam name="T">The element type.</typeparam>
+    /// <example>
+    /// <code>
+    /// d = deque([1, 2, 3])
+    /// d.append(4)        # deque([1, 2, 3, 4])
+    /// d.appendleft(0)    # deque([0, 1, 2, 3, 4])
+    /// d.pop()            # 4
+    /// d.popleft()        # 0
+    /// </code>
+    /// </example>
     public class Deque<T> : IReadOnlyCollection<T>
     {
         private readonly System.Collections.Generic.LinkedList<T> _list;
 
+        /// <summary>Create an empty deque.</summary>
         public Deque()
         {
             _list = new System.Collections.Generic.LinkedList<T>();
         }
 
+        /// <summary>Create a deque initialized with elements from the iterable.</summary>
         public Deque(IEnumerable<T> iterable)
         {
             _list = new System.Collections.Generic.LinkedList<T>(iterable);
@@ -105,23 +117,35 @@ namespace Sharpy
         /// </summary>
         public int Count => _list.Count;
 
+        /// <summary>Return an enumerator over the deque elements.</summary>
         public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
 
+        /// <inheritdoc/>
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => _list.GetEnumerator();
     }
 
     /// <summary>
     /// A Counter is a dict subclass for counting hashable objects.
     /// </summary>
+    /// <typeparam name="T">The element type to count.</typeparam>
+    /// <example>
+    /// <code>
+    /// c = Counter(["a", "b", "a", "c", "a"])
+    /// c["a"]              # 3
+    /// c.most_common(2)    # [("a", 3), ("b", 1)]
+    /// </code>
+    /// </example>
     public class Counter<T> where T : notnull
     {
         private readonly System.Collections.Generic.Dictionary<T, int> _counts;
 
+        /// <summary>Create an empty counter.</summary>
         public Counter()
         {
             _counts = new System.Collections.Generic.Dictionary<T, int>();
         }
 
+        /// <summary>Create a counter from elements in the iterable.</summary>
         public Counter(IEnumerable<T> iterable)
         {
             _counts = new System.Collections.Generic.Dictionary<T, int>();
@@ -196,11 +220,21 @@ namespace Sharpy
     /// <summary>
     /// Dictionary with default values for missing keys.
     /// </summary>
+    /// <typeparam name="TKey">The key type.</typeparam>
+    /// <typeparam name="TValue">The value type.</typeparam>
+    /// <example>
+    /// <code>
+    /// dd = defaultdict(list)
+    /// dd["key"].append(1)    # automatically creates list for missing key
+    /// dd["key"]              # [1]
+    /// </code>
+    /// </example>
     public class DefaultDict<TKey, TValue> where TKey : notnull
     {
         private readonly System.Collections.Generic.Dictionary<TKey, TValue> _dict;
         private readonly Func<TValue> _defaultFactory;
 
+        /// <summary>Create a defaultdict with the given factory for missing keys.</summary>
         public DefaultDict(Func<TValue> defaultFactory)
         {
             _dict = new System.Collections.Generic.Dictionary<TKey, TValue>();
@@ -240,7 +274,9 @@ namespace Sharpy
             return _dict.ContainsKey(key);
         }
 
+        /// <summary>The keys of the dictionary.</summary>
         public IEnumerable<TKey> Keys => _dict.Keys;
+        /// <summary>The values of the dictionary.</summary>
         public IEnumerable<TValue> Values => _dict.Values;
     }
 
@@ -250,11 +286,15 @@ namespace Sharpy
     [SharpyModule("collections")]
     public static class Collections
     {
-        // Re-export the classes for convenience
+        /// <summary>The Deque type.</summary>
         public static Type DequeType => typeof(Deque<>);
+        /// <summary>The Counter type.</summary>
         public static Type CounterType => typeof(Counter<>);
+        /// <summary>The DefaultDict type.</summary>
         public static Type DefaultDictType => typeof(DefaultDict<,>);
+        /// <summary>The OrderedDict type.</summary>
         public static Type OrderedDictType => typeof(OrderedDict<,>);
+        /// <summary>The ChainMap type.</summary>
         public static Type ChainMapType => typeof(ChainMap<,>);
     }
 }

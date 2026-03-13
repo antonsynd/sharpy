@@ -1,5 +1,6 @@
 namespace Sharpy
 {
+    /// <summary>Forward iterator for List.</summary>
     public sealed partial class ListIterator<T> : Iterator<T>
     {
         private readonly List<T> _list;

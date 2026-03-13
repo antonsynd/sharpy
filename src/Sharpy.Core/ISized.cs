@@ -7,6 +7,7 @@ namespace Sharpy
     /// </summary>
     public interface ISized
     {
+        /// <summary>Gets the number of elements in the collection.</summary>
         int Count { get; }
     }
 }

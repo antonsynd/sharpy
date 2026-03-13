@@ -9,8 +9,10 @@ namespace Sharpy
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     public sealed class SharpyModuleAttribute : Attribute
     {
+        /// <summary>The module name (e.g., "math", "os").</summary>
         public string ModuleName { get; }
 
+        /// <summary>Create a SharpyModuleAttribute with the specified module name.</summary>
         public SharpyModuleAttribute(string moduleName)
         {
             ModuleName = moduleName;

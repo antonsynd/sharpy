@@ -5,12 +5,14 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>Make an iterator that returns consecutive keys and groups from the iterable.</summary>
         public static GroupbyIterator<T, TKey> Groupby<T, TKey>(IEnumerable<T> iterable, Func<T, TKey>? key = null)
         {
             return new GroupbyIterator<T, TKey>(iterable, key ?? (x => (TKey)(object)x!));
         }
     }
 
+    /// <summary>Iterator that groups consecutive elements by key.</summary>
     public class GroupbyIterator<T, TKey> : Iterator<(TKey Key, Sharpy.List<T> Group)>
     {
         private readonly IEnumerator<T> _enumerator;
@@ -27,6 +29,7 @@ namespace Sharpy
             _hasBuffered = false;
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted)

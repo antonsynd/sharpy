@@ -63,6 +63,7 @@ namespace Sharpy
             return _values.ContainsKey(name);
         }
 
+        /// <summary>Returns a string representation of the namespace.</summary>
         public override string ToString()
         {
             var parts = new System.Collections.Generic.List<string>();

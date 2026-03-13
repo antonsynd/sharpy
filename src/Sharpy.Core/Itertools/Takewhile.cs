@@ -5,12 +5,14 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>Make an iterator that returns elements from the iterable as long as the predicate is true.</summary>
         public static TakewhileIterator<T> Takewhile<T>(Func<T, bool> predicate, IEnumerable<T> iterable)
         {
             return new TakewhileIterator<T>(predicate, iterable);
         }
     }
 
+    /// <summary>Iterator that yields elements while a predicate is true.</summary>
     public class TakewhileIterator<T> : Iterator<T>
     {
         private readonly IEnumerator<T> _enumerator;
@@ -24,6 +26,7 @@ namespace Sharpy
             _exhausted = false;
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted)

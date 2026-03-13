@@ -4,12 +4,14 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>Return successive overlapping pairs taken from the input iterable.</summary>
         public static PairwiseIterator<T> Pairwise<T>(IEnumerable<T> iterable)
         {
             return new PairwiseIterator<T>(iterable);
         }
     }
 
+    /// <summary>Iterator that yields successive overlapping pairs.</summary>
     public class PairwiseIterator<T> : Iterator<(T, T)>
     {
         private readonly IEnumerator<T> _enumerator;
@@ -24,6 +26,7 @@ namespace Sharpy
             _exhausted = false;
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted)

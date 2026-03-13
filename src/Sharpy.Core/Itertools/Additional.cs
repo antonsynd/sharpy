@@ -13,12 +13,14 @@ namespace Sharpy
         private readonly IEnumerator<IEnumerable<T>> _iterables;
         private IEnumerator<T>? _currentIterator;
 
+        /// <summary>Create a chain iterator over the given iterables.</summary>
         public ChainIterator(IEnumerable<IEnumerable<T>> iterables)
         {
             _iterables = iterables.GetEnumerator();
             _currentIterator = null;
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             while (true)
@@ -60,11 +62,13 @@ namespace Sharpy
         private int _currentIndex;
         private bool _exhausted;
 
+        /// <summary>Create an islice iterator that yields elements up to stop.</summary>
         public IsliceIterator(IEnumerable<T> iterable, int stop)
             : this(iterable, 0, stop, 1)
         {
         }
 
+        /// <summary>Create an islice iterator with start, stop, and step.</summary>
         public IsliceIterator(IEnumerable<T> iterable, int start, int stop, int step = 1)
         {
             if (start < 0 || stop < 0 || step <= 0)
@@ -90,6 +94,7 @@ namespace Sharpy
             }
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted || _currentIndex >= _stop)
@@ -134,6 +139,7 @@ namespace Sharpy
         private bool _started;
         private bool _exhausted;
 
+        /// <summary>Create a combinations iterator with the given r-length.</summary>
         public CombinationsIterator(IEnumerable<T> iterable, int r)
         {
             _pool = iterable.ToArray();
@@ -159,6 +165,7 @@ namespace Sharpy
             }
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted)
@@ -211,6 +218,7 @@ namespace Sharpy
         private bool _started;
         private bool _exhausted;
 
+        /// <summary>Create a permutations iterator with the given r-length.</summary>
         public PermutationsIterator(IEnumerable<T> iterable, int? r = null)
         {
             _pool = iterable.ToArray();
@@ -236,6 +244,7 @@ namespace Sharpy
             }
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted)
@@ -284,6 +293,14 @@ namespace Sharpy
         /// Make an iterator that returns elements from the first iterable until it is exhausted,
         /// then proceeds to the next iterable.
         /// </summary>
+        /// <param name="iterables">One or more iterables to chain together.</param>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <returns>An iterator over the concatenated elements.</returns>
+        /// <example>
+        /// <code>
+        /// list(itertools.chain([1, 2], [3, 4]))    # [1, 2, 3, 4]
+        /// </code>
+        /// </example>
         public static ChainIterator<T> Chain<T>(params IEnumerable<T>[] iterables)
         {
             return new ChainIterator<T>(iterables);
@@ -292,6 +309,15 @@ namespace Sharpy
         /// <summary>
         /// Make an iterator that returns selected elements from the iterable.
         /// </summary>
+        /// <param name="iterable">The source iterable.</param>
+        /// <param name="stop">Stop index (exclusive).</param>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <returns>An iterator over the selected elements.</returns>
+        /// <example>
+        /// <code>
+        /// list(itertools.islice([0, 1, 2, 3, 4], 3))    # [0, 1, 2]
+        /// </code>
+        /// </example>
         public static IsliceIterator<T> Islice<T>(IEnumerable<T> iterable, int stop)
         {
             return new IsliceIterator<T>(iterable, stop);
@@ -300,6 +326,12 @@ namespace Sharpy
         /// <summary>
         /// Make an iterator that returns selected elements from the iterable.
         /// </summary>
+        /// <param name="iterable">The source iterable.</param>
+        /// <param name="start">Start index.</param>
+        /// <param name="stop">Stop index (exclusive).</param>
+        /// <param name="step">Step value (default 1).</param>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <returns>An iterator over the selected elements.</returns>
         public static IsliceIterator<T> Islice<T>(IEnumerable<T> iterable, int start, int stop, int step = 1)
         {
             return new IsliceIterator<T>(iterable, start, stop, step);

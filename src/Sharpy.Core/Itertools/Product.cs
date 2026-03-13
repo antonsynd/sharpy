@@ -5,12 +5,14 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>Cartesian product of input iterables, equivalent to nested for-loops.</summary>
         public static ProductIterator<T> Product<T>(params IEnumerable<T>[] iterables)
         {
             return new ProductIterator<T>(iterables);
         }
     }
 
+    /// <summary>Iterator that yields tuples from the Cartesian product of input iterables.</summary>
     public class ProductIterator<T> : Iterator<T[]>
     {
         private readonly T[][] _pools;
@@ -36,6 +38,7 @@ namespace Sharpy
             }
         }
 
+        /// <inheritdoc/>
         public override bool MoveNext()
         {
             if (_exhausted)

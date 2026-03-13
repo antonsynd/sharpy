@@ -3,11 +3,13 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>Make an iterator that returns the element indefinitely.</summary>
         public static Iterator<T> Repeat<T>(T elem)
         {
             return new RepeatIterator<T>(elem);
         }
 
+        /// <summary>Make an iterator that returns the element n times.</summary>
         public static Iterator<T> Repeat<T>(T elem, uint n)
         {
             return new RepeatIterator<T>(elem, n);
