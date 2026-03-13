@@ -39,6 +39,7 @@ internal class DiscoveredTypeInfo
     public Dictionary<string, List<FunctionSignature>> ProtocolMethods { get; set; } = new();
     public List<DiscoveredPropertyInfo> Properties { get; set; } = new();
     public bool IsModuleType { get; set; }
+    public string? Documentation { get; set; }
 }
 
 /// <summary>
@@ -50,6 +51,7 @@ internal class DiscoveredPropertyInfo
     public TypeSignature PropertyType { get; set; } = new();
     public bool HasGetter { get; set; }
     public bool HasSetter { get; set; }
+    public string? Documentation { get; set; }
 }
 
 /// <summary>
@@ -71,6 +73,7 @@ internal class FunctionSignature
     /// Method reference for rehydration: AssemblyName|TypeName|MethodName|ParamCount
     /// </summary>
     public string MethodToken { get; set; } = string.Empty;
+    public string? Documentation { get; set; }
 }
 
 /// <summary>
@@ -83,6 +86,7 @@ internal class ParameterSignature
     public bool HasDefault { get; set; }
     public string? DefaultValue { get; set; }
     public bool IsVariadic { get; set; }
+    public string? Documentation { get; set; }
 }
 
 /// <summary>
