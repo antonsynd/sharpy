@@ -311,7 +311,7 @@ internal sealed class LanguageService : IDisposable
     /// </summary>
     public IReadOnlyList<string> GetProjectFileUris()
     {
-        var config = _projectConfig;
+        var config = Volatile.Read(ref _projectConfig);
         if (config == null)
             return Array.Empty<string>();
 
@@ -345,7 +345,7 @@ internal sealed class LanguageService : IDisposable
     /// </returns>
     public async Task<IReadOnlyList<string>> OnDocumentChangedAsync(string uri, CancellationToken ct = default)
     {
-        var config = _projectConfig;
+        var config = Volatile.Read(ref _projectConfig);
         if (config == null)
             return Array.Empty<string>();
 

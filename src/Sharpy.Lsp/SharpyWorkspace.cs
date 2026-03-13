@@ -377,29 +377,17 @@ internal sealed class SharpyWorkspace : IDisposable
 
     private void ScheduleAnalysis(string uri)
     {
-        // Create the new timer first, then atomically swap it in.
-        // This avoids a timer leak that AddOrUpdate's addValueFactory can cause
-        // when a concurrent CAS retry discards the factory result.
-        var newTimer = new Timer(_ => FireAndForgetAnalysis(uri),
-            null, DebounceDelay, Timeout.InfiniteTimeSpan);
+        // Reuse existing timer via GetOrAdd + Change to avoid timer leaks.
+        // GetOrAdd creates a dormant timer (infinite delay) on first call per URI;
+        // subsequent calls reset it. This avoids the CAS-race leak that
+        // AddOrUpdate's factory-based overloads can cause.
+        var timer = _debounceTimers.GetOrAdd(uri,
+            _ => new Timer(_ => FireAndForgetAnalysis(uri),
+                null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan));
 
-        var oldTimer = _debounceTimers.AddOrUpdate(
-            uri,
-            newTimer,
-            (_, existing) =>
-            {
-                existing.Dispose();
-                return newTimer;
-            });
-
-        // If AddOrUpdate returned an existing timer (not our new one), it means
-        // the updateValueFactory ran and disposed the old timer, returning newTimer.
-        // If a concurrent call won the race and addValueFactory was discarded,
-        // oldTimer == the other thread's timer, not ours — dispose our leaked timer.
-        if (!ReferenceEquals(oldTimer, newTimer))
-        {
-            newTimer.Dispose();
-        }
+        try
+        { timer.Change(DebounceDelay, Timeout.InfiniteTimeSpan); }
+        catch (ObjectDisposedException) { /* Timer was disposed by CloseDocument race */ }
     }
 
     // Timer callbacks require void return; the full try-catch ensures no exceptions escape.

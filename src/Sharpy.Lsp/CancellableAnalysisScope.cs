@@ -36,7 +36,12 @@ internal sealed class CancellableAnalysisScope : IDisposable
                     try
                     { oldCts.Cancel(); }
                     catch (ObjectDisposedException) { }
-                    oldCts.Dispose();
+                    finally
+                    {
+                        try
+                        { oldCts.Dispose(); }
+                        catch (ObjectDisposedException) { }
+                    }
                     break;
                 }
                 // Another thread updated the key concurrently; retry
