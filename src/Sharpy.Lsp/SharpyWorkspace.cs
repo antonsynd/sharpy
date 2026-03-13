@@ -21,7 +21,17 @@ internal sealed class DocumentState : IDisposable
     private readonly SemaphoreSlim _analysisSemaphore = new(1, 1);
     private readonly SemaphoreSlim _parseSemaphore = new(1, 1);
     private readonly object _stateLock = new();
-    private CancellationTokenSource? _pendingCts;
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _pendingCtsRegistry = new();
+    private int _analysisVersion;
+
+    /// <summary>
+    /// Monotonically increasing version counter. Incremented on every edit.
+    /// Used to detect and discard stale analysis results.
+    /// </summary>
+    public int AnalysisVersion
+    {
+        get { lock (_stateLock) { return _analysisVersion; } }
+    }
 
     public DocumentState(string uri, string text, int version)
     {
@@ -38,6 +48,7 @@ internal sealed class DocumentState : IDisposable
             Version = version;
             CachedAnalysis = null;
             CachedParseResult = null;
+            _analysisVersion++;
         }
     }
 
@@ -79,6 +90,7 @@ internal sealed class DocumentState : IDisposable
             Version = version;
             CachedAnalysis = null;
             CachedParseResult = null;
+            _analysisVersion++;
         }
     }
 
@@ -105,33 +117,30 @@ internal sealed class DocumentState : IDisposable
         try
         {
             string text;
-            SourceText sourceText;
+            int versionAtStart;
             lock (_stateLock)
             {
                 // Double-check after acquiring lock
                 if (CachedAnalysis != null)
                     return CachedAnalysis;
-                sourceText = SourceText;
-                text = sourceText.ToString();
+                text = SourceText.ToString();
+                versionAtStart = _analysisVersion;
             }
 
-            // Cancel any previous pending analysis
-            var newCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            var oldCts = Interlocked.Exchange(ref _pendingCts, newCts);
-            if (oldCts != null)
-            {
-                await oldCts.CancelAsync().ConfigureAwait(false);
-                oldCts.Dispose();
-            }
+            using var scope = new CancellableAnalysisScope(_pendingCtsRegistry, Uri, ct);
 
             var result = await Task.Run(
-                () => api.Analyze(text, newCts.Token),
-                newCts.Token
+                () => api.Analyze(text, scope.Token),
+                scope.Token
             ).ConfigureAwait(false);
 
             lock (_stateLock)
             {
-                CachedAnalysis = result;
+                // Only cache if document hasn't changed during analysis
+                if (_analysisVersion == versionAtStart)
+                {
+                    CachedAnalysis = result;
+                }
             }
             return result;
         }
@@ -180,9 +189,13 @@ internal sealed class DocumentState : IDisposable
 
     public void Dispose()
     {
-        var cts = Interlocked.Exchange(ref _pendingCts, null);
-        cts?.Cancel();
-        cts?.Dispose();
+        foreach (var kvp in _pendingCtsRegistry)
+        {
+            try { kvp.Value.Cancel(); }
+            catch (ObjectDisposedException) { }
+            kvp.Value.Dispose();
+        }
+        _pendingCtsRegistry.Clear();
         _analysisSemaphore.Dispose();
         _parseSemaphore.Dispose();
     }

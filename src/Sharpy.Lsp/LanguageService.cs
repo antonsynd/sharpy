@@ -351,16 +351,8 @@ internal sealed class LanguageService : IDisposable
             return Array.Empty<string>();
 
         // Cancel any in-flight reanalysis for this document and create a new linked CTS
-        var newCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        if (_documentCts.TryGetValue(uri, out var oldCts))
-        {
-            try
-            { await oldCts.CancelAsync().ConfigureAwait(false); }
-            catch (ObjectDisposedException) { }
-            oldCts.Dispose();
-        }
-        _documentCts[uri] = newCts;
-        var linkedToken = newCts.Token;
+        using var scope = new CancellableAnalysisScope(_documentCts, uri, ct);
+        var linkedToken = scope.Token;
 
         // Determine affected files using the dependency graph
         var deps = _projectAnalysis?.Dependencies;

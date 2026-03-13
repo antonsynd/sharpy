@@ -306,6 +306,46 @@ public class LanguageServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task RapidEdits_CancelStaleAnalysis_ParseStillWorks()
+    {
+        _workspace.OpenDocument("file:///test.spy", "x: int = 1", 1);
+
+        // Simulate rapid edits
+        for (var i = 0; i < 5; i++)
+        {
+            _workspace.UpdateDocument("file:///test.spy", $"x: int = {i}", i + 2);
+        }
+
+        // Parse-only path should still work even during cancelled semantic analysis
+        var parseResult = await _service.GetParseResultAsync("file:///test.spy");
+        parseResult.Should().NotBeNull();
+        parseResult!.Ast.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void CancellableAnalysisScope_CancelsPrevious()
+    {
+        var registry = new System.Collections.Concurrent.ConcurrentDictionary<string, CancellationTokenSource>();
+
+        // Create first scope
+        var scope1 = new CancellableAnalysisScope(registry, "doc1", CancellationToken.None);
+        var token1 = scope1.Token;
+        token1.IsCancellationRequested.Should().BeFalse();
+
+        // Create second scope for same key — should cancel the first
+        var scope2 = new CancellableAnalysisScope(registry, "doc1", CancellationToken.None);
+        token1.IsCancellationRequested.Should().BeTrue("previous scope should be cancelled");
+        scope2.Token.IsCancellationRequested.Should().BeFalse("new scope should not be cancelled");
+
+        // Different key should not affect scope2
+        var scope3 = new CancellableAnalysisScope(registry, "doc2", CancellationToken.None);
+        scope2.Token.IsCancellationRequested.Should().BeFalse("different key should not cancel");
+
+        scope2.Dispose();
+        scope3.Dispose();
+    }
+
+    [Fact]
     public async Task GetParseResult_ReturnsAstWithoutSemanticAnalysis()
     {
         _workspace.OpenDocument("file:///test.spy", "def greet() -> str:\n    return \"hi\"\ndef main():\n    print(greet())", 1);
