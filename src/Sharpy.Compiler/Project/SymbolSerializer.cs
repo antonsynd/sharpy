@@ -123,7 +123,8 @@ internal static class SymbolSerializer
             Constructors = constructors,
             IsReExport = ts.IsReExport,
             OriginalModule = ts.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(ts.CodeGenInfo)
+            CodeGenInfo = SerializeCodeGenInfo(ts.CodeGenInfo),
+            Documentation = ts.Documentation
         };
     }
 
@@ -149,7 +150,8 @@ internal static class SymbolSerializer
             IsGenerator = fs.IsGenerator,
             IsReExport = fs.IsReExport,
             OriginalModule = fs.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(fs.CodeGenInfo)
+            CodeGenInfo = SerializeCodeGenInfo(fs.CodeGenInfo),
+            Documentation = fs.Documentation
         };
     }
 
@@ -170,6 +172,7 @@ internal static class SymbolSerializer
             IsReExport = vs.IsReExport,
             OriginalModule = vs.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(vs.CodeGenInfo),
+            Documentation = vs.Documentation,
             Properties = new Dictionary<string, object>
             {
                 ["IsParameter"] = vs.IsParameter,
@@ -197,7 +200,8 @@ internal static class SymbolSerializer
                 kvp => ComputeSymbolId(kvp.Value, ms.FilePath)),
             IsReExport = ms.IsReExport,
             OriginalModule = ms.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(ms.CodeGenInfo)
+            CodeGenInfo = SerializeCodeGenInfo(ms.CodeGenInfo),
+            Documentation = ms.Documentation
         };
     }
 
@@ -217,7 +221,8 @@ internal static class SymbolSerializer
             // TypeAnnotation is AST-based, we don't serialize it (reconstructed from source on reparse)
             IsReExport = tas.IsReExport,
             OriginalModule = tas.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(tas.CodeGenInfo)
+            CodeGenInfo = SerializeCodeGenInfo(tas.CodeGenInfo),
+            Documentation = tas.Documentation
         };
     }
 
@@ -237,7 +242,8 @@ internal static class SymbolSerializer
             Variance = tps.Variance != TypeParameterVariance.None ? tps.Variance.ToString() : null,
             IsReExport = tps.IsReExport,
             OriginalModule = tps.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(tps.CodeGenInfo)
+            CodeGenInfo = SerializeCodeGenInfo(tps.CodeGenInfo),
+            Documentation = tps.Documentation
         };
     }
 
@@ -250,7 +256,8 @@ internal static class SymbolSerializer
             HasDefault = ps.HasDefault,
             IsVariadic = ps.IsVariadic,
             IsPositionalOnly = ps.IsPositionalOnly,
-            IsKeywordOnly = ps.IsKeywordOnly
+            IsKeywordOnly = ps.IsKeywordOnly,
+            Documentation = ps.Documentation
         };
     }
 
@@ -362,6 +369,8 @@ internal static class SymbolSerializer
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
         };
 
+        symbol.Documentation = cached.Documentation;
+
         // BaseType and Interfaces resolved in a second pass via symbolRegistry
         return symbol;
     }
@@ -374,7 +383,7 @@ internal static class SymbolSerializer
         var parameters = cached.Parameters?.Select(p => DeserializeParameter(p, typeResolver)).ToList()
             ?? new List<ParameterSymbol>();
 
-        return new FunctionSymbol
+        var symbol = new FunctionSymbol
         {
             Name = cached.Name,
             Kind = SymbolKind.Function,
@@ -394,6 +403,8 @@ internal static class SymbolSerializer
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
         };
+        symbol.Documentation = cached.Documentation;
+        return symbol;
     }
 
     private static VariableSymbol DeserializeVariableSymbol(
@@ -403,7 +414,7 @@ internal static class SymbolSerializer
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
         var props = cached.Properties ?? new Dictionary<string, object>();
 
-        return new VariableSymbol
+        var symbol = new VariableSymbol
         {
             Name = cached.Name,
             Kind = SymbolKind.Variable,
@@ -420,6 +431,8 @@ internal static class SymbolSerializer
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
         };
+        symbol.Documentation = cached.Documentation;
+        return symbol;
     }
 
     /// <summary>
@@ -447,7 +460,7 @@ internal static class SymbolSerializer
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
 
         // Exports are resolved in a second pass
-        return new ModuleSymbol
+        var symbol = new ModuleSymbol
         {
             Name = cached.Name,
             Kind = SymbolKind.Module,
@@ -461,13 +474,15 @@ internal static class SymbolSerializer
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
         };
+        symbol.Documentation = cached.Documentation;
+        return symbol;
     }
 
     private static TypeAliasSymbol DeserializeTypeAliasSymbol(CachedSymbol cached)
     {
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
 
-        return new TypeAliasSymbol
+        var symbol = new TypeAliasSymbol
         {
             Name = cached.Name,
             Kind = SymbolKind.TypeAlias,
@@ -480,6 +495,8 @@ internal static class SymbolSerializer
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
         };
+        symbol.Documentation = cached.Documentation;
+        return symbol;
     }
 
     private static TypeParameterSymbol DeserializeTypeParameterSymbol(CachedSymbol cached)
@@ -489,7 +506,7 @@ internal static class SymbolSerializer
             ? Enum.Parse<TypeParameterVariance>(cached.Variance)
             : TypeParameterVariance.None;
 
-        return new TypeParameterSymbol
+        var symbol = new TypeParameterSymbol
         {
             Name = cached.Name,
             Kind = SymbolKind.TypeParameter,
@@ -503,6 +520,8 @@ internal static class SymbolSerializer
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
         };
+        symbol.Documentation = cached.Documentation;
+        return symbol;
     }
 
     private static ParameterSymbol DeserializeParameter(
@@ -516,7 +535,8 @@ internal static class SymbolSerializer
             HasDefault = cached.HasDefault,
             IsVariadic = cached.IsVariadic,
             IsPositionalOnly = cached.IsPositionalOnly,
-            IsKeywordOnly = cached.IsKeywordOnly
+            IsKeywordOnly = cached.IsKeywordOnly,
+            Documentation = cached.Documentation
         };
     }
 

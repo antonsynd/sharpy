@@ -153,6 +153,11 @@ internal record CachedSymbol
     public string? Variance { get; init; }
 
     /// <summary>
+    /// Documentation string (from source docstrings or XML docs)
+    /// </summary>
+    public string? Documentation { get; init; }
+
+    /// <summary>
     /// Additional properties for extensibility
     /// </summary>
     public Dictionary<string, object>? Properties { get; init; }
@@ -209,6 +214,11 @@ internal record CachedParameter
     /// Whether the parameter is keyword-only (after * or *args)
     /// </summary>
     public bool IsKeywordOnly { get; init; }
+
+    /// <summary>
+    /// Documentation string (from XML doc param tags or source)
+    /// </summary>
+    public string? Documentation { get; init; }
 }
 
 /// <summary>
