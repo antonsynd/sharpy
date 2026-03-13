@@ -126,11 +126,14 @@ public static class AstFingerprint
 
     private static bool ParametersEqual(ImmutableArray<Parameter> a, ImmutableArray<Parameter> b)
     {
-        if (a.Length != b.Length) return false;
+        if (a.Length != b.Length)
+            return false;
         for (int i = 0; i < a.Length; i++)
         {
-            if (a[i].Name != b[i].Name) return false;
-            if (!TypeAnnotationEquals(a[i].Type, b[i].Type)) return false;
+            if (a[i].Name != b[i].Name)
+                return false;
+            if (!TypeAnnotationEquals(a[i].Type, b[i].Type))
+                return false;
             // Default values are part of the signature for re-analysis purposes
         }
         return true;
@@ -138,48 +141,58 @@ public static class AstFingerprint
 
     private static bool TypeParamsEqual(ImmutableArray<TypeParameterDef> a, ImmutableArray<TypeParameterDef> b)
     {
-        if (a.Length != b.Length) return false;
+        if (a.Length != b.Length)
+            return false;
         for (int i = 0; i < a.Length; i++)
         {
-            if (a[i].Name != b[i].Name) return false;
+            if (a[i].Name != b[i].Name)
+                return false;
         }
         return true;
     }
 
     private static bool TypeAnnotationEquals(TypeAnnotation? a, TypeAnnotation? b)
     {
-        if (a == null && b == null) return true;
-        if (a == null || b == null) return false;
+        if (a == null && b == null)
+            return true;
+        if (a == null || b == null)
+            return false;
         // Compare the string representation — sufficient for signature comparison
         return a.ToString() == b.ToString();
     }
 
     private static bool TypeAnnotationsEqual(ImmutableArray<TypeAnnotation> a, ImmutableArray<TypeAnnotation> b)
     {
-        if (a.Length != b.Length) return false;
+        if (a.Length != b.Length)
+            return false;
         for (int i = 0; i < a.Length; i++)
         {
-            if (!TypeAnnotationEquals(a[i], b[i])) return false;
+            if (!TypeAnnotationEquals(a[i], b[i]))
+                return false;
         }
         return true;
     }
 
     private static bool DecoratorsEqual(ImmutableArray<Decorator> a, ImmutableArray<Decorator> b)
     {
-        if (a.Length != b.Length) return false;
+        if (a.Length != b.Length)
+            return false;
         for (int i = 0; i < a.Length; i++)
         {
-            if (a[i].Name != b[i].Name) return false;
+            if (a[i].Name != b[i].Name)
+                return false;
         }
         return true;
     }
 
     private static bool ImportAliasesEqual(ImmutableArray<ImportAlias> a, ImmutableArray<ImportAlias> b)
     {
-        if (a.Length != b.Length) return false;
+        if (a.Length != b.Length)
+            return false;
         for (int i = 0; i < a.Length; i++)
         {
-            if (a[i].Name != b[i].Name || a[i].AsName != b[i].AsName) return false;
+            if (a[i].Name != b[i].Name || a[i].AsName != b[i].AsName)
+                return false;
         }
         return true;
     }
@@ -191,7 +204,8 @@ public static class AstFingerprint
     /// </summary>
     private static bool BodyEquals(ImmutableArray<Statement> a, ImmutableArray<Statement> b)
     {
-        if (a.Length != b.Length) return false;
+        if (a.Length != b.Length)
+            return false;
         for (int i = 0; i < a.Length; i++)
         {
             // Use record ToString which includes all fields including positions.
@@ -245,9 +259,12 @@ public static class AstFingerprint
     /// </summary>
     private static bool ExpressionEquals(Expression? a, Expression? b)
     {
-        if (a == null && b == null) return true;
-        if (a == null || b == null) return false;
-        if (a.GetType() != b.GetType()) return false;
+        if (a == null && b == null)
+            return true;
+        if (a == null || b == null)
+            return false;
+        if (a.GetType() != b.GetType())
+            return false;
 
         return (a, b) switch
         {

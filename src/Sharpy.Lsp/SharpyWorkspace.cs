@@ -234,7 +234,8 @@ internal sealed class DocumentState : IDisposable
     {
         foreach (var kvp in _pendingCtsRegistry)
         {
-            try { kvp.Value.Cancel(); }
+            try
+            { kvp.Value.Cancel(); }
             catch (ObjectDisposedException) { }
             kvp.Value.Dispose();
         }

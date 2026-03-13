@@ -26,7 +26,8 @@ internal sealed class CancellableAnalysisScope : IDisposable
         // Cancel and dispose any previous CTS for this key
         if (_registry.TryGetValue(key, out var oldCts))
         {
-            try { oldCts.Cancel(); }
+            try
+            { oldCts.Cancel(); }
             catch (ObjectDisposedException) { }
             oldCts.Dispose();
         }
