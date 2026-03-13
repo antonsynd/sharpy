@@ -138,6 +138,31 @@ public class SharpySourceGeneratorTests
         result.Should().Be("T");
     }
 
+    [Fact]
+    public void FormatTypeAnnotation_UnknownType_ReturnsEmptyString()
+    {
+        var result = SharpySourceGenerator.FormatTypeAnnotation(SemanticType.Unknown);
+        result.Should().Be("");
+    }
+
+    #endregion
+
+    #region FormatParameter
+
+    [Fact]
+    public void FormatParameter_WithKnownType_IncludesTypeAnnotation()
+    {
+        var result = SharpySourceGenerator.FormatParameter("x", (BuiltinType)SemanticType.Int);
+        result.Should().Be("x: int");
+    }
+
+    [Fact]
+    public void FormatParameter_WithUnknownType_OmitsTypeAnnotation()
+    {
+        var result = SharpySourceGenerator.FormatParameter("x", SemanticType.Unknown);
+        result.Should().Be("x");
+    }
+
     #endregion
 
     #region FormatFunctionDef
@@ -209,6 +234,29 @@ public class SharpySourceGeneratorTests
 
         result.Should().Contain("return 42");
         result.Should().NotContain("pass");
+    }
+
+    [Fact]
+    public void FormatFunctionDef_WithUnknownParameterType_OmitsTypeAnnotation()
+    {
+        var parameters = new (string Name, SemanticType Type)[]
+        {
+            ("x", SemanticType.Unknown),
+            ("y", (BuiltinType)SemanticType.Int)
+        };
+        var result = SharpySourceGenerator.FormatFunctionDef("process", parameters, null, 0);
+
+        result.Should().Contain("def process(x, y: int):");
+    }
+
+    [Fact]
+    public void FormatFunctionDef_WithUnknownReturnType_OmitsArrow()
+    {
+        var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
+        var result = SharpySourceGenerator.FormatFunctionDef(
+            "get_value", parameters, SemanticType.Unknown, 0);
+
+        result.Should().NotContain("->");
     }
 
     #endregion

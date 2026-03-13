@@ -21,6 +21,7 @@ internal static class SharpySourceGenerator
     {
         return type switch
         {
+            UnknownType => "",
             BuiltinType bt => bt.Name,
             GenericType gt => FormatGenericType(gt),
             UserDefinedType udt => udt.Name,
@@ -81,9 +82,12 @@ internal static class SharpySourceGenerator
 
     /// <summary>
     /// Formats a parameter as a Sharpy parameter string.
+    /// Omits the type annotation when type is unknown.
     /// </summary>
     public static string FormatParameter(string name, SemanticType type)
     {
+        if (type is UnknownType)
+            return name;
         return $"{name}: {FormatTypeAnnotation(type)}";
     }
 
@@ -115,7 +119,7 @@ internal static class SharpySourceGenerator
 
         sb.Append(')');
 
-        if (returnType != null && returnType is not VoidType)
+        if (returnType is not null and not VoidType and not UnknownType)
         {
             sb.Append(" -> ");
             sb.Append(FormatTypeAnnotation(returnType));

@@ -223,7 +223,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
             }
         }
 
-        // Last resort: unknown type. Use object as a placeholder.
+        // Last resort: return unknown type (parameter will be emitted without type annotation).
         return SemanticType.Unknown;
     }
 
