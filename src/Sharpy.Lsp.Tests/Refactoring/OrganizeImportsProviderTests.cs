@@ -25,8 +25,7 @@ public class OrganizeImportsProviderTests
             range ?? new LspRange(new Position(0, 0), new Position(0, 0)),
             diagnostics ?? new Container<Diagnostic>(),
             analysis,
-            source,
-            _api);
+            source);
         return await provider.GetCodeActionsAsync(context, CancellationToken.None);
     }
 
@@ -104,8 +103,7 @@ public class OrganizeImportsProviderTests
             new LspRange(new Position(0, 0), new Position(0, 0)),
             new Container<Diagnostic>(),
             null,
-            null,
-            _api);
+            null);
         var actions = await provider.GetCodeActionsAsync(context, CancellationToken.None);
 
         actions.Should().BeEmpty();
@@ -133,8 +131,7 @@ public class OrganizeImportsProviderTests
             new LspRange(new Position(0, 0), new Position(0, 0)),
             diagnostics,
             analysis,
-            source,
-            _api);
+            source);
         var actions = await provider.GetCodeActionsAsync(context, CancellationToken.None);
 
         actions.Should().ContainSingle();

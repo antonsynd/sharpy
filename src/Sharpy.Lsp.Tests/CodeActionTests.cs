@@ -29,7 +29,7 @@ public class CodeActionTests : IDisposable
         _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
         ICodeActionProvider[] providers = [new DiagnosticQuickFixProvider()];
-        _handler = new SharpyCodeActionHandler(_languageService, _api, _workspace, providers);
+        _handler = new SharpyCodeActionHandler(_languageService, providers);
     }
 
     public void Dispose()

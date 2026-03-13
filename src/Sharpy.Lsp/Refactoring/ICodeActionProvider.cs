@@ -13,14 +13,12 @@ namespace Sharpy.Lsp.Refactoring;
 /// <param name="Diagnostics">Diagnostics reported for the document at the requested range.</param>
 /// <param name="Analysis">Semantic analysis result for the document, or null if unavailable.</param>
 /// <param name="SourceText">The full source text of the document, or null if unavailable.</param>
-/// <param name="CompilerApi">The compiler API instance for additional queries.</param>
 public sealed record CodeActionProviderContext(
     DocumentUri DocumentUri,
     OmniSharp.Extensions.LanguageServer.Protocol.Models.Range Range,
     Container<Diagnostic> Diagnostics,
     SemanticResult? Analysis,
-    string? SourceText,
-    CompilerApi CompilerApi);
+    string? SourceText);
 
 /// <summary>
 /// Interface for extensible code action providers.

@@ -240,6 +240,25 @@ internal sealed class LanguageService : IDisposable
     }
 
     /// <summary>
+    /// Returns the raw document text for a URI from the workspace.
+    /// Returns null if the document is not currently open.
+    /// </summary>
+    public string? GetDocumentText(string uri)
+    {
+        return _workspace.GetDocument(uri)?.Text;
+    }
+
+    /// <summary>
+    /// Returns the cached analysis for a document, if available.
+    /// This is useful when the LanguageService is not yet ready (e.g., still indexing)
+    /// and a handler needs to fall back to the last known analysis.
+    /// </summary>
+    public SemanticResult? GetCachedAnalysis(string uri)
+    {
+        return _workspace.GetDocument(uri)?.CachedAnalysis;
+    }
+
+    /// <summary>
     /// Returns source text for a file. Checks workspace for open docs first,
     /// then reads from disk for project files not currently open.
     /// </summary>

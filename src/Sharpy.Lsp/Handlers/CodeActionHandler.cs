@@ -13,19 +13,13 @@ namespace Sharpy.Lsp.Handlers;
 internal sealed class SharpyCodeActionHandler : CodeActionHandlerBase
 {
     private readonly LanguageService _languageService;
-    private readonly CompilerApi _compilerApi;
-    private readonly SharpyWorkspace _workspace;
     private readonly IEnumerable<ICodeActionProvider> _providers;
 
     public SharpyCodeActionHandler(
         LanguageService languageService,
-        CompilerApi compilerApi,
-        SharpyWorkspace workspace,
         IEnumerable<ICodeActionProvider> providers)
     {
         _languageService = languageService;
-        _compilerApi = compilerApi;
-        _workspace = workspace;
         _providers = providers;
     }
 
@@ -34,18 +28,18 @@ internal sealed class SharpyCodeActionHandler : CodeActionHandlerBase
         CancellationToken ct)
     {
         var uri = request.TextDocument.Uri;
+        var uriString = uri.ToString();
 
-        // Get document text
-        var doc = _workspace.GetDocument(uri.ToString());
-        var text = doc?.Text;
+        // Get document text via LanguageService
+        var text = _languageService.GetDocumentText(uriString);
 
         // Get semantic analysis (project-aware if available)
         SemanticResult? analysis = null;
         if (_languageService.IsReady)
         {
-            analysis = await _languageService.GetAnalysisAsync(uri.ToString(), ct).ConfigureAwait(false);
+            analysis = await _languageService.GetAnalysisAsync(uriString, ct).ConfigureAwait(false);
         }
-        analysis ??= doc?.CachedAnalysis;
+        analysis ??= _languageService.GetCachedAnalysis(uriString);
 
         // Build provider context
         var context = new Refactoring.CodeActionProviderContext(
@@ -53,8 +47,7 @@ internal sealed class SharpyCodeActionHandler : CodeActionHandlerBase
             request.Range,
             request.Context.Diagnostics,
             analysis,
-            text,
-            _compilerApi);
+            text);
 
         // Collect actions from all providers
         var actions = new List<CommandOrCodeAction>();

@@ -24,8 +24,7 @@ public class ConvertFormsProviderTests
             range ?? new LspRange(new Position(0, 0), new Position(0, 0)),
             new Container<Diagnostic>(),
             analysis,
-            source,
-            _api);
+            source);
         return await provider.GetCodeActionsAsync(context, CancellationToken.None);
     }
 
@@ -128,8 +127,7 @@ public class ConvertFormsProviderTests
             new LspRange(new Position(0, 0), new Position(0, 0)),
             new Container<Diagnostic>(),
             null,
-            null,
-            _api);
+            null);
         var actions = await provider.GetCodeActionsAsync(context, CancellationToken.None);
 
         actions.Should().BeEmpty();
