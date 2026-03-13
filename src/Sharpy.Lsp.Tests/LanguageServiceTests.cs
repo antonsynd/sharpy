@@ -255,6 +255,57 @@ public class LanguageServiceTests : IDisposable
     }
 
     [Fact]
+    public void GetDocumentText_OpenDocument_ReturnsText()
+    {
+        _workspace.OpenDocument("file:///test.spy", "x: int = 42", 1);
+
+        var text = _service.GetDocumentText("file:///test.spy");
+
+        text.Should().Be("x: int = 42");
+    }
+
+    [Fact]
+    public void GetDocumentText_NoDocument_ReturnsNull()
+    {
+        var text = _service.GetDocumentText("file:///nonexistent.spy");
+
+        text.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetCachedAnalysis_AfterAnalysis_ReturnsCachedResult()
+    {
+        _workspace.OpenDocument("file:///test.spy", "x: int = 42", 1);
+
+        // Trigger analysis to populate cache
+        var analysis = await _service.GetAnalysisAsync("file:///test.spy");
+        analysis.Should().NotBeNull();
+
+        var cached = _service.GetCachedAnalysis("file:///test.spy");
+
+        cached.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void GetCachedAnalysis_NoDocument_ReturnsNull()
+    {
+        var cached = _service.GetCachedAnalysis("file:///nonexistent.spy");
+
+        cached.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetCachedAnalysis_BeforeAnalysis_ReturnsNull()
+    {
+        _workspace.OpenDocument("file:///test.spy", "x: int = 42", 1);
+
+        // No analysis triggered yet
+        var cached = _service.GetCachedAnalysis("file:///test.spy");
+
+        cached.Should().BeNull();
+    }
+
+    [Fact]
     public async Task IsReady_NoProject_ReturnsTrue()
     {
         // Single-file mode is always "ready"
