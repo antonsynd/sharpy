@@ -240,6 +240,29 @@ internal sealed class LanguageService : IDisposable
     }
 
     /// <summary>
+    /// Returns a parse-only result for the given URI. Does NOT acquire the analysis lock —
+    /// parsing is stateless and can run concurrently with semantic analysis.
+    /// </summary>
+    public async Task<ParseResult?> GetParseResultAsync(string uri, CancellationToken ct = default)
+    {
+        // For project files, parse the current text directly (parse is single-file, no project context needed)
+        var filePath = UriToFilePath(uri);
+        if (filePath != null && _fileResults.ContainsKey(filePath) && File.Exists(filePath))
+        {
+            // Check workspace first for open documents (they may have unsaved edits)
+            var wsResult = await _workspace.GetParseResultAsync(uri, ct).ConfigureAwait(false);
+            if (wsResult != null)
+                return wsResult;
+
+            var text = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
+            return _api.Parse(text, ct);
+        }
+
+        // Fall back to workspace parse
+        return await _workspace.GetParseResultAsync(uri, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Returns the raw document text for a URI from the workspace.
     /// Returns null if the document is not currently open.
     /// </summary>

@@ -16,8 +16,10 @@ internal sealed class DocumentState : IDisposable
     public string Text => SourceText.ToString();
     public int Version { get; private set; }
     public SemanticResult? CachedAnalysis { get; private set; }
+    public ParseResult? CachedParseResult { get; private set; }
 
     private readonly SemaphoreSlim _analysisSemaphore = new(1, 1);
+    private readonly SemaphoreSlim _parseSemaphore = new(1, 1);
     private readonly object _stateLock = new();
     private CancellationTokenSource? _pendingCts;
 
@@ -35,6 +37,7 @@ internal sealed class DocumentState : IDisposable
             SourceText = new SourceText(text, Uri);
             Version = version;
             CachedAnalysis = null;
+            CachedParseResult = null;
         }
     }
 
@@ -75,6 +78,7 @@ internal sealed class DocumentState : IDisposable
             SourceText = currentSource;
             Version = version;
             CachedAnalysis = null;
+            CachedParseResult = null;
         }
     }
 
@@ -137,12 +141,50 @@ internal sealed class DocumentState : IDisposable
         }
     }
 
+    /// <summary>
+    /// Returns a cached parse result or runs a parse-only pass.
+    /// Parse is stateless and much faster than full semantic analysis.
+    /// </summary>
+    public async Task<ParseResult?> GetOrRunParseAsync(CompilerApi api, CancellationToken ct)
+    {
+        lock (_stateLock)
+        {
+            if (CachedParseResult != null)
+                return CachedParseResult;
+        }
+
+        await _parseSemaphore.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            string text;
+            lock (_stateLock)
+            {
+                if (CachedParseResult != null)
+                    return CachedParseResult;
+                text = SourceText.ToString();
+            }
+
+            var result = api.Parse(text, ct);
+
+            lock (_stateLock)
+            {
+                CachedParseResult = result;
+            }
+            return result;
+        }
+        finally
+        {
+            _parseSemaphore.Release();
+        }
+    }
+
     public void Dispose()
     {
         var cts = Interlocked.Exchange(ref _pendingCts, null);
         cts?.Cancel();
         cts?.Dispose();
         _analysisSemaphore.Dispose();
+        _parseSemaphore.Dispose();
     }
 }
 
@@ -218,6 +260,15 @@ internal sealed class SharpyWorkspace : IDisposable
         if (_documents.TryGetValue(uri, out var state))
         {
             return await state.GetOrRunAnalysisAsync(_api, ct).ConfigureAwait(false);
+        }
+        return null;
+    }
+
+    public async Task<ParseResult?> GetParseResultAsync(string uri, CancellationToken ct = default)
+    {
+        if (_documents.TryGetValue(uri, out var state))
+        {
+            return await state.GetOrRunParseAsync(_api, ct).ConfigureAwait(false);
         }
         return null;
     }

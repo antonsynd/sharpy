@@ -26,14 +26,14 @@ internal sealed class SharpyDocumentSymbolHandler : DocumentSymbolHandlerBase
         CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var parseResult = await _languageService.GetParseResultAsync(uri, ct).ConfigureAwait(false);
 
-        if (analysis?.Ast == null)
+        if (parseResult?.Ast == null)
             return null;
 
         var symbols = new System.Collections.Generic.List<SymbolInformationOrDocumentSymbol>();
 
-        foreach (var stmt in analysis.Ast.Body)
+        foreach (var stmt in parseResult.Ast.Body)
         {
             var symbol = ConvertStatement(stmt);
             if (symbol != null)

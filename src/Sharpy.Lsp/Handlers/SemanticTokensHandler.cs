@@ -1,9 +1,7 @@
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using Sharpy.Compiler;
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Lsp.Handlers;
 
@@ -93,13 +91,13 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         CancellationToken ct)
     {
         var uri = identifier.TextDocument.Uri.ToString();
-        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var parseResult = await _languageService.GetParseResultAsync(uri, ct).ConfigureAwait(false);
 
-        if (analysis?.Ast == null)
+        if (parseResult?.Ast == null)
             return;
 
         var tokens = new System.Collections.Generic.List<RawToken>();
-        CollectTokens(analysis.Ast.Body, analysis, tokens);
+        CollectTokens(parseResult.Ast.Body, tokens);
 
         // Sort by position (line, then column)
         tokens.Sort(static (a, b) =>
@@ -124,42 +122,40 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
 
     internal static void CollectTokens(
         IEnumerable<Statement> statements,
-        SemanticResult analysis,
         System.Collections.Generic.List<RawToken> tokens)
     {
         foreach (var stmt in statements)
         {
-            CollectStatementTokens(stmt, analysis, tokens);
+            CollectStatementTokens(stmt, tokens);
         }
     }
 
     private static void CollectStatementTokens(
         Statement stmt,
-        SemanticResult analysis,
         System.Collections.Generic.List<RawToken> tokens)
     {
         switch (stmt)
         {
             case FunctionDef f:
-                CollectFunctionTokens(f, analysis, tokens);
+                CollectFunctionTokens(f, tokens);
                 break;
 
             case ClassDef c:
                 PushNameToken(tokens, c.LineStart, c.ColumnStart, c.Name.Length, TClass, ModDeclaration | ModDefinition);
                 CollectDecorators(c.Decorators, tokens);
-                CollectTokens(c.Body, analysis, tokens);
+                CollectTokens(c.Body, tokens);
                 break;
 
             case StructDef s:
                 PushNameToken(tokens, s.LineStart, s.ColumnStart, s.Name.Length, TStruct, ModDeclaration | ModDefinition);
                 CollectDecorators(s.Decorators, tokens);
-                CollectTokens(s.Body, analysis, tokens);
+                CollectTokens(s.Body, tokens);
                 break;
 
             case InterfaceDef i:
                 PushNameToken(tokens, i.LineStart, i.ColumnStart, i.Name.Length, TInterface, ModDeclaration | ModDefinition);
                 CollectDecorators(i.Decorators, tokens);
-                CollectTokens(i.Body, analysis, tokens);
+                CollectTokens(i.Body, tokens);
                 break;
 
             case EnumDef e:
@@ -181,48 +177,47 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
             case PropertyDef p:
                 PushNameToken(tokens, p.LineStart, p.ColumnStart, p.Name.Length, TProperty, ModDeclaration);
                 CollectDecorators(p.Decorators, tokens);
-                CollectTokens(p.Body, analysis, tokens);
+                CollectTokens(p.Body, tokens);
                 break;
 
             case IfStatement ifStmt:
-                CollectTokens(ifStmt.ThenBody, analysis, tokens);
+                CollectTokens(ifStmt.ThenBody, tokens);
                 foreach (var elif in ifStmt.ElifClauses)
-                    CollectTokens(elif.Body, analysis, tokens);
-                CollectTokens(ifStmt.ElseBody, analysis, tokens);
+                    CollectTokens(elif.Body, tokens);
+                CollectTokens(ifStmt.ElseBody, tokens);
                 break;
 
             case ForStatement forStmt:
-                CollectTokens(forStmt.Body, analysis, tokens);
-                CollectTokens(forStmt.ElseBody, analysis, tokens);
+                CollectTokens(forStmt.Body, tokens);
+                CollectTokens(forStmt.ElseBody, tokens);
                 break;
 
             case WhileStatement whileStmt:
-                CollectTokens(whileStmt.Body, analysis, tokens);
-                CollectTokens(whileStmt.ElseBody, analysis, tokens);
+                CollectTokens(whileStmt.Body, tokens);
+                CollectTokens(whileStmt.ElseBody, tokens);
                 break;
 
             case TryStatement tryStmt:
-                CollectTokens(tryStmt.Body, analysis, tokens);
+                CollectTokens(tryStmt.Body, tokens);
                 foreach (var handler in tryStmt.Handlers)
-                    CollectTokens(handler.Body, analysis, tokens);
-                CollectTokens(tryStmt.ElseBody, analysis, tokens);
-                CollectTokens(tryStmt.FinallyBody, analysis, tokens);
+                    CollectTokens(handler.Body, tokens);
+                CollectTokens(tryStmt.ElseBody, tokens);
+                CollectTokens(tryStmt.FinallyBody, tokens);
                 break;
 
             case WithStatement withStmt:
-                CollectTokens(withStmt.Body, analysis, tokens);
+                CollectTokens(withStmt.Body, tokens);
                 break;
 
             case MatchStatement matchStmt:
                 foreach (var matchCase in matchStmt.Cases)
-                    CollectTokens(matchCase.Body, analysis, tokens);
+                    CollectTokens(matchCase.Body, tokens);
                 break;
         }
     }
 
     private static void CollectFunctionTokens(
         FunctionDef f,
-        SemanticResult analysis,
         System.Collections.Generic.List<RawToken> tokens)
     {
         var mods = ModDeclaration | ModDefinition;
@@ -244,7 +239,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
             PushNameToken(tokens, param.LineStart, param.ColumnStart, param.Name.Length, TParameter, ModDeclaration);
         }
 
-        CollectTokens(f.Body, analysis, tokens);
+        CollectTokens(f.Body, tokens);
     }
 
     private static void CollectDecorators(

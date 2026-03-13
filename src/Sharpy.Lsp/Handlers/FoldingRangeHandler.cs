@@ -23,13 +23,13 @@ internal sealed class SharpyFoldingRangeHandler : FoldingRangeHandlerBase
         CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var parseResult = await _languageService.GetParseResultAsync(uri, ct).ConfigureAwait(false);
 
-        if (analysis?.Ast == null)
+        if (parseResult?.Ast == null)
             return null;
 
         var ranges = new List<FoldingRange>();
-        CollectFoldingRanges(analysis.Ast.Body, ranges);
+        CollectFoldingRanges(parseResult.Ast.Body, ranges);
 
         return new Container<FoldingRange>(ranges);
     }

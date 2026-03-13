@@ -306,6 +306,44 @@ public class LanguageServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetParseResult_ReturnsAstWithoutSemanticAnalysis()
+    {
+        _workspace.OpenDocument("file:///test.spy", "def greet() -> str:\n    return \"hi\"\ndef main():\n    print(greet())", 1);
+
+        var parseResult = await _service.GetParseResultAsync("file:///test.spy");
+
+        parseResult.Should().NotBeNull();
+        parseResult!.Success.Should().BeTrue();
+        parseResult.Ast.Should().NotBeNull();
+        parseResult.Ast!.Body.Should().HaveCount(2, "two function definitions");
+    }
+
+    [Fact]
+    public async Task GetParseResult_WorksWithSyntaxErrors()
+    {
+        _workspace.OpenDocument("file:///test.spy", "def broken(\n    x: int = ", 1);
+
+        var parseResult = await _service.GetParseResultAsync("file:///test.spy");
+
+        parseResult.Should().NotBeNull();
+        parseResult!.Success.Should().BeFalse();
+        parseResult.Diagnostics.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetParseResult_WorkspaceFallback()
+    {
+        // No project initialized — should fall back to workspace parse
+        _workspace.OpenDocument("file:///standalone.spy", "x: int = 42", 1);
+
+        var parseResult = await _service.GetParseResultAsync("file:///standalone.spy");
+
+        parseResult.Should().NotBeNull();
+        parseResult!.Success.Should().BeTrue();
+        parseResult.Ast.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task IsReady_NoProject_ReturnsTrue()
     {
         // Single-file mode is always "ready"

@@ -16,13 +16,13 @@ public class SemanticTokensTests
 
     private System.Collections.Generic.List<RawToken> CollectTokensFrom(string source)
     {
-        var analysis = _api.Analyze(source);
-        analysis.Success.Should().BeTrue("source should compile without errors: {0}",
-            string.Join("; ", analysis.Diagnostics.Select(d => d.Message)));
-        analysis.Ast.Should().NotBeNull();
+        var parseResult = _api.Parse(source);
+        parseResult.Success.Should().BeTrue("source should parse without errors: {0}",
+            string.Join("; ", parseResult.Diagnostics.Select(d => d.Message)));
+        parseResult.Ast.Should().NotBeNull();
 
         var tokens = new System.Collections.Generic.List<RawToken>();
-        SharpySemanticTokensHandler.CollectTokens(analysis.Ast!.Body, analysis, tokens);
+        SharpySemanticTokensHandler.CollectTokens(parseResult.Ast!.Body, tokens);
         return tokens;
     }
 
@@ -350,13 +350,9 @@ def main():
     [Fact]
     public void EmptyStatementList_ProducesNoTokens()
     {
-        var analysis = _api.Analyze("x: int = 1\ndef main():\n    print(x)");
-        analysis.Success.Should().BeTrue();
-
         var tokens = new System.Collections.Generic.List<RawToken>();
         SharpySemanticTokensHandler.CollectTokens(
             Enumerable.Empty<Sharpy.Compiler.Parser.Ast.Statement>(),
-            analysis,
             tokens);
         tokens.Should().BeEmpty();
     }
