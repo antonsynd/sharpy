@@ -45,7 +45,7 @@ public class Program
                 .WithServices(services =>
                 {
                     services.AddSingleton<CompilerApi>();
-                    services.AddSingleton<SharplyWorkspace>();
+                    services.AddSingleton<SharpyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
                     services.AddSingleton<LanguageService>();
                     // Code action providers
@@ -109,32 +109,32 @@ public class Program
                     return Task.CompletedTask;
                 })
                 .WithHandler<TextDocumentSyncHandler>()
-                .WithHandler<SharplyHoverHandler>()
-                .WithHandler<SharplyDefinitionHandler>()
-                .WithHandler<SharplyCompletionHandler>()
-                .WithHandler<SharplyReferencesHandler>()
-                .WithHandler<SharplyRenameHandler>()
-                .WithHandler<SharplyDocumentSymbolHandler>()
-                .WithHandler<SharplySignatureHelpHandler>()
+                .WithHandler<SharpyHoverHandler>()
+                .WithHandler<SharpyDefinitionHandler>()
+                .WithHandler<SharpyCompletionHandler>()
+                .WithHandler<SharpyReferencesHandler>()
+                .WithHandler<SharpyRenameHandler>()
+                .WithHandler<SharpyDocumentSymbolHandler>()
+                .WithHandler<SharpySignatureHelpHandler>()
                 // Phase 3 handlers
-                .WithHandler<SharplySemanticTokensHandler>()
-                .WithHandler<SharplyCodeActionHandler>()
-                .WithHandler<SharplyFormattingHandler>()
-                .WithHandler<SharplyFoldingRangeHandler>()
+                .WithHandler<SharpySemanticTokensHandler>()
+                .WithHandler<SharpyCodeActionHandler>()
+                .WithHandler<SharpyFormattingHandler>()
+                .WithHandler<SharpyFoldingRangeHandler>()
                 .WithHandler<FileWatcherHandler>()
                 // Phase 4 handlers
-                .WithHandler<SharplyWorkspaceSymbolHandler>()
-                .WithHandler<SharplyInlayHintHandler>()
-                .WithHandler<SharplyDocumentHighlightHandler>()
-                .WithHandler<SharplyCodeLensHandler>()
+                .WithHandler<SharpyWorkspaceSymbolHandler>()
+                .WithHandler<SharpyInlayHintHandler>()
+                .WithHandler<SharpyDocumentHighlightHandler>()
+                .WithHandler<SharpyCodeLensHandler>()
                 // Phase 1 — Deep Structural Navigation handlers
-                .WithHandler<SharplyCallHierarchyPrepareHandler>()
-                .WithHandler<SharplyCallHierarchyIncomingHandler>()
-                .WithHandler<SharplyCallHierarchyOutgoingHandler>()
-                .WithHandler<SharplyTypeHierarchyPrepareHandler>()
-                .WithHandler<SharplyTypeHierarchySupertypesHandler>()
-                .WithHandler<SharplyTypeHierarchySubtypesHandler>()
-                .WithHandler<SharplyImplementationHandler>()
+                .WithHandler<SharpyCallHierarchyPrepareHandler>()
+                .WithHandler<SharpyCallHierarchyIncomingHandler>()
+                .WithHandler<SharpyCallHierarchyOutgoingHandler>()
+                .WithHandler<SharpyTypeHierarchyPrepareHandler>()
+                .WithHandler<SharpyTypeHierarchySupertypesHandler>()
+                .WithHandler<SharpyTypeHierarchySubtypesHandler>()
+                .WithHandler<SharpyImplementationHandler>()
         ).ConfigureAwait(false);
 
         await server.WaitForExit.ConfigureAwait(false);

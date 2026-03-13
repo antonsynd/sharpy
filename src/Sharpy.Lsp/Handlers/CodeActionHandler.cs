@@ -10,17 +10,17 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/codeAction requests.
 /// Delegates to registered ICodeActionProvider instances for extensible code action support.
 /// </summary>
-internal sealed class SharplyCodeActionHandler : CodeActionHandlerBase
+internal sealed class SharpyCodeActionHandler : CodeActionHandlerBase
 {
     private readonly LanguageService _languageService;
     private readonly CompilerApi _compilerApi;
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly IEnumerable<ICodeActionProvider> _providers;
 
-    public SharplyCodeActionHandler(
+    public SharpyCodeActionHandler(
         LanguageService languageService,
         CompilerApi compilerApi,
-        SharplyWorkspace workspace,
+        SharpyWorkspace workspace,
         IEnumerable<ICodeActionProvider> providers)
     {
         _languageService = languageService;

@@ -11,11 +11,11 @@ namespace Sharpy.Lsp.Handlers;
 /// Uses the Lexer's Indent/Dedent tokens to determine correct indentation levels,
 /// then re-indents each line according to the user's tab size/spaces preference.
 /// </summary>
-internal sealed class SharplyFormattingHandler : DocumentFormattingHandlerBase
+internal sealed class SharpyFormattingHandler : DocumentFormattingHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
 
-    public SharplyFormattingHandler(SharplyWorkspace workspace)
+    public SharpyFormattingHandler(SharpyWorkspace workspace)
     {
         _workspace = workspace;
     }

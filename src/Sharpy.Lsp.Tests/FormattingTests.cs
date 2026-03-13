@@ -10,13 +10,13 @@ namespace Sharpy.Lsp.Tests;
 public class FormattingTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
-    private readonly SharplyFormattingHandler _handler;
+    private readonly SharpyWorkspace _workspace;
+    private readonly SharpyFormattingHandler _handler;
 
     public FormattingTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
-        _handler = new SharplyFormattingHandler(_workspace);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
+        _handler = new SharpyFormattingHandler(_workspace);
     }
 
     private async Task<string?> FormatAsync(string source, int tabSize = 4, bool insertSpaces = true)

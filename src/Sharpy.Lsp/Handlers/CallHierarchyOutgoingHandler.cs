@@ -13,12 +13,12 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles callHierarchy/outgoingCalls requests.
 /// Finds all functions called from the given function and returns them as outgoing call items.
 /// </summary>
-internal sealed class SharplyCallHierarchyOutgoingHandler : CallHierarchyOutgoingHandlerBase
+internal sealed class SharpyCallHierarchyOutgoingHandler : CallHierarchyOutgoingHandlerBase
 {
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyCallHierarchyOutgoingHandler(LanguageService languageService, CompilerApi api)
+    public SharpyCallHierarchyOutgoingHandler(LanguageService languageService, CompilerApi api)
     {
         _languageService = languageService;
         _api = api;
@@ -64,7 +64,7 @@ internal sealed class SharplyCallHierarchyOutgoingHandler : CallHierarchyOutgoin
 
             if (!grouped.ContainsKey(key))
             {
-                var targetItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(targetSymbol, uri);
+                var targetItem = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(targetSymbol, uri);
                 if (targetItem == null)
                     continue;
                 grouped[key] = (targetItem, new List<LspRange>());

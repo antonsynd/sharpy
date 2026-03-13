@@ -9,11 +9,11 @@ namespace Sharpy.Lsp.Tests;
 public class WorkspaceTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
 
     public WorkspaceTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
     }
 
     [Fact]

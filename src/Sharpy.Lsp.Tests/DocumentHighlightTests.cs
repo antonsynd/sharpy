@@ -10,15 +10,15 @@ namespace Sharpy.Lsp.Tests;
 public class DocumentHighlightTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
-    private readonly SharplyDocumentHighlightHandler _handler;
+    private readonly SharpyDocumentHighlightHandler _handler;
 
     public DocumentHighlightTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
-        _handler = new SharplyDocumentHighlightHandler(_languageService, _api);
+        _handler = new SharpyDocumentHighlightHandler(_languageService, _api);
     }
 
     private async Task<DocumentHighlightContainer?> GetHighlightsAsync(string source, int line, int col)

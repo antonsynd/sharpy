@@ -16,19 +16,19 @@ namespace Sharpy.Lsp.Tests;
 public class TypeHierarchyTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
-    private readonly SharplyTypeHierarchyPrepareHandler _prepareHandler;
-    private readonly SharplyTypeHierarchySupertypesHandler _supertypesHandler;
-    private readonly SharplyTypeHierarchySubtypesHandler _subtypesHandler;
+    private readonly SharpyTypeHierarchyPrepareHandler _prepareHandler;
+    private readonly SharpyTypeHierarchySupertypesHandler _supertypesHandler;
+    private readonly SharpyTypeHierarchySubtypesHandler _subtypesHandler;
 
     public TypeHierarchyTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
-        _prepareHandler = new SharplyTypeHierarchyPrepareHandler(_languageService, _api);
-        _supertypesHandler = new SharplyTypeHierarchySupertypesHandler(_languageService);
-        _subtypesHandler = new SharplyTypeHierarchySubtypesHandler(_languageService);
+        _prepareHandler = new SharpyTypeHierarchyPrepareHandler(_languageService, _api);
+        _supertypesHandler = new SharpyTypeHierarchySupertypesHandler(_languageService);
+        _subtypesHandler = new SharpyTypeHierarchySubtypesHandler(_languageService);
     }
 
     [Fact]

@@ -7,7 +7,7 @@ using Xunit;
 namespace Sharpy.Lsp.Tests;
 
 /// <summary>
-/// Tests for rename validation logic used by SharplyRenameHandler.
+/// Tests for rename validation logic used by SharpyRenameHandler.
 /// </summary>
 public class RenameTests
 {

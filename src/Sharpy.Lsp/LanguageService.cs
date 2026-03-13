@@ -16,7 +16,7 @@ namespace Sharpy.Lsp;
 /// </summary>
 internal sealed class LanguageService : IDisposable
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly CompilerApi _api;
     private readonly ILogger<LanguageService> _logger;
 
@@ -39,7 +39,7 @@ internal sealed class LanguageService : IDisposable
     private const int StateIndexing = 1;
     private volatile int _state = StateReady;
 
-    public LanguageService(SharplyWorkspace workspace, CompilerApi api, ILogger<LanguageService> logger)
+    public LanguageService(SharpyWorkspace workspace, CompilerApi api, ILogger<LanguageService> logger)
     {
         _workspace = workspace;
         _api = api;

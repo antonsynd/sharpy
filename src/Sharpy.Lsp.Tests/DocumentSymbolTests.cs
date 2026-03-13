@@ -7,7 +7,7 @@ using Xunit;
 namespace Sharpy.Lsp.Tests;
 
 /// <summary>
-/// Tests for document symbol functionality used by SharplyDocumentSymbolHandler.
+/// Tests for document symbol functionality used by SharpyDocumentSymbolHandler.
 /// Tests AST structure for symbol outline generation.
 /// </summary>
 public class DocumentSymbolTests

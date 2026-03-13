@@ -11,12 +11,12 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/signatureHelp requests.
 /// Provides parameter hints when inside function call parentheses.
 /// </summary>
-internal sealed class SharplySignatureHelpHandler : SignatureHelpHandlerBase
+internal sealed class SharpySignatureHelpHandler : SignatureHelpHandlerBase
 {
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplySignatureHelpHandler(LanguageService languageService, CompilerApi api)
+    public SharpySignatureHelpHandler(LanguageService languageService, CompilerApi api)
     {
         _languageService = languageService;
         _api = api;

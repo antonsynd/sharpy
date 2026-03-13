@@ -10,12 +10,12 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/hover requests.
 /// Returns type information and symbol documentation for the node at the cursor position.
 /// </summary>
-internal sealed class SharplyHoverHandler : HoverHandlerBase
+internal sealed class SharpyHoverHandler : HoverHandlerBase
 {
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyHoverHandler(LanguageService languageService, CompilerApi api)
+    public SharpyHoverHandler(LanguageService languageService, CompilerApi api)
     {
         _languageService = languageService;
         _api = api;

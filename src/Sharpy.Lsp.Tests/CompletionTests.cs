@@ -8,7 +8,7 @@ using Xunit;
 namespace Sharpy.Lsp.Tests;
 
 /// <summary>
-/// Tests for completion-related functionality used by SharplyCompletionHandler.
+/// Tests for completion-related functionality used by SharpyCompletionHandler.
 /// Since the handler requires OmniSharp DI, we test the underlying APIs.
 /// </summary>
 public class CompletionTests

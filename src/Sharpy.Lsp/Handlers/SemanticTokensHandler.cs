@@ -11,7 +11,7 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/semanticTokens requests.
 /// Walks the AST and produces semantic tokens for syntax highlighting.
 /// </summary>
-internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
+internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
 {
     private readonly LanguageService _languageService;
 
@@ -64,7 +64,7 @@ internal sealed class SharplySemanticTokensHandler : SemanticTokensHandlerBase
     internal const int ModAsync = 1 << 3;
     internal const int ModReadonly = 1 << 4;
 
-    public SharplySemanticTokensHandler(LanguageService languageService)
+    public SharpySemanticTokensHandler(LanguageService languageService)
     {
         _languageService = languageService;
     }

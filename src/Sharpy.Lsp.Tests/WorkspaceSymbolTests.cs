@@ -11,16 +11,16 @@ namespace Sharpy.Lsp.Tests;
 public class WorkspaceSymbolTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
-    private readonly SharplyWorkspaceSymbolHandler _handler;
+    private readonly SharpyWorkspaceSymbolHandler _handler;
     private readonly string _tempDir;
 
     public WorkspaceSymbolTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
-        _handler = new SharplyWorkspaceSymbolHandler(_workspace, _languageService);
+        _handler = new SharpyWorkspaceSymbolHandler(_workspace, _languageService);
 
         _tempDir = IOPath.Combine(
             IOPath.GetTempPath(),
@@ -144,7 +144,7 @@ public class WorkspaceSymbolTests : IDisposable
     [InlineData("foo", "", true)]
     public void MatchesCamelCase_VariousCases(string symbolName, string query, bool expected)
     {
-        SharplyWorkspaceSymbolHandler.MatchesCamelCase(symbolName, query)
+        SharpyWorkspaceSymbolHandler.MatchesCamelCase(symbolName, query)
             .Should().Be(expected);
     }
 

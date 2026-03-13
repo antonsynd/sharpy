@@ -15,11 +15,11 @@ namespace Sharpy.Lsp.Tests;
 public class DefinitionTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
 
     public DefinitionTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
     }
 
     [Fact]

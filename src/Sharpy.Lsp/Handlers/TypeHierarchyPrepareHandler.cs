@@ -13,12 +13,12 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/prepareTypeHierarchy requests.
 /// Resolves the type symbol at the cursor position and returns a TypeHierarchyItem.
 /// </summary>
-internal sealed class SharplyTypeHierarchyPrepareHandler : TypeHierarchyPrepareHandlerBase
+internal sealed class SharpyTypeHierarchyPrepareHandler : TypeHierarchyPrepareHandlerBase
 {
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyTypeHierarchyPrepareHandler(LanguageService languageService, CompilerApi api)
+    public SharpyTypeHierarchyPrepareHandler(LanguageService languageService, CompilerApi api)
     {
         _languageService = languageService;
         _api = api;

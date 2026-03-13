@@ -74,7 +74,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
             selectedStatements, returnValues, context.SourceText, functionIndentLevel);
 
         // Generate the new function definition.
-        var functionDef = SharplySourceGenerator.FormatFunctionDef(
+        var functionDef = SharpySourceGenerator.FormatFunctionDef(
             DefaultMethodName,
             parameters,
             returnType,
@@ -82,7 +82,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
             bodyText);
 
         // Generate the call site that replaces the selected statements.
-        var stmtIndent = SharplySourceGenerator.GetIndentation(
+        var stmtIndent = SharpySourceGenerator.GetIndentation(
             context.SourceText, selectedStatements[0].LineStart - 1);
         var callSite = BuildCallSite(DefaultMethodName, parameters, returnValues, stmtIndent);
 
@@ -279,7 +279,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         int functionIndentLevel)
     {
         var lines = sourceText.Split('\n');
-        var bodyIndent = new string(' ', (functionIndentLevel + 1) * SharplySourceGenerator.DefaultIndentWidth);
+        var bodyIndent = new string(' ', (functionIndentLevel + 1) * SharpySourceGenerator.DefaultIndentWidth);
 
         // Determine the original indentation of the selected statements
         // by looking at the first selected statement's line.

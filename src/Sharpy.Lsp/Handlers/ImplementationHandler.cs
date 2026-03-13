@@ -13,12 +13,12 @@ namespace Sharpy.Lsp.Handlers;
 /// Returns locations of implementing classes for interfaces/abstract classes,
 /// and overriding methods for abstract/virtual methods.
 /// </summary>
-internal sealed class SharplyImplementationHandler : ImplementationHandlerBase
+internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
 {
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyImplementationHandler(LanguageService languageService, CompilerApi api)
+    public SharpyImplementationHandler(LanguageService languageService, CompilerApi api)
     {
         _languageService = languageService;
         _api = api;

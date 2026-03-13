@@ -16,19 +16,19 @@ namespace Sharpy.Lsp.Tests;
 public class CallHierarchyTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
-    private readonly SharplyCallHierarchyPrepareHandler _prepareHandler;
-    private readonly SharplyCallHierarchyIncomingHandler _incomingHandler;
-    private readonly SharplyCallHierarchyOutgoingHandler _outgoingHandler;
+    private readonly SharpyCallHierarchyPrepareHandler _prepareHandler;
+    private readonly SharpyCallHierarchyIncomingHandler _incomingHandler;
+    private readonly SharpyCallHierarchyOutgoingHandler _outgoingHandler;
 
     public CallHierarchyTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
-        _prepareHandler = new SharplyCallHierarchyPrepareHandler(_languageService, _api);
-        _incomingHandler = new SharplyCallHierarchyIncomingHandler(_workspace, _languageService, _api);
-        _outgoingHandler = new SharplyCallHierarchyOutgoingHandler(_languageService, _api);
+        _prepareHandler = new SharpyCallHierarchyPrepareHandler(_languageService, _api);
+        _incomingHandler = new SharpyCallHierarchyIncomingHandler(_workspace, _languageService, _api);
+        _outgoingHandler = new SharpyCallHierarchyOutgoingHandler(_languageService, _api);
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public class CallHierarchyTests : IDisposable
         var symbol = analysis!.SymbolTable?.Lookup("foo") as FunctionSymbol;
         symbol.Should().NotBeNull();
 
-        var item = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        var item = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
         item.Should().NotBeNull();
         item!.Name.Should().Be("foo");
         item.Kind.Should().Be(OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Function);
@@ -62,7 +62,7 @@ public class CallHierarchyTests : IDisposable
         symbol.Should().NotBeNull();
 
         // Builtins have no declaration location, so CreateCallHierarchyItem returns null
-        var item = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        var item = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
         item.Should().BeNull();
     }
 
@@ -136,7 +136,7 @@ public class CallHierarchyTests : IDisposable
         var symbol = analysis!.SymbolTable?.Lookup("greet") as FunctionSymbol;
         symbol.Should().NotBeNull();
 
-        var item = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        var item = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
         item.Should().NotBeNull();
 
         // Data should carry identity for incoming/outgoing resolution
@@ -201,7 +201,7 @@ def main():
         // Prepare an item for helper
         var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
         var symbol = analysis!.SymbolTable?.Lookup("helper") as FunctionSymbol;
-        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        var preparedItem = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
         preparedItem.Should().NotBeNull();
 
         var result = await _incomingHandler.Handle(
@@ -221,7 +221,7 @@ def main():
 
         var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
         var symbol = analysis!.SymbolTable?.Lookup("unused") as FunctionSymbol;
-        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        var preparedItem = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
         preparedItem.Should().NotBeNull();
 
         var result = await _incomingHandler.Handle(
@@ -240,7 +240,7 @@ def main():
 
         var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
         var symbol = analysis!.SymbolTable?.Lookup("caller") as FunctionSymbol;
-        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        var preparedItem = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
         preparedItem.Should().NotBeNull();
 
         var result = await _outgoingHandler.Handle(
@@ -260,7 +260,7 @@ def main():
 
         var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
         var symbol = analysis!.SymbolTable?.Lookup("empty") as FunctionSymbol;
-        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        var preparedItem = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
         preparedItem.Should().NotBeNull();
 
         var result = await _outgoingHandler.Handle(
@@ -279,7 +279,7 @@ def main():
 
         var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
         var symbol = analysis!.SymbolTable?.Lookup("caller") as FunctionSymbol;
-        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        var preparedItem = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
         preparedItem.Should().NotBeNull();
 
         var result = await _outgoingHandler.Handle(
@@ -314,7 +314,7 @@ def main():
 
         var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
         var symbol = analysis!.SymbolTable?.Lookup("caller") as FunctionSymbol;
-        var preparedItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
+        var preparedItem = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(symbol!, "file:///test.spy");
         preparedItem.Should().NotBeNull();
 
         var result = await _outgoingHandler.Handle(

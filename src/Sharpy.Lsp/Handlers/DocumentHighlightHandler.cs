@@ -12,12 +12,12 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/documentHighlight requests.
 /// Highlights all occurrences of the symbol under cursor within the same document.
 /// </summary>
-internal sealed class SharplyDocumentHighlightHandler : DocumentHighlightHandlerBase
+internal sealed class SharpyDocumentHighlightHandler : DocumentHighlightHandlerBase
 {
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyDocumentHighlightHandler(LanguageService languageService, CompilerApi api)
+    public SharpyDocumentHighlightHandler(LanguageService languageService, CompilerApi api)
     {
         _languageService = languageService;
         _api = api;

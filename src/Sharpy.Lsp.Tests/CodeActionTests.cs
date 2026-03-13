@@ -13,23 +13,23 @@ using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 namespace Sharpy.Lsp.Tests;
 
 /// <summary>
-/// Tests for code action generation by SharplyCodeActionHandler.
+/// Tests for code action generation by SharpyCodeActionHandler.
 /// Verifies quick fixes for unused variables, unused imports, and naming conventions.
 /// </summary>
 public class CodeActionTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
-    private readonly SharplyCodeActionHandler _handler;
+    private readonly SharpyCodeActionHandler _handler;
     private static readonly DocumentUri TestUri = DocumentUri.From("file:///test.spy");
 
     public CodeActionTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
         ICodeActionProvider[] providers = [new DiagnosticQuickFixProvider()];
-        _handler = new SharplyCodeActionHandler(_languageService, _api, _workspace, providers);
+        _handler = new SharpyCodeActionHandler(_languageService, _api, _workspace, providers);
     }
 
     public void Dispose()

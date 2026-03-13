@@ -10,15 +10,15 @@ namespace Sharpy.Lsp.Tests;
 public class FoldingRangeTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
-    private readonly SharplyFoldingRangeHandler _handler;
+    private readonly SharpyFoldingRangeHandler _handler;
 
     public FoldingRangeTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
-        _handler = new SharplyFoldingRangeHandler(_languageService);
+        _handler = new SharpyFoldingRangeHandler(_languageService);
     }
 
     private async Task<Container<FoldingRange>?> GetFoldingRangesAsync(string source)

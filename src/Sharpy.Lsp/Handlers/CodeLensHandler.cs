@@ -11,11 +11,11 @@ namespace Sharpy.Lsp.Handlers;
 /// Shows reference counts above function and class definitions,
 /// and a "Run" lens above entry point functions.
 /// </summary>
-internal sealed class SharplyCodeLensHandler : CodeLensHandlerBase
+internal sealed class SharpyCodeLensHandler : CodeLensHandlerBase
 {
     private readonly LanguageService _languageService;
 
-    public SharplyCodeLensHandler(LanguageService languageService)
+    public SharpyCodeLensHandler(LanguageService languageService)
     {
         _languageService = languageService;
     }

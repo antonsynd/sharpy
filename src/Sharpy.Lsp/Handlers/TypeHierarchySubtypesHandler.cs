@@ -8,11 +8,11 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles typeHierarchy/subtypes requests.
 /// Returns all types that directly extend or implement the given type.
 /// </summary>
-internal sealed class SharplyTypeHierarchySubtypesHandler : TypeHierarchySubtypesHandlerBase
+internal sealed class SharpyTypeHierarchySubtypesHandler : TypeHierarchySubtypesHandlerBase
 {
     private readonly LanguageService _languageService;
 
-    public SharplyTypeHierarchySubtypesHandler(LanguageService languageService)
+    public SharpyTypeHierarchySubtypesHandler(LanguageService languageService)
     {
         _languageService = languageService;
     }

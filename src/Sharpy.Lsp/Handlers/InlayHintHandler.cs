@@ -12,11 +12,11 @@ namespace Sharpy.Lsp.Handlers;
 /// Shows inferred types for variables without type annotations
 /// and parameter names at call sites.
 /// </summary>
-internal sealed class SharplyInlayHintHandler : InlayHintsHandlerBase
+internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
 {
     private readonly LanguageService _languageService;
 
-    public SharplyInlayHintHandler(LanguageService languageService)
+    public SharpyInlayHintHandler(LanguageService languageService)
     {
         _languageService = languageService;
     }

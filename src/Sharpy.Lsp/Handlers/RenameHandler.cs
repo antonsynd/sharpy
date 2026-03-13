@@ -12,13 +12,13 @@ namespace Sharpy.Lsp.Handlers;
 /// <summary>
 /// Handles textDocument/rename and textDocument/prepareRename requests.
 /// </summary>
-internal sealed class SharplyRenameHandler : RenameHandlerBase
+internal sealed class SharpyRenameHandler : RenameHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyRenameHandler(SharplyWorkspace workspace, LanguageService languageService, CompilerApi api)
+    public SharpyRenameHandler(SharpyWorkspace workspace, LanguageService languageService, CompilerApi api)
     {
         _workspace = workspace;
         _languageService = languageService;

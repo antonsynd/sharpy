@@ -12,12 +12,12 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles workspace/symbol requests.
 /// Searches all open documents and project files for symbols matching the query string.
 /// </summary>
-internal sealed class SharplyWorkspaceSymbolHandler : WorkspaceSymbolsHandlerBase
+internal sealed class SharpyWorkspaceSymbolHandler : WorkspaceSymbolsHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
 
-    public SharplyWorkspaceSymbolHandler(SharplyWorkspace workspace, LanguageService languageService)
+    public SharpyWorkspaceSymbolHandler(SharpyWorkspace workspace, LanguageService languageService)
     {
         _workspace = workspace;
         _languageService = languageService;

@@ -11,15 +11,15 @@ namespace Sharpy.Lsp.Tests;
 public class InlayHintTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
-    private readonly SharplyInlayHintHandler _handler;
+    private readonly SharpyInlayHintHandler _handler;
 
     public InlayHintTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
-        _handler = new SharplyInlayHintHandler(_languageService);
+        _handler = new SharpyInlayHintHandler(_languageService);
     }
 
     private async Task<InlayHintContainer?> GetHintsAsync(string source, int startLine = 0, int endLine = 100)

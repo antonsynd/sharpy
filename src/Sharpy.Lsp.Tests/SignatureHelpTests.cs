@@ -8,7 +8,7 @@ using Xunit;
 namespace Sharpy.Lsp.Tests;
 
 /// <summary>
-/// Tests for signature help functionality used by SharplySignatureHelpHandler.
+/// Tests for signature help functionality used by SharpySignatureHelpHandler.
 /// Tests function symbol resolution and parameter info.
 /// </summary>
 public class SignatureHelpTests

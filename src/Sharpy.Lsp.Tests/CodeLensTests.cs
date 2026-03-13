@@ -10,15 +10,15 @@ namespace Sharpy.Lsp.Tests;
 public class CodeLensTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
-    private readonly SharplyCodeLensHandler _handler;
+    private readonly SharpyCodeLensHandler _handler;
 
     public CodeLensTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
-        _handler = new SharplyCodeLensHandler(_languageService);
+        _handler = new SharpyCodeLensHandler(_languageService);
     }
 
     private async Task<CodeLensContainer?> GetCodeLensesAsync(string source)

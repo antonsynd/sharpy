@@ -306,8 +306,8 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
         if (firstStmt.LineStart <= 0)
             return 1;
 
-        var indentation = SharplySourceGenerator.GetIndentation(sourceText, firstStmt.LineStart - 1);
-        var indentUnit = SharplySourceGenerator.GetIndentUnit(sourceText);
+        var indentation = SharpySourceGenerator.GetIndentation(sourceText, firstStmt.LineStart - 1);
+        var indentUnit = SharpySourceGenerator.GetIndentUnit(sourceText);
 
         if (indentUnit.Length == 0)
             return 1;
@@ -350,7 +350,7 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
             }
             isFirst = false;
 
-            sb.Append(SharplySourceGenerator.FormatPropertyDef(
+            sb.Append(SharpySourceGenerator.FormatPropertyDef(
                 prop.Name,
                 prop.Type,
                 prop.HasGetter,
@@ -380,8 +380,8 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
     /// </summary>
     private static string FormatMethodStub(FunctionSymbol method, int indentLevel)
     {
-        var indent = new string(' ', indentLevel * SharplySourceGenerator.DefaultIndentWidth);
-        var bodyIndent = new string(' ', (indentLevel + 1) * SharplySourceGenerator.DefaultIndentWidth);
+        var indent = new string(' ', indentLevel * SharpySourceGenerator.DefaultIndentWidth);
+        var bodyIndent = new string(' ', (indentLevel + 1) * SharpySourceGenerator.DefaultIndentWidth);
         var sb = new StringBuilder();
 
         sb.Append(indent);
@@ -413,7 +413,7 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
                 if (i > 0 || !hasSelf)
                     sb.Append(", ");
 
-                sb.Append(SharplySourceGenerator.FormatParameter(param.Name, param.Type));
+                sb.Append(SharpySourceGenerator.FormatParameter(param.Name, param.Type));
             }
         }
 
@@ -423,7 +423,7 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
         if (returnType is not null and not VoidType and not UnknownType)
         {
             sb.Append(" -> ");
-            sb.Append(SharplySourceGenerator.FormatTypeAnnotation(returnType));
+            sb.Append(SharpySourceGenerator.FormatTypeAnnotation(returnType));
         }
 
         sb.Append(':');

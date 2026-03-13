@@ -96,7 +96,7 @@ internal sealed class InlineProvider : ICodeActionProvider
             return null;
 
         // Extract the initializer source text
-        var initializerText = SharplySourceGenerator.GetNodeSourceText(sourceText, varDecl.InitialValue);
+        var initializerText = SharpySourceGenerator.GetNodeSourceText(sourceText, varDecl.InitialValue);
         if (initializerText is null)
             return null;
 
@@ -211,7 +211,7 @@ internal sealed class InlineProvider : ICodeActionProvider
             return null;
 
         // Build the replacement text by substituting parameter names in the return expression
-        var returnExprText = SharplySourceGenerator.GetNodeSourceText(sourceText, returnStmt.Value);
+        var returnExprText = SharpySourceGenerator.GetNodeSourceText(sourceText, returnStmt.Value);
         if (returnExprText is null)
             return null;
 
@@ -220,7 +220,7 @@ internal sealed class InlineProvider : ICodeActionProvider
         for (var i = 0; i < effectiveParams.Length; i++)
         {
             var paramName = effectiveParams[i].Name;
-            var argText = SharplySourceGenerator.GetNodeSourceText(sourceText, funcCall.Arguments[i]);
+            var argText = SharpySourceGenerator.GetNodeSourceText(sourceText, funcCall.Arguments[i]);
             if (argText is null)
                 return null;
 

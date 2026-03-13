@@ -14,13 +14,13 @@ namespace Sharpy.Lsp.Tests;
 public class LanguageServiceTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _service;
     private readonly string _tempDir;
 
     public LanguageServiceTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _service = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
 
         _tempDir = IOPath.Combine(

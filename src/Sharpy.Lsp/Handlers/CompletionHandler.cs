@@ -11,12 +11,12 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/completion requests.
 /// Provides scope-aware, member, and type completions.
 /// </summary>
-internal sealed class SharplyCompletionHandler : CompletionHandlerBase
+internal sealed class SharpyCompletionHandler : CompletionHandlerBase
 {
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyCompletionHandler(LanguageService languageService, CompilerApi api)
+    public SharpyCompletionHandler(LanguageService languageService, CompilerApi api)
     {
         _languageService = languageService;
         _api = api;

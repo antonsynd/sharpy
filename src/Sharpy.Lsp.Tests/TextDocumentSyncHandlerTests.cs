@@ -12,11 +12,11 @@ namespace Sharpy.Lsp.Tests;
 public class TextDocumentSyncHandlerTests : IDisposable
 {
     private readonly CompilerApi _api = new();
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
 
     public TextDocumentSyncHandlerTests()
     {
-        _workspace = new SharplyWorkspace(_api, NullLogger<SharplyWorkspace>.Instance);
+        _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
     }
 
     [Fact]
@@ -108,12 +108,12 @@ public class TextDocumentSyncHandlerTests : IDisposable
     /// </summary>
     private sealed class TestableHandler : IDisposable
     {
-        private readonly SharplyWorkspace _workspace;
+        private readonly SharpyWorkspace _workspace;
         private int _analyzedCallCount;
 
         public int AnalyzedCallCount => _analyzedCallCount;
 
-        public TestableHandler(SharplyWorkspace workspace)
+        public TestableHandler(SharpyWorkspace workspace)
         {
             _workspace = workspace;
             _workspace.DocumentAnalyzed += OnDocumentAnalyzedAsync;

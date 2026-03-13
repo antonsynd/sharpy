@@ -12,11 +12,11 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/documentSymbol requests.
 /// Produces hierarchical symbols for the document outline view.
 /// </summary>
-internal sealed class SharplyDocumentSymbolHandler : DocumentSymbolHandlerBase
+internal sealed class SharpyDocumentSymbolHandler : DocumentSymbolHandlerBase
 {
     private readonly LanguageService _languageService;
 
-    public SharplyDocumentSymbolHandler(LanguageService languageService)
+    public SharpyDocumentSymbolHandler(LanguageService languageService)
     {
         _languageService = languageService;
     }

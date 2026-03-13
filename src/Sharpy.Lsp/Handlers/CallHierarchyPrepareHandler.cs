@@ -15,12 +15,12 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/prepareCallHierarchy requests.
 /// Resolves the function/method at the cursor position and returns a CallHierarchyItem.
 /// </summary>
-internal sealed class SharplyCallHierarchyPrepareHandler : CallHierarchyPrepareHandlerBase
+internal sealed class SharpyCallHierarchyPrepareHandler : CallHierarchyPrepareHandlerBase
 {
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyCallHierarchyPrepareHandler(LanguageService languageService, CompilerApi api)
+    public SharpyCallHierarchyPrepareHandler(LanguageService languageService, CompilerApi api)
     {
         _languageService = languageService;
         _api = api;

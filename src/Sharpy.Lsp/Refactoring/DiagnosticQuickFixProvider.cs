@@ -8,7 +8,7 @@ namespace Sharpy.Lsp.Refactoring;
 
 /// <summary>
 /// Provides quick fix code actions for diagnostics (unused imports, unused variables, naming conventions).
-/// Extracted from the original SharplyCodeActionHandler.
+/// Extracted from the original SharpyCodeActionHandler.
 /// </summary>
 internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
 {

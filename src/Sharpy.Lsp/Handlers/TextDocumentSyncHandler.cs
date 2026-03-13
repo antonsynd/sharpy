@@ -14,12 +14,12 @@ namespace Sharpy.Lsp.Handlers;
 /// </summary>
 internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDisposable
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
     private readonly DiagnosticPublisher _diagnosticPublisher;
 
     public TextDocumentSyncHandler(
-        SharplyWorkspace workspace,
+        SharpyWorkspace workspace,
         LanguageService languageService,
         DiagnosticPublisher diagnosticPublisher)
     {

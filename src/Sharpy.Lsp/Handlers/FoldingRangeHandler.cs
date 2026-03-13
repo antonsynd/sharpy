@@ -9,11 +9,11 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/foldingRange requests.
 /// Produces folding ranges for compound statements and type definitions.
 /// </summary>
-internal sealed class SharplyFoldingRangeHandler : FoldingRangeHandlerBase
+internal sealed class SharpyFoldingRangeHandler : FoldingRangeHandlerBase
 {
     private readonly LanguageService _languageService;
 
-    public SharplyFoldingRangeHandler(LanguageService languageService)
+    public SharpyFoldingRangeHandler(LanguageService languageService)
     {
         _languageService = languageService;
     }

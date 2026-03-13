@@ -12,13 +12,13 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/references requests.
 /// Returns all locations where a symbol is referenced.
 /// </summary>
-internal sealed class SharplyReferencesHandler : ReferencesHandlerBase
+internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyReferencesHandler(SharplyWorkspace workspace, LanguageService languageService, CompilerApi api)
+    public SharpyReferencesHandler(SharpyWorkspace workspace, LanguageService languageService, CompilerApi api)
     {
         _workspace = workspace;
         _languageService = languageService;

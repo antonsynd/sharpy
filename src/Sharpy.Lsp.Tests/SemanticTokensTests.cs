@@ -2,12 +2,12 @@ using FluentAssertions;
 using Sharpy.Compiler;
 using Sharpy.Lsp.Handlers;
 using Xunit;
-using static Sharpy.Lsp.Handlers.SharplySemanticTokensHandler;
+using static Sharpy.Lsp.Handlers.SharpySemanticTokensHandler;
 
 namespace Sharpy.Lsp.Tests;
 
 /// <summary>
-/// Tests for semantic token collection used by SharplySemanticTokensHandler.
+/// Tests for semantic token collection used by SharpySemanticTokensHandler.
 /// Verifies token type assignment, modifier bits, and AST traversal coverage.
 /// </summary>
 public class SemanticTokensTests
@@ -22,7 +22,7 @@ public class SemanticTokensTests
         analysis.Ast.Should().NotBeNull();
 
         var tokens = new System.Collections.Generic.List<RawToken>();
-        SharplySemanticTokensHandler.CollectTokens(analysis.Ast!.Body, analysis, tokens);
+        SharpySemanticTokensHandler.CollectTokens(analysis.Ast!.Body, analysis, tokens);
         return tokens;
     }
 
@@ -354,7 +354,7 @@ def main():
         analysis.Success.Should().BeTrue();
 
         var tokens = new System.Collections.Generic.List<RawToken>();
-        SharplySemanticTokensHandler.CollectTokens(
+        SharpySemanticTokensHandler.CollectTokens(
             Enumerable.Empty<Sharpy.Compiler.Parser.Ast.Statement>(),
             analysis,
             tokens);

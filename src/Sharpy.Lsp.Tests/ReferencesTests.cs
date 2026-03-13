@@ -7,7 +7,7 @@ using Xunit;
 namespace Sharpy.Lsp.Tests;
 
 /// <summary>
-/// Tests for reference tracking used by SharplyReferencesHandler.
+/// Tests for reference tracking used by SharpyReferencesHandler.
 /// </summary>
 public class ReferencesTests
 {

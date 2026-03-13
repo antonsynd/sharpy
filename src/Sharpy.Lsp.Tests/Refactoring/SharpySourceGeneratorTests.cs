@@ -5,42 +5,42 @@ using Xunit;
 
 namespace Sharpy.Lsp.Tests.Refactoring;
 
-public class SharplySourceGeneratorTests
+public class SharpySourceGeneratorTests
 {
     #region FormatTypeAnnotation
 
     [Fact]
     public void FormatTypeAnnotation_BuiltinInt_ReturnsInt()
     {
-        var result = SharplySourceGenerator.FormatTypeAnnotation((BuiltinType)SemanticType.Int);
+        var result = SharpySourceGenerator.FormatTypeAnnotation((BuiltinType)SemanticType.Int);
         result.Should().Be("int");
     }
 
     [Fact]
     public void FormatTypeAnnotation_BuiltinStr_ReturnsStr()
     {
-        var result = SharplySourceGenerator.FormatTypeAnnotation((BuiltinType)SemanticType.Str);
+        var result = SharpySourceGenerator.FormatTypeAnnotation((BuiltinType)SemanticType.Str);
         result.Should().Be("str");
     }
 
     [Fact]
     public void FormatTypeAnnotation_BuiltinBool_ReturnsBool()
     {
-        var result = SharplySourceGenerator.FormatTypeAnnotation((BuiltinType)SemanticType.Bool);
+        var result = SharpySourceGenerator.FormatTypeAnnotation((BuiltinType)SemanticType.Bool);
         result.Should().Be("bool");
     }
 
     [Fact]
     public void FormatTypeAnnotation_BuiltinFloat_ReturnsFloat()
     {
-        var result = SharplySourceGenerator.FormatTypeAnnotation((BuiltinType)SemanticType.Float);
+        var result = SharpySourceGenerator.FormatTypeAnnotation((BuiltinType)SemanticType.Float);
         result.Should().Be("float");
     }
 
     [Fact]
     public void FormatTypeAnnotation_VoidType_ReturnsNone()
     {
-        var result = SharplySourceGenerator.FormatTypeAnnotation(new VoidType());
+        var result = SharpySourceGenerator.FormatTypeAnnotation(new VoidType());
         result.Should().Be("None");
     }
 
@@ -48,7 +48,7 @@ public class SharplySourceGeneratorTests
     public void FormatTypeAnnotation_OptionalType_ReturnsTypeWithQuestionMark()
     {
         var optionalInt = new OptionalType { UnderlyingType = (BuiltinType)SemanticType.Int };
-        var result = SharplySourceGenerator.FormatTypeAnnotation(optionalInt);
+        var result = SharpySourceGenerator.FormatTypeAnnotation(optionalInt);
         result.Should().Be("int?");
     }
 
@@ -56,7 +56,7 @@ public class SharplySourceGeneratorTests
     public void FormatTypeAnnotation_NullableType_ReturnsTypeWithQuestionMark()
     {
         var nullableStr = new NullableType { UnderlyingType = (BuiltinType)SemanticType.Str };
-        var result = SharplySourceGenerator.FormatTypeAnnotation(nullableStr);
+        var result = SharpySourceGenerator.FormatTypeAnnotation(nullableStr);
         result.Should().Be("str?");
     }
 
@@ -71,7 +71,7 @@ public class SharplySourceGeneratorTests
                 (BuiltinType)SemanticType.Int
             }
         };
-        var result = SharplySourceGenerator.FormatTypeAnnotation(listOfInt);
+        var result = SharpySourceGenerator.FormatTypeAnnotation(listOfInt);
         result.Should().Be("list[int]");
     }
 
@@ -87,7 +87,7 @@ public class SharplySourceGeneratorTests
                 (BuiltinType)SemanticType.Int
             }
         };
-        var result = SharplySourceGenerator.FormatTypeAnnotation(dictType);
+        var result = SharpySourceGenerator.FormatTypeAnnotation(dictType);
         result.Should().Be("dict[str, int]");
     }
 
@@ -102,7 +102,7 @@ public class SharplySourceGeneratorTests
                 (BuiltinType)SemanticType.Str
             }
         };
-        var result = SharplySourceGenerator.FormatTypeAnnotation(tupleType);
+        var result = SharpySourceGenerator.FormatTypeAnnotation(tupleType);
         result.Should().Be("tuple[int, str]");
     }
 
@@ -118,7 +118,7 @@ public class SharplySourceGeneratorTests
             },
             ReturnType = (BuiltinType)SemanticType.Bool
         };
-        var result = SharplySourceGenerator.FormatTypeAnnotation(funcType);
+        var result = SharpySourceGenerator.FormatTypeAnnotation(funcType);
         result.Should().Be("Callable[[int, str], bool]");
     }
 
@@ -126,7 +126,7 @@ public class SharplySourceGeneratorTests
     public void FormatTypeAnnotation_UserDefinedType_ReturnsName()
     {
         var udt = new UserDefinedType { Name = "MyClass" };
-        var result = SharplySourceGenerator.FormatTypeAnnotation(udt);
+        var result = SharpySourceGenerator.FormatTypeAnnotation(udt);
         result.Should().Be("MyClass");
     }
 
@@ -134,7 +134,7 @@ public class SharplySourceGeneratorTests
     public void FormatTypeAnnotation_TypeParameterType_ReturnsName()
     {
         var tpt = new TypeParameterType { Name = "T" };
-        var result = SharplySourceGenerator.FormatTypeAnnotation(tpt);
+        var result = SharpySourceGenerator.FormatTypeAnnotation(tpt);
         result.Should().Be("T");
     }
 
@@ -146,7 +146,7 @@ public class SharplySourceGeneratorTests
     public void FormatFunctionDef_NoParams_ProducesCorrectStub()
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
-        var result = SharplySourceGenerator.FormatFunctionDef("do_something", parameters, null, 0);
+        var result = SharpySourceGenerator.FormatFunctionDef("do_something", parameters, null, 0);
 
         result.Should().Contain("def do_something():");
         result.Should().Contain("pass");
@@ -162,7 +162,7 @@ public class SharplySourceGeneratorTests
             ("x", (BuiltinType)SemanticType.Int),
             ("name", (BuiltinType)SemanticType.Str)
         };
-        var result = SharplySourceGenerator.FormatFunctionDef("greet", parameters, null, 0);
+        var result = SharpySourceGenerator.FormatFunctionDef("greet", parameters, null, 0);
 
         result.Should().Contain("def greet(x: int, name: str):");
         result.Should().Contain("pass");
@@ -172,7 +172,7 @@ public class SharplySourceGeneratorTests
     public void FormatFunctionDef_WithReturnType_IncludesArrow()
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
-        var result = SharplySourceGenerator.FormatFunctionDef(
+        var result = SharpySourceGenerator.FormatFunctionDef(
             "get_value", parameters, (BuiltinType)SemanticType.Int, 0);
 
         result.Should().Contain("def get_value() -> int:");
@@ -183,7 +183,7 @@ public class SharplySourceGeneratorTests
     public void FormatFunctionDef_WithVoidReturn_OmitsArrow()
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
-        var result = SharplySourceGenerator.FormatFunctionDef(
+        var result = SharpySourceGenerator.FormatFunctionDef(
             "do_thing", parameters, new VoidType(), 0);
 
         result.Should().NotContain("->");
@@ -193,7 +193,7 @@ public class SharplySourceGeneratorTests
     public void FormatFunctionDef_WithIndent_IndentsCorrectly()
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
-        var result = SharplySourceGenerator.FormatFunctionDef("method", parameters, null, 1);
+        var result = SharpySourceGenerator.FormatFunctionDef("method", parameters, null, 1);
 
         result.Should().StartWith("    def method():");
         // Body should be indented 2 levels (8 spaces)
@@ -204,7 +204,7 @@ public class SharplySourceGeneratorTests
     public void FormatFunctionDef_WithCustomBody_UsesProvidedBody()
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
-        var result = SharplySourceGenerator.FormatFunctionDef(
+        var result = SharpySourceGenerator.FormatFunctionDef(
             "custom", parameters, null, 0, body: "return 42");
 
         result.Should().Contain("return 42");
@@ -218,7 +218,7 @@ public class SharplySourceGeneratorTests
     [Fact]
     public void FormatPropertyDef_GetterOnly_ProducesCorrectStub()
     {
-        var result = SharplySourceGenerator.FormatPropertyDef(
+        var result = SharpySourceGenerator.FormatPropertyDef(
             "value", (BuiltinType)SemanticType.Int, hasGetter: true, hasSetter: false, indentLevel: 1);
 
         result.Should().Contain("@property");
@@ -230,7 +230,7 @@ public class SharplySourceGeneratorTests
     [Fact]
     public void FormatPropertyDef_SetterOnly_ProducesCorrectStub()
     {
-        var result = SharplySourceGenerator.FormatPropertyDef(
+        var result = SharpySourceGenerator.FormatPropertyDef(
             "value", (BuiltinType)SemanticType.Int, hasGetter: false, hasSetter: true, indentLevel: 1);
 
         result.Should().NotContain("@property");
@@ -241,7 +241,7 @@ public class SharplySourceGeneratorTests
     [Fact]
     public void FormatPropertyDef_GetterAndSetter_ProducesBoth()
     {
-        var result = SharplySourceGenerator.FormatPropertyDef(
+        var result = SharpySourceGenerator.FormatPropertyDef(
             "name", (BuiltinType)SemanticType.Str, hasGetter: true, hasSetter: true, indentLevel: 1);
 
         result.Should().Contain("@property");
@@ -258,7 +258,7 @@ public class SharplySourceGeneratorTests
     public void GetIndentation_IndentedLine_ReturnsWhitespace()
     {
         var source = "def main():\n    print('hello')";
-        var result = SharplySourceGenerator.GetIndentation(source, 1);
+        var result = SharpySourceGenerator.GetIndentation(source, 1);
         result.Should().Be("    ");
     }
 
@@ -266,7 +266,7 @@ public class SharplySourceGeneratorTests
     public void GetIndentation_NoIndent_ReturnsEmpty()
     {
         var source = "x = 1\ny = 2";
-        var result = SharplySourceGenerator.GetIndentation(source, 0);
+        var result = SharpySourceGenerator.GetIndentation(source, 0);
         result.Should().Be("");
     }
 
@@ -274,7 +274,7 @@ public class SharplySourceGeneratorTests
     public void GetIndentation_OutOfRange_ReturnsEmpty()
     {
         var source = "x = 1";
-        var result = SharplySourceGenerator.GetIndentation(source, 5);
+        var result = SharpySourceGenerator.GetIndentation(source, 5);
         result.Should().Be("");
     }
 
@@ -282,7 +282,7 @@ public class SharplySourceGeneratorTests
     public void GetIndentation_TabIndented_ReturnsTabs()
     {
         var source = "def main():\n\tprint('hello')";
-        var result = SharplySourceGenerator.GetIndentation(source, 1);
+        var result = SharpySourceGenerator.GetIndentation(source, 1);
         result.Should().Be("\t");
     }
 
@@ -294,7 +294,7 @@ public class SharplySourceGeneratorTests
     public void GetIndentUnit_FourSpaces_ReturnsFourSpaces()
     {
         var source = "def main():\n    pass";
-        var result = SharplySourceGenerator.GetIndentUnit(source);
+        var result = SharpySourceGenerator.GetIndentUnit(source);
         result.Should().Be("    ");
     }
 
@@ -302,7 +302,7 @@ public class SharplySourceGeneratorTests
     public void GetIndentUnit_TwoSpaces_ReturnsTwoSpaces()
     {
         var source = "def main():\n  pass";
-        var result = SharplySourceGenerator.GetIndentUnit(source);
+        var result = SharpySourceGenerator.GetIndentUnit(source);
         result.Should().Be("  ");
     }
 
@@ -310,7 +310,7 @@ public class SharplySourceGeneratorTests
     public void GetIndentUnit_TabIndent_ReturnsTab()
     {
         var source = "def main():\n\tpass";
-        var result = SharplySourceGenerator.GetIndentUnit(source);
+        var result = SharpySourceGenerator.GetIndentUnit(source);
         result.Should().Be("\t");
     }
 
@@ -318,7 +318,7 @@ public class SharplySourceGeneratorTests
     public void GetIndentUnit_NoIndentation_DefaultsFourSpaces()
     {
         var source = "x = 1";
-        var result = SharplySourceGenerator.GetIndentUnit(source);
+        var result = SharpySourceGenerator.GetIndentUnit(source);
         result.Should().Be("    ");
     }
 

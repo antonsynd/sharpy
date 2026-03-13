@@ -12,14 +12,14 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles callHierarchy/incomingCalls requests.
 /// Finds all callers of the given function and returns them as incoming call items.
 /// </summary>
-internal sealed class SharplyCallHierarchyIncomingHandler : CallHierarchyIncomingHandlerBase
+internal sealed class SharpyCallHierarchyIncomingHandler : CallHierarchyIncomingHandlerBase
 {
-    private readonly SharplyWorkspace _workspace;
+    private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyCallHierarchyIncomingHandler(
-        SharplyWorkspace workspace,
+    public SharpyCallHierarchyIncomingHandler(
+        SharpyWorkspace workspace,
         LanguageService languageService,
         CompilerApi api)
     {
@@ -74,7 +74,7 @@ internal sealed class SharplyCallHierarchyIncomingHandler : CallHierarchyIncomin
                     if (containingSymbol == null)
                         continue;
 
-                    var callerItem = SharplyCallHierarchyPrepareHandler.CreateCallHierarchyItem(containingSymbol, uri);
+                    var callerItem = SharpyCallHierarchyPrepareHandler.CreateCallHierarchyItem(containingSymbol, uri);
                     if (callerItem == null)
                         continue;
 

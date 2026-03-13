@@ -91,8 +91,8 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         }
 
         // Build the match statement text
-        var indent = SharplySourceGenerator.GetIndentation(sourceText, ifStmt.LineStart - 1);
-        var indentUnit = SharplySourceGenerator.GetIndentUnit(sourceText);
+        var indent = SharpySourceGenerator.GetIndentation(sourceText, ifStmt.LineStart - 1);
+        var indentUnit = SharpySourceGenerator.GetIndentUnit(sourceText);
         var bodyIndent = indent + indentUnit;
         var bodyBodyIndent = bodyIndent + indentUnit;
 
@@ -241,8 +241,8 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         if (!AllCasesAreLiteralOrWildcard(matchStmt))
             return;
 
-        var indent = SharplySourceGenerator.GetIndentation(sourceText, matchStmt.LineStart - 1);
-        var indentUnit = SharplySourceGenerator.GetIndentUnit(sourceText);
+        var indent = SharpySourceGenerator.GetIndentation(sourceText, matchStmt.LineStart - 1);
+        var indentUnit = SharpySourceGenerator.GetIndentUnit(sourceText);
         var bodyIndent = indent + indentUnit;
         var scrutineeText = ExtractSourceText(sourceText, matchStmt.Scrutinee);
 
@@ -357,7 +357,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         if (inferredType is null or UnknownType)
             return;
 
-        var typeAnnotation = SharplySourceGenerator.FormatTypeAnnotation(inferredType);
+        var typeAnnotation = SharpySourceGenerator.FormatTypeAnnotation(inferredType);
 
         // The edit inserts ": <type>" after the variable name.
         // Variable name ends at (LineStart, ColumnStart + Name.Length - 1) in 1-based coords.
@@ -464,8 +464,8 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         var firstStmt = selectedStatements[0];
         var lastStmt = selectedStatements[selectedStatements.Count - 1];
 
-        var indent = SharplySourceGenerator.GetIndentation(sourceText, firstStmt.LineStart - 1);
-        var indentUnit = SharplySourceGenerator.GetIndentUnit(sourceText);
+        var indent = SharpySourceGenerator.GetIndentation(sourceText, firstStmt.LineStart - 1);
+        var indentUnit = SharpySourceGenerator.GetIndentUnit(sourceText);
         var bodyIndent = indent + indentUnit;
 
         var sb = new StringBuilder();

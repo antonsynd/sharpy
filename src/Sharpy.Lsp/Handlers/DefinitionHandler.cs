@@ -11,12 +11,12 @@ namespace Sharpy.Lsp.Handlers;
 /// Handles textDocument/definition requests.
 /// Returns the location of the symbol's declaration.
 /// </summary>
-internal sealed class SharplyDefinitionHandler : DefinitionHandlerBase
+internal sealed class SharpyDefinitionHandler : DefinitionHandlerBase
 {
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
 
-    public SharplyDefinitionHandler(LanguageService languageService, CompilerApi api)
+    public SharpyDefinitionHandler(LanguageService languageService, CompilerApi api)
     {
         _languageService = languageService;
         _api = api;

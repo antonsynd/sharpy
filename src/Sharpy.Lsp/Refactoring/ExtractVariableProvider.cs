@@ -59,12 +59,12 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
         string? typeAnnotation = null;
         if (expressionType is not null and not UnknownType and not VoidType)
         {
-            typeAnnotation = SharplySourceGenerator.FormatTypeAnnotation(expressionType);
+            typeAnnotation = SharpySourceGenerator.FormatTypeAnnotation(expressionType);
         }
 
         // Get the indentation of the containing statement's line (0-based line index)
         var stmtLineIndex = containingStatement.LineStart - 1; // Convert 1-based to 0-based
-        var indentation = SharplySourceGenerator.GetIndentation(sourceText, stmtLineIndex);
+        var indentation = SharpySourceGenerator.GetIndentation(sourceText, stmtLineIndex);
 
         // Build the variable declaration text
         var declarationText = typeAnnotation is not null
@@ -72,7 +72,7 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
             : $"{indentation}{DefaultVariableName} = ";
 
         // Get the expression source text from the original document
-        var expressionSourceText = SharplySourceGenerator.GetNodeSourceText(sourceText, expression);
+        var expressionSourceText = SharpySourceGenerator.GetNodeSourceText(sourceText, expression);
         if (expressionSourceText is null)
             return Task.FromResult<IReadOnlyList<CodeAction>>(actions);
 

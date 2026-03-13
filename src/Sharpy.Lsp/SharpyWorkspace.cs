@@ -150,11 +150,11 @@ internal sealed class DocumentState : IDisposable
 /// Manages open document state and cached analysis results for the LSP server.
 /// Thread-safe via ConcurrentDictionary and per-document SemaphoreSlim.
 /// </summary>
-internal sealed class SharplyWorkspace : IDisposable
+internal sealed class SharpyWorkspace : IDisposable
 {
     private readonly ConcurrentDictionary<string, DocumentState> _documents = new();
     private readonly CompilerApi _api;
-    private readonly ILogger<SharplyWorkspace> _logger;
+    private readonly ILogger<SharpyWorkspace> _logger;
 
     // Debounce timers per document
     private readonly ConcurrentDictionary<string, Timer> _debounceTimers = new();
@@ -166,7 +166,7 @@ internal sealed class SharplyWorkspace : IDisposable
     /// </summary>
     public event Func<string, SemanticResult, Task>? DocumentAnalyzed;
 
-    public SharplyWorkspace(CompilerApi api, ILogger<SharplyWorkspace> logger)
+    public SharpyWorkspace(CompilerApi api, ILogger<SharpyWorkspace> logger)
     {
         _api = api;
         _logger = logger;

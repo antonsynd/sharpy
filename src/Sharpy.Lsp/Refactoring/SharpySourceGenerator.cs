@@ -9,7 +9,7 @@ namespace Sharpy.Lsp.Refactoring;
 /// Generates Sharpy source text fragments for use in code action edits.
 /// Produces Python/Sharpy syntax (not C#).
 /// </summary>
-internal static class SharplySourceGenerator
+internal static class SharpySourceGenerator
 {
     internal const int DefaultIndentWidth = 4;
     private const int MaxDetectableIndent = 8;
