@@ -1,3 +1,6 @@
+<!-- Verified by /verify-plan on 2026-03-13 -->
+<!-- Verification result: PASS WITH CORRECTIONS -->
+
 # Sharpy.Core Library Cleanup & Consistency
 
 ## Context
@@ -21,7 +24,7 @@ This plan establishes a **consistent, safe, Python-familiar** foundation aligned
 ### Large files needing splitting
 | File | Lines | Notes |
 |------|-------|-------|
-| `StringExtensions.cs` | 1,744 | 10 logical sections, 63+ methods |
+| `StringExtensions.cs` | 1,744 | 10 logical sections, 62 methods | [CORRECTED: grep count yields 62 public static methods, not 63+]
 | `Dict.cs` | 631 | Could split into partials |
 | `Argparse/ArgumentParser.cs` | 586 | Moderate |
 | `Math/Math.cs` | 468 | Moderate |
@@ -30,7 +33,7 @@ This plan establishes a **consistent, safe, Python-familiar** foundation aligned
 ### Print function organization
 - `Builtins/Builtins.cs`: `Print(params object?[] values)` + `PrintWithOptions()` + `FormatValue()` (119 lines)
 - `Print.cs`: `Print(PrintArguments<T>)` overload + `_Print()` helper + `PrintArguments<T>` class (95 lines)
-- Two separate files, redundant `_Print()` logic
+- Two separate files with different printing approaches — `Builtins.cs` inlines logic, `Print.cs` uses `_Print()` helper [CORRECTED: `_Print()` only exists in `Print.cs`, not duplicated in `Builtins.cs`]
 
 ### API consistency gaps
 - `Dict.Get(K key)` returns `Optional<V>` — un-Pythonic, Python's `dict.get()` returns `V | None`
@@ -186,9 +189,9 @@ This feeds directly into the LSP hover/completion via `SymbolFormatter.FormatSym
 1. **Convert `Dict.Get(K key)` from `Optional<V>` to `V?`** — `src/Sharpy.Core/Dict.cs`
    - Change return type from `Optional<V>` to `V?` (nullable)
    - Python's `dict.get(key)` returns `None` when key is missing — match that behavior
-   - The emitter handles value type vs reference type nullable mapping automatically (`Nullable<int>` vs `string?`)
+   - **[WARNING: C# 9.0 unconstrained generic nullable limitation]** `Dict<K, V>` has unconstrained `V`. In C# 9.0, `V?` for unconstrained generics does NOT produce `Nullable<V>` for value types — it stays `V` with a nullable annotation. This means `return default;` would return `0` for `Dict<str, int>.Get("missing")` instead of a proper None/null. Options: (a) add `where V : class` constraint (breaks value-type dicts), (b) keep `Optional<V>` for this method (current, correct), (c) use separate overloads/attribute approach. **Needs architectural decision.**
    - Update `Dict.Get(K key, V @default)` if needed (this one already returns `V`, should be fine)
-   - Update compiler's `ClrTypeMapper` if it has special handling for `Optional<V>` returns from Dict
+   - `ClrTypeMapper` already handles nullable types correctly (lines 73-81, 209-216) — no changes needed there
    - Update all tests that assert on `Optional<V>` return from `Dict.Get()`
    - Commit: `refactor(core): dict.get() returns nullable instead of Optional to match Python`
 
@@ -298,3 +301,38 @@ This feeds directly into the LSP hover/completion via `SymbolFormatter.FormatSym
 ## Issues to Close
 
 - No existing GitHub issues identified for this work (GitHub API was unavailable during planning). Search for related issues before starting implementation.
+
+## Verification Summary
+
+**Result:** PASS WITH CORRECTIONS
+**Verified on:** 2026-03-13
+**Plan file:** `docs/implementation_planning/core_library_cleanup.md`
+
+### Corrections Made
+1. **Line counts** — StringExtensions.cs has 62 public static methods, not "63+" (changed inline)
+2. **Print redundancy claim** — `_Print()` only exists in `Print.cs`, not duplicated in `Builtins/Builtins.cs`. The two files use different approaches (inlined logic vs helper method), not "redundant `_Print()` logic" (changed inline)
+3. **ClrTypeMapper update** — Plan originally said "Update compiler's ClrTypeMapper if it has special handling for `Optional<V>` returns from Dict". Verification shows ClrTypeMapper already handles both nullable and Optional types (lines 73-81 and 209-216) — no changes are needed in the mapper itself (changed inline)
+
+### Warnings
+1. **`V?` for unconstrained generics (Phase 4, Task 1)** — This is the most significant issue. `Dict<K, V>` has unconstrained `V`. In C# 9.0, `V?` on unconstrained generics does NOT wrap value types in `Nullable<V>` — it just annotates them. A `Dict<string, int>.Get("missing")` would return `default(int)` = `0`, not a proper null/None. The current `Optional<V>` approach is actually more correct for all type arguments. This needs an architectural decision before implementing Phase 4 Task 1.
+2. **Breaking change scope** — Phase 4 Task 1 is a breaking change for any Sharpy code that pattern-matches on `Optional<V>` from `dict.get()`. The plan acknowledges test updates but should also consider if user-facing Sharpy programs would break.
+
+### Missing Steps Added
+- None required — the plan covers all necessary phases comprehensively.
+
+### Unchecked Claims
+- **"The `*values` + keyword-only parameter pattern already works in Sharpy's compiler"** (D4) — Not verified; would require testing the compiler's handling of `def print(*values, /, sep=" ", ...)` syntax.
+- **SymbolFormatter LSP integration** (D6) — Verified that `SymbolFormatter.FormatSymbolWithDocs()` exists at `src/Sharpy.Lsp/SymbolFormatter.cs:27`, but not verified that XML doc comments flow through to LSP hover responses end-to-end.
+
+### Verified Claims (All Accurate)
+- 9 modules with `__Init__.cs`: All confirmed with exact locations and `[SharpyModule]` attributes
+- 4 modules missing `__Init__.cs`: All confirmed with correct attribute locations (Builtins:12, Collections:286, Datetime:227, Itertools/Additional:289)
+- File line counts: StringExtensions (1,744), Dict (631), ArgumentParser (586), Math (468), JsonParser (460), Path (419) — all exact
+- 7 existing `Partial.*` directories: Complex, Iterator, List, ListIterator, ListReverseIterator, Set, SetIterator
+- `Dict.Get(K key)` returns `Optional<V>` — confirmed at Dict.cs:124
+- `Os.Getenv(string key)` returns `string?` — confirmed at Os.cs:176
+- `Optional<T>` implicit conversion — confirmed at Optional.cs:84-90
+- Emitter generates `global::Sharpy.Builtins.{PascalCase}()` for builtins — confirmed at RoslynEmitter.Expressions.Access.cs:128
+- `CachedModuleDiscovery` and `BuiltinRegistry` exist and handle module discovery — confirmed
+- `SharpyModuleAttribute` defined at `SharpyModuleAttribute.cs:10`
+- Sharpy.Core targets `netstandard2.1;netstandard2.0` with `LangVersion 9.0` and `Nullable enable` — confirmed in .csproj

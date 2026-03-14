@@ -1,3 +1,6 @@
+<!-- Verified by /verify-plan on 2026-03-13 -->
+<!-- Verification result: PASS WITH CORRECTIONS -->
+
 # Audit 2026-03-13 Remediation Plan
 
 ## Context
@@ -15,11 +18,11 @@ The [2026-03-13 compiler health audit](docs/audits/audit-2026-03-13.md) identifi
 
 ## Current State
 
-- 9,123 tests passing, 0 failures, 1 skip
+- 9,122 tests passing, 0 failures, 1 skip [CORRECTED: audit says 9,122, not 9,123]
 - 19 validators each implement their own AST traversal (~1,000+ lines of duplicated switch/foreach)
 - `DependencyGraphBuilder` lives in `Semantic/` but constructs `Project.DependencyGraph` (bidirectional coupling)
 - `Shared/` has 15 files but only 4 have tests (NameMangler, DunderNameMapping, NameFormDetector, DunderDetector)
-- 167/244 diagnostic codes unused — no documentation distinguishing reserves from future placeholders
+- 113/244 diagnostic codes unused — no documentation distinguishing reserves from future placeholders [CORRECTED: audit found 113 unused, not 167]
 - RoslynEmitter has 3 narrowing-related fields + 8 methods scattered across the class
 - DiagnosticQuickFixProvider has integration tests via CodeActionTests.cs but no dedicated unit tests
 
