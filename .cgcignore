@@ -6,6 +6,7 @@
 **/obj/
 build/
 dist/
+build_tools/
 
 # Dependencies
 node_modules/
