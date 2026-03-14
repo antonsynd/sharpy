@@ -78,10 +78,12 @@ internal class UnusedVariableValidator : SemanticValidatorBase
         _currentDefined = defined;
         _currentParameters = parameters;
 
+        var readCollector = new ReadCollector(read, this);
+
         // Collect definitions and reads from the function body
         foreach (var stmt in func.Body)
         {
-            CollectFromStatement(stmt, defined, read, parameters);
+            CollectFromStatement(stmt, defined, read, parameters, readCollector);
         }
 
         // Restore outer scope state
@@ -115,7 +117,7 @@ internal class UnusedVariableValidator : SemanticValidatorBase
     }
 
     private void CollectFromStatement(Statement stmt, Dictionary<string, VariableInfo> defined,
-        HashSet<string> read, HashSet<string> parameters)
+        HashSet<string> read, HashSet<string> parameters, ReadCollector readCollector)
     {
         switch (stmt)
         {
@@ -126,12 +128,12 @@ internal class UnusedVariableValidator : SemanticValidatorBase
                         varDecl.LineStart, varDecl.ColumnStart, varDecl.Span, false);
                 }
                 if (varDecl.InitialValue != null)
-                    CollectReadsFromExpression(varDecl.InitialValue, read);
+                    readCollector.Visit(varDecl.InitialValue);
                 break;
 
             case Assignment assign:
                 // Collect reads from the value side first
-                CollectReadsFromExpression(assign.Value, read);
+                readCollector.Visit(assign.Value);
 
                 if (assign.Target is Identifier targetId)
                 {
@@ -165,54 +167,54 @@ internal class UnusedVariableValidator : SemanticValidatorBase
                 else
                 {
                     // Member access, index, etc. - reads the target
-                    CollectReadsFromExpression(assign.Target, read);
+                    readCollector.Visit(assign.Target);
                 }
                 break;
 
             case ReturnStatement ret:
                 if (ret.Value != null)
-                    CollectReadsFromExpression(ret.Value, read);
+                    readCollector.Visit(ret.Value);
                 break;
 
             case ExpressionStatement exprStmt:
-                CollectReadsFromExpression(exprStmt.Expression, read);
+                readCollector.Visit(exprStmt.Expression);
                 break;
 
             case IfStatement ifStmt:
-                CollectReadsFromExpression(ifStmt.Test, read);
+                readCollector.Visit(ifStmt.Test);
                 foreach (var s in ifStmt.ThenBody)
-                    CollectFromStatement(s, defined, read, parameters);
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
                 foreach (var elif in ifStmt.ElifClauses)
                 {
-                    CollectReadsFromExpression(elif.Test, read);
+                    readCollector.Visit(elif.Test);
                     foreach (var s in elif.Body)
-                        CollectFromStatement(s, defined, read, parameters);
+                        CollectFromStatement(s, defined, read, parameters, readCollector);
                 }
                 foreach (var s in ifStmt.ElseBody)
-                    CollectFromStatement(s, defined, read, parameters);
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
                 break;
 
             case WhileStatement whileStmt:
-                CollectReadsFromExpression(whileStmt.Test, read);
+                readCollector.Visit(whileStmt.Test);
                 foreach (var s in whileStmt.Body)
-                    CollectFromStatement(s, defined, read, parameters);
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
                 foreach (var s in whileStmt.ElseBody)
-                    CollectFromStatement(s, defined, read, parameters);
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
                 break;
 
             case ForStatement forStmt:
-                CollectReadsFromExpression(forStmt.Iterator, read);
+                readCollector.Visit(forStmt.Iterator);
                 // Loop variable is defined but marked as loop variable (skip warning)
                 CollectForTarget(forStmt.Target, defined, parameters, isLoopVariable: true);
                 foreach (var s in forStmt.Body)
-                    CollectFromStatement(s, defined, read, parameters);
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
                 foreach (var s in forStmt.ElseBody)
-                    CollectFromStatement(s, defined, read, parameters);
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
                 break;
 
             case TryStatement tryStmt:
                 foreach (var s in tryStmt.Body)
-                    CollectFromStatement(s, defined, read, parameters);
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
                 foreach (var handler in tryStmt.Handlers)
                 {
                     if (handler.Name != null)
@@ -222,18 +224,18 @@ internal class UnusedVariableValidator : SemanticValidatorBase
                             handler.LineStart, handler.ColumnStart, handler.Span, false);
                     }
                     foreach (var s in handler.Body)
-                        CollectFromStatement(s, defined, read, parameters);
+                        CollectFromStatement(s, defined, read, parameters, readCollector);
                 }
                 foreach (var s in tryStmt.ElseBody)
-                    CollectFromStatement(s, defined, read, parameters);
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
                 foreach (var s in tryStmt.FinallyBody)
-                    CollectFromStatement(s, defined, read, parameters);
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
                 break;
 
             case WithStatement withStmt:
                 foreach (var item in withStmt.Items)
                 {
-                    CollectReadsFromExpression(item.ContextExpression, read);
+                    readCollector.Visit(item.ContextExpression);
                     if (item.Name != null)
                     {
                         defined[item.Name] = new VariableInfo(
@@ -241,18 +243,18 @@ internal class UnusedVariableValidator : SemanticValidatorBase
                     }
                 }
                 foreach (var s in withStmt.Body)
-                    CollectFromStatement(s, defined, read, parameters);
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
                 break;
 
             case RaiseStatement raiseStmt:
                 if (raiseStmt.Exception != null)
-                    CollectReadsFromExpression(raiseStmt.Exception, read);
+                    readCollector.Visit(raiseStmt.Exception);
                 break;
 
             case AssertStatement assertStmt:
-                CollectReadsFromExpression(assertStmt.Test, read);
+                readCollector.Visit(assertStmt.Test);
                 if (assertStmt.Message != null)
-                    CollectReadsFromExpression(assertStmt.Message, read);
+                    readCollector.Visit(assertStmt.Message);
                 break;
 
             case FunctionDef nestedFunc:
@@ -263,14 +265,14 @@ internal class UnusedVariableValidator : SemanticValidatorBase
                 break;
 
             case MatchStatement matchStmt:
-                CollectReadsFromExpression(matchStmt.Scrutinee, read);
+                readCollector.Visit(matchStmt.Scrutinee);
                 foreach (var matchCase in matchStmt.Cases)
                 {
                     CollectDefinitionsFromPattern(matchCase.Pattern, defined, parameters);
                     if (matchCase.Guard != null)
-                        CollectReadsFromExpression(matchCase.Guard, read);
+                        readCollector.Visit(matchCase.Guard);
                     foreach (var s in matchCase.Body)
-                        CollectFromStatement(s, defined, read, parameters);
+                        CollectFromStatement(s, defined, read, parameters, readCollector);
                 }
                 break;
 
@@ -351,306 +353,45 @@ internal class UnusedVariableValidator : SemanticValidatorBase
     /// </summary>
     private void CollectReadsFromNestedFunction(FunctionDef func, HashSet<string> outerRead)
     {
+        var collector = new ReadCollector(outerRead, this);
+
         // Parameter default values are evaluated in the enclosing scope
         foreach (var param in func.Parameters)
         {
             if (param.DefaultValue != null)
-                CollectReadsFromExpression(param.DefaultValue, outerRead);
+                collector.Visit(param.DefaultValue);
         }
 
         // Decorator names may reference enclosing scope variables
         foreach (var decorator in func.Decorators)
             outerRead.Add(decorator.Name);
 
+        // Walk the entire nested function body for identifier reads
         foreach (var stmt in func.Body)
         {
-            CollectReadsFromStatement(stmt, outerRead);
+            collector.Visit(stmt);
         }
     }
 
     /// <summary>
-    /// Recursively collect all identifier reads from a statement, without tracking definitions.
-    /// Used for scanning nested function bodies to detect closure captures.
+    /// AstVisitor that collects all identifier reads from AST nodes.
+    /// DefaultVisit handles recursive traversal into child nodes automatically.
+    /// Special handling for WalrusExpression to track definitions.
     /// </summary>
-    private void CollectReadsFromStatement(Statement stmt, HashSet<string> read)
+    private sealed class ReadCollector(HashSet<string> read, UnusedVariableValidator validator) : AstVisitor
     {
-        switch (stmt)
+        public override void VisitIdentifier(Identifier node) => read.Add(node.Name);
+
+        public override void VisitWalrusExpression(WalrusExpression node)
         {
-            case VariableDeclaration varDecl:
-                if (varDecl.InitialValue != null)
-                    CollectReadsFromExpression(varDecl.InitialValue, read);
-                break;
-
-            case Assignment assign:
-                CollectReadsFromExpression(assign.Value, read);
-                if (assign.Target is Identifier targetId && assign.Operator != AssignmentOperator.Assign)
-                    read.Add(targetId.Name);
-                else if (assign.Target is not Identifier)
-                    CollectReadsFromExpression(assign.Target, read);
-                break;
-
-            case ReturnStatement ret:
-                if (ret.Value != null)
-                    CollectReadsFromExpression(ret.Value, read);
-                break;
-
-            case ExpressionStatement exprStmt:
-                CollectReadsFromExpression(exprStmt.Expression, read);
-                break;
-
-            case IfStatement ifStmt:
-                CollectReadsFromExpression(ifStmt.Test, read);
-                foreach (var s in ifStmt.ThenBody)
-                    CollectReadsFromStatement(s, read);
-                foreach (var elif in ifStmt.ElifClauses)
-                {
-                    CollectReadsFromExpression(elif.Test, read);
-                    foreach (var s in elif.Body)
-                        CollectReadsFromStatement(s, read);
-                }
-                foreach (var s in ifStmt.ElseBody)
-                    CollectReadsFromStatement(s, read);
-                break;
-
-            case WhileStatement whileStmt:
-                CollectReadsFromExpression(whileStmt.Test, read);
-                foreach (var s in whileStmt.Body)
-                    CollectReadsFromStatement(s, read);
-                foreach (var s in whileStmt.ElseBody)
-                    CollectReadsFromStatement(s, read);
-                break;
-
-            case ForStatement forStmt:
-                CollectReadsFromExpression(forStmt.Iterator, read);
-                foreach (var s in forStmt.Body)
-                    CollectReadsFromStatement(s, read);
-                foreach (var s in forStmt.ElseBody)
-                    CollectReadsFromStatement(s, read);
-                break;
-
-            case TryStatement tryStmt:
-                foreach (var s in tryStmt.Body)
-                    CollectReadsFromStatement(s, read);
-                foreach (var handler in tryStmt.Handlers)
-                {
-                    foreach (var s in handler.Body)
-                        CollectReadsFromStatement(s, read);
-                }
-                foreach (var s in tryStmt.ElseBody)
-                    CollectReadsFromStatement(s, read);
-                foreach (var s in tryStmt.FinallyBody)
-                    CollectReadsFromStatement(s, read);
-                break;
-
-            case WithStatement withStmt:
-                foreach (var item in withStmt.Items)
-                    CollectReadsFromExpression(item.ContextExpression, read);
-                foreach (var s in withStmt.Body)
-                    CollectReadsFromStatement(s, read);
-                break;
-
-            case RaiseStatement raiseStmt:
-                if (raiseStmt.Exception != null)
-                    CollectReadsFromExpression(raiseStmt.Exception, read);
-                break;
-
-            case AssertStatement assertStmt:
-                CollectReadsFromExpression(assertStmt.Test, read);
-                if (assertStmt.Message != null)
-                    CollectReadsFromExpression(assertStmt.Message, read);
-                break;
-
-            case MatchStatement matchStmt:
-                CollectReadsFromExpression(matchStmt.Scrutinee, read);
-                foreach (var matchCase in matchStmt.Cases)
-                {
-                    if (matchCase.Guard != null)
-                        CollectReadsFromExpression(matchCase.Guard, read);
-                    foreach (var s in matchCase.Body)
-                        CollectReadsFromStatement(s, read);
-                }
-                break;
-
-            case FunctionDef nestedFunc:
-                // Continue scanning deeper nested functions for closure reads
-                CollectReadsFromNestedFunction(nestedFunc, read);
-                break;
-        }
-    }
-
-    private void CollectReadsFromExpression(Expression expr, HashSet<string> read)
-    {
-        switch (expr)
-        {
-            case Identifier id:
-                read.Add(id.Name);
-                break;
-
-            case BinaryOp binOp:
-                CollectReadsFromExpression(binOp.Left, read);
-                CollectReadsFromExpression(binOp.Right, read);
-                break;
-
-            case UnaryOp unaryOp:
-                CollectReadsFromExpression(unaryOp.Operand, read);
-                break;
-
-            case FunctionCall call:
-                CollectReadsFromExpression(call.Function, read);
-                foreach (var arg in call.Arguments)
-                    CollectReadsFromExpression(arg, read);
-                foreach (var kwarg in call.KeywordArguments)
-                    CollectReadsFromExpression(kwarg.Value, read);
-                break;
-
-            case MemberAccess memberAccess:
-                CollectReadsFromExpression(memberAccess.Object, read);
-                break;
-
-            case IndexAccess indexAccess:
-                CollectReadsFromExpression(indexAccess.Object, read);
-                CollectReadsFromExpression(indexAccess.Index, read);
-                break;
-
-            case SliceAccess sliceAccess:
-                CollectReadsFromExpression(sliceAccess.Object, read);
-                if (sliceAccess.Start != null)
-                    CollectReadsFromExpression(sliceAccess.Start, read);
-                if (sliceAccess.Stop != null)
-                    CollectReadsFromExpression(sliceAccess.Stop, read);
-                if (sliceAccess.Step != null)
-                    CollectReadsFromExpression(sliceAccess.Step, read);
-                break;
-
-            case ListLiteral listLit:
-                foreach (var elem in listLit.Elements)
-                    CollectReadsFromExpression(elem, read);
-                break;
-
-            case DictLiteral dictLit:
-                foreach (var entry in dictLit.Entries)
-                {
-                    if (entry.Key != null)
-                        CollectReadsFromExpression(entry.Key, read);
-                    CollectReadsFromExpression(entry.Value, read);
-                }
-                break;
-
-            case SetLiteral setLit:
-                foreach (var elem in setLit.Elements)
-                    CollectReadsFromExpression(elem, read);
-                break;
-
-            case TupleLiteral tupleLit:
-                foreach (var elem in tupleLit.Elements)
-                    CollectReadsFromExpression(elem, read);
-                break;
-
-            case ConditionalExpression condExpr:
-                CollectReadsFromExpression(condExpr.Test, read);
-                CollectReadsFromExpression(condExpr.ThenValue, read);
-                CollectReadsFromExpression(condExpr.ElseValue, read);
-                break;
-
-            case FStringLiteral fStr:
-                foreach (var part in fStr.Parts)
-                {
-                    if (part.Expression != null)
-                        CollectReadsFromExpression(part.Expression, read);
-                }
-                break;
-
-            case ListComprehension listComp:
-                CollectReadsFromComprehension(listComp.Element, listComp.Clauses, read);
-                break;
-
-            case SetComprehension setComp:
-                CollectReadsFromComprehension(setComp.Element, setComp.Clauses, read);
-                break;
-
-            case DictComprehension dictComp:
-                CollectReadsFromExpression(dictComp.Key, read);
-                CollectReadsFromExpression(dictComp.Value, read);
-                foreach (var clause in dictComp.Clauses)
-                {
-                    if (clause is ForClause forClause)
-                        CollectReadsFromExpression(forClause.Iterator, read);
-                    else if (clause is IfClause ifClause)
-                        CollectReadsFromExpression(ifClause.Condition, read);
-                }
-                break;
-
-            case LambdaExpression lambda:
-                CollectReadsFromExpression(lambda.Body, read);
-                break;
-
-            case TypeCoercion coercion:
-                CollectReadsFromExpression(coercion.Value, read);
-                break;
-
-            case TypeCheck typeCheck:
-                CollectReadsFromExpression(typeCheck.Value, read);
-                break;
-
-            case ComparisonChain chain:
-                foreach (var operand in chain.Operands)
-                    CollectReadsFromExpression(operand, read);
-                break;
-
-            case Parenthesized paren:
-                CollectReadsFromExpression(paren.Expression, read);
-                break;
-
-            case TryExpression tryExpr:
-                CollectReadsFromExpression(tryExpr.Operand, read);
-                break;
-
-            case MaybeExpression maybeExpr:
-                CollectReadsFromExpression(maybeExpr.Operand, read);
-                break;
-
-            case MatchExpression matchExpr:
-                CollectReadsFromExpression(matchExpr.Scrutinee, read);
-                foreach (var arm in matchExpr.Arms)
-                {
-                    if (arm.Guard != null)
-                        CollectReadsFromExpression(arm.Guard, read);
-                    CollectReadsFromExpression(arm.Result, read);
-                }
-                break;
-
-            case WalrusExpression walrus:
-                // Walrus (name := value) defines the target variable
-                if (!_currentParameters.Contains(walrus.Target))
-                {
-                    _currentDefined[walrus.Target] = new VariableInfo(
-                        walrus.LineStart, walrus.ColumnStart, walrus.Span, false);
-                }
-                CollectReadsFromExpression(walrus.Value, read);
-                break;
-
-            // Literals and other terminals - no variable reads
-            case IntegerLiteral:
-            case FloatLiteral:
-            case StringLiteral:
-            case BooleanLiteral:
-            case NoneLiteral:
-            case EllipsisLiteral:
-            case SuperExpression:
-                break;
-        }
-    }
-
-    private void CollectReadsFromComprehension(Expression element,
-        System.Collections.Immutable.ImmutableArray<ComprehensionClause> clauses, HashSet<string> read)
-    {
-        CollectReadsFromExpression(element, read);
-        foreach (var clause in clauses)
-        {
-            if (clause is ForClause forClause)
-                CollectReadsFromExpression(forClause.Iterator, read);
-            else if (clause is IfClause ifClause)
-                CollectReadsFromExpression(ifClause.Condition, read);
+            // Walrus (name := value) defines the target variable
+            if (!validator._currentParameters.Contains(node.Target))
+            {
+                validator._currentDefined[node.Target] = new VariableInfo(
+                    node.LineStart, node.ColumnStart, node.Span, false);
+            }
+            // Visit value for reads but don't visit node as a whole (which would add target as read)
+            Visit(node.Value);
         }
     }
 
