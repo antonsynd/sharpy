@@ -17,49 +17,26 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - Missing return path detection (via exit reachability)
 /// - Break/continue validation (via loop context tracking)
 /// </remarks>
-internal class ControlFlowValidator : SemanticValidatorBase
+internal class ControlFlowValidator : ValidatingAstWalker
 {
     public override string Name => "ControlFlowValidator";
     public override int Order => 400; // After type checking (300)
 
     private readonly ControlFlowGraphBuilder _cfgBuilder = new();
-    private SemanticContext _context = null!;
     private ICompilerLogger _logger = NullLogger.Instance;
 
     public override void Validate(Module module, SemanticContext context)
     {
-        _context = context;
         _logger = context.Logger;
         _logger.LogDebug("Starting CFG-based control flow validation");
-
-        foreach (var stmt in module.Body)
-        {
-            ValidateTopLevelStatement(stmt);
-        }
+        base.Validate(module, context);
     }
 
-    private void ValidateTopLevelStatement(Statement stmt)
+    public override void VisitFunctionDef(FunctionDef node)
     {
-        switch (stmt)
-        {
-            case FunctionDef func:
-                ValidateFunction(func);
-                break;
-
-            case ClassDef cls:
-                foreach (var member in cls.Body)
-                    if (member is FunctionDef method)
-                        ValidateFunction(method);
-                break;
-
-            case StructDef str:
-                foreach (var member in str.Body)
-                    if (member is FunctionDef method)
-                        ValidateFunction(method);
-                break;
-
-                // PropertyDef: function-style bodies validated via class/struct member iteration above
-        }
+        ValidateFunction(node);
+        // base.VisitFunctionDef traverses the body, finding nested FunctionDefs
+        base.VisitFunctionDef(node);
     }
 
     private void ValidateFunction(FunctionDef func)
@@ -81,7 +58,7 @@ internal class ControlFlowValidator : SemanticValidatorBase
         var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
         foreach (var info in unreachable)
         {
-            AddWarning(_context, "Unreachable code detected",
+            AddWarning("Unreachable code detected",
                 info.FirstUnreachableStatement.LineStart,
                 info.FirstUnreachableStatement.ColumnStart, code: DiagnosticCodes.Validation.UnreachableCodeWarning,
                 span: info.FirstUnreachableStatement.Span);
@@ -89,12 +66,12 @@ internal class ControlFlowValidator : SemanticValidatorBase
 
         // 2. Check return paths (if function has return type, and not a generator)
         var returnType = GetFunctionReturnType(func);
-        if (returnType != SemanticType.Void && !_context.SemanticInfo.IsGenerator(func))
+        if (returnType != SemanticType.Void && !Context.SemanticInfo.IsGenerator(func))
         {
             var missingReturnBlocks = ControlFlowAnalysis.FindMissingReturnPaths(cfg);
             if (missingReturnBlocks.Length > 0)
             {
-                AddError(_context,
+                AddError(
                     $"Function '{func.Name}' must return a value of type '{returnType.GetDisplayName()}' in all code paths",
                     func.LineStart, func.ColumnStart, code: DiagnosticCodes.Semantic.NotAllPathsReturn,
                     span: func.Span);
@@ -108,7 +85,7 @@ internal class ControlFlowValidator : SemanticValidatorBase
             var code = error.Statement is BreakStatement
                 ? DiagnosticCodes.Semantic.BreakOutsideLoop
                 : DiagnosticCodes.Semantic.ContinueOutsideLoop;
-            AddError(_context, error.Message,
+            AddError(error.Message,
                 error.Statement.LineStart, error.Statement.ColumnStart, code: code,
                 span: error.Statement.Span);
         }
@@ -120,43 +97,6 @@ internal class ControlFlowValidator : SemanticValidatorBase
             _logger.LogDebug($"Async function '{func.Name}': {regions.Length} state region(s), " +
                 $"{regions.Count(r => r.AwaitExpression != null)} await point(s)");
         }
-
-        // 5. Recursively validate nested functions
-        ValidateNestedFunctions(func.Body);
-    }
-
-    private void ValidateNestedFunctions(System.Collections.Immutable.ImmutableArray<Statement> statements)
-    {
-        foreach (var stmt in statements)
-        {
-            if (stmt is FunctionDef nestedFunc)
-                ValidateFunction(nestedFunc);
-            else if (stmt is IfStatement ifStmt)
-            {
-                ValidateNestedFunctions(ifStmt.ThenBody);
-                foreach (var elif in ifStmt.ElifClauses)
-                    ValidateNestedFunctions(elif.Body);
-                ValidateNestedFunctions(ifStmt.ElseBody);
-            }
-            else if (stmt is WhileStatement whileStmt)
-            {
-                ValidateNestedFunctions(whileStmt.Body);
-                ValidateNestedFunctions(whileStmt.ElseBody);
-            }
-            else if (stmt is ForStatement forStmt)
-            {
-                ValidateNestedFunctions(forStmt.Body);
-                ValidateNestedFunctions(forStmt.ElseBody);
-            }
-            else if (stmt is TryStatement tryStmt)
-            {
-                ValidateNestedFunctions(tryStmt.Body);
-                foreach (var handler in tryStmt.Handlers)
-                    ValidateNestedFunctions(handler.Body);
-                ValidateNestedFunctions(tryStmt.ElseBody);
-                ValidateNestedFunctions(tryStmt.FinallyBody);
-            }
-        }
     }
 
     private SemanticType GetFunctionReturnType(FunctionDef func)
@@ -165,11 +105,11 @@ internal class ControlFlowValidator : SemanticValidatorBase
             return SemanticType.Void;
 
         // Try cached type first
-        var cachedType = _context.SemanticInfo.GetTypeAnnotation(func.ReturnType);
+        var cachedType = Context.SemanticInfo.GetTypeAnnotation(func.ReturnType);
         if (cachedType != null)
             return cachedType;
 
         // Fall back to resolving
-        return _context.TypeResolver.ResolveTypeAnnotation(func.ReturnType);
+        return Context.TypeResolver.ResolveTypeAnnotation(func.ReturnType);
     }
 }
