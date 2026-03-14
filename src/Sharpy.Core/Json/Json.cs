@@ -31,6 +31,7 @@ namespace Sharpy
         /// <param name="indent">Number of spaces for indentation. Use -1 for compact output.</param>
         /// <param name="sortKeys">Whether to sort dictionary keys.</param>
         /// <param name="ensureAscii">Whether to escape non-ASCII characters.</param>
+        /// <returns>A JSON string representation of <paramref name="obj"/>.</returns>
         public static string Dumps(object? obj, int indent = -1, bool sortKeys = false, bool ensureAscii = true)
         {
             return JsonSerializer.Serialize(obj, indent, sortKeys, ensureAscii);
@@ -80,6 +81,11 @@ namespace Sharpy
         /// <summary>
         /// Serialize obj as a JSON formatted stream to a file with formatting options.
         /// </summary>
+        /// <param name="obj">The object to serialize.</param>
+        /// <param name="fp">The file to write to.</param>
+        /// <param name="indent">Number of spaces for indentation. Use -1 for compact output.</param>
+        /// <param name="sortKeys">Whether to sort dictionary keys.</param>
+        /// <param name="ensureAscii">Whether to escape non-ASCII characters.</param>
         public static void Dump(object? obj, TextFile fp, int indent = -1, bool sortKeys = false, bool ensureAscii = true)
         {
             if (fp == null)
@@ -94,6 +100,8 @@ namespace Sharpy
         /// <summary>
         /// Deserialize a JSON document read from a file.
         /// </summary>
+        /// <param name="fp">The file to read from.</param>
+        /// <returns>The deserialized object.</returns>
         public static object? Load(TextFile fp)
         {
             if (fp == null)

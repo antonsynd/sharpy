@@ -27,6 +27,7 @@ namespace Sharpy
         /// Renamed from Random() to NextDouble() to avoid CS0542 (member name
         /// matching enclosing type). Matches System.Random.NextDouble() convention.
         /// </summary>
+        /// <returns>A random double in [0.0, 1.0).</returns>
         public static double NextDouble()
         {
             lock (_lock)
@@ -59,6 +60,9 @@ namespace Sharpy
         /// Return a random floating point number N such that a &lt;= N &lt;= b for a &lt;= b
         /// and b &lt;= N &lt;= a for b &lt; a.
         /// </summary>
+        /// <param name="a">One end of the range.</param>
+        /// <param name="b">The other end of the range.</param>
+        /// <returns>A random double between <paramref name="a"/> and <paramref name="b"/>.</returns>
         public static double Uniform(double a, double b)
         {
             lock (_lock)
@@ -147,6 +151,8 @@ namespace Sharpy
         /// <summary>
         /// Return a randomly-selected element from range(stop) or range(start, stop, step).
         /// </summary>
+        /// <param name="stop">The exclusive upper bound.</param>
+        /// <returns>A random integer from range(0, <paramref name="stop"/>).</returns>
         public static int Randrange(int stop)
         {
             return Randrange(0, stop, 1);
@@ -155,6 +161,9 @@ namespace Sharpy
         /// <summary>
         /// Return a randomly-selected element from range(start, stop).
         /// </summary>
+        /// <param name="start">The inclusive lower bound.</param>
+        /// <param name="stop">The exclusive upper bound.</param>
+        /// <returns>A random integer from range(<paramref name="start"/>, <paramref name="stop"/>).</returns>
         public static int Randrange(int start, int stop)
         {
             return Randrange(start, stop, 1);
@@ -163,6 +172,10 @@ namespace Sharpy
         /// <summary>
         /// Return a randomly-selected element from range(start, stop, step).
         /// </summary>
+        /// <param name="start">The inclusive lower bound.</param>
+        /// <param name="stop">The exclusive upper bound.</param>
+        /// <param name="step">The step between elements.</param>
+        /// <returns>A random integer from range(<paramref name="start"/>, <paramref name="stop"/>, <paramref name="step"/>).</returns>
         /// <exception cref="ValueError">Thrown if step is zero or the range is empty.</exception>
         public static int Randrange(int start, int stop, int step)
         {
@@ -211,6 +224,9 @@ namespace Sharpy
         /// Gaussian distribution. mu is the mean, and sigma is the standard deviation.
         /// Uses the Box-Muller transform.
         /// </summary>
+        /// <param name="mu">The mean.</param>
+        /// <param name="sigma">The standard deviation.</param>
+        /// <returns>A random number drawn from the Gaussian distribution.</returns>
         public static double Gauss(double mu, double sigma)
         {
             double u1, u2;
@@ -228,6 +244,8 @@ namespace Sharpy
         /// <summary>
         /// Returns a non-negative integer with k random bits.
         /// </summary>
+        /// <param name="k">The number of random bits (0 to 30).</param>
+        /// <returns>A non-negative integer with <paramref name="k"/> random bits.</returns>
         /// <exception cref="ValueError">Thrown if <paramref name="k"/> is negative or greater than 30.</exception>
         public static int Getrandbits(int k)
         {
@@ -257,6 +275,11 @@ namespace Sharpy
         /// Return a k sized list of elements chosen from the population with replacement,
         /// optionally weighted.
         /// </summary>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <param name="population">The population to choose from.</param>
+        /// <param name="weights">Optional weights for each element.</param>
+        /// <param name="k">The number of elements to choose.</param>
+        /// <returns>A list of <paramref name="k"/> randomly chosen elements.</returns>
         /// <exception cref="ValueError">Thrown if population is empty, k is negative, weights count mismatches, or total weight is non-positive.</exception>
         public static Sharpy.List<T> Choices<T>(IList<T> population, IList<double>? weights = null, int k = 1)
         {
@@ -330,6 +353,10 @@ namespace Sharpy
         /// <summary>
         /// Return a k length list of unique elements chosen from the population sequence.
         /// </summary>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <param name="population">The population to sample from.</param>
+        /// <param name="k">The number of unique elements to select.</param>
+        /// <returns>A list of <paramref name="k"/> unique elements from <paramref name="population"/>.</returns>
         /// <exception cref="TypeError">Thrown if <paramref name="population"/> is null.</exception>
         /// <exception cref="ValueError">Thrown if <paramref name="k"/> is negative or larger than the population.</exception>
         public static Sharpy.List<T> Sample<T>(IList<T> population, int k)

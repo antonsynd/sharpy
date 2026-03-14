@@ -32,6 +32,10 @@ namespace Sharpy
         // ===== File Operations =====
 
         /// <summary>Remove (delete) a file.</summary>
+        /// <param name="path">The path to the file to remove.</param>
+        /// <exception cref="FileNotFoundError">Thrown if the file does not exist.</exception>
+        /// <exception cref="IsADirectoryError">Thrown if the path is a directory.</exception>
+        /// <exception cref="PermissionError">Thrown if permission is denied.</exception>
         public static void Remove(string path)
         {
             if (!File.Exists(path))
@@ -53,6 +57,9 @@ namespace Sharpy
         }
 
         /// <summary>Rename a file or directory.</summary>
+        /// <param name="src">The current path.</param>
+        /// <param name="dst">The new path.</param>
+        /// <exception cref="FileNotFoundError">Thrown if <paramref name="src"/> does not exist.</exception>
         public static void Rename(string src, string dst)
         {
             if (File.Exists(src))
@@ -72,6 +79,9 @@ namespace Sharpy
         // ===== Directory Operations =====
 
         /// <summary>Create a directory.</summary>
+        /// <param name="path">The directory path to create.</param>
+        /// <exception cref="FileExistsError">Thrown if the directory already exists.</exception>
+        /// <exception cref="FileNotFoundError">Thrown if the parent directory does not exist.</exception>
         public static void Mkdir(string path)
         {
             if (Directory.Exists(path))
@@ -87,6 +97,9 @@ namespace Sharpy
         }
 
         /// <summary>Create a directory and all intermediate directories.</summary>
+        /// <param name="path">The directory path to create.</param>
+        /// <param name="exist_ok">If <c>true</c>, do not raise an error if the directory already exists.</param>
+        /// <exception cref="FileExistsError">Thrown if the directory exists and <paramref name="exist_ok"/> is <c>false</c>.</exception>
         public static void Makedirs(string path, bool exist_ok = false)
         {
             if (Directory.Exists(path))
@@ -101,6 +114,9 @@ namespace Sharpy
         }
 
         /// <summary>Remove an empty directory.</summary>
+        /// <param name="path">The directory path to remove.</param>
+        /// <exception cref="FileNotFoundError">Thrown if the directory does not exist.</exception>
+        /// <exception cref="IOError">Thrown if the directory is not empty.</exception>
         public static void Rmdir(string path)
         {
             if (!Directory.Exists(path))
@@ -153,6 +169,8 @@ namespace Sharpy
         }
 
         /// <summary>Change the current working directory.</summary>
+        /// <param name="path">The directory to change to.</param>
+        /// <exception cref="FileNotFoundError">Thrown if the directory does not exist.</exception>
         public static void Chdir(string path)
         {
             if (!Directory.Exists(path))
@@ -179,12 +197,17 @@ namespace Sharpy
         }
 
         /// <summary>Get an environment variable with a default value.</summary>
+        /// <param name="key">The environment variable name.</param>
+        /// <param name="default_">The value to return if the variable is not set.</param>
+        /// <returns>The variable value, or <paramref name="default_"/> if not set.</returns>
         public static string Getenv(string key, string default_)
         {
             return Environment.GetEnvironmentVariable(key) ?? default_;
         }
 
         /// <summary>Set an environment variable.</summary>
+        /// <param name="key">The environment variable name.</param>
+        /// <param name="value">The value to set.</param>
         public static void Putenv(string key, string value)
         {
             Environment.SetEnvironmentVariable(key, value);
@@ -210,6 +233,9 @@ namespace Sharpy
         // ===== File/Directory Info =====
 
         /// <summary>Get file or directory status, similar to Python's os.stat().</summary>
+        /// <param name="path">The file or directory path.</param>
+        /// <returns>A <see cref="StatResult"/> containing size, timestamps, and mode.</returns>
+        /// <exception cref="FileNotFoundError">Thrown if the path does not exist.</exception>
         public static StatResult Stat(string path)
         {
             if (File.Exists(path))
@@ -238,12 +264,16 @@ namespace Sharpy
         }
 
         /// <summary>Check if a path exists (file or directory).</summary>
+        /// <param name="path">The path to check.</param>
+        /// <returns><c>true</c> if the path exists; otherwise <c>false</c>.</returns>
         public static bool PathExists(string path)
         {
             return File.Exists(path) || Directory.Exists(path);
         }
 
         /// <summary>Walk a directory tree, yielding (dirpath, dirnames, filenames) tuples.</summary>
+        /// <param name="top">The root directory to walk.</param>
+        /// <returns>An enumerable of (dirpath, dirnames, filenames) tuples for each directory.</returns>
         public static IEnumerable<(string dirpath, List<string> dirnames, List<string> filenames)> Walk(string top)
         {
             if (!Directory.Exists(top))
