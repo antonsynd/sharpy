@@ -8,8 +8,11 @@ namespace Sharpy
     using static Builtins;
 
     /// <summary>
-    /// A dictionary that maps keys to values, similar to Python's dict.
+    /// A dictionary that maps keys to values, similar to Python's <c>dict</c>.
+    /// Supports Python-style methods: get, keys, values, items, pop, update, setdefault.
     /// </summary>
+    /// <typeparam name="K">The type of keys</typeparam>
+    /// <typeparam name="V">The type of values</typeparam>
     public sealed partial class Dict<K, V>
         : IDictionary<K, V>,
           IReadOnlyDictionary<K, V>,

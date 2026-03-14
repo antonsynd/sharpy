@@ -2,8 +2,10 @@ using System.Collections.Generic;
 namespace Sharpy
 {
     /// <summary>
-    /// A mutable set of unique elements, similar to Python's set.
+    /// A mutable set of unique elements, similar to Python's <c>set</c>.
+    /// Supports set operations: union, intersection, difference, and symmetric difference.
     /// </summary>
+    /// <typeparam name="T">The type of elements in the set</typeparam>
     public sealed partial class Set<T>
         : System.Collections.Generic.ISet<T>,
           System.IEquatable<Set<T>>,
@@ -59,6 +61,8 @@ namespace Sharpy
         /// <summary>
         /// Returns whether this set is a proper subset of other (subset but not equal).
         /// </summary>
+        /// <param name="other">The set to compare against</param>
+        /// <returns><c>true</c> if this set is a proper subset of <paramref name="other"/></returns>
         public bool IsProperSubset(Set<T> other)
         {
             if (other is null)
@@ -94,6 +98,8 @@ namespace Sharpy
         /// <summary>
         /// Returns whether this set is a proper superset of other (superset but not equal).
         /// </summary>
+        /// <param name="other">The set to compare against</param>
+        /// <returns><c>true</c> if this set is a proper superset of <paramref name="other"/></returns>
         public bool IsProperSuperset(Set<T> other)
         {
             if (other is null)

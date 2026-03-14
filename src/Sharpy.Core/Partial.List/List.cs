@@ -3,8 +3,10 @@ using System;
 namespace Sharpy
 {
     /// <summary>
-    /// A list of elements.
+    /// A mutable sequence of elements, similar to Python's <c>list</c>.
+    /// Supports negative indexing, slicing, and Python-style methods.
     /// </summary>
+    /// <typeparam name="T">The type of elements in the list</typeparam>
     public sealed partial class List<T>
         : IList<T>,
           IReadOnlyList<T>,
