@@ -198,7 +198,7 @@ When the three axioms conflict, precedence is: **Axiom 1 (.NET) > Axiom 3 (Types
 For new language features, touch components **in this order** (dependencies flow left→right):
 
 ```
-Lexer → Parser → Semantic → Validation → CodeGen → Tests
+Lexer → Parser → Semantic → Validation → CodeGen → LSP → Tests
 ```
 
 1. **Lexer** (`Lexer/`) — Add `TokenType` and recognition
@@ -206,7 +206,8 @@ Lexer → Parser → Semantic → Validation → CodeGen → Tests
 3. **Semantic** (`Semantic/`) — Add type checking in `TypeChecker*.cs`
 4. **Validation** (`Semantic/Validation/`) — Add validator if needed
 5. **CodeGen** (`CodeGen/RoslynEmitter*.cs`) — Emit via `SyntaxFactory`
-6. **Tests** — Unit tests per component + `.spy`/`.expected` integration tests
+6. **LSP** (`src/Sharpy.Lsp/Handlers/`) — Update handlers if new AST nodes or semantic types affect IDE features (hover, completion, semantic tokens, etc.)
+7. **Tests** — Unit tests per component + `.spy`/`.expected` integration tests + LSP handler tests
 
 ## Multi-File Compilation
 
@@ -325,6 +326,8 @@ All commands below log full output to `.claude/tmp/*.log` for investigation whil
 dotnet test --filter "FullyQualifiedName~Lexer"            # By component
 dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # File-based tests
 dotnet test --filter "DisplayName~test_name"               # By test name
+dotnet test --filter "FullyQualifiedName~Lsp"              # LSP tests
+dotnet test --filter "FullyQualifiedName~Lsp.Tests.E2E"    # LSP E2E protocol tests
 ```
 
 ### File-Based Tests

@@ -131,10 +131,24 @@ Use `.warning` file for tests that check compiler warnings:
 - Non-empty lines = expected warning substrings
 - Can combine `.warning` with `.expected` for tests that produce output AND warnings
 
+## LSP Tests
+
+LSP tests live in `src/Sharpy.Lsp.Tests/`:
+- **Unit tests** — Per-handler tests (e.g., `HoverTests.cs`, `CompletionTests.cs`)
+- **Refactoring tests** — `Refactoring/*.Tests.cs` (extract method, inline, etc.)
+- **E2E tests** — `E2E/ProtocolTests.cs`, `E2E/MultiFileTests.cs` (full protocol round-trips via `LspTestClient`)
+- **Infrastructure tests** — `PositionConverterTests.cs`, `DiagnosticPublisherTests.cs`, `LanguageServiceTests.cs`
+
+```bash
+dotnet test --filter "FullyQualifiedName~Lsp.Tests"
+dotnet test --filter "FullyQualifiedName~Lsp.Tests.E2E"
+```
+
 ## Boundaries
 
-- ✅ Design and implement tests for all components
+- ✅ Design and implement tests for all components (compiler, stdlib, LSP)
 - ✅ File-based tests in `Integration/TestFixtures/`
 - ✅ Multi-file project tests via `ProjectCompilationHelper`
+- ✅ LSP handler and E2E tests in `Sharpy.Lsp.Tests/`
 - ❌ Fix implementation bugs (→ component experts)
 - ❌ Never change test expectations to match bugs

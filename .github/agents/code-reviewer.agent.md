@@ -39,6 +39,14 @@ Sharpy is **.NET first, Pythonic second**:
 - ✅ Pythonic syntax (`list[T]`, snake_case) compiling to idiomatic .NET
 - ❌ No dynamic dispatch, monkey patching, or runtime type discovery
 
+### LSP Server
+
+For `src/Sharpy.Lsp/` changes:
+- Thread safety: handlers are called concurrently — verify proper locking and cancellation
+- Position conversion: LSP uses 0-based, compiler uses 1-based — check `PositionConverter` usage
+- Incremental analysis: prefer partial re-analysis over full recompilation
+- OmniSharp patterns: implement correct handler interfaces, register capabilities
+
 ### Change Scope
 - No unnecessary churn; localized changes over sweeping refactors
 - Split unrelated formatting into separate PRs

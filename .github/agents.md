@@ -32,6 +32,7 @@ All agents follow this priority order when axioms conflict:
 | `semantic-expert` | Type checking, name resolution, symbols | `Compiler/Semantic/`, `TypeChecker*.cs` |
 | `codegen-expert` | C# emission via Roslyn | `Compiler/CodeGen/`, `RoslynEmitter*.cs` |
 | `core-library-expert` | Standard library | `Sharpy.Core/`, `Partial.*/` |
+| `lsp-expert` | LSP server, handlers, refactoring | `Sharpy.Lsp/`, `Handlers/`, `Refactoring/` |
 
 ### Axiom Guardians (Advisory, Read-Only)
 
@@ -80,14 +81,15 @@ python3 -c "..."                                     # Verify Python behavior
 For language features, component experts work in this order:
 
 ```
-parser-expert → semantic-expert → codegen-expert → test-expert
+parser-expert → semantic-expert → codegen-expert → lsp-expert → test-expert
 ```
 
 1. **Lexer** — Add tokens if needed (`Token.cs`, `Lexer.cs`)
 2. **Parser** — Add AST records (`Ast/*.cs`), parsing rules in `Parser*.cs` (6 partial files)
-3. **Semantic** — Add type rules (`TypeChecker*.cs` — 8 partial files), validators if needed
-4. **CodeGen** — Emit C# via SyntaxFactory (`RoslynEmitter*.cs` — 11 partial files)
-5. **Tests** — Unit tests per component + `.spy`/`.expected` file-based tests
+3. **Semantic** — Add type rules (`TypeChecker*.cs` — 10 partial files), validators if needed
+4. **CodeGen** — Emit C# via SyntaxFactory (`RoslynEmitter*.cs` — 16 partial files)
+5. **LSP** — Update handlers if new AST nodes/semantic types affect IDE features (hover, completion, semantic tokens, etc.)
+6. **Tests** — Unit tests per component + `.spy`/`.expected` file-based tests + LSP handler tests
 
 ## Semantic Analysis Pipeline (Critical Knowledge)
 

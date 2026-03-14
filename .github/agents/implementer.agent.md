@@ -65,5 +65,16 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer
 | `NameMangler.cs` | `snake_case` → `PascalCase`, `__str__` → `ToString()` |
 | `SemanticInfo.cs` | Type/symbol annotations (separate from AST) |
 | `SemanticBinding.cs` | Computed data, materialized at phase boundaries |
-| `RoslynEmitter*.cs` | 11 partial classes by AST category |
+| `RoslynEmitter*.cs` | 16 partial classes by AST category |
 | `PrimitiveCatalog.cs` | Primitive types and CLR mappings |
+
+## LSP Server
+
+The LSP server (`src/Sharpy.Lsp/`) provides IDE features. Key files:
+- `LanguageService.cs` — Project-aware analysis, background indexing
+- `SharpyWorkspace.cs` — Document state, debounced analysis
+- `Handlers/*.cs` — ~20 LSP protocol handlers
+- `Refactoring/*.cs` — Code action providers (extract, inline, organize imports)
+- `PositionConverter.cs` — LSP 0-based ↔ compiler 1-based coordinates
+
+When implementing compiler changes that affect LSP behavior (new AST nodes, semantic types, diagnostics), coordinate with `lsp-expert` for handler updates.
