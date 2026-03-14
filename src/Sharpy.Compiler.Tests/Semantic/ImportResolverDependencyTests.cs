@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
@@ -90,7 +91,7 @@ import utils
 
         var builder = new DependencyGraphBuilder();
         var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyGraphBuilder(builder);
+        resolver.SetDependencyRecorder(builder);
         resolver.SetCurrentModule(mainPath);
 
         var importStmt = new ImportStatement
@@ -122,7 +123,7 @@ import utils
 
         var builder = new DependencyGraphBuilder();
         var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyGraphBuilder(builder);
+        resolver.SetDependencyRecorder(builder);
         resolver.SetCurrentModule(mainPath);
 
         var importStmt = new ImportStatement
@@ -155,7 +156,7 @@ import utils
 
         var builder = new DependencyGraphBuilder();
         var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyGraphBuilder(builder);
+        resolver.SetDependencyRecorder(builder);
         resolver.SetCurrentModule(mainPath);
 
         var importStmt = new ImportStatement
@@ -212,7 +213,7 @@ from utils import helper
 
         var builder = new DependencyGraphBuilder();
         var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyGraphBuilder(builder);
+        resolver.SetDependencyRecorder(builder);
         resolver.SetCurrentModule(mainPath);
 
         var fromImport = new FromImportStatement
@@ -247,7 +248,7 @@ def func2(): pass
 
         var builder = new DependencyGraphBuilder();
         var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyGraphBuilder(builder);
+        resolver.SetDependencyRecorder(builder);
         resolver.SetCurrentModule(mainPath);
 
         var fromImport = new FromImportStatement
@@ -289,7 +290,7 @@ def b_func(): pass
 
         var builder = new DependencyGraphBuilder();
         var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyGraphBuilder(builder);
+        resolver.SetDependencyRecorder(builder);
 
         // Resolve imports from a.spy
         resolver.SetCurrentModule(aPath);
@@ -357,7 +358,7 @@ def b_func(): pass
 
         var builder = new DependencyGraphBuilder();
         var resolver = new ImportResolver(_logger, moduleRegistry);
-        resolver.SetDependencyGraphBuilder(builder);
+        resolver.SetDependencyRecorder(builder);
         resolver.SetCurrentModule(mainPath);
 
         // Try to import a non-existent .NET module (will fall through to .spy lookup)
@@ -427,7 +428,7 @@ def b_func(): pass
 
         var builder = new DependencyGraphBuilder();
         var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyGraphBuilder(builder);
+        resolver.SetDependencyRecorder(builder);
 
         // Resolve main's imports (which triggers resolution of utils and models)
         resolver.SetCurrentModule(mainPath);
@@ -464,7 +465,7 @@ def b_func(): pass
 
         var builder = new DependencyGraphBuilder();
         var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyGraphBuilder(builder);
+        resolver.SetDependencyRecorder(builder);
 
         resolver.SetCurrentModule(mainPath);
         resolver.ResolveImport(new ImportStatement

@@ -2,6 +2,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Utilities;
 
@@ -24,7 +25,7 @@ internal class ImportResolver
     /// Key is the full file path, value is the ModuleInfo.
     /// </summary>
     public IReadOnlyDictionary<string, ModuleInfo> LoadedSpyModules => _moduleLoader.LoadedSpyModules;
-    private DependencyGraphBuilder? _graphBuilder;
+    private IDependencyRecorder? _graphBuilder;
     private SemanticBinding _semanticBinding = new();
 
     private string? _currentModulePath = null;
@@ -55,13 +56,13 @@ internal class ImportResolver
     public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
-    /// Set the dependency graph builder for tracking file dependencies.
+    /// Set the dependency recorder for tracking file dependencies.
     /// When set, the resolver will call AddDependency for each import.
     /// </summary>
-    /// <param name="builder">The builder to use for tracking dependencies.</param>
-    public void SetDependencyGraphBuilder(DependencyGraphBuilder builder)
+    /// <param name="recorder">The recorder to use for tracking dependencies.</param>
+    public void SetDependencyRecorder(IDependencyRecorder recorder)
     {
-        _graphBuilder = builder;
+        _graphBuilder = recorder;
     }
 
     /// <summary>

@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Utilities;
 
-namespace Sharpy.Compiler.Semantic;
+namespace Sharpy.Compiler.Project;
 
 /// <summary>
 /// Builder for constructing a <see cref="DependencyGraph"/> during compilation.
@@ -37,7 +37,7 @@ namespace Sharpy.Compiler.Semantic;
 /// var graph = builder.Build();
 /// </code>
 /// </example>
-internal class DependencyGraphBuilder
+internal class DependencyGraphBuilder : IDependencyRecorder
 {
     private readonly ConcurrentDictionary<string, ConcurrentBag<string>> _dependencies = new();
     private readonly ConcurrentDictionary<string, string> _fileHashes = new();

@@ -26,7 +26,7 @@ internal partial class ProjectCompiler
 
         // Initialize dependency graph builder and connect to import resolver
         _graphBuilderBacking = new DependencyGraphBuilder();
-        ImportResolver.SetDependencyGraphBuilder(GraphBuilder);
+        ImportResolver.SetDependencyRecorder(GraphBuilder);
 
         // Connect SemanticBinding to import resolver for storing import data
         ImportResolver.SetSemanticBinding(semanticBinding);
