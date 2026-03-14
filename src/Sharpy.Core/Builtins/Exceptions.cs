@@ -4,7 +4,8 @@ using System.IO;
 namespace Sharpy
 {
     /// <summary>
-    /// Type error exception
+    /// Raised when an operation or function receives an argument of inappropriate type.
+    /// Equivalent to Python's <c>TypeError</c>.
     /// </summary>
     public class TypeError : Exception
     {
@@ -40,7 +41,8 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Value error exception
+    /// Raised when an operation or function receives an argument with the right type but inappropriate value.
+    /// Equivalent to Python's <c>ValueError</c>.
     /// </summary>
     public class ValueError : Exception
     {
@@ -56,7 +58,8 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Runtime error exception
+    /// Raised when an error is detected that doesn't fall into other categories.
+    /// Equivalent to Python's <c>RuntimeError</c>.
     /// </summary>
     public class RuntimeError : Exception
     {
@@ -72,7 +75,8 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Not implemented error exception
+    /// Raised when an abstract method requires a derived class to override it.
+    /// Equivalent to Python's <c>NotImplementedError</c>.
     /// </summary>
     public class NotImplementedError : Exception
     {
@@ -88,7 +92,8 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Attribute error exception
+    /// Raised when an attribute reference or assignment fails.
+    /// Equivalent to Python's <c>AttributeError</c>.
     /// </summary>
     public class AttributeError : Exception
     {
@@ -104,7 +109,8 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Zero division error exception
+    /// Raised when the second argument of a division or modulo operation is zero.
+    /// Equivalent to Python's <c>ZeroDivisionError</c>.
     /// </summary>
     public class ZeroDivisionError : Exception
     {
@@ -120,7 +126,8 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Overflow error exception
+    /// Raised when the result of an arithmetic operation is too large to be represented.
+    /// Equivalent to Python's <c>OverflowError</c>.
     /// </summary>
     public class OverflowError : Exception
     {
@@ -136,7 +143,8 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// I/O error exception
+    /// Raised when an I/O operation fails.
+    /// Equivalent to Python's <c>OSError</c> (aliased as <c>IOError</c>).
     /// </summary>
     public class IOError : IOException
     {
@@ -152,7 +160,8 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// File not found error exception
+    /// Raised when a file or directory is requested but not found.
+    /// Equivalent to Python's <c>FileNotFoundError</c>.
     /// </summary>
     public class FileNotFoundError : FileNotFoundException
     {

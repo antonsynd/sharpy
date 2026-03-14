@@ -10,6 +10,7 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
+        /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
         /// <example>
         /// <code>
         /// divmod(7, 2)     # (3, 1)
@@ -44,6 +45,7 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
+        /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
         public static (long, long) DivMod(long x, long y)
         {
             if (y == 0)
@@ -71,6 +73,7 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
+        /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
         public static (double, double) DivMod(double x, double y)
         {
             const double epsilon = 1e-10;
@@ -91,6 +94,7 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
+        /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
         public static (float, float) DivMod(float x, float y)
         {
             const float epsilon = 1e-7f;

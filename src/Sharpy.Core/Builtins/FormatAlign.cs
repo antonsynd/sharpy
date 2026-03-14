@@ -7,6 +7,11 @@ namespace Sharpy
         /// and alignment mode. Used by f-string format spec codegen for custom fill characters
         /// and center-alignment.
         /// </summary>
+        /// <param name="value">The string to align</param>
+        /// <param name="width">The total field width</param>
+        /// <param name="fill">The fill character for padding</param>
+        /// <param name="alignment">Alignment mode: '&lt;' left, '&gt;' right, '^' center, '=' numeric sign-aware</param>
+        /// <returns>The aligned string, or <paramref name="value"/> unchanged if already wider than <paramref name="width"/></returns>
         public static string FormatAlign(string value, int width, char fill, char alignment)
         {
             if (value.Length >= width)

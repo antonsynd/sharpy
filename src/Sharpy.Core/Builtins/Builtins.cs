@@ -13,6 +13,9 @@ namespace Sharpy
         /// Get the length of a collection or string.
         /// This is the fallback overload for dynamically-typed scenarios.
         /// </summary>
+        /// <param name="obj">The object to measure</param>
+        /// <returns>The number of elements</returns>
+        /// <exception cref="TypeError">Thrown when <paramref name="obj"/> is null or has no len()</exception>
         public static int Len(object obj)
         {
             if (obj is null)

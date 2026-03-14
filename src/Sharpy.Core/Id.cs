@@ -11,6 +11,7 @@ namespace Sharpy
         /// </summary>
         /// <param name="obj">The object to get the identity of</param>
         /// <returns>An integer uniquely identifying the object during its lifetime</returns>
+        /// <exception cref="TypeError">Thrown when <paramref name="obj"/> is null</exception>
         /// <example>
         /// <code>
         /// x = [1, 2, 3]

@@ -8,6 +8,7 @@ namespace Sharpy
         /// </summary>
         /// <param name="obj">The object to hash</param>
         /// <returns>The hash value as an integer</returns>
+        /// <exception cref="TypeError">Thrown when <paramref name="obj"/> is null</exception>
         /// <example>
         /// <code>
         /// hash("hello")    # integer hash value

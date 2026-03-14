@@ -8,6 +8,10 @@ namespace Sharpy
         /// <summary>
         /// Return a reverse iterator over the values of the given sequence.
         /// </summary>
+        /// <typeparam name="T">The type of elements in the sequence</typeparam>
+        /// <param name="sequence">The sequence to reverse</param>
+        /// <returns>An iterator that yields elements in reverse order</returns>
+        /// <exception cref="TypeError">Thrown when <paramref name="sequence"/> is null</exception>
         /// <remarks>
         /// For <see cref="IList{T}"/> implementations, iterates backwards efficiently.
         /// For other sequences, materializes the sequence and reverses using LINQ.

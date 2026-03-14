@@ -13,6 +13,7 @@ namespace Sharpy
         /// This avoids overload ambiguity when a type implements both
         /// <see cref="ICollection{T}"/> and <see cref="IReadOnlyCollection{T}"/>.
         /// </remarks>
+        /// <exception cref="TypeError">Thrown when <paramref name="c"/> is null</exception>
         /// <example>
         /// <code>
         /// len([1, 2, 3])    # 3
@@ -33,6 +34,9 @@ namespace Sharpy
         /// <summary>
         /// Return the length of an ISized type (user-defined types with __len__).
         /// </summary>
+        /// <param name="sized">An object implementing <see cref="ISized"/></param>
+        /// <returns>The number of elements</returns>
+        /// <exception cref="TypeError">Thrown when <paramref name="sized"/> is null</exception>
         public static int Len(ISized sized)
         {
             if (sized is null)
@@ -46,6 +50,8 @@ namespace Sharpy
         /// <summary>
         /// Return the length of a string.
         /// </summary>
+        /// <param name="s">The string to measure</param>
+        /// <returns>The number of characters (UTF-16 code units)</returns>
         public static int Len(string s)
         {
             return s.Length;

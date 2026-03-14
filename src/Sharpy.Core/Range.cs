@@ -93,6 +93,7 @@ namespace Sharpy
         /// <param name="stop">The stopping value (exclusive)</param>
         /// <param name="step">The step value</param>
         /// <returns>A range iterator</returns>
+        /// <exception cref="ValueError">Thrown when <paramref name="step"/> is zero</exception>
         public static RangeIterator Range(int start, int stop, int step)
         {
             return new RangeIterator(start, stop, step);
