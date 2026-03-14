@@ -224,8 +224,7 @@ namespace Sharpy
     /// <summary>
     /// Module exports for datetime functionality.
     /// </summary>
-    [SharpyModule("datetime")]
-    public static class Datetime
+    public static partial class Datetime
     {
         /// <summary>The Date type.</summary>
         public static Type DateType => typeof(Date);
