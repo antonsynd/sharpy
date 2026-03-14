@@ -119,6 +119,7 @@ namespace Sharpy
         /// "hello".encode("ascii")    # b'hello'  (ASCII)
         /// </code>
         /// </example>
+        /// <exception cref="LookupError">Thrown if <paramref name="encoding"/> is not recognized.</exception>
         public static byte[] Encode(this string s, string encoding = "utf-8")
         {
 #pragma warning disable CA1307 // string.Replace(string, string, StringComparison) not available in netstandard2.0
@@ -159,6 +160,7 @@ namespace Sharpy
         /// "apple".translate(t)    # "1ppl2"
         /// </code>
         /// </example>
+        /// <exception cref="ValueError">Thrown if <paramref name="x"/> and <paramref name="y"/> have different lengths.</exception>
         public static Dictionary<char, string> Maketrans(string x, string y)
         {
             if (x.Length != y.Length)

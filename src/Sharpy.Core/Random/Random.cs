@@ -79,6 +79,7 @@ namespace Sharpy
         /// random.choice(["a", "b"])      # "a" or "b"
         /// </code>
         /// </example>
+        /// <exception cref="IndexError">Thrown if the sequence is null or empty.</exception>
         public static T Choice<T>(IList<T> seq)
         {
             if (seq == null || seq.Count == 0)
@@ -96,6 +97,7 @@ namespace Sharpy
         /// <summary>
         /// Return a randomly selected element from a non-empty sequence.
         /// </summary>
+        /// <exception cref="IndexError">Thrown if the sequence is null or empty.</exception>
         public static T Choice<T>(T[] seq)
         {
             if (seq == null || seq.Length == 0)
@@ -121,6 +123,7 @@ namespace Sharpy
         /// random.shuffle(items)    # items is now shuffled in place
         /// </code>
         /// </example>
+        /// <exception cref="TypeError">Thrown if <paramref name="x"/> is null.</exception>
         public static void Shuffle<T>(IList<T> x)
         {
             if (x == null)
@@ -160,6 +163,7 @@ namespace Sharpy
         /// <summary>
         /// Return a randomly-selected element from range(start, stop, step).
         /// </summary>
+        /// <exception cref="ValueError">Thrown if step is zero or the range is empty.</exception>
         public static int Randrange(int start, int stop, int step)
         {
             if (step == 0)
@@ -224,6 +228,7 @@ namespace Sharpy
         /// <summary>
         /// Returns a non-negative integer with k random bits.
         /// </summary>
+        /// <exception cref="ValueError">Thrown if <paramref name="k"/> is negative or greater than 30.</exception>
         public static int Getrandbits(int k)
         {
             if (k < 0)
@@ -252,6 +257,7 @@ namespace Sharpy
         /// Return a k sized list of elements chosen from the population with replacement,
         /// optionally weighted.
         /// </summary>
+        /// <exception cref="ValueError">Thrown if population is empty, k is negative, weights count mismatches, or total weight is non-positive.</exception>
         public static Sharpy.List<T> Choices<T>(IList<T> population, IList<double>? weights = null, int k = 1)
         {
             if (population == null || population.Count == 0)
@@ -324,6 +330,8 @@ namespace Sharpy
         /// <summary>
         /// Return a k length list of unique elements chosen from the population sequence.
         /// </summary>
+        /// <exception cref="TypeError">Thrown if <paramref name="population"/> is null.</exception>
+        /// <exception cref="ValueError">Thrown if <paramref name="k"/> is negative or larger than the population.</exception>
         public static Sharpy.List<T> Sample<T>(IList<T> population, int k)
         {
             if (population == null)

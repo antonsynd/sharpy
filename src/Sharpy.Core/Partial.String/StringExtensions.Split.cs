@@ -156,6 +156,7 @@ namespace Sharpy
         /// <paramref name="maxsplit"/> splits (from the left).
         /// Python: <c>str.split(sep, maxsplit)</c>
         /// </summary>
+        /// <exception cref="ValueError">Thrown if <paramref name="sep"/> is empty.</exception>
         public static List<string> Split(this string s, string sep, int maxsplit)
         {
             if (sep == null)
@@ -215,6 +216,7 @@ namespace Sharpy
         /// most <paramref name="maxsplit"/> splits.
         /// Python: <c>str.rsplit(sep, maxsplit)</c>
         /// </summary>
+        /// <exception cref="ValueError">Thrown if <paramref name="sep"/> is empty.</exception>
         public static List<string> Rsplit(this string s, string sep, int maxsplit)
         {
             if (sep == null)
@@ -270,6 +272,7 @@ namespace Sharpy
         /// "a.b.c".partition(".")    # ("a", ".", "b.c")
         /// </code>
         /// </example>
+        /// <exception cref="ValueError">Thrown if <paramref name="sep"/> is empty.</exception>
         public static (string, string, string) Partition(this string s, string sep)
         {
             if (sep == null)
@@ -301,6 +304,7 @@ namespace Sharpy
         /// "a.b.c".rpartition(".")    # ("a.b", ".", "c")
         /// </code>
         /// </example>
+        /// <exception cref="ValueError">Thrown if <paramref name="sep"/> is empty.</exception>
         public static (string, string, string) Rpartition(this string s, string sep)
         {
             if (sep == null)

@@ -474,6 +474,7 @@ namespace Sharpy
         /// when the substring is not found.
         /// Python: <c>str.index(sub)</c>
         /// </summary>
+        /// <exception cref="ValueError">Thrown if the substring is not found.</exception>
         public static int Index(this string s, string sub)
         {
             int result = Find(s, sub);
@@ -489,6 +490,7 @@ namespace Sharpy
         /// when the substring is not found.
         /// Python: <c>str.index(sub, start)</c>
         /// </summary>
+        /// <exception cref="ValueError">Thrown if the substring is not found.</exception>
         public static int Index(this string s, string sub, int start)
         {
             int result = Find(s, sub, start);
@@ -504,6 +506,7 @@ namespace Sharpy
         /// when the substring is not found.
         /// Python: <c>str.index(sub, start, end)</c>
         /// </summary>
+        /// <exception cref="ValueError">Thrown if the substring is not found.</exception>
         public static int Index(this string s, string sub, int start, int end)
         {
             int result = Find(s, sub, start, end);
@@ -519,6 +522,7 @@ namespace Sharpy
         /// when the substring is not found.
         /// Python: <c>str.rindex(sub)</c>
         /// </summary>
+        /// <exception cref="ValueError">Thrown if the substring is not found.</exception>
         public static int Rindex(this string s, string sub)
         {
             int result = Rfind(s, sub);
@@ -534,6 +538,7 @@ namespace Sharpy
         /// when the substring is not found.
         /// Python: <c>str.rindex(sub, start)</c>
         /// </summary>
+        /// <exception cref="ValueError">Thrown if the substring is not found.</exception>
         public static int Rindex(this string s, string sub, int start)
         {
             int result = Rfind(s, sub, start);
@@ -549,6 +554,7 @@ namespace Sharpy
         /// when the substring is not found.
         /// Python: <c>str.rindex(sub, start, end)</c>
         /// </summary>
+        /// <exception cref="ValueError">Thrown if the substring is not found.</exception>
         public static int Rindex(this string s, string sub, int start, int end)
         {
             int result = Rfind(s, sub, start, end);

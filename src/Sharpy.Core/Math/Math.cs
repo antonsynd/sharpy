@@ -214,6 +214,7 @@ namespace Sharpy
         /// <summary>
         /// Return the natural logarithm of 1+x (base e). Accurate for small x.
         /// </summary>
+        /// <exception cref="ValueError">Thrown if <paramref name="x"/> is less than or equal to -1.</exception>
         public static double Log1p(double x)
         {
             if (x <= -1.0)
@@ -235,6 +236,7 @@ namespace Sharpy
         /// <summary>
         /// Return the IEEE 754-style remainder of x with respect to y.
         /// </summary>
+        /// <exception cref="ValueError">Thrown if <paramref name="y"/> is zero.</exception>
         public static double Remainder(double x, double y)
         {
             if (y == 0.0)

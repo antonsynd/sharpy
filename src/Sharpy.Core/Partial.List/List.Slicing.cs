@@ -55,6 +55,7 @@ namespace Sharpy
         /// <summary>
         /// Returns a slice of the list.
         /// </summary>
+        /// <exception cref="ValueError">Thrown if slice step is zero.</exception>
         public List<T> GetSlice(Slice slice)
         {
             if (slice.step == 0)
@@ -85,6 +86,8 @@ namespace Sharpy
         /// <summary>
         /// Sets a slice of the list from another list.
         /// </summary>
+        /// <exception cref="TypeError">Thrown if <paramref name="other"/> is null.</exception>
+        /// <exception cref="ValueError">Thrown if slice step is zero or assignment size mismatches extended slice.</exception>
         public void SetSlice(Slice slice, List<T> other)
         {
             if (other is null)
@@ -212,6 +215,7 @@ namespace Sharpy
         /// <summary>
         /// Deletes a slice of the list.
         /// </summary>
+        /// <exception cref="ValueError">Thrown if slice step is zero.</exception>
         public void DeleteSlice(Slice slice)
         {
             if (slice.step == 0)

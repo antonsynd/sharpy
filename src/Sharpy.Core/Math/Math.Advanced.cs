@@ -26,6 +26,8 @@ namespace Sharpy
         /// <summary>
         /// Return the factorial of n. Raises ValueError if n is negative or OverflowException if n is too large (n > 20).
         /// </summary>
+        /// <exception cref="ValueError">Thrown if <paramref name="n"/> is negative.</exception>
+        /// <exception cref="OverflowException">Thrown if <paramref name="n"/> is greater than 20.</exception>
         public static long Factorial(int n)
         {
             if (n < 0)
@@ -71,6 +73,7 @@ namespace Sharpy
         /// <summary>
         /// Return True if the values a and b are close to each other, and False otherwise.
         /// </summary>
+        /// <exception cref="ValueError">Thrown if tolerances are negative.</exception>
         public static bool Isclose(double a, double b, double rel_tol = 1e-9, double abs_tol = 0.0)
         {
             if (rel_tol < 0.0 || abs_tol < 0.0)
@@ -100,6 +103,7 @@ namespace Sharpy
         /// <summary>
         /// Return the number of ways to choose k items from n items without repetition and without order.
         /// </summary>
+        /// <exception cref="ValueError">Thrown if <paramref name="n"/> or <paramref name="k"/> is negative.</exception>
         public static long Comb(int n, int k)
         {
             if (n < 0)
@@ -136,6 +140,7 @@ namespace Sharpy
         /// Return the number of ways to choose k items from n items without repetition and with order.
         /// If k is not specified, then k defaults to n and the function returns n!.
         /// </summary>
+        /// <exception cref="ValueError">Thrown if <paramref name="n"/> or <paramref name="k"/> is negative.</exception>
         public static long Perm(int n, int k)
         {
             if (n < 0)

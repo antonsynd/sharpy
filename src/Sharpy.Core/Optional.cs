@@ -5,9 +5,15 @@ using System.Reflection;
 namespace Sharpy
 {
     /// <summary>
-    /// A safe tagged union for optional values. T? desugars to Optional[T].
-    /// This is a struct - no heap allocation for returning optional values.
+    /// A safe tagged union for optional values. <c>T?</c> desugars to <c>Optional&lt;T&gt;</c>.
+    /// This is a struct — no heap allocation for returning optional values.
     /// </summary>
+    /// <remarks>
+    /// Use <c>Optional&lt;T&gt;</c> in your own APIs for explicit, type-safe error handling.
+    /// The Sharpy stdlib uses Python-style nullable returns and exceptions for familiarity.
+    /// <c>Optional</c> is most useful when you want callers to explicitly handle the "missing
+    /// value" case at compile time rather than relying on null checks.
+    /// </remarks>
     public readonly struct Optional<T> : System.IEquatable<Optional<T>>
     {
         private readonly T _value;

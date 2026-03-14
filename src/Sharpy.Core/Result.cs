@@ -4,9 +4,15 @@ using System.Collections.Generic;
 namespace Sharpy
 {
     /// <summary>
-    /// A safe tagged union for error handling. T !E desugars to Result[T, E].
-    /// This is a struct - no heap allocation for returning result values.
+    /// A safe tagged union for error handling. <c>T !E</c> desugars to <c>Result&lt;T, E&gt;</c>.
+    /// This is a struct — no heap allocation for returning result values.
     /// </summary>
+    /// <remarks>
+    /// Use <c>Result&lt;T, E&gt;</c> in your own APIs for explicit, type-safe error handling.
+    /// The Sharpy stdlib uses Python-style exceptions for familiarity. <c>Result</c> is most
+    /// useful when you want callers to handle the error case at compile time rather than relying
+    /// on try/catch. Use the <c>try</c> expression to wrap throwing code into a <c>Result</c>.
+    /// </remarks>
     public readonly struct Result<T, E> : System.IEquatable<Result<T, E>>
     {
         private readonly T _value;
