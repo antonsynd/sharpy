@@ -14,6 +14,8 @@ disable-model-invocation: false
 ```bash
 dotnet test --logger "trx;LogFileName=results.trx"  # Test with output
 dotnet test --collect:"XPlat Code Coverage"          # Coverage
+dotnet test --filter "FullyQualifiedName~Lsp"        # LSP tests
+dotnet test --filter "FullyQualifiedName~Lsp.Tests.E2E"  # LSP E2E tests
 dotnet run --project src/Sharpy.Cli -- run file.spy  # Behavior check
 python3 -c "..."                                     # Python comparison
 ```

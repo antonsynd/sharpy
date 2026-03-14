@@ -16,7 +16,7 @@ Use `TeamCreate` with team name `compiler-audit`.
 
 ### 2. Create tasks for each audit dimension
 
-Create one task per dimension using `TaskCreate`. If `$ARGUMENTS` specifies a focus area, only create tasks relevant to that area. Otherwise create all six:
+Create one task per dimension using `TaskCreate`. If `$ARGUMENTS` specifies a focus area, only create tasks relevant to that area. Otherwise create all seven:
 
 | Task | Agent Type | Focus |
 |------|-----------|-------|
@@ -25,7 +25,8 @@ Create one task per dimension using `TaskCreate`. If `$ARGUMENTS` specifies a fo
 | .NET Compliance | `net-axiom-guardian` | C# 9.0 compliance, type mapping completeness, netstandard compatibility, forward compatibility |
 | Testing Health | `verification-expert` | Coverage gaps by category, test-to-code ratio, negative/warning/snapshot test coverage |
 | Codebase Metrics | `Explore` | File sizes, TODO/FIXME audit (issue compliance), git churn hotspots, unused diagnostics, magic values |
-| Future Tooling Readiness | `Explore` | LSP readiness (position queries, incremental SymbolTable), parallel build readiness (thread safety), REPL/formatter/debugger readiness |
+| LSP Health | `verification-expert` | Handler coverage, test coverage, thread safety, position conversion correctness, refactoring providers |
+| Future Readiness | `Explore` | Parallel build readiness (thread safety), REPL/formatter/debugger readiness |
 
 ### 3. Spawn agents in parallel
 
@@ -39,8 +40,8 @@ Audit the Sharpy compiler for architecture and modularity health. Focus on:
 - Duplication: look for repeated patterns that should be abstracted
 - Separation of concerns: verify TypeChecker vs ValidationPipeline responsibility split, RoslynEmitter partial file boundaries
 
-Key directories: src/Sharpy.Compiler/ (Lexer/, Parser/, Semantic/, CodeGen/, Diagnostics/, Analysis/)
-Key files: RoslynEmitter*.cs (11 partials), TypeChecker*.cs (8 partials), Parser*.cs (6 partials)
+Key directories: src/Sharpy.Compiler/ (Lexer/, Parser/, Semantic/, CodeGen/, Diagnostics/, Analysis/), src/Sharpy.Lsp/
+Key files: RoslynEmitter*.cs (16 partials), TypeChecker*.cs (10 partials), Parser*.cs (6 partials)
 
 Output your findings as structured markdown with: Critical (must fix), Warning (should fix), Opportunity (nice to have).
 ```
@@ -102,10 +103,28 @@ Gather codebase metrics for the Sharpy compiler. Focus on:
 Output your findings as structured markdown with a metrics dashboard table and detailed findings.
 ```
 
-**Future Tooling Readiness** (`Explore`, thoroughness: very thorough):
+**LSP Health** (`verification-expert`):
+```
+Audit the Sharpy LSP server health. Focus on:
+- Handler coverage: List all implemented LSP handlers in src/Sharpy.Lsp/Handlers/ and note which standard LSP features are missing
+- Test coverage: Count tests per handler in src/Sharpy.Lsp.Tests/, identify handlers with no tests
+- E2E tests: Check src/Sharpy.Lsp.Tests/E2E/ for protocol-level integration tests
+- Thread safety: Review LanguageService.cs and SharpyWorkspace.cs for proper locking, ConcurrentDictionary usage, cancellation token propagation
+- Position conversion: Check PositionConverter.cs for 0-based (LSP) vs 1-based (compiler) coordinate correctness
+- Diagnostic publishing: Verify DiagnosticPublisher.cs correctly maps compiler diagnostics to LSP diagnostics
+- Refactoring providers: List all ICodeActionProvider implementations in Refactoring/ and their test coverage
+- Incremental analysis: Check DocumentState for correct partial re-analysis (AstFingerprint, ScopedTypeChecker)
+- Project awareness: Verify LanguageService handles project-level analysis, dependency tracking, and file watching
+
+Key directories: src/Sharpy.Lsp/, src/Sharpy.Lsp/Handlers/, src/Sharpy.Lsp/Refactoring/, src/Sharpy.Lsp.Tests/
+Key files: LanguageService.cs, SharpyWorkspace.cs, PositionConverter.cs, DiagnosticPublisher.cs
+
+Output your findings as structured markdown with: Critical, Warning, Opportunity. Include a handler coverage table.
+```
+
+**Future Readiness** (`Explore`, thoroughness: very thorough):
 ```
 Assess the Sharpy compiler's readiness for future tooling. Focus on:
-- LSP readiness: Can SemanticInfo answer position-based queries? Is SourceText/TextSpan sufficient for go-to-definition? Can SymbolTable be incrementally updated?
 - Parallel build readiness: Are there mutable statics or shared state that would prevent parallel compilation? Check CompilerServices, SymbolTable, SemanticInfo for thread safety
 - REPL readiness: Can the pipeline process partial/incomplete inputs? Is there statement-level compilation?
 - Formatter readiness: Is whitespace/trivia preserved through the pipeline? Can the parser roundtrip?
@@ -167,7 +186,10 @@ Wait for all agents to complete. Synthesize their findings into a single report 
 ### Codebase Metrics
 (Full report from agent)
 
-### Future Tooling Readiness
+### LSP Health
+(Full report from agent)
+
+### Future Readiness
 (Full report from agent)
 
 ## Recommended Action Items
