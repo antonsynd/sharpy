@@ -44,7 +44,8 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="ContainsKey(K)"/> instead.
+        /// Check if <paramref name="key"/> exists in the dictionary.
+        /// Used by the compiler for <c>key in dict</c> expressions.
         /// </summary>
         public bool Contains(K key) => ContainsKey(key);
 
