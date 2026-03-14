@@ -123,9 +123,9 @@ internal partial class RoslynEmitter
 
         // If this variable has been narrowed from Optional<T>/Nullable<T> to T,
         // emit .Unwrap() for Optional or .Value for value-type Nullable
-        if (IsNarrowed(name.Name))
+        if (_narrowing.IsNarrowed(name.Name))
         {
-            if (IsNullableNarrowed(name.Name))
+            if (_narrowing.IsNullableNarrowed(name.Name))
             {
                 // Value-type nullable (int?, bool?, etc.) → .Value
                 expr = MemberAccessExpression(
@@ -147,9 +147,9 @@ internal partial class RoslynEmitter
 
         // If this variable has been narrowed by isinstance(), wrap with cast
         // Wraps in parentheses: ((Dog)animal) so member access works: ((Dog)animal).Breed
-        if (IsInstanceNarrowed(name.Name))
+        if (_narrowing.IsInstanceNarrowed(name.Name))
         {
-            var narrowedType = GetIsInstanceNarrowedType(name.Name)!;
+            var narrowedType = _narrowing.GetIsInstanceNarrowedType(name.Name)!;
             expr = ParenthesizedExpression(
                 CastExpression(
                     ParseTypeName(narrowedType),

@@ -138,101 +138,126 @@ internal partial class RoslynEmitter
     private string? _eventHandlerParamName;
 
     /// <summary>
-    /// Tracks variable names (original Sharpy names) that have been narrowed from
-    /// Optional&lt;T&gt; to T via an is-not-None check. Uses reference counting to support
-    /// nested scopes (e.g., nested if-statements checking the same variable).
-    /// When a variable's count is &gt; 0, identifier references emit .Unwrap().
+    /// Encapsulates all narrowing state for Optional/Nullable and isinstance narrowing.
+    /// Extracted from RoslynEmitter's top-level fields to reduce its field count.
     /// </summary>
-    private readonly Dictionary<string, int> _narrowedOptionals = new();
-
-    /// <summary>
-    /// Tracks variable names that are narrowed from NullableType (T | None) rather than
-    /// OptionalType. For value-type nullables (int?, bool?, etc.), the emitter generates
-    /// .Value instead of .Unwrap(). Reference-type nullables (string?) don't need .Value
-    /// because C# narrows them automatically after a null check.
-    /// </summary>
-    private readonly HashSet<string> _isNullableNarrowing = new();
-
-    /// <summary>
-    /// Pushes a narrowing scope for the given variable. Reference-counted so
-    /// nested scopes (e.g., nested if-statements) work correctly.
-    /// </summary>
-    private void PushNarrowing(string variableName)
+    private class NarrowingState
     {
-        _narrowedOptionals.TryGetValue(variableName, out var count);
-        _narrowedOptionals[variableName] = count + 1;
-    }
+        /// <summary>
+        /// Tracks variable names (original Sharpy names) that have been narrowed from
+        /// Optional&lt;T&gt; to T via an is-not-None check. Uses reference counting to support
+        /// nested scopes (e.g., nested if-statements checking the same variable).
+        /// When a variable's count is &gt; 0, identifier references emit .Unwrap().
+        /// </summary>
+        private readonly Dictionary<string, int> _narrowedOptionals = new();
 
-    /// <summary>
-    /// Pops a narrowing scope for the given variable. Only fully removes
-    /// narrowing when the last scope is popped.
-    /// </summary>
-    private void PopNarrowing(string variableName)
-    {
-        if (_narrowedOptionals.TryGetValue(variableName, out var count) && count > 1)
+        /// <summary>
+        /// Tracks variable names that are narrowed from NullableType (T | None) rather than
+        /// OptionalType. For value-type nullables (int?, bool?, etc.), the emitter generates
+        /// .Value instead of .Unwrap(). Reference-type nullables (string?) don't need .Value
+        /// because C# narrows them automatically after a null check.
+        /// </summary>
+        private readonly HashSet<string> _isNullableNarrowing = new();
+
+        /// <summary>
+        /// Tracks variables narrowed by isinstance() checks.
+        /// Maps variable name → stack of C# type names to cast to.
+        /// </summary>
+        private readonly Dictionary<string, Stack<string>> _isInstanceNarrowed = new();
+
+        /// <summary>
+        /// Pushes a narrowing scope for the given variable. Reference-counted so
+        /// nested scopes (e.g., nested if-statements) work correctly.
+        /// </summary>
+        public void PushNarrowing(string variableName)
         {
-            _narrowedOptionals[variableName] = count - 1;
+            _narrowedOptionals.TryGetValue(variableName, out var count);
+            _narrowedOptionals[variableName] = count + 1;
         }
-        else
+
+        /// <summary>
+        /// Pops a narrowing scope for the given variable. Only fully removes
+        /// narrowing when the last scope is popped.
+        /// </summary>
+        public void PopNarrowing(string variableName)
+        {
+            if (_narrowedOptionals.TryGetValue(variableName, out var count) && count > 1)
+            {
+                _narrowedOptionals[variableName] = count - 1;
+            }
+            else
+            {
+                _narrowedOptionals.Remove(variableName);
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the variable is currently narrowed from Optional&lt;T&gt; to T.
+        /// </summary>
+        public bool IsNarrowed(string variableName)
+            => _narrowedOptionals.TryGetValue(variableName, out var count) && count > 0;
+
+        /// <summary>
+        /// Returns true if the variable is narrowed as a value-type nullable (needs .Value).
+        /// </summary>
+        public bool IsNullableNarrowed(string variableName)
+            => _isNullableNarrowing.Contains(variableName);
+
+        /// <summary>
+        /// Marks a variable as narrowed from a value-type nullable (needs .Value access).
+        /// </summary>
+        public void AddNullableNarrowing(string variableName)
+            => _isNullableNarrowing.Add(variableName);
+
+        /// <summary>
+        /// Clears narrowing for a variable (e.g., after reassignment).
+        /// </summary>
+        public void ClearNarrowing(string variableName)
         {
             _narrowedOptionals.Remove(variableName);
+            _isNullableNarrowing.Remove(variableName);
+            _isInstanceNarrowed.Remove(variableName);
         }
-    }
 
-    /// <summary>
-    /// Returns true if the variable is currently narrowed from Optional&lt;T&gt; to T.
-    /// </summary>
-    private bool IsNarrowed(string variableName)
-        => _narrowedOptionals.TryGetValue(variableName, out var count) && count > 0;
-
-    /// <summary>
-    /// Returns true if the variable is narrowed as a value-type nullable (needs .Value).
-    /// </summary>
-    private bool IsNullableNarrowed(string variableName)
-        => _isNullableNarrowing.Contains(variableName);
-
-    /// <summary>
-    /// Clears narrowing for a variable (e.g., after reassignment).
-    /// </summary>
-    private void ClearNarrowing(string variableName)
-    {
-        _narrowedOptionals.Remove(variableName);
-        _isNullableNarrowing.Remove(variableName);
-        _isInstanceNarrowed.Remove(variableName);
-    }
-
-    /// <summary>
-    /// Tracks variables narrowed by isinstance() checks.
-    /// Maps variable name → stack of C# type names to cast to.
-    /// </summary>
-    private readonly Dictionary<string, Stack<string>> _isInstanceNarrowed = new();
-
-    private void PushIsInstanceNarrowing(string variableName, string csharpTypeName)
-    {
-        if (!_isInstanceNarrowed.TryGetValue(variableName, out var stack))
+        public void PushIsInstanceNarrowing(string variableName, string csharpTypeName)
         {
-            stack = new Stack<string>();
-            _isInstanceNarrowed[variableName] = stack;
+            if (!_isInstanceNarrowed.TryGetValue(variableName, out var stack))
+            {
+                stack = new Stack<string>();
+                _isInstanceNarrowed[variableName] = stack;
+            }
+            stack.Push(csharpTypeName);
         }
-        stack.Push(csharpTypeName);
-    }
 
-    private void PopIsInstanceNarrowing(string variableName)
-    {
-        if (_isInstanceNarrowed.TryGetValue(variableName, out var stack))
+        public void PopIsInstanceNarrowing(string variableName)
         {
-            stack.Pop();
-            if (stack.Count == 0)
-                _isInstanceNarrowed.Remove(variableName);
+            if (_isInstanceNarrowed.TryGetValue(variableName, out var stack))
+            {
+                stack.Pop();
+                if (stack.Count == 0)
+                    _isInstanceNarrowed.Remove(variableName);
+            }
+        }
+
+        public bool IsInstanceNarrowed(string variableName)
+            => _isInstanceNarrowed.TryGetValue(variableName, out var stack) && stack.Count > 0;
+
+        public string? GetIsInstanceNarrowedType(string variableName)
+            => _isInstanceNarrowed.TryGetValue(variableName, out var stack) && stack.Count > 0
+                ? stack.Peek() : null;
+
+        /// <summary>
+        /// Resets all narrowing state. Called at method scope boundaries.
+        /// </summary>
+        public void Reset()
+        {
+            _narrowedOptionals.Clear();
+            _isNullableNarrowing.Clear();
+            _isInstanceNarrowed.Clear();
         }
     }
 
-    private bool IsInstanceNarrowed(string variableName)
-        => _isInstanceNarrowed.TryGetValue(variableName, out var stack) && stack.Count > 0;
-
-    private string? GetIsInstanceNarrowedType(string variableName)
-        => _isInstanceNarrowed.TryGetValue(variableName, out var stack) && stack.Count > 0
-            ? stack.Peek() : null;
+    private readonly NarrowingState _narrowing = new();
 
     /// <summary>
     /// Snapshot of local scope tracking state, used for block-scoped constructs (for loops).
@@ -265,8 +290,7 @@ internal partial class RoslynEmitter
         _variableVersions.Clear();
         _constVariables.Clear();
         _sourceVariableNames.Clear();
-        _narrowedOptionals.Clear();
-        _isNullableNarrowing.Clear();
+        _narrowing.Reset();
     }
 
     /// <summary>

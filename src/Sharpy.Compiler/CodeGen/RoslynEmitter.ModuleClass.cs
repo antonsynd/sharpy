@@ -175,8 +175,7 @@ internal partial class RoslynEmitter
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
                 _constVariables.Clear();
-                _narrowedOptionals.Clear();
-                _isNullableNarrowing.Clear();
+                _narrowing.Reset();
             }
 
             if (member is MemberDeclarationSyntax memberDecl)

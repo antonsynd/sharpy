@@ -684,9 +684,9 @@ internal partial class RoslynEmitter
         // If this member access path has been narrowed by isinstance(),
         // wrap with cast: ((Dog)this.Animal) so further member access works
         var dottedPath = TryBuildDottedPath(memberAccess);
-        if (dottedPath != null && IsInstanceNarrowed(dottedPath))
+        if (dottedPath != null && _narrowing.IsInstanceNarrowed(dottedPath))
         {
-            var narrowedType = GetIsInstanceNarrowedType(dottedPath)!;
+            var narrowedType = _narrowing.GetIsInstanceNarrowedType(dottedPath)!;
             result = ParenthesizedExpression(
                 CastExpression(
                     ParseTypeName(narrowedType),
@@ -694,9 +694,9 @@ internal partial class RoslynEmitter
         }
 
         // Optional<T> narrowing for member access paths (self.field is not None)
-        if (dottedPath != null && IsNarrowed(dottedPath))
+        if (dottedPath != null && _narrowing.IsNarrowed(dottedPath))
         {
-            if (IsNullableNarrowed(dottedPath))
+            if (_narrowing.IsNullableNarrowed(dottedPath))
             {
                 result = MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression, result, IdentifierName("Value"));

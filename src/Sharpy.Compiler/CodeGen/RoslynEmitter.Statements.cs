@@ -311,7 +311,7 @@ internal partial class RoslynEmitter
                 {
                     // Variable exists - just update it with a regular assignment
                     // Clear any Optional narrowing since the variable is being reassigned
-                    ClearNarrowing(name.Name);
+                    _narrowing.ClearNarrowing(name.Name);
                     var currentName = GetMangledVariableName(name.Name, isNewDeclaration: false);
                     return ExpressionStatement(
                         AssignmentExpression(
@@ -359,9 +359,9 @@ internal partial class RoslynEmitter
                 // so that x += 1 with narrowed Optional<int> reads as x.Unwrap() + 1
                 // or with narrowed int? reads as x.Value + 1
                 ExpressionSyntax readExpr;
-                if (IsNarrowed(name.Name))
+                if (_narrowing.IsNarrowed(name.Name))
                 {
-                    if (IsNullableNarrowed(name.Name))
+                    if (_narrowing.IsNullableNarrowed(name.Name))
                     {
                         readExpr = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             IdentifierName(varName), IdentifierName("Value"));
@@ -435,7 +435,7 @@ internal partial class RoslynEmitter
             {
                 var path = TryBuildDottedPath(memberAccess);
                 if (path != null)
-                    ClearNarrowing(path);
+                    _narrowing.ClearNarrowing(path);
             }
 
             var target = GenerateMemberAccess(memberAccess);
@@ -986,16 +986,16 @@ internal partial class RoslynEmitter
         if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
         {
             foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
-                PushIsInstanceNarrowing(varName, typeName);
+                _narrowing.PushIsInstanceNarrowing(varName, typeName);
         }
 
         if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
         {
             foreach (var name in narrowingInfo.Value.VariableNames)
-                PushNarrowing(name);
+                _narrowing.PushNarrowing(name);
             thenBlock = Block(ifStmt.ThenBody.SelectMany(GenerateBodyStatements));
             foreach (var name in narrowingInfo.Value.VariableNames)
-                PopNarrowing(name);
+                _narrowing.PopNarrowing(name);
         }
         else
         {
@@ -1006,7 +1006,7 @@ internal partial class RoslynEmitter
         if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
         {
             foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
-                PopIsInstanceNarrowing(varName);
+                _narrowing.PopIsInstanceNarrowing(varName);
         }
 
         // Save scope after then-block so we can restore it after all branches.
@@ -1041,17 +1041,17 @@ internal partial class RoslynEmitter
                 if (isInstanceNarrowingInfo.HasValue && !isInstanceNarrowingInfo.Value.NarrowInThen)
                 {
                     foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
-                        PushIsInstanceNarrowing(varName, typeName);
+                        _narrowing.PushIsInstanceNarrowing(varName, typeName);
                 }
 
                 // Generate else-block with narrowing if applicable (is None → narrow in else)
                 if (narrowingInfo.HasValue && !narrowingInfo.Value.NarrowInThen)
                 {
                     foreach (var name in narrowingInfo.Value.VariableNames)
-                        PushNarrowing(name);
+                        _narrowing.PushNarrowing(name);
                     currentElse = Block(ifStmt.ElseBody.SelectMany(GenerateBodyStatements));
                     foreach (var name in narrowingInfo.Value.VariableNames)
-                        PopNarrowing(name);
+                        _narrowing.PopNarrowing(name);
                 }
                 else
                 {
@@ -1062,7 +1062,7 @@ internal partial class RoslynEmitter
                 if (isInstanceNarrowingInfo.HasValue && !isInstanceNarrowingInfo.Value.NarrowInThen)
                 {
                     foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
-                        PopIsInstanceNarrowing(varName);
+                        _narrowing.PopIsInstanceNarrowing(varName);
                 }
 
             }
@@ -1084,17 +1084,17 @@ internal partial class RoslynEmitter
                 if (elifIsInstanceNarrowingInfo.HasValue && elifIsInstanceNarrowingInfo.Value.NarrowInThen)
                 {
                     foreach (var (varName, typeName) in elifIsInstanceNarrowingInfo.Value.Narrowings)
-                        PushIsInstanceNarrowing(varName, typeName);
+                        _narrowing.PushIsInstanceNarrowing(varName, typeName);
                 }
 
                 BlockSyntax elifBody;
                 if (elifNarrowing.HasValue && elifNarrowing.Value.NarrowInThen)
                 {
                     foreach (var name in elifNarrowing.Value.VariableNames)
-                        PushNarrowing(name);
+                        _narrowing.PushNarrowing(name);
                     elifBody = Block(elif.Body.SelectMany(GenerateBodyStatements));
                     foreach (var name in elifNarrowing.Value.VariableNames)
-                        PopNarrowing(name);
+                        _narrowing.PopNarrowing(name);
                 }
                 else
                 {
@@ -1105,7 +1105,7 @@ internal partial class RoslynEmitter
                 if (elifIsInstanceNarrowingInfo.HasValue && elifIsInstanceNarrowingInfo.Value.NarrowInThen)
                 {
                     foreach (var (varName, _) in elifIsInstanceNarrowingInfo.Value.Narrowings)
-                        PopIsInstanceNarrowing(varName);
+                        _narrowing.PopIsInstanceNarrowing(varName);
                 }
 
                 var elifElseClause = currentElse != null ? ElseClause(currentElse) : null;
@@ -1203,13 +1203,13 @@ internal partial class RoslynEmitter
             isNotNone.Add(narrowingKey);
             // Track value-type nullables so the emitter uses .Value instead of .Unwrap()
             if (isValueTypeNullable)
-                _isNullableNarrowing.Add(narrowingKey);
+                _narrowing.AddNullableNarrowing(narrowingKey);
         }
         else if (binOp.Operator == BinaryOperator.Is)
         {
             isNone.Add(narrowingKey);
             if (isValueTypeNullable)
-                _isNullableNarrowing.Add(narrowingKey);
+                _narrowing.AddNullableNarrowing(narrowingKey);
         }
     }
 
@@ -1312,21 +1312,21 @@ internal partial class RoslynEmitter
             if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
             {
                 foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
-                    PushIsInstanceNarrowing(varName, typeName);
+                    _narrowing.PushIsInstanceNarrowing(varName, typeName);
             }
 
             if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
             {
                 foreach (var name in narrowingInfo.Value.VariableNames)
-                    PushNarrowing(name);
+                    _narrowing.PushNarrowing(name);
                 var body = Block(whileStmt.Body.SelectMany(GenerateBodyStatements));
                 foreach (var name in narrowingInfo.Value.VariableNames)
-                    PopNarrowing(name);
+                    _narrowing.PopNarrowing(name);
 
                 if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
                 {
                     foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
-                        PopIsInstanceNarrowing(varName);
+                        _narrowing.PopIsInstanceNarrowing(varName);
                 }
                 return WrapWithWalrusPreDeclarations(WhileStatement(condition, body));
             }
@@ -1335,7 +1335,7 @@ internal partial class RoslynEmitter
             if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
             {
                 foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
-                    PopIsInstanceNarrowing(varName);
+                    _narrowing.PopIsInstanceNarrowing(varName);
             }
             return WrapWithWalrusPreDeclarations(WhileStatement(condition, simpleBody));
         }
@@ -1361,16 +1361,16 @@ internal partial class RoslynEmitter
         if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
         {
             foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
-                PushIsInstanceNarrowing(varName, typeName);
+                _narrowing.PushIsInstanceNarrowing(varName, typeName);
         }
 
         if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
         {
             foreach (var name in narrowingInfo.Value.VariableNames)
-                PushNarrowing(name);
+                _narrowing.PushNarrowing(name);
             bodyBlock = Block(transformedBody.SelectMany(GenerateBodyStatements));
             foreach (var name in narrowingInfo.Value.VariableNames)
-                PopNarrowing(name);
+                _narrowing.PopNarrowing(name);
         }
         else
         {
@@ -1380,7 +1380,7 @@ internal partial class RoslynEmitter
         if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
         {
             foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
-                PopIsInstanceNarrowing(varName);
+                _narrowing.PopIsInstanceNarrowing(varName);
         }
 
         // while (condition) { transformedBody }
