@@ -21,9 +21,9 @@ The [2026-03-13 compiler health audit](docs/audits/audit-2026-03-13.md) identifi
 - 9,122 tests passing, 0 failures, 1 skip [CORRECTED: audit says 9,122, not 9,123]
 - 19 validators each implement their own AST traversal (~1,000+ lines of duplicated switch/foreach)
 - `DependencyGraphBuilder` lives in `Semantic/` but constructs `Project.DependencyGraph` (bidirectional coupling)
-- `Shared/` has 15 files but only 4 have tests (NameMangler, DunderNameMapping, NameFormDetector, DunderDetector)
+- `Shared/` has 15 files but only 3 have tests (NameMangler, DunderNameMapping, NameFormDetector) [CORRECTED: DunderDetector has no dedicated tests; only 3 files tested, not 4]
 - 113/244 diagnostic codes unused — no documentation distinguishing reserves from future placeholders [CORRECTED: audit found 113 unused, not 167]
-- RoslynEmitter has 3 narrowing-related fields + 8 methods scattered across the class
+- RoslynEmitter has 3 narrowing-related fields + 9 methods scattered across the class [CORRECTED: 9 methods, not 8 — PushNarrowing, PopNarrowing, IsNarrowed, IsNullableNarrowed, ClearNarrowing, PushIsInstanceNarrowing, PopIsInstanceNarrowing, IsInstanceNarrowed, GetIsInstanceNarrowedType]
 - DiagnosticQuickFixProvider has integration tests via CodeActionTests.cs but no dedicated unit tests
 
 ## Design Decisions
@@ -105,20 +105,20 @@ The [2026-03-13 compiler health audit](docs/audits/audit-2026-03-13.md) identifi
 
 ### Phase 3: Diagnostic Code Documentation (P1)
 
-**Goal:** Document the 167 unused diagnostic codes so future developers know which are intentionally reserved vs. allocated for future use.
+**Goal:** Document the 113 unused diagnostic codes so future developers know which are intentionally reserved vs. allocated for future use. [CORRECTED: 113 per audit, not 167]
 
 #### Tasks
 
 1. **Add region markers and status comments to DiagnosticCodes.cs** — `src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs`
    - Add `#region` blocks for each phase: Lexer, Parser, Semantic, Validation, CodeGen, Infrastructure, Info
    - Mark each code with a trailing comment: `// Active`, `// Reserved`, or `// Allocated (not yet emitted)`
-   - For the 5 explicitly reserved codes (SPY0134, SPY0137, SPY0289, SPY0379, SPY0424, SPY0521), keep existing "reserved" comments
+   - For the 6 explicitly reserved codes (SPY0134, SPY0137, SPY0289, SPY0379, SPY0424, SPY0521), keep existing "reserved" comments [CORRECTED: 6 codes listed, not 5]
    - Acceptance: Every code has a status comment; `#region` blocks organize by phase
    - Commit: `docs(diagnostics): document status of all 244 diagnostic codes`
 
 ### Phase 4: RoslynEmitter NarrowingState Extraction (P1)
 
-**Goal:** Group the 3 narrowing fields and 8 methods into a cohesive inner class, reducing RoslynEmitter's field count from 46 to 44.
+**Goal:** Group the 3 narrowing fields and 9 methods into a cohesive inner class, reducing RoslynEmitter's field count from 27 to 25. [CORRECTED: 9 methods not 8; actual instance field count is 27 not 46]
 
 #### Tasks
 
@@ -234,3 +234,57 @@ No GitHub issues are directly referenced by this plan. The audit findings should
 - "Extract NarrowingState from RoslynEmitter"
 - "Add DiagnosticQuickFixProvider dedicated unit tests"
 - "Add ValidatingAstWalker to eliminate validator traversal duplication"
+
+## Verification Summary
+
+**Result:** PASS WITH CORRECTIONS
+**Verified on:** 2026-03-13
+**Plan file:** docs/implementation_planning/audit_2026_03_13_remediation.md
+
+### Corrections Made
+
+1. **Test count** (Current State): 9,123 → 9,122. The audit report says 9,122.
+2. **Unused diagnostic codes** (Current State + Phase 3): 167/244 → 113/244. The audit found 113 unused codes, not 167.
+3. **Narrowing method count** (Current State + Phase 4): 8 → 9. Actual methods: PushNarrowing, PopNarrowing, IsNarrowed, IsNullableNarrowed, ClearNarrowing, PushIsInstanceNarrowing, PopIsInstanceNarrowing, IsInstanceNarrowed, GetIsInstanceNarrowedType.
+4. **Reserved code count** (Phase 3): "5 explicitly reserved codes" → 6. The plan lists 6 codes (SPY0134, SPY0137, SPY0289, SPY0379, SPY0424, SPY0521).
+5. **RoslynEmitter field count** (Phase 4): 46 → 44 corrected to 27 → 25. Only 27 instance fields exist in RoslynEmitter (verified by grep across all 16 partial files). Extracting 3 narrowing fields and adding 1 `_narrowing` reference = 25.
+6. **Shared/ tested files** (Current State): "4 have tests" → 3. DunderDetector has no dedicated tests; only NameMangler, DunderNameMapping, and NameFormDetector have test files.
+
+### Warnings
+
+- **ResetMethodScope missing `_isInstanceNarrowed.Clear()`**: `ResetMethodScope()` (RoslynEmitter.cs:262) clears `_narrowedOptionals` and `_isNullableNarrowing` but does NOT clear `_isInstanceNarrowed`. This may cause isinstance narrowing state to leak between method scopes. The NarrowingState extraction in Phase 4 should include clearing `_isInstanceNarrowed` in its `Reset()` method.
+- **SPY0521 is defined, not just reserved**: The plan lists SPY0521 among "explicitly reserved codes", but `DiagnosticCodes.cs` defines it as `TypeReExportNotSupported = "SPY0521"` — it's an allocated constant for future type re-export support, not merely a comment-reserved code like the other 5.
+
+### Missing Steps Added
+
+- None needed. All pipeline phases are covered for each change. Test strategy is sound.
+
+### Verified Claims (Spot-Checked)
+
+- **Shared/ has 15 files** — Confirmed (15 .cs files in `src/Sharpy.Compiler/Shared/`).
+- **4 Shared/ files have tests** — Confirmed: NameMangler, DunderNameMapping, NameFormDetector, DunderDetector have tests; CSharpKeywords, CSharpTypeNames, AstHelper, StatementWalker do not.
+- **CSharpKeywords methods** — `EscapeIfNeeded()` and `IsKeyword()` confirmed at lines 29, 37.
+- **CSharpTypeNames methods/constants** — `FromSharpyName()`, `SharpyList`, `SharpyDict`, `SharpySet`, `SharpyOptional`, `SharpyResult` all confirmed.
+- **AstHelper methods** — `TryGetConstantIntIndex()` and `ExtractNarrowingKey()` confirmed at lines 15, 39.
+- **StatementWalker methods** — `Any()` and `FirstOrDefault<T>()` confirmed at lines 16, 24.
+- **DependencyGraphBuilder in Semantic/** — Confirmed at `src/Sharpy.Compiler/Semantic/DependencyGraphBuilder.cs`.
+- **IDependencyQuery in Services/** — Confirmed at `src/Sharpy.Compiler/Services/IDependencyQuery.cs`.
+- **ImportResolver.SetDependencyGraphBuilder()** — Confirmed with `DependencyGraphBuilder?` field `_graphBuilder`.
+- **ProjectCompiler.Initialization.cs** — Confirmed, calls `ImportResolver.SetDependencyGraphBuilder(GraphBuilder)` at line 29.
+- **3 narrowing fields** — `_narrowedOptionals`, `_isNullableNarrowing`, `_isInstanceNarrowed` confirmed in `RoslynEmitter.cs`.
+- **Narrowing usage files** — `.Expressions.cs`, `.Expressions.Access.cs`, `.Statements.cs`, `.ModuleClass.cs` confirmed.
+- **ResetMethodScope** — Confirmed at line 262, clears narrowing state.
+- **19 validators** — Confirmed (19 *Validator.cs files in Semantic/Validation/).
+- **SemanticValidatorBase** — Confirmed in `ISemanticValidator.cs` line 41.
+- **AstVisitor** — Confirmed at `Parser/Ast/AstVisitor.cs` (abstract class + generic variant).
+- **ValidationPipelineFactory** — Confirmed at `Semantic/Validation/ValidationPipelineFactory.cs`.
+- **DiagnosticQuickFixProvider** — Confirmed, handles SPY0451 (UnusedVariable), SPY0452 (UnusedImport), SPY0453 (NamingConventionWarning) with `suggestedName` data extraction.
+- **CodeActionTests.cs tests DiagnosticQuickFixProvider** — Confirmed.
+- **ExtractVariableProviderTests.cs** — Confirmed in `src/Sharpy.Lsp.Tests/Refactoring/`.
+- **Validator method names for migration** — All confirmed: UnusedImportValidator (CollectReferencesFromStatement/Expression), NamingConventionValidator (ValidateStatement/ValidateBody), AccessValidator (ValidateTopLevelStatement/ValidateStatement/ValidateExpression), UnusedVariableValidator (CollectFromStatement/CollectReadsFromExpression), ControlFlowValidator (ValidateTopLevelStatement/ValidateNestedFunctions).
+- **Audit file** — Confirmed at `docs/audits/audit-2026-03-13.md`.
+- **244 total diagnostic codes** — Confirmed (244 `const string` declarations in DiagnosticCodes.cs).
+
+### Unchecked Claims
+
+- **"~1,000+ lines of duplicated switch/foreach"** across validators — not line-counted, but extensive duplication confirmed by the large switch/foreach patterns found in each validator.
