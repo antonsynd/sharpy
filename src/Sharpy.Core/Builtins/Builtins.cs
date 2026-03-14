@@ -9,7 +9,6 @@ namespace Sharpy
     /// <summary>
     /// Global builtin functions available in all Sharpy programs
     /// </summary>
-    [SharpyModule("builtins")]
     public static partial class Builtins
     {
         /// <summary>
