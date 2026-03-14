@@ -8,12 +8,27 @@ namespace Sharpy
     /// A safe tagged union for optional values. <c>T?</c> desugars to <c>Optional&lt;T&gt;</c>.
     /// This is a struct — no heap allocation for returning optional values.
     /// </summary>
+    /// <typeparam name="T">The type of the contained value.</typeparam>
     /// <remarks>
     /// Use <c>Optional&lt;T&gt;</c> in your own APIs for explicit, type-safe error handling.
     /// The Sharpy stdlib uses Python-style nullable returns and exceptions for familiarity.
     /// <c>Optional</c> is most useful when you want callers to explicitly handle the "missing
     /// value" case at compile time rather than relying on null checks.
     /// </remarks>
+    /// <example>
+    /// <code>
+    /// def find_user(id: int) -> str?:
+    ///     if id == 1:
+    ///         return "Alice"
+    ///     return None
+    ///
+    /// name = find_user(1)
+    /// if name is not None:
+    ///     print(name)          # "Alice"
+    ///
+    /// print(find_user(99))     # None
+    /// </code>
+    /// </example>
     public readonly struct Optional<T> : System.IEquatable<Optional<T>>
     {
         private readonly T _value;
@@ -36,18 +51,27 @@ namespace Sharpy
         public bool IsNone => !_hasValue;
 
         /// <summary>Returns the contained value, or throws if empty.</summary>
+        /// <returns>The contained value.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if this Optional is empty.</exception>
         public T Unwrap() =>
             _hasValue ? _value : throw new InvalidOperationException("Called Unwrap on empty Optional");
 
         /// <summary>Returns the contained value, or the provided default.</summary>
+        /// <param name="defaultValue">The value to return if empty.</param>
+        /// <returns>The contained value or <paramref name="defaultValue"/>.</returns>
         public T UnwrapOr(T defaultValue) =>
             _hasValue ? _value : defaultValue;
 
         /// <summary>Returns the contained value, or computes it from a function.</summary>
+        /// <param name="f">The function to produce a default value.</param>
+        /// <returns>The contained value or the result of <paramref name="f"/>.</returns>
         public T UnwrapOrElse(Func<T> f) =>
             _hasValue ? _value : f();
 
         /// <summary>Maps the contained value using the given function, or returns None if empty.</summary>
+        /// <typeparam name="U">The type of the mapped value.</typeparam>
+        /// <param name="f">The mapping function.</param>
+        /// <returns>An Optional containing the mapped value, or None if empty.</returns>
         public Optional<U> Map<U>(Func<T, U> f) =>
             _hasValue ? Optional<U>.Some(f(_value)) : Optional<U>.None;
 

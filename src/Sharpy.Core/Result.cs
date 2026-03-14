@@ -7,12 +7,27 @@ namespace Sharpy
     /// A safe tagged union for error handling. <c>T !E</c> desugars to <c>Result&lt;T, E&gt;</c>.
     /// This is a struct — no heap allocation for returning result values.
     /// </summary>
+    /// <typeparam name="T">The type of the success value.</typeparam>
+    /// <typeparam name="E">The type of the error value.</typeparam>
     /// <remarks>
     /// Use <c>Result&lt;T, E&gt;</c> in your own APIs for explicit, type-safe error handling.
     /// The Sharpy stdlib uses Python-style exceptions for familiarity. <c>Result</c> is most
     /// useful when you want callers to handle the error case at compile time rather than relying
     /// on try/catch. Use the <c>try</c> expression to wrap throwing code into a <c>Result</c>.
     /// </remarks>
+    /// <example>
+    /// <code>
+    /// def parse_int(s: str) -> int !ValueError:
+    ///     return int(s)
+    ///
+    /// result = try parse_int("42")
+    /// if result.is_ok:
+    ///     print(result.unwrap())    # 42
+    ///
+    /// result = try parse_int("abc")
+    /// print(result.is_err)          # True
+    /// </code>
+    /// </example>
     public readonly struct Result<T, E> : System.IEquatable<Result<T, E>>
     {
         private readonly T _value;
@@ -37,26 +52,40 @@ namespace Sharpy
         public bool IsErr => !_isOk;
 
         /// <summary>Returns the contained Ok value, or throws if Err.</summary>
+        /// <returns>The contained success value.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if this Result is Err.</exception>
         public T Unwrap() =>
             _isOk ? _value : throw new InvalidOperationException($"Called Unwrap on Err: {_error}");
 
         /// <summary>Returns the contained Ok value, or the provided default.</summary>
+        /// <param name="defaultValue">The value to return if Err.</param>
+        /// <returns>The contained value or <paramref name="defaultValue"/>.</returns>
         public T UnwrapOr(T defaultValue) =>
             _isOk ? _value : defaultValue;
 
         /// <summary>Returns the contained Ok value, or computes it from a function applied to the error.</summary>
+        /// <param name="f">The function to produce a default from the error.</param>
+        /// <returns>The contained value or the result of <paramref name="f"/>.</returns>
         public T UnwrapOrElse(Func<E, T> f) =>
             _isOk ? _value : f(_error);
 
         /// <summary>Returns the contained Err value, or throws if Ok.</summary>
+        /// <returns>The contained error value.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if this Result is Ok.</exception>
         public E UnwrapErr() =>
             _isOk ? throw new InvalidOperationException($"Called UnwrapErr on Ok: {_value}") : _error;
 
         /// <summary>Maps an Ok value using the given function, leaving Err unchanged.</summary>
+        /// <typeparam name="U">The type of the mapped value.</typeparam>
+        /// <param name="f">The mapping function.</param>
+        /// <returns>A Result containing the mapped value, or the original error.</returns>
         public Result<U, E> Map<U>(Func<T, U> f) =>
             _isOk ? Result<U, E>.Ok(f(_value)) : Result<U, E>.Err(_error);
 
         /// <summary>Maps an Err value using the given function, leaving Ok unchanged.</summary>
+        /// <typeparam name="F">The type of the mapped error.</typeparam>
+        /// <param name="f">The error mapping function.</param>
+        /// <returns>A Result with the original value, or the mapped error.</returns>
         public Result<T, F> MapErr<F>(Func<E, F> f) =>
             _isOk ? Result<T, F>.Ok(_value) : Result<T, F>.Err(f(_error));
 
@@ -116,6 +145,9 @@ namespace Sharpy
         /// Wraps a function call in a try/catch, returning Ok on success or Err on exception.
         /// Used by the 'try' expression: try expr → Result[T, Exception].
         /// </summary>
+        /// <typeparam name="T">The return type of the function.</typeparam>
+        /// <param name="func">The function to execute.</param>
+        /// <returns>Ok with the result, or Err with the caught exception.</returns>
         public static Result<T, Exception> Try<T>(Func<T> func)
         {
             try
@@ -133,6 +165,10 @@ namespace Sharpy
         /// Used by the 'try[E]' expression: try[ValueError] expr → Result[T, ValueError].
         /// Other exception types are not caught and propagate normally.
         /// </summary>
+        /// <typeparam name="T">The return type of the function.</typeparam>
+        /// <typeparam name="E">The exception type to catch.</typeparam>
+        /// <param name="func">The function to execute.</param>
+        /// <returns>Ok with the result, or Err with the caught exception of type <typeparamref name="E"/>.</returns>
         public static Result<T, E> Try<T, E>(Func<T> func) where E : Exception
         {
             try
