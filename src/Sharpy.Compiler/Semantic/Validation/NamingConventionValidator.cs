@@ -10,142 +10,53 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// which may cause name mangling collisions or be passed through as unrecognized forms.
 /// Exempts dunder names (<c>__init__</c>) and backtick-escaped literals (<c>`foo__bar`</c>).
 /// </summary>
-internal sealed class NamingConventionValidator : SemanticValidatorBase
+internal sealed class NamingConventionValidator : ValidatingAstWalker
 {
     public override string Name => "NamingConvention";
     public override int Order => 55; // After ModuleLevelValidator (50), before DecoratorValidator (60)
 
-    private SemanticContext _context = null!;
-
-    public override void Validate(Module module, SemanticContext context)
+    public override void VisitFunctionDef(FunctionDef node)
     {
-        _context = context;
-
-        foreach (var stmt in module.Body)
-        {
-            ValidateStatement(stmt);
-        }
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        ValidateParameters(node.Parameters);
+        base.VisitFunctionDef(node);
     }
 
-    private void ValidateStatement(Statement stmt)
+    public override void VisitClassDef(ClassDef node)
     {
-        switch (stmt)
-        {
-            case FunctionDef funcDef:
-                ValidateFunction(funcDef);
-                break;
-            case ClassDef classDef:
-                ValidateClass(classDef);
-                break;
-            case StructDef structDef:
-                ValidateStruct(structDef);
-                break;
-            case InterfaceDef interfaceDef:
-                ValidateInterface(interfaceDef);
-                break;
-            case EnumDef enumDef:
-                ValidateEnum(enumDef);
-                break;
-            case UnionDef unionDef:
-                ValidateUnion(unionDef);
-                break;
-            case DelegateDef delegateDef:
-                ValidateDelegate(delegateDef);
-                break;
-            case VariableDeclaration varDecl:
-                CheckName(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart, varDecl.Span);
-                break;
-            case PropertyDef propDef:
-                CheckName(propDef.Name, propDef.LineStart, propDef.ColumnStart, propDef.Span);
-                break;
-            case EventDef eventDef:
-                CheckName(eventDef.Name, eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
-                break;
-        }
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        base.VisitClassDef(node);
     }
 
-    private void ValidateFunction(FunctionDef funcDef)
+    public override void VisitStructDef(StructDef node)
     {
-        CheckName(funcDef.Name, funcDef.LineStart, funcDef.ColumnStart, funcDef.Span);
-        ValidateParameters(funcDef.Parameters);
-        ValidateBody(funcDef.Body);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        base.VisitStructDef(node);
     }
 
-    private void ValidateClass(ClassDef classDef)
+    public override void VisitInterfaceDef(InterfaceDef node)
     {
-        CheckName(classDef.Name, classDef.LineStart, classDef.ColumnStart, classDef.Span);
-
-        foreach (var member in classDef.Body)
-        {
-            switch (member)
-            {
-                case FunctionDef method:
-                    ValidateFunction(method);
-                    break;
-                case VariableDeclaration field:
-                    CheckName(field.Name, field.LineStart, field.ColumnStart, field.Span);
-                    break;
-                case EventDef eventDef:
-                    CheckName(eventDef.Name, eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
-                    break;
-            }
-        }
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        base.VisitInterfaceDef(node);
     }
 
-    private void ValidateStruct(StructDef structDef)
+    public override void VisitEnumDef(EnumDef node)
     {
-        CheckName(structDef.Name, structDef.LineStart, structDef.ColumnStart, structDef.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
 
-        foreach (var member in structDef.Body)
-        {
-            switch (member)
-            {
-                case FunctionDef method:
-                    ValidateFunction(method);
-                    break;
-                case VariableDeclaration field:
-                    CheckName(field.Name, field.LineStart, field.ColumnStart, field.Span);
-                    break;
-                case EventDef eventDef:
-                    CheckName(eventDef.Name, eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
-                    break;
-            }
-        }
-    }
-
-    private void ValidateInterface(InterfaceDef interfaceDef)
-    {
-        CheckName(interfaceDef.Name, interfaceDef.LineStart, interfaceDef.ColumnStart, interfaceDef.Span);
-
-        foreach (var member in interfaceDef.Body)
-        {
-            if (member is FunctionDef method)
-            {
-                CheckName(method.Name, method.LineStart, method.ColumnStart, method.Span);
-                ValidateParameters(method.Parameters);
-            }
-            else if (member is EventDef eventDef)
-            {
-                CheckName(eventDef.Name, eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
-            }
-        }
-    }
-
-    private void ValidateEnum(EnumDef enumDef)
-    {
-        CheckName(enumDef.Name, enumDef.LineStart, enumDef.ColumnStart, enumDef.Span);
-
-        foreach (var member in enumDef.Members)
+        foreach (var member in node.Members)
         {
             CheckName(member.Name, member.LineStart, member.ColumnStart, member.Span);
         }
+
+        base.VisitEnumDef(node);
     }
 
-    private void ValidateUnion(UnionDef unionDef)
+    public override void VisitUnionDef(UnionDef node)
     {
-        CheckName(unionDef.Name, unionDef.LineStart, unionDef.ColumnStart, unionDef.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
 
-        foreach (var caseDef in unionDef.Cases)
+        foreach (var caseDef in node.Cases)
         {
             CheckName(caseDef.Name, caseDef.LineStart, caseDef.ColumnStart, caseDef.Span);
 
@@ -157,12 +68,61 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
                 }
             }
         }
+
+        base.VisitUnionDef(node);
     }
 
-    private void ValidateDelegate(DelegateDef delegateDef)
+    public override void VisitDelegateDef(DelegateDef node)
     {
-        CheckName(delegateDef.Name, delegateDef.LineStart, delegateDef.ColumnStart, delegateDef.Span);
-        ValidateParameters(delegateDef.Parameters);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        ValidateParameters(node.Parameters);
+        base.VisitDelegateDef(node);
+    }
+
+    public override void VisitVariableDeclaration(VariableDeclaration node)
+    {
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        base.VisitVariableDeclaration(node);
+    }
+
+    public override void VisitPropertyDef(PropertyDef node)
+    {
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        base.VisitPropertyDef(node);
+    }
+
+    public override void VisitEventDef(EventDef node)
+    {
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        base.VisitEventDef(node);
+    }
+
+    public override void VisitForStatement(ForStatement node)
+    {
+        CheckForTarget(node.Target);
+        base.VisitForStatement(node);
+    }
+
+    public override void VisitTryStatement(TryStatement node)
+    {
+        foreach (var handler in node.Handlers)
+        {
+            if (handler.Name != null)
+                CheckName(handler.Name, handler.LineStart, handler.ColumnStart, handler.Span);
+        }
+
+        base.VisitTryStatement(node);
+    }
+
+    public override void VisitWithStatement(WithStatement node)
+    {
+        foreach (var item in node.Items)
+        {
+            if (item.Name != null)
+                CheckName(item.Name, item.LineStart, item.ColumnStart, item.Span);
+        }
+
+        base.VisitWithStatement(node);
     }
 
     private void ValidateParameters(System.Collections.Immutable.ImmutableArray<Parameter> parameters)
@@ -170,64 +130,6 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
         foreach (var param in parameters)
         {
             CheckName(param.Name, param.LineStart, param.ColumnStart, param.Span);
-        }
-    }
-
-    private void ValidateBody(System.Collections.Immutable.ImmutableArray<Statement> body)
-    {
-        foreach (var stmt in body)
-        {
-            switch (stmt)
-            {
-                case VariableDeclaration varDecl:
-                    CheckName(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart, varDecl.Span);
-                    break;
-                case FunctionDef funcDef:
-                    ValidateFunction(funcDef);
-                    break;
-                case ClassDef classDef:
-                    ValidateClass(classDef);
-                    break;
-                case IfStatement ifStmt:
-                    ValidateBody(ifStmt.ThenBody);
-                    foreach (var elif in ifStmt.ElifClauses)
-                        ValidateBody(elif.Body);
-                    if (ifStmt.ElseBody.Length > 0)
-                        ValidateBody(ifStmt.ElseBody);
-                    break;
-                case WhileStatement whileStmt:
-                    ValidateBody(whileStmt.Body);
-                    if (whileStmt.ElseBody.Length > 0)
-                        ValidateBody(whileStmt.ElseBody);
-                    break;
-                case ForStatement forStmt:
-                    CheckForTarget(forStmt.Target);
-                    ValidateBody(forStmt.Body);
-                    if (forStmt.ElseBody.Length > 0)
-                        ValidateBody(forStmt.ElseBody);
-                    break;
-                case TryStatement tryStmt:
-                    ValidateBody(tryStmt.Body);
-                    foreach (var handler in tryStmt.Handlers)
-                    {
-                        if (handler.Name != null)
-                            CheckName(handler.Name, handler.LineStart, handler.ColumnStart, handler.Span);
-                        ValidateBody(handler.Body);
-                    }
-                    if (tryStmt.ElseBody.Length > 0)
-                        ValidateBody(tryStmt.ElseBody);
-                    if (tryStmt.FinallyBody.Length > 0)
-                        ValidateBody(tryStmt.FinallyBody);
-                    break;
-                case WithStatement withStmt:
-                    foreach (var item in withStmt.Items)
-                    {
-                        if (item.Name != null)
-                            CheckName(item.Name, item.LineStart, item.ColumnStart, item.Span);
-                    }
-                    ValidateBody(withStmt.Body);
-                    break;
-            }
         }
     }
 
@@ -304,10 +206,10 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
         {
             var suggestedName = CollapseConsecutiveUnderscores(name);
             var data = new Dictionary<string, string> { { "suggestedName", suggestedName } };
-            _context.Diagnostics.AddWarning(
+            Context.Diagnostics.AddWarning(
                 $"Identifier '{name}' contains consecutive underscores, which may cause name mangling collisions. Use backtick escaping or rename.",
                 span, line, column,
-                _context.CurrentFilePath,
+                Context.CurrentFilePath,
                 code: DiagnosticCodes.Validation.NamingConventionWarning,
                 phase: CompilerPhase.Validation,
                 data: data);
