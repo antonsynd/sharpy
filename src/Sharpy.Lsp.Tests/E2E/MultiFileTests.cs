@@ -187,28 +187,30 @@ public class MultiFileTests : IAsyncLifetime
         var mainText = File.ReadAllText(System.IO.Path.Combine(_tempDir, "main.spy"));
         await _client.DidOpenAsync(mainUri, mainText);
 
-        var firstDiag = await _client.WaitForNotificationAsync(
-            "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
-        firstDiag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
+        // Wait for a clean diagnostic notification. Background project indexing and
+        // single-file analysis can both publish diagnostics, so drain until we see
+        // the expected result (skipping any stale or duplicate notifications).
+        var firstDiag = await WaitForDiagnosticsMatchingAsync(
+            n => n["diagnostics"]!.AsArray()!.Count == 0,
+            TimeSpan.FromSeconds(15),
             "initial valid code should have no diagnostics");
 
         // Introduce a type error
         await _client.DidChangeAsync(mainUri, "def main():\n    x: int = \"bad\"\n    print(x)", 2);
 
-        var secondDiag = await _client.WaitForNotificationAsync(
-            "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
-        secondDiag["diagnostics"]!.AsArray()!.Count.Should().BeGreaterThan(0,
+        // Drain stale notifications (e.g. from background indexing finishing after
+        // didOpen) and wait for the notification with actual error diagnostics.
+        var secondDiag = await WaitForDiagnosticsMatchingAsync(
+            n => n["diagnostics"]!.AsArray()!.Count > 0,
+            TimeSpan.FromSeconds(15),
             "type error should produce diagnostics");
 
         // Fix the error
         await _client.DidChangeAsync(mainUri, "def main():\n    x: int = 99\n    print(x)", 3);
 
-        var thirdDiag = await _client.WaitForNotificationAsync(
-            "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
-        thirdDiag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
+        var thirdDiag = await WaitForDiagnosticsMatchingAsync(
+            n => n["diagnostics"]!.AsArray()!.Count == 0,
+            TimeSpan.FromSeconds(15),
             "fixed code should clear diagnostics");
     }
 
@@ -289,5 +291,45 @@ public class MultiFileTests : IAsyncLifetime
             Directory.CreateDirectory(dir);
             File.WriteAllText(filePath, content);
         }
+    }
+
+    /// <summary>
+    /// Waits for a publishDiagnostics notification matching the given predicate,
+    /// skipping any stale or duplicate notifications that don't match.
+    /// This handles the race between background project indexing and single-file
+    /// analysis, which can both publish diagnostic notifications.
+    /// </summary>
+    private async Task<JsonNode> WaitForDiagnosticsMatchingAsync(
+        Func<JsonNode, bool> predicate,
+        TimeSpan timeout,
+        string because)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (sw.Elapsed < timeout)
+        {
+            var remaining = timeout - sw.Elapsed;
+            if (remaining <= TimeSpan.Zero)
+                break;
+
+            try
+            {
+                var notification = await _client.WaitForNotificationAsync(
+                    "textDocument/publishDiagnostics",
+                    remaining < TimeSpan.FromSeconds(2) ? remaining : TimeSpan.FromSeconds(2));
+
+                if (predicate(notification))
+                    return notification;
+
+                _output.WriteLine(
+                    $"Skipped stale diagnostic notification ({notification["diagnostics"]?.AsArray()?.Count ?? 0} diagnostics)");
+            }
+            catch (TimeoutException) when (sw.Elapsed < timeout)
+            {
+                // No notification yet, keep polling
+            }
+        }
+
+        throw new Xunit.Sdk.XunitException(
+            $"Expected diagnostics matching condition because {because}, but timed out after {timeout.TotalSeconds}s");
     }
 }
