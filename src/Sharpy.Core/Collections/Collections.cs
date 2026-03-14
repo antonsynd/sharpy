@@ -283,8 +283,7 @@ namespace Sharpy
     /// <summary>
     /// Module exports for collections.
     /// </summary>
-    [SharpyModule("collections")]
-    public static class Collections
+    public static partial class Collections
     {
         /// <summary>The Deque type.</summary>
         public static Type DequeType => typeof(Deque<>);
