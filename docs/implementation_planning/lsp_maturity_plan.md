@@ -33,7 +33,7 @@ The **analysis model** is the architectural bottleneck. Everything runs single-f
 
 ---
 
-## Phase 0: Foundation — Project-Aware Analysis Engine
+## Phase 0: Foundation — Project-Aware Analysis Engine ✅ COMPLETED
 
 **Scope: Large | Priority: Critical | Prerequisite for everything**
 
@@ -133,7 +133,7 @@ Inverse of extract. Find the single assignment, replace all references with the 
 
 ---
 
-## Phase 3: Performance & Scale
+## Phase 3: Performance & Scale ✅ COMPLETED
 
 **Scope: Medium | Priority: Medium | Can start in parallel with Phase 2**
 
@@ -215,7 +215,7 @@ If Sharpy ever targets notebook-style execution (like Jupyter for Python), the L
 ## Phasing Summary
 
 ```
-Phase 0  [Critical Foundation]
+Phase 0  [Critical Foundation]          ✅ COMPLETED
   0.1 Incremental sync         **  (small)
   0.2 Project-wide analysis    ******  (large, most important)
   0.3 Background indexing      ***  (medium)
@@ -233,7 +233,7 @@ Phase 2  [Refactoring]
   2.4 Organize imports         *   (small, validator exists)
   2.5 Inline variable/function **  (medium)
 
-Phase 3  [Performance]                        <- can overlap Phase 2
+Phase 3  [Performance]                        ✅ COMPLETED
   3.1 Syntax-only fast path    *   (small)
   3.2 Cancellation pipeline    **  (medium)
   3.3 Partial re-analysis      ****  (large, compiler change)
