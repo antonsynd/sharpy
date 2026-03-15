@@ -88,6 +88,43 @@ public sealed class LspTestClient : IAsyncDisposable
                         {
                             ["snippetSupport"] = false
                         }
+                    },
+                    ["callHierarchy"] = new JsonObject
+                    {
+                        ["dynamicRegistration"] = false
+                    },
+                    ["typeHierarchy"] = new JsonObject
+                    {
+                        ["dynamicRegistration"] = false
+                    },
+                    ["implementation"] = new JsonObject
+                    {
+                        ["dynamicRegistration"] = false
+                    },
+                    ["codeAction"] = new JsonObject
+                    {
+                        ["dynamicRegistration"] = false,
+                        ["codeActionLiteralSupport"] = new JsonObject
+                        {
+                            ["codeActionKind"] = new JsonObject
+                            {
+                                ["valueSet"] = new JsonArray(
+                                    "quickfix",
+                                    "refactor",
+                                    "refactor.extract",
+                                    "refactor.inline",
+                                    "refactor.rewrite",
+                                    "source",
+                                    "source.organizeImports")
+                            }
+                        }
+                    }
+                },
+                ["workspace"] = new JsonObject
+                {
+                    ["symbol"] = new JsonObject
+                    {
+                        ["dynamicRegistration"] = false
                     }
                 }
             },

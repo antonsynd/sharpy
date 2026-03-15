@@ -79,6 +79,23 @@ public class ProtocolTests : IAsyncLifetime
         // Verify signature help support
         var signatureHelpProvider = capabilities["signatureHelpProvider"];
         signatureHelpProvider.Should().NotBeNull("server must support signature help");
+
+        // Phase 1 — Structural Navigation capabilities
+        var callHierarchyProvider = capabilities["callHierarchyProvider"];
+        callHierarchyProvider.Should().NotBeNull("server must support call hierarchy");
+
+        var typeHierarchyProvider = capabilities["typeHierarchyProvider"];
+        typeHierarchyProvider.Should().NotBeNull("server must support type hierarchy");
+
+        var implementationProvider = capabilities["implementationProvider"];
+        implementationProvider.Should().NotBeNull("server must support go-to-implementation");
+
+        var workspaceSymbolProvider = capabilities["workspaceSymbolProvider"];
+        workspaceSymbolProvider.Should().NotBeNull("server must support workspace symbols");
+
+        // Phase 2 — Refactoring & Code Actions capability
+        var codeActionProvider = capabilities["codeActionProvider"];
+        codeActionProvider.Should().NotBeNull("server must support code actions");
     }
 
     [Fact]
