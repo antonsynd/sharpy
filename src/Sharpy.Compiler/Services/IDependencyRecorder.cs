@@ -5,7 +5,7 @@ namespace Sharpy.Compiler.Services;
 /// Used by <see cref="Semantic.ImportResolver"/> to track import relationships
 /// without depending on the concrete <see cref="Project.DependencyGraphBuilder"/>.
 /// </summary>
-public interface IDependencyRecorder
+internal interface IDependencyRecorder
 {
     /// <summary>
     /// Registers a file in the dependency graph.

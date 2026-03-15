@@ -206,12 +206,11 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
         {
             var suggestedName = CollapseConsecutiveUnderscores(name);
             var data = new Dictionary<string, string> { { "suggestedName", suggestedName } };
-            Context.Diagnostics.AddWarning(
+            AddWarning(
                 $"Identifier '{name}' contains consecutive underscores, which may cause name mangling collisions. Use backtick escaping or rename.",
-                span, line, column,
-                Context.CurrentFilePath,
+                line, column,
                 code: DiagnosticCodes.Validation.NamingConventionWarning,
-                phase: CompilerPhase.Validation,
+                span: span,
                 data: data);
         }
     }

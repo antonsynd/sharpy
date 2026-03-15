@@ -339,7 +339,7 @@ def main():
         var source = @"
 interface IComparable:
     def compare_to(self, other: int) -> int:
-        pass
+        ...
 
 class Comparer[T: IComparable]:
     value: T
@@ -454,7 +454,7 @@ def main():
         var source = @"
 interface IComparable:
     def compare_to(self, other: int) -> int:
-        pass
+        ...
 
 def find_max[T: IComparable](a: T, b: T) -> T:
     # Simple implementation - just return first argument
@@ -649,9 +649,9 @@ def main():
         var source = @"
 interface IContainer[T]:
     def get(self) -> T:
-        pass
+        ...
     def set(self, value: T) -> None:
-        pass
+        ...
 
 # Just verify the interface compiles
 def main():
@@ -673,7 +673,7 @@ def main():
         var source = @"
 interface IMapper[T, U]:
     def map(self, input: T) -> U:
-        pass
+        ...
 
 # Just verify the interface compiles
 def main():

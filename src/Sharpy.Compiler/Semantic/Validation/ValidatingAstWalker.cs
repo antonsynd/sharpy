@@ -31,8 +31,8 @@ internal abstract class ValidatingAstWalker : AstVisitor, ISemanticValidator
     }
 
     protected void AddWarning(string message, int? line = null, int? column = null,
-        string? code = null, TextSpan? span = null)
+        string? code = null, TextSpan? span = null, IReadOnlyDictionary<string, string>? data = null)
     {
-        Context.Diagnostics.AddWarning(message, span, line, column, Context.CurrentFilePath, code: code, phase: CompilerPhase.Validation);
+        Context.Diagnostics.AddWarning(message, span, line, column, Context.CurrentFilePath, code: code, phase: CompilerPhase.Validation, data: data);
     }
 }
