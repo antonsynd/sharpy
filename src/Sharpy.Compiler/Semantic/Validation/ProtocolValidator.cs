@@ -16,105 +16,56 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// type inference during type-checking; this validator catches missing
 /// protocol implementations after types are resolved.
 /// </summary>
-internal class ProtocolValidator : SemanticValidatorBase
+internal class ProtocolValidator : ValidatingAstWalker
 {
     public override string Name => "ProtocolValidator";
     public override int Order => 500; // After access validation (450)
 
     private ICompilerLogger _logger = NullLogger.Instance;
-    private SemanticContext _context = null!;
 
     public override void Validate(Module module, SemanticContext context)
     {
-        _context = context;
         _logger = context.Logger;
         _logger.LogDebug("Starting protocol validation");
-
-        foreach (var stmt in module.Body)
-        {
-            ValidateStatement(stmt);
-        }
+        base.Validate(module, context);
     }
 
-    private void ValidateStatement(Statement stmt)
+    public override void VisitForStatement(ForStatement node)
     {
-        switch (stmt)
+        ValidateIteration(node);
+        base.VisitForStatement(node);
+    }
+
+    public override void VisitForClause(ForClause node)
+    {
+        ValidateIteratorExpression(node.Iterator);
+        base.VisitForClause(node);
+    }
+
+    public override void VisitIndexAccess(IndexAccess node)
+    {
+        ValidateIndexAccess(node);
+        base.VisitIndexAccess(node);
+    }
+
+    public override void VisitBinaryOp(BinaryOp node)
+    {
+        if (node.Operator is BinaryOperator.In or BinaryOperator.NotIn)
         {
-            case FunctionDef funcDef:
-                foreach (var bodyStmt in funcDef.Body)
-                    ValidateStatement(bodyStmt);
-                break;
-            case ClassDef classDef:
-                foreach (var member in classDef.Body)
-                    ValidateStatement(member);
-                break;
-            case StructDef structDef:
-                foreach (var member in structDef.Body)
-                    ValidateStatement(member);
-                break;
-            case ForStatement forStmt:
-                ValidateIteration(forStmt);
-                foreach (var bodyStmt in forStmt.Body)
-                    ValidateStatement(bodyStmt);
-                break;
-            case WhileStatement whileStmt:
-                ValidateExpression(whileStmt.Test);
-                foreach (var bodyStmt in whileStmt.Body)
-                    ValidateStatement(bodyStmt);
-                break;
-            case IfStatement ifStmt:
-                ValidateExpression(ifStmt.Test);
-                foreach (var bodyStmt in ifStmt.ThenBody)
-                    ValidateStatement(bodyStmt);
-                foreach (var elif in ifStmt.ElifClauses)
-                {
-                    ValidateExpression(elif.Test);
-                    foreach (var bodyStmt in elif.Body)
-                        ValidateStatement(bodyStmt);
-                }
-                foreach (var bodyStmt in ifStmt.ElseBody)
-                    ValidateStatement(bodyStmt);
-                break;
-            case TryStatement tryStmt:
-                foreach (var bodyStmt in tryStmt.Body)
-                    ValidateStatement(bodyStmt);
-                foreach (var handler in tryStmt.Handlers)
-                {
-                    foreach (var bodyStmt in handler.Body)
-                        ValidateStatement(bodyStmt);
-                }
-                foreach (var bodyStmt in tryStmt.ElseBody)
-                    ValidateStatement(bodyStmt);
-                foreach (var bodyStmt in tryStmt.FinallyBody)
-                    ValidateStatement(bodyStmt);
-                break;
-            case WithStatement withStmt:
-                foreach (var item in withStmt.Items)
-                    ValidateExpression(item.ContextExpression);
-                foreach (var bodyStmt in withStmt.Body)
-                    ValidateStatement(bodyStmt);
-                break;
-            case ExpressionStatement exprStmt:
-                ValidateExpression(exprStmt.Expression);
-                break;
-            case Assignment assignment:
-                ValidateExpression(assignment.Target);
-                ValidateExpression(assignment.Value);
-                break;
-            case VariableDeclaration varDecl:
-                if (varDecl.InitialValue != null)
-                    ValidateExpression(varDecl.InitialValue);
-                break;
-            case ReturnStatement returnStmt:
-                if (returnStmt.Value != null)
-                    ValidateExpression(returnStmt.Value);
-                break;
+            ValidateMembership(node);
         }
+        base.VisitBinaryOp(node);
+    }
+
+    public override void VisitFunctionCall(FunctionCall node)
+    {
+        ValidateFunctionCall(node);
+        base.VisitFunctionCall(node);
     }
 
     private void ValidateIteration(ForStatement forStmt)
     {
-        var iterableType = _context.SemanticInfo.GetExpressionType(forStmt.Iterator);
+        var iterableType = Context.SemanticInfo.GetExpressionType(forStmt.Iterator);
         if (iterableType == null || iterableType is UnknownType)
             return;
 
@@ -122,128 +73,23 @@ internal class ProtocolValidator : SemanticValidatorBase
         // Skip the __iter__ check and trust the C# compiler to validate.
         if (!forStmt.IsAsync && !HasProtocol(iterableType, DunderNames.Iter))
         {
-            AddError(_context,
+            AddError(
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +
                 "(missing '__iter__' method).",
                 forStmt.Iterator.LineStart, forStmt.Iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
                 span: forStmt.Iterator.Span);
         }
-
-        // Also validate the iterator expression
-        ValidateExpression(forStmt.Iterator);
-    }
-
-    private void ValidateExpression(Expression expr)
-    {
-        switch (expr)
-        {
-            case IndexAccess indexAccess:
-                ValidateIndexAccess(indexAccess);
-                ValidateExpression(indexAccess.Object);
-                ValidateExpression(indexAccess.Index);
-                break;
-            case BinaryOp binOp when binOp.Operator is BinaryOperator.In or BinaryOperator.NotIn:
-                ValidateMembership(binOp);
-                ValidateExpression(binOp.Left);
-                ValidateExpression(binOp.Right);
-                break;
-            case BinaryOp binOp:
-                ValidateExpression(binOp.Left);
-                ValidateExpression(binOp.Right);
-                break;
-            case FunctionCall call:
-                ValidateFunctionCall(call);
-                ValidateExpression(call.Function);
-                foreach (var arg in call.Arguments)
-                    ValidateExpression(arg);
-                foreach (var kwArg in call.KeywordArguments)
-                    ValidateExpression(kwArg.Value);
-                break;
-            case MemberAccess memberAccess:
-                ValidateExpression(memberAccess.Object);
-                break;
-            case UnaryOp unaryOp:
-                ValidateExpression(unaryOp.Operand);
-                break;
-            case ListLiteral listLit:
-                foreach (var elem in listLit.Elements)
-                    ValidateExpression(elem);
-                break;
-            case DictLiteral dictLit:
-                foreach (var entry in dictLit.Entries)
-                {
-                    if (entry.Key != null)
-                        ValidateExpression(entry.Key);
-                    ValidateExpression(entry.Value);
-                }
-                break;
-            case SetLiteral setLit:
-                foreach (var elem in setLit.Elements)
-                    ValidateExpression(elem);
-                break;
-            case TupleLiteral tupleLit:
-                foreach (var elem in tupleLit.Elements)
-                    ValidateExpression(elem);
-                break;
-            case ListComprehension listComp:
-                ValidateComprehension(listComp.Element, listComp.Clauses);
-                break;
-            case SetComprehension setComp:
-                ValidateComprehension(setComp.Element, setComp.Clauses);
-                break;
-            case DictComprehension dictComp:
-                ValidateExpression(dictComp.Key);
-                ValidateExpression(dictComp.Value);
-                foreach (var clause in dictComp.Clauses)
-                {
-                    if (clause is ForClause forClause)
-                    {
-                        ValidateIteratorExpression(forClause.Iterator);
-                        ValidateExpression(forClause.Iterator);
-                    }
-                    else if (clause is IfClause ifClause)
-                    {
-                        ValidateExpression(ifClause.Condition);
-                    }
-                }
-                break;
-            case ConditionalExpression cond:
-                ValidateExpression(cond.Test);
-                ValidateExpression(cond.ThenValue);
-                ValidateExpression(cond.ElseValue);
-                break;
-            case Parenthesized paren:
-                ValidateExpression(paren.Expression);
-                break;
-        }
-    }
-
-    private void ValidateComprehension(Expression element, IReadOnlyList<ComprehensionClause> clauses)
-    {
-        ValidateExpression(element);
-        foreach (var clause in clauses)
-        {
-            if (clause is ForClause forClause)
-            {
-                ValidateIteratorExpression(forClause.Iterator);
-                ValidateExpression(forClause.Iterator);
-            }
-            else if (clause is IfClause ifClause)
-            {
-                ValidateExpression(ifClause.Condition);
-            }
-        }
     }
 
     private void ValidateIteratorExpression(Expression iterator)
     {
-        var iterableType = _context.SemanticInfo.GetExpressionType(iterator);
+        var iterableType = Context.SemanticInfo.GetExpressionType(iterator);
         if (iterableType == null || iterableType is UnknownType)
             return;
 
         if (!HasProtocol(iterableType, DunderNames.Iter))
         {
-            AddError(_context,
+            AddError(
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +
                 "(missing '__iter__' method).",
                 iterator.LineStart, iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
@@ -253,13 +99,13 @@ internal class ProtocolValidator : SemanticValidatorBase
 
     private void ValidateIndexAccess(IndexAccess indexAccess)
     {
-        var containerType = _context.SemanticInfo.GetExpressionType(indexAccess.Object);
+        var containerType = Context.SemanticInfo.GetExpressionType(indexAccess.Object);
         if (containerType == null || containerType is UnknownType)
             return;
 
         if (!HasProtocol(containerType, DunderNames.GetItem))
         {
-            AddError(_context,
+            AddError(
                 $"Type '{containerType.GetDisplayName()}' does not support indexing " +
                 "(missing '__getitem__' method).",
                 indexAccess.LineStart, indexAccess.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
@@ -269,13 +115,13 @@ internal class ProtocolValidator : SemanticValidatorBase
 
     private void ValidateMembership(BinaryOp binOp)
     {
-        var containerType = _context.SemanticInfo.GetExpressionType(binOp.Right);
+        var containerType = Context.SemanticInfo.GetExpressionType(binOp.Right);
         if (containerType == null || containerType is UnknownType)
             return;
 
         if (!HasProtocol(containerType, DunderNames.Contains))
         {
-            AddError(_context,
+            AddError(
                 $"Type '{containerType.GetDisplayName()}' does not support membership testing " +
                 "(missing '__contains__' method).",
                 binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
@@ -288,13 +134,13 @@ internal class ProtocolValidator : SemanticValidatorBase
         // Check for len() calls
         if (call.Function is Identifier id && id.Name == "len" && call.Arguments.Length == 1)
         {
-            var argType = _context.SemanticInfo.GetExpressionType(call.Arguments[0]);
+            var argType = Context.SemanticInfo.GetExpressionType(call.Arguments[0]);
             if (argType == null || argType is UnknownType)
                 return;
 
             if (!HasProtocol(argType, DunderNames.Len))
             {
-                AddError(_context,
+                AddError(
                     $"Type '{argType.GetDisplayName()}' does not support len() " +
                     "(missing '__len__' method). Consider implementing ISized interface.",
                     call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
@@ -324,7 +170,7 @@ internal class ProtocolValidator : SemanticValidatorBase
         // Check generic container types — use TypeSymbol metadata (populated by discovery)
         if (type is GenericType generic)
         {
-            var typeSymbol = _context.SymbolTable.BuiltinRegistry.GetType(generic.Name);
+            var typeSymbol = Context.SymbolTable.BuiltinRegistry.GetType(generic.Name);
             if (typeSymbol != null)
                 return typeSymbol.ProtocolMethods.ContainsKey(dunderName);
             // Fall through for user-defined generic types not in the registry

@@ -14,200 +14,45 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// type inference during type-checking; this validator catches additional
 /// constraint violations after types are resolved.
 /// </summary>
-internal class OperatorValidator : SemanticValidatorBase
+internal class OperatorValidator : ValidatingAstWalker
 {
     public override string Name => "OperatorValidator";
     public override int Order => 501; // After ProtocolValidator (500)
 
     private ICompilerLogger _logger = NullLogger.Instance;
-    private SemanticContext _context = null!;
 
     public override void Validate(Module module, SemanticContext context)
     {
-        _context = context;
         _logger = context.Logger;
         _logger.LogDebug("Starting operator validation");
-
-        foreach (var stmt in module.Body)
-        {
-            ValidateStatement(stmt);
-        }
+        base.Validate(module, context);
     }
 
-    private void ValidateStatement(Statement stmt)
+    public override void VisitBinaryOp(BinaryOp node)
     {
-        switch (stmt)
-        {
-            case FunctionDef funcDef:
-                foreach (var bodyStmt in funcDef.Body)
-                    ValidateStatement(bodyStmt);
-                break;
-            case ClassDef classDef:
-                foreach (var member in classDef.Body)
-                    ValidateStatement(member);
-                break;
-            case StructDef structDef:
-                foreach (var member in structDef.Body)
-                    ValidateStatement(member);
-                break;
-            case ForStatement forStmt:
-                ValidateExpression(forStmt.Iterator);
-                foreach (var bodyStmt in forStmt.Body)
-                    ValidateStatement(bodyStmt);
-                break;
-            case WhileStatement whileStmt:
-                ValidateExpression(whileStmt.Test);
-                foreach (var bodyStmt in whileStmt.Body)
-                    ValidateStatement(bodyStmt);
-                break;
-            case IfStatement ifStmt:
-                ValidateExpression(ifStmt.Test);
-                foreach (var bodyStmt in ifStmt.ThenBody)
-                    ValidateStatement(bodyStmt);
-                foreach (var elif in ifStmt.ElifClauses)
-                {
-                    ValidateExpression(elif.Test);
-                    foreach (var bodyStmt in elif.Body)
-                        ValidateStatement(bodyStmt);
-                }
-                foreach (var bodyStmt in ifStmt.ElseBody)
-                    ValidateStatement(bodyStmt);
-                break;
-            case TryStatement tryStmt:
-                foreach (var bodyStmt in tryStmt.Body)
-                    ValidateStatement(bodyStmt);
-                foreach (var handler in tryStmt.Handlers)
-                {
-                    foreach (var bodyStmt in handler.Body)
-                        ValidateStatement(bodyStmt);
-                }
-                foreach (var bodyStmt in tryStmt.ElseBody)
-                    ValidateStatement(bodyStmt);
-                foreach (var bodyStmt in tryStmt.FinallyBody)
-                    ValidateStatement(bodyStmt);
-                break;
-            case WithStatement withStmt:
-                foreach (var item in withStmt.Items)
-                    ValidateExpression(item.ContextExpression);
-                foreach (var bodyStmt in withStmt.Body)
-                    ValidateStatement(bodyStmt);
-                break;
-            case ExpressionStatement exprStmt:
-                ValidateExpression(exprStmt.Expression);
-                break;
-            case Assignment assignment:
-                // Check if this is an augmented assignment (+=, -=, etc.)
-                if (assignment.Operator != AssignmentOperator.Assign)
-                {
-                    ValidateAugmentedAssignment(assignment);
-                }
-                ValidateExpression(assignment.Target);
-                ValidateExpression(assignment.Value);
-                break;
-            case VariableDeclaration varDecl:
-                if (varDecl.InitialValue != null)
-                    ValidateExpression(varDecl.InitialValue);
-                break;
-            case ReturnStatement returnStmt:
-                if (returnStmt.Value != null)
-                    ValidateExpression(returnStmt.Value);
-                break;
-        }
+        ValidateBinaryOp(node);
+        base.VisitBinaryOp(node);
     }
 
-    private void ValidateExpression(Expression expr)
+    public override void VisitUnaryOp(UnaryOp node)
     {
-        switch (expr)
+        ValidateUnaryOp(node);
+        base.VisitUnaryOp(node);
+    }
+
+    public override void VisitAssignment(Assignment node)
+    {
+        if (node.Operator != AssignmentOperator.Assign)
         {
-            case BinaryOp binOp:
-                ValidateBinaryOp(binOp);
-                ValidateExpression(binOp.Left);
-                ValidateExpression(binOp.Right);
-                break;
-            case UnaryOp unaryOp:
-                ValidateUnaryOp(unaryOp);
-                ValidateExpression(unaryOp.Operand);
-                break;
-            case FunctionCall call:
-                ValidateExpression(call.Function);
-                foreach (var arg in call.Arguments)
-                    ValidateExpression(arg);
-                foreach (var kwArg in call.KeywordArguments)
-                    ValidateExpression(kwArg.Value);
-                break;
-            case MemberAccess memberAccess:
-                ValidateExpression(memberAccess.Object);
-                break;
-            case IndexAccess indexAccess:
-                ValidateExpression(indexAccess.Object);
-                ValidateExpression(indexAccess.Index);
-                break;
-            case ListLiteral listLit:
-                foreach (var elem in listLit.Elements)
-                    ValidateExpression(elem);
-                break;
-            case DictLiteral dictLit:
-                foreach (var entry in dictLit.Entries)
-                {
-                    if (entry.Key != null)
-                        ValidateExpression(entry.Key);
-                    ValidateExpression(entry.Value);
-                }
-                break;
-            case SetLiteral setLit:
-                foreach (var elem in setLit.Elements)
-                    ValidateExpression(elem);
-                break;
-            case TupleLiteral tupleLit:
-                foreach (var elem in tupleLit.Elements)
-                    ValidateExpression(elem);
-                break;
-            case ListComprehension listComp:
-                ValidateExpression(listComp.Element);
-                foreach (var clause in listComp.Clauses)
-                {
-                    if (clause is ForClause forClause)
-                        ValidateExpression(forClause.Iterator);
-                    else if (clause is IfClause ifClause)
-                        ValidateExpression(ifClause.Condition);
-                }
-                break;
-            case SetComprehension setComp:
-                ValidateExpression(setComp.Element);
-                foreach (var clause in setComp.Clauses)
-                {
-                    if (clause is ForClause forClause)
-                        ValidateExpression(forClause.Iterator);
-                    else if (clause is IfClause ifClause)
-                        ValidateExpression(ifClause.Condition);
-                }
-                break;
-            case DictComprehension dictComp:
-                ValidateExpression(dictComp.Key);
-                ValidateExpression(dictComp.Value);
-                foreach (var clause in dictComp.Clauses)
-                {
-                    if (clause is ForClause forClause)
-                        ValidateExpression(forClause.Iterator);
-                    else if (clause is IfClause ifClause)
-                        ValidateExpression(ifClause.Condition);
-                }
-                break;
-            case ConditionalExpression cond:
-                ValidateExpression(cond.Test);
-                ValidateExpression(cond.ThenValue);
-                ValidateExpression(cond.ElseValue);
-                break;
-            case Parenthesized paren:
-                ValidateExpression(paren.Expression);
-                break;
+            ValidateAugmentedAssignment(node);
         }
+        base.VisitAssignment(node);
     }
 
     private void ValidateBinaryOp(BinaryOp binOp)
     {
-        var leftType = _context.SemanticInfo.GetExpressionType(binOp.Left);
-        var rightType = _context.SemanticInfo.GetExpressionType(binOp.Right);
+        var leftType = Context.SemanticInfo.GetExpressionType(binOp.Left);
+        var rightType = Context.SemanticInfo.GetExpressionType(binOp.Right);
 
         if (leftType == null || rightType == null)
             return;
@@ -248,7 +93,7 @@ internal class OperatorValidator : SemanticValidatorBase
     {
         if (line == null && column == null)
             return false;
-        var errors = _context.Diagnostics.GetErrors();
+        var errors = Context.Diagnostics.GetErrors();
         for (int i = 0; i < errors.Count; i++)
         {
             if (errors[i].Line == line && errors[i].Column == column)
@@ -265,7 +110,7 @@ internal class OperatorValidator : SemanticValidatorBase
         // one is more actionable for the user.
         if (leftType is not NullableType and not OptionalType)
         {
-            AddError(_context,
+            AddError(
                 $"Left operand of null coalescing operator must be nullable, but got '{leftType.GetDisplayName()}'",
                 binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Validation.InvalidNullCoalesce,
                 span: binOp.Span);
@@ -295,7 +140,7 @@ internal class OperatorValidator : SemanticValidatorBase
 
                 if (!HasErrorAtPosition(binOp.LineStart, binOp.ColumnStart))
                 {
-                    AddError(_context,
+                    AddError(
                         $"Type '{leftType.GetDisplayName()}' does not support operator '{OperatorToString(binOp.Operator)}' with right operand of type '{rightType.GetDisplayName()}'",
                         binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
                         span: binOp.Span);
@@ -330,7 +175,7 @@ internal class OperatorValidator : SemanticValidatorBase
 
     private void ValidateUnaryOp(UnaryOp unaryOp)
     {
-        var operandType = _context.SemanticInfo.GetExpressionType(unaryOp.Operand);
+        var operandType = Context.SemanticInfo.GetExpressionType(unaryOp.Operand);
         if (operandType == null || operandType is UnknownType)
             return;
 
@@ -346,7 +191,7 @@ internal class OperatorValidator : SemanticValidatorBase
         {
             if (!HasErrorAtPosition(unaryOp.LineStart, unaryOp.ColumnStart))
             {
-                AddError(_context,
+                AddError(
                     $"Type '{operandType.GetDisplayName()}' does not support unary operator '{OperatorToString(unaryOp.Operator)}'",
                     unaryOp.LineStart, unaryOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
                     span: unaryOp.Span);
@@ -356,8 +201,8 @@ internal class OperatorValidator : SemanticValidatorBase
 
     private void ValidateAugmentedAssignment(Assignment assignment)
     {
-        var targetType = _context.SemanticInfo.GetExpressionType(assignment.Target);
-        var valueType = _context.SemanticInfo.GetExpressionType(assignment.Value);
+        var targetType = Context.SemanticInfo.GetExpressionType(assignment.Target);
+        var valueType = Context.SemanticInfo.GetExpressionType(assignment.Value);
 
         if (targetType == null || valueType == null)
             return;
@@ -378,7 +223,7 @@ internal class OperatorValidator : SemanticValidatorBase
         {
             if (!HasErrorAtPosition(assignment.LineStart, assignment.ColumnStart))
             {
-                AddError(_context,
+                AddError(
                     $"Unsupported operand types for {OperatorToString(assignment.Operator)}: '{targetType.GetDisplayName()}' and '{valueType.GetDisplayName()}'",
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
                     span: assignment.Span);
@@ -417,7 +262,7 @@ internal class OperatorValidator : SemanticValidatorBase
         // Generic types — check TypeSymbol metadata (populated by discovery)
         if (type is GenericType generic)
         {
-            var typeSymbol = _context.SymbolTable.BuiltinRegistry.GetType(generic.Name);
+            var typeSymbol = Context.SymbolTable.BuiltinRegistry.GetType(generic.Name);
             if (typeSymbol != null)
             {
                 if (typeSymbol.OperatorMethods.ContainsKey(dunderName))
@@ -487,7 +332,7 @@ internal class OperatorValidator : SemanticValidatorBase
         // for field types in imported classes. Look up the type name in the SymbolTable.
         if (udt.Symbol == null && udt.Name != null)
         {
-            var symbol = _context.SymbolTable.Lookup(udt.Name);
+            var symbol = Context.SymbolTable.Lookup(udt.Name);
             if (symbol is TypeSymbol { TypeKind: TypeKind.Enum })
                 return true;
         }

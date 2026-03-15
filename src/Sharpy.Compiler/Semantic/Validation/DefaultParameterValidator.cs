@@ -13,45 +13,24 @@ namespace Sharpy.Compiler.Semantic.Validation;
 ///
 /// This is the pipeline-compatible version of DefaultParameterValidator.
 /// </summary>
-internal class DefaultParameterValidator : SemanticValidatorBase
+internal class DefaultParameterValidator : ValidatingAstWalker
 {
     public override string Name => "DefaultParameterValidator";
     public override int Order => 250; // Before type checking (300)
 
     private ICompilerLogger _logger = NullLogger.Instance;
-    private SemanticContext _context = null!;
 
     public override void Validate(Module module, SemanticContext context)
     {
-        _context = context;
         _logger = context.Logger;
         _logger.LogDebug("Starting default parameter validation");
-
-        foreach (var stmt in module.Body)
-        {
-            ValidateStatement(stmt);
-        }
+        base.Validate(module, context);
     }
 
-    private void ValidateStatement(Statement stmt)
+    public override void VisitFunctionDef(FunctionDef node)
     {
-        switch (stmt)
-        {
-            case FunctionDef funcDef:
-                ValidateFunctionDefaults(funcDef);
-                // Also validate nested functions
-                foreach (var bodyStmt in funcDef.Body)
-                    ValidateStatement(bodyStmt);
-                break;
-            case ClassDef classDef:
-                foreach (var member in classDef.Body)
-                    ValidateStatement(member);
-                break;
-            case StructDef structDef:
-                foreach (var member in structDef.Body)
-                    ValidateStatement(member);
-                break;
-        }
+        ValidateFunctionDefaults(node);
+        base.VisitFunctionDef(node);
     }
 
     /// <summary>
@@ -78,7 +57,7 @@ internal class DefaultParameterValidator : SemanticValidatorBase
         // Check for mutable defaults first (these are never allowed)
         if (IsMutableDefault(defaultValue))
         {
-            AddError(_context,
+            AddError(
                 $"Mutable default value is not allowed for parameter '{param.Name}' in function '{functionName}'. " +
                 "Use None as default and initialize in the function body instead.",
                 param.LineStart,
@@ -90,7 +69,7 @@ internal class DefaultParameterValidator : SemanticValidatorBase
         // Check that the default value is a compile-time constant
         if (!IsCompileTimeConstant(defaultValue))
         {
-            AddError(_context,
+            AddError(
                 $"Default value for parameter '{param.Name}' in function '{functionName}' must be a compile-time constant expression",
                 param.LineStart,
                 param.ColumnStart, code: DiagnosticCodes.Validation.NonConstDefault,
@@ -101,12 +80,12 @@ internal class DefaultParameterValidator : SemanticValidatorBase
         // Check None assignment to non-nullable types
         if (defaultValue is NoneLiteral)
         {
-            var paramType = _context.TypeResolver.ResolveTypeAnnotation(param.Type);
+            var paramType = Context.TypeResolver.ResolveTypeAnnotation(param.Type);
 
             // None is only valid for nullable/optional types
             if (paramType is not NullableType and not OptionalType && paramType is not UnknownType)
             {
-                AddError(_context,
+                AddError(
                     $"Cannot use 'None' as default value for non-nullable parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +
                     $"Use '{paramType.GetDisplayName()}?' to make the parameter nullable.",
                     param.LineStart,
@@ -119,11 +98,11 @@ internal class DefaultParameterValidator : SemanticValidatorBase
         if (defaultValue is FunctionCall { Function: NoneLiteral } noneCall
             && noneCall.Arguments.Length == 0 && noneCall.KeywordArguments.Length == 0)
         {
-            var paramType = _context.TypeResolver.ResolveTypeAnnotation(param.Type);
+            var paramType = Context.TypeResolver.ResolveTypeAnnotation(param.Type);
 
             if (paramType is not OptionalType && paramType is not UnknownType)
             {
-                AddError(_context,
+                AddError(
                     $"Cannot use 'None()' as default value for non-optional parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +
                     $"Use '{paramType.GetDisplayName()}?' to make the parameter optional.",
                     param.LineStart,
@@ -252,7 +231,7 @@ internal class DefaultParameterValidator : SemanticValidatorBase
     /// </summary>
     private bool IsConstReference(Identifier id)
     {
-        var symbol = _context.SymbolTable.Lookup(id.Name);
+        var symbol = Context.SymbolTable.Lookup(id.Name);
         return symbol is VariableSymbol { IsConstant: true };
     }
 
@@ -269,7 +248,7 @@ internal class DefaultParameterValidator : SemanticValidatorBase
         }
 
         // Look up the type in the symbol table
-        var symbol = _context.SymbolTable.Lookup(typeId.Name);
+        var symbol = Context.SymbolTable.Lookup(typeId.Name);
 
         // Check if it's an enum type
         return symbol is TypeSymbol { TypeKind: TypeKind.Enum };

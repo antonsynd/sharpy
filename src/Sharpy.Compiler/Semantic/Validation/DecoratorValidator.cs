@@ -15,13 +15,18 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// This validator runs early (Order 60) to catch decorator errors before
 /// other validators attempt to process the decorated definitions.
 /// </summary>
-internal class DecoratorValidator : SemanticValidatorBase
+internal class DecoratorValidator : ValidatingAstWalker
 {
     public override string Name => "DecoratorValidator";
     public override int Order => 60; // After ModuleLevelValidator (50), before SignatureValidator (150)
 
     private ICompilerLogger _logger = NullLogger.Instance;
-    private SemanticContext _context = null!;
+
+    /// <summary>
+    /// Tracks the containing type context during traversal.
+    /// Null at module level; set to the type name/kind when inside a class, struct, or interface.
+    /// </summary>
+    private ContainingTypeInfo? _containingType;
 
     /// <summary>
     /// Set of decorators that are explicitly unsupported with their error messages.
@@ -35,99 +40,105 @@ internal class DecoratorValidator : SemanticValidatorBase
 
     public override void Validate(Module module, SemanticContext context)
     {
-        _context = context;
         _logger = context.Logger;
         _logger.LogDebug("Starting decorator validation");
-
-        // Validate top-level function definitions
-        foreach (var stmt in module.Body)
-        {
-            ValidateStatement(stmt);
-        }
+        _containingType = null;
+        base.Validate(module, context);
     }
 
-    private void ValidateStatement(Statement stmt)
+    public override void VisitFunctionDef(FunctionDef node)
     {
-        switch (stmt)
+        var definitionName = _containingType != null
+            ? $"{_containingType.Name}.{node.Name}"
+            : node.Name;
+        ValidateDecorators(node.Decorators, definitionName);
+
+        if (_containingType != null)
         {
-            case FunctionDef funcDef:
-                ValidateDecorators(funcDef.Decorators, funcDef.Name);
-                break;
+            ValidateFinalRequiresOverride(node, _containingType.Name);
 
-            case ClassDef classDef:
-                ValidateDecorators(classDef.Decorators, classDef.Name);
-                ValidateClassBody(classDef);
-                break;
+            if (_containingType.Kind == ContainingTypeKind.Class)
+            {
+                ValidateVirtualOnObjectOverride(node, _containingType.Name);
+            }
+            else if (_containingType.Kind == ContainingTypeKind.Struct)
+            {
+                ValidateVirtualOnStruct(node, _containingType.Name);
+            }
+        }
 
-            case StructDef structDef:
-                ValidateDecorators(structDef.Decorators, structDef.Name);
-                ValidateStructBody(structDef);
-                break;
+        base.VisitFunctionDef(node);
+    }
 
-            case InterfaceDef interfaceDef:
-                ValidateDecorators(interfaceDef.Decorators, interfaceDef.Name);
-                ValidateInterfaceDecorators(interfaceDef);
-                ValidateInterfaceBody(interfaceDef);
-                break;
+    public override void VisitClassDef(ClassDef node)
+    {
+        ValidateDecorators(node.Decorators, node.Name);
 
-            case PropertyDef propDef:
-                ValidateDecorators(propDef.Decorators, propDef.Name);
-                break;
+        var previousType = _containingType;
+        _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Class);
+        base.VisitClassDef(node);
+        _containingType = previousType;
+    }
 
-            case EventDef eventDef:
-                ValidateDecorators(eventDef.Decorators, eventDef.Name);
-                break;
+    public override void VisitStructDef(StructDef node)
+    {
+        ValidateDecorators(node.Decorators, node.Name);
 
-            case VariableDeclaration varDecl when varDecl.Decorators.Length > 0:
+        var previousType = _containingType;
+        _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Struct);
+        base.VisitStructDef(node);
+        _containingType = previousType;
+    }
+
+    public override void VisitInterfaceDef(InterfaceDef node)
+    {
+        ValidateDecorators(node.Decorators, node.Name);
+        ValidateInterfaceDecorators(node);
+
+        var previousType = _containingType;
+        _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Interface);
+        base.VisitInterfaceDef(node);
+        _containingType = previousType;
+    }
+
+    public override void VisitPropertyDef(PropertyDef node)
+    {
+        ValidateDecorators(node.Decorators, node.Name);
+        base.VisitPropertyDef(node);
+    }
+
+    public override void VisitEventDef(EventDef node)
+    {
+        var definitionName = _containingType != null
+            ? $"{_containingType.Name}.{node.Name}"
+            : node.Name;
+        ValidateDecorators(node.Decorators, definitionName);
+
+        if (_containingType != null)
+        {
+            ValidateEventFinalRequiresOverride(node, _containingType.Name);
+        }
+
+        base.VisitEventDef(node);
+    }
+
+    public override void VisitVariableDeclaration(VariableDeclaration node)
+    {
+        if (node.Decorators.Length > 0)
+        {
+            if (_containingType != null)
+            {
+                ValidateFieldDecorators(node, _containingType.Name);
+            }
+            else
+            {
                 // Decorated variables at module level are not allowed —
                 // @static only makes sense on class/struct fields
-                ValidateModuleLevelFieldDecorators(varDecl);
-                break;
+                ValidateModuleLevelFieldDecorators(node);
+            }
         }
-    }
 
-    private void ValidateClassBody(ClassDef classDef)
-    {
-        foreach (var member in classDef.Body)
-        {
-            if (member is FunctionDef method)
-            {
-                ValidateDecorators(method.Decorators, $"{classDef.Name}.{method.Name}");
-                ValidateFinalRequiresOverride(method, classDef.Name);
-                ValidateVirtualOnObjectOverride(method, classDef.Name);
-            }
-            else if (member is VariableDeclaration varDecl)
-            {
-                ValidateFieldDecorators(varDecl, classDef.Name);
-            }
-            else if (member is EventDef eventDef)
-            {
-                ValidateDecorators(eventDef.Decorators, $"{classDef.Name}.{eventDef.Name}");
-                ValidateEventFinalRequiresOverride(eventDef, classDef.Name);
-            }
-        }
-    }
-
-    private void ValidateStructBody(StructDef structDef)
-    {
-        foreach (var member in structDef.Body)
-        {
-            if (member is FunctionDef method)
-            {
-                ValidateDecorators(method.Decorators, $"{structDef.Name}.{method.Name}");
-                ValidateFinalRequiresOverride(method, structDef.Name);
-                ValidateVirtualOnStruct(method, structDef.Name);
-            }
-            else if (member is VariableDeclaration varDecl)
-            {
-                ValidateFieldDecorators(varDecl, structDef.Name);
-            }
-            else if (member is EventDef eventDef)
-            {
-                ValidateDecorators(eventDef.Decorators, $"{structDef.Name}.{eventDef.Name}");
-                ValidateEventFinalRequiresOverride(eventDef, structDef.Name);
-            }
-        }
+        base.VisitVariableDeclaration(node);
     }
 
     /// <summary>
@@ -150,28 +161,13 @@ internal class DecoratorValidator : SemanticValidatorBase
         {
             if (invalidOnInterface.Contains(decorator.Name))
             {
-                AddError(_context,
+                AddError(
                     $"Decorator '@{decorator.Name}' is not valid on interface '{interfaceDef.Name}'. " +
                     "Only custom attribute decorators and access modifiers are allowed on interfaces.",
                     decorator.LineStart,
                     decorator.ColumnStart,
                     code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
                     span: decorator.Span);
-            }
-        }
-    }
-
-    private void ValidateInterfaceBody(InterfaceDef interfaceDef)
-    {
-        foreach (var member in interfaceDef.Body)
-        {
-            if (member is FunctionDef method)
-            {
-                ValidateDecorators(method.Decorators, $"{interfaceDef.Name}.{method.Name}");
-            }
-            else if (member is EventDef eventDef)
-            {
-                ValidateDecorators(eventDef.Decorators, $"{interfaceDef.Name}.{eventDef.Name}");
             }
         }
     }
@@ -183,7 +179,7 @@ internal class DecoratorValidator : SemanticValidatorBase
             if (UnsupportedDecorators.TryGetValue(decorator.Name, out var errorMessage))
             {
                 _logger.LogDebug($"Found unsupported decorator '@{decorator.Name}' on '{definitionName}'");
-                AddError(_context, errorMessage, decorator.LineStart, decorator.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                AddError(errorMessage, decorator.LineStart, decorator.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
                     span: decorator.Span);
             }
 
@@ -191,7 +187,7 @@ internal class DecoratorValidator : SemanticValidatorBase
             if (DecoratorNames.KnownModifierDecorators.Contains(decorator.Name)
                 && (decorator.Arguments.Length > 0 || decorator.KeywordArguments.Length > 0))
             {
-                AddError(_context,
+                AddError(
                     $"Built-in decorator '@{decorator.Name}' does not accept arguments",
                     decorator.LineStart,
                     decorator.ColumnStart,
@@ -221,7 +217,7 @@ internal class DecoratorValidator : SemanticValidatorBase
                 var message = arg is Identifier id
                     ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
                     : "Decorator argument must be a compile-time constant";
-                AddError(_context,
+                AddError(
                     message,
                     arg.LineStart,
                     arg.ColumnStart,
@@ -237,7 +233,7 @@ internal class DecoratorValidator : SemanticValidatorBase
                 var message = kwArg.Value is Identifier id
                     ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
                     : "Decorator argument must be a compile-time constant";
-                AddError(_context,
+                AddError(
                     message,
                     kwArg.Value.LineStart,
                     kwArg.Value.ColumnStart,
@@ -283,7 +279,7 @@ internal class DecoratorValidator : SemanticValidatorBase
     {
         foreach (var decorator in varDecl.Decorators)
         {
-            AddError(_context,
+            AddError(
                 $"Decorators cannot be applied to module-level variable declarations. " +
                 $"'@{decorator.Name}' on '{varDecl.Name}' is only valid inside a class or struct body.",
                 decorator.LineStart,
@@ -302,7 +298,7 @@ internal class DecoratorValidator : SemanticValidatorBase
         {
             if (decorator.Name != DecoratorNames.Static)
             {
-                AddError(_context,
+                AddError(
                     $"Decorator '@{decorator.Name}' is not valid on field '{varDecl.Name}' in '{typeName}'. " +
                     "Only @static is allowed on field declarations.",
                     decorator.LineStart,
@@ -321,7 +317,7 @@ internal class DecoratorValidator : SemanticValidatorBase
         var virtualDecorator = method.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.Virtual);
         if (virtualDecorator != null)
         {
-            AddError(_context,
+            AddError(
                 $"Struct method '{method.Name}' in '{typeName}' cannot be @virtual. " +
                 "Struct methods cannot be virtual because structs are implicitly sealed.",
                 virtualDecorator.LineStart,
@@ -333,7 +329,7 @@ internal class DecoratorValidator : SemanticValidatorBase
 
     /// <summary>
     /// Warns when @virtual is used on dunder methods that always generate 'override'
-    /// (e.g., __str__ → ToString(), __hash__ → GetHashCode()).
+    /// (e.g., __str__ -> ToString(), __hash__ -> GetHashCode()).
     /// </summary>
     private void ValidateVirtualOnObjectOverride(FunctionDef method, string typeName)
     {
@@ -362,7 +358,7 @@ internal class DecoratorValidator : SemanticValidatorBase
             var virtualDecorator = method.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.Virtual);
             if (virtualDecorator == null)
                 return;
-            AddWarning(_context,
+            AddWarning(
                 $"@virtual is redundant on '{method.Name}' in '{typeName}' — " +
                 $"it always overrides {csharpName}. The @virtual decorator will be ignored.",
                 virtualDecorator.LineStart,
@@ -383,7 +379,7 @@ internal class DecoratorValidator : SemanticValidatorBase
         if (hasFinal && !hasOverride)
         {
             var finalDecorator = eventDef.Decorators.First(d => d.Name == DecoratorNames.Final);
-            AddError(_context,
+            AddError(
                 $"Event '{eventDef.Name}' in '{typeName}' is marked @final but not @override. " +
                 "The @final decorator prevents further overriding and requires @override.",
                 finalDecorator.LineStart,
@@ -405,7 +401,7 @@ internal class DecoratorValidator : SemanticValidatorBase
         if (hasFinal && !hasOverride)
         {
             var finalDecorator = method.Decorators.First(d => d.Name == DecoratorNames.Final);
-            AddError(_context,
+            AddError(
                 $"Method '{method.Name}' in '{typeName}' is marked @final but not @override. " +
                 "The @final decorator prevents further overriding and requires @override.",
                 finalDecorator.LineStart,
@@ -414,4 +410,13 @@ internal class DecoratorValidator : SemanticValidatorBase
                 span: finalDecorator.Span);
         }
     }
+
+    private enum ContainingTypeKind
+    {
+        Class,
+        Struct,
+        Interface,
+    }
+
+    private sealed record ContainingTypeInfo(string Name, ContainingTypeKind Kind);
 }
