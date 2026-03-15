@@ -8,47 +8,42 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// Warns about local variables that are assigned but never read.
 /// Skips parameters, underscore-prefixed variables, and loop variables.
 /// </summary>
-internal class UnusedVariableValidator : SemanticValidatorBase
+internal class UnusedVariableValidator : ValidatingAstWalker
 {
     public override string Name => "UnusedVariableValidator";
     public override int Order => 420;
 
-    private SemanticContext _context = null!;
     // Per-function state for tracking definitions from within expressions (walrus operator)
     private Dictionary<string, VariableInfo> _currentDefined = null!;
     private HashSet<string> _currentParameters = null!;
 
-    public override void Validate(Module module, SemanticContext context)
-    {
-        _context = context;
+    // Override Visit methods to dispatch to per-function validation.
+    // We don't call base for these because ValidateFunction handles its own traversal.
 
-        foreach (var stmt in module.Body)
-        {
-            if (stmt is FunctionDef func)
-                ValidateFunction(func);
-            else if (stmt is ClassDef cls)
-                ValidateClass(cls);
-            else if (stmt is StructDef str)
-                ValidateStruct(str);
-        }
+    public override void VisitFunctionDef(FunctionDef node)
+    {
+        ValidateFunction(node);
+        // Don't call base — ValidateFunction handles its own traversal
     }
 
-    private void ValidateClass(ClassDef cls)
+    public override void VisitClassDef(ClassDef node)
     {
-        foreach (var member in cls.Body)
+        foreach (var member in node.Body)
         {
             if (member is FunctionDef method)
                 ValidateFunction(method);
         }
+        // Don't call base — we've handled method traversal
     }
 
-    private void ValidateStruct(StructDef str)
+    public override void VisitStructDef(StructDef node)
     {
-        foreach (var member in str.Body)
+        foreach (var member in node.Body)
         {
             if (member is FunctionDef method)
                 ValidateFunction(method);
         }
+        // Don't call base — we've handled method traversal
     }
 
     private void ValidateFunction(FunctionDef func)
@@ -108,7 +103,7 @@ internal class UnusedVariableValidator : SemanticValidatorBase
             if (info.IsLoopVariable)
                 continue;
 
-            AddWarning(_context,
+            AddWarning(
                 $"Local variable '{name}' is assigned but never used",
                 info.Line, info.Column,
                 code: DiagnosticCodes.Validation.UnusedVariable,
@@ -330,7 +325,7 @@ internal class UnusedVariableValidator : SemanticValidatorBase
         }
     }
 
-    private void CollectForTarget(Expression target, Dictionary<string, VariableInfo> defined,
+    private static void CollectForTarget(Expression target, Dictionary<string, VariableInfo> defined,
         HashSet<string> parameters, bool isLoopVariable)
     {
         if (target is Identifier id && !parameters.Contains(id.Name))
@@ -351,9 +346,9 @@ internal class UnusedVariableValidator : SemanticValidatorBase
     /// Includes parameter default values and decorator names, which are
     /// evaluated in the enclosing scope, not the nested function's scope.
     /// </summary>
-    private void CollectReadsFromNestedFunction(FunctionDef func, HashSet<string> outerRead)
+    private static void CollectReadsFromNestedFunction(FunctionDef func, HashSet<string> outerRead)
     {
-        var collector = new ReadCollector(outerRead, this);
+        var collector = new ReadCollector(outerRead);
 
         // Parameter default values are evaluated in the enclosing scope
         foreach (var param in func.Parameters)
@@ -378,16 +373,31 @@ internal class UnusedVariableValidator : SemanticValidatorBase
     /// DefaultVisit handles recursive traversal into child nodes automatically.
     /// Special handling for WalrusExpression to track definitions.
     /// </summary>
-    private sealed class ReadCollector(HashSet<string> read, UnusedVariableValidator validator) : AstVisitor
+    private sealed class ReadCollector : AstVisitor
     {
-        public override void VisitIdentifier(Identifier node) => read.Add(node.Name);
+        private readonly HashSet<string> _read;
+        private readonly UnusedVariableValidator? _validator;
+
+        public ReadCollector(HashSet<string> read, UnusedVariableValidator validator)
+        {
+            _read = read;
+            _validator = validator;
+        }
+
+        public ReadCollector(HashSet<string> read)
+        {
+            _read = read;
+            _validator = null;
+        }
+
+        public override void VisitIdentifier(Identifier node) => _read.Add(node.Name);
 
         public override void VisitWalrusExpression(WalrusExpression node)
         {
             // Walrus (name := value) defines the target variable
-            if (!validator._currentParameters.Contains(node.Target))
+            if (_validator != null && !_validator._currentParameters.Contains(node.Target))
             {
-                validator._currentDefined[node.Target] = new VariableInfo(
+                _validator._currentDefined[node.Target] = new VariableInfo(
                     node.LineStart, node.ColumnStart, node.Span, false);
             }
             // Visit value for reads but don't visit node as a whole (which would add target as read)

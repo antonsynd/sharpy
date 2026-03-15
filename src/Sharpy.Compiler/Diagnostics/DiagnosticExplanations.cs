@@ -1257,7 +1257,7 @@ public static class DiagnosticExplanations
             "union Shape:\n    case Circle(r: float)\n    case Square(s: float)\nmatch shape:\n    case Circle(r):  # missing Square case\n        print(r)",
             "Cover all cases or add a wildcard:\nmatch shape:\n    case Circle(r):\n        print(r)\n    case _:\n        pass");
 
-        // ── Validation errors: Dunder invocation rules (SPY0460-SPY0469)
+        // ── Validation errors: Dunder invocation rules (SPY0427-SPY0429)
 
         Add(dict, DiagnosticCodes.Validation.DunderDirectInvocation,
             "Direct dunder method invocation",

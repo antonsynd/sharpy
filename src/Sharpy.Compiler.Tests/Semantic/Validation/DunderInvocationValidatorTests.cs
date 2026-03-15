@@ -176,7 +176,7 @@ def bar():
     [Fact]
     public void DunderMethodCapture_StillReportsError()
     {
-        // __add__ is a dunder method, not a property — should still report SPY0462
+        // __add__ is a dunder method, not a property — should still report SPY0429
         var code = @"
 class Foo:
     def __add__(self, other: Foo) -> Foo:

@@ -388,7 +388,12 @@ public static class DiagnosticCodes
         // Decorator argument validation (SPY0425-SPY0426)
         public const string NonConstantDecoratorArgument = "SPY0425"; // Active
         public const string InitPropertyNotAssigned = "SPY0426";    // Active
-        // SPY0427-SPY0449: Reserved for future validation errors
+
+        // Dunder invocation rules (SPY0427-SPY0429)
+        public const string DunderDirectInvocation = "SPY0427";     // Active
+        public const string DunderWrongReceiver = "SPY0428";        // Active
+        public const string DunderCapture = "SPY0429";              // Active
+        // SPY0430-SPY0449: Reserved for future validation errors
 
         #endregion
 
@@ -405,10 +410,7 @@ public static class DiagnosticCodes
         public const string VirtualOnObjectOverride = "SPY0458";    // Active
         public const string StaticFieldViaInstance = "SPY0459";     // Active
 
-        // Dunder invocation rules (SPY0460-SPY0462)
-        public const string DunderDirectInvocation = "SPY0460";     // Active
-        public const string DunderWrongReceiver = "SPY0461";        // Active
-        public const string DunderCapture = "SPY0462";              // Active
+        // SPY0460-SPY0462: Available (formerly dunder invocation rules, moved to SPY0427-SPY0429)
 
         // Exhaustiveness warnings (SPY0463)
         public const string NonExhaustiveMatch = "SPY0463";         // Active

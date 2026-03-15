@@ -6,9 +6,9 @@ namespace Sharpy.Compiler.Semantic.Validation;
 
 /// <summary>
 /// Enforces dunder method invocation rules:
-/// - Dunder methods cannot be called directly from non-dunder code (SPY0460)
-/// - Inside a dunder, dunder calls must be on self or super() (SPY0461)
-/// - Dunder method references cannot be captured (SPY0462)
+/// - Dunder methods cannot be called directly from non-dunder code (SPY0427)
+/// - Inside a dunder, dunder calls must be on self or super() (SPY0428)
+/// - Dunder method references cannot be captured (SPY0429)
 ///
 /// See docs/language_specification/dunder_invocation_rules.md for the full spec.
 /// </summary>
@@ -46,7 +46,7 @@ internal class DunderInvocationValidator : ValidatingAstWalker
 
             if (!_inDunderMethod)
             {
-                // SPY0460: Calling a dunder from outside a dunder method
+                // SPY0427: Calling a dunder from outside a dunder method
                 AddError(
                     $"Cannot invoke dunder method '{dunderName}' directly. Use the corresponding operator or built-in function.",
                     memberAccess.LineStart, memberAccess.ColumnStart,
@@ -55,7 +55,7 @@ internal class DunderInvocationValidator : ValidatingAstWalker
             }
             else if (!IsSelfOrSuper(memberAccess.Object))
             {
-                // SPY0461: Dunder call on wrong receiver
+                // SPY0428: Dunder call on wrong receiver
                 AddError(
                     $"Dunder method '{dunderName}' can only be called on 'self' or 'super()' within another dunder method.",
                     memberAccess.LineStart, memberAccess.ColumnStart,

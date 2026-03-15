@@ -57,7 +57,10 @@ internal class DependencyGraphBuilder : IDependencyRecorder
         ArgumentNullException.ThrowIfNull(filePath);
         var normalized = PathNormalizer.Normalize(filePath);
         _dependencies.TryAdd(normalized, new ConcurrentBag<string>());
-        _cachedGraph = null; // Invalidate cache
+        lock (_buildLock)
+        {
+            _cachedGraph = null; // Invalidate cache
+        }
     }
 
     /// <summary>
@@ -87,7 +90,10 @@ internal class DependencyGraphBuilder : IDependencyRecorder
         _dependencies.GetOrAdd(normalizedTo, _ => new ConcurrentBag<string>());
 
         deps.Add(normalizedTo);
-        _cachedGraph = null; // Invalidate cache
+        lock (_buildLock)
+        {
+            _cachedGraph = null; // Invalidate cache
+        }
     }
 
     /// <summary>
@@ -106,7 +112,10 @@ internal class DependencyGraphBuilder : IDependencyRecorder
 
         var normalized = PathNormalizer.Normalize(filePath);
         _fileHashes[normalized] = hash;
-        _cachedGraph = null; // Invalidate cache
+        lock (_buildLock)
+        {
+            _cachedGraph = null; // Invalidate cache
+        }
     }
 
     /// <summary>
@@ -205,7 +214,10 @@ internal class DependencyGraphBuilder : IDependencyRecorder
     {
         _dependencies.Clear();
         _fileHashes.Clear();
-        _cachedGraph = null;
+        lock (_buildLock)
+        {
+            _cachedGraph = null;
+        }
     }
 
     /// <summary>

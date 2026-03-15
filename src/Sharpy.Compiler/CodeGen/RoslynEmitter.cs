@@ -141,7 +141,7 @@ internal partial class RoslynEmitter
     /// Encapsulates all narrowing state for Optional/Nullable and isinstance narrowing.
     /// Extracted from RoslynEmitter's top-level fields to reduce its field count.
     /// </summary>
-    private class NarrowingState
+    private sealed class NarrowingState
     {
         /// <summary>
         /// Tracks variable names (original Sharpy names) that have been narrowed from
