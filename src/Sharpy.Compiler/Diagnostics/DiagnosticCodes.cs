@@ -410,7 +410,7 @@ public static class DiagnosticCodes
         public const string VirtualOnObjectOverride = "SPY0458";    // Active
         public const string StaticFieldViaInstance = "SPY0459";     // Active
 
-        // SPY0460-SPY0462: Available (formerly dunder invocation rules, moved to SPY0427-SPY0429)
+        // SPY0460-SPY0462: Reserved (formerly dunder invocation rules, moved to SPY0427-SPY0429)
 
         // Exhaustiveness warnings (SPY0463)
         public const string NonExhaustiveMatch = "SPY0463";         // Active

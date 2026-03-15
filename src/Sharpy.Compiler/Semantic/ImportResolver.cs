@@ -25,7 +25,7 @@ internal class ImportResolver
     /// Key is the full file path, value is the ModuleInfo.
     /// </summary>
     public IReadOnlyDictionary<string, ModuleInfo> LoadedSpyModules => _moduleLoader.LoadedSpyModules;
-    private IDependencyRecorder? _graphBuilder;
+    private IDependencyRecorder? _dependencyRecorder;
     private SemanticBinding _semanticBinding = new();
 
     private string? _currentModulePath = null;
@@ -62,7 +62,7 @@ internal class ImportResolver
     /// <param name="recorder">The recorder to use for tracking dependencies.</param>
     public void SetDependencyRecorder(IDependencyRecorder recorder)
     {
-        _graphBuilder = recorder;
+        _dependencyRecorder = recorder;
     }
 
     /// <summary>
@@ -296,9 +296,9 @@ internal class ImportResolver
 
                 // Track the dependency (current module depends on imported module)
                 // Note: .NET modules are not tracked in the file dependency graph
-                if (_graphBuilder != null && _currentModulePath != null)
+                if (_dependencyRecorder != null && _currentModulePath != null)
                 {
-                    _graphBuilder.AddDependency(_currentModulePath, modulePath);
+                    _dependencyRecorder.AddDependency(_currentModulePath, modulePath);
                 }
 
                 moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
@@ -393,9 +393,9 @@ internal class ImportResolver
 
             // Track the dependency (current module depends on imported module)
             // Note: .NET modules are not tracked in the file dependency graph
-            if (_graphBuilder != null && _currentModulePath != null)
+            if (_dependencyRecorder != null && _currentModulePath != null)
             {
-                _graphBuilder.AddDependency(_currentModulePath, resolution.FullPath);
+                _dependencyRecorder.AddDependency(_currentModulePath, resolution.FullPath);
             }
 
             moduleInfo = LoadModule(resolution.FullPath, fromImport.LineStart, fromImport.ColumnStart);
