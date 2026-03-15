@@ -7,6 +7,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Diagnostics;
+using System.Text.Json;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Cli;
@@ -244,10 +245,33 @@ class Program
             EmitParse(input, logger, maxErrors);
         });
 
+        var emitDiagnosticsCommand = new Command("diagnostics", "Emit compiler diagnostics");
+        var emitDiagnosticsInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
+        var emitDiagnosticsFormatOpt = new Option<string?>("--format") { Description = "Output format: text or json" };
+        emitDiagnosticsFormatOpt.Aliases.Add("-f");
+        var emitDiagnosticsIncludeCodegenOpt = new Option<bool>("--include-codegen") { Description = "Include code generation phase (uses Compile instead of Analyze)" };
+        emitDiagnosticsCommand.Arguments.Add(emitDiagnosticsInputArg);
+        emitDiagnosticsCommand.Options.Add(emitDiagnosticsFormatOpt);
+        emitDiagnosticsCommand.Options.Add(emitDiagnosticsIncludeCodegenOpt);
+        emitDiagnosticsCommand.SetAction((parseResult) =>
+        {
+            var input = parseResult.GetValue(emitDiagnosticsInputArg)!;
+            var format = parseResult.GetValue(emitDiagnosticsFormatOpt) ?? "text";
+            var includeCodegen = parseResult.GetValue(emitDiagnosticsIncludeCodegenOpt);
+            var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+            var logFile = parseResult.GetValue(logFileOption);
+            var warnAsError = parseResult.GetValue(warnAsErrorOption);
+            var nowarn = parseResult.GetValue(nowarnOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
+            var logger = CreateLogger(logLevel, logFile);
+            EmitDiagnostics(input, logger, format, warnAsError, nowarn, maxErrors, includeCodegen);
+        });
+
         emitCommand.Subcommands.Add(emitTokensCommand);
         emitCommand.Subcommands.Add(emitAstCommand);
         emitCommand.Subcommands.Add(emitCsharpCommand);
         emitCommand.Subcommands.Add(emitParseCommand);
+        emitCommand.Subcommands.Add(emitDiagnosticsCommand);
 
         // === Cache Command (with subcommands) ===
         var cacheCommand = new Command("cache", "Manage the overload discovery cache");
@@ -939,6 +963,81 @@ class Program
             }
 
             Console.WriteLine("PARSE_OK");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+            Environment.Exit(1);
+        }
+    }
+
+    static void EmitDiagnostics(FileInfo inputFile, ICompilerLogger logger, string format,
+        bool warnAsError = false, string? nowarn = null, int? maxErrors = null, bool includeCodegen = false)
+    {
+        try
+        {
+            var source = File.ReadAllText(inputFile.FullName);
+            var api = new CompilerApi(logger);
+
+            IReadOnlyList<CompilerDiagnostic> diagnostics;
+
+            if (includeCodegen)
+            {
+                var compilerOptions = new CompilerOptions
+                {
+                    WarningsAsErrors = warnAsError,
+                    SuppressedWarnings = ParseNowarnCodes(nowarn),
+                    MaxErrors = maxErrors ?? 0
+                };
+                var result = api.Compile(source, compilerOptions, inputFile.FullName);
+                diagnostics = result.Diagnostics;
+            }
+            else
+            {
+                var result = api.Analyze(source);
+                diagnostics = result.Diagnostics;
+            }
+
+            var hasErrors = diagnostics.Any(d => d.IsError);
+
+            if (format.Equals("json", StringComparison.OrdinalIgnoreCase))
+            {
+                var jsonItems = diagnostics.Select(d => new
+                {
+                    severity = d.Severity.ToString().ToLowerInvariant(),
+                    code = d.Code ?? "SPY????",
+                    line = d.Line ?? 0,
+                    column = d.Column ?? 0,
+                    message = d.Message,
+                    phase = d.Phase.ToString()
+                });
+
+                var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                Console.WriteLine(JsonSerializer.Serialize(jsonItems, jsonOptions));
+            }
+            else
+            {
+                if (diagnostics.Count == 0)
+                {
+                    Console.WriteLine("No diagnostics.");
+                }
+                else
+                {
+                    foreach (var d in diagnostics)
+                    {
+                        var severity = d.Severity.ToString().ToLowerInvariant();
+                        var code = d.Code ?? "SPY????";
+                        var line = d.Line ?? 0;
+                        var col = d.Column ?? 0;
+                        Console.WriteLine($"{severity} {code} ({line}:{col}): {d.Message}");
+                    }
+                }
+            }
+
+            if (hasErrors)
+            {
+                Environment.Exit(1);
+            }
         }
         catch (Exception ex)
         {
