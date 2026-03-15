@@ -166,8 +166,8 @@ public class HoverFuzzTests
 
         _output.WriteLine($"Fixtures: {analyzedFixtures} analyzed, {skippedFixtures} skipped");
         _output.WriteLine($"Identifiers: {totalIdentifiers} total, {identifiersWithFullInfo} with full info ({coveragePercent}%)");
-        _output.WriteLine($"Gaps: {nullSymbol.Count()} null symbol, {nullType.Count()} null type, {unknownType.Count()} unknown type");
-        _output.WriteLine($"Crashes: {crashes.Count()}");
+        _output.WriteLine($"Gaps: {nullSymbol.Count} null symbol, {nullType.Count} null type, {unknownType.Count} unknown type");
+        _output.WriteLine($"Crashes: {crashes.Count}");
 
         Assert.Empty(crashes);
     }

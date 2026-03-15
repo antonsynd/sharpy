@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace Sharpy.Compiler.Tests.Integration;
 
 /// <summary>
@@ -12,7 +10,6 @@ public record TestFixtureInfo
     public string? ExpectedFile { get; init; }
     public string? ErrorFile { get; init; }
     public string? WarningFile { get; init; }
-    public string? SkipFile { get; init; }
     public string? ExpectedCsFile { get; init; }
     public bool IsMultiFile { get; init; }
     public string Category { get; init; } = "";
@@ -25,7 +22,7 @@ public record TestFixtureInfo
 public static class FixtureDiscoveryHelper
 {
     public static readonly string FixturesPath = Path.GetFullPath(Path.Combine(
-        Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!,
+        Path.GetDirectoryName(typeof(FixtureDiscoveryHelper).Assembly.Location)!,
         "..", "..", "..", "Integration", "TestFixtures"));
 
     /// <summary>
@@ -96,7 +93,7 @@ public static class FixtureDiscoveryHelper
                     ExpectedFile = File.Exists(expectedFile) ? expectedFile : null,
                     ErrorFile = File.Exists(errorFile) ? errorFile : null,
                     WarningFile = File.Exists(warningFile) ? warningFile : null,
-                    SkipFile = null, // Already skipped above
+
                     ExpectedCsFile = File.Exists(expectedCsFile) ? expectedCsFile : null,
                     IsMultiFile = true,
                     Category = category,
@@ -127,7 +124,7 @@ public static class FixtureDiscoveryHelper
                     ExpectedFile = File.Exists(expectedFile) ? expectedFile : null,
                     ErrorFile = File.Exists(errorFile) ? errorFile : null,
                     WarningFile = File.Exists(warningFile) ? warningFile : null,
-                    SkipFile = null, // Already skipped above
+
                     ExpectedCsFile = File.Exists(expectedCsFile) ? expectedCsFile : null,
                     IsMultiFile = false,
                     Category = category,

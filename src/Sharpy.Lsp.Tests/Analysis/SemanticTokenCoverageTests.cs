@@ -134,11 +134,14 @@ public class SemanticTokenCoverageTests
                 }
             }
 
-            // Track which AST node types got tokens
-            if (tokens.Count() > 0)
+            // Track which AST node types produced tokens by correlating
+            // token positions back to AST nodes at those positions
+            foreach (var token in tokens)
             {
-                foreach (var nodeType in nodeTypes.Keys)
-                    astNodeTypesWithTokens.Add(nodeType);
+                // Find which AST node type exists at this token's position
+                var tokenNodeType = FindNodeTypeAtPosition(parseResult.Ast, token.Line, token.Col);
+                if (tokenNodeType != null)
+                    astNodeTypesWithTokens.Add(tokenNodeType);
             }
         }
 
@@ -227,5 +230,26 @@ public class SemanticTokenCoverageTests
         {
             CountIdentifiersRecursive(child, tokenPositions, ref count);
         }
+    }
+
+    /// <summary>
+    /// Finds the AST node type name at a given 0-based (line, col) position.
+    /// Searches for the most specific (deepest) node whose start position matches.
+    /// </summary>
+    private static string? FindNodeTypeAtPosition(Node node, int line, int col)
+    {
+        // Check children first to find the deepest match
+        foreach (var child in node.GetChildNodes())
+        {
+            var result = FindNodeTypeAtPosition(child, line, col);
+            if (result != null)
+                return result;
+        }
+
+        // Tokens use 0-based positions, AST uses 1-based
+        if (node.LineStart - 1 == line && node.ColumnStart - 1 == col)
+            return node.GetType().Name;
+
+        return null;
     }
 }

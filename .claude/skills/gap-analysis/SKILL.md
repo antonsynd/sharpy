@@ -27,9 +27,9 @@ Run all gap discovery tests (fuzz, coverage, diagnostic sweep) and present a uni
    - Exit 0: Print "=== GAP ANALYSIS PASSED ===" then `tail -100 .claude/tmp/last-gap-analysis.log`
    - Exit non-zero: Print "=== GAP ANALYSIS FAILED (last 80 lines) ===" then `tail -80 .claude/tmp/last-gap-analysis.log`
 6. Read and summarize any JSON reports in `.claude/tmp/`:
-   - `hover-fuzz-report.json` — crash count, anomaly count
-   - `completion-fuzz-report.json` — crash count, anomaly count
-   - `diagnostic-sweep-report.json` — coverage stats
-   - `semantic-token-coverage-report.json` — AST node coverage
+   - `hover-fuzz-report.json` — crash count, null symbol/type count, unknown type count, coverage %
+   - `completion-fuzz-report.json` — crash count, null/unknown receiver count, missing member count, coverage %
+   - `diagnostic-sweep-report.json` — pass/fail/crash counts, unexpected diagnostics, advisory warnings
+   - `semantic-token-coverage-report.json` — AST node coverage, unused token types, low-coverage files
 7. Present a unified summary table with all metrics
 8. Echo "Full log: .claude/tmp/last-gap-analysis.log"

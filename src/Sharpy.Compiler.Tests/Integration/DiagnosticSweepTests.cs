@@ -26,6 +26,7 @@ public class DiagnosticSweepTests
         var crashes = new List<object>();
         var unexpectedDiagnostics = new List<object>();
         var unexpectedWarnings = new List<object>();
+        var advisoryWarnings = new List<object>();
         var missingErrors = new List<object>();
         var totalAnalyzed = 0;
         var passCount = 0;
@@ -106,8 +107,9 @@ public class DiagnosticSweepTests
             }
             else if (!isNegative && warnings.Count > 0 && !hasWarningFile)
             {
-                // No warning file and has warnings - note but don't fail
-                unexpectedWarnings.Add(new
+                // No .warning file and has warnings — advisory only (not a failure).
+                // These are logged separately from unexpectedWarnings (which are failures).
+                advisoryWarnings.Add(new
                 {
                     fixture = fixture.TestName,
                     warnings = warnings.Select(w => new { code = w.Code, message = w.Message }).ToList()
@@ -130,6 +132,7 @@ public class DiagnosticSweepTests
             crashes,
             unexpectedDiagnostics = unexpectedDiagnostics.Take(50).ToList(),
             unexpectedWarnings = unexpectedWarnings.Take(50).ToList(),
+            advisoryWarnings = advisoryWarnings.Take(50).ToList(),
             missingErrors = missingErrors.Take(50).ToList()
         };
 
@@ -148,7 +151,8 @@ public class DiagnosticSweepTests
         _output.WriteLine($"Failed: {failCount}");
         _output.WriteLine($"Crashes: {crashes.Count}");
         _output.WriteLine($"Unexpected diagnostics: {unexpectedDiagnostics.Count}");
-        _output.WriteLine($"Unexpected warnings: {unexpectedWarnings.Count}");
+        _output.WriteLine($"Unexpected warnings (failures): {unexpectedWarnings.Count}");
+        _output.WriteLine($"Advisory warnings (no .warning file): {advisoryWarnings.Count}");
         _output.WriteLine($"Missing errors: {missingErrors.Count}");
         _output.WriteLine($"Report written to: {reportPath}");
 

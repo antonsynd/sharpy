@@ -29,6 +29,7 @@ public class CompletionFuzzTests
         var crashes = new List<CrashInfo>();
         var nullReceiverType = new List<MemberAccessInfo>();
         var unknownReceiverType = new List<MemberAccessInfo>();
+        var missingMember = new List<MemberAccessInfo>();
 
         int totalFixtures = 0;
         int analyzedFixtures = 0;
@@ -117,7 +118,7 @@ public class CompletionFuzzTests
                     }
                 }
 
-                // Probe receiver type
+                // Probe receiver type and member existence
                 try
                 {
                     var receiverType = result.SemanticInfo.GetEffectiveType(ma.Object);
@@ -126,7 +127,24 @@ public class CompletionFuzzTests
                     else if (receiverType is UnknownType)
                         unknownReceiverType.Add(new MemberAccessInfo(relativePath, pos.Line, pos.Column, pos.Name));
                     else
+                    {
                         memberAccessesWithTypeInfo++;
+
+                        // Check if the accessed member actually exists on the receiver type
+                        var memberName = ma.Member;
+                        if (receiverType is UserDefinedType udt && udt.Symbol != null)
+                        {
+                            var hasMethod = udt.Symbol.Methods.Any(m =>
+                                string.Equals(m.Name, memberName, StringComparison.OrdinalIgnoreCase));
+                            var hasField = udt.Symbol.Fields.Any(f =>
+                                string.Equals(f.Name, memberName, StringComparison.OrdinalIgnoreCase));
+                            var hasProperty = udt.Symbol.Properties.Any(p =>
+                                string.Equals(p.Name, memberName, StringComparison.OrdinalIgnoreCase));
+
+                            if (!hasMethod && !hasField && !hasProperty)
+                                missingMember.Add(new MemberAccessInfo(relativePath, pos.Line, pos.Column, pos.Name));
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -148,8 +166,10 @@ public class CompletionFuzzTests
             crashes = crashes.Select(c => new { c.File, c.Line, c.Column, c.Name, c.Method, c.Error }),
             nullReceiverType = nullReceiverType.Take(50).Select(i => new { i.File, i.Line, i.Column, i.Name }),
             unknownReceiverType = unknownReceiverType.Take(50).Select(i => new { i.File, i.Line, i.Column, i.Name }),
+            missingMember = missingMember.Take(50).Select(i => new { i.File, i.Line, i.Column, i.Name }),
             nullReceiverTypeCount = nullReceiverType.Count(),
             unknownReceiverTypeCount = unknownReceiverType.Count(),
+            missingMemberCount = missingMember.Count(),
             memberAccessesWithTypeInfo,
             coveragePercent
         };
@@ -163,8 +183,8 @@ public class CompletionFuzzTests
 
         _output.WriteLine($"Fixtures: {analyzedFixtures} analyzed, {skippedFixtures} skipped");
         _output.WriteLine($"Member accesses: {totalMemberAccesses} total, {memberAccessesWithTypeInfo} with type info ({coveragePercent}%)");
-        _output.WriteLine($"Gaps: {nullReceiverType.Count()} null receiver, {unknownReceiverType.Count()} unknown receiver");
-        _output.WriteLine($"Crashes: {crashes.Count()}");
+        _output.WriteLine($"Gaps: {nullReceiverType.Count} null receiver, {unknownReceiverType.Count} unknown receiver, {missingMember.Count} missing member");
+        _output.WriteLine($"Crashes: {crashes.Count}");
 
         Assert.Empty(crashes);
     }

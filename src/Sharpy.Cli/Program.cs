@@ -257,6 +257,12 @@ class Program
         {
             var input = parseResult.GetValue(emitDiagnosticsInputArg)!;
             var format = parseResult.GetValue(emitDiagnosticsFormatOpt) ?? "text";
+            if (format != "text" && format != "json")
+            {
+                Console.Error.WriteLine($"Error: --format must be 'text' or 'json', got '{format}'");
+                Environment.Exit(1);
+                return;
+            }
             var includeCodegen = parseResult.GetValue(emitDiagnosticsIncludeCodegenOpt);
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
