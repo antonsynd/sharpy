@@ -14,9 +14,7 @@ public class HoverFuzzTests
     private readonly ITestOutputHelper _output;
     private readonly CompilerApi _api = new();
 
-    private static readonly string FixturesPath = IOPath.GetFullPath(IOPath.Combine(
-        IOPath.GetDirectoryName(typeof(HoverFuzzTests).Assembly.Location)!,
-        "..", "..", "..", "..", "Sharpy.Compiler.Tests", "Integration", "TestFixtures"));
+    private static readonly string FixturesPath = TestFixturePaths.CompilerFixturesPath;
 
     public HoverFuzzTests(ITestOutputHelper output)
     {
@@ -157,10 +155,9 @@ public class HoverFuzzTests
             coveragePercent
         };
 
-        var reportPath = IOPath.GetFullPath(IOPath.Combine(
-            IOPath.GetDirectoryName(typeof(HoverFuzzTests).Assembly.Location)!,
-            "..", "..", "..", "..", "..", "..", ".claude", "tmp", "hover-fuzz-report.json"));
-        Directory.CreateDirectory(IOPath.GetDirectoryName(reportPath)!);
+        var reportDir = TestFixturePaths.ReportOutputDir;
+        Directory.CreateDirectory(reportDir);
+        var reportPath = IOPath.Combine(reportDir, "hover-fuzz-report.json");
         File.WriteAllText(reportPath, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
         _output.WriteLine($"Report written to {reportPath}");
 

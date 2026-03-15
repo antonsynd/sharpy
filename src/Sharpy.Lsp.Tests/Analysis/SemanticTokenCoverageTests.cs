@@ -15,16 +15,17 @@ public class SemanticTokenCoverageTests
     private readonly ITestOutputHelper _output;
     private readonly CompilerApi _api = new();
 
-    private static readonly string FixturesPath = IOPath.GetFullPath(
-        IOPath.Combine(
-            IOPath.GetDirectoryName(typeof(SemanticTokenCoverageTests).Assembly.Location)!,
-            "..", "..", "..", "..", "Sharpy.Compiler.Tests", "Integration", "TestFixtures"));
+    private static readonly string FixturesPath = TestFixturePaths.CompilerFixturesPath;
 
+    /// <summary>
+    /// Token type names derived from SharpySemanticTokensHandler constants.
+    /// Order matches the constant values (TFunction=0, TClass=1, ..., TKeyword=12).
+    /// </summary>
     private static readonly string[] TokenTypeNames =
     [
-        "TFunction", "TClass", "TStruct", "TInterface", "TEnum",
-        "TEnumMember", "TParameter", "TVariable", "TDecorator",
-        "TType", "TProperty", "TMethod", "TKeyword"
+        nameof(TFunction), nameof(TClass), nameof(TStruct), nameof(TInterface), nameof(TEnum),
+        nameof(TEnumMember), nameof(TParameter), nameof(TVariable), nameof(TDecorator),
+        nameof(TType), nameof(TProperty), nameof(TMethod), nameof(TKeyword)
     ];
 
     public SemanticTokenCoverageTests(ITestOutputHelper output)
@@ -179,9 +180,7 @@ public class SemanticTokenCoverageTests
         };
 
         // Write report
-        var reportDir = IOPath.GetFullPath(IOPath.Combine(
-            IOPath.GetDirectoryName(typeof(SemanticTokenCoverageTests).Assembly.Location)!,
-            "..", "..", "..", "..", "..", "..", ".claude", "tmp"));
+        var reportDir = TestFixturePaths.ReportOutputDir;
         Directory.CreateDirectory(reportDir);
         var reportPath = IOPath.Combine(reportDir, "semantic-token-coverage-report.json");
         var json = JsonSerializer.Serialize(report, new JsonSerializerOptions

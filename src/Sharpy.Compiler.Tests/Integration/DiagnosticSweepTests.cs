@@ -93,13 +93,30 @@ public class DiagnosticSweepTests
                     .Where(l => !string.IsNullOrWhiteSpace(l))
                     .ToList();
 
-                if (expectedWarnings.Count == 0 && warnings.Count > 0)
+                if (expectedWarnings.Count == 0)
                 {
                     // Empty warning file means expect no warnings
                     unexpectedWarnings.Add(new
                     {
                         fixture = fixture.TestName,
                         warnings = warnings.Select(w => new { code = w.Code, message = w.Message }).ToList()
+                    });
+                    failCount++;
+                    continue;
+                }
+
+                // Non-empty warning file: verify each expected substring appears in at least one warning
+                var warningMessages = warnings.Select(w => w.Message).ToList();
+                var missingExpected = expectedWarnings
+                    .Where(expected => !warningMessages.Any(msg => msg.Contains(expected, StringComparison.Ordinal)))
+                    .ToList();
+
+                if (missingExpected.Count > 0)
+                {
+                    unexpectedWarnings.Add(new
+                    {
+                        fixture = fixture.TestName,
+                        warnings = missingExpected.Select(m => new { code = "MISSING", message = $"Expected warning substring not found: {m}" }).ToList()
                     });
                     failCount++;
                     continue;

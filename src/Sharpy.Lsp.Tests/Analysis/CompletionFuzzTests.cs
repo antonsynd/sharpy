@@ -14,9 +14,7 @@ public class CompletionFuzzTests
     private readonly ITestOutputHelper _output;
     private readonly CompilerApi _api = new();
 
-    private static readonly string FixturesPath = IOPath.GetFullPath(IOPath.Combine(
-        IOPath.GetDirectoryName(typeof(CompletionFuzzTests).Assembly.Location)!,
-        "..", "..", "..", "..", "Sharpy.Compiler.Tests", "Integration", "TestFixtures"));
+    private static readonly string FixturesPath = TestFixturePaths.CompilerFixturesPath;
 
     public CompletionFuzzTests(ITestOutputHelper output)
     {
@@ -135,11 +133,11 @@ public class CompletionFuzzTests
                         if (receiverType is UserDefinedType udt && udt.Symbol != null)
                         {
                             var hasMethod = udt.Symbol.Methods.Any(m =>
-                                string.Equals(m.Name, memberName, StringComparison.OrdinalIgnoreCase));
+                                string.Equals(m.Name, memberName, StringComparison.Ordinal));
                             var hasField = udt.Symbol.Fields.Any(f =>
-                                string.Equals(f.Name, memberName, StringComparison.OrdinalIgnoreCase));
+                                string.Equals(f.Name, memberName, StringComparison.Ordinal));
                             var hasProperty = udt.Symbol.Properties.Any(p =>
-                                string.Equals(p.Name, memberName, StringComparison.OrdinalIgnoreCase));
+                                string.Equals(p.Name, memberName, StringComparison.Ordinal));
 
                             if (!hasMethod && !hasField && !hasProperty)
                                 missingMember.Add(new MemberAccessInfo(relativePath, pos.Line, pos.Column, pos.Name));
@@ -174,10 +172,9 @@ public class CompletionFuzzTests
             coveragePercent
         };
 
-        var reportPath = IOPath.GetFullPath(IOPath.Combine(
-            IOPath.GetDirectoryName(typeof(CompletionFuzzTests).Assembly.Location)!,
-            "..", "..", "..", "..", "..", "..", ".claude", "tmp", "completion-fuzz-report.json"));
-        Directory.CreateDirectory(IOPath.GetDirectoryName(reportPath)!);
+        var reportDir = TestFixturePaths.ReportOutputDir;
+        Directory.CreateDirectory(reportDir);
+        var reportPath = IOPath.Combine(reportDir, "completion-fuzz-report.json");
         File.WriteAllText(reportPath, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
         _output.WriteLine($"Report written to {reportPath}");
 
