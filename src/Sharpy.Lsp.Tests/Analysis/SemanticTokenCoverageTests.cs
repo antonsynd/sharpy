@@ -87,7 +87,7 @@ public class SemanticTokenCoverageTests
             }
 
             // Collect semantic tokens
-            var tokens = new List<RawToken>();
+            var tokens = new System.Collections.Generic.List<RawToken>();
             try
             {
                 CollectTokens(parseResult.Ast.Body, tokens);
@@ -135,7 +135,7 @@ public class SemanticTokenCoverageTests
             }
 
             // Track which AST node types got tokens
-            if (tokens.Count > 0)
+            if (tokens.Count() > 0)
             {
                 foreach (var nodeType in nodeTypes.Keys)
                     astNodeTypesWithTokens.Add(nodeType);
