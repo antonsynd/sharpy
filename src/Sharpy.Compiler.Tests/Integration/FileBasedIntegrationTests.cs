@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -51,18 +50,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// </summary>
 public class FileBasedIntegrationTests : IntegrationTestBase
 {
-    private static readonly string FixturesPath;
-
-    static FileBasedIntegrationTests()
-    {
-        // Find the TestFixtures directory relative to the test assembly
-        var assemblyLocation = Assembly.GetExecutingAssembly().Location;
-        var assemblyDir = Path.GetDirectoryName(assemblyLocation)!;
-
-        // Navigate from bin/Debug/net10.0 to the source directory
-        FixturesPath = Path.GetFullPath(Path.Combine(
-            assemblyDir, "..", "..", "..", "Integration", "TestFixtures"));
-    }
+    private static readonly string FixturesPath = FixtureDiscoveryHelper.FixturesPath;
 
     public FileBasedIntegrationTests(ITestOutputHelper output) : base(output)
     {
@@ -70,117 +58,15 @@ public class FileBasedIntegrationTests : IntegrationTestBase
 
     /// <summary>
     /// Discovers all test fixtures by scanning the TestFixtures directory.
-    /// Supports both single-file tests and multi-file tests (including packages with subdirectories).
-    ///
-    /// Multi-file test detection:
-    /// A directory is considered a multi-file test if it contains .spy files (directly or in subdirs)
-    /// AND at least one of these is true:
-    /// 1. There's a main.spy file (indicates entry point)
-    /// 2. There's a main.expected or main.error file
-    ///
-    /// Files inside subdirectories of a multi-file test (e.g., package submodules) are NOT
-    /// treated as separate tests.
-    ///
-    /// This prevents directories like "errors/" with multiple single-file error tests
-    /// from being mistakenly treated as multi-file projects.
+    /// Delegates to <see cref="FixtureDiscoveryHelper.DiscoverFixtures"/> and converts
+    /// results to the object[] format required by xUnit MemberData.
     /// </summary>
     public static IEnumerable<object[]> GetTestFixtures()
     {
-        if (!Directory.Exists(FixturesPath))
+        foreach (var fixture in FixtureDiscoveryHelper.DiscoverFixtures())
         {
-            yield break;
+            yield return new object[] { fixture.TestName, fixture.SpyFilePath, fixture.IsMultiFile };
         }
-
-        // First pass: identify all multi-file test root directories
-        var multiFileTestRoots = new HashSet<string>();
-        foreach (var dir in Directory.EnumerateDirectories(FixturesPath, "*", SearchOption.AllDirectories))
-        {
-            var hasMainSpy = File.Exists(Path.Combine(dir, "main.spy"));
-            var hasMainExpected = File.Exists(Path.Combine(dir, "main.expected"));
-            var hasMainError = File.Exists(Path.Combine(dir, "main.error"));
-
-            if (hasMainSpy || hasMainExpected || hasMainError)
-            {
-                // Check if this directory has .spy files (directly or in subdirs)
-                var spyFilesCount = Directory.GetFiles(dir, "*.spy", SearchOption.AllDirectories).Length;
-                if (spyFilesCount > 1)
-                {
-                    multiFileTestRoots.Add(dir);
-                }
-            }
-        }
-
-        // Track directories we've already processed
-        var processedDirectories = new HashSet<string>();
-
-        // Find all .spy files recursively
-        foreach (var spyFile in Directory.EnumerateFiles(FixturesPath, "*.spy", SearchOption.AllDirectories))
-        {
-            var spyDir = Path.GetDirectoryName(spyFile)!;
-
-            // Check if this file is inside a multi-file test root (or one of its subdirs)
-            var multiFileRoot = FindMultiFileTestRoot(spyDir, multiFileTestRoots);
-
-            if (multiFileRoot != null)
-            {
-                // This file belongs to a multi-file test - process the root only once
-                if (processedDirectories.Contains(multiFileRoot))
-                {
-                    continue;
-                }
-                processedDirectories.Add(multiFileRoot);
-
-                // Skip tests with .skip files (tests pending fixes)
-                if (File.Exists(Path.Combine(multiFileRoot, "main.skip")))
-                {
-                    continue;
-                }
-
-                // Use the directory path as the test identifier
-                var relativePath = Path.GetRelativePath(FixturesPath, multiFileRoot);
-                var testName = relativePath.Replace(Path.DirectorySeparatorChar, '/');
-
-                // Return the directory path with a marker
-                yield return new object[] { testName, multiFileRoot, true /* isMultiFile */ };
-            }
-            else
-            {
-                // Skip tests with .skip files (tests pending fixes)
-                if (File.Exists(Path.ChangeExtension(spyFile, ".skip")))
-                {
-                    continue;
-                }
-
-                // Single-file test
-                var relativePath = Path.GetRelativePath(FixturesPath, spyFile);
-                var testName = Path.ChangeExtension(relativePath, null).Replace(Path.DirectorySeparatorChar, '/');
-                yield return new object[] { testName, spyFile, false /* isMultiFile */ };
-            }
-        }
-    }
-
-    /// <summary>
-    /// Find the multi-file test root directory that contains the given path.
-    /// Returns null if the path is not inside any multi-file test root.
-    /// </summary>
-    private static string? FindMultiFileTestRoot(string path, HashSet<string> multiFileTestRoots)
-    {
-        // Check if this exact path is a multi-file root
-        if (multiFileTestRoots.Contains(path))
-        {
-            return path;
-        }
-
-        // Check if any parent directory is a multi-file root
-        foreach (var root in multiFileTestRoots)
-        {
-            if (path.StartsWith(root + Path.DirectorySeparatorChar))
-            {
-                return root;
-            }
-        }
-
-        return null;
     }
 
     [Theory]
