@@ -57,16 +57,18 @@ public class Program
                     services.AddSingleton<ICodeActionProvider, ConvertFormsProvider>();
                     services.AddSingleton<ICodeActionProvider, InlineProvider>();
                 })
-                .OnInitialize(async (server, request, token) =>
+                .OnInitialize((server, request, token) =>
                 {
                     var rootUri = request.RootUri;
                     if (rootUri is not null)
                         workspaceRootUri = rootUri.ToUri();
 
                     // Declare workspace folder support so clients send folder notifications.
-                    try
+                    // ServerSettings.Capabilities may be null during OnInitialize on some
+                    // OmniSharp versions — guard each level to avoid NullReferenceException.
+                    var caps = server.ServerSettings?.Capabilities;
+                    if (caps is not null)
                     {
-                        var caps = server.ServerSettings.Capabilities;
                         caps.Workspace ??= new OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities.WorkspaceServerCapabilities();
                         caps.Workspace.WorkspaceFolders = new DidChangeWorkspaceFolderRegistrationOptions.StaticOptions
                         {
@@ -74,11 +76,8 @@ public class Program
                             ChangeNotifications = true,
                         };
                     }
-                    catch (Exception ex)
-                    {
-                        // ServerSettings may not be fully initialized during OnInitialize.
-                        await Console.Error.WriteLineAsync($"[Warning] Workspace capability setup failed: {ex.Message}").ConfigureAwait(false);
-                    }
+
+                    return Task.CompletedTask;
                 })
                 .OnInitialized((server, request, response, token) =>
                 {

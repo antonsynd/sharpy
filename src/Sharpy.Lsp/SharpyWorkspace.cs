@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Text;
@@ -193,7 +194,9 @@ internal sealed class DocumentState : IDisposable
             lock (_stateLock)
             {
                 // Only cache if document hasn't changed during analysis
-                if (_analysisVersion == versionAtStart)
+                // and analysis wasn't cancelled (SPY0901). Cancelled results
+                // would poison the cache — the next caller must retry.
+                if (_analysisVersion == versionAtStart && !IsCancelledResult(result))
                 {
                     _previousAnalysis = result;
                     _previousParseResult = newParse;
@@ -250,6 +253,12 @@ internal sealed class DocumentState : IDisposable
         {
             _parseSemaphore.Release();
         }
+    }
+
+    private static bool IsCancelledResult(SemanticResult result)
+    {
+        return result.Diagnostics.Any(
+            d => d.Code == DiagnosticCodes.Infrastructure.CompilationCancelled);
     }
 
     public void Dispose()
