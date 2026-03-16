@@ -1,3 +1,6 @@
+<!-- Verified by /verify-plan on 2026-03-16 -->
+<!-- Verification result: PASS WITH CORRECTIONS -->
+
 # Core & LSP Cleanup: Issues #382–#387
 
 ## Context
@@ -49,7 +52,7 @@ Issues: [#382](https://github.com/antonsynd/sharpy/issues/382), [#383](https://g
    - Line 222-224: `Rsplit` — replace with `throw TypeError.ArgNone("rsplit", "sep")`
    - Line 278-280: `Partition` — replace with `throw TypeError.ArgNone("partition", "sep")`
    - Line 310-312: `Rpartition` — replace with `throw TypeError.ArgNone("rpartition", "sep")`
-   - Also update exception doc comments: change `<exception cref="ArgumentNullException">` to `<exception cref="TypeError">` for null sep in all four methods
+   - Also add exception doc comments: add `<exception cref="TypeError">` for null sep in all four methods (no existing `ArgumentNullException` doc comments exist to change) [CORRECTED: there are no `<exception cref="ArgumentNullException">` doc comments in the file; the existing `<exception>` comments only reference `ValueError` for empty separator]
    - Verify Python behavior: `python3 -c "'a.b'.split(None)"` — Python's `split(None)` means whitespace split, but `split(sep=None)` where `None` is explicitly passed should raise `TypeError` in the typed Sharpy context
    - Commit: `fix(core): use TypeError instead of ArgumentNullException in string split methods`
 
@@ -96,7 +99,7 @@ Issues: [#382](https://github.com/antonsynd/sharpy/issues/382), [#383](https://g
      - (b) `ifaceRef.Definition` is null because the interface `TypeSymbol` wasn't linked
      - (c) `ifaceDef.Methods` is empty because method resolution didn't run
    - Check how `LanguageService.AnalyzeFileAsync` runs semantic passes — does it call `MaterializeInheritance()` and populate interface method lists?
-   - Files to investigate: `src/Sharpy.Lsp/LanguageService.cs`, `src/Sharpy.Lsp/CompilerApi.cs`
+   - Files to investigate: `src/Sharpy.Lsp/LanguageService.cs`, `src/Sharpy.Compiler/CompilerApi.cs` [CORRECTED: CompilerApi is defined in Sharpy.Compiler, not Sharpy.Lsp]
    - Fix the pipeline to ensure interface members are resolved in single-file mode
    - Commit: `fix(lsp): resolve interface members in single-file analysis for ImplementInterfaceProvider`
 
@@ -158,3 +161,22 @@ Issues: [#382](https://github.com/antonsynd/sharpy/issues/382), [#383](https://g
 - #385 — ImplementInterfaceProvider single-file analysis (closed by Phase 3, Tasks 6-7)
 - #386 — LSP crash on cross-file implementation (closed by Phase 4, Tasks 8-9)
 - #387 — ConvertFormsProvider trailing colon bug (closed by Phase 2, Tasks 4-5)
+
+## Verification Summary
+
+**Result:** PASS WITH CORRECTIONS
+**Verified on:** 2026-03-16
+**Plan file:** `docs/implementation_planning/core_lsp_cleanup_382_387.md`
+
+### Corrections Made
+1. **Task 2 — Doc comment claim**: Plan said "change `<exception cref="ArgumentNullException">` to `<exception cref="TypeError">`" but there are no `<exception cref="ArgumentNullException">` doc comments in `StringExtensions.Split.cs`. The existing `<exception>` comments only reference `ValueError` for empty separator. Corrected to "add `<exception cref="TypeError">`".
+2. **Task 6 — CompilerApi file path**: Plan referenced `src/Sharpy.Lsp/CompilerApi.cs` which does not exist. `CompilerApi` is defined in `src/Sharpy.Compiler/CompilerApi.cs`. Corrected inline.
+
+### Warnings
+- None
+
+### Missing Steps Added
+- None — all phases and tasks are complete and well-ordered
+
+### Unchecked Claims
+- **Python behavior for `split(None)`** (Task 2): The plan suggests verifying `python3 -c "'a.b'.split(None)"` but does not run it. Python's `split(None)` splits on whitespace (it's not an error). The null check in Sharpy's typed context is reasonable but the Python analogy is slightly different — Python `split(None)` is equivalent to `split()`, not a `TypeError`.
