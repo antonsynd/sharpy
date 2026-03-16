@@ -1,0 +1,15 @@
+# Test heapq.merge: merge sorted lists
+import heapq
+
+def main():
+    a: list[int] = [1, 3, 5]
+    b: list[int] = [2, 4, 6]
+
+    # Basic merge of two sorted lists
+    result: list[int] = list(heapq.merge(a, b))
+    print(result)
+
+    # Merge with empty list
+    empty: list[int] = []
+    result2: list[int] = list(heapq.merge(empty, a))
+    print(result2)
