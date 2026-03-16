@@ -324,7 +324,13 @@ public class Compiler
                 metrics.DiagnosticCount = diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
 
                 diagnostics.Merge(typeChecker.Diagnostics);
-                return result.BuildFailure();
+                // Include SymbolTable and SemanticInfo even on failure so that
+                // LSP consumers can still access partial semantic data (e.g.,
+                // interface resolution for ImplementInterfaceProvider).
+                return result
+                    .WithSymbolTable(symbolTable)
+                    .WithSemanticInfo(semanticInfo)
+                    .BuildFailure();
             }
             LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
             metrics.EndPhase();
@@ -419,7 +425,13 @@ public class Compiler
             if (diagnostics.HasErrors)
             {
                 metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return result.BuildFailure();
+                // Include SymbolTable and SemanticInfo even on failure so that
+                // LSP consumers can still access semantic data (e.g., interface
+                // resolution, type info) despite validation errors like SPY0320.
+                return result
+                    .WithSymbolTable(symbolTable)
+                    .WithSemanticInfo(semanticInfo)
+                    .BuildFailure();
             }
 
             cancellationToken.ThrowIfCancellationRequested();

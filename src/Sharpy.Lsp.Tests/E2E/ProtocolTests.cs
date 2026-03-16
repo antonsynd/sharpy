@@ -661,8 +661,7 @@ public class ProtocolTests : IAsyncLifetime
             "should offer an 'Extract variable' code action");
     }
 
-    [Fact(Skip = "TODO(#385): ImplementInterfaceProvider returns empty in single-file LSP analysis. " +
-                  "Interface members are not resolved without project context.")]
+    [Fact]
     public async Task CodeAction_ImplementInterface_ReturnsAction()
     {
         await _client.InitializeAsync();

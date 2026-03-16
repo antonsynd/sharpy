@@ -31,13 +31,11 @@ public class ImplementInterfaceProviderTests
     }
 
     [Fact]
-    public async Task ImplementInterface_MissingMethod_AnalysisFailsGracefully()
+    public async Task ImplementInterface_MissingMethod_ReturnsImplementAction()
     {
         // When a class doesn't implement a required interface method, the compiler
-        // emits SPY0320 and the analysis fails (SymbolTable is null).
-        // The provider handles this gracefully by returning no actions.
-        // In a live LSP session, the LanguageService would provide a cached
-        // successful analysis from before the error was introduced.
+        // emits SPY0320 but still provides the SymbolTable with interface data,
+        // so the provider can offer to implement the missing methods.
         var source = @"interface Drawable:
     def draw(self) -> None:
         ...
@@ -56,8 +54,8 @@ def main():
         var range = new LspRange(new Position(5, 4), new Position(5, 4));
         var actions = await GetActionsAsync(provider, source, range);
 
-        // Provider returns no actions when SymbolTable is unavailable
-        actions.Should().BeEmpty();
+        actions.Should().ContainSingle();
+        actions[0].Title.Should().Contain("Implement interface 'Drawable'");
     }
 
     [Fact]
@@ -143,18 +141,8 @@ def main():
     [Fact]
     public async Task ImplementInterface_MissingMethod_ReturnsStubWithNotImplementedError()
     {
-        // Use a cached successful analysis by providing valid source first,
-        // then check the provider with a class that does implement the interface.
-        // To actually test the positive stub path, we need the analysis to succeed,
-        // which means the compiler must not emit errors. We simulate the LSP scenario
-        // where the LanguageService caches a prior successful analysis.
-        //
-        // For testing the provider logic directly, we verify with a fully-implemented
-        // class that the provider returns no actions (covered above), and here we test
-        // that the provider correctly identifies missing methods when analysis succeeds.
-        //
-        // Since the compiler rejects classes with missing interface methods (SPY0320),
-        // the analysis will fail. We verify the provider handles this gracefully.
+        // The compiler emits SPY0320 for missing interface methods but still provides
+        // the SymbolTable, allowing the provider to offer implementation stubs.
         var source = @"interface Greeter:
     def greet(self, name: str) -> str:
         ...
@@ -169,17 +157,16 @@ def main():
 
         var provider = new ImplementInterfaceProvider();
 
-        // Cursor inside the class body
-        var range = new LspRange(new Position(4, 0), new Position(4, 0));
+        // Cursor on the class name "EnglishGreeter"
+        var range = new LspRange(new Position(4, 6), new Position(4, 6));
         var actions = await GetActionsAsync(provider, source, range);
 
-        // Because the analysis fails (SPY0320), SymbolTable is null, so no actions.
-        // In a live LSP session, the cached successful analysis would be used instead.
-        actions.Should().BeEmpty();
+        actions.Should().ContainSingle();
+        actions[0].Title.Should().Contain("Implement interface 'Greeter'");
     }
 
     [Fact]
-    public async Task ImplementInterface_MultipleInterfacesMissing_AnalysisFailsGracefully()
+    public async Task ImplementInterface_MultipleInterfacesMissing_ReturnsActions()
     {
         var source = @"interface Readable:
     def read(self) -> str:
@@ -194,20 +181,23 @@ class FileStream(Readable, Writable):
         pass
 
 def main():
-    pass";
+    f: FileStream = FileStream()
+    print(f)";
 
         var provider = new ImplementInterfaceProvider();
 
-        // Cursor on the class definition
-        var range = new LspRange(new Position(8, 0), new Position(8, 0));
+        // Cursor inside the class body (inside __init__)
+        var range = new LspRange(new Position(9, 8), new Position(9, 8));
         var actions = await GetActionsAsync(provider, source, range);
 
-        // Analysis fails due to missing method implementations (SPY0320)
-        actions.Should().BeEmpty();
+        // Should offer individual interface actions plus "implement all"
+        actions.Should().HaveCountGreaterThanOrEqualTo(2);
+        actions.Should().Contain(a => a.Title.Contains("Implement interface 'Readable'"));
+        actions.Should().Contain(a => a.Title.Contains("Implement interface 'Writable'"));
     }
 
     [Fact]
-    public async Task ImplementInterface_PartiallyImplemented_AnalysisFailsGracefully()
+    public async Task ImplementInterface_PartiallyImplemented_ReturnsActionForMissing()
     {
         var source = @"interface Serializable:
     def serialize(self) -> str:
@@ -224,12 +214,13 @@ def main():
 
         var provider = new ImplementInterfaceProvider();
 
-        // Cursor on the class definition
-        var range = new LspRange(new Position(6, 0), new Position(6, 0));
+        // Cursor on the class name "JsonData"
+        var range = new LspRange(new Position(6, 6), new Position(6, 6));
         var actions = await GetActionsAsync(provider, source, range);
 
-        // Analysis fails because deserialize is still missing (SPY0320)
-        actions.Should().BeEmpty();
+        // Should offer to implement the missing 'deserialize' method
+        actions.Should().ContainSingle();
+        actions[0].Title.Should().Contain("Implement interface 'Serializable'");
     }
 
     [Fact]
@@ -408,11 +399,8 @@ def main():
         result.Should().BeEmpty();
     }
 
-    // Integration test limitation: the Sharpy compiler rejects classes with missing
-    // interface implementations (SPY0320 — ProtocolMissingMethod), causing SymbolTable
-    // to be null in the analysis result. This makes the full provider path unreachable
-    // from tests that compile source code. The stub generation logic is tested above
-    // via direct invocation of the internal static methods.
+    // Stub generation logic is also tested above via direct invocation of the
+    // internal static methods (FormatMethodStub, FormatPropertyDef, GenerateStubs).
 
     #endregion
 }
