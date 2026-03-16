@@ -96,6 +96,13 @@ public class StringExtensionsAdditionalTests
     }
 
     [Fact]
+    public void Split_NullSep_ThrowsTypeError()
+    {
+        var act = () => StringExtensions.Split("hello", (string)null!);
+        act.Should().Throw<TypeError>();
+    }
+
+    [Fact]
     public void Split_WithSep_AtEdges()
     {
         StringExtensions.Split("XhelloX", "X").Should().Equal("", "hello", "");
@@ -146,6 +153,13 @@ public class StringExtensionsAdditionalTests
     {
         var act = () => "hello".Rsplit("");
         act.Should().Throw<ValueError>();
+    }
+
+    [Fact]
+    public void Rsplit_NullSep_ThrowsTypeError()
+    {
+        var act = () => "hello".Rsplit((string)null!);
+        act.Should().Throw<TypeError>();
     }
 
     [Fact]
@@ -438,6 +452,13 @@ public class StringExtensionsAdditionalTests
     }
 
     [Fact]
+    public void Partition_NullSep_ThrowsTypeError()
+    {
+        var act = () => "hello".Partition((string)null!);
+        act.Should().Throw<TypeError>();
+    }
+
+    [Fact]
     public void Partition_SepAtStart()
     {
         " hello".Partition(" ").Should().Be(("", " ", "hello"));
@@ -476,6 +497,13 @@ public class StringExtensionsAdditionalTests
     {
         var act = () => "hello".Rpartition("");
         act.Should().Throw<ValueError>();
+    }
+
+    [Fact]
+    public void Rpartition_NullSep_ThrowsTypeError()
+    {
+        var act = () => "hello".Rpartition((string)null!);
+        act.Should().Throw<TypeError>();
     }
 
     [Fact]

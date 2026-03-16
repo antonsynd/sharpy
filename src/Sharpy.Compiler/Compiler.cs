@@ -327,6 +327,9 @@ public class Compiler
                 // Include SymbolTable and SemanticInfo even on failure so that
                 // LSP consumers can still access partial semantic data (e.g.,
                 // interface resolution for ImplementInterfaceProvider).
+                // NOTE: Only post-type-checking failures include these; earlier
+                // failures (lexer, parser, name resolution) do not — callers
+                // must null-check result.SymbolTable before use.
                 return result
                     .WithSymbolTable(symbolTable)
                     .WithSemanticInfo(semanticInfo)

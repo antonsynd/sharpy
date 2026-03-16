@@ -65,11 +65,13 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
         {
             throw;
         }
-        catch
+        catch (Exception ex)
         {
             // Return null instead of crashing the LSP server. Cross-file
             // implementation lookups can fail when symbol tables from
             // different files have incompatible reference identities.
+            System.Diagnostics.Trace.TraceWarning(
+                "textDocument/implementation failed: {0}", ex.Message);
             return null;
         }
     }

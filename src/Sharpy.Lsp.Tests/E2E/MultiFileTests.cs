@@ -401,10 +401,20 @@ public class MultiFileTests : IAsyncLifetime
                 ["position"] = new JsonObject { ["line"] = 0, ["character"] = 10 }
             });
 
-        // The request should complete without crashing the server.
-        // Cross-file implementation lookup may return null or empty results
-        // when the project-wide symbol table doesn't have matching reference
-        // identities. A subsequent shutdown should succeed (no broken pipe).
+        // The request must complete without crashing the server — if the handler
+        // throws, the LSP pipe breaks and the next request will fail.
+        // The result may be null or empty when cross-file reference identities
+        // don't match; that's acceptable. What matters is the server survives.
+
+        // Verify the server is still responsive after the cross-file request
+        // by sending a second request. If the server crashed, this will throw.
+        var hoverResult = await _client.SendRequestAsync(
+            "textDocument/hover",
+            new JsonObject
+            {
+                ["textDocument"] = new JsonObject { ["uri"] = interfacesUri },
+                ["position"] = new JsonObject { ["line"] = 0, ["character"] = 10 }
+            });
     }
 
     [Fact]
