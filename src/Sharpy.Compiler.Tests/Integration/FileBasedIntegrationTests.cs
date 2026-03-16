@@ -20,6 +20,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 ///       test_name.expected     - Expected stdout output
 ///       test_name.expected.cs  - (optional) Expected generated C# snapshot
 ///       test_name.error        - (optional) Expected compilation error substring
+///       test_name.runtime-error - (optional) Expected runtime error substring in stderr
 ///       test_name.warning      - (optional) Expected compilation warning substring
 ///
 /// MULTI-FILE TESTS (for imports):
@@ -32,6 +33,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 ///         main.expected        - Expected stdout output (same base name as entry point)
 ///         main.expected.cs     - (optional) Expected generated C# snapshot
 ///         main.error           - (optional) Expected compilation error substring
+///         main.runtime-error   - (optional) Expected runtime error substring in stderr
 ///         main.warning         - (optional) Expected compilation warning substring
 ///
 /// A test passes if:
@@ -41,6 +43,12 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Error tests (when .error file exists):
 ///   - The .spy file(s) should fail to compile
 ///   - The error message should contain the text in .error
+///
+/// Runtime error tests (when .runtime-error file exists):
+///   - The .spy file(s) should compile successfully
+///   - Execution should fail with a non-zero exit code
+///   - Each non-empty, non-comment line in .runtime-error is a case-insensitive
+///     substring that must appear in stderr
 ///
 /// Warning tests (when .warning file exists):
 ///   - Compilation should succeed (warnings don't cause failure)
@@ -135,11 +143,46 @@ public class FileBasedIntegrationTests : IntegrationTestBase
         // Check if this is an error test
         var isErrorTest = File.Exists(errorFilePath);
 
+        // Check for runtime-error file (.runtime-error) - same base name as .error/.expected
+        var runtimeErrorFilePath = isMultiFile
+            ? Path.Combine(path, $"{Path.GetFileNameWithoutExtension(FindEntryPoint(path))}.runtime-error")
+            : path.Replace(".spy", ".runtime-error");
+        var isRuntimeErrorTest = File.Exists(runtimeErrorFilePath);
+
         // Check for warning file (.warning) - same base name as .error/.expected
         var warningFilePath = Path.ChangeExtension(errorFilePath, ".warning");
         var hasWarningFile = File.Exists(warningFilePath);
 
-        if (isErrorTest)
+        if (isRuntimeErrorTest)
+        {
+            // Runtime error test: compilation should succeed but execution should fail
+            var expectedRuntimeErrorContent = File.ReadAllText(runtimeErrorFilePath).Trim();
+            Output.WriteLine($"Expected runtime error patterns:\n{expectedRuntimeErrorContent}");
+
+            // Verify compilation succeeded (generated C# was produced)
+            Assert.True(result.GeneratedCSharp != null,
+                $"Expected compilation to succeed for runtime error test, but no C# was generated. " +
+                $"Compilation errors: {string.Join("\n", result.CompilationErrors)}");
+
+            // Verify execution failed (non-zero exit code)
+            Assert.False(result.Success,
+                $"Expected runtime error but program exited successfully. Output: {result.StandardOutput}");
+
+            Output.WriteLine($"Actual stderr:\n{result.StandardError}");
+
+            // Match each non-empty, non-comment line as a case-insensitive substring against stderr
+            var expectedLines = expectedRuntimeErrorContent
+                .Split('\n')
+                .Select(line => line.Trim())
+                .Where(line => line.Length > 0 && !line.StartsWith('#'))
+                .ToList();
+
+            foreach (var expectedLine in expectedLines)
+            {
+                Assert.Contains(expectedLine, result.StandardError, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        else if (isErrorTest)
         {
             // Error test: compilation should fail
             var expectedErrorContent = File.ReadAllText(errorFilePath).Trim();

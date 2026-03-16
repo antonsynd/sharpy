@@ -194,6 +194,138 @@ namespace Sharpy
             return new Sharpy.List<T>(sorted.GetRange(0, n));
         }
 
+        // TODO(#408): add key and reverse parameters
+
+        /// <summary>
+        /// Merge two sorted lists into a single sorted sequence, yielding
+        /// elements lazily in ascending order.
+        /// </summary>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <param name="a">First sorted list.</param>
+        /// <param name="b">Second sorted list.</param>
+        /// <returns>An <see cref="IEnumerable{T}"/> yielding elements in sorted order.</returns>
+        public static IEnumerable<T> Merge<T>(Sharpy.List<T> a, Sharpy.List<T> b) where T : IComparable<T>
+        {
+            return MergeInternal(new Sharpy.List<T>[] { a, b });
+        }
+
+        /// <summary>
+        /// Merge three sorted lists into a single sorted sequence.
+        /// </summary>
+        public static IEnumerable<T> Merge<T>(Sharpy.List<T> a, Sharpy.List<T> b, Sharpy.List<T> c) where T : IComparable<T>
+        {
+            return MergeInternal(new Sharpy.List<T>[] { a, b, c });
+        }
+
+        /// <summary>
+        /// Merge multiple sorted lists into a single sorted sequence.
+        /// </summary>
+        public static IEnumerable<T> Merge<T>(params Sharpy.List<T>[] iterables) where T : IComparable<T>
+        {
+            return MergeInternal(iterables);
+        }
+
+        private static IEnumerable<T> MergeInternal<T>(Sharpy.List<T>[] iterables) where T : IComparable<T>
+        {
+            if (iterables == null || iterables.Length == 0)
+            {
+                yield break;
+            }
+
+            // Initialize enumerators and seed with first elements
+            var enumerators = new System.Collections.Generic.List<IEnumerator<T>>(iterables.Length);
+            // Min-heap of (value, enumeratorIndex)
+            var heap = new System.Collections.Generic.List<(T value, int index)>();
+
+            for (int i = 0; i < iterables.Length; i++)
+            {
+                if (iterables[i] == null)
+                {
+                    continue;
+                }
+
+                var enumerator = ((IEnumerable<T>)iterables[i]).GetEnumerator();
+                enumerators.Add(enumerator);
+                int enumeratorIndex = enumerators.Count - 1;
+
+                if (enumerator.MoveNext())
+                {
+                    heap.Add((enumerator.Current, enumeratorIndex));
+                }
+            }
+
+            // Build initial heap
+            for (int i = heap.Count / 2 - 1; i >= 0; i--)
+            {
+                MergeSiftDown(heap, i);
+            }
+
+            while (heap.Count > 0)
+            {
+                var (value, idx) = heap[0];
+                yield return value;
+
+                // Advance the enumerator that produced the min value
+                if (enumerators[idx].MoveNext())
+                {
+                    heap[0] = (enumerators[idx].Current, idx);
+                    MergeSiftDown(heap, 0);
+                }
+                else
+                {
+                    // Remove exhausted enumerator: replace root with last element
+                    int lastIdx = heap.Count - 1;
+                    if (lastIdx > 0)
+                    {
+                        heap[0] = heap[lastIdx];
+                        heap.RemoveAt(lastIdx);
+                        MergeSiftDown(heap, 0);
+                    }
+                    else
+                    {
+                        heap.RemoveAt(0);
+                    }
+                }
+            }
+
+            // Dispose enumerators
+            foreach (var enumerator in enumerators)
+            {
+                enumerator.Dispose();
+            }
+        }
+
+        private static void MergeSiftDown<T>(System.Collections.Generic.List<(T value, int index)> heap, int pos) where T : IComparable<T>
+        {
+            int count = heap.Count;
+            while (true)
+            {
+                int smallest = pos;
+                int left = 2 * pos + 1;
+                int right = 2 * pos + 2;
+
+                if (left < count && heap[left].value.CompareTo(heap[smallest].value) < 0)
+                {
+                    smallest = left;
+                }
+
+                if (right < count && heap[right].value.CompareTo(heap[smallest].value) < 0)
+                {
+                    smallest = right;
+                }
+
+                if (smallest == pos)
+                {
+                    break;
+                }
+
+                var temp = heap[pos];
+                heap[pos] = heap[smallest];
+                heap[smallest] = temp;
+                pos = smallest;
+            }
+        }
+
         private static void SiftUp<T>(IList<T> heap, int index) where T : IComparable<T>
         {
             while (index > 0)

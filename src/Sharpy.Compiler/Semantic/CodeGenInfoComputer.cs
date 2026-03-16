@@ -166,6 +166,8 @@ internal class CodeGenInfoComputer
 
     private void ProcessFromImport(FromImportStatement fromImport)
     {
+        var isNetModule = _semanticBinding.IsNetModule(fromImport.Module);
+
         foreach (var imported in fromImport.Names)
         {
             var effectiveName = imported.AsName ?? imported.Name;
@@ -173,7 +175,7 @@ internal class CodeGenInfoComputer
             if (symbol != null)
             {
                 var originalName = imported.AsName != null ? imported.Name : null;
-                var csharpName = DetermineCSharpNameForFromImport(imported.Name, symbol);
+                var csharpName = DetermineCSharpNameForFromImport(imported.Name, symbol, isNetModule);
 
                 SetCodeGenInfo(symbol, new CodeGenInfo
                 {
@@ -186,8 +188,16 @@ internal class CodeGenInfoComputer
         }
     }
 
-    private string DetermineCSharpNameForFromImport(string name, Symbol symbol)
+    private string DetermineCSharpNameForFromImport(string name, Symbol symbol, bool isNetModule)
     {
+        // For .NET module variable fields (e.g., string.digits), the CLR field name
+        // may differ from PascalCase convention. Sharpy.Core uses Python-style
+        // snake_case names for string module constants. Use the CLR name directly.
+        if (isNetModule && symbol is VariableSymbol)
+        {
+            return name;
+        }
+
         // Use the same logic as RoslynEmitter for from-imports:
         // - ALL_CAPS names (constants) use ToConstantCase (→ PascalCase)
         // - Other names become PascalCase

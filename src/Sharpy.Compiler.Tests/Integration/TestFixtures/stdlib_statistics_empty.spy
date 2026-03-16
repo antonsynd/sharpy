@@ -2,5 +2,6 @@
 import statistics
 
 def main():
-    result = statistics.mean([])
+    data: list[float] = []
+    result = statistics.mean(data)
     print(result)

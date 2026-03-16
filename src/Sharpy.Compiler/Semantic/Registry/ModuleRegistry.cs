@@ -146,6 +146,28 @@ internal class ModuleRegistry
     }
 
     /// <summary>
+    /// Get fields exported by a module (e.g., string constants from the string module).
+    /// Returns tuples of (Name, SemanticType, IsConst) for each field.
+    /// </summary>
+    public List<(string Name, SemanticType Type, bool IsConst)> GetModuleFields(string moduleName)
+    {
+        try
+        {
+            return _discovery.GetModuleFields(moduleName);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning($"Module '{moduleName}' not found: {ex.Message}", 0, 0);
+            return new List<(string Name, SemanticType Type, bool IsConst)>();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning($"Error getting fields for module '{moduleName}': {ex.Message}", 0, 0);
+            return new List<(string Name, SemanticType Type, bool IsConst)>();
+        }
+    }
+
+    /// <summary>
     /// Get all loaded module names.
     /// </summary>
     public IEnumerable<string> GetLoadedModules()

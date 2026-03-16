@@ -100,7 +100,7 @@ namespace Sharpy
             return DeepCopyInternal(x, memo);
         }
 
-        private static object DeepCopyInternal(object x, Dictionary<object, object> memo)
+        internal static object DeepCopyInternal(object x, Dictionary<object, object> memo)
         {
             if (x is null)
             {
@@ -121,126 +121,14 @@ namespace Sharpy
                 return existing;
             }
 
-            // Sharpy List<T>
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
+            // Use IDeepCopyable for collections that support it
+            if (x is IDeepCopyable copyable)
             {
-                return DeepCopyList(x, type, memo);
-            }
-
-            // Sharpy Dict<K,V>
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dict<,>))
-            {
-                return DeepCopyDict(x, type, memo);
-            }
-
-            // Sharpy Set<T>
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Set<>))
-            {
-                return DeepCopySet(x, type, memo);
+                return copyable.DeepCopy(memo);
             }
 
             // Fallback: shallow copy for unknown reference types
             return Copy(x);
-        }
-
-        private static object DeepCopyList(object x, Type type, Dictionary<object, object> memo)
-        {
-            // Create empty list of the same type
-            // TODO(#403): Replace reflection-based deep copy with interface-based approach
-            object newList = Activator.CreateInstance(type)!;
-            memo[x] = newList;
-
-            // Get the IEnumerable<T> interface to iterate
-            MethodInfo? appendMethod = type.GetMethod("Append");
-            if (appendMethod == null)
-            {
-                throw new TypeError($"copy.deepcopy() cannot deep-copy list of type '{type.Name}': no Append method found");
-            }
-
-            try
-            {
-                foreach (object? item in (System.Collections.IEnumerable)x)
-                {
-                    object? copiedItem = item != null ? DeepCopyInternal(item, memo) : null;
-                    appendMethod.Invoke(newList, new[] { copiedItem });
-                }
-            }
-            catch (TargetInvocationException ex)
-            {
-                throw new TypeError($"copy.deepcopy() failed for list element: {ex.InnerException?.Message ?? ex.Message}");
-            }
-
-            return newList;
-        }
-
-        private static object DeepCopyDict(object x, Type type, Dictionary<object, object> memo)
-        {
-            // TODO(#403): Replace reflection-based deep copy with interface-based approach
-            object newDict = Activator.CreateInstance(type)!;
-            memo[x] = newDict;
-
-            Type[] genericArgs = type.GetGenericArguments();
-            MethodInfo addMethod = type.GetMethod("Add", genericArgs)!;
-
-            // Use the generic IEnumerable<KeyValuePair<K,V>> to iterate
-            Type kvpType = typeof(KeyValuePair<,>).MakeGenericType(genericArgs);
-            Type enumerableType = typeof(IEnumerable<>).MakeGenericType(kvpType);
-            MethodInfo getEnumerator = enumerableType.GetMethod("GetEnumerator")!;
-            Type enumeratorType = typeof(IEnumerator<>).MakeGenericType(kvpType);
-            PropertyInfo currentProp = enumeratorType.GetProperty("Current")!;
-            PropertyInfo keyProp = kvpType.GetProperty("Key")!;
-            PropertyInfo valueProp = kvpType.GetProperty("Value")!;
-
-            object enumerator = getEnumerator.Invoke(x, null)!;
-            MethodInfo moveNext = typeof(System.Collections.IEnumerator).GetMethod("MoveNext")!;
-
-            try
-            {
-                while ((bool)moveNext.Invoke(enumerator, null)!)
-                {
-                    object kvp = currentProp.GetValue(enumerator)!;
-                    object key = keyProp.GetValue(kvp)!;
-                    object? value = valueProp.GetValue(kvp);
-
-                    object copiedKey = DeepCopyInternal(key, memo);
-                    object? copiedValue = value != null ? DeepCopyInternal(value, memo) : null;
-
-                    try
-                    {
-                        addMethod.Invoke(newDict, new[] { copiedKey, copiedValue });
-                    }
-                    catch (TargetInvocationException ex)
-                    {
-                        throw new TypeError($"copy.deepcopy() failed for dict entry: {ex.InnerException?.Message ?? ex.Message}");
-                    }
-                }
-            }
-            finally
-            {
-                (enumerator as IDisposable)?.Dispose();
-            }
-
-            return newDict;
-        }
-
-        private static object DeepCopySet(object x, Type type, Dictionary<object, object> memo)
-        {
-            object newSet = Activator.CreateInstance(type)!;
-            memo[x] = newSet;
-
-            MethodInfo? addMethod = type.GetMethod("Add", type.GetGenericArguments());
-            if (addMethod == null)
-            {
-                throw new TypeError($"copy.deepcopy() cannot deep-copy set of type '{type.Name}': no Add method found");
-            }
-
-            foreach (object? item in (System.Collections.IEnumerable)x)
-            {
-                object? copiedItem = item != null ? DeepCopyInternal(item, memo) : null;
-                addMethod.Invoke(newSet, new[] { copiedItem });
-            }
-
-            return newSet;
         }
     }
 

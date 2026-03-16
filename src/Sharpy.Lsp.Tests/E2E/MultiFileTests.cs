@@ -372,8 +372,8 @@ public class MultiFileTests : IAsyncLifetime
     public async Task MultiFile_Implementation_CrossFile()
     {
         CreateProjectFiles(
-            ("interfaces.spy", "interface IService:\n    def run(self) -> None: ..."),
-            ("impl.spy", "from interfaces import IService\nclass MyService(IService):\n    def run(self) -> None:\n        pass\ndef main():\n    pass"));
+            ("interfaces.spy", "interface IService:\n    def run(self) -> None: ...\n"),
+            ("impl.spy", "from interfaces import IService\nclass MyService(IService):\n    def run(self) -> None:\n        pass\ndef main():\n    pass\n"));
 
         var rootUri = new Uri(_tempDir).AbsoluteUri;
         await _client.InitializeAsync(rootUri);
@@ -391,30 +391,75 @@ public class MultiFileTests : IAsyncLifetime
             "textDocument/publishDiagnostics",
             TimeSpan.FromSeconds(15));
 
-        // Verify the server does NOT crash on cross-file implementation requests.
-        // The handler should return null gracefully instead of crashing with broken pipe.
-        var implResult = await _client.SendRequestAsync(
-            "textDocument/implementation",
-            new JsonObject
+        // Poll for implementation results — background project indexing may need
+        // time before the cross-file symbol table is available.
+        JsonNode? implResult = null;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (sw.Elapsed < TimeSpan.FromSeconds(30))
+        {
+            try
             {
-                ["textDocument"] = new JsonObject { ["uri"] = interfacesUri },
-                ["position"] = new JsonObject { ["line"] = 0, ["character"] = 10 }
-            });
-
-        // The request must complete without crashing the server — if the handler
-        // throws, the LSP pipe breaks and the next request will fail.
-        // The result may be null or empty when cross-file reference identities
-        // don't match; that's acceptable. What matters is the server survives.
-
-        // Verify the server is still responsive after the cross-file request
-        // by sending a second request. If the server crashed, this will throw.
-        var hoverResult = await _client.SendRequestAsync(
-            "textDocument/hover",
-            new JsonObject
+                await _client.WaitForNotificationAsync(
+                    "textDocument/publishDiagnostics",
+                    TimeSpan.FromMilliseconds(500));
+            }
+            catch (TimeoutException)
             {
-                ["textDocument"] = new JsonObject { ["uri"] = interfacesUri },
-                ["position"] = new JsonObject { ["line"] = 0, ["character"] = 10 }
-            });
+                // No pending notifications
+            }
+
+            try
+            {
+                implResult = await _client.SendRequestAsync(
+                    "textDocument/implementation",
+                    new JsonObject
+                    {
+                        ["textDocument"] = new JsonObject { ["uri"] = interfacesUri },
+                        ["position"] = new JsonObject { ["line"] = 0, ["character"] = 10 }
+                    });
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or TimeoutException)
+            {
+                // Server may crash from a pre-existing Debug.Assert bug
+                // when analyzing interface-only files in single-file mode.
+                break;
+            }
+
+            // Response can be a JsonArray of Locations, a single Location JsonObject,
+            // or null. Break on any non-null result.
+            if (implResult is JsonArray { Count: > 0 } || implResult is JsonObject)
+                break;
+
+            await Task.Delay(200);
+        }
+
+        // Verify the server returned the MyService implementation location.
+        // The response can be a JsonArray of Locations or a single Location JsonObject.
+        implResult.Should().NotBeNull(
+            "textDocument/implementation should return results for a cross-file interface");
+
+        // Normalize to a list of locations for uniform checking.
+        var locations = new System.Collections.Generic.List<JsonNode?>();
+        if (implResult is JsonArray arr)
+        {
+            foreach (var item in arr)
+                locations.Add(item);
+        }
+        else
+        {
+            locations.Add(implResult);
+        }
+
+        locations.Should().NotBeEmpty(
+            "IService has an implementing class MyService in impl.spy");
+
+        var hasMyService = locations.Any(loc =>
+        {
+            var locUri = loc?["uri"]?.GetValue<string>();
+            return locUri != null && locUri.Contains("impl.spy");
+        });
+        hasMyService.Should().BeTrue(
+            "implementation results should include MyService from impl.spy");
     }
 
     [Fact]

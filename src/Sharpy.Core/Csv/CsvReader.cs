@@ -51,7 +51,7 @@ namespace Sharpy
             return GetEnumerator();
         }
 
-        private static List<string> ParseLine(string line)
+        internal static List<string> ParseLine(string line)
         {
             var fields = new System.Collections.Generic.List<string>();
             var field = new StringBuilder();

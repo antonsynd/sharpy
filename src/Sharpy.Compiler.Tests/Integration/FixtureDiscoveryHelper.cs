@@ -9,6 +9,7 @@ public record TestFixtureInfo
     public required string SpyFilePath { get; init; }
     public string? ExpectedFile { get; init; }
     public string? ErrorFile { get; init; }
+    public string? RuntimeErrorFile { get; init; }
     public string? WarningFile { get; init; }
     public string? ExpectedCsFile { get; init; }
     public bool IsMultiFile { get; init; }
@@ -83,6 +84,7 @@ public static class FixtureDiscoveryHelper
 
                 var expectedFile = Path.Combine(multiFileRoot, "main.expected");
                 var errorFile = Path.Combine(multiFileRoot, "main.error");
+                var runtimeErrorFile = Path.Combine(multiFileRoot, "main.runtime-error");
                 var warningFile = Path.Combine(multiFileRoot, "main.warning");
                 var expectedCsFile = Path.Combine(multiFileRoot, "main.expected.cs");
 
@@ -92,6 +94,7 @@ public static class FixtureDiscoveryHelper
                     SpyFilePath = multiFileRoot,
                     ExpectedFile = File.Exists(expectedFile) ? expectedFile : null,
                     ErrorFile = File.Exists(errorFile) ? errorFile : null,
+                    RuntimeErrorFile = File.Exists(runtimeErrorFile) ? runtimeErrorFile : null,
                     WarningFile = File.Exists(warningFile) ? warningFile : null,
 
                     ExpectedCsFile = File.Exists(expectedCsFile) ? expectedCsFile : null,
@@ -114,6 +117,7 @@ public static class FixtureDiscoveryHelper
 
                 var expectedFile = Path.ChangeExtension(spyFile, ".expected");
                 var errorFile = Path.ChangeExtension(spyFile, ".error");
+                var runtimeErrorFile = spyFile.Replace(".spy", ".runtime-error");
                 var warningFile = Path.ChangeExtension(spyFile, ".warning");
                 var expectedCsFile = spyFile.Replace(".spy", ".expected.cs");
 
@@ -123,6 +127,7 @@ public static class FixtureDiscoveryHelper
                     SpyFilePath = spyFile,
                     ExpectedFile = File.Exists(expectedFile) ? expectedFile : null,
                     ErrorFile = File.Exists(errorFile) ? errorFile : null,
+                    RuntimeErrorFile = File.Exists(runtimeErrorFile) ? runtimeErrorFile : null,
                     WarningFile = File.Exists(warningFile) ? warningFile : null,
 
                     ExpectedCsFile = File.Exists(expectedCsFile) ? expectedCsFile : null,

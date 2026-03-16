@@ -1,0 +1,82 @@
+using System.Collections;
+using System.Collections.Generic;
+
+namespace Sharpy
+{
+    /// <summary>
+    /// Reads CSV data and maps each row to a dictionary keyed by field names,
+    /// similar to Python's <c>csv.DictReader</c>.
+    /// </summary>
+    [SharpyModuleType("csv")]
+    public sealed class CsvDictReader : IEnumerable<Dict<string, string>>
+    {
+        private readonly IEnumerable<string> _lines;
+        private List<string>? _fieldnames;
+
+        /// <summary>
+        /// The field names used as dictionary keys. If not provided in the constructor,
+        /// this is populated from the first row of the CSV data after iteration begins.
+        /// </summary>
+        public List<string>? Fieldnames
+        {
+            get { return _fieldnames; }
+        }
+
+        /// <summary>
+        /// Create a new DictReader from an enumerable of lines.
+        /// </summary>
+        /// <param name="lines">The lines to parse as CSV.</param>
+        /// <param name="fieldnames">Optional field names. If null, the first row is used.</param>
+        internal CsvDictReader(IEnumerable<string> lines, List<string>? fieldnames = null)
+        {
+            _lines = lines ?? throw new TypeError("'NoneType' is not iterable");
+            _fieldnames = fieldnames;
+        }
+
+        /// <summary>
+        /// Returns an enumerator that parses each line into a dictionary mapping
+        /// field names to values.
+        /// </summary>
+        public IEnumerator<Dict<string, string>> GetEnumerator()
+        {
+            bool isFirstRow = _fieldnames == null;
+
+            foreach (string line in _lines)
+            {
+                var fields = CsvReader.ParseLine(line);
+
+                if (isFirstRow)
+                {
+                    _fieldnames = fields;
+                    isFirstRow = false;
+                    continue;
+                }
+
+                if (_fieldnames == null)
+                {
+                    yield break;
+                }
+
+                var dict = new Dict<string, string>(
+                    new System.Collections.Generic.Dictionary<string, string>());
+
+                int fieldnameCount = ((ICollection<string>)_fieldnames).Count;
+                int fieldCount = ((ICollection<string>)fields).Count;
+
+                for (int i = 0; i < fieldnameCount; i++)
+                {
+                    string key = _fieldnames[i];
+                    string value = i < fieldCount ? fields[i] : "";
+                    dict[key] = value;
+                }
+
+                yield return dict;
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
+}

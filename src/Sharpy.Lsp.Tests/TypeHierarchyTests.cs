@@ -338,6 +338,36 @@ def main():
         result!.Should().Contain(item => item.Name == "Drawable", "Circle implements Drawable");
     }
 
+    [Fact]
+    public async Task TypeHierarchyIndex_GetDirectSubtypes_NameFallback_FindsSubtypesFromDifferentInstance()
+    {
+        // Simulate cross-file reference identity mismatch: build index from one
+        // symbol table, then query with a TypeSymbol from a *different* table
+        // (different object instance, same name).
+        var source = "interface Drawable:\n    def draw(self) -> None:\n        ...\nclass Circle(Drawable):\n    def draw(self) -> None:\n        pass\n    def __init__(self):\n        pass\ndef main():\n    c = Circle()";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SymbolTable.Should().NotBeNull();
+
+        var index = TypeHierarchyIndex.Build(analysis.SymbolTable!);
+
+        var drawable = analysis.SymbolTable!.Lookup("Drawable") as TypeSymbol;
+        drawable.Should().NotBeNull();
+
+        // Create a separate TypeSymbol instance with the same name to simulate
+        // a symbol from a different compilation context.
+        var foreignDrawable = new TypeSymbol { Name = "Drawable", TypeKind = TypeKind.Interface };
+
+        // Without name-based fallback, this would return empty because the
+        // dictionary uses ReferenceEqualityComparer and foreignDrawable is
+        // a different object instance.
+        var subtypes = index.GetDirectSubtypes(foreignDrawable);
+        subtypes.Should().Contain(t => t.Name == "Circle",
+            "name-based fallback should find Circle even with a different symbol instance");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();

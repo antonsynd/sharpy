@@ -9,7 +9,8 @@ namespace Sharpy
     public sealed partial class Set<T>
         : System.Collections.Generic.ISet<T>,
           System.IEquatable<Set<T>>,
-          ISized
+          ISized,
+          IDeepCopyable
     {
         // Internal for SetIterator access to the underlying HashSet
         internal readonly HashSet<T> _set;
@@ -54,6 +55,23 @@ namespace Sharpy
         {
             var newSet = new Set<T>();
             newSet._set.UnionWith(_set);
+
+            return newSet;
+        }
+
+        /// <inheritdoc/>
+        object IDeepCopyable.DeepCopy(Dictionary<object, object> memo)
+        {
+            var newSet = new Set<T>();
+            memo[this] = newSet;
+
+            foreach (var item in _set)
+            {
+                object? copiedItem = item != null
+                    ? CopyModule.DeepCopyInternal(item, memo)
+                    : default(T);
+                newSet._set.Add((T)copiedItem!);
+            }
 
             return newSet;
         }
