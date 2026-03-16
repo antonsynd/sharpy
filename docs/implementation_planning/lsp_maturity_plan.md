@@ -20,12 +20,15 @@ The LSP is surprisingly far along for a young project. 17 handlers, ~3,500 lines
 | Find References | **Done** (workspace-wide) |
 | Rename | **Done** (workspace-wide, scope-aware) |
 | Signature Help | **Done** |
-| Code Actions | **Basic** (remove unused imports/vars, fix naming) |
+| Code Actions | **Done** (extract method/variable, implement interface, convert forms, organize imports, inline, quick fixes) |
 | Document Symbols | **Done** |
-| Workspace Symbols | **Done** (open docs only) |
+| Workspace Symbols | **Done** (project-wide) |
 | Formatting | **Done** (full document) |
 | Folding Ranges | **Done** |
 | Document Highlights | **Done** |
+| Call Hierarchy | **Done** (incoming + outgoing calls) |
+| Type Hierarchy | **Done** (supertypes + subtypes) |
+| Go-to-Implementation | **Done** (interfaces + abstract classes) |
 
 ### Critical Gap
 
@@ -74,7 +77,7 @@ Initial project analysis should happen on a background thread pool with LSP `$/p
 
 ---
 
-## Phase 1: Deep Structural Navigation
+## Phase 1: Deep Structural Navigation ✅ COMPLETED
 
 **Scope: Medium | Priority: High | Depends on: Phase 0**
 
@@ -102,7 +105,7 @@ For interfaces and abstract classes: use the subtype index from 1.2. For virtual
 
 ---
 
-## Phase 2: Intelligent Refactoring & Code Actions
+## Phase 2: Intelligent Refactoring & Code Actions ✅ COMPLETED
 
 **Scope: Large | Priority: High | Depends on: Phase 0, partially Phase 1**
 
@@ -220,13 +223,13 @@ Phase 0  [Critical Foundation]          ✅ COMPLETED
   0.2 Project-wide analysis    ******  (large, most important)
   0.3 Background indexing      ***  (medium)
 
-Phase 1  [Structural Navigation]
+Phase 1  [Structural Navigation]        ✅ COMPLETED
   1.1 Call hierarchy           **  (small-medium, data exists)
   1.2 Type hierarchy           *   (small, data exists)
   1.3 Workspace symbols        *   (small, extends existing)
   1.4 Go-to-implementation     *   (small, combines 1.1+1.2)
 
-Phase 2  [Refactoring]
+Phase 2  [Refactoring]                 ✅ COMPLETED
   2.1 Extract method/variable  ****  (medium-large)
   2.2 Implement interface      **  (medium)
   2.3 Convert between forms    **  (medium)
@@ -267,10 +270,10 @@ After Phase 0, **Phase 1** next because it's high-value, low-effort (the data al
 | Feature | Basic LSP | Mature (rust-analyzer) | Sharpy Today | Sharpy After Plan |
 |---|---|---|---|---|
 | Highlighting | Regex | Semantic | Semantic | Semantic |
-| Navigation | Jump-to-def | Call/type hierarchies | Jump-to-def + refs | Full hierarchies |
+| Navigation | Jump-to-def | Call/type hierarchies | Call/type hierarchies + refs | Full hierarchies |
 | Hints | Hover only | Inlay hints | Inlay hints | Inlay hints |
-| Fixes | Simple | Extract/inline/implement | Remove unused | Full refactoring suite |
-| Cross-file | None | Full project | Single-file | Full project |
+| Fixes | Simple | Extract/inline/implement | Extract/inline/implement | Full refactoring suite |
+| Cross-file | None | Full project | Full project | Full project |
 | AI Support | None | MCP/structured context | None | MCP + semantic graph |
 | Performance | Full reparse | Incremental | Debounced full | Incremental + partial |
 
