@@ -78,7 +78,11 @@ namespace Sharpy
                 var dirs = Directory.EnumerateDirectories(baseDir, "*", searchOption);
                 entries = files.Concat(dirs);
             }
-            catch (Exception)
+            catch (IOException)
+            {
+                yield break;
+            }
+            catch (UnauthorizedAccessException)
             {
                 yield break;
             }

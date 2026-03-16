@@ -96,7 +96,7 @@ namespace Sharpy
         /// </example>
         public static object Deepcopy(object x)
         {
-            var memo = new Dictionary<object, object>(ReferenceEqualityComparer.Instance);
+            var memo = new Dictionary<object, object>(IdentityEqualityComparer.Instance);
             return DeepCopyInternal(x, memo);
         }
 
@@ -154,7 +154,7 @@ namespace Sharpy
             MethodInfo? appendMethod = type.GetMethod("Append");
             if (appendMethod == null)
             {
-                return newList;
+                throw new TypeError($"copy.deepcopy() cannot deep-copy list of type '{type.Name}': no Append method found");
             }
 
             try
@@ -231,7 +231,7 @@ namespace Sharpy
             MethodInfo? addMethod = type.GetMethod("Add", type.GetGenericArguments());
             if (addMethod == null)
             {
-                return newSet;
+                throw new TypeError($"copy.deepcopy() cannot deep-copy set of type '{type.Name}': no Add method found");
             }
 
             foreach (object? item in (System.Collections.IEnumerable)x)
@@ -247,13 +247,15 @@ namespace Sharpy
     /// <summary>
     /// An equality comparer that uses reference equality (object identity).
     /// Used internally by <see cref="CopyModule"/> to track circular references
-    /// during deep copy.
+    /// during deep copy. Named <c>IdentityEqualityComparer</c> to avoid shadowing
+    /// <c>System.Collections.Generic.ReferenceEqualityComparer</c> which exists
+    /// in .NET 5+ but is unavailable on netstandard2.x.
     /// </summary>
-    internal sealed class ReferenceEqualityComparer : IEqualityComparer<object>
+    internal sealed class IdentityEqualityComparer : IEqualityComparer<object>
     {
-        public static readonly ReferenceEqualityComparer Instance = new ReferenceEqualityComparer();
+        public static readonly IdentityEqualityComparer Instance = new IdentityEqualityComparer();
 
-        private ReferenceEqualityComparer() { }
+        private IdentityEqualityComparer() { }
 
         public new bool Equals(object? x, object? y)
         {

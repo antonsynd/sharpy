@@ -230,6 +230,16 @@ namespace Sharpy
                         continue;
                     }
 
+                    if (code == 'f')
+                    {
+                        // Microseconds (000000-999999). .NET DateTime only has
+                        // millisecond precision, so we pad with zeros.
+                        int ms = (dt ?? System.DateTime.Now).Millisecond;
+                        result.Append((ms * 1000).ToString("D6", CultureInfo.InvariantCulture));
+                        i += 2;
+                        continue;
+                    }
+
                     // Unknown format code - pass through as-is
                     result.Append(twoChar);
                     i += 2;
