@@ -436,12 +436,6 @@ internal partial class RoslynEmitter
         => _context.SemanticBinding.IsNetModule(moduleName);
 
     /// <summary>
-    /// Convert a Sharpy stdlib module name to a fully qualified C# class name.
-    /// e.g., "math" -> "global::Sharpy.Math", "os.path" -> "global::Sharpy.OsPath"
-    /// Stdlib module classes live in the Sharpy namespace with PascalCase names
-    /// where dotted parts are concatenated (no dots in the class name).
-    /// </summary>
-    /// <summary>
     /// Mapping for stdlib modules whose C# class name differs from the default
     /// PascalCase convention (e.g., because the bare name conflicts with an
     /// existing type or a member name matching the enclosing type).
@@ -457,6 +451,12 @@ internal partial class RoslynEmitter
         { "glob", "GlobModule" },
     };
 
+    /// <summary>
+    /// Convert a Sharpy stdlib module name to a fully qualified C# class name.
+    /// e.g., "math" -> "global::Sharpy.Math", "os.path" -> "global::Sharpy.OsPath"
+    /// Stdlib module classes live in the Sharpy namespace with PascalCase names
+    /// where dotted parts are concatenated (no dots in the class name).
+    /// </summary>
     private static string ConvertStdlibModuleToFullyQualified(string moduleName)
     {
         if (StdlibClassNameOverrides.TryGetValue(moduleName, out var overrideName))
