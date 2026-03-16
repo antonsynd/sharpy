@@ -70,7 +70,7 @@ namespace Sharpy
 
             if (biggest is null || iterableIsEmpty)
             {
-                throw new ValueError("Max() iterable argument is empty");
+                throw new ValueError("max() arg is an empty sequence");
             }
 
             return biggest;

@@ -449,7 +449,9 @@ internal partial class RoslynEmitter
     private static readonly Dictionary<string, string> StdlibClassNameOverrides = new(StringComparer.Ordinal)
     {
         { "argparse", "ArgparseModule" },
+        { "bisect", "BisectModule" },
         { "pathlib", "PathlibModule" },
+        { "string", "StringModule" },
         { "time", "TimeModule" },
         { "copy", "CopyModule" },
         { "glob", "GlobModule" },

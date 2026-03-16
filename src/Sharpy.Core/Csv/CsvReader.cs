@@ -13,6 +13,17 @@ namespace Sharpy
     public sealed class CsvReader : IEnumerable<List<string>>
     {
         private readonly IEnumerable<string> _lines;
+        private int _lineNum;
+
+        /// <summary>
+        /// The number of lines read from the source iterator. This is not the same
+        /// as the number of records returned, since records can span multiple lines
+        /// if quoted fields contain newlines.
+        /// </summary>
+        public int LineNum
+        {
+            get { return _lineNum; }
+        }
 
         /// <summary>
         /// Create a new CsvReader from an enumerable of lines.
@@ -30,6 +41,7 @@ namespace Sharpy
         {
             foreach (string line in _lines)
             {
+                _lineNum++;
                 yield return ParseLine(line);
             }
         }

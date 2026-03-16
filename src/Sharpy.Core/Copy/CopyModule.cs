@@ -146,6 +146,7 @@ namespace Sharpy
         private static object DeepCopyList(object x, Type type, Dictionary<object, object> memo)
         {
             // Create empty list of the same type
+            // TODO(#403): Replace reflection-based deep copy with interface-based approach
             object newList = Activator.CreateInstance(type)!;
             memo[x] = newList;
 
@@ -156,10 +157,17 @@ namespace Sharpy
                 return newList;
             }
 
-            foreach (object? item in (System.Collections.IEnumerable)x)
+            try
             {
-                object? copiedItem = item != null ? DeepCopyInternal(item, memo) : null;
-                appendMethod.Invoke(newList, new[] { copiedItem });
+                foreach (object? item in (System.Collections.IEnumerable)x)
+                {
+                    object? copiedItem = item != null ? DeepCopyInternal(item, memo) : null;
+                    appendMethod.Invoke(newList, new[] { copiedItem });
+                }
+            }
+            catch (TargetInvocationException ex)
+            {
+                throw new TypeError($"copy.deepcopy() failed for list element: {ex.InnerException?.Message ?? ex.Message}");
             }
 
             return newList;
@@ -167,6 +175,7 @@ namespace Sharpy
 
         private static object DeepCopyDict(object x, Type type, Dictionary<object, object> memo)
         {
+            // TODO(#403): Replace reflection-based deep copy with interface-based approach
             object newDict = Activator.CreateInstance(type)!;
             memo[x] = newDict;
 
@@ -196,7 +205,14 @@ namespace Sharpy
                     object copiedKey = DeepCopyInternal(key, memo);
                     object? copiedValue = value != null ? DeepCopyInternal(value, memo) : null;
 
-                    addMethod.Invoke(newDict, new[] { copiedKey, copiedValue });
+                    try
+                    {
+                        addMethod.Invoke(newDict, new[] { copiedKey, copiedValue });
+                    }
+                    catch (TargetInvocationException ex)
+                    {
+                        throw new TypeError($"copy.deepcopy() failed for dict entry: {ex.InnerException?.Message ?? ex.Message}");
+                    }
                 }
             }
             finally

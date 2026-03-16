@@ -142,6 +142,38 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Convert current UTC time to a <see cref="StructTime"/> (similar to Python's
+        /// <c>time.gmtime()</c>).
+        /// </summary>
+        /// <returns>A <see cref="StructTime"/> representing the current UTC time.</returns>
+        /// <example>
+        /// <code>
+        /// t = time.gmtime()
+        /// print(t.tm_year)    # e.g. 2024
+        /// </code>
+        /// </example>
+        public static StructTime Gmtime()
+        {
+            return StructTime.FromDateTime(System.DateTime.UtcNow);
+        }
+
+        /// <summary>
+        /// Convert current local time to a <see cref="StructTime"/> (similar to Python's
+        /// <c>time.localtime()</c>).
+        /// </summary>
+        /// <returns>A <see cref="StructTime"/> representing the current local time.</returns>
+        /// <example>
+        /// <code>
+        /// t = time.localtime()
+        /// print(t.tm_hour)    # current local hour
+        /// </code>
+        /// </example>
+        public static StructTime Localtime()
+        {
+            return StructTime.FromDateTime(System.DateTime.Now);
+        }
+
+        /// <summary>
         /// Convert a Python strftime format string to a .NET DateTime format string.
         /// Codes that have no .NET equivalent (<c>%j</c>, <c>%w</c>, <c>%Z</c>) are
         /// evaluated against <paramref name="dt"/> and embedded as literals.

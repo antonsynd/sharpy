@@ -8,7 +8,7 @@ namespace Sharpy
     /// Provides functions to maintain a list in sorted order without
     /// having to sort the list after each insertion.
     /// </summary>
-    public static partial class Bisect
+    public static partial class BisectModule
     {
         /// <summary>
         /// Locate the leftmost insertion point for <paramref name="x"/> in
@@ -92,13 +92,17 @@ namespace Sharpy
         /// Alias for <see cref="BisectRight{T}"/>. Locate the rightmost insertion point
         /// for <paramref name="x"/> in <paramref name="a"/> to maintain sorted order.
         /// </summary>
+        /// <remarks>
+        /// This is the Python <c>bisect.bisect()</c> function, which is an alias for
+        /// <c>bisect_right</c>.
+        /// </remarks>
         /// <typeparam name="T">The element type.</typeparam>
         /// <param name="a">A sorted list to search.</param>
         /// <param name="x">The value to locate an insertion point for.</param>
         /// <param name="lo">The lower bound of the slice to search (inclusive).</param>
         /// <param name="hi">The upper bound of the slice to search (exclusive). -1 means len(a).</param>
         /// <returns>The rightmost index where <paramref name="x"/> can be inserted.</returns>
-        public static int BisectSearch<T>(IList<T> a, T x, int lo = 0, int hi = -1) where T : IComparable<T>
+        public static int Bisect<T>(IList<T> a, T x, int lo = 0, int hi = -1) where T : IComparable<T>
         {
             return BisectRight(a, x, lo, hi);
         }

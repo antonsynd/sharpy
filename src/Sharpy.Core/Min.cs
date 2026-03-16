@@ -70,7 +70,7 @@ namespace Sharpy
 
             if (smallest is null || iterableIsEmpty)
             {
-                throw new ValueError("Min() iterable argument is empty");
+                throw new ValueError("min() arg is an empty sequence");
             }
 
             return smallest;

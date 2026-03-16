@@ -1,6 +1,6 @@
 namespace Sharpy
 {
     [SharpyModule("bisect")]
-    public static partial class Bisect
+    public static partial class BisectModule
     { }
 }

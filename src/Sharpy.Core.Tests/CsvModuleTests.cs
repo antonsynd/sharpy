@@ -112,4 +112,21 @@ public class CsvModuleTests
         Sharpy.Csv.QUOTE_NONE.Should().Be(3);
         Sharpy.Csv.QUOTE_NONNUMERIC.Should().Be(2);
     }
+
+    [Fact]
+    public void Reader_LineNum_TracksLinesRead()
+    {
+        var lines = new[] { "a,b", "c,d", "e,f" };
+        var reader = Sharpy.Csv.Reader(lines);
+        reader.LineNum.Should().Be(0);
+
+        int count = 0;
+        foreach (var row in reader)
+        {
+            count++;
+            reader.LineNum.Should().Be(count);
+        }
+
+        reader.LineNum.Should().Be(3);
+    }
 }

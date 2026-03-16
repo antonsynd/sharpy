@@ -124,4 +124,61 @@ public class TimeModuleTests
         var act = () => TimeModule.Sleep(0);
         act.Should().NotThrow();
     }
+
+    [Fact]
+    public void Gmtime_ReturnsValidStructTime()
+    {
+        var t = TimeModule.Gmtime();
+        t.TmYear.Should().BeGreaterThanOrEqualTo(2024);
+        t.TmMon.Should().BeInRange(1, 12);
+        t.TmMday.Should().BeInRange(1, 31);
+        t.TmHour.Should().BeInRange(0, 23);
+        t.TmMin.Should().BeInRange(0, 59);
+        t.TmSec.Should().BeInRange(0, 61);
+        t.TmWday.Should().BeInRange(0, 6);
+        t.TmYday.Should().BeInRange(1, 366);
+        t.TmIsdst.Should().Be(0); // UTC never has DST
+    }
+
+    [Fact]
+    public void Localtime_ReturnsValidStructTime()
+    {
+        var t = TimeModule.Localtime();
+        t.TmYear.Should().BeGreaterThanOrEqualTo(2024);
+        t.TmMon.Should().BeInRange(1, 12);
+        t.TmMday.Should().BeInRange(1, 31);
+        t.TmHour.Should().BeInRange(0, 23);
+        t.TmMin.Should().BeInRange(0, 59);
+        t.TmSec.Should().BeInRange(0, 61);
+        t.TmWday.Should().BeInRange(0, 6);
+        t.TmYday.Should().BeInRange(1, 366);
+        t.TmIsdst.Should().BeInRange(-1, 1);
+    }
+
+    [Fact]
+    public void StructTime_ToString_MatchesPythonFormat()
+    {
+        var t = new StructTime(2024, 1, 15, 10, 30, 0, 0, 15, 0);
+        t.ToString().Should().Contain("tm_year=2024");
+        t.ToString().Should().Contain("tm_mon=1");
+        t.ToString().Should().StartWith("time.struct_time(");
+    }
+
+    [Fact]
+    public void StructTime_Wday_MondayIsZero()
+    {
+        // Monday, January 1, 2024 = Monday = tm_wday 0
+        var dt = new System.DateTime(2024, 1, 1, 0, 0, 0, System.DateTimeKind.Utc);
+        var t = StructTime.FromDateTime(dt);
+        t.TmWday.Should().Be(0); // Monday = 0 in Python
+    }
+
+    [Fact]
+    public void StructTime_Wday_SundayIsSix()
+    {
+        // Sunday, January 7, 2024 = Sunday = tm_wday 6
+        var dt = new System.DateTime(2024, 1, 7, 0, 0, 0, System.DateTimeKind.Utc);
+        var t = StructTime.FromDateTime(dt);
+        t.TmWday.Should().Be(6); // Sunday = 6 in Python
+    }
 }

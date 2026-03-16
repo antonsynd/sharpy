@@ -4,7 +4,7 @@ namespace Sharpy
     /// String constants matching Python's string module.
     /// Provides character classification constants for ASCII characters.
     /// </summary>
-    public static partial class String
+    public static partial class StringModule
     {
         /// <summary>
         /// The lowercase letters 'abcdefghijklmnopqrstuvwxyz'.
