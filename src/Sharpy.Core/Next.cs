@@ -27,5 +27,34 @@ namespace Sharpy
 
             return iterator.Next();
         }
+
+        /// <summary>
+        /// Retrieve the next item from the iterator, or return default if exhausted.
+        /// </summary>
+        /// <typeparam name="T">The type of elements in the iterator</typeparam>
+        /// <param name="iterator">The iterator to advance</param>
+        /// <param name="default">The value to return if the iterator is exhausted</param>
+        /// <returns>The next item, or default if exhausted</returns>
+        /// <example>
+        /// <code>
+        /// it = iter([1])
+        /// next(it)          # 1
+        /// next(it, "done")  # "done"
+        /// </code>
+        /// </example>
+        public static T Next<T>(Iterator<T> iterator, T @default)
+        {
+            if (iterator is null)
+            {
+                throw TypeError.ArgNone("next", "iterator");
+            }
+
+            if (iterator.MoveNext())
+            {
+                return iterator.Current;
+            }
+
+            return @default;
+        }
     }
 }

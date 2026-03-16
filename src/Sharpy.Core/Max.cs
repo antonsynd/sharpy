@@ -77,5 +77,60 @@ namespace Sharpy
 
             return biggest;
         }
+
+        /// <summary>
+        /// Return the largest item in an iterable, or default if the iterable is empty.
+        /// </summary>
+        public static T Max<T>(IEnumerable<T> iterable, T @default)
+        {
+            return Max(iterable, value => value, @default);
+        }
+
+        /// <summary>
+        /// Return the largest item in an iterable using a key function,
+        /// or default if the iterable is empty.
+        /// </summary>
+        public static T Max<T, TKey>(IEnumerable<T> iterable, Func<T, TKey> key, T @default)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            if (key is null)
+            {
+                throw TypeError.ArgNone("max", "key");
+            }
+
+            bool iterableIsEmpty = true;
+            T? biggest = default;
+
+            foreach (var elem in iterable)
+            {
+                if (elem is null)
+                {
+                    throw TypeError.OpNotSupported("<", "NoneType");
+                }
+
+                if (biggest is null || iterableIsEmpty)
+                {
+                    biggest = elem;
+                    iterableIsEmpty = false;
+                    continue;
+                }
+
+                if (Operator.Lt(key(biggest), key(elem)))
+                {
+                    biggest = elem;
+                }
+            }
+
+            if (biggest is null || iterableIsEmpty)
+            {
+                return @default;
+            }
+
+            return biggest;
+        }
     }
 }

@@ -1,0 +1,6 @@
+# zip() with strict=True on mismatched lengths should raise ValueError
+def main():
+    a: list[int] = [1, 2, 3]
+    b: list[str] = ["a", "b"]
+    for x, y in zip(a, b, strict=True):
+        print(x, y)

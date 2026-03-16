@@ -1,0 +1,16 @@
+# hex/oct/bin with long values
+def main():
+    x: long = 255
+    print(hex(x))
+    print(oct(x))
+    print(bin(x))
+
+    y: long = -42
+    print(hex(y))
+    print(oct(y))
+    print(bin(y))
+
+    z: long = 0
+    print(hex(z))
+    print(oct(z))
+    print(bin(z))

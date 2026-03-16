@@ -172,6 +172,25 @@ internal partial class TypeChecker
     private string? ExtractNarrowingKey(Expression expr) => AstHelper.ExtractNarrowingKey(expr);
 
     /// <summary>
+    /// Returns true if the given type contains any <see cref="TypeParameterType"/>
+    /// (e.g., Iterator&lt;T&gt; contains T). Used during overload resolution to
+    /// skip type-matching for generic parameters that C# will infer later.
+    /// </summary>
+    private static bool ContainsTypeParameter(SemanticType type)
+    {
+        return type switch
+        {
+            TypeParameterType => true,
+            GenericType gt => gt.TypeArguments.Any(ContainsTypeParameter),
+            NullableType nt => ContainsTypeParameter(nt.UnderlyingType),
+            OptionalType ot => ContainsTypeParameter(ot.UnderlyingType),
+            TupleType tt => tt.ElementTypes.Any(ContainsTypeParameter),
+            FunctionType ft => ft.ParameterTypes.Any(ContainsTypeParameter) || ContainsTypeParameter(ft.ReturnType),
+            _ => false
+        };
+    }
+
+    /// <summary>
     /// Check if a source type can be assigned to a target type.
     /// This extends the basic IsAssignableTo to handle nullable types and generic variance.
     /// </summary>

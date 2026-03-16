@@ -1,0 +1,4 @@
+# min() without default on empty list should raise ValueError
+def main():
+    empty: list[int] = []
+    print(min(empty))

@@ -687,6 +687,11 @@ internal partial class TypeChecker
                 if (context.SkipUnknownTypes && (expectedType is UnknownType || context.ArgTypes[i] is UnknownType))
                     continue;
 
+                // Type parameters act as wildcards during overload resolution —
+                // generic type inference happens later in C# compilation.
+                if (expectedType is TypeParameterType || ContainsTypeParameter(expectedType))
+                    continue;
+
                 if (!IsAssignable(context.ArgTypes[i], expectedType))
                 {
                     typesMatch = false;

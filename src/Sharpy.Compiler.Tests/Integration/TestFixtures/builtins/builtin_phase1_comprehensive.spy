@@ -1,0 +1,39 @@
+# Comprehensive test for all Phase 1 builtin additions
+def main():
+    # hex/oct/bin
+    print(hex(255))
+    print(oct(8))
+    print(bin(10))
+    print(hex(-42))
+    print(oct(-8))
+    print(bin(-10))
+
+    # ascii
+    print(ascii("hello"))
+    print(ascii(42))
+
+    # breakpoint (no-op, no output)
+    breakpoint()
+
+    # min/max with default
+    empty: list[int] = []
+    print(min(empty, default=0))
+    print(max(empty, default=99))
+    nums: list[int] = [3, 1, 4]
+    print(min(nums, default=0))
+    print(max(nums, default=0))
+
+    # next with default
+    it = iter([10, 20])
+    print(next(it))
+    print(next(it))
+    print(next(it, -1))
+
+    # sum with start
+    print(sum([1, 2, 3], 10))
+
+    # zip with strict
+    a: list[int] = [1, 2, 3]
+    b: list[str] = ["a", "b", "c"]
+    for x, y in zip(a, b, strict=True):
+        print(x, y)

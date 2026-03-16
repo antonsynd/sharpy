@@ -1,0 +1,4 @@
+# breakpoint() should be callable and produce no output
+def main():
+    breakpoint()
+    print("after breakpoint")

@@ -1,0 +1,5 @@
+# ascii() basic tests
+def main():
+    print(ascii("hello"))
+    print(ascii(42))
+    print(ascii(True))

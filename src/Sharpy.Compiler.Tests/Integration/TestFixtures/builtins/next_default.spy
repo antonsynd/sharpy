@@ -1,0 +1,9 @@
+# next() with default parameter
+def main():
+    nums: list[int] = [10, 20]
+    it = iter(nums)
+    print(next(it))
+    print(next(it))
+    # Iterator exhausted, should return default
+    print(next(it, -1))
+    print(next(it, -1))

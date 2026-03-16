@@ -1,0 +1,10 @@
+# min/max with default parameter
+def main():
+    empty: list[int] = []
+    print(min(empty, default=0))
+    print(max(empty, default=99))
+
+    # Non-empty still returns actual min/max
+    nums: list[int] = [3, 1, 4, 1, 5]
+    print(min(nums, default=0))
+    print(max(nums, default=0))

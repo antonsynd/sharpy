@@ -41,6 +41,10 @@ internal static class BuiltinNames
     public const string Bin = "bin";
     public const string Ord = "ord";
     public const string Chr = "chr";
+    public const string Ascii = "ascii";
+
+    // ---- Debugging ----
+    public const string Breakpoint = "breakpoint";
 
     // ---- Introspection ----
     public const string Type = "type";

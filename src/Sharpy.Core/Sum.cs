@@ -90,5 +90,73 @@ namespace Sharpy
 
             return iterable.Sum();
         }
+
+        /// <summary>
+        /// Sums a sequence of integers with a start value.
+        /// </summary>
+        /// <param name="iterable">The sequence to sum</param>
+        /// <param name="start">The initial accumulator value</param>
+        /// <returns>The total sum plus start</returns>
+        public static int Sum(IEnumerable<int> iterable, int start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            return start + iterable.Sum();
+        }
+
+        /// <summary>
+        /// Sums a sequence of longs with a start value.
+        /// </summary>
+        public static long Sum(IEnumerable<long> iterable, long start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            return start + iterable.Sum();
+        }
+
+        /// <summary>
+        /// Sums a sequence of floats with a start value.
+        /// </summary>
+        public static float Sum(IEnumerable<float> iterable, float start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            return start + iterable.Sum();
+        }
+
+        /// <summary>
+        /// Sums a sequence of doubles with a start value.
+        /// </summary>
+        public static double Sum(IEnumerable<double> iterable, double start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            return start + iterable.Sum();
+        }
+
+        /// <summary>
+        /// Sums a sequence of decimals with a start value.
+        /// </summary>
+        public static decimal Sum(IEnumerable<decimal> iterable, decimal start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            return start + iterable.Sum();
+        }
     }
 }

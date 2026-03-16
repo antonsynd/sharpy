@@ -1,0 +1,13 @@
+# zip() with strict=True on matching lengths
+def main():
+    a: list[int] = [1, 2, 3]
+    b: list[str] = ["a", "b", "c"]
+    for x, y in zip(a, b, strict=True):
+        print(x, y)
+
+    # Both empty should also work
+    empty1: list[int] = []
+    empty2: list[str] = []
+    for x2, y2 in zip(empty1, empty2, strict=True):
+        print(x2, y2)
+    print("done")

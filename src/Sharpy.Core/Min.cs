@@ -77,5 +77,60 @@ namespace Sharpy
 
             return smallest;
         }
+
+        /// <summary>
+        /// Return the smallest item in an iterable, or default if the iterable is empty.
+        /// </summary>
+        public static T Min<T>(IEnumerable<T> iterable, T @default)
+        {
+            return Min(iterable, value => value, @default);
+        }
+
+        /// <summary>
+        /// Return the smallest item in an iterable using a key function,
+        /// or default if the iterable is empty.
+        /// </summary>
+        public static T Min<T, TKey>(IEnumerable<T> iterable, Func<T, TKey> key, T @default)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            if (key is null)
+            {
+                throw TypeError.ArgNone("min", "key");
+            }
+
+            bool iterableIsEmpty = true;
+            T? smallest = default;
+
+            foreach (var elem in iterable)
+            {
+                if (elem is null)
+                {
+                    throw TypeError.OpNotSupported("<", "NoneType");
+                }
+
+                if (smallest is null || iterableIsEmpty)
+                {
+                    smallest = elem;
+                    iterableIsEmpty = false;
+                    continue;
+                }
+
+                if (Operator.Lt(key(elem), key(smallest)))
+                {
+                    smallest = elem;
+                }
+            }
+
+            if (smallest is null || iterableIsEmpty)
+            {
+                return @default;
+            }
+
+            return smallest;
+        }
     }
 }

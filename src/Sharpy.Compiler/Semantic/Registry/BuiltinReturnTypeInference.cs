@@ -27,9 +27,9 @@ internal static class BuiltinReturnTypeInference
                 => InferReversed(argTypes, typeInference),
             BuiltinNames.Sorted when argTypes.Count >= 1
                 => InferSorted(argTypes, typeInference),
-            BuiltinNames.Min when argTypes.Count == 1
+            BuiltinNames.Min when argTypes.Count >= 1
                 => InferElementTypeUnary(argTypes, typeInference),
-            BuiltinNames.Max when argTypes.Count == 1
+            BuiltinNames.Max when argTypes.Count >= 1
                 => InferElementTypeUnary(argTypes, typeInference),
             BuiltinNames.Enumerate when argTypes.Count is 1 or 2
                 => InferEnumerate(argTypes, typeInference),
