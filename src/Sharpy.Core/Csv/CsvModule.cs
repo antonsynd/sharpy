@@ -41,5 +41,27 @@ namespace Sharpy
         {
             return new CsvWriter(output);
         }
+
+        /// <summary>
+        /// Create a CSV DictReader from an enumerable of lines.
+        /// </summary>
+        /// <param name="lines">An enumerable of CSV lines to parse.</param>
+        /// <param name="fieldnames">Optional field names. If null, the first row is used as field names.</param>
+        /// <returns>A <see cref="CsvDictReader"/> that iterates over parsed rows as dictionaries.</returns>
+        public static CsvDictReader DictReader(IEnumerable<string> lines, List<string>? fieldnames = null)
+        {
+            return new CsvDictReader(lines, fieldnames);
+        }
+
+        /// <summary>
+        /// Create a CSV DictWriter that writes to a TextWriter.
+        /// </summary>
+        /// <param name="output">The output writer to write CSV data to.</param>
+        /// <param name="fieldnames">The field names determining column order.</param>
+        /// <returns>A <see cref="CsvDictWriter"/> for writing CSV rows as dictionaries.</returns>
+        public static CsvDictWriter DictWriter(System.IO.TextWriter output, List<string> fieldnames)
+        {
+            return new CsvDictWriter(output, fieldnames);
+        }
     }
 }
