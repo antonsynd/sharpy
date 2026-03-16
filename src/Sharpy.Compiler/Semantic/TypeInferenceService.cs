@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
@@ -34,6 +35,7 @@ internal class TypeInferenceService
 {
     private readonly SymbolTable _symbolTable;
     private readonly ClrMemberCache _clrMemberCache;
+    private readonly Lazy<ClrTypeMapper> _clrTypeMapper = new(() => new ClrTypeMapper());
 
     // Caches for performance (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
@@ -642,20 +644,36 @@ internal class TypeInferenceService
         }
 
         // User-defined types with __iter__() or __getitem__()
-        if (iterableType is UserDefinedType udt && udt.Symbol != null)
+        if (iterableType is UserDefinedType udt)
         {
-            var iterMethod = udt.Symbol.Methods.FirstOrDefault(m => m.Name == DunderNames.Iter);
-            if (iterMethod?.ReturnType is GenericType iterReturn
-                && iterReturn.Name == BuiltinNames.Iterator
-                && iterReturn.TypeArguments.Count > 0)
+            // If Symbol is null (e.g., return type from CLR module discovery),
+            // resolve it from the SymbolTable by name
+            var symbol = udt.Symbol ?? _symbolTable.Lookup(udt.Name) as TypeSymbol;
+            if (symbol != null)
             {
-                return iterReturn.TypeArguments[0];
-            }
+                var iterMethod = symbol.Methods.FirstOrDefault(m => m.Name == DunderNames.Iter);
+                if (iterMethod?.ReturnType is GenericType iterReturn
+                    && iterReturn.Name == BuiltinNames.Iterator
+                    && iterReturn.TypeArguments.Count > 0)
+                {
+                    return iterReturn.TypeArguments[0];
+                }
 
-            var getitemMethod = udt.Symbol.Methods.FirstOrDefault(m => m.Name == DunderNames.GetItem);
-            if (getitemMethod?.ReturnType is { } itemType && itemType != SemanticType.Unknown)
-            {
-                return itemType;
+                var getitemMethod = symbol.Methods.FirstOrDefault(m => m.Name == DunderNames.GetItem);
+                if (getitemMethod?.ReturnType is { } itemType && itemType != SemanticType.Unknown)
+                {
+                    return itemType;
+                }
+
+                // Fallback: CLR-backed UserDefinedType implementing IEnumerable<T>
+                if (symbol.ClrType != null)
+                {
+                    var clrElementType = GetIEnumerableElementType(symbol.ClrType);
+                    if (clrElementType != null)
+                    {
+                        return _clrTypeMapper.Value.MapClrTypeToSemanticType(clrElementType);
+                    }
+                }
             }
         }
 
@@ -829,6 +847,24 @@ internal class TypeInferenceService
                 return currentType.GetGenericArguments()[0];
             }
             currentType = currentType.BaseType;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Extracts the element type T from a CLR type implementing IEnumerable&lt;T&gt;.
+    /// Returns null if the type does not implement IEnumerable&lt;T&gt;.
+    /// </summary>
+    private static Type? GetIEnumerableElementType(Type clrType)
+    {
+        // Check interfaces implemented by the type for IEnumerable<T>
+        foreach (var iface in clrType.GetInterfaces())
+        {
+            if (iface.IsGenericType &&
+                iface.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IEnumerable<>))
+            {
+                return iface.GetGenericArguments()[0];
+            }
         }
         return null;
     }

@@ -181,17 +181,23 @@ internal class ProtocolValidator : ValidatingAstWalker
             return true;
 
         // Check Sharpy user-defined types
-        if (type is UserDefinedType udt && udt.Symbol != null)
+        if (type is UserDefinedType udt)
         {
-            if (udt.Symbol.ProtocolMethods.ContainsKey(dunderName))
-                return true;
+            // If Symbol is null (e.g., return type from CLR module discovery),
+            // resolve it from the SymbolTable by name
+            var symbol = udt.Symbol ?? Context.SymbolTable.Lookup(udt.Name) as TypeSymbol;
+            if (symbol != null)
+            {
+                if (symbol.ProtocolMethods.ContainsKey(dunderName))
+                    return true;
 
-            if (udt.Symbol.Methods.Any(m => m.Name == dunderName))
-                return true;
+                if (symbol.Methods.Any(m => m.Name == dunderName))
+                    return true;
 
-            // Check CLR type if available
-            if (udt.Symbol.ClrType != null && HasClrProtocol(udt.Symbol.ClrType, dunderName))
-                return true;
+                // Check CLR type if available
+                if (symbol.ClrType != null && HasClrProtocol(symbol.ClrType, dunderName))
+                    return true;
+            }
         }
 
         // Check builtin types with CLR backing

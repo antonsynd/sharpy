@@ -20,6 +20,9 @@ internal class CachedModuleDiscovery
     private readonly ClrTypeMapper _typeMapper;
     private readonly ConcurrentDictionary<string, Lazy<OverloadIndex>> _loadedIndices = new();
     private readonly ConcurrentDictionary<string, byte> _moduleTypeNames = new();
+    // Cache of TypeSymbol instances keyed by CLR full type name, so ConvertTypeSignature
+    // can reuse the same TypeSymbol instance created by ConvertToTypeSymbol.
+    private readonly ConcurrentDictionary<string, TypeSymbol> _moduleTypeSymbols = new();
 
     /// <summary>
     /// Create a discovery instance using the default cache directory.
@@ -69,13 +72,27 @@ internal class CachedModuleDiscovery
         // Force evaluation so the assembly is loaded eagerly
         var index = lazy.Value;
 
-        // Pre-compute module type names for ConvertTypeSignature
+        // Pre-compute module type names and TypeSymbols for ConvertTypeSignature.
+        // TypeSymbols must be created here (before GetModuleFunctions) so that
+        // ConvertTypeSignature can reuse the same TypeSymbol instances, ensuring
+        // reference identity for type assignability checks.
         foreach (var moduleOverloads in index.Modules.Values)
         {
             foreach (var typeInfo in moduleOverloads.Types)
             {
                 if (typeInfo.IsModuleType)
-                    _moduleTypeNames.TryAdd(typeInfo.Namespace + "." + typeInfo.Name, 0);
+                {
+                    var fullName = typeInfo.Namespace + "." + typeInfo.Name;
+                    _moduleTypeNames.TryAdd(fullName, 0);
+
+                    // Pre-create TypeSymbol so it's available for function return types
+                    if (!_moduleTypeSymbols.ContainsKey(fullName))
+                    {
+                        var typeSymbol = ConvertToTypeSymbol(typeInfo);
+                        if (typeSymbol != null)
+                            _moduleTypeSymbols.TryAdd(fullName, typeSymbol);
+                    }
+                }
             }
         }
     }
@@ -120,9 +137,18 @@ internal class CachedModuleDiscovery
 
             foreach (var typeInfo in moduleOverloads.Types)
             {
-                var typeSymbol = ConvertToTypeSymbol(typeInfo);
-                if (typeSymbol != null)
-                    types.Add(typeSymbol);
+                // Reuse pre-computed TypeSymbol if available (for reference identity)
+                var fullName = typeInfo.Namespace + "." + typeInfo.Name;
+                if (_moduleTypeSymbols.TryGetValue(fullName, out var cached))
+                {
+                    types.Add(cached);
+                }
+                else
+                {
+                    var typeSymbol = ConvertToTypeSymbol(typeInfo);
+                    if (typeSymbol != null)
+                        types.Add(typeSymbol);
+                }
             }
         }
 
@@ -542,6 +568,13 @@ internal class CachedModuleDiscovery
                 // Uses pre-computed set from discovery phase instead of runtime reflection.
                 if (clrType.FullName != null && _moduleTypeNames.ContainsKey(clrType.FullName))
                 {
+                    // Reuse the pre-computed TypeSymbol (created during index loading)
+                    // so the Symbol reference is identical to the one returned by
+                    // GetModuleTypes, enabling type assignability checks.
+                    if (_moduleTypeSymbols.TryGetValue(clrType.FullName, out var cachedSymbol))
+                    {
+                        return new UserDefinedType { Name = signature.Name, Symbol = cachedSymbol };
+                    }
                     return new UserDefinedType { Name = signature.Name };
                 }
 

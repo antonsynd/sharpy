@@ -1,1 +1,0 @@
-TODO(#405): CsvReader class is missing __iter__ support, so for-loop iteration fails.
