@@ -60,7 +60,7 @@ namespace Sharpy
             }
         }
 
-        private static string QuoteField(string field)
+        internal static string QuoteField(string field)
         {
             bool needsQuoting = false;
             foreach (char c in field)
