@@ -556,7 +556,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         {
             var line = lines[node.LineStart - 1];
             var start = System.Math.Max(0, node.ColumnStart - 1);
-            var end = System.Math.Min(line.Length, node.ColumnEnd);
+            var end = System.Math.Min(line.Length, node.ColumnEnd - 1);
             if (start >= end)
                 return line.Substring(start).TrimEnd('\r');
             return line.Substring(start, end - start).TrimEnd('\r');
@@ -574,7 +574,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
             }
             else if (i == node.LineEnd - 1)
             {
-                var end = System.Math.Min(line.Length, node.ColumnEnd);
+                var end = System.Math.Min(line.Length, node.ColumnEnd - 1);
                 sb.Append('\n');
                 sb.Append(line.Substring(0, end).TrimEnd('\r'));
             }
