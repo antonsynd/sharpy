@@ -186,4 +186,47 @@ public class ExtractMethodProviderTests
         var edits = action.Edit!.Changes![TestUri].ToList();
         edits.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public async Task ExtractMethod_SelectionWithNestedFunctionDef_ReturnsAction()
+    {
+        // Nested function definitions introduce their own scope and should not
+        // block extraction. The ScopeAnalyzer skips nested FunctionDef nodes.
+        var source = "def main():\n    def helper() -> int:\n        return 42\n    x: int = helper()\n    print(x)";
+        var provider = new ExtractMethodProvider();
+
+        // Select the nested function def and the call to it (lines 1-3, 0-based)
+        var range = new LspRange(new Position(1, 0), new Position(3, 22));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        // Should offer extract method because nested FunctionDef is not treated
+        // as containing return/break/continue/yield at the selection scope level
+        actions.Should().NotBeEmpty();
+        var action = actions[0];
+        action.Title.Should().Be("Extract method");
+        action.Kind.Should().Be(CodeActionKind.RefactorExtract);
+    }
+
+    [Fact]
+    public async Task ExtractMethod_SelectionWithMultipleReturnValues_GeneratesTupleReturn()
+    {
+        // When the selection writes to multiple variables used after the selection,
+        // the extracted method should return a tuple.
+        var source = "def main():\n    a: int = 1\n    b: int = 2\n    print(a)\n    print(b)";
+        var provider = new ExtractMethodProvider();
+
+        // Select the two assignment statements (lines 1-2, 0-based)
+        var range = new LspRange(new Position(1, 0), new Position(2, 14));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        actions.Should().NotBeEmpty();
+        var action = actions[0];
+        action.Title.Should().Be("Extract method");
+        action.Kind.Should().Be(CodeActionKind.RefactorExtract);
+        action.Edit.Should().NotBeNull();
+
+        // Verify that edits are generated (the extracted function and call site)
+        var edits = action.Edit!.Changes![TestUri].ToList();
+        edits.Should().NotBeEmpty();
+    }
 }

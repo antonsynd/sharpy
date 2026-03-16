@@ -193,4 +193,44 @@ public class InlineProviderTests
         var replacementEdit = edits.FirstOrDefault(e => e.NewText.Contains("5"));
         replacementEdit.Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task InlineVariable_MultipleReferenceSites_ReturnsActionWithAllReplacements()
+    {
+        // Variable used in multiple locations — inline should replace all references
+        var source = "def main():\n    x: int = 42\n    print(x)\n    print(x)";
+        var provider = new InlineProvider();
+
+        // Cursor on the variable declaration
+        var range = new LspRange(new Position(1, 4), new Position(1, 4));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var inlineAction = actions.FirstOrDefault(a =>
+            a.Title.Contains("Inline variable") && a.Title.Contains("x"));
+        inlineAction.Should().NotBeNull();
+        inlineAction!.Kind.Should().Be(CodeActionKind.RefactorInline);
+        inlineAction.Edit.Should().NotBeNull();
+
+        // Should have edits: 1 deletion of the declaration + 2 replacements for each reference
+        var edits = inlineAction.Edit!.Changes![TestUri].ToList();
+        edits.Should().HaveCountGreaterThanOrEqualTo(3,
+            "one deletion of the declaration line plus two reference replacements");
+    }
+
+    [Fact]
+    public async Task InlineFunction_WithDefaultParameters_ReturnsNoAction()
+    {
+        // Function with default parameters where the call does not provide all args
+        // should be rejected since arg count != effective param count
+        var source = "def greet(name: str, greeting: str = 'Hello') -> str:\n    return greeting\n\ndef main():\n    print(greet('World'))";
+        var provider = new InlineProvider();
+
+        // Cursor on the function call greet('World')
+        var range = new LspRange(new Position(4, 10), new Position(4, 10));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        // Should not offer inline because argument count (1) != parameter count (2)
+        var inlineAction = actions.FirstOrDefault(a => a.Title.Contains("Inline function"));
+        inlineAction.Should().BeNull();
+    }
 }
