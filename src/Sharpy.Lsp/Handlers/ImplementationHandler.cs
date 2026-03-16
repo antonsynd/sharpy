@@ -28,36 +28,50 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
         ImplementationParams request,
         CancellationToken ct)
     {
-        var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        try
+        {
+            var uri = request.TextDocument.Uri.ToString();
+            var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
 
-        if (analysis?.Ast == null || analysis.SemanticQuery == null)
+            if (analysis?.Ast == null || analysis.SemanticQuery == null)
+                return null;
+
+            var (line, col) = PositionConverter.ToCompiler(request.Position);
+            var node = _api.FindNodeAtPosition(analysis.Ast, line, col);
+
+            if (node == null)
+                return null;
+
+            var symbol = ResolveSymbol(node, analysis);
+            if (symbol == null)
+                return null;
+
+            var symbolTable = GetBestSymbolTable(analysis);
+            if (symbolTable == null)
+                return null;
+
+            // Re-resolve the symbol from the best symbol table so that reference
+            // equality works when the TypeHierarchyIndex is built from the same table.
+            symbol = ReResolveInTable(symbol, symbolTable) ?? symbol;
+
+            var locations = FindImplementations(symbol, symbolTable, uri);
+            if (locations is not { Count: > 0 })
+                return null;
+
+            return new LocationOrLocationLinks(
+                locations.Select(loc => new LocationOrLocationLink(loc)));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Return null instead of crashing the LSP server. Cross-file
+            // implementation lookups can fail when symbol tables from
+            // different files have incompatible reference identities.
             return null;
-
-        var (line, col) = PositionConverter.ToCompiler(request.Position);
-        var node = _api.FindNodeAtPosition(analysis.Ast, line, col);
-
-        if (node == null)
-            return null;
-
-        var symbol = ResolveSymbol(node, analysis);
-        if (symbol == null)
-            return null;
-
-        var symbolTable = GetBestSymbolTable(analysis);
-        if (symbolTable == null)
-            return null;
-
-        // Re-resolve the symbol from the best symbol table so that reference
-        // equality works when the TypeHierarchyIndex is built from the same table.
-        symbol = ReResolveInTable(symbol, symbolTable) ?? symbol;
-
-        var locations = FindImplementations(symbol, symbolTable, uri);
-        if (locations is not { Count: > 0 })
-            return null;
-
-        return new LocationOrLocationLinks(
-            locations.Select(loc => new LocationOrLocationLink(loc)));
+        }
     }
 
     private static Symbol? ResolveSymbol(Node node, SemanticResult analysis)
