@@ -160,6 +160,23 @@ namespace Sharpy
     }
 
     /// <summary>
+    /// Raised when a system function returns a system-related error.
+    /// Equivalent to Python's <c>OSError</c>. In Python 3, OSError and IOError are aliases.
+    /// </summary>
+    public class OSError : IOError
+    {
+        /// <summary>Create an OSError with the specified message.</summary>
+        public OSError(string message) : base(message)
+        {
+        }
+
+        /// <summary>Create an OSError with the specified message and inner exception.</summary>
+        public OSError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
     /// Raised when a file or directory is requested but not found.
     /// Equivalent to Python's <c>FileNotFoundError</c>.
     /// </summary>
