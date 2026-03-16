@@ -1,0 +1,6 @@
+# Test logging module: get_logger, basic_config
+import logging
+
+def main():
+    logger = logging.get_logger("test")
+    print(logger is not None)

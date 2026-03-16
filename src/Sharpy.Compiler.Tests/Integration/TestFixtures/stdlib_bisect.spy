@@ -1,0 +1,8 @@
+# Test bisect module: bisect_left, bisect_right
+import bisect
+
+def main():
+    sorted_list: list[int] = [1, 3, 5, 7, 9]
+    print(bisect.bisect_left(sorted_list, 5))
+    print(bisect.bisect_right(sorted_list, 5))
+    print(bisect.bisect_left(sorted_list, 4))

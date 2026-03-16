@@ -52,7 +52,10 @@ internal class OverloadIndexBuilder
             var moduleName = DeriveModuleName(exportType);
             var moduleOverloads = DiscoverModuleFunctions(exportType);
 
-            if (moduleOverloads.Functions.Count > 0)
+            // Register the module if it has functions or public fields (e.g., string module has only const fields).
+            var hasPublicFields = exportType.GetFields(BindingFlags.Public | BindingFlags.Static)
+                .Any(f => !f.Name.StartsWith("<"));
+            if (moduleOverloads.Functions.Count > 0 || hasPublicFields)
             {
                 index.Modules[moduleName] = moduleOverloads;
             }

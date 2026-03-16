@@ -1,0 +1,11 @@
+# Test heapq module: heappush, heappop
+import heapq
+
+def main():
+    heap: list[int] = []
+    heapq.heappush(heap, 3)
+    heapq.heappush(heap, 1)
+    heapq.heappush(heap, 2)
+    print(heapq.heappop(heap))
+    print(heapq.heappop(heap))
+    print(heapq.heappop(heap))

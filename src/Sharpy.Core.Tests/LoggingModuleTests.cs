@@ -10,26 +10,26 @@ public class LoggingModuleTests
     [Fact]
     public void Constants_HaveCorrectValues()
     {
-        Sharpy.LoggingModule.DEBUG.Should().Be(10);
-        Sharpy.LoggingModule.INFO.Should().Be(20);
-        Sharpy.LoggingModule.WARNING.Should().Be(30);
-        Sharpy.LoggingModule.ERROR.Should().Be(40);
-        Sharpy.LoggingModule.CRITICAL.Should().Be(50);
+        Sharpy.Logging.DEBUG.Should().Be(10);
+        Sharpy.Logging.INFO.Should().Be(20);
+        Sharpy.Logging.WARNING.Should().Be(30);
+        Sharpy.Logging.ERROR.Should().Be(40);
+        Sharpy.Logging.CRITICAL.Should().Be(50);
     }
 
     [Fact]
     public void GetLogger_ReturnsSameInstance()
     {
-        var logger1 = Sharpy.LoggingModule.GetLogger("test_same");
-        var logger2 = Sharpy.LoggingModule.GetLogger("test_same");
+        var logger1 = Sharpy.Logging.GetLogger("test_same");
+        var logger2 = Sharpy.Logging.GetLogger("test_same");
         logger1.Should().BeSameAs(logger2);
     }
 
     [Fact]
     public void GetLogger_DifferentNames_ReturnsDifferentInstances()
     {
-        var logger1 = Sharpy.LoggingModule.GetLogger("test_diff_a");
-        var logger2 = Sharpy.LoggingModule.GetLogger("test_diff_b");
+        var logger1 = Sharpy.Logging.GetLogger("test_diff_a");
+        var logger2 = Sharpy.Logging.GetLogger("test_diff_b");
         logger1.Should().NotBeSameAs(logger2);
     }
 
@@ -37,7 +37,7 @@ public class LoggingModuleTests
     public void Logger_Warning_OutputsToStderr()
     {
         var logger = new Sharpy.Logger("test_output");
-        logger.SetLevel(Sharpy.LoggingModule.WARNING);
+        logger.SetLevel(Sharpy.Logging.WARNING);
 
         var oldErr = Console.Error;
         var sw = new StringWriter();
@@ -57,7 +57,7 @@ public class LoggingModuleTests
     public void Logger_LevelFiltering_BelowLevel()
     {
         var logger = new Sharpy.Logger("test_filter");
-        logger.SetLevel(Sharpy.LoggingModule.ERROR);
+        logger.SetLevel(Sharpy.Logging.ERROR);
 
         var oldErr = Console.Error;
         var sw = new StringWriter();
@@ -77,7 +77,7 @@ public class LoggingModuleTests
     public void Logger_LevelFiltering_AtLevel()
     {
         var logger = new Sharpy.Logger("test_at");
-        logger.SetLevel(Sharpy.LoggingModule.WARNING);
+        logger.SetLevel(Sharpy.Logging.WARNING);
 
         var oldErr = Console.Error;
         var sw = new StringWriter();
@@ -97,7 +97,7 @@ public class LoggingModuleTests
     public void Logger_OutputFormat()
     {
         var logger = new Sharpy.Logger("myapp");
-        logger.SetLevel(Sharpy.LoggingModule.DEBUG);
+        logger.SetLevel(Sharpy.Logging.DEBUG);
 
         var oldErr = Console.Error;
         var sw = new StringWriter();

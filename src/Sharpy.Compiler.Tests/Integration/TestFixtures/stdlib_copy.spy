@@ -1,0 +1,7 @@
+# Test copy module: copy of list
+import copy
+
+def main():
+    original: list[int] = [1, 2, 3]
+    copied = copy.copy(original)
+    print(copied)

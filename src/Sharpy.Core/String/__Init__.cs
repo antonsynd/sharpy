@@ -1,6 +1,6 @@
 namespace Sharpy
 {
     [SharpyModule("string")]
-    public static partial class StringModule
+    public static partial class String
     { }
 }

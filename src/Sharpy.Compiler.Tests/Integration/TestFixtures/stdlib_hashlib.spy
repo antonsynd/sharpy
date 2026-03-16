@@ -1,0 +1,6 @@
+# Test hashlib module: sha256 hexdigest
+import hashlib
+
+def main():
+    h = hashlib.sha256("hello")
+    print(h.hexdigest())

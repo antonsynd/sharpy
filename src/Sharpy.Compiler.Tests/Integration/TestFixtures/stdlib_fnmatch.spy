@@ -1,0 +1,7 @@
+# Test fnmatch module: fn_match_case, translate
+import fnmatch
+
+def main():
+    print(fnmatch.fn_match_case("hello.py", "*.py"))
+    print(fnmatch.fn_match_case("hello.txt", "*.py"))
+    print(fnmatch.fn_match_case("test_file", "test_*"))

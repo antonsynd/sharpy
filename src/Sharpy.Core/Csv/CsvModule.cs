@@ -8,7 +8,7 @@ namespace Sharpy
     /// <summary>
     /// CSV file reading and writing, similar to Python's csv module.
     /// </summary>
-    public static partial class CsvModule
+    public static partial class Csv
     {
         /// <summary>Quote all fields.</summary>
         public const int QUOTE_ALL = 1;

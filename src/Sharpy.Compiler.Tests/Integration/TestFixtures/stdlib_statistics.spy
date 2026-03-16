@@ -1,0 +1,7 @@
+# Test statistics module: mean, median
+import statistics
+
+def main():
+    data: list[float] = [1.0, 2.0, 3.0, 4.0, 5.0]
+    print(statistics.mean(data))
+    print(statistics.median(data))

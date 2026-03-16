@@ -1,0 +1,7 @@
+# Test glob module: escape function
+import glob
+
+def main():
+    print(glob.escape("file[1].txt"))
+    print(glob.escape("*.py"))
+    print(glob.escape("normal.txt"))

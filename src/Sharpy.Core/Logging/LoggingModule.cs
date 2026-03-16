@@ -7,7 +7,7 @@ namespace Sharpy
     /// Logging facility similar to Python's logging module.
     /// Provides module-level convenience functions and named loggers.
     /// </summary>
-    public static partial class LoggingModule
+    public static partial class Logging
     {
         /// <summary>Detailed information, typically of interest only when diagnosing problems.</summary>
         public const int DEBUG = 10;

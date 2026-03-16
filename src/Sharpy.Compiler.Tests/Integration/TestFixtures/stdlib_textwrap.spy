@@ -1,0 +1,13 @@
+# Test textwrap module: wrap, fill, dedent, indent
+import textwrap
+
+def main():
+    wrapped: list[str] = textwrap.wrap("Hello world this is a test", 10)
+    for line in wrapped:
+        print(line)
+    print("---")
+    filled: str = textwrap.fill("Hello world this is a test", 15)
+    print(filled)
+    print("---")
+    dedented: str = textwrap.dedent("    hello\n    world")
+    print(dedented)

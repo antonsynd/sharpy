@@ -1,0 +1,8 @@
+# Test csv module: reader with string list
+import csv
+
+def main():
+    lines: list[str] = ["name,age", "Alice,30", "Bob,25"]
+    reader = csv.reader(lines)
+    for row in reader:
+        print(row)

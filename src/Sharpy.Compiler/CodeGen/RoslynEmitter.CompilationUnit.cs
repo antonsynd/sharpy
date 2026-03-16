@@ -441,8 +441,25 @@ internal partial class RoslynEmitter
     /// Stdlib module classes live in the Sharpy namespace with PascalCase names
     /// where dotted parts are concatenated (no dots in the class name).
     /// </summary>
+    /// <summary>
+    /// Mapping for stdlib modules whose C# class name differs from the default
+    /// PascalCase convention (e.g., because the bare name conflicts with an
+    /// existing type or a member name matching the enclosing type).
+    /// </summary>
+    private static readonly Dictionary<string, string> StdlibClassNameOverrides = new(StringComparer.Ordinal)
+    {
+        { "argparse", "ArgparseModule" },
+        { "pathlib", "PathlibModule" },
+        { "time", "TimeModule" },
+        { "copy", "CopyModule" },
+        { "glob", "GlobModule" },
+    };
+
     private static string ConvertStdlibModuleToFullyQualified(string moduleName)
     {
+        if (StdlibClassNameOverrides.TryGetValue(moduleName, out var overrideName))
+            return $"global::Sharpy.{overrideName}";
+
         var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
         // Stdlib classes use simple PascalCase (e.g., Json, Os, Re) — not the
         // UpperCaseAcronyms logic used for user module names (which would produce JSON).

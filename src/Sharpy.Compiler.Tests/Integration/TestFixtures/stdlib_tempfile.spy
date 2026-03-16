@@ -1,0 +1,6 @@
+# Test tempfile module: gettempdir returns non-empty
+import tempfile
+
+def main():
+    tmpdir: str = tempfile.gettempdir()
+    print(len(tmpdir) > 0)

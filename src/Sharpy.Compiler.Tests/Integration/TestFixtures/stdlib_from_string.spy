@@ -1,0 +1,6 @@
+# Test from-import string module: selected constants
+from string import ascii_letters, digits
+
+def main():
+    print(digits)
+    print(len(ascii_letters))

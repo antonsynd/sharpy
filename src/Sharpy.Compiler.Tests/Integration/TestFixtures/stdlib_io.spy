@@ -1,0 +1,9 @@
+# Test io module: StringIO class
+from io import StringIO
+
+def main():
+    sio = StringIO()
+    sio.write("hello ")
+    sio.write("world")
+    val: str = sio.getvalue()
+    print(val)

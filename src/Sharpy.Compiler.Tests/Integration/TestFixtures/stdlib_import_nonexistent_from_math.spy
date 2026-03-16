@@ -1,0 +1,5 @@
+# Test that importing a nonexistent symbol from a stdlib module fails
+from math import nonexistent_func
+
+def main():
+    print(nonexistent_func())

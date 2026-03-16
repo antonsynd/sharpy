@@ -1,0 +1,6 @@
+# Test shutil module: which
+import shutil
+
+def main():
+    result = shutil.which("dotnet")
+    print(result is not None)

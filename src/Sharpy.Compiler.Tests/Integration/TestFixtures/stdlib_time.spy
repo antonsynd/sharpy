@@ -1,0 +1,6 @@
+# Test time module: time returns a positive float
+import time
+
+def main():
+    t: float = time.time()
+    print(t > 0.0)

@@ -21,7 +21,7 @@ namespace Sharpy
         public Logger(string name)
         {
             _name = name;
-            _level = LoggingModule.WARNING;
+            _level = Logging.WARNING;
         }
 
         /// <summary>
@@ -37,35 +37,35 @@ namespace Sharpy
         /// <param name="msg">The message to log.</param>
         public void Debug(string msg)
         {
-            Log(LoggingModule.DEBUG, "DEBUG", msg);
+            Log(Logging.DEBUG, "DEBUG", msg);
         }
 
         /// <summary>Log a message with INFO level.</summary>
         /// <param name="msg">The message to log.</param>
         public void Info(string msg)
         {
-            Log(LoggingModule.INFO, "INFO", msg);
+            Log(Logging.INFO, "INFO", msg);
         }
 
         /// <summary>Log a message with WARNING level.</summary>
         /// <param name="msg">The message to log.</param>
         public void Warning(string msg)
         {
-            Log(LoggingModule.WARNING, "WARNING", msg);
+            Log(Logging.WARNING, "WARNING", msg);
         }
 
         /// <summary>Log a message with ERROR level.</summary>
         /// <param name="msg">The message to log.</param>
         public void Error(string msg)
         {
-            Log(LoggingModule.ERROR, "ERROR", msg);
+            Log(Logging.ERROR, "ERROR", msg);
         }
 
         /// <summary>Log a message with CRITICAL level.</summary>
         /// <param name="msg">The message to log.</param>
         public void Critical(string msg)
         {
-            Log(LoggingModule.CRITICAL, "CRITICAL", msg);
+            Log(Logging.CRITICAL, "CRITICAL", msg);
         }
 
         private void Log(int level, string levelName, string msg)

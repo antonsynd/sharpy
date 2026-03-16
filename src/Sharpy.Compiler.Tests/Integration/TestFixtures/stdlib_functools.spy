@@ -1,0 +1,7 @@
+# Test functools module: reduce
+import functools
+
+def main():
+    nums: list[int] = [1, 2, 3, 4, 5]
+    result = functools.reduce(lambda x, y: x + y, nums)
+    print(result)
