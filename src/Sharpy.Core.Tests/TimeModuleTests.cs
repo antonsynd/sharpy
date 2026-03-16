@@ -181,4 +181,58 @@ public class TimeModuleTests
         var t = StructTime.FromDateTime(dt);
         t.TmWday.Should().Be(6); // Sunday = 6 in Python
     }
+
+    [Fact]
+    public void Gmtime_UnixEpoch_Returns1970()
+    {
+        // Python: time.gmtime(0) → time.struct_time(tm_year=1970, tm_mon=1, tm_mday=1, ...)
+        var t = TimeModule.Gmtime(0.0);
+        t.TmYear.Should().Be(1970);
+        t.TmMon.Should().Be(1);
+        t.TmMday.Should().Be(1);
+        t.TmHour.Should().Be(0);
+        t.TmMin.Should().Be(0);
+        t.TmSec.Should().Be(0);
+        t.TmWday.Should().Be(3); // Thursday
+        t.TmYday.Should().Be(1);
+        t.TmIsdst.Should().Be(0);
+    }
+
+    [Fact]
+    public void Gmtime_OneDayAfterEpoch()
+    {
+        // Python: time.gmtime(86400) → 1970-01-02
+        var t = TimeModule.Gmtime(86400.0);
+        t.TmYear.Should().Be(1970);
+        t.TmMon.Should().Be(1);
+        t.TmMday.Should().Be(2);
+        t.TmHour.Should().Be(0);
+        t.TmMin.Should().Be(0);
+        t.TmSec.Should().Be(0);
+    }
+
+    [Fact]
+    public void Localtime_UnixEpoch_ReturnsValidStructTime()
+    {
+        // localtime(0) should return a valid struct_time in the local timezone
+        // In timezones west of UTC, epoch 0 maps to Dec 31, 1969
+        var t = TimeModule.Localtime(0.0);
+        t.TmYear.Should().BeInRange(1969, 1970);
+        t.TmMon.Should().BeInRange(1, 12);
+        t.TmMday.Should().BeInRange(1, 31);
+        t.TmHour.Should().BeInRange(0, 23);
+    }
+
+    [Fact]
+    public void Gmtime_LargeTimestamp()
+    {
+        // Python: time.gmtime(1000000000) → 2001-09-09 01:46:40
+        var t = TimeModule.Gmtime(1000000000.0);
+        t.TmYear.Should().Be(2001);
+        t.TmMon.Should().Be(9);
+        t.TmMday.Should().Be(9);
+        t.TmHour.Should().Be(1);
+        t.TmMin.Should().Be(46);
+        t.TmSec.Should().Be(40);
+    }
 }

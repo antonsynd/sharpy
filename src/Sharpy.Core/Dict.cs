@@ -18,7 +18,8 @@ namespace Sharpy
           IReadOnlyDictionary<K, V>,
           System.IEquatable<Dict<K, V>>,
           ISized,
-          IDeepCopyable
+          IDeepCopyable,
+          IShallowCopyable
         where K : notnull
     {
         private readonly Dictionary<K, V> _dict;

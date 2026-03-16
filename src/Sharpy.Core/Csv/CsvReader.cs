@@ -10,7 +10,7 @@ namespace Sharpy
     /// Handles quoted fields, escaped quotes, and commas within quoted fields.
     /// </summary>
     [SharpyModuleType("csv")]
-    public sealed class CsvReader : IEnumerable<List<string>>
+    public sealed class CsvReader : IEnumerable<Sharpy.List<string>>
     {
         private readonly IEnumerable<string> _lines;
         private int _lineNum;
@@ -37,7 +37,7 @@ namespace Sharpy
         /// <summary>
         /// Returns an enumerator that parses each line into a list of string fields.
         /// </summary>
-        public IEnumerator<List<string>> GetEnumerator()
+        public IEnumerator<Sharpy.List<string>> GetEnumerator()
         {
             foreach (string line in _lines)
             {
@@ -51,7 +51,7 @@ namespace Sharpy
             return GetEnumerator();
         }
 
-        internal static List<string> ParseLine(string line)
+        internal static Sharpy.List<string> ParseLine(string line)
         {
             var fields = new System.Collections.Generic.List<string>();
             var field = new StringBuilder();
@@ -109,7 +109,7 @@ namespace Sharpy
             // Add last field
             fields.Add(field.ToString());
 
-            return new List<string>(fields);
+            return new Sharpy.List<string>(fields);
         }
     }
 }

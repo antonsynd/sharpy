@@ -260,38 +260,43 @@ namespace Sharpy
                 MergeSiftDown(heap, i);
             }
 
-            while (heap.Count > 0)
+            try
             {
-                var (value, idx) = heap[0];
-                yield return value;
+                while (heap.Count > 0)
+                {
+                    var (value, idx) = heap[0];
+                    yield return value;
 
-                // Advance the enumerator that produced the min value
-                if (enumerators[idx].MoveNext())
-                {
-                    heap[0] = (enumerators[idx].Current, idx);
-                    MergeSiftDown(heap, 0);
-                }
-                else
-                {
-                    // Remove exhausted enumerator: replace root with last element
-                    int lastIdx = heap.Count - 1;
-                    if (lastIdx > 0)
+                    // Advance the enumerator that produced the min value
+                    if (enumerators[idx].MoveNext())
                     {
-                        heap[0] = heap[lastIdx];
-                        heap.RemoveAt(lastIdx);
+                        heap[0] = (enumerators[idx].Current, idx);
                         MergeSiftDown(heap, 0);
                     }
                     else
                     {
-                        heap.RemoveAt(0);
+                        // Remove exhausted enumerator: replace root with last element
+                        int lastIdx = heap.Count - 1;
+                        if (lastIdx > 0)
+                        {
+                            heap[0] = heap[lastIdx];
+                            heap.RemoveAt(lastIdx);
+                            MergeSiftDown(heap, 0);
+                        }
+                        else
+                        {
+                            heap.RemoveAt(0);
+                        }
                     }
                 }
             }
-
-            // Dispose enumerators
-            foreach (var enumerator in enumerators)
+            finally
             {
-                enumerator.Dispose();
+                // Dispose enumerators even if iteration is abandoned early
+                foreach (var enumerator in enumerators)
+                {
+                    enumerator.Dispose();
+                }
             }
         }
 

@@ -10,7 +10,8 @@ namespace Sharpy
         : System.Collections.Generic.ISet<T>,
           System.IEquatable<Set<T>>,
           ISized,
-          IDeepCopyable
+          IDeepCopyable,
+          IShallowCopyable
     {
         // Internal for SetIterator access to the underlying HashSet
         internal readonly HashSet<T> _set;
@@ -57,6 +58,12 @@ namespace Sharpy
             newSet._set.UnionWith(_set);
 
             return newSet;
+        }
+
+        /// <inheritdoc/>
+        object IShallowCopyable.ShallowCopy()
+        {
+            return Copy();
         }
 
         /// <inheritdoc/>

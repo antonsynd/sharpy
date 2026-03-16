@@ -12,12 +12,12 @@ namespace Sharpy
     public sealed class CsvDictWriter
     {
         private readonly TextWriter _output;
-        private readonly List<string> _fieldnames;
+        private readonly Sharpy.List<string> _fieldnames;
 
         /// <summary>
         /// The field names that determine column order in the output.
         /// </summary>
-        public List<string> Fieldnames
+        public Sharpy.List<string> Fieldnames
         {
             get { return _fieldnames; }
         }
@@ -27,7 +27,7 @@ namespace Sharpy
         /// </summary>
         /// <param name="output">The output writer to write CSV data to.</param>
         /// <param name="fieldnames">The field names determining column order.</param>
-        internal CsvDictWriter(TextWriter output, List<string> fieldnames)
+        internal CsvDictWriter(TextWriter output, Sharpy.List<string> fieldnames)
         {
             _output = output ?? throw new TypeError("'NoneType' object is not valid as output");
             _fieldnames = fieldnames ?? throw new TypeError("fieldnames must not be None");
@@ -61,7 +61,7 @@ namespace Sharpy
         /// <param name="row">A dictionary mapping field names to values.</param>
         public void Writerow(Dict<string, string> row)
         {
-            if (row == null)
+            if (row is null)
             {
                 throw new TypeError("'NoneType' is not iterable");
             }

@@ -12,7 +12,8 @@ namespace Sharpy
           IReadOnlyList<T>,
           System.IEquatable<List<T>>,
           ISized,
-          IDeepCopyable
+          IDeepCopyable,
+          IShallowCopyable
     {
         private System.Collections.Generic.List<T> _list;
 
@@ -68,6 +69,12 @@ namespace Sharpy
             newList._list.AddRange(_list);
 
             return newList;
+        }
+
+        /// <inheritdoc/>
+        object IShallowCopyable.ShallowCopy()
+        {
+            return Copy();
         }
 
         /// <inheritdoc/>

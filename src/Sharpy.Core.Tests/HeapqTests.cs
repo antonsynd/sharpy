@@ -215,4 +215,109 @@ public class Heapq_Tests
 
         sorted.Should().Equal(1, 2, 3, 4, 5, 6, 7, 8, 9);
     }
+
+    [Fact]
+    public void Merge_TwoSortedLists()
+    {
+        var a = new List<int> { 1, 3, 5 };
+        var b = new List<int> { 2, 4, 6 };
+        var result = new System.Collections.Generic.List<int>();
+        foreach (var item in Sharpy.Heapq.Merge(a, b))
+        {
+            result.Add(item);
+        }
+
+        result.Should().Equal(1, 2, 3, 4, 5, 6);
+    }
+
+    [Fact]
+    public void Merge_ThreeSortedLists()
+    {
+        var a = new List<int> { 1, 4 };
+        var b = new List<int> { 2, 5 };
+        var c = new List<int> { 3, 6 };
+        var result = new System.Collections.Generic.List<int>();
+        foreach (var item in Sharpy.Heapq.Merge(a, b, c))
+        {
+            result.Add(item);
+        }
+
+        result.Should().Equal(1, 2, 3, 4, 5, 6);
+    }
+
+    [Fact]
+    public void Merge_EmptyIterables()
+    {
+        var a = new List<int>();
+        var b = new List<int> { 1, 2 };
+        var c = new List<int>();
+        var result = new System.Collections.Generic.List<int>();
+        foreach (var item in Sharpy.Heapq.Merge(a, b, c))
+        {
+            result.Add(item);
+        }
+
+        result.Should().Equal(1, 2);
+    }
+
+    [Fact]
+    public void Merge_AllEmpty()
+    {
+        var a = new List<int>();
+        var b = new List<int>();
+        var result = new System.Collections.Generic.List<int>();
+        foreach (var item in Sharpy.Heapq.Merge(a, b))
+        {
+            result.Add(item);
+        }
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Merge_SingleIterable()
+    {
+        var a = new List<int> { 1, 2, 3 };
+        var result = new System.Collections.Generic.List<int>();
+        foreach (var item in Sharpy.Heapq.Merge(a))
+        {
+            result.Add(item);
+        }
+
+        result.Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public void Merge_NoIterables()
+    {
+        var result = new System.Collections.Generic.List<int>();
+        foreach (var item in Sharpy.Heapq.Merge<int>())
+        {
+            result.Add(item);
+        }
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Merge_EarlyBreak_DisposesEnumerators()
+    {
+        var a = new List<int> { 1, 3, 5, 7, 9 };
+        var b = new List<int> { 2, 4, 6, 8, 10 };
+        var result = new System.Collections.Generic.List<int>();
+
+        // Take only first 3 elements — should not leak enumerators
+        int count = 0;
+        foreach (var item in Sharpy.Heapq.Merge(a, b))
+        {
+            result.Add(item);
+            count++;
+            if (count >= 3)
+            {
+                break;
+            }
+        }
+
+        result.Should().Equal(1, 2, 3);
+    }
 }

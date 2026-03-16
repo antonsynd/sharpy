@@ -11,13 +11,13 @@ namespace Sharpy
     public sealed class CsvDictReader : IEnumerable<Dict<string, string>>
     {
         private readonly IEnumerable<string> _lines;
-        private List<string>? _fieldnames;
+        private Sharpy.List<string>? _fieldnames;
 
         /// <summary>
         /// The field names used as dictionary keys. If not provided in the constructor,
         /// this is populated from the first row of the CSV data after iteration begins.
         /// </summary>
-        public List<string>? Fieldnames
+        public Sharpy.List<string>? Fieldnames
         {
             get { return _fieldnames; }
         }
@@ -27,7 +27,7 @@ namespace Sharpy
         /// </summary>
         /// <param name="lines">The lines to parse as CSV.</param>
         /// <param name="fieldnames">Optional field names. If null, the first row is used.</param>
-        internal CsvDictReader(IEnumerable<string> lines, List<string>? fieldnames = null)
+        internal CsvDictReader(IEnumerable<string> lines, Sharpy.List<string>? fieldnames = null)
         {
             _lines = lines ?? throw new TypeError("'NoneType' is not iterable");
             _fieldnames = fieldnames;
@@ -60,8 +60,8 @@ namespace Sharpy
                 var dict = new Dict<string, string>(
                     new System.Collections.Generic.Dictionary<string, string>());
 
-                int fieldnameCount = ((ICollection<string>)_fieldnames).Count;
-                int fieldCount = ((ICollection<string>)fields).Count;
+                int fieldnameCount = ((System.Collections.Generic.ICollection<string>)_fieldnames).Count;
+                int fieldCount = ((System.Collections.Generic.ICollection<string>)fields).Count;
 
                 for (int i = 0; i < fieldnameCount; i++)
                 {

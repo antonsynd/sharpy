@@ -29,6 +29,12 @@ namespace Sharpy
             return newDict;
         }
 
+        /// <inheritdoc/>
+        object IShallowCopyable.ShallowCopy()
+        {
+            return Copy();
+        }
+
         /// <summary>
         /// Remove all items from the dictionary.
         /// </summary>

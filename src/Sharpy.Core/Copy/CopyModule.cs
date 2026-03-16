@@ -39,25 +39,10 @@ namespace Sharpy
                 return x;
             }
 
-            // Sharpy List<T>
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
+            // Sharpy collections implement IShallowCopyable
+            if (x is IShallowCopyable copyable)
             {
-                MethodInfo? copyMethod = type.GetMethod("Copy", Type.EmptyTypes);
-                return copyMethod!.Invoke(x, null)!;
-            }
-
-            // Sharpy Dict<K,V>
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dict<,>))
-            {
-                MethodInfo? copyMethod = type.GetMethod("Copy", Type.EmptyTypes);
-                return copyMethod!.Invoke(x, null)!;
-            }
-
-            // Sharpy Set<T>
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Set<>))
-            {
-                MethodInfo? copyMethod = type.GetMethod("Copy", Type.EmptyTypes);
-                return copyMethod!.Invoke(x, null)!;
+                return copyable.ShallowCopy();
             }
 
             // String is immutable, return as-is
