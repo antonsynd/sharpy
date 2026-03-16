@@ -67,7 +67,19 @@ namespace Sharpy
         /// </example>
         public static void Sleep(double secs)
         {
-            Thread.Sleep((int)(secs * 1000));
+            if (secs < 0)
+            {
+                throw new ValueError("sleep length must be non-negative");
+            }
+
+            // Clamp to avoid int overflow (int.MaxValue ms ≈ 24.8 days)
+            long ms = (long)(secs * 1000);
+            if (ms > int.MaxValue)
+            {
+                ms = int.MaxValue;
+            }
+
+            Thread.Sleep((int)ms);
         }
 
         /// <summary>
@@ -87,7 +99,9 @@ namespace Sharpy
         /// <returns>A monotonic time value in nanoseconds.</returns>
         public static long PerfCounterNs()
         {
-            return Stopwatch.GetTimestamp() * 1_000_000_000L / Stopwatch.Frequency;
+            // Use floating-point intermediate to avoid long overflow on
+            // high-resolution counters (direct multiply overflows after ~922s).
+            return (long)((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency * 1_000_000_000.0);
         }
 
         /// <summary>
@@ -123,13 +137,16 @@ namespace Sharpy
         /// </example>
         public static string Strftime(string format)
         {
-            return System.DateTime.Now.ToString(ConvertFormat(format), CultureInfo.InvariantCulture);
+            var now = System.DateTime.Now;
+            return now.ToString(ConvertFormat(format, now), CultureInfo.InvariantCulture);
         }
 
         /// <summary>
         /// Convert a Python strftime format string to a .NET DateTime format string.
+        /// Codes that have no .NET equivalent (<c>%j</c>, <c>%w</c>, <c>%Z</c>) are
+        /// evaluated against <paramref name="dt"/> and embedded as literals.
         /// </summary>
-        internal static string ConvertFormat(string format)
+        internal static string ConvertFormat(string format, System.DateTime? dt = null)
         {
             var result = new System.Text.StringBuilder(format.Length * 2);
             int i = 0;
@@ -157,8 +174,8 @@ namespace Sharpy
 
                     if (code == 'j')
                     {
-                        // Day of year (001-366)
-                        int dayOfYear = System.DateTime.Now.DayOfYear;
+                        // Day of year (001-366) — no .NET format specifier
+                        int dayOfYear = (dt ?? System.DateTime.Now).DayOfYear;
                         result.Append(dayOfYear.ToString("D3", CultureInfo.InvariantCulture));
                         i += 2;
                         continue;
@@ -167,7 +184,7 @@ namespace Sharpy
                     if (code == 'w')
                     {
                         // Day of week as integer (0=Sunday, 6=Saturday)
-                        int dow = (int)System.DateTime.Now.DayOfWeek;
+                        int dow = (int)(dt ?? System.DateTime.Now).DayOfWeek;
                         result.Append(dow.ToString(CultureInfo.InvariantCulture));
                         i += 2;
                         continue;

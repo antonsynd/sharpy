@@ -212,4 +212,30 @@ public class StatisticsTests
         double result = Sharpy.Statistics.Pvariance(new double[] { 5 });
         result.Should().Be(0.0);
     }
+
+    // -- non-mutation --
+
+    [Fact]
+    public void Median_DoesNotMutateInput()
+    {
+        var data = new System.Collections.Generic.List<double> { 4, 1, 3, 2 };
+        Sharpy.Statistics.Median(data);
+        data.Should().Equal(4, 1, 3, 2);
+    }
+
+    [Fact]
+    public void MedianLow_DoesNotMutateInput()
+    {
+        var data = new System.Collections.Generic.List<double> { 4, 1, 3, 2 };
+        Sharpy.Statistics.MedianLow(data);
+        data.Should().Equal(4, 1, 3, 2);
+    }
+
+    [Fact]
+    public void MedianHigh_DoesNotMutateInput()
+    {
+        var data = new System.Collections.Generic.List<double> { 4, 1, 3, 2 };
+        Sharpy.Statistics.MedianHigh(data);
+        data.Should().Equal(4, 1, 3, 2);
+    }
 }

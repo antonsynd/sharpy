@@ -1,0 +1,6 @@
+# Test that statistics.mean on empty list produces a runtime error
+import statistics
+
+def main():
+    result = statistics.mean([])
+    print(result)

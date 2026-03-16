@@ -1,0 +1,1 @@
+TODO: Empty list triggers a runtime error (StatisticsError), not a compile-time error — .error fixtures only check compile-time diagnostics

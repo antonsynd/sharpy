@@ -1,0 +1,5 @@
+# Test that importing a nonexistent symbol from the string module fails
+from string import nonexistent_constant
+
+def main():
+    print(nonexistent_constant)

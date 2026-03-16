@@ -369,9 +369,8 @@ namespace Sharpy
 
         private static System.Collections.Generic.List<double> Materialize(IEnumerable<double> data)
         {
-            var list = data is System.Collections.Generic.List<double> l
-                ? l
-                : new System.Collections.Generic.List<double>(data);
+            // Always copy to avoid mutating the caller's collection.
+            var list = new System.Collections.Generic.List<double>(data);
 
             if (list.Count == 0)
             {

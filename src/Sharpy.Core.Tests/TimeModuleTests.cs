@@ -109,4 +109,19 @@ public class TimeModuleTests
         var act = () => TimeModule.Sleep(0.001);
         act.Should().NotThrow();
     }
+
+    [Fact]
+    public void Sleep_NegativeValue_ThrowsValueError()
+    {
+        var act = () => TimeModule.Sleep(-1);
+        act.Should().Throw<ValueError>()
+            .WithMessage("sleep length must be non-negative");
+    }
+
+    [Fact]
+    public void Sleep_Zero_DoesNotThrow()
+    {
+        var act = () => TimeModule.Sleep(0);
+        act.Should().NotThrow();
+    }
 }
