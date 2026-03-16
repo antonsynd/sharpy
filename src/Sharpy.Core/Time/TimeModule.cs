@@ -158,6 +158,25 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Convert a Unix timestamp (seconds since the epoch) to a <see cref="StructTime"/>
+        /// in UTC (similar to Python's <c>time.gmtime(secs)</c>).
+        /// </summary>
+        /// <param name="seconds">Seconds since the Unix epoch (1970-01-01T00:00:00Z).</param>
+        /// <returns>A <see cref="StructTime"/> representing the specified UTC time.</returns>
+        /// <example>
+        /// <code>
+        /// t = time.gmtime(0)
+        /// print(t.tm_year)    # 1970
+        /// </code>
+        /// </example>
+        public static StructTime Gmtime(double seconds)
+        {
+            var epoch = new System.DateTime(1970, 1, 1, 0, 0, 0, System.DateTimeKind.Utc);
+            var dt = epoch.AddSeconds(seconds);
+            return StructTime.FromDateTime(dt);
+        }
+
+        /// <summary>
         /// Convert current local time to a <see cref="StructTime"/> (similar to Python's
         /// <c>time.localtime()</c>).
         /// </summary>
@@ -171,6 +190,26 @@ namespace Sharpy
         public static StructTime Localtime()
         {
             return StructTime.FromDateTime(System.DateTime.Now);
+        }
+
+        /// <summary>
+        /// Convert a Unix timestamp (seconds since the epoch) to a <see cref="StructTime"/>
+        /// in local time (similar to Python's <c>time.localtime(secs)</c>).
+        /// </summary>
+        /// <param name="seconds">Seconds since the Unix epoch (1970-01-01T00:00:00Z).</param>
+        /// <returns>A <see cref="StructTime"/> representing the specified local time.</returns>
+        /// <example>
+        /// <code>
+        /// t = time.localtime(86400)
+        /// print(t.tm_mday)    # depends on local timezone
+        /// </code>
+        /// </example>
+        public static StructTime Localtime(double seconds)
+        {
+            var epoch = new System.DateTime(1970, 1, 1, 0, 0, 0, System.DateTimeKind.Utc);
+            var utcDt = epoch.AddSeconds(seconds);
+            var localDt = TimeZoneInfo.ConvertTimeFromUtc(utcDt, TimeZoneInfo.Local);
+            return StructTime.FromDateTime(localDt);
         }
 
         /// <summary>
