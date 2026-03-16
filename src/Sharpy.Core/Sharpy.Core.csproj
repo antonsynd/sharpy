@@ -22,7 +22,7 @@
     <!-- Polyfill for System.Index/Range on netstandard2.0 -->
     <PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.5" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
     <!-- Async interfaces for IAsyncEnumerable<T>, IAsyncDisposable (Phase 10 prep) -->
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.5" />
   </ItemGroup>
 
 </Project>
