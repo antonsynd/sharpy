@@ -11,7 +11,8 @@ namespace Sharpy
         : IList<T>,
           IReadOnlyList<T>,
           System.IEquatable<List<T>>,
-          ISized
+          ISized,
+          IDeepCopyable
     {
         private System.Collections.Generic.List<T> _list;
 
@@ -65,6 +66,23 @@ namespace Sharpy
         {
             var newList = new List<T>();
             newList._list.AddRange(_list);
+
+            return newList;
+        }
+
+        /// <inheritdoc/>
+        object IDeepCopyable.DeepCopy(Dictionary<object, object> memo)
+        {
+            var newList = new List<T>();
+            memo[this] = newList;
+
+            foreach (var item in _list)
+            {
+                object? copiedItem = item != null
+                    ? CopyModule.DeepCopyInternal(item, memo)
+                    : default(T);
+                newList._list.Add((T)copiedItem!);
+            }
 
             return newList;
         }

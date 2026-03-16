@@ -17,7 +17,8 @@ namespace Sharpy
         : IDictionary<K, V>,
           IReadOnlyDictionary<K, V>,
           System.IEquatable<Dict<K, V>>,
-          ISized
+          ISized,
+          IDeepCopyable
         where K : notnull
     {
         private readonly Dictionary<K, V> _dict;
@@ -206,6 +207,25 @@ namespace Sharpy
         public static bool operator false(Dict<K, V>? dict)
         {
             return dict is null || dict._dict.Count == 0;
+        }
+
+        /// <inheritdoc/>
+        object IDeepCopyable.DeepCopy(Dictionary<object, object> memo)
+        {
+            var newDict = new Dict<K, V>();
+            memo[this] = newDict;
+
+            foreach (var kvp in _dict)
+            {
+                K copiedKey = (K)CopyModule.DeepCopyInternal(kvp.Key, memo);
+                V copiedValue = kvp.Value != null
+                    ? (V)CopyModule.DeepCopyInternal(kvp.Value, memo)
+                    : kvp.Value;
+
+                newDict._dict[copiedKey] = copiedValue;
+            }
+
+            return newDict;
         }
     }
 }
