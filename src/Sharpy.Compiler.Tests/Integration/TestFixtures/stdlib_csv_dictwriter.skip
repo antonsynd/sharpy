@@ -1,0 +1,1 @@
+Depends on StringIO-to-TextWriter compatibility and Phase 2 IEnumerable inference (#398)

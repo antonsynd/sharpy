@@ -1,0 +1,9 @@
+# Test csv.DictReader: read CSV as dictionaries
+import csv
+
+def main():
+    lines: list[str] = ["name,age,city", "Alice,30,NYC", "Bob,25,LA"]
+    reader = csv.dict_reader(lines)
+    for row in reader:
+        print(row["name"])
+        print(row["age"])

@@ -1,0 +1,14 @@
+# Test csv.DictWriter: write CSV from dictionaries
+import csv
+from io import StringIO
+
+def main():
+    output = StringIO()
+    fieldnames: list[str] = ["name", "age"]
+    writer = csv.dict_writer(output, fieldnames)
+    writer.writeheader()
+    row1: dict[str, str] = {"name": "Alice", "age": "30"}
+    writer.writerow(row1)
+    row2: dict[str, str] = {"name": "Bob", "age": "25"}
+    writer.writerow(row2)
+    print(output.getvalue())
