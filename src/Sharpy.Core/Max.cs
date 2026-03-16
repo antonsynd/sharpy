@@ -66,8 +66,6 @@ namespace Sharpy
                 {
                     biggest = elem;
                 }
-
-                // No-op, these are equivalent, no need to do anything
             }
 
             if (biggest is null || iterableIsEmpty)

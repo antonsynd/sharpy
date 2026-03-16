@@ -66,8 +66,6 @@ namespace Sharpy
                 {
                     smallest = elem;
                 }
-
-                // No-op, these are equivalent, no need to do anything
             }
 
             if (smallest is null || iterableIsEmpty)
