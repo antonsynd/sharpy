@@ -279,6 +279,30 @@ internal class CachedModuleDiscovery
     }
 
     /// <summary>
+    /// Get all field symbols from a specific module.
+    /// Returns tuples of (Name, SemanticType, IsConst) for each field.
+    /// </summary>
+    public List<(string Name, SemanticType Type, bool IsConst)> GetModuleFields(string moduleName)
+    {
+        var fields = new List<(string Name, SemanticType Type, bool IsConst)>();
+
+        foreach (var lazy in _loadedIndices.Values)
+        {
+            var index = lazy.Value;
+            if (!index.Modules.TryGetValue(moduleName, out var moduleOverloads))
+                continue;
+
+            foreach (var (fieldName, fieldSignature) in moduleOverloads.Fields)
+            {
+                var semanticType = ConvertTypeSignature(fieldSignature.FieldType);
+                fields.Add((fieldName, semanticType, fieldSignature.IsConst));
+            }
+        }
+
+        return fields;
+    }
+
+    /// <summary>
     /// Get all loaded modules.
     /// </summary>
     public IEnumerable<string> GetLoadedModules()

@@ -409,6 +409,30 @@ internal class OverloadIndexBuilder
             }
         }
 
+        // Discover public static fields (e.g., string module constants)
+        var fields = exportType.GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(f => !f.Name.StartsWith("<", StringComparison.Ordinal))
+            .ToList();
+
+        foreach (var field in fields)
+        {
+            try
+            {
+                var fieldSignature = new FieldSignature
+                {
+                    Name = field.Name,
+                    FieldType = CreateTypeSignature(field.FieldType),
+                    IsConst = field.IsLiteral
+                };
+
+                moduleOverloads.Fields[field.Name] = fieldSignature;
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
+            {
+                _logger.LogDebug($"Skipping field {exportType.Name}.{field.Name}: {ex.Message}");
+            }
+        }
+
         return moduleOverloads;
     }
 

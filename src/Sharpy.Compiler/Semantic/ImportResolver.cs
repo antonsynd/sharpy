@@ -762,12 +762,13 @@ internal class ImportResolver
 
         _logger.LogDebug($"Resolving .NET module: {moduleName}");
 
-        // Get functions and types from the module
+        // Get functions, types, and fields from the module
         var functions = _moduleRegistry.GetModuleFunctions(moduleName);
         var types = _moduleRegistry.GetModuleTypes(moduleName);
-        if (functions.Count == 0 && types.Count == 0)
+        var fields = _moduleRegistry.GetModuleFields(moduleName);
+        if (functions.Count == 0 && types.Count == 0 && fields.Count == 0)
         {
-            _logger.LogWarning($".NET module '{moduleName}' has no exported functions or types", lineStart ?? 0, columnStart ?? 0);
+            _logger.LogWarning($".NET module '{moduleName}' has no exported functions, types, or fields", lineStart ?? 0, columnStart ?? 0);
             return null;
         }
 
@@ -797,9 +798,22 @@ internal class ImportResolver
             moduleInfo.ExportedSymbols[type.Name] = type;
         }
 
+        foreach (var (fieldName, fieldType, isConst) in fields)
+        {
+            moduleInfo.ExportedSymbols[fieldName] = new VariableSymbol
+            {
+                Name = fieldName,
+                Kind = SymbolKind.Variable,
+                Type = fieldType,
+                IsConstant = isConst,
+                IsStatic = true,
+                AccessLevel = AccessLevel.Public
+            };
+        }
+
         _moduleLoader.CacheModule(cacheKey, moduleInfo);
 
-        _logger.LogInfo($"Loaded .NET module '{moduleName}' with {functions.Count} functions and {types.Count} types");
+        _logger.LogInfo($"Loaded .NET module '{moduleName}' with {functions.Count} functions, {types.Count} types, and {fields.Count} fields");
 
         return moduleInfo;
     }

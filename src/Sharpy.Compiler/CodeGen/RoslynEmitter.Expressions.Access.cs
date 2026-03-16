@@ -852,11 +852,28 @@ internal partial class RoslynEmitter
             ExpressionSyntax expr = IdentifierName(aliasName);
             for (int i = modulePartCount; i < modulePath.Count; i++)
             {
-                // Use CONSTANT_CASE for ALL_CAPS names (Python-style constants)
                 var memberPart = modulePath[i];
-                var mangledMemberName = NameFormDetector.IsConstantCaseName(memberPart)
-                    ? NameMangler.ToConstantCase(memberPart)
-                    : NameMangler.ToPascalCase(memberPart);
+
+                // For .NET module fields (e.g., string.digits), the CLR field name
+                // may differ from PascalCase convention (Sharpy.Core uses Python-style
+                // snake_case names for string module constants). Use the CLR name directly
+                // when the export is a VariableSymbol.
+                string mangledMemberName;
+                if (currentModule.IsNetModule
+                    && currentModule.Exports.TryGetValue(memberPart, out var exportSymbol)
+                    && exportSymbol is VariableSymbol)
+                {
+                    mangledMemberName = memberPart;
+                }
+                else if (NameFormDetector.IsConstantCaseName(memberPart))
+                {
+                    mangledMemberName = NameMangler.ToConstantCase(memberPart);
+                }
+                else
+                {
+                    mangledMemberName = NameMangler.ToPascalCase(memberPart);
+                }
+
                 expr = MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
                     expr,

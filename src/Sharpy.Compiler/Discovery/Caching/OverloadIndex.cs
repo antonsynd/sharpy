@@ -21,6 +21,17 @@ internal class ModuleOverloads
     public string ModuleName { get; set; } = string.Empty;
     public Dictionary<string, List<FunctionSignature>> Functions { get; set; } = new();
     public List<DiscoveredTypeInfo> Types { get; set; } = new();
+    public Dictionary<string, FieldSignature> Fields { get; set; } = new();
+}
+
+/// <summary>
+/// Signature of a public static field discovered from a module class.
+/// </summary>
+internal class FieldSignature
+{
+    public string Name { get; set; } = string.Empty;
+    public TypeSignature FieldType { get; set; } = new();
+    public bool IsConst { get; set; }
 }
 
 /// <summary>
