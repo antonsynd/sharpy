@@ -661,7 +661,7 @@ public class ProtocolTests : IAsyncLifetime
             "should offer an 'Extract variable' code action");
     }
 
-    [Fact(Skip = "TODO: ImplementInterfaceProvider returns empty in single-file LSP analysis. " +
+    [Fact(Skip = "TODO(#385): ImplementInterfaceProvider returns empty in single-file LSP analysis. " +
                   "Interface members are not resolved without project context.")]
     public async Task CodeAction_ImplementInterface_ReturnsAction()
     {
@@ -823,7 +823,7 @@ public class ProtocolTests : IAsyncLifetime
         // Shutdown should not throw — the lifecycle is handled by DisposeAsync,
         // so we just verify initialize works and the server is responsive
         var result = await _client.SendRequestAsync("shutdown", null);
-        // Shutdown returns null per LSP spec
+        result.Should().BeNull("shutdown returns null per LSP spec");
     }
 
     [Fact]

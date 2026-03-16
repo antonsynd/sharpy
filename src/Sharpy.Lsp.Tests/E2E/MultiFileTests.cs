@@ -368,7 +368,7 @@ public class MultiFileTests : IAsyncLifetime
             "incoming calls should include a call from main.spy");
     }
 
-    [Fact(Skip = "TODO: LSP server crashes (broken pipe) when handling textDocument/implementation for cross-file interfaces. Needs investigation in ImplementationHandler.")]
+    [Fact(Skip = "TODO(#386): LSP server crashes (broken pipe) when handling textDocument/implementation for cross-file interfaces. Needs investigation in ImplementationHandler.")]
     public async Task MultiFile_Implementation_CrossFile()
     {
         CreateProjectFiles(

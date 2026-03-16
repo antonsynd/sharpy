@@ -283,10 +283,10 @@ public class ConvertFormsProviderTests
         var edits = convertAction.Edit!.Changes![TestUri].ToList();
         edits.Should().ContainSingle();
         var newText = edits[0].NewText;
-        // NOTE: The scrutinee text extraction includes the trailing colon from "match x:",
+        // NOTE(#387): The scrutinee text extraction includes the trailing colon from "match x:",
         // producing "if x: == 1:" instead of "if x == 1:". This is a known bug in
         // ConvertFormsProvider.ExtractSourceText / AST ColumnEnd for the scrutinee node.
-        // See Part 1 findings. We verify structural correctness without exact scrutinee text.
+        // We verify structural correctness without exact scrutinee text.
         newText.Should().Contain("if ");
         newText.Should().Contain("== 1:");
         newText.Should().Contain("else:");
