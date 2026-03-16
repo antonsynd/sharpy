@@ -45,6 +45,11 @@ namespace Sharpy
         /// math.ceil(-0.5)   # 0.0
         /// </code>
         /// </example>
+        /// <remarks>
+        /// Unlike Python's <c>math.ceil</c> which returns <c>int</c>,
+        /// Sharpy returns <c>double</c> to match .NET's <see cref="System.Math.Ceiling(double)"/>
+        /// (Axiom 1: .NET compatibility). Cast to int if needed: <c>int(math.ceil(x))</c>.
+        /// </remarks>
         public static double Ceil(double x) => System.Math.Ceiling(x);
 
         /// <summary>
@@ -58,6 +63,11 @@ namespace Sharpy
         /// math.floor(-0.5)   # -1.0
         /// </code>
         /// </example>
+        /// <remarks>
+        /// Unlike Python's <c>math.floor</c> which returns <c>int</c>,
+        /// Sharpy returns <c>double</c> to match .NET's <see cref="System.Math.Floor(double)"/>
+        /// (Axiom 1: .NET compatibility). Cast to int if needed: <c>int(math.floor(x))</c>.
+        /// </remarks>
         public static double Floor(double x) => System.Math.Floor(x);
 
         /// <summary>

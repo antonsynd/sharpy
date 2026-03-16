@@ -33,7 +33,7 @@ namespace Sharpy
         /// <param name="end">String appended after the last value (default: newline)</param>
         /// <param name="file">Output stream (default: stdout)</param>
         /// <param name="flush">Whether to flush the stream (default: false)</param>
-        public static void PrintWithOptions(object?[] values, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
+        internal static void PrintWithOptions(object?[] values, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
         {
             if (file == Stddev)
             {

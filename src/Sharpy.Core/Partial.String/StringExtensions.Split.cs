@@ -156,12 +156,13 @@ namespace Sharpy
         /// <paramref name="maxsplit"/> splits (from the left).
         /// Python: <c>str.split(sep, maxsplit)</c>
         /// </summary>
+        /// <exception cref="TypeError">Thrown if <paramref name="sep"/> is <c>null</c>.</exception>
         /// <exception cref="ValueError">Thrown if <paramref name="sep"/> is empty.</exception>
         public static List<string> Split(this string s, string sep, int maxsplit)
         {
             if (sep == null)
             {
-                throw new ArgumentNullException(nameof(sep));
+                throw TypeError.ArgNone("split", "sep");
             }
             if (sep.Length == 0)
             {
@@ -216,12 +217,13 @@ namespace Sharpy
         /// most <paramref name="maxsplit"/> splits.
         /// Python: <c>str.rsplit(sep, maxsplit)</c>
         /// </summary>
+        /// <exception cref="TypeError">Thrown if <paramref name="sep"/> is <c>null</c>.</exception>
         /// <exception cref="ValueError">Thrown if <paramref name="sep"/> is empty.</exception>
         public static List<string> Rsplit(this string s, string sep, int maxsplit)
         {
             if (sep == null)
             {
-                throw new ArgumentNullException(nameof(sep));
+                throw TypeError.ArgNone("rsplit", "sep");
             }
             if (sep.Length == 0)
             {
@@ -272,12 +274,13 @@ namespace Sharpy
         /// "a.b.c".partition(".")    # ("a", ".", "b.c")
         /// </code>
         /// </example>
+        /// <exception cref="TypeError">Thrown if <paramref name="sep"/> is <c>null</c>.</exception>
         /// <exception cref="ValueError">Thrown if <paramref name="sep"/> is empty.</exception>
         public static (string, string, string) Partition(this string s, string sep)
         {
             if (sep == null)
             {
-                throw new ArgumentNullException(nameof(sep));
+                throw TypeError.ArgNone("partition", "sep");
             }
             if (sep.Length == 0)
             {
@@ -304,12 +307,13 @@ namespace Sharpy
         /// "a.b.c".rpartition(".")    # ("a.b", ".", "c")
         /// </code>
         /// </example>
+        /// <exception cref="TypeError">Thrown if <paramref name="sep"/> is <c>null</c>.</exception>
         /// <exception cref="ValueError">Thrown if <paramref name="sep"/> is empty.</exception>
         public static (string, string, string) Rpartition(this string s, string sep)
         {
             if (sep == null)
             {
-                throw new ArgumentNullException(nameof(sep));
+                throw TypeError.ArgNone("rpartition", "sep");
             }
             if (sep.Length == 0)
             {
