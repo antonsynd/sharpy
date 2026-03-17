@@ -405,9 +405,13 @@ public class Compiler
             assertionTimer.Stop();
             _logger.LogDebug($"Post-type-checking assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             // Assertion: Type checking should have processed at least some expressions
-            // (unless the module has errors — failed imports or type errors can prevent expression processing)
-            Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0 || diagnostics.HasErrors,
-                "Type checker should record at least one expression type for non-empty error-free modules");
+            // (unless the module has errors — failed imports or type errors can prevent expression processing,
+            // or the module contains only declarations with no executable expressions, e.g. interface-only files)
+            var hasOnlyDeclarations = module.Body.All(s =>
+                s is InterfaceDef or ClassDef or FunctionDef
+                or ImportStatement or FromImportStatement or TypeAlias);
+            Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0 || diagnostics.HasErrors || hasOnlyDeclarations,
+                "Type checker should record at least one expression type for non-empty error-free modules with executable statements");
             // Materialize CodeGenInfo and VariableType data onto Symbol properties, then verify and freeze
             assertionTimer.Restart();
             compilationPipeline.MaterializeTypeInfo();
