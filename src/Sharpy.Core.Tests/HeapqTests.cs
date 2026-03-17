@@ -320,4 +320,93 @@ public class Heapq_Tests
 
         result.Should().Equal(1, 2, 3);
     }
+
+    [Fact]
+    public void Merge_WithReverse_YieldsDescendingOrder()
+    {
+        // Inputs pre-sorted descending
+        var a = new List<int> { 6, 4, 2 };
+        var b = new List<int> { 5, 3, 1 };
+        var result = new System.Collections.Generic.List<int>();
+        foreach (var item in Sharpy.Heapq.Merge(a, b, reverse: true))
+        {
+            result.Add(item);
+        }
+
+        result.Should().Equal(6, 5, 4, 3, 2, 1);
+    }
+
+    [Fact]
+    public void Merge_WithKeyFunction_SortsByKey()
+    {
+        // Inputs pre-sorted ascending by string length
+        var a = new List<string> { "fig", "apple", "banana" };
+        var b = new List<string> { "hi", "cherry", "elephant" };
+        var result = new System.Collections.Generic.List<string>();
+        foreach (var item in Sharpy.Heapq.Merge<string, int>(a, b, s => s.Length))
+        {
+            result.Add(item);
+        }
+
+        result.Should().Equal("hi", "fig", "apple", "banana", "cherry", "elephant");
+    }
+
+    [Fact]
+    public void Merge_WithKeyAndReverse_SortsByKeyDescending()
+    {
+        // Inputs pre-sorted descending by string length
+        var a = new List<string> { "banana", "apple", "fig" };
+        var b = new List<string> { "elephant", "cherry", "hi" };
+        var result = new System.Collections.Generic.List<string>();
+        foreach (var item in Sharpy.Heapq.Merge<string, int>(a, b, s => s.Length, reverse: true))
+        {
+            result.Add(item);
+        }
+
+        result.Should().Equal("elephant", "banana", "cherry", "apple", "fig", "hi");
+    }
+
+    [Fact]
+    public void Merge_WithReverse_ThreeLists()
+    {
+        // Inputs pre-sorted descending
+        var a = new List<int> { 9, 6, 3 };
+        var b = new List<int> { 8, 5, 2 };
+        var c = new List<int> { 7, 4, 1 };
+        var result = new System.Collections.Generic.List<int>();
+        foreach (var item in Sharpy.Heapq.Merge(a, b, c, reverse: true))
+        {
+            result.Add(item);
+        }
+
+        result.Should().Equal(9, 8, 7, 6, 5, 4, 3, 2, 1);
+    }
+
+    [Fact]
+    public void Merge_WithKey_EmptyLists()
+    {
+        var a = new List<string>();
+        var b = new List<string>();
+        var result = new System.Collections.Generic.List<string>();
+        foreach (var item in Sharpy.Heapq.Merge<string, int>(a, b, s => s.Length))
+        {
+            result.Add(item);
+        }
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Merge_WithReverse_SingleList()
+    {
+        var a = new List<int> { 3, 2, 1 };
+        var b = new List<int>();
+        var result = new System.Collections.Generic.List<int>();
+        foreach (var item in Sharpy.Heapq.Merge(a, b, reverse: true))
+        {
+            result.Add(item);
+        }
+
+        result.Should().Equal(3, 2, 1);
+    }
 }

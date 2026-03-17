@@ -354,14 +354,22 @@ namespace Sharpy
                 int left = 2 * pos + 1;
                 int right = 2 * pos + 2;
 
-                if (left < count && comparison(heap[left].value, heap[smallest].value) < 0)
+                if (left < count)
                 {
-                    smallest = left;
+                    int cmp = comparison(heap[left].value, heap[smallest].value);
+                    if (cmp < 0 || (cmp == 0 && heap[left].index < heap[smallest].index))
+                    {
+                        smallest = left;
+                    }
                 }
 
-                if (right < count && comparison(heap[right].value, heap[smallest].value) < 0)
+                if (right < count)
                 {
-                    smallest = right;
+                    int cmp = comparison(heap[right].value, heap[smallest].value);
+                    if (cmp < 0 || (cmp == 0 && heap[right].index < heap[smallest].index))
+                    {
+                        smallest = right;
+                    }
                 }
 
                 if (smallest == pos)
