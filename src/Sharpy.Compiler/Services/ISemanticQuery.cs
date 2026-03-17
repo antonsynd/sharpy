@@ -49,6 +49,12 @@ public interface ISemanticQuery
     List<SemanticType>? GetInferredTypeArguments(FunctionCall call);
 
     /// <summary>
+    /// Gets the resolved symbol for a member access expression (e.g., ClassName.FIELD, self.field).
+    /// Returns null if the TypeChecker did not record a resolution for this node.
+    /// </summary>
+    (TypeSymbol Owner, Symbol Member)? GetMemberAccessResolution(Parser.Ast.MemberAccess memberAccess);
+
+    /// <summary>
     /// Gets all recorded reference locations for a symbol.
     /// Returns an empty list if no references have been recorded.
     /// </summary>

@@ -35,7 +35,7 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
         if (node == null)
             return null;
 
-        var hoverMarkdown = GetHoverMarkdown(node, analysis);
+        var hoverMarkdown = GetHoverMarkdown(node, analysis, line, col);
         if (hoverMarkdown == null)
             return null;
 
@@ -51,7 +51,7 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
         };
     }
 
-    private static string? GetHoverMarkdown(Node node, SemanticResult analysis)
+    private string? GetHoverMarkdown(Node node, SemanticResult analysis, int line, int col)
     {
         var query = analysis.SemanticQuery!;
 
@@ -67,6 +67,32 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                     var type = query.GetEffectiveType(id);
                     if (type != null)
                         return $"```sharpy\n{id.Name}: {SymbolFormatter.FormatTypeInfo(type)}\n```";
+
+                    return null;
+                }
+
+            case MemberAccess memberAccess:
+                {
+                    // Check if TypeChecker recorded a static/const member resolution
+                    var resolution = query.GetMemberAccessResolution(memberAccess);
+                    if (resolution != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(resolution.Value.Member);
+
+                    // Check if this MemberAccess is the Function of an enclosing FunctionCall
+                    // (e.g., items.count(2) — cursor on "count" gives MemberAccess, but the
+                    // resolved call target is on the FunctionCall node)
+                    var enclosingCall = _api.FindNodeOfType<FunctionCall>(analysis.Ast!, line, col);
+                    if (enclosingCall != null && ReferenceEquals(enclosingCall.Function, memberAccess))
+                    {
+                        var target = query.GetCallTarget(enclosingCall);
+                        if (target != null)
+                            return SymbolFormatter.FormatSymbolWithDocs(target);
+                    }
+
+                    // Fall back to type info for the member access expression
+                    var memberType = query.GetEffectiveType(memberAccess);
+                    if (memberType != null)
+                        return $"```sharpy\n{memberAccess.Member}: {SymbolFormatter.FormatTypeInfo(memberType)}\n```";
 
                     return null;
                 }
