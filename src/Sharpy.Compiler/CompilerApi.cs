@@ -2,6 +2,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Text;
 
@@ -31,19 +32,33 @@ public sealed class CompilerApi
 {
     private readonly ICompilerLogger _logger;
     private readonly AstPositionService _positionService = new();
+    private readonly string[] _defaultReferences;
 
     /// <summary>
     /// Creates a new CompilerApi with default settings.
     /// </summary>
-    public CompilerApi() : this(null) { }
+    public CompilerApi() : this(null, null) { }
 
     /// <summary>
     /// Creates a new CompilerApi with a custom logger.
     /// </summary>
     /// <param name="logger">Optional compiler logger. Uses NullLogger if null.</param>
-    public CompilerApi(ICompilerLogger? logger)
+    public CompilerApi(ICompilerLogger? logger) : this(logger, null) { }
+
+    /// <summary>
+    /// Creates a new CompilerApi with a custom logger and default assembly references.
+    /// Default references (e.g., Sharpy.Core.dll) are automatically included in every
+    /// analysis and compilation, enabling stdlib module resolution.
+    /// </summary>
+    /// <param name="logger">Optional compiler logger. Uses NullLogger if null.</param>
+    /// <param name="defaultReferences">
+    /// Paths to .NET assemblies that should be loaded for every analysis.
+    /// Typically includes Sharpy.Core.dll for stdlib support.
+    /// </param>
+    public CompilerApi(ICompilerLogger? logger, string[]? defaultReferences)
     {
         _logger = logger ?? NullLogger.Instance;
+        _defaultReferences = defaultReferences ?? Array.Empty<string>();
     }
 
     /// <summary>
@@ -62,6 +77,7 @@ public sealed class CompilerApi
     {
         var resolvedPath = filePath ?? "<source>";
         var opts = options ?? new CompilerOptions();
+        MergeDefaultReferences(opts);
         var compiler = new Compiler(opts, _logger);
 
         var result = compiler.Compile(source, resolvedPath, cancellationToken);
@@ -170,6 +186,7 @@ public sealed class CompilerApi
     public SemanticResult Analyze(string source, CancellationToken cancellationToken = default)
     {
         var opts = new CompilerOptions { OutputType = "library" };
+        MergeDefaultReferences(opts);
         var compiler = new Compiler(opts, _logger);
         var result = compiler.Analyze(source, "<source>", cancellationToken);
 
@@ -194,7 +211,8 @@ public sealed class CompilerApi
         ProjectConfig config,
         CancellationToken cancellationToken = default)
     {
-        var compiler = new Project.ProjectCompiler(logger: _logger);
+        var registry = BuildModuleRegistry(config);
+        var compiler = new Project.ProjectCompiler(logger: _logger, moduleRegistry: registry);
         return compiler.AnalyzeProject(config, cancellationToken);
     }
 
@@ -239,5 +257,40 @@ public sealed class CompilerApi
             ? new SourceText(source, diagnostic.FilePath ?? "<source>")
             : null;
         return renderer.Render(diagnostic, sourceText);
+    }
+
+    /// <summary>
+    /// Merges <see cref="_defaultReferences"/> into the given options.
+    /// </summary>
+    private void MergeDefaultReferences(CompilerOptions options)
+    {
+        if (_defaultReferences.Length == 0)
+            return;
+
+        var existing = options.References ?? Array.Empty<string>();
+        options.References = existing.Concat(_defaultReferences).Distinct().ToArray();
+    }
+
+    /// <summary>
+    /// Builds a <see cref="ModuleRegistry"/> from default references and project config.
+    /// Returns null if no references or module paths are configured.
+    /// </summary>
+    private ModuleRegistry? BuildModuleRegistry(ProjectConfig config)
+    {
+        if (_defaultReferences.Length == 0 && config.References.Count == 0 && config.ModulePaths.Count == 0)
+            return null;
+
+        var registry = new ModuleRegistry(_logger);
+
+        foreach (var reference in _defaultReferences)
+            registry.LoadReference(reference);
+
+        foreach (var reference in config.References)
+            registry.LoadReference(reference);
+
+        foreach (var modulePath in config.ModulePaths)
+            registry.AddModulePath(modulePath);
+
+        return registry;
     }
 }

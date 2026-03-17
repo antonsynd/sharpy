@@ -1,3 +1,5 @@
+extern alias SharpyRT;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -44,7 +46,12 @@ public class Program
                 })
                 .WithServices(services =>
                 {
-                    services.AddSingleton<CompilerApi>();
+                    // Register CompilerApi with Sharpy.Core.dll as a default reference
+                    // so that stdlib modules (os, bisect, math, etc.) are resolvable
+                    // in both project-level and single-file analysis.
+                    var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
+                    var sharpyCorePath = sharpyCoreAssembly.Location;
+                    services.AddSingleton(new CompilerApi(null, new[] { sharpyCorePath }));
                     services.AddSingleton<SharpyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
                     services.AddSingleton<LanguageService>();
