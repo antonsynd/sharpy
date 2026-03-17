@@ -91,6 +91,7 @@ Symbol (abstract)              — DeclarationSpan, DeclaringFilePath (all symbo
 └── TypeParameterSymbol   — Generic type parameters (T in class Box[T])
 
 PropertySymbol   — Standalone record (not a Symbol subclass)
+EventSymbol      — Standalone record (not a Symbol subclass)
 ParameterSymbol  — Standalone record (not a Symbol subclass)
 ```
 
@@ -138,7 +139,8 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 430**: `UnusedImportValidator` — Unused import warnings
 - **Order 450**: `AccessValidator` — Private/protected member access
 - **Order 460**: `DunderInvocationValidator` — Direct dunder call warnings
-- **Order 500**: `ProtocolValidator`, `OperatorValidator` — Protocol/operator validation
+- **Order 500**: `ProtocolValidator` — Protocol validation
+- **Order 501**: `OperatorValidator` — Operator validation
 
 **Responsibility split**: TypeChecker handles type mismatches and in-progress inference. ValidationPipeline handles self-contained AST analyses that don't need active inference state.
 
@@ -159,7 +161,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 16 partial classes (~13,690 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
+The `RoslynEmitter` is split into 16 partial classes (~13,930 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -258,6 +260,7 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 - **Wrap .NET internally, expose Python API** — `list.append()` not `Add()`
 - **Partial class pattern**: Types split across `Partial.{Type}/` directories (e.g., `Partial.List/List.Methods.cs`, `List.Slicing.cs`, `List.Interfaces.cs`)
 - **Builtins**: `partial class Builtins` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
+- **29 stdlib modules**: Argparse, Bisect, Builtins, Collections, Copy, Csv, Datetime, Fnmatch, Functools, Glob, Hashlib, Heapq, Io, Itertools, Json, Logging, Math, Operator, Os, Pathlib, Random, Re, Shutil, Statistics, String, Sys, Tempfile, Textwrap, Time
 - **Python semantics**: Negative indexing, slicing, Python-matching exceptions
 
 ### Protocol Interfaces
@@ -365,9 +368,11 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 | `Shared/` | `CSharpKeywords` (keyword escaping), `CSharpTypeNames` (collection type constants), `NameMangler` |
 | `Discovery/Caching/` | `OverloadIndex`, `OverloadIndexCache`, `AssemblyIdentity` |
 | `Model/` | `CompilationUnit`, `CompilationUnitFactory`, `ProjectModel` |
-| `Project/` | `ProjectCompiler` (7 partial files), `SpyProject`, `DependencyGraph` |
+| `Logging/` | `ICompilerLogger`, `StructuredLogger`, `ConsoleCompilerLogger`, `NullLogger` |
+| `Project/` | `ProjectCompiler` (8 partial files), `SpyProject`, `DependencyGraph` |
 | `Services/` | `CompilerServices`, `CompilerServicesBuilder` (adapter pattern) |
 | `Text/` | `ILocatable`, `SourceText`, `TextSpan` |
+| `Utilities/` | `EditDistance`, `PathNormalizer` |
 
 ## CI/CD
 
