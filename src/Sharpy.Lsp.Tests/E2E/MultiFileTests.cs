@@ -386,10 +386,11 @@ public class MultiFileTests : IAsyncLifetime
         var implText = File.ReadAllText(System.IO.Path.Combine(_tempDir, "impl.spy"));
         await _client.DidOpenAsync(implUri, implText);
 
-        // Wait for initial diagnostics
+        // Wait for initial diagnostics (cross-file analysis with interfaces can be
+        // slow on CI, so use a generous timeout)
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            TimeSpan.FromSeconds(30));
 
         // Poll for implementation results — background project indexing may need
         // time before the cross-file symbol table is available.

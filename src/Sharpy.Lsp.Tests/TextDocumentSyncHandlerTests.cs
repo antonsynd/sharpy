@@ -26,16 +26,16 @@ public class TextDocumentSyncHandlerTests : IDisposable
     }
 
     [Fact]
-    public void Dispose_UnsubscribesFromDocumentAnalyzedEvent()
+    public async Task Dispose_UnsubscribesFromDocumentAnalyzedEvent()
     {
         // Track whether the DocumentAnalyzed event fires after handler disposal.
         // We use a TestableHandler that mimics TextDocumentSyncHandler's subscription
         // pattern (subscribe in ctor, unsubscribe in Dispose) without needing a
         // real DiagnosticPublisher/ILanguageServerFacade.
-        var otherHandlerFiredCount = 0;
+        var otherHandlerFired = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _workspace.DocumentAnalyzed += (_, _) =>
         {
-            otherHandlerFiredCount++;
+            otherHandlerFired.TrySetResult(true);
             return Task.CompletedTask;
         };
 
@@ -47,11 +47,12 @@ public class TextDocumentSyncHandlerTests : IDisposable
         // Trigger the event by opening a document (schedules analysis via debounce)
         _workspace.OpenDocument("file:///test.spy", "x: int = 1", 1);
 
-        // Wait for the debounce timer (300ms) plus margin
-        Thread.Sleep(600);
+        // Wait for the analysis to complete (debounce + compilation) with generous timeout
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var fired = await Task.WhenAny(otherHandlerFired.Task, Task.Delay(Timeout.Infinite, cts.Token));
 
         // Our separate subscription should still fire, proving the event works
-        otherHandlerFiredCount.Should().BeGreaterThan(0,
+        otherHandlerFired.Task.IsCompletedSuccessfully.Should().BeTrue(
             "the workspace DocumentAnalyzed event should still fire for other subscribers");
 
         // The disposed handler should not have been called
@@ -80,15 +81,19 @@ public class TextDocumentSyncHandlerTests : IDisposable
     }
 
     [Fact]
-    public void Constructor_SubscribesToDocumentAnalyzedEvent()
+    public async Task Constructor_SubscribesToDocumentAnalyzedEvent()
     {
         // Verify that creating the handler results in receiving events
         var handler = new TestableHandler(_workspace);
 
         _workspace.OpenDocument("file:///test.spy", "x: int = 1", 1);
 
-        // Wait for debounce
-        Thread.Sleep(600);
+        // Wait for the analysis to complete (debounce + compilation) with generous timeout
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        while (!cts.Token.IsCancellationRequested && handler.AnalyzedCallCount == 0)
+        {
+            await Task.Delay(50, cts.Token);
+        }
 
         handler.AnalyzedCallCount.Should().BeGreaterThan(0,
             "the handler should receive DocumentAnalyzed events after construction");
