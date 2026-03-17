@@ -37,7 +37,7 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
         return new TextDocumentAttributes(uri, "sharpy");
     }
 
-    public override async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken ct)
+    public override Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
         var text = request.TextDocument.Text;
@@ -45,13 +45,17 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
 
         _workspace.OpenDocument(uri, text, version);
 
-        // For project files, trigger project-level reanalysis directly
+        // For project files, kick off project-level reanalysis in the background.
+        // Single-file diagnostics are published by the workspace debounce → DocumentAnalyzed path.
+        // Project reanalysis updates the LanguageService cache for subsequent handler requests.
+        // Must not be awaited — awaiting can deadlock when background indexing holds
+        // _analysisLock while _fileResults is already visible (ConcurrentDictionary).
         if (_languageService.IsProjectFile(uri))
         {
-            await TriggerProjectReanalysisAsync(uri, ct).ConfigureAwait(false);
+            _ = TriggerProjectReanalysisAsync(uri, ct);
         }
 
-        return Unit.Value;
+        return Unit.Task;
     }
 
     public override Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken ct)
