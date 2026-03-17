@@ -3,6 +3,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Lsp.Handlers;
 
@@ -87,6 +88,26 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                         var target = query.GetCallTarget(enclosingCall);
                         if (target != null)
                             return SymbolFormatter.FormatSymbolWithDocs(target);
+                    }
+
+                    // Try resolving as a property on a builtin type (is_ok, is_err, is_some, etc.)
+                    var objType = query.GetEffectiveType(memberAccess.Object);
+                    if (objType != null && analysis.SymbolTable != null)
+                    {
+                        var builtinType = objType switch
+                        {
+                            GenericType gt => analysis.SymbolTable.BuiltinRegistry.GetType(gt.Name),
+                            ResultType => analysis.SymbolTable.BuiltinRegistry.GetType("Result"),
+                            OptionalType => analysis.SymbolTable.BuiltinRegistry.GetType("Optional"),
+                            BuiltinType bt => analysis.SymbolTable.BuiltinRegistry.GetType(bt.Name),
+                            _ => null
+                        };
+                        if (builtinType != null)
+                        {
+                            var prop = builtinType.Properties.FirstOrDefault(p => p.Name == memberAccess.Member);
+                            if (prop != null)
+                                return SymbolFormatter.FormatPropertyWithDocs(prop);
+                        }
                     }
 
                     // Fall back to type info for the member access expression

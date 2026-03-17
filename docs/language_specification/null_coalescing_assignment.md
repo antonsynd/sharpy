@@ -16,7 +16,7 @@ if variable is None:
 
 For `T?` (Optional), equivalent to:
 ```python
-if variable.is_none():
+if variable.is_none:
     variable = Some(value)
 ```
 

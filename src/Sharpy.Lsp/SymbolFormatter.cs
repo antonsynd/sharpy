@@ -84,6 +84,24 @@ internal static class SymbolFormatter
         return sb.ToString();
     }
 
+    public static string FormatPropertyWithDocs(PropertySymbol prop)
+    {
+        var typeStr = prop.Type?.GetDisplayName() ?? "unknown";
+        var sb = new StringBuilder();
+        sb.Append("```sharpy\n");
+        sb.Append("(property) ");
+        sb.Append(prop.Name);
+        sb.Append(": ");
+        sb.Append(typeStr);
+        sb.Append("\n```");
+        if (!string.IsNullOrEmpty(prop.Documentation))
+        {
+            sb.Append("\n\n");
+            sb.Append(prop.Documentation);
+        }
+        return sb.ToString();
+    }
+
     private static string FormatType(TypeSymbol t)
     {
         var keyword = t.TypeKind switch

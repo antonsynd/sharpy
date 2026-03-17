@@ -9,7 +9,7 @@ def func_a(x: int?) -> int:
 
 def func_b(x: int?) -> None:
     # x should NOT be narrowed here — func_a's narrowing must not leak
-    print(x.is_some())
+    print(x.is_some)
     print(x.unwrap_or(99))
 
 def main():

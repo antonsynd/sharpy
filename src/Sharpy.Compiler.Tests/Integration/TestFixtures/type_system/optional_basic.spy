@@ -1,12 +1,12 @@
 def main():
     x: int? = Some(42)
-    print(x.is_some())
-    print(x.is_none())
+    print(x.is_some)
+    print(x.is_none)
     print(x.unwrap())
     print(x.unwrap_or(0))
 
     y: int? = None()
-    print(y.is_some())
-    print(y.is_none())
+    print(y.is_some)
+    print(y.is_none)
     print(y.unwrap_or(99))
     print(y)

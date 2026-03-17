@@ -9,12 +9,12 @@ def convert_int(raw: int | None) -> int?:
 def main():
     # Non-null string
     a: str? = convert_str("hello")
-    print(a.is_some())
+    print(a.is_some)
     print(a ?? "none")
 
     # Null string
     b: str? = convert_str(None)
-    print(b.is_none())
+    print(b.is_none)
     print(b ?? "fallback")
 
     # Non-null int

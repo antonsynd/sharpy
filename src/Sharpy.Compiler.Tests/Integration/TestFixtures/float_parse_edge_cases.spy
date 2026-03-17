@@ -1,42 +1,42 @@
 def main():
     # Scientific notation
     r1: float !ValueError = float.parse("1e5")
-    if r1.is_ok():
+    if r1.is_ok:
         print(r1.unwrap())
     else:
         print(r1.unwrap_err())
 
     # Leading/trailing whitespace
     r2: float !ValueError = float.parse("  3.14  ")
-    if r2.is_ok():
+    if r2.is_ok:
         print(r2.unwrap())
     else:
         print(r2.unwrap_err())
 
     # Negative number
     r3: float !ValueError = float.parse("-2.5")
-    if r3.is_ok():
+    if r3.is_ok:
         print(r3.unwrap())
     else:
         print(r3.unwrap_err())
 
     # Empty string - should fail
     r4: float !ValueError = float.parse("")
-    if r4.is_ok():
+    if r4.is_ok:
         print(r4.unwrap())
     else:
         print(r4.unwrap_err())
 
     # Whitespace-only - should fail
     r5: float !ValueError = float.parse("   ")
-    if r5.is_ok():
+    if r5.is_ok:
         print(r5.unwrap())
     else:
         print(r5.unwrap_err())
 
     # Non-numeric - should fail
     r6: float !ValueError = float.parse("abc")
-    if r6.is_ok():
+    if r6.is_ok:
         print(r6.unwrap())
     else:
         print(r6.unwrap_err())

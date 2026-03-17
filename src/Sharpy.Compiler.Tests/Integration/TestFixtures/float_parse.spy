@@ -1,12 +1,12 @@
 def main():
     result: float !ValueError = float.parse("3.14")
-    if result.is_ok():
+    if result.is_ok:
         print(result.unwrap())
     else:
         print(result.unwrap_err())
 
     result2: float !ValueError = float.parse("xyz")
-    if result2.is_ok():
+    if result2.is_ok:
         print(result2.unwrap())
     else:
         print(result2.unwrap_err())

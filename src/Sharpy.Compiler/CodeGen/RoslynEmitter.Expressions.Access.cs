@@ -294,24 +294,6 @@ internal partial class RoslynEmitter
                     DiagnosticCodes.CodeGen.UnsupportedFeature, call.LineStart, call.ColumnStart);
             }
 
-            // Property-vs-method dispatch for Optional/Result:
-            // is_some/is_none/is_ok/is_err are C# properties, not methods.
-            // Emit property access instead of method invocation.
-            if (call.Arguments.Length == 0 && call.KeywordArguments.Length == 0)
-            {
-                var objType = GetExpressionSemanticType(memberAccess.Object);
-                if (objType is OptionalType && methodName is "IsSome" or "IsNone")
-                {
-                    return MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression, obj, IdentifierName(methodName));
-                }
-                if (objType is ResultType && methodName is "IsOk" or "IsErr")
-                {
-                    return MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression, obj, IdentifierName(methodName));
-                }
-            }
-
             // Generate arguments (reorder for C# compliance if needed)
             var methodCallTarget = ResolveMethodForCall(memberAccess.Object, memberAccess.Member);
             var allArgs = GenerateReorderedCallArguments(call, methodCallTarget);

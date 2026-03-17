@@ -122,6 +122,7 @@ union Result[T, E]:
     case Ok(value: T)
     case Err(error: E)
 
+    @property
     def is_ok(self) -> bool:
         """Returns True if the result is Ok"""
         match self:
@@ -130,9 +131,10 @@ union Result[T, E]:
             case Err(_):
                 return False
 
+    @property
     def is_err(self) -> bool:
         """Returns True if the result is Err"""
-        return not self.is_ok()
+        return not self.is_ok
 
     def unwrap(self) -> T:
         """Returns the Ok value or raises an exception"""

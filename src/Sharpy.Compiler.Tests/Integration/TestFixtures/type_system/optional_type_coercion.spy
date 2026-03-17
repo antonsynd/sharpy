@@ -5,13 +5,13 @@ def main():
     # Value type coercion - success
     obj: object = 42
     x: int? = obj to int?
-    print(x.is_some())
+    print(x.is_some)
     print(x ?? 0)
 
     # Value type coercion - failure
     obj2: object = "hello"
     y: int? = obj2 to int?
-    print(y.is_none())
+    print(y.is_none)
     print(y ?? -1)
 
     # Reference type coercion - success
@@ -22,5 +22,5 @@ def main():
     # Reference type coercion - failure
     obj4: object = 42
     w: str? = obj4 to str?
-    print(w.is_none())
+    print(w.is_none)
     print(w ?? "was_none")

@@ -405,6 +405,16 @@ internal partial class TypeChecker
                         };
                     }
                 }
+
+                // Check properties (is_ok, is_err, is_some, is_none, etc.)
+                var property = builtinTypeSymbol.Properties
+                    .FirstOrDefault(p => p.Name == memberAccess.Member);
+                if (property != null)
+                {
+                    return builtinTypeArgs != null
+                        ? SubstituteTypeParameters(property.Type, builtinTypeSymbol.TypeParameters, builtinTypeArgs)
+                        : property.Type;
+                }
             }
         }
 

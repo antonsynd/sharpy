@@ -58,6 +58,7 @@ union Optional[T]:
     case Some(value: T)
     case None()
 
+    @property
     def is_some(self) -> bool:
         """Returns True if the optional contains a value"""
         match self:
@@ -66,9 +67,10 @@ union Optional[T]:
             case None:
                 return False
 
+    @property
     def is_none(self) -> bool:
         """Returns True if the optional is empty"""
-        return not self.is_some()
+        return not self.is_some
 
     def unwrap(self) -> T:
         """Returns the value or raises an exception"""
@@ -181,11 +183,11 @@ match value:
 ```python
 def get_user_city(user_id: int) -> str?:
     user = find_user(user_id)
-    if user.is_none():
+    if user.is_none:
         return None()
 
     address = user.unwrap().get_address()
-    if address.is_none():
+    if address.is_none:
         return None()
 
     return Some(address.unwrap().city)

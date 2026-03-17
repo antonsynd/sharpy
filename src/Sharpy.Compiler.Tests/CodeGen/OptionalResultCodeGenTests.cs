@@ -325,7 +325,7 @@ def foo(x: int? = None()) -> None:
         var code = @"
 def test() -> bool:
     x: int? = Some(42)
-    return x.is_some()
+    return x.is_some
 ";
         var csharp = CompileToCSharp(code);
         csharp.Should().Contain("x.IsSome");
@@ -338,7 +338,7 @@ def test() -> bool:
         var code = @"
 def test() -> bool:
     x: int !str = Ok(42)
-    return x.is_ok()
+    return x.is_ok
 ";
         var csharp = CompileToCSharp(code);
         csharp.Should().Contain("x.IsOk");
@@ -617,7 +617,7 @@ def func_a(x: int?) -> int:
     return 0
 
 def func_b(x: int?) -> bool:
-    return x.is_some()
+    return x.is_some
 ";
         var csharp = CompileToCSharp(code);
         // func_b's x should NOT have .Unwrap() — narrowing must not leak from func_a

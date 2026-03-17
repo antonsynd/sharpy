@@ -164,6 +164,7 @@ internal class BuiltinRegistry
         var methods = discovered?.Methods ?? new List<FunctionSymbol>();
         var operatorMethods = discovered?.OperatorMethods ?? new Dictionary<string, List<FunctionSymbol>>();
         var protocolMethods = discovered?.ProtocolMethods ?? new Dictionary<string, List<FunctionSymbol>>();
+        var properties = discovered?.Properties ?? new List<PropertySymbol>();
 
         // For types not discoverable from Sharpy.Core, provide inline definitions.
         ApplyNonDiscoverableDefinitions(sharpyName, ref methods, ref operatorMethods, ref protocolMethods);
@@ -180,6 +181,7 @@ internal class BuiltinRegistry
             Methods = methods,
             OperatorMethods = operatorMethods,
             ProtocolMethods = protocolMethods,
+            Properties = properties,
         };
 
         PopulateMethodOverloads(typeSymbol);
