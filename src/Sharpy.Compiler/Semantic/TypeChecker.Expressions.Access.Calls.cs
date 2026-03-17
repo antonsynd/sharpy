@@ -795,10 +795,11 @@ internal partial class TypeChecker
         {
             typeSymbol = udt;
         }
-        else if (objectType is GenericType gt)
+        else
         {
-            typeSymbol = _symbolTable.BuiltinRegistry.GetType(gt.Name);
-            typeArgs = gt.TypeArguments;
+            var (resolved, resolvedTypeArgs) = ResolveBuiltinTypeInfo(objectType);
+            typeSymbol = resolved;
+            typeArgs = resolvedTypeArgs;
         }
 
         if (typeSymbol == null)

@@ -83,6 +83,10 @@ internal class BuiltinRegistry
         RegisterType(BuiltinNames.IEnumerable, typeof(System.Collections.IEnumerable), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
         RegisterType(BuiltinNames.IEnumerator, typeof(System.Collections.IEnumerator), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
 
+        // Result and Optional (for semantic-time method/property resolution)
+        RegisterType("Result", typeof(SharpyRT::Sharpy.Result<,>), TypeKind.Struct, isGeneric: true, typeParamCount: 2);
+        RegisterType("Optional", typeof(SharpyRT::Sharpy.Optional<>), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
+
         // Special
         RegisterType("object", typeof(object), TypeKind.Class);
         RegisterType("None", typeof(void), TypeKind.Struct); // void for return type

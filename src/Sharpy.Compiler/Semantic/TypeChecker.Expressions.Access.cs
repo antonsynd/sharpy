@@ -373,30 +373,37 @@ internal partial class TypeChecker
             }
         }
 
-        // Resolve builtin type method types at semantic time via TypeSymbol metadata.
-        // This handles dict.items(), list.append(), set.add(), etc.
-        if (memberLookupType is GenericType genericType)
+        // Resolve builtin type member access via BuiltinRegistry TypeSymbol metadata.
+        // Handles: list.append(), dict.items(), result.unwrap(), optional.unwrap(),
+        // str.upper(), int methods, etc.
         {
-            var builtinTypeSymbol = _symbolTable.BuiltinRegistry.GetType(genericType.Name);
+            var (builtinTypeSymbol, builtinTypeArgs) = ResolveBuiltinTypeInfo(memberLookupType);
             if (builtinTypeSymbol != null)
             {
                 var methodSymbol = builtinTypeSymbol.Methods
                     .FirstOrDefault(m => m.Name == memberAccess.Member);
                 if (methodSymbol != null)
                 {
-                    var resolvedReturnType = SubstituteTypeParameters(
-                        methodSymbol.ReturnType,
-                        builtinTypeSymbol.TypeParameters,
-                        genericType.TypeArguments);
-                    var resolvedParams = methodSymbol.Parameters
-                        .Select(p => SubstituteTypeParameters(
-                            p.Type, builtinTypeSymbol.TypeParameters, genericType.TypeArguments))
-                        .ToList();
-                    return new FunctionType
+                    var resolvedReturnType = builtinTypeArgs != null
+                        ? SubstituteTypeParameters(methodSymbol.ReturnType, builtinTypeSymbol.TypeParameters, builtinTypeArgs)
+                        : methodSymbol.ReturnType;
+
+                    // Skip methods whose return type resolved to 'object' — this indicates
+                    // the discovery layer couldn't represent the real type (e.g., generic method
+                    // return types like Result<U, E> from map()). Let the codegen fallback handle these.
+                    if (resolvedReturnType is not UserDefinedType { Name: "object" })
                     {
-                        ParameterTypes = resolvedParams,
-                        ReturnType = resolvedReturnType
-                    };
+                        var resolvedParams = methodSymbol.Parameters
+                            .Select(p => builtinTypeArgs != null
+                                ? SubstituteTypeParameters(p.Type, builtinTypeSymbol.TypeParameters, builtinTypeArgs)
+                                : p.Type)
+                            .ToList();
+                        return new FunctionType
+                        {
+                            ParameterTypes = resolvedParams,
+                            ReturnType = resolvedReturnType
+                        };
+                    }
                 }
             }
         }
@@ -407,6 +414,26 @@ internal partial class TypeChecker
         // type checker. Mark as error recovery to suppress SPY0907 false positives.
         MarkExpressionAsErrorRecovery(memberAccess);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Maps a SemanticType to its BuiltinRegistry TypeSymbol and type arguments.
+    /// Returns (null, null) if the type is not a registered builtin.
+    /// Used by CheckMemberAccess and ResolveUserMethodOverload for uniform
+    /// property/method resolution across GenericType, ResultType, OptionalType, and BuiltinType.
+    /// </summary>
+    private (TypeSymbol? TypeSymbol, List<SemanticType>? TypeArgs) ResolveBuiltinTypeInfo(SemanticType type)
+    {
+        return type switch
+        {
+            GenericType gt => (_symbolTable.BuiltinRegistry.GetType(gt.Name), gt.TypeArguments),
+            ResultType rt => (_symbolTable.BuiltinRegistry.GetType("Result"),
+                              new List<SemanticType> { rt.OkType, rt.ErrorType }),
+            OptionalType ot => (_symbolTable.BuiltinRegistry.GetType("Optional"),
+                                new List<SemanticType> { ot.UnderlyingType }),
+            BuiltinType bt => (_symbolTable.BuiltinRegistry.GetType(bt.Name), null),
+            _ => (null, null)
+        };
     }
 
     /// <summary>
