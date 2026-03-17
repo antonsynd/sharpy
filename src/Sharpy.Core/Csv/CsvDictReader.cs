@@ -39,6 +39,8 @@ namespace Sharpy
         /// </summary>
         public IEnumerator<Dict<string, string>> GetEnumerator()
         {
+            // Intentional: _fieldnames is set once from the first row and persisted across
+            // subsequent iterations, matching Python's csv.DictReader behavior.
             bool isFirstRow = _fieldnames == null;
 
             foreach (string line in _lines)
@@ -52,20 +54,16 @@ namespace Sharpy
                     continue;
                 }
 
-                if (_fieldnames == null)
-                {
-                    yield break;
-                }
+                // After the isFirstRow branch, _fieldnames is guaranteed non-null.
+                var fieldnames = _fieldnames!;
+                var dict = new Dict<string, string>();
 
-                var dict = new Dict<string, string>(
-                    new System.Collections.Generic.Dictionary<string, string>());
-
-                int fieldnameCount = ((System.Collections.Generic.ICollection<string>)_fieldnames).Count;
+                int fieldnameCount = ((System.Collections.Generic.ICollection<string>)fieldnames).Count;
                 int fieldCount = ((System.Collections.Generic.ICollection<string>)fields).Count;
 
                 for (int i = 0; i < fieldnameCount; i++)
                 {
-                    string key = _fieldnames[i];
+                    string key = fieldnames[i];
                     string value = i < fieldCount ? fields[i] : "";
                     dict[key] = value;
                 }
