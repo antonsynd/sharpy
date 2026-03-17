@@ -23,6 +23,8 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect lexer tok
 
 > **Sandbox note:** All `dotnet` commands (especially `build` and `test`) hang when run inside the default sandbox. When operating in a sandboxed environment, run `dotnet` commands with `dangerouslyDisableSandbox: true`.
 
+> **Prefer skills over raw commands:** Use `/build`, `/run-tests`, `/spy-emit`, `/spy-run`, `/quick-check` instead of raw `dotnet` commands. Skills handle logging, truncation, and temp file management (avoiding bash escaping issues with `#` and backticks in Sharpy source).
+
 ## Architecture
 
 ```
@@ -277,27 +279,25 @@ The emitter implicitly adds these interfaces to a class's base list when the cor
 
 Available in `.claude/skills/`:
 
-### Build & Test (Smart Truncation)
+### Build & Test
 All commands below log full output to `.claude/tmp/*.log` for investigation while showing truncated summaries. Test skills auto-build before running.
 
 | Command | Purpose |
 |---------|---------|
 | `/run-tests [filter]` | Build + run tests; shows last 80 lines on failure (log: `last-test-run.log`) |
 | `/build` | Build solution; shows last 100 lines on failure (log: `last-build.log`) |
-| `/build-verbose` | Build with diagnostic verbosity for debugging (log: `last-build-verbose.log`) |
 | `/format` | Format whitespace (required before commits) |
-| `/test-fixture <name>` | Build + run specific file-based test (log: `last-test-fixture.log`) |
 | `/regenerate-snapshots` | Build + update `.expected.cs` files after codegen changes |
 
 ### Debug & Development
 
+All `/spy-*` skills accept **inline source** or a file path. Inline source is written to a temp file via the Write tool (no bash escaping needed), so agents should prefer these skills over raw `dotnet run` commands.
+
 | Command | Purpose |
 |---------|---------|
-| `/spy-emit-csharp <file.spy>` | View generated C# code (log: `last-spy-emit-csharp.log`) |
-| `/spy-emit-ast <file.spy>` | View parsed AST (log: `last-spy-emit-ast.log`) |
-| `/spy-emit-tokens <file.spy>` | View lexer tokens (log: `last-spy-emit-tokens.log`) |
-| `/spy-run <file.spy>` | Compile and execute a .spy file (log: `last-spy-run.log`) |
-| `/spy-project <.spyproj>` | Compile and run a multi-file project (log: `last-spy-project.log`) |
+| `/spy-emit <mode> <source>` | Emit compiler output: `csharp`, `ast`, `tokens`, or `diagnostics` (log: `last-spy-emit.log`) |
+| `/spy-run <source>` | Compile and execute (log: `last-spy-run.log`) |
+| `/quick-check <source>` | Emit C# + run in one shot (logs: `last-quick-check-{emit,run}.log`) |
 | `/verify-python <expr>` | Run Python 3 to verify behavior before implementing |
 | `/clean-dotnet` | Kill zombie dotnet processes that cause hangs |
 
@@ -320,6 +320,7 @@ All commands below log full output to `.claude/tmp/*.log` for investigation whil
 | `/implement-plan <plan.md>` | Implement a plan with a coordinated agent team |
 | `/verify-implementation <plan.md>` | Verify implementation, fix gaps/bugs/regressions |
 | `/add-test-fixture <desc>` | Create a file-based integration test (`.spy` + `.expected`/`.error`) |
+| `/gap-analysis` | Run all gap discovery tests and present a unified summary |
 
 **Investigate failures:** Read logs with `/read .claude/tmp/last-test-run.log` (or other log files).
 
@@ -383,3 +384,17 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 - `vscode-extension.yml` — VS Code extension CI
 
 An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
+
+## Code Graph (MCP)
+
+CodeGraphContext provides a graph database of the codebase for structural queries. Use it for impact analysis, refactoring safety, and complexity audits — especially in the large TypeChecker and RoslynEmitter files.
+
+**When to use:**
+- Before refactoring: `analyze_code_relationships` with `find_callers` to find all call sites
+- Dead code cleanup: `find_dead_code` to detect unused functions
+- Complexity triage: `find_most_complex_functions` to identify refactoring targets
+- Cross-file navigation: `find_code` for semantic search beyond grep
+
+**First-time setup:** Run `add_code_to_graph` on `src/Sharpy.Compiler/` and `src/Sharpy.Core/` to index the codebase. Use `watch_directory` for ongoing updates during active development.
+
+**Destructive tools** (`delete_repository`, `unwatch_directory`) require manual approval.
