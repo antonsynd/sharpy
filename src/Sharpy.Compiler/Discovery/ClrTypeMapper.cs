@@ -215,6 +215,16 @@ internal class ClrTypeMapper
             };
         }
 
+        // Sharpy.Result<T, E>
+        if (genericDef.FullName == "Sharpy.Result`2")
+        {
+            return new ResultType
+            {
+                OkType = MapClrTypeToSemanticType(typeArgs[0]),
+                ErrorType = MapClrTypeToSemanticType(typeArgs[1])
+            };
+        }
+
         // Sharpy.DictItemsView<K, V>
         if (genericDef.FullName == "Sharpy.DictItemsView`2")
         {

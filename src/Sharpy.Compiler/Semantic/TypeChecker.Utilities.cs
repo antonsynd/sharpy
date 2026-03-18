@@ -388,6 +388,73 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Checks if a type contains any unresolved TypeParameterType instances.
+    /// Used to detect method-level generic type parameters that need inference.
+    /// </summary>
+    private static bool ContainsTypeParameterType(SemanticType type)
+    {
+        return type switch
+        {
+            TypeParameterType => true,
+            ResultType rt => ContainsTypeParameterType(rt.OkType) || ContainsTypeParameterType(rt.ErrorType),
+            OptionalType ot => ContainsTypeParameterType(ot.UnderlyingType),
+            NullableType nt => ContainsTypeParameterType(nt.UnderlyingType),
+            GenericType gt => gt.TypeArguments.Any(ContainsTypeParameterType),
+            FunctionType ft => ft.ParameterTypes.Any(ContainsTypeParameterType) || ContainsTypeParameterType(ft.ReturnType),
+            TupleType tt => tt.ElementTypes.Any(ContainsTypeParameterType),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Collects mappings from TypeParameterType names to concrete types by structurally
+    /// comparing a parameter type (with TypeParameterType placeholders) against an argument type
+    /// (with concrete types). Used for method-level generic type parameter inference.
+    /// </summary>
+    private static void CollectTypeParameterMappings(
+        SemanticType paramType, SemanticType argType, Dictionary<string, SemanticType> map)
+    {
+        switch (paramType)
+        {
+            case TypeParameterType tpt:
+                if (argType is not TypeParameterType and not UnknownType)
+                    map[tpt.Name] = argType;
+                break;
+            case FunctionType paramFt when argType is FunctionType argFt:
+                var minParams = Math.Min(paramFt.ParameterTypes.Count, argFt.ParameterTypes.Count);
+                for (int i = 0; i < minParams; i++)
+                    CollectTypeParameterMappings(paramFt.ParameterTypes[i], argFt.ParameterTypes[i], map);
+                CollectTypeParameterMappings(paramFt.ReturnType, argFt.ReturnType, map);
+                break;
+            case GenericType paramGt when argType is GenericType argGt && paramGt.TypeArguments.Count == argGt.TypeArguments.Count:
+                for (int i = 0; i < paramGt.TypeArguments.Count; i++)
+                    CollectTypeParameterMappings(paramGt.TypeArguments[i], argGt.TypeArguments[i], map);
+                break;
+            case ResultType paramRt when argType is ResultType argRt:
+                CollectTypeParameterMappings(paramRt.OkType, argRt.OkType, map);
+                CollectTypeParameterMappings(paramRt.ErrorType, argRt.ErrorType, map);
+                break;
+            case OptionalType paramOt when argType is OptionalType argOt:
+                CollectTypeParameterMappings(paramOt.UnderlyingType, argOt.UnderlyingType, map);
+                break;
+            case TupleType paramTt when argType is TupleType argTt && paramTt.ElementTypes.Count == argTt.ElementTypes.Count:
+                for (int i = 0; i < paramTt.ElementTypes.Count; i++)
+                    CollectTypeParameterMappings(paramTt.ElementTypes[i], argTt.ElementTypes[i], map);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Applies a type parameter substitution map to a type.
+    /// Delegates to SubstituteTypeParametersInType which handles all type forms.
+    /// </summary>
+    private SemanticType ApplyTypeParameterMap(
+        SemanticType type, Dictionary<string, SemanticType> map)
+    {
+        return SubstituteTypeParametersInType(type, map);
+    }
+
+    /// <summary>
     /// Checks if an expression is a valid assignment target.
     /// Valid targets: Identifier, MemberAccess (attribute), IndexAccess, TupleLiteral (for unpacking)
     /// Invalid targets: FunctionCall, Literal, BinaryExpression, etc.

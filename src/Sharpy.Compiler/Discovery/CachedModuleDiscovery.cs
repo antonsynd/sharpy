@@ -473,6 +473,13 @@ internal class CachedModuleDiscovery
         // Handle generic type parameters (e.g., T in Min<T>)
         if (signature.IsGenericParameter)
         {
+            // Method-level type params (e.g., U in Map<U>) must NOT be remapped
+            // to the declaring type's shared params — they are distinct parameters.
+            if (signature.IsMethodLevelTypeParam)
+            {
+                return new TypeParameterType { Name = signature.Name };
+            }
+
             // When shared type params are provided, remap by positional index
             // to ensure all methods share the same TypeParameterType instances.
             if (sharedTypeParams != null)
@@ -518,6 +525,42 @@ internal class CachedModuleDiscovery
                 return new OptionalType
                 {
                     UnderlyingType = ConvertTypeSignature(signature.TypeArguments[0], sharedTypeParams)
+                };
+            }
+
+            // Handle __func__[T1, ..., TResult] -> FunctionType (from Func<...> CLR types)
+            if (signature.Name == "__func__" && signature.TypeArguments.Count >= 1)
+            {
+                var allArgs = signature.TypeArguments
+                    .Select(ta => ConvertTypeSignature(ta, sharedTypeParams))
+                    .ToList();
+                return new FunctionType
+                {
+                    ParameterTypes = allArgs.Take(allArgs.Count - 1).ToList(),
+                    ReturnType = allArgs[allArgs.Count - 1]
+                };
+            }
+
+            // Handle __action__[T1, ...] -> FunctionType with void return
+            if (signature.Name == "__action__" && signature.TypeArguments.Count >= 1)
+            {
+                var allArgs = signature.TypeArguments
+                    .Select(ta => ConvertTypeSignature(ta, sharedTypeParams))
+                    .ToList();
+                return new FunctionType
+                {
+                    ParameterTypes = allArgs,
+                    ReturnType = SemanticType.Void
+                };
+            }
+
+            // Handle Result[T, E] -> ResultType
+            if (signature.Name == BuiltinNames.Result && signature.TypeArguments.Count == 2)
+            {
+                return new ResultType
+                {
+                    OkType = ConvertTypeSignature(signature.TypeArguments[0], sharedTypeParams),
+                    ErrorType = ConvertTypeSignature(signature.TypeArguments[1], sharedTypeParams)
                 };
             }
 

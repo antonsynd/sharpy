@@ -122,6 +122,12 @@ internal class TypeSignature
     public int GenericParameterPosition { get; set; }
 
     /// <summary>
+    /// True if this generic parameter is declared on the method (e.g., U in Map&lt;U&gt;)
+    /// rather than on the containing type (e.g., T in Result&lt;T, E&gt;).
+    /// </summary>
+    public bool IsMethodLevelTypeParam { get; set; }
+
+    /// <summary>
     /// CLR type name for mapping back.
     /// </summary>
     public string ClrTypeName { get; set; } = string.Empty;

@@ -1163,26 +1163,51 @@ internal partial class TypeChecker
         FunctionCall call, FunctionType ft, List<SemanticType> argTypes,
         int totalArgCount, bool isNullConditionalCall, bool isOptionalNullConditional)
     {
+        var paramTypes = ft.ParameterTypes;
+        var returnType = ft.ReturnType;
+
+        // Infer method-level generic type parameters from arguments BEFORE validation.
+        // For methods like Map<U>(Func<T, U> f) -> Result<U, E>, the method-level
+        // TypeParameterType("U") appears in both parameter types and return type.
+        // We infer U from the actual argument types and substitute everywhere.
+        if (ContainsTypeParameterType(returnType) || paramTypes.Any(ContainsTypeParameterType))
+        {
+            var typeParamMap = new Dictionary<string, SemanticType>();
+            var minCount = Math.Min(paramTypes.Count, argTypes.Count);
+            for (int i = 0; i < minCount; i++)
+            {
+                CollectTypeParameterMappings(paramTypes[i], argTypes[i], typeParamMap);
+            }
+
+            if (typeParamMap.Count > 0)
+            {
+                returnType = ApplyTypeParameterMap(returnType, typeParamMap);
+                paramTypes = paramTypes
+                    .Select(p => ApplyTypeParameterMap(p, typeParamMap))
+                    .ToList();
+            }
+        }
+
         // Skip validation for .NET types with multiple constructor overloads
         // (C# compiler will handle overload resolution)
         if (!ft.SkipArgumentValidation)
         {
             // Validate argument count (accounting for optional parameters with defaults)
-            var requiredCount = ft.ParameterTypes.Count - ft.OptionalParameterCount;
+            var requiredCount = paramTypes.Count - ft.OptionalParameterCount;
             var tooFew = totalArgCount < requiredCount;
-            var tooMany = totalArgCount > ft.ParameterTypes.Count;
+            var tooMany = totalArgCount > paramTypes.Count;
 
             if (tooFew || tooMany)
             {
-                if (ft.OptionalParameterCount > 0 && requiredCount != ft.ParameterTypes.Count)
+                if (ft.OptionalParameterCount > 0 && requiredCount != paramTypes.Count)
                 {
-                    AddError($"Function expects {requiredCount} to {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
+                    AddError($"Function expects {requiredCount} to {paramTypes.Count} arguments but got {totalArgCount}",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
                         span: call.Span);
                 }
                 else
                 {
-                    AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
+                    AddError($"Function expects {paramTypes.Count} arguments but got {totalArgCount}",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
                         span: call.Span);
                 }
@@ -1192,17 +1217,15 @@ internal partial class TypeChecker
                 // Validate positional argument types
                 for (int i = 0; i < argTypes.Count; i++)
                 {
-                    if (!IsAssignable(argTypes[i], ft.ParameterTypes[i]))
+                    if (!IsAssignable(argTypes[i], paramTypes[i]))
                     {
-                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{ft.ParameterTypes[i].GetDisplayName()}'",
+                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{paramTypes[i].GetDisplayName()}'",
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
                     }
                 }
             }
         }
-
-        var returnType = ft.ReturnType;
 
         // Wrap result in optional/nullable for null conditional calls
         if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
