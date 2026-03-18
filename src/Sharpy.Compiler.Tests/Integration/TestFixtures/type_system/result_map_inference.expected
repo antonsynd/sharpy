@@ -1,0 +1,6 @@
+Ok(10)
+Ok(5)
+Err(error: bad)
+Err(3)
+Ok(10)
+Err(bad)

@@ -1,0 +1,41 @@
+# Test: Result.map() and Result.map_err() type inference
+# Verifies the compiler infers correct return types without explicit annotations
+
+def double_it(n: int) -> int:
+    return n * 2
+
+def to_string(n: int) -> str:
+    return str(n)
+
+def prefix_error(e: str) -> str:
+    return f"error: {e}"
+
+def to_error_code(e: str) -> int:
+    return len(e)
+
+def main():
+    # Named function with map - inferred type should be int !str
+    ok_val: int !str = Ok(5)
+    mapped = ok_val.map(double_it)
+    print(mapped)
+
+    # Lambda with map - inferred type should be str !str
+    mapped_lambda = ok_val.map(lambda x: str(x))
+    print(mapped_lambda)
+
+    # map_err with named function - inferred type should be int !str
+    err_val: int !str = Err("bad")
+    remapped = err_val.map_err(prefix_error)
+    print(remapped)
+
+    # map_err with lambda changing error type - inferred type should be int !int
+    remapped_lambda = err_val.map_err(lambda e: len(e))
+    print(remapped_lambda)
+
+    # Chained map calls - inferred type should be str !str
+    chained = ok_val.map(double_it).map(to_string)
+    print(chained)
+
+    # map on Err propagates the error
+    err_mapped = err_val.map(double_it)
+    print(err_mapped)

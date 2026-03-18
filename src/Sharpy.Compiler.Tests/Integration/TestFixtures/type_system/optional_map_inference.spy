@@ -1,0 +1,31 @@
+# Test: Optional.map() type inference
+# Verifies the compiler infers correct return types without explicit annotations
+
+def double_it(n: int) -> int:
+    return n * 2
+
+def to_string(n: int) -> str:
+    return str(n)
+
+def main():
+    # Named function with map - inferred type should be int?
+    some_val: int? = Some(7)
+    mapped = some_val.map(double_it)
+    print(mapped)
+
+    # Lambda with map - inferred type should be str?
+    mapped_lambda = some_val.map(lambda x: str(x))
+    print(mapped_lambda)
+
+    # map on None propagates None
+    none_val: int? = None()
+    mapped_none = none_val.map(double_it)
+    print(mapped_none)
+
+    # Chained map calls
+    chained = some_val.map(double_it).map(to_string)
+    print(chained)
+
+    # Use unwrap_or on mapped result to verify type is correct
+    value = some_val.map(double_it).unwrap_or(0)
+    print(value)
