@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
 using Sharpy.Lsp;
 using Xunit;
 
@@ -124,6 +125,82 @@ public class HoverTests : IDisposable
         formatted.Should().Contain("```sharpy");
         formatted.Should().Contain("def greet");
         formatted.Should().EndWith("\n```");
+    }
+
+    [Fact]
+    public async Task Hover_ResultMap_ShowsCorrectReturnType()
+    {
+        // result.map(lambda x: x * 2) should return int !str, not <?>
+        var source = "def main():\n    result: int !str = Ok(10)\n    mapped = result.map(lambda x: x * 2)\n    print(mapped)";
+        _workspace.OpenDocument("file:///test_result_map.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_result_map.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SemanticQuery.Should().NotBeNull();
+
+        // Find the FunctionCall node for result.map(...) on line 3
+        // "    mapped = result.map(lambda x: x * 2)" — "map" starts at col 20
+        var callNode = _api.FindNodeOfType<FunctionCall>(analysis.Ast!, 3, 20);
+        callNode.Should().NotBeNull("should find the result.map() call on line 3");
+
+        var effectiveType = analysis.SemanticQuery!.GetEffectiveType(callNode!);
+        effectiveType.Should().NotBeNull("result.map() should have a resolved type");
+        effectiveType.Should().NotBeOfType<UnknownType>(
+            "result.map() should resolve to a concrete type, not <?>");
+        effectiveType.Should().BeOfType<ResultType>();
+        var resultType = (ResultType)effectiveType!;
+        resultType.OkType.Should().BeOfType<BuiltinType>();
+        resultType.OkType.GetDisplayName().Should().Be("int");
+        resultType.ErrorType.GetDisplayName().Should().Be("str");
+    }
+
+    [Fact]
+    public async Task Hover_ResultMapErr_ShowsCorrectReturnType()
+    {
+        // result.map_err(lambda e: int(e)) should return int !int, not <?>
+        var source = "def main():\n    result: int !str = Ok(10)\n    mapped = result.map_err(lambda e: int(e))\n    print(mapped)";
+        _workspace.OpenDocument("file:///test_result_map_err.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_result_map_err.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SemanticQuery.Should().NotBeNull();
+
+        // "    mapped = result.map_err(lambda e: int(e))" — "map_err" starts at col 20
+        var callNode = _api.FindNodeOfType<FunctionCall>(analysis.Ast!, 3, 20);
+        callNode.Should().NotBeNull("should find the result.map_err() call on line 3");
+
+        var effectiveType = analysis.SemanticQuery!.GetEffectiveType(callNode!);
+        effectiveType.Should().NotBeNull("result.map_err() should have a resolved type");
+        effectiveType.Should().NotBeOfType<UnknownType>(
+            "result.map_err() should resolve to a concrete type, not <?>");
+        effectiveType.Should().BeOfType<ResultType>();
+        var resultType = (ResultType)effectiveType!;
+        resultType.OkType.GetDisplayName().Should().Be("int");
+        resultType.ErrorType.GetDisplayName().Should().Be("int");
+    }
+
+    [Fact]
+    public async Task Hover_OptionalMap_ShowsCorrectReturnType()
+    {
+        // opt.map(lambda x: str(x)) should return str?, not <?>
+        var source = "def main():\n    opt: int? = Some(42)\n    mapped = opt.map(lambda x: str(x))\n    print(mapped)";
+        _workspace.OpenDocument("file:///test_optional_map.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_optional_map.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SemanticQuery.Should().NotBeNull();
+
+        // "    mapped = opt.map(lambda x: str(x))" — "map" starts at col 17
+        var callNode = _api.FindNodeOfType<FunctionCall>(analysis.Ast!, 3, 17);
+        callNode.Should().NotBeNull("should find the opt.map() call on line 3");
+
+        var effectiveType = analysis.SemanticQuery!.GetEffectiveType(callNode!);
+        effectiveType.Should().NotBeNull("opt.map() should have a resolved type");
+        effectiveType.Should().NotBeOfType<UnknownType>(
+            "opt.map() should resolve to a concrete type, not <?>");
+        effectiveType.Should().BeOfType<OptionalType>();
+        var optionalType = (OptionalType)effectiveType!;
+        optionalType.UnderlyingType.GetDisplayName().Should().Be("str");
     }
 
     public void Dispose()
