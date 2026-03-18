@@ -1,0 +1,10 @@
+# Test heapq.merge with reverse=True
+import heapq
+
+def main():
+    a: list[int] = [6, 4, 2]
+    b: list[int] = [5, 3, 1]
+
+    # Merge two descending-sorted lists in reverse order
+    result: list[int] = list(heapq.merge(a, b, reverse=True))
+    print(result)

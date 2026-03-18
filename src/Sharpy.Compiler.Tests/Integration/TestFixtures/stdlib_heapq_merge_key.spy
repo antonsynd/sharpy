@@ -1,0 +1,10 @@
+# Test heapq.merge with key parameter
+import heapq
+
+def main():
+    a: list[str] = ["hi", "fig", "apple"]
+    b: list[str] = ["banana", "cherry", "elephant"]
+
+    # Merge sorted-by-length string lists using len as key
+    result: list[str] = list(heapq.merge(a, b, key=len))
+    print(result)
