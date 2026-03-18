@@ -535,7 +535,7 @@ internal class OverloadIndexBuilder
                 clrTypeArgs.Any(a => a.IsGenericParameter && a.DeclaringMethod != null
                     && a.DeclaringMethod.DeclaringType?.IsGenericType == true))
             {
-                signature.Name = genericDefName.StartsWith("System.Action`") ? "__action__" : "__func__";
+                signature.Name = genericDefName.StartsWith("System.Action`") ? TypeSignature.ActionSentinel : TypeSignature.FuncSentinel;
                 signature.IsGeneric = true;
                 signature.TypeArguments = clrTypeArgs
                     .Select(CreateTypeSignature)

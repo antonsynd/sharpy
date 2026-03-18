@@ -105,6 +105,12 @@ internal class ParameterSignature
 /// </summary>
 internal class TypeSignature
 {
+    /// <summary>Sentinel name encoding a Func&lt;...&gt; containing method-level type params.</summary>
+    internal const string FuncSentinel = "__func__";
+
+    /// <summary>Sentinel name encoding an Action&lt;...&gt; containing method-level type params.</summary>
+    internal const string ActionSentinel = "__action__";
+
     public string Name { get; set; } = string.Empty;
     public bool IsGeneric { get; set; }
     public List<TypeSignature> TypeArguments { get; set; } = new();

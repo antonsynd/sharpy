@@ -4,6 +4,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Lsp.Handlers;
 
@@ -97,8 +98,8 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                         var builtinType = objType switch
                         {
                             GenericType gt => analysis.SymbolTable.BuiltinRegistry.GetType(gt.Name),
-                            ResultType => analysis.SymbolTable.BuiltinRegistry.GetType("Result"),
-                            OptionalType => analysis.SymbolTable.BuiltinRegistry.GetType("Optional"),
+                            ResultType => analysis.SymbolTable.BuiltinRegistry.GetType(BuiltinNames.Result),
+                            OptionalType => analysis.SymbolTable.BuiltinRegistry.GetType(BuiltinNames.Optional),
                             BuiltinType bt => analysis.SymbolTable.BuiltinRegistry.GetType(bt.Name),
                             _ => null
                         };

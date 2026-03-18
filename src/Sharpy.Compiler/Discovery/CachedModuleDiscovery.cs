@@ -529,7 +529,7 @@ internal class CachedModuleDiscovery
             }
 
             // Handle __func__[T1, ..., TResult] -> FunctionType (from Func<...> CLR types)
-            if (signature.Name == "__func__" && signature.TypeArguments.Count >= 1)
+            if (signature.Name == TypeSignature.FuncSentinel && signature.TypeArguments.Count >= 1)
             {
                 var allArgs = signature.TypeArguments
                     .Select(ta => ConvertTypeSignature(ta, sharedTypeParams))
@@ -542,7 +542,7 @@ internal class CachedModuleDiscovery
             }
 
             // Handle __action__[T1, ...] -> FunctionType with void return
-            if (signature.Name == "__action__" && signature.TypeArguments.Count >= 1)
+            if (signature.Name == TypeSignature.ActionSentinel && signature.TypeArguments.Count >= 1)
             {
                 var allArgs = signature.TypeArguments
                     .Select(ta => ConvertTypeSignature(ta, sharedTypeParams))

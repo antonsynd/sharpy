@@ -437,9 +437,9 @@ internal partial class TypeChecker
         return type switch
         {
             GenericType gt => (_symbolTable.BuiltinRegistry.GetType(gt.Name), gt.TypeArguments),
-            ResultType rt => (_symbolTable.BuiltinRegistry.GetType("Result"),
+            ResultType rt => (_symbolTable.BuiltinRegistry.GetType(BuiltinNames.Result),
                               new List<SemanticType> { rt.OkType, rt.ErrorType }),
-            OptionalType ot => (_symbolTable.BuiltinRegistry.GetType("Optional"),
+            OptionalType ot => (_symbolTable.BuiltinRegistry.GetType(BuiltinNames.Optional),
                                 new List<SemanticType> { ot.UnderlyingType }),
             BuiltinType bt => (_symbolTable.BuiltinRegistry.GetType(bt.Name), null),
             _ => (null, null)
