@@ -40,6 +40,9 @@ Audit the Sharpy compiler for architecture and modularity health. Focus on:
 - Duplication: look for repeated patterns that should be abstracted
 - Separation of concerns: verify TypeChecker vs ValidationPipeline responsibility split, RoslynEmitter partial file boundaries
 
+Use CodeGraphContext `find_dead_code` and `find_most_complex_functions` to identify hotspots.
+Use CodeGraphContext `analyze_code_relationships` to check for circular dependencies between Semantic/, CodeGen/, Parser/.
+
 Key directories: src/Sharpy.Compiler/ (Lexer/, Parser/, Semantic/, CodeGen/, Diagnostics/, Analysis/), src/Sharpy.Lsp/
 Key files: RoslynEmitter*.cs (16 partials), TypeChecker*.cs (10 partials), Parser*.cs (6 partials)
 
@@ -99,6 +102,9 @@ Gather codebase metrics for the Sharpy compiler. Focus on:
 - Count total .spy test fixture files
 - Look for magic numbers/strings in CodeGen/ and Semantic/ that should be constants
 - Check for unused diagnostic codes (defined in DiagnosticCodes.cs but never referenced)
+
+Use CodeGraphContext `get_repository_stats` for structural metrics.
+Use CodeGraphContext `find_most_complex_functions` for complexity data.
 
 Output your findings as structured markdown with a metrics dashboard table and detailed findings.
 ```

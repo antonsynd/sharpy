@@ -18,6 +18,21 @@ Full-stack implementation agent for Sharpy compiler and standard library.
 5. **Test** — Run tests, add unit tests + `.spy`/`.expected` integration tests
 6. **PR** — Branch `claude/<action>-<description>`, commit, push
 
+## Tool Selection
+
+Prefer MCP servers over raw search/edit tools for structural operations:
+
+| Operation | Tool |
+|-----------|------|
+| Find symbol definition or callers | Serena `find_symbol`, `find_referencing_symbols` |
+| Survey a file's structure | Serena `get_symbols_overview` |
+| Replace entire methods | Serena `replace_symbol_body` |
+| Impact analysis before changes | CodeGraphContext `analyze_code_relationships` |
+| Dead code detection | CodeGraphContext `find_dead_code` |
+| Text/regex search (TODOs, strings) | Grep |
+| Find files by path pattern | Glob |
+| Small intra-method edits | Edit |
+
 ## Critical Rules
 
 - **Never modify test expectations to pass** — fix the implementation

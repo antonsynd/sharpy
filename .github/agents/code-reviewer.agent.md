@@ -47,6 +47,13 @@ For `src/Sharpy.Lsp/` changes:
 - Incremental analysis: prefer partial re-analysis over full recompilation
 - OmniSharp patterns: implement correct handler interfaces, register capabilities
 
+### Navigation Tools
+
+For large PRs spanning RoslynEmitter or TypeChecker partials:
+- Use Serena `find_referencing_symbols` to verify all callers of changed methods are updated
+- Use CodeGraphContext `find_callers` for impact analysis of changed APIs
+- Use CodeGraphContext `find_dead_code` to flag unreachable code introduced by the PR
+
 ### Change Scope
 - No unnecessary churn; localized changes over sweeping refactors
 - Split unrelated formatting into separate PRs

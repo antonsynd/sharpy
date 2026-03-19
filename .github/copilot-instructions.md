@@ -47,6 +47,10 @@ dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # File-base
 python3 -c "..."                                     # Verify Python semantics FIRST
 ```
 
+## MCP-Powered Navigation
+
+Prefer Serena (`find_symbol`, `find_referencing_symbols`, `replace_symbol_body`) over Grep+Read+Edit for symbol-level operations in large files (RoslynEmitter, TypeChecker, Parser). Prefer CodeGraphContext (`analyze_code_relationships`, `find_dead_code`, `find_callers`) for impact analysis and dependency queries.
+
 ## Critical Rules
 
 1. **Never modify `.expected`/`.error` to pass tests**—fix the implementation

@@ -385,16 +385,50 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 
 An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
 
-## Code Graph (MCP)
+## MCP Servers for Codebase Navigation
 
-CodeGraphContext provides a graph database of the codebase for structural queries. Use it for impact analysis, refactoring safety, and complexity audits — especially in the large TypeChecker and RoslynEmitter files.
+Two MCP servers provide deeper codebase understanding than grep/glob. Use them instead of raw search tools for structural queries.
 
-**When to use:**
-- Before refactoring: `analyze_code_relationships` with `find_callers` to find all call sites
-- Dead code cleanup: `find_dead_code` to detect unused functions
-- Complexity triage: `find_most_complex_functions` to identify refactoring targets
-- Cross-file navigation: `find_code` for semantic search beyond grep
+### Serena (Symbol-Level Navigation & Editing)
+
+Serena provides LSP-powered, symbol-aware operations. **Prefer Serena over Grep/Glob/Read for:**
+
+| Task | Instead of... | Use Serena... |
+|------|---------------|---------------|
+| Find a method body | `Grep` for method name + `Read` the file | `find_symbol` with `include_body=True` |
+| Find all callers of a function | `Grep` for function name (noisy, misses renames) | `find_referencing_symbols` (precise, cross-file) |
+| Understand a class's shape | `Read` entire file | `get_symbols_overview` or `find_symbol` with `depth=1` |
+| Replace a method body | `Edit` with `old_string`/`new_string` | `replace_symbol_body` (knows exact boundaries) |
+| Add code before/after a symbol | `Edit` with surrounding context | `insert_before_symbol` / `insert_after_symbol` |
+| Rename a symbol across codebase | Multiple `Edit` calls + `Grep` | `rename_symbol` (handles all references) |
+
+**When to still use Grep/Glob:** Pattern searches across strings/comments, searching for non-symbol text (TODO comments, magic values), file discovery by path pattern.
+
+### CodeGraphContext (Architecture & Relationship Queries)
+
+CodeGraphContext pre-indexes the codebase into a graph database. **Prefer CodeGraphContext for:**
+
+| Task | Instead of... | Use CodeGraphContext... |
+|------|---------------|------------------------|
+| Impact analysis before refactoring | Manual Grep for callers across files | `analyze_code_relationships` with `find_callers` |
+| Find dead code | Guess-and-grep | `find_dead_code` |
+| Complexity triage | Read files manually | `find_most_complex_functions` |
+| "How does system X work?" | Multi-file Read + Grep | `analyze_code_relationships` |
+| Cross-language navigation | Separate Grep passes per file type | `find_code` (semantic search) |
+| Call chain analysis | Recursive Grep + Read | `execute_cypher_query` for graph traversal |
 
 **First-time setup:** Run `add_code_to_graph` on `src/Sharpy.Compiler/` and `src/Sharpy.Core/` to index the codebase. Use `watch_directory` for ongoing updates during active development.
 
 **Destructive tools** (`delete_repository`, `unwatch_directory`) require manual approval.
+
+### Decision Guide: Which Tool When?
+
+```
+Need to find a file by name/pattern?      → Glob
+Need to search text/regex across files?   → Grep
+Need symbol definition, callers, shape?   → Serena (find_symbol, find_referencing_symbols)
+Need to edit a whole method/function?     → Serena (replace_symbol_body)
+Need call chains, impact, dead code?      → CodeGraphContext
+Need architecture-level understanding?    → CodeGraphContext
+Need to edit a few lines within a method? → Edit (or Serena replace_content)
+```

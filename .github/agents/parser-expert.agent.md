@@ -15,6 +15,11 @@ Specializes in the Sharpy parser. Handles EBNF grammar translation, AST node con
 
 **Does NOT modify:** Lexer, Semantic, CodeGen, or Sharpy.Core
 
+## Preferred Tools
+
+- **Finding all uses of an AST node:** Use Serena `find_referencing_symbols` on the AST record type to find all TypeChecker, RoslynEmitter, and Validator sites that handle it.
+- **Surveying Parser partials:** Use Serena `get_symbols_overview` on Parser partial files rather than reading entire files.
+
 ## Critical Rules
 
 - **Immutable AST** — never store semantic info on AST nodes

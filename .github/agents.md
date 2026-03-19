@@ -54,6 +54,17 @@ All agents follow this priority order when axioms conflict:
 |-------|---------|--------|
 | `dogfood-analyst` | Classifies dogfood failures (C1-C5), writes repro files, delegates to `verification-expert`/`test-expert` | Triage reports + test fixtures |
 
+## MCP Tools for All Agents
+
+Two MCP servers are available for codebase navigation. Prefer them over Grep/Read for structural queries:
+
+| Server | Strength | Use For |
+|--------|----------|---------|
+| **Serena** | Live LSP, symbol-level ops | `find_symbol`, `find_referencing_symbols`, `get_symbols_overview`, `replace_symbol_body`, `rename_symbol` |
+| **CodeGraphContext** | Pre-indexed graph | `find_callers`, `find_dead_code`, `find_most_complex_functions`, `analyze_code_relationships` |
+
+**Rule of thumb:** If you're searching for a *symbol* (function, class, method), use Serena. If you need *relationships* (who calls X, what depends on Y), use CodeGraphContext. Use Grep only for text/regex patterns (comments, strings, non-symbol content).
+
 ## Key Rules for All Agents
 
 1. **Never modify test expectations to pass** — fix the implementation

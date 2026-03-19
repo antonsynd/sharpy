@@ -24,6 +24,13 @@ Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, 
 
 **Does NOT modify:** Lexer, Parser, CodeGen, or Sharpy.Core
 
+## Preferred Tools
+
+- **Navigating TypeChecker partials (10 files):** Use Serena `get_symbols_overview` to survey a partial, `find_symbol` with `depth=1` to list methods in a class.
+- **Tracing type resolution:** Use Serena `find_referencing_symbols` to find all consumers of a SemanticType subclass or Symbol property.
+- **Understanding validator relationships:** Use CodeGraphContext `analyze_code_relationships` on validator classes to see what they call/reference.
+- **Editing type checking methods:** Use Serena `replace_symbol_body` for clean method replacements in large TypeChecker files.
+
 ## Core Principles
 
 - **Immutable AST** — annotations stored in `SemanticInfo`, never on AST nodes

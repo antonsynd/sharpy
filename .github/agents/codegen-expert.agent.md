@@ -31,6 +31,13 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type 
 
 **Does NOT modify:** Lexer, Parser, Semantic analysis, or Sharpy.Core
 
+## Preferred Tools
+
+- **Navigating RoslynEmitter partials (16 files):** Use Serena `get_symbols_overview` to survey a partial, `find_symbol` to read specific methods. Avoid reading entire 1000+ line files.
+- **Finding all emission sites for an AST node:** Use Serena `find_referencing_symbols` on the AST node type, or CodeGraphContext `analyze_code_relationships` with `find_callers`.
+- **Editing emitter methods:** Use Serena `replace_symbol_body` for full method replacements. Use `Edit` only for small intra-method patches.
+- **Impact analysis:** Before changing a shared helper (e.g., `EmitExpression`), use CodeGraphContext `find_callers` to assess blast radius.
+
 ## Critical Rules
 
 - **SyntaxFactory only** — no string templating
