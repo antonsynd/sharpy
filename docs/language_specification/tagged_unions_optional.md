@@ -227,7 +227,7 @@ def optional_to_nullable(opt: T?) -> T | None:
 See [Maybe Expressions](maybe_expressions.md) for details on the `maybe` keyword.
 
 *Implementation*
-- *Phase 8.6: `union` declarations implemented (parser, semantic, codegen). Unions lower to abstract base class + sealed nested case classes. Optional[T] as struct-based tagged union is planned for a later phase.*
+- *✅ Implemented — `Optional[T]` is a struct-based tagged union in Sharpy.Core. Pattern matching with `Some`/`None`, the `?` operator, and `maybe` expressions are all supported.*
 
 ## Implementation Details
 

@@ -1,7 +1,5 @@
 # Operator Overloading
 
-> **Known gaps:** `__div__`/`__mod__` operator dispatch not yet codegen'd (#277). `__getitem__`/`__setitem__` indexer codegen not yet implemented (#276).
-
 Classes can define dunder methods (double-underscore methods like `__add__`, `__eq__`) to customize how operators and built-in functions behave with their instances. **Dunder methods are a definition mechanism only**—they specify *how* a type behaves, but users invoke that behavior through operators and built-in functions, not by calling dunders directly.
 
 For details on when and how dunders can be called, including inheritance and cross-dunder synthesis, see [Dunder Invocation Rules](dunder_invocation_rules.md).
