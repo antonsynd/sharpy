@@ -1,0 +1,38 @@
+class Bag:
+    _items: list[str]
+
+    def __init__(self):
+        self._items = []
+
+    def add(self, item: str) -> None:
+        self._items.append(item)
+
+    def __contains__(self, item: str) -> bool:
+        # Custom membership: case-insensitive comparison
+        for stored in self._items:
+            if stored.lower() == item.lower():
+                return True
+        return False
+
+def main():
+    bag: Bag = Bag()
+    bag.add("Hello")
+    bag.add("World")
+
+    # in operator dispatches to __contains__
+    print("hello" in bag)
+    print("WORLD" in bag)
+    print("missing" in bag)
+
+    # not in also dispatches to __contains__
+    print("hello" not in bag)
+    print("missing" not in bag)
+
+    # Built-in list uses standard Contains
+    items: list[int] = [1, 2, 3]
+    print(2 in items)
+    print(5 in items)
+
+    # String uses Contains for substring test
+    print("ell" in "Hello")
+    print("xyz" in "Hello")
