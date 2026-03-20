@@ -1,0 +1,19 @@
+# Test heapq.merge with 3 sorted lists and reverse=True
+import heapq
+
+def main():
+    a: list[int] = [10, 7, 3]
+    b: list[int] = [9, 5, 1]
+    c: list[int] = [8, 6, 2]
+
+    # Merge three descending-sorted lists in reverse (descending) order
+    result: list[int] = list(heapq.merge(a, b, c, reverse=True))
+    print(result)
+
+    # Also test merge of four lists without reverse (params overload)
+    d: list[int] = [1, 4, 7]
+    e: list[int] = [2, 5, 8]
+    f: list[int] = [3, 6, 9]
+    g: list[int] = [0, 10, 11]
+    result2: list[int] = list(heapq.merge(d, e, f, g))
+    print(result2)
