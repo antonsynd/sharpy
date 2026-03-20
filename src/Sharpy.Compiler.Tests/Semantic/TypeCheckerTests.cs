@@ -2197,4 +2197,91 @@ def process() -> int:
     }
 
     #endregion
+
+    #region CLR Discovery Helper and Tests
+
+    /// <summary>
+    /// Compiles source through the full semantic pipeline (name resolution, type resolution,
+    /// type checking) with CLR discovery enabled via <see cref="BuiltinRegistry"/> and
+    /// <see cref="CachedModuleDiscovery"/>. Returns SemanticInfo so callers can assert on
+    /// expression types resolved through CLR reflection (e.g., builtin function return types,
+    /// method calls on Result/Optional, collection methods).
+    /// </summary>
+    private (Module Module, SymbolTable SymbolTable, SemanticInfo SemanticInfo, TypeChecker TypeChecker)
+        CompileAndCheckWithDiscovery(string source, bool isEntryPoint = false)
+    {
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
+        var module = parser.ParseModule();
+
+        // BuiltinRegistry constructor creates CachedModuleDiscovery internally
+        // and loads Sharpy.Core assembly for CLR-based type/function discovery
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
+
+        // Pass 1: Name resolution
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance, semanticBinding);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance();
+        semanticBinding.MaterializeInheritance();
+
+        // Pass 2: Type resolution
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
+
+        // Pass 3: Type checking (also runs validation pipeline)
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance)
+        {
+            SemanticBinding = semanticBinding
+        };
+        typeChecker.CheckModule(module, isEntryPoint: isEntryPoint);
+
+        return (module, symbolTable, semanticInfo, typeChecker);
+    }
+
+    [Fact]
+    public void DiscoveryHelper_BuiltinLenReturnsInt()
+    {
+        var source = @"
+def main():
+    x: list[int] = [1, 2, 3]
+    n: int = len(x)
+";
+        var (_, _, _, typeChecker) = CompileAndCheckWithDiscovery(source, isEntryPoint: true);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
+            "len() on list[int] should type-check as int via CLR discovery");
+    }
+
+    [Fact]
+    public void DiscoveryHelper_ListAppendTypeChecks()
+    {
+        var source = @"
+def main():
+    items: list[str] = []
+    items.append(""hello"")
+";
+        var (_, _, _, typeChecker) = CompileAndCheckWithDiscovery(source, isEntryPoint: true);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
+            "list[str].append(str) should type-check correctly via CLR discovery");
+    }
+
+    [Fact]
+    public void DiscoveryHelper_BuiltinPrintTypeChecks()
+    {
+        var source = @"
+def main():
+    print(42)
+    print(""hello"")
+";
+        var (_, _, _, typeChecker) = CompileAndCheckWithDiscovery(source, isEntryPoint: true);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
+            "print() should type-check correctly via CLR-discovered builtin functions");
+    }
+
+    #endregion
 }
