@@ -10,7 +10,6 @@ The following features require .NET 7+ runtime or C# 11+ and cannot be supported
 | Generic math constraints | C# 11 | .NET 7 | BCL interfaces |
 | `required` members | C# 11 | .NET 7 | Attribute + compiler |
 | Record structs | C# 10 | Any | Compiler feature |
-| Decimal `m`/`M` literal suffix | C# 9.0 | Any | Requires `decimal` type support throughout the compiler |
 | `field` keyword in properties | C# 13 | Any | Compiler feature |
 | Extension properties/operators | C# 14 | Any | Compiler feature |
 | User-defined `+=` operators | C# 14 | Any | Compiler feature |
