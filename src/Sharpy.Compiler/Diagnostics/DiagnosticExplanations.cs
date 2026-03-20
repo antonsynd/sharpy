@@ -993,6 +993,29 @@ public static class DiagnosticExplanations
             "An augmented operator other than '+=' or '-=' was used on an event. Events only support adding handlers with '+=' and removing handlers with '-='.",
             "btn.on_click *= handler  # error: *= not supported",
             "Use '+=' to add a handler or '-=' to remove one:\nbtn.on_click += handler\nbtn.on_click -= handler");
+
+        // ── Semantic errors: Dataclass (SPY0380-SPY0383) ────────────────────
+
+        Add(dict, DiagnosticCodes.Semantic.DataclassOnNonClass, "@dataclass on non-class type", "Semantic",
+            "The @dataclass decorator can only be applied to class definitions. Structs and interfaces do not support @dataclass.",
+            "@dataclass\nstruct Point:\n    x: int\n    y: int",
+            "Use a class instead:\n@dataclass\nclass Point:\n    x: int\n    y: int");
+
+        Add(dict, DiagnosticCodes.Semantic.DataclassFieldOrdering, "Dataclass field ordering error", "Semantic",
+            "A field without a default value follows a field with a default value in a @dataclass. Fields without defaults must come before fields with defaults.",
+            "@dataclass\nclass Bad:\n    x: int = 10\n    y: int  # error: no default after default",
+            "Reorder fields so non-default fields come first:\n@dataclass\nclass Good:\n    y: int\n    x: int = 10");
+
+        Add(dict, DiagnosticCodes.Semantic.DataclassFieldNoType, "Dataclass field missing type annotation", "Semantic",
+            "A field in a @dataclass does not have a type annotation. All dataclass fields must have explicit type annotations.",
+            "@dataclass\nclass Bad:\n    x = 10  # error: no type annotation",
+            "Add a type annotation:\n@dataclass\nclass Good:\n    x: int = 10");
+
+        Add(dict, DiagnosticCodes.Semantic.DataclassInvalidOption, "Invalid @dataclass option", "Semantic",
+            "An unrecognized or invalid option was passed to @dataclass. Valid options are frozen, eq, and repr, all of which must be boolean values.",
+            "@dataclass(frozen=\"yes\")  # error: must be True/False\nclass Bad:\n    x: int",
+            "Use boolean values for @dataclass options:\n@dataclass(frozen=True)\nclass Good:\n    x: int");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",
@@ -1286,6 +1309,34 @@ public static class DiagnosticExplanations
             "This restriction ensures that dunder dispatch is always static and verifiable at compile time.",
             "class Foo:\n    def __str__(self) -> str:\n        f = self.__eq__  # error: captured dunder reference\n        return \"Foo\"",
             "Call the dunder method immediately instead of capturing it:\nclass Foo:\n    def __str__(self) -> str:\n        result: bool = self.__eq__(other)  # OK: immediate call\n        return \"Foo\"");
+
+        // ── Validation errors: Access modifier decorators (SPY0430-SPY0431)
+
+        Add(dict, DiagnosticCodes.Validation.ConflictingAccessModifiers,
+            "Conflicting access modifier decorators",
+            "Validation",
+            "A definition has multiple conflicting access modifier decorators (e.g., @private and @protected). " +
+            "Only one access modifier decorator is allowed per definition.",
+            "class Foo:\n    @private\n    @protected\n    def method(self) -> None:\n        ...",
+            "Use only one access modifier decorator:\nclass Foo:\n    @private\n    def method(self) -> None:\n        ...");
+
+        Add(dict, DiagnosticCodes.Validation.AccessModifierOnDunder,
+            "Access modifier on dunder method",
+            "Validation",
+            "An access modifier decorator (@private, @protected, @internal) was applied to a dunder method. " +
+            "Dunder methods are protocol methods with well-defined semantics and should not have their access level changed.",
+            "class Foo:\n    @private\n    def __init__(self) -> None:\n        ...",
+            "Remove the access modifier decorator from the dunder method:\nclass Foo:\n    def __init__(self) -> None:\n        ...");
+
+        // ── Validation warnings: Deprecation (SPY0464) ─────────────────
+
+        Add(dict, DiagnosticCodes.Validation.DeprecatedBodylessSyntax,
+            "Deprecated body-less abstract method syntax",
+            "Validation",
+            "An abstract method uses the deprecated body-less syntax (no body at all). " +
+            "The preferred syntax uses '...' (ellipsis) as the method body to indicate an abstract method.",
+            "@abstract\nclass Shape:\n    def area(self) -> float  # deprecated: no body",
+            "Use ellipsis as the body:\n@abstract\nclass Shape:\n    def area(self) -> float: ...");
 
         // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 

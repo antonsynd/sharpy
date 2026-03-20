@@ -1055,6 +1055,10 @@ internal partial class RoslynEmitter
             if (DecoratorNames.KnownModifierDecorators.Contains(decorator.Name))
                 continue;
 
+            // Skip @dataclass — it's handled by dataclass codegen, not emitted as an attribute
+            if (decorator.Name == DecoratorNames.Dataclass)
+                continue;
+
             // Build the attribute name
             NameSyntax attributeName;
             if (decorator.QualifiedParts.Length > 0)

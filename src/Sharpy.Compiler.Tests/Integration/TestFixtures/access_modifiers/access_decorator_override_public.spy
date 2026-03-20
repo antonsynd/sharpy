@@ -1,0 +1,8 @@
+class Foo:
+    @public
+    def _internal_method(self) -> str:
+        return "accessible"
+
+def main():
+    f: Foo = Foo()
+    print(f._internal_method())

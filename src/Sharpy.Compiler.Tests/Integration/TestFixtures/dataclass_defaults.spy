@@ -1,0 +1,14 @@
+@dataclass
+class Config:
+    name: str
+    debug: bool = False
+    retries: int = 3
+
+def main():
+    c1 = Config("app")
+    print(c1)
+    print(c1.name)
+    print(c1.debug)
+    print(c1.retries)
+    c2 = Config("app", True, 5)
+    print(c2)

@@ -1,0 +1,22 @@
+class Counter:
+    property count: int
+
+    property get count(self) -> int:
+        return self._count
+
+    property set count(self, value: int):
+        if value >= 0:
+            self._count = value
+
+    def __init__(self):
+        self._count = 0
+
+def main():
+    c = Counter()
+    print(c.count)
+    c.count = 5
+    print(c.count)
+    c.count = -1
+    print(c.count)
+    c.count = 10
+    print(c.count)

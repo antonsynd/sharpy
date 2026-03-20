@@ -61,8 +61,28 @@ internal partial class RoslynEmitter
         var declaration = VariableDeclaration(fieldType)
             .WithVariables(SingletonSeparatedList(variable));
 
-        // Fields are public by default (can be changed with decorators later)
-        var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
+        // Determine access modifier from decorators, defaulting to public
+        var accessToken = Token(SyntaxKind.PublicKeyword);
+        foreach (var decorator in varDecl.Decorators)
+        {
+            switch (decorator.Name)
+            {
+                case DecoratorNames.Private:
+                    accessToken = Token(SyntaxKind.PrivateKeyword);
+                    break;
+                case DecoratorNames.Protected:
+                    accessToken = Token(SyntaxKind.ProtectedKeyword);
+                    break;
+                case DecoratorNames.Internal:
+                    accessToken = Token(SyntaxKind.InternalKeyword);
+                    break;
+                case DecoratorNames.Public:
+                    accessToken = Token(SyntaxKind.PublicKeyword);
+                    break;
+            }
+        }
+
+        var modifiers = TokenList(accessToken);
 
         if (varDecl.IsConst)
         {
@@ -245,25 +265,175 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates a C# property from a group of PropertyDef AST nodes.
+    /// Generates C# members from a group of PropertyDef AST nodes.
     /// A single PropertyDef produces a single-accessor property.
     /// Multiple PropertyDefs with the same name (e.g., getter + setter) combine
     /// into a single C# property with multiple accessors.
+    /// Mixed auto+custom groups produce a backing field + property with custom accessors.
     /// </summary>
-    private MemberDeclarationSyntax GenerateGroupedProperty(List<PropertyDef> propGroup)
+    private IEnumerable<MemberDeclarationSyntax> GenerateGroupedProperty(List<PropertyDef> propGroup)
     {
         if (propGroup.Count == 1)
         {
             var prop = propGroup[0];
             if (prop.IsFunctionStyle)
             {
-                return GenerateFunctionStyleProperty(prop);
+                yield return GenerateFunctionStyleProperty(prop);
+                yield break;
             }
-            return GenerateAutoProperty(prop);
+            yield return GenerateAutoProperty(prop);
+            yield break;
         }
 
-        // Multiple PropertyDef nodes with the same name: combine into one C# property
-        return GenerateCombinedFunctionStyleProperty(propGroup);
+        // Check if this is a mixed auto+custom group
+        var autoProp = propGroup.FirstOrDefault(p => !p.IsFunctionStyle);
+        if (autoProp != null)
+        {
+            var customDefs = propGroup.Where(p => p.IsFunctionStyle).ToList();
+            if (customDefs.Count > 0)
+            {
+                foreach (var member in GenerateMixedAutoCustomProperty(autoProp, customDefs))
+                {
+                    yield return member;
+                }
+                yield break;
+            }
+        }
+
+        // Multiple function-style PropertyDef nodes with the same name: combine into one C# property
+        yield return GenerateCombinedFunctionStyleProperty(propGroup);
+    }
+
+    /// <summary>
+    /// Generates a backing field and property from mixed auto+custom PropertyDef nodes.
+    /// The auto-property defines the backing field type and default value.
+    /// Custom function-style PropertyDefs replace the auto-generated get/set accessors.
+    /// </summary>
+    private IEnumerable<MemberDeclarationSyntax> GenerateMixedAutoCustomProperty(
+        PropertyDef autoProp, List<PropertyDef> customDefs)
+    {
+        var propertyName = NameMangler.ToPascalCase(autoProp.Name);
+        var backingFieldName = NameMangler.ToPascalCase("_" + autoProp.Name);
+
+        // Determine property type from auto-property's type annotation
+        TypeSyntax propertyType;
+        if (autoProp.Type != null)
+        {
+            propertyType = _typeMapper.MapType(autoProp.Type);
+        }
+        else
+        {
+            propertyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+
+        // Generate the backing field: private T _name;
+        var fieldVariable = VariableDeclarator(Identifier(backingFieldName));
+        if (autoProp.DefaultValue != null)
+        {
+            var previousTargetType = _targetTypeContext;
+            _targetTypeContext = autoProp.Type;
+            try
+            {
+                var initExpr = GenerateExpression(autoProp.DefaultValue);
+                fieldVariable = fieldVariable.WithInitializer(EqualsValueClause(initExpr));
+            }
+            finally
+            {
+                _targetTypeContext = previousTargetType;
+            }
+        }
+
+        var fieldDeclaration = FieldDeclaration(
+            VariableDeclaration(propertyType)
+                .WithVariables(SingletonSeparatedList(fieldVariable)))
+            .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)));
+
+        yield return fieldDeclaration;
+
+        // Determine which custom accessors are provided
+        var customGetter = customDefs.FirstOrDefault(p => p.Accessor == PropertyAccessor.Get);
+        var customSetter = customDefs.FirstOrDefault(p => p.Accessor == PropertyAccessor.Set);
+
+        // Build accessors
+        var accessors = new List<AccessorDeclarationSyntax>();
+
+        // Getter: custom body or auto-generated from backing field
+        if (customGetter != null)
+        {
+            ResetMethodScope();
+            CollectSourceVariableNames(customGetter.Body);
+
+            foreach (var param in customGetter.Parameters)
+            {
+                if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                _declaredVariables.Add(paramName);
+                var baseName = NameMangler.ToCamelCase(param.Name);
+                _variableVersions[baseName] = 0;
+            }
+
+            var bodyStatements = customGetter.Body.SelectMany(GenerateBodyStatements);
+            accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                .WithBody(Block(bodyStatements)));
+        }
+        else
+        {
+            // Auto-getter: return _name;
+            accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                .WithBody(Block(ReturnStatement(IdentifierName(backingFieldName)))));
+        }
+
+        // Setter: custom body or auto-generated from backing field
+        if (customSetter != null)
+        {
+            ResetMethodScope();
+            CollectSourceVariableNames(customSetter.Body);
+
+            foreach (var param in customSetter.Parameters)
+            {
+                if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                _declaredVariables.Add(paramName);
+                var baseName = NameMangler.ToCamelCase(param.Name);
+                _variableVersions[baseName] = 0;
+            }
+
+            // C# setter uses implicit 'value' parameter, so track it
+            _declaredVariables.Add("value");
+            _variableVersions["value"] = 0;
+
+            var bodyStatements = customSetter.Body.SelectMany(GenerateBodyStatements);
+            accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                .WithBody(Block(bodyStatements)));
+        }
+        else
+        {
+            // Auto-setter: _name = value;
+            accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                .WithBody(Block(ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(backingFieldName),
+                        IdentifierName("value"))))));
+        }
+
+        // Apply modifiers from decorators on the auto-property
+        var modifiers = GenerateMethodModifiersFromDecorators(autoProp.Decorators);
+
+        var property = PropertyDeclaration(propertyType, propertyName)
+            .WithModifiers(modifiers)
+            .WithAccessorList(AccessorList(List(accessors)));
+
+        // Add C# attributes from unknown decorators
+        var propAttributes = GenerateAttributeListsFromDecorators(autoProp.Decorators);
+        if (propAttributes.Count > 0)
+        {
+            property = property.WithAttributeLists(propAttributes);
+        }
+
+        yield return property;
     }
 
     /// <summary>

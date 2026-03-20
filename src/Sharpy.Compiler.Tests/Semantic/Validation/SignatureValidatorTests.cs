@@ -758,7 +758,7 @@ class Container:
     }
 
     [Fact]
-    public void Repr_ReportsUnknownDunderError()
+    public void Repr_IsRecognizedAsKnownDunder()
     {
         var code = @"
 class MyClass:
@@ -770,8 +770,8 @@ class MyClass:
         var validator = new SignatureValidator();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
+        // __repr__ is now a registered protocol (Representation), so no unknown dunder error
+        Assert.DoesNotContain(context.Diagnostics.GetErrors(),
             e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnknownDunderMethod &&
                  e.Message.Contains("__repr__"));
     }

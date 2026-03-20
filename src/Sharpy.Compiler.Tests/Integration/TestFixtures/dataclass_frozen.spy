@@ -1,0 +1,12 @@
+@dataclass(frozen=True)
+class Coord:
+    x: int
+    y: int
+
+def main():
+    c = Coord(10, 20)
+    print(c)
+    print(c.x)
+    print(c.y)
+    c2 = Coord(10, 20)
+    print(c == c2)

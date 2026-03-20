@@ -1,0 +1,17 @@
+class Person:
+    property name: str
+
+    property set name(self, value: str):
+        if len(value) > 0:
+            self._name = value
+
+    def __init__(self, name: str):
+        self._name = name
+
+def main():
+    p = Person("Alice")
+    print(p.name)
+    p.name = "Bob"
+    print(p.name)
+    p.name = ""
+    print(p.name)

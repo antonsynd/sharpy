@@ -334,7 +334,13 @@ public static class DiagnosticCodes
         public const string RaiseEventOutsideClass = "SPY0377";     // Active
         public const string EventUnsupportedOperator = "SPY0378";   // Active
         // SPY0379: Reserved for future event semantic errors
-        // SPY0380-SPY0399: Reserved for future semantic diagnostics
+
+        // Dataclass errors (SPY0380-SPY0384)
+        public const string DataclassOnNonClass = "SPY0380";              // Active
+        public const string DataclassFieldOrdering = "SPY0381";           // Active
+        public const string DataclassFieldNoType = "SPY0382";             // Active
+        public const string DataclassInvalidOption = "SPY0383";           // Active
+        // SPY0384-SPY0399: Reserved for future semantic diagnostics
 
         #endregion
     }
@@ -393,11 +399,14 @@ public static class DiagnosticCodes
         public const string DunderDirectInvocation = "SPY0427";     // Active
         public const string DunderWrongReceiver = "SPY0428";        // Active
         public const string DunderCapture = "SPY0429";              // Active
-        // SPY0430-SPY0449: Reserved for future validation errors
+        // Access modifier decorator validation (SPY0430-SPY0431)
+        public const string ConflictingAccessModifiers = "SPY0430"; // Active
+        public const string AccessModifierOnDunder = "SPY0431";     // Active
+        // SPY0432-SPY0449: Reserved for future validation errors
 
         #endregion
 
-        #region Validation warnings (SPY0450-SPY0463)
+        #region Validation warnings (SPY0450-SPY0464)
 
         public const string UnreachableCodeWarning = "SPY0450";     // Active
         public const string UnusedVariable = "SPY0451";             // Active
@@ -414,7 +423,10 @@ public static class DiagnosticCodes
 
         // Exhaustiveness warnings (SPY0463)
         public const string NonExhaustiveMatch = "SPY0463";         // Active
-        // SPY0464-SPY0499: Reserved for future validation warnings
+
+        // Deprecation warnings (SPY0464)
+        public const string DeprecatedBodylessSyntax = "SPY0464";   // Active
+        // SPY0465-SPY0499: Reserved for future validation warnings
 
         #endregion
     }

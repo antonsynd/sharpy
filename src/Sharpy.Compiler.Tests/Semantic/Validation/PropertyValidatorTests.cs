@@ -90,8 +90,10 @@ class Foo:
     // ===========================
 
     [Fact]
-    public void MixedAutoAndFunctionStyle_ReportsError()
+    public void MixedAutoAndFunctionStyle_IsAllowed()
     {
+        // Mixed auto and function-style properties are now allowed
+        // (auto property provides backing field, function-style provides custom accessors)
         var code = @"
 class Foo:
     property name: str
@@ -104,9 +106,10 @@ class Foo:
         var validator = new PropertyValidator();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        var errors = context.Diagnostics.GetErrors();
-        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty);
+        var errors = context.Diagnostics.GetErrors()
+            .Where(e => e.Code == DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty)
+            .ToList();
+        Assert.Empty(errors);
     }
 
     // ===========================

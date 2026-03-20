@@ -408,7 +408,7 @@ public class Compiler
             // (unless the module has errors — failed imports or type errors can prevent expression processing,
             // or the module contains only declarations with no executable expressions, e.g. interface-only files)
             var hasOnlyDeclarations = module.Body.All(s =>
-                s is InterfaceDef or ClassDef or FunctionDef
+                s is InterfaceDef or ClassDef or StructDef or FunctionDef
                 or ImportStatement or FromImportStatement or TypeAlias);
             Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0 || diagnostics.HasErrors || hasOnlyDeclarations,
                 "Type checker should record at least one expression type for non-empty error-free modules with executable statements");

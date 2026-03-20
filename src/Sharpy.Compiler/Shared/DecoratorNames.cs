@@ -14,6 +14,7 @@ internal static class DecoratorNames
     public const string Static = "static";
     public const string StaticMethod = "staticmethod";
     public const string ClassMethod = "classmethod";
+    public const string Dataclass = "dataclass";
 
     // Access modifiers
     public const string Public = "public";

@@ -1,0 +1,12 @@
+@dataclass
+class Square:
+    side: float
+    area: float = 0.0
+
+    def __post_init__(self):
+        self.area = self.side * self.side
+
+def main():
+    s = Square(5.0)
+    print(s.side)
+    print(s.area)

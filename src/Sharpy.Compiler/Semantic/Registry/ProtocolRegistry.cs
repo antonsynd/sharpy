@@ -70,6 +70,16 @@ public static class ProtocolRegistry
             ExpectedReturnType: "None"  // Constructors return void
         ));
 
+        Register(protocols, new ProtocolInfo(
+            DunderName: DunderNames.PostInit,
+            Kind: ProtocolKind.Lifecycle,
+            SharpyCoreInterface: null,
+            InterfaceMethodName: null,
+            ClrMethodName: "PostInit",
+            ExpectedParamCount: 1,  // Just self
+            ExpectedReturnType: "None"
+        ));
+
         // 2.2.2 Container protocols
         // ISized is defined in Sharpy.Core (ISized.cs) with a single int Count { get; } property.
         // __len__ codegen emits a Count property that satisfies this interface.
@@ -137,6 +147,16 @@ public static class ProtocolRegistry
         // 2.2.4 Representation protocols
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Str,
+            Kind: ProtocolKind.Representation,
+            SharpyCoreInterface: null,
+            InterfaceMethodName: "ToString",
+            ClrMethodName: "ToString",
+            ExpectedParamCount: 1,  // Just self
+            ExpectedReturnType: "str"
+        ));
+
+        Register(protocols, new ProtocolInfo(
+            DunderName: DunderNames.Repr,
             Kind: ProtocolKind.Representation,
             SharpyCoreInterface: null,
             InterfaceMethodName: "ToString",

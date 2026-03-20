@@ -226,8 +226,8 @@ public class ProtocolRegistryTests
         // Protocols (dunders) registered:
         // __init__, __len__, __contains__, __getitem__, __setitem__,
         // __iter__, __next__, __str__, __hash__, __bool__, __reversed__,
-        // __enter__, __exit__, __aenter__, __aexit__
-        protocols.Should().HaveCount(15, "exactly 15 protocols are registered");
+        // __enter__, __exit__, __aenter__, __aexit__, __repr__, __post_init__
+        protocols.Should().HaveCount(17, "exactly 17 protocols are registered");
 
         // Verify we have at least one of each kind (except Comparison which is handled by operators)
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Lifecycle);
@@ -274,7 +274,7 @@ public class ProtocolRegistryTests
     [Theory]
     [InlineData("__len__", "get_Count")]
     [InlineData("__str__", "ToString")]
-    [InlineData("__repr__", null)]  // Not registered
+    [InlineData("__repr__", "ToString")]
     [InlineData("__reversed__", "GetReverseEnumerator")]
     public void GetClrMethodName_ReturnsCorrectMethod(string dunderName, string? expectedMethod)
     {
@@ -305,7 +305,7 @@ public class ProtocolRegistryTests
     [Fact]
     public void Count_ReturnsNumberOfRegisteredProtocols()
     {
-        ProtocolRegistry.Count.Should().Be(15, "exactly 15 protocols are registered");
+        ProtocolRegistry.Count.Should().Be(17, "exactly 17 protocols are registered");
     }
 
     // ==================== Test Consistency with OperatorRegistry ====================

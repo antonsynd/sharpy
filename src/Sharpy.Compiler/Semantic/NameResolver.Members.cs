@@ -65,8 +65,11 @@ internal partial class NameResolver
     {
         _logger.LogDebug($"Resolving method declaration: {owningType.Name}.{method.Name}");
 
-        // Determine access level from name
+        // Determine access level from name, with optional decorator override
         var accessLevel = DetermineAccessLevel(method.Name);
+        var explicitAccess = GetExplicitAccessLevel(method.Decorators);
+        if (explicitAccess != null)
+            accessLevel = explicitAccess.Value;
 
         // Check for special decorators
         bool hasStaticDecorator = method.Decorators.Any(d => d.Name == DecoratorNames.Static);
@@ -112,6 +115,7 @@ internal partial class NameResolver
             Name = method.Name,
             Kind = SymbolKind.Function,
             AccessLevel = accessLevel,
+            ExplicitAccessLevel = explicitAccess,
             Parameters = parameters,
             TypeParameters = method.TypeParameters.ToList(),
             IsStatic = isStatic,
@@ -241,6 +245,9 @@ internal partial class NameResolver
         _logger.LogDebug($"Resolving field declaration: {owningType.Name}.{field.Name}");
 
         var accessLevel = DetermineAccessLevel(field.Name);
+        var explicitAccess = GetExplicitAccessLevel(field.Decorators);
+        if (explicitAccess != null)
+            accessLevel = explicitAccess.Value;
 
         bool isStatic = field.Decorators.Any(d => d.Name == DecoratorNames.Static);
 
@@ -249,8 +256,10 @@ internal partial class NameResolver
             Name = field.Name,
             Kind = SymbolKind.Variable,
             AccessLevel = accessLevel,
+            ExplicitAccessLevel = explicitAccess,
             IsConstant = field.IsConst,
             IsStatic = isStatic,
+            HasDefaultValue = field.InitialValue != null,
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = field.Span,
             DeclarationLine = field.LineStart,
@@ -487,6 +496,31 @@ internal partial class NameResolver
         };
 
         _symbolTable.Define(aliasSymbol);
+    }
+
+    /// <summary>
+    /// Extracts the explicit access level from access modifier decorators, if any.
+    /// Returns null if no access modifier decorator is present.
+    /// </summary>
+    private static AccessLevel? GetExplicitAccessLevel(IEnumerable<Decorator> decorators)
+    {
+        AccessLevel? result = null;
+        foreach (var decorator in decorators)
+        {
+            var level = decorator.Name switch
+            {
+                DecoratorNames.Public => AccessLevel.Public,
+                DecoratorNames.Protected => AccessLevel.Protected,
+                DecoratorNames.Private => AccessLevel.Private,
+                DecoratorNames.Internal => AccessLevel.Internal,
+                _ => (AccessLevel?)null
+            };
+            if (level != null)
+            {
+                result = level;
+            }
+        }
+        return result;
     }
 
 }

@@ -1,0 +1,12 @@
+class Base:
+    @protected
+    def __name(self) -> str:
+        return "protected-name"
+
+class Child(Base):
+    def get_name(self) -> str:
+        return self.__name()
+
+def main():
+    c: Child = Child()
+    print(c.get_name())

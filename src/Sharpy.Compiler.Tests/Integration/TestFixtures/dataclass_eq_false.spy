@@ -1,0 +1,10 @@
+@dataclass(eq=False)
+class Item:
+    name: str
+    value: int = 0
+
+def main():
+    a = Item("test", 42)
+    print(a)
+    print(a.name)
+    print(a.value)

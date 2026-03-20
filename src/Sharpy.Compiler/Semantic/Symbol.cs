@@ -53,6 +53,12 @@ public abstract record Symbol
     public bool IsErrorRecovery { get; init; }
 
     /// <summary>
+    /// The access level explicitly set via decorator (@public, @protected, @private, @internal).
+    /// When non-null, this overrides the name-based access level convention.
+    /// </summary>
+    public AccessLevel? ExplicitAccessLevel { get; init; }
+
+    /// <summary>
     /// Documentation string for this symbol (from source docstrings or XML docs).
     /// Null until documentation is populated during name resolution or assembly discovery.
     /// </summary>
@@ -158,6 +164,23 @@ public record TypeSymbol : Symbol
     public TypeKind TypeKind { get; init; }
     public Type? ClrType { get; init; }
     public bool IsAbstract { get; init; }
+
+    /// <summary>
+    /// Whether this type is a @dataclass.
+    /// </summary>
+    public bool IsDataclass { get; internal set; }
+
+    /// <summary>
+    /// Dataclass configuration options (only set when IsDataclass is true).
+    /// </summary>
+    public DataclassOptions? DataclassInfo { get; internal set; }
+
+    /// <summary>
+    /// Ordered list of dataclass fields (collected during semantic analysis).
+    /// Includes inherited fields from parent @dataclass types (parent fields first).
+    /// Only populated when IsDataclass is true.
+    /// </summary>
+    public List<VariableSymbol>? DataclassFields { get; internal set; }
 
     /// <summary>
     /// Whether this generic type is covariant in its type parameters.
@@ -416,3 +439,11 @@ public enum AccessLevel
     Protected,
     Private
 }
+
+/// <summary>
+/// Configuration options for @dataclass decorator.
+/// </summary>
+/// <param name="Frozen">If true, fields are init-only (immutable after construction).</param>
+/// <param name="Eq">If true, synthesize __eq__ and __hash__ methods.</param>
+/// <param name="Repr">If true, synthesize __repr__ method.</param>
+public record DataclassOptions(bool Frozen = false, bool Eq = true, bool Repr = true);
