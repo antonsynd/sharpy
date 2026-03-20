@@ -234,7 +234,7 @@ internal partial class RoslynEmitter
         }
         else
         {
-            returnExpr = GenerateFieldEqualsChain(fields, 0);
+            returnExpr = GenerateFieldEqualsChain(fields);
         }
 
         statements.Add(ReturnStatement(returnExpr));
@@ -249,14 +249,30 @@ internal partial class RoslynEmitter
             .WithBody(Block(statements));
     }
 
-    private ExpressionSyntax GenerateFieldEqualsChain(List<VariableSymbol> fields, int index)
+    private ExpressionSyntax GenerateFieldEqualsChain(List<VariableSymbol> fields)
     {
-        var field = fields[index];
+        if (fields.Count == 0)
+            return LiteralExpression(SyntaxKind.TrueLiteralExpression);
+
+        var expr = GenerateSingleFieldEquals(fields[0]);
+        for (int i = 1; i < fields.Count; i++)
+        {
+            expr = BinaryExpression(
+                SyntaxKind.LogicalAndExpression,
+                expr,
+                GenerateSingleFieldEquals(fields[i]));
+        }
+
+        return expr;
+    }
+
+    private ExpressionSyntax GenerateSingleFieldEquals(VariableSymbol field)
+    {
         var propName = GetCodeGenInfo(field)?.CSharpName
             ?? NameMangler.ToPascalCase(field.Name);
 
         // Equals(this.Field, other.Field)
-        var equalsCall = InvocationExpression(
+        return InvocationExpression(
             IdentifierName("Equals"),
             ArgumentList(SeparatedList(new[]
             {
@@ -266,14 +282,6 @@ internal partial class RoslynEmitter
                     IdentifierName("other"),
                     IdentifierName(propName)))
             })));
-
-        if (index == fields.Count - 1)
-            return equalsCall;
-
-        return BinaryExpression(
-            SyntaxKind.LogicalAndExpression,
-            equalsCall,
-            GenerateFieldEqualsChain(fields, index + 1));
     }
 
     /// <summary>
