@@ -127,7 +127,7 @@ internal partial class RoslynEmitter
     private ConstructorDeclarationSyntax GenerateDataclassConstructor(
         TypeSymbol typeSymbol,
         string className,
-        List<VariableSymbol> allFields,
+        IReadOnlyList<VariableSymbol> allFields,
         List<VariableSymbol> ownFields,
         List<VariableSymbol> inheritedFields,
         IReadOnlyList<Statement> classBody)
@@ -211,7 +211,7 @@ internal partial class RoslynEmitter
     ///          return Equals(F1, other.F1) && Equals(F2, other.F2) && ...;
     /// </summary>
     private MethodDeclarationSyntax GenerateDataclassEquals(
-        string className, List<VariableSymbol> fields)
+        string className, IReadOnlyList<VariableSymbol> fields)
     {
         var statements = new List<StatementSyntax>();
 
@@ -249,7 +249,7 @@ internal partial class RoslynEmitter
             .WithBody(Block(statements));
     }
 
-    private ExpressionSyntax GenerateFieldEqualsChain(List<VariableSymbol> fields)
+    private ExpressionSyntax GenerateFieldEqualsChain(IReadOnlyList<VariableSymbol> fields)
     {
         if (fields.Count == 0)
             return LiteralExpression(SyntaxKind.TrueLiteralExpression);
@@ -288,7 +288,7 @@ internal partial class RoslynEmitter
     /// Generates override int GetHashCode() for a @dataclass.
     /// Pattern: return HashCode.Combine(F1, F2, ...);
     /// </summary>
-    private MethodDeclarationSyntax GenerateDataclassGetHashCode(List<VariableSymbol> fields)
+    private MethodDeclarationSyntax GenerateDataclassGetHashCode(IReadOnlyList<VariableSymbol> fields)
     {
         StatementSyntax[] statements;
         if (fields.Count == 0)
@@ -430,7 +430,7 @@ internal partial class RoslynEmitter
     /// Pattern: return $"ClassName(field1={Field1}, field2={Field2}, ...)";
     /// </summary>
     private MethodDeclarationSyntax GenerateDataclassToString(
-        string originalTypeName, List<VariableSymbol> fields)
+        string originalTypeName, IReadOnlyList<VariableSymbol> fields)
     {
         ExpressionSyntax returnExpr;
         if (fields.Count == 0)

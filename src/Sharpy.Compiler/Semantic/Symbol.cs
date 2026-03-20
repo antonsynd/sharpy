@@ -180,7 +180,7 @@ public record TypeSymbol : Symbol
     /// Includes inherited fields from parent @dataclass types (parent fields first).
     /// Only populated when IsDataclass is true.
     /// </summary>
-    public List<VariableSymbol>? DataclassFields { get; internal set; }
+    public IReadOnlyList<VariableSymbol>? DataclassFields { get; internal set; }
 
     /// <summary>
     /// Whether this generic type is covariant in its type parameters.
