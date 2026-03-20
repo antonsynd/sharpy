@@ -233,7 +233,7 @@ def process_user_input(input: str) -> int !str:
 ```
 
 *Implementation*
-- *Phase 8.6: `union` declarations implemented (parser, semantic, codegen). Unions lower to abstract base class + sealed nested case classes. Result[T, E] as struct-based tagged union is planned for a later phase.*
+- *`union` declarations are implemented (parser, semantic, codegen). Unions lower to abstract base class + sealed nested case classes. `Result[T, E]` is implemented as a `readonly struct` in `Sharpy.Core`.*
 
 ## Implementation Details
 

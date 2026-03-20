@@ -38,6 +38,16 @@ x = try[ValueError] int("some string")  # x is of type Result[int, ValueError]
 x: Result[int, ValueError] = try[ValueError] int("some string")
 ```
 
+**Uncaught exception types:** When using `try[E]` with a specific exception type, only exceptions of type `E` (or its subclasses) are caught. If the expression throws a different exception type, that exception propagates uncaught at runtime:
+
+```python
+# Only catches ValueError; TypeError propagates uncaught
+x = try[ValueError] some_func()
+
+# If some_func() raises TypeError, it is NOT caught by the try expression
+# and propagates to the nearest enclosing try/except or terminates the program
+```
+
 It is not an error if the expression would never raise an
 exception. In such cases, the result type is always `Result[T, Exception]` where `T` is the expression's type.
 

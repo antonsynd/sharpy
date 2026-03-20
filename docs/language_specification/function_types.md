@@ -81,12 +81,12 @@ type SomeFuncType = (int, str) -> None  # OK
 type AnotherFuncType = (int, str)       # ERROR
 ```
 
-## No Optional Parameters in Function Types
+## No Optional Parameters in Function Type Annotations
 
-Function types cannot specify optional parameters (parameters with default values). All parameters in a function type are required:
+Function type annotations (the `(ParamTypes) -> ReturnType` syntax) cannot specify optional parameters (parameters with default values). All parameters in a function type annotation are required:
 
 ```python
-# ❌ Invalid - cannot specify defaults in function types
+# ❌ Invalid - cannot specify defaults in function type annotations
 type BadCallback = (x: int, y: int = 0) -> int
 
 # ✅ Valid - all parameters required
@@ -106,7 +106,9 @@ process(add)  # ERROR: (int, int) -> int is not assignable to (int) -> int
 process(lambda x: add(x))  # OK
 ```
 
-**Rationale:** Function types describe a calling convention—what the caller must provide. Since the caller cannot know about default values, function types represent the minimal required signature. This aligns with C# delegate semantics where all parameters are required.
+**Rationale:** Function type annotations describe a calling convention -- what the caller must provide. Since the caller cannot know about default values, function type annotations represent the minimal required signature. This aligns with C# delegate semantics where all parameters are required.
+
+> **Note:** This restriction applies to the *type annotation syntax* `(int, int) -> int`, not to lambda definitions themselves. Lambdas can have default parameter values in their definitions -- see [Lambda Expressions](lambda_expressions.md).
 
 ## Function Type Compatibility
 

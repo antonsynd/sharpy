@@ -14,7 +14,9 @@ billion = 1_000_000_000
 
 ## Type Inference
 
-- Integer literals are inferred as `int` (32-bit) (maps to `System.Int32`)
+- Integer literals without a suffix are inferred as `int` (32-bit, `System.Int32`) by default
+- If the literal value exceeds `Int32.MaxValue` (2,147,483,647), it is automatically promoted to `long` (64-bit, `System.Int64`)
+- If the literal value exceeds `Int64.MaxValue` (9,223,372,036,854,775,807), it is a compile-time error
 - Suffix notation for explicit sizing (optional):
   - `L` or `l` for `int64` (System.Int64): `42L`
   - `u` or `U` for `uint32` (System.UInt32): `42u`

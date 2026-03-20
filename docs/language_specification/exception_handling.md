@@ -17,6 +17,9 @@ Sharpy uses .NET's exception hierarchy directly:
 | `ZeroDivisionError` | `System.DivideByZeroException` | Division by zero |
 | `NotImplementedError` | `System.NotImplementedException` | Not yet implemented |
 | `StopIteration` | `System.InvalidOperationException` | Iterator exhausted |
+| `UnicodeEncodeError` | `System.Text.EncoderFallbackException` | Unicode encoding failure |
+| `JSONDecodeError` | `Sharpy.Core.JSONDecodeError` | JSON parsing failure |
+| `StatisticsError` | `Sharpy.Core.StatisticsError` | Statistics computation error |
 
 ## Pythonic Aliases
 
