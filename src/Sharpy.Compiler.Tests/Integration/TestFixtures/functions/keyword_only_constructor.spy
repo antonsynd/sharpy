@@ -1,0 +1,14 @@
+class Point:
+    x: int
+    y: int
+
+    def __init__(self, x: int, *, y: int = 0):
+        self.x = x
+        self.y = y
+
+def main():
+    p1 = Point(5)
+    print(f"({p1.x}, {p1.y})")
+
+    p2 = Point(3, y=7)
+    print(f"({p2.x}, {p2.y})")
