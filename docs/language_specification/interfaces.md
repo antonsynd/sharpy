@@ -6,17 +6,17 @@ Interfaces define contracts that types must satisfy.
 interface IDrawable:
     """Interface for drawable objects."""
 
-    # All three syntaxes below are equivalent for abstract methods:
+    # Preferred abstract method syntaxes:
 
-    # 1. Body-less syntax (most concise, interface-only)
-    def draw(self)
+    # 1. Inline ellipsis syntax (preferred)
+    def draw(self): ...
 
-    # 2. Inline ellipsis syntax
-    def get_bounds(self) -> tuple[float, float, float, float]: ...
-
-    # 3. Block ellipsis syntax
-    def resize(self, width: float, height: float):
+    # 2. Block ellipsis syntax
+    def get_bounds(self) -> tuple[float, float, float, float]:
         ...
+
+    # 3. Body-less syntax (DEPRECATED - emits SPY0464 warning)
+    def resize(self, width: float, height: float)
 
 # Implementation
 class Circle(IDrawable):
@@ -42,10 +42,11 @@ class Circle(IDrawable):
 
 **Interface Rules:**
 - All methods are implicitly abstract unless they have a body that is not `...` (ellipsis).
-- **Three syntaxes for abstract methods (all equivalent):**
-  1. **Body-less**: `def method(self) -> T` — No colon, no body (interface-only)
-  2. **Inline ellipsis**: `def method(self) -> T: ...` — Colon + ellipsis on same line
-  3. **Block ellipsis**: Colon, newline, indent, then `...`
+- **Abstract method syntaxes:**
+  1. **Inline ellipsis** (preferred): `def method(self) -> T: ...` — Colon + ellipsis on same line
+  2. **Block ellipsis**: Colon, newline, indent, then `...`
+  3. **Body-less** (**deprecated**, SPY0464 warning): `def method(self) -> T` — No colon, no body
+- **Body conventions:** `...` = abstract (no implementation), `pass` = concrete empty body (default implementation)
 - Methods with an actual body (even just a `pass` statement) become the default implementation.
 - Implementing types must provide all methods that don't have a default implementation
 and can override the implementation of those that do have a default implementation.

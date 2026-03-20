@@ -310,11 +310,13 @@ for i in range(10, 0, -1):
 | `abs(x)` | Absolute value | `Math.Abs()` |
 | `pow(x, y)` | Power | `Math.Pow()` |
 | `round(x, n)` | Round | `Math.Round()` |
-| `divmod(a, b)` | Quotient + remainder | `(a / b, a % b)` |
+| `div_mod(a, b)` | Quotient + remainder | `(a / b, a % b)` |
 
-**`divmod()` Return Types:**
+**`div_mod()` Return Types:**
 
-The `divmod()` function returns a tuple containing the quotient and remainder. The return type depends on the operand types, following the same numeric promotion rules as `/` and `//`:
+> **Note:** The Sharpy name is `div_mod()` (not Python's `divmod()`). The name mangler splits compound words, producing `DivMod` in C#. See [Name Mangling](name_mangling.md) for details.
+
+The `div_mod()` function returns a tuple containing the quotient and remainder. The return type depends on the operand types, following the same numeric promotion rules as `/` and `//`:
 
 | Operand Types | Return Type | Notes |
 |---------------|-------------|-------|
@@ -324,10 +326,9 @@ The `divmod()` function returns a tuple containing the quotient and remainder. T
 | Any `decimal` | `tuple[decimal, decimal]` | Decimal division |
 
 ```python
-divmod(17, 5)       # (3, 2) - tuple[int, int]
-divmod(17L, 5)      # (3L, 2L) - tuple[int64, int64]
-divmod(17.0, 5.0)   # (3.0, 2.0) - tuple[float, float]
-divmod(17.0m, 5.0m) # (3.0m, 2.0m) - tuple[decimal, decimal]
+div_mod(17, 5)       # (3, 2) - tuple[int, int]
+div_mod(17L, 5)      # (3L, 2L) - tuple[int64, int64]
+div_mod(17.0, 5.0)   # (3.0, 2.0) - tuple[float, float]
 ```
 
 ## Object Functions

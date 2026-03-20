@@ -1,0 +1,3 @@
+Body-less method declaration 'create' is deprecated
+Body-less method declaration 'get_producer' is deprecated
+Body-less method declaration 'get_consumer' is deprecated

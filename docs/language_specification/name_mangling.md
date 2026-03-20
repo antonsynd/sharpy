@@ -160,6 +160,14 @@ To suppress the warning, rename the identifier or use backtick escaping:
 `foo__bar`: int = 1    # Backtick escaping: no warning, name preserved exactly
 ```
 
+## Built-in Function Name Mangling
+
+Some Python built-in names undergo compound-word splitting during name mangling. The Sharpy source name reflects the mangled form:
+
+| Python Name | Sharpy Name | C# Output | Reason |
+|-------------|-------------|-----------|--------|
+| `divmod()` | `div_mod()` | `DivMod()` | Compound-word split: `divmod` → `div_mod` → `DivMod` |
+
 ## Dunder Method Mapping
 
 Dunder methods have special mappings that don't follow the standard algorithm:

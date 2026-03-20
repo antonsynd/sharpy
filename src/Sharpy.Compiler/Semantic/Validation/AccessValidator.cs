@@ -77,7 +77,9 @@ internal class AccessValidator : ValidatingAstWalker
     private void ValidateMemberAccess(string memberName, TypeSymbol owningType, int? lineStart, int? columnStart,
         TextSpan? span = null)
     {
-        var accessLevel = DetermineAccessLevel(memberName);
+        // Try to find the member symbol for explicit access level override
+        var memberSymbol = FindMemberSymbol(memberName, owningType);
+        var accessLevel = DetermineAccessLevel(memberName, memberSymbol);
 
         switch (accessLevel)
         {
@@ -109,8 +111,13 @@ internal class AccessValidator : ValidatingAstWalker
         }
     }
 
-    private AccessLevel DetermineAccessLevel(string name)
+    private AccessLevel DetermineAccessLevel(string name, Symbol? symbol = null)
     {
+        // If the symbol has an explicit access level from a decorator, use it
+        if (symbol?.ExplicitAccessLevel != null)
+            return symbol.ExplicitAccessLevel.Value;
+
+        // Fall back to name-based convention
         if (name.StartsWith("__") && !name.EndsWith("__"))
             return AccessLevel.Private;
 
@@ -118,6 +125,27 @@ internal class AccessValidator : ValidatingAstWalker
             return AccessLevel.Protected;
 
         return AccessLevel.Public;
+    }
+
+    /// <summary>
+    /// Finds the symbol for a member in the owning type (method, field, property, or event).
+    /// </summary>
+    private static Symbol? FindMemberSymbol(string memberName, TypeSymbol owningType)
+    {
+        // Check methods
+        var method = owningType.Methods.FirstOrDefault(m => m.Name == memberName);
+        if (method != null)
+            return method;
+
+        // Check fields
+        var field = owningType.Fields.FirstOrDefault(f => f.Name == memberName);
+        if (field != null)
+            return field;
+
+        // Properties and events don't inherit from Symbol, so they can't have ExplicitAccessLevel.
+        // They already handle access level overrides in NameResolver.Members.cs directly.
+
+        return null;
     }
 
     /// <summary>

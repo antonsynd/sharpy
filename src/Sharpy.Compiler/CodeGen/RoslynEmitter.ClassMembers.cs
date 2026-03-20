@@ -31,19 +31,31 @@ internal partial class RoslynEmitter
         var previousTypeSymbol = _currentTypeSymbol;
         _currentTypeSymbol = typeSymbol;
 
+        bool isDataclass = typeSymbol is { IsDataclass: true };
+        bool isFrozen = typeSymbol is { DataclassInfo.Frozen: true };
+
         foreach (var stmt in body.Where(s => s is VariableDeclaration))
         {
             var varDecl = (VariableDeclaration)stmt;
-            // Generate the field and capture the mangled name
             var fieldSymbol = typeSymbol?.Fields.FirstOrDefault(f => f.Name == varDecl.Name);
             var codeGenInfo = fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
-            var fieldDecl = GenerateField(varDecl, codeGenInfo?.CSharpName);
-            fieldMembers.Add(fieldDecl);
+            var fieldName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(varDecl.Name);
 
-            // Extract the field name from the generated declaration
-            // The field name is in the VariableDeclarator
-            var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();
-            var fieldName = variable.Identifier.Text;
+            if (isDataclass && !varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static))
+            {
+                var propDecl = GenerateDataclassProperty(varDecl, fieldName, isFrozen);
+                fieldMembers.Add(propDecl);
+            }
+            else
+            {
+                // Regular field
+                var fieldDecl = GenerateField(varDecl, codeGenInfo?.CSharpName);
+                fieldMembers.Add(fieldDecl);
+                // Extract the field name from the generated declaration
+                var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();
+                fieldName = variable.Identifier.Text;
+            }
+
             fieldMapping[varDecl.Name] = fieldName;
 
             // Also track the field's declared type for contextual type inference
@@ -185,7 +197,7 @@ internal partial class RoslynEmitter
         // Generate all properties (grouped by name to combine getter/setter)
         foreach (var (propName, propGroup) in propertyGroups)
         {
-            members.Add(GenerateGroupedProperty(propGroup));
+            members.AddRange(GenerateGroupedProperty(propGroup));
         }
 
         // Generate all events (grouped by name to combine add/remove accessors)
@@ -200,18 +212,47 @@ internal partial class RoslynEmitter
             members.Add(GenerateIndexer(getItemFunc, setItemFunc));
         }
 
-        // Generate all constructors (supports overloading)
-        foreach (var initMethod in initMethods)
+        // Generate constructors: either explicit __init__ or synthesized @dataclass constructor
+        if (_currentTypeSymbol is { IsDataclass: true } && initMethods.Count == 0)
         {
-            members.Add(GenerateConstructor(initMethod, className, fieldMapping, fieldTypeMapping));
+            // Full dataclass synthesis: constructor + Equals + GetHashCode + ToString
+            members.AddRange(GenerateDataclassMembers(_currentTypeSymbol, className, body));
         }
-
-        // Generate forwarding constructors if this class has no __init__ and inherits
-        // from a class with constructors. C# doesn't inherit constructors, so subclasses
-        // without __init__ need forwarding constructors to call the parent's constructor.
-        if (initMethods.Count == 0 && _currentTypeSymbol?.BaseType != null)
+        else
         {
-            members.AddRange(GenerateForwardingConstructors(className));
+            // Generate all constructors (supports overloading)
+            foreach (var initMethod in initMethods)
+            {
+                members.Add(GenerateConstructor(initMethod, className, fieldMapping, fieldTypeMapping));
+            }
+
+            // Generate forwarding constructors if this class has no __init__ and inherits
+            // from a class with constructors. C# doesn't inherit constructors, so subclasses
+            // without __init__ need forwarding constructors to call the parent's constructor.
+            if (initMethods.Count == 0 && _currentTypeSymbol?.BaseType != null)
+            {
+                members.AddRange(GenerateForwardingConstructors(className));
+            }
+
+            // For @dataclass with explicit __init__, still generate Equals/GetHashCode/ToString
+            if (_currentTypeSymbol is { IsDataclass: true } && initMethods.Count > 0)
+            {
+                var options = _currentTypeSymbol.DataclassInfo!;
+                var fields = _currentTypeSymbol.DataclassFields ?? new List<VariableSymbol>();
+
+                if (options.Eq)
+                {
+                    members.Add(GenerateDataclassEquals(className, fields));
+                    members.Add(GenerateDataclassGetHashCode(fields));
+                    members.Add(GenerateDataclassOperatorEquals(className));
+                    members.Add(GenerateDataclassOperatorNotEquals(className));
+                }
+
+                if (options.Repr)
+                {
+                    members.Add(GenerateDataclassToString(_currentTypeSymbol.Name, fields));
+                }
+            }
         }
 
         // Generate complementary operators for C# requirements

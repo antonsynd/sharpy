@@ -1,0 +1,7 @@
+@dataclass
+class Bad:
+    x: int = 10
+    y: int
+
+def main():
+    pass

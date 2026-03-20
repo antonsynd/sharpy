@@ -4,5 +4,8 @@ class Foo:
     property get name(self) -> str:
         return "hello"
 
+    property get name(self) -> str:
+        return "world"
+
 def main():
     pass

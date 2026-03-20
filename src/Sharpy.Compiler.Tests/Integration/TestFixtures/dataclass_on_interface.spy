@@ -1,0 +1,3 @@
+@dataclass
+interface IShape:
+    def area(self) -> float: ...

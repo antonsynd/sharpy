@@ -1,0 +1,26 @@
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float: ...
+
+    @abstract
+    def name(self) -> str: ...
+
+class Square(Shape):
+    side: float
+
+    def __init__(self, side: float):
+        self.side = side
+
+    @override
+    def area(self) -> float:
+        return self.side * self.side
+
+    @override
+    def name(self) -> str:
+        return "Square"
+
+def main():
+    s = Square(4.0)
+    print(s.name())
+    print(s.area())

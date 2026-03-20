@@ -49,7 +49,7 @@ process(1, "two", 3)          # ERROR: "two" is str, not int
 
 ### Position requirement
 
-The `*args` parameter must appear after all regular positional parameters. It can be followed by keyword-only parameters (parameters after `*args` are implicitly keyword-only, just as parameters after a bare `*` marker are):
+The `*args` parameter must appear after all positional parameters. Keyword-only parameters may follow `*args` (see [Flexible Arguments](flexible_arguments.md)):
 
 ```python
 # ✅ Valid - *args at the end
@@ -59,14 +59,14 @@ def greet(prefix: str, *names: str) -> None:
 
 greet("Hello", "Alice", "Bob", "Charlie")
 
-# ✅ Valid - *args followed by keyword-only parameters
-def log(level: str, *messages: str, separator: str = " ") -> None:
-    print(separator.join(messages))
+# ✅ Valid - keyword-only parameters after *args
+def log(level: str, *messages: str, sep: str = " ") -> None:
+    print(sep.join(messages))
 
-log("INFO", "Starting", "server", separator=" | ")
+log("INFO", "hello", "world", sep=", ")
 
-# ❌ Invalid - regular positional parameter after *args
-def broken(suffix: str, *items: int, other: int) -> None:  # ERROR: suffix must come before *args
+# ❌ Invalid - positional parameters after *args
+def broken(suffix: str, *items: int, other: str) -> None:  # ERROR: positional after *args not allowed
     pass
 ```
 

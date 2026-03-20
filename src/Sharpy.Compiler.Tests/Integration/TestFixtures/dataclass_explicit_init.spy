@@ -1,0 +1,15 @@
+@dataclass
+class Named:
+    first: str
+    last: str
+
+    def __init__(self, full_name: str):
+        parts = full_name.split(" ")
+        self.first = parts[0]
+        self.last = parts[1]
+
+def main():
+    n = Named("John Doe")
+    print(n.first)
+    print(n.last)
+    print(n)

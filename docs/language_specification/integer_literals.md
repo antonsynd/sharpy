@@ -35,5 +35,22 @@ s = 42 to int16
 b = 255 to uint8
 ```
 
+## Overflow Promotion
+
+When an integer literal exceeds the range of `int` (32-bit), the compiler automatically promotes it to the next wider type:
+
+| Value Range | Inferred Type |
+|-------------|---------------|
+| -2,147,483,648 to 2,147,483,647 | `int` (System.Int32) |
+| Outside `int` range | `int64` (System.Int64) |
+
+```python
+small = 42                    # int (fits in 32-bit)
+large = 3_000_000_000         # int64 (exceeds int range, auto-promoted)
+explicit = 42L                # int64 (explicit suffix)
+```
+
+Unsigned suffixes (`u`, `ul`) follow C# promotion rules.
+
 *Implementation*
 - *✅ Native - Direct mapping to C# integer literals.*

@@ -1,0 +1,12 @@
+@dataclass
+class Point:
+    x: float
+    y: float
+
+def main():
+    p = Point(1.0, 2.0)
+    print(p)
+    print(p.x)
+    print(p.y)
+    p2 = Point(1.0, 2.0)
+    print(p == p2)

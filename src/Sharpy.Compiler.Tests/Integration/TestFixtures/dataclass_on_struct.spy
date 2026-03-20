@@ -1,0 +1,4 @@
+@dataclass
+struct Point:
+    x: int
+    y: int

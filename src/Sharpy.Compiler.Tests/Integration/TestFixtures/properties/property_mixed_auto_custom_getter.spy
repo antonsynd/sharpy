@@ -1,0 +1,14 @@
+class Item:
+    property label: str
+
+    property get label(self) -> str:
+        return self._label.upper()
+
+    def __init__(self, label: str):
+        self._label = label
+
+def main():
+    item = Item("hello")
+    print(item.label)
+    item.label = "world"
+    print(item.label)

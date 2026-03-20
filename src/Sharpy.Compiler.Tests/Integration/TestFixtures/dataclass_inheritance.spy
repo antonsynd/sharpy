@@ -1,0 +1,13 @@
+@dataclass
+class Base:
+    x: int
+
+@dataclass
+class Child(Base):
+    y: int
+
+def main():
+    c = Child(1, 2)
+    print(c)
+    print(c.x)
+    print(c.y)

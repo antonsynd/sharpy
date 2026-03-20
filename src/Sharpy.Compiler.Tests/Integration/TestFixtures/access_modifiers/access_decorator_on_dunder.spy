@@ -1,0 +1,7 @@
+class Foo:
+    @private
+    def __init__(self) -> None:
+        ...
+
+def main():
+    pass

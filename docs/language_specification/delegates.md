@@ -72,6 +72,27 @@ public delegate void Handler<in T>(T value);
 
 *Implementation: ✅ Native — direct mapping to C# `delegate` declarations.*
 
+## When to Use Delegates
+
+Use a `delegate` declaration when you need one or more of these:
+
+- **Event handler types** — .NET events require a named delegate type. Use `delegate` for any type passed to `event`.
+- **Variance annotations** — Only delegates support `in`/`out` on type parameters. If you need covariant returns or contravariant parameters, use `delegate`.
+- **Distinct named C# type for interop** — If C# code consumes your API and expects a specific named delegate (not `Func<>`/`Action<>`), use `delegate`.
+
+For everything else — internal callbacks, local function signatures, higher-order function parameters — prefer a `type` alias with a function type:
+
+```python
+# Preferred for internal use
+type Callback[T] = (T) -> None
+type Predicate[T] = (T) -> bool
+
+# Use delegate only when the above reasons apply
+delegate EventHandler[in T](sender: object, args: T) -> None
+```
+
+See also [Function Types — Delegates vs function types](function_types.md#delegates-vs-function-types) and [Type Aliases](type_aliases.md).
+
 ## See Also
 
 - [Function Types](function_types.md) — Anonymous function type syntax

@@ -16,6 +16,8 @@ internal static class DunderNameMapping
     {
         { DunderNames.Init, "Constructor" },      // Special handling needed
         { DunderNames.Str, "ToString" },
+        { DunderNames.Repr, "ToString" },
+        { DunderNames.PostInit, "PostInit" },  // For @dataclass post-initialization
         { DunderNames.Eq, "Equals" },
         { DunderNames.Hash, "GetHashCode" },
         { DunderNames.GetItem, "GetItem" },       // For indexer properties

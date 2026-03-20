@@ -1,0 +1,20 @@
+@dataclass
+class ManyFields:
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+    f: int
+    g: int
+    h: int
+    i: int
+    j: int
+
+def main():
+    m1 = ManyFields(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    m2 = ManyFields(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    m3 = ManyFields(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
+    print(m1 == m2)
+    print(m1 == m3)
+    print(repr(m1))

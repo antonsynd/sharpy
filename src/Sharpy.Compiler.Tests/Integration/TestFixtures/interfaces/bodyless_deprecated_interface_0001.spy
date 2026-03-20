@@ -1,0 +1,10 @@
+interface IGreeter:
+    def greet(self) -> str
+
+class Hello(IGreeter):
+    def greet(self) -> str:
+        return "hello"
+
+def main():
+    g: IGreeter = Hello()
+    print(g.greet())

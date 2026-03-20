@@ -1,0 +1,8 @@
+class Foo:
+    @private
+    def secret(self) -> str:
+        return "hidden"
+
+def main():
+    f: Foo = Foo()
+    print(f.secret())

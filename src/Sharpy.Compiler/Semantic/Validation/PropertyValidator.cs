@@ -12,7 +12,11 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// Rules:
 /// 1. Property cannot have the same name as a field (SPY0405)
 /// 2. Property cannot have the same name as a method (SPY0406)
-/// 3. Cannot mix auto-property and function-style for the same name (SPY0407)
+/// 3. Cannot mix auto-property and function-style for the same name UNLESS complementary (SPY0407)
+///    - auto + custom setter → allowed (auto defines backing field + getter)
+///    - auto + custom getter → allowed (auto defines backing field + setter)
+///    - auto + custom getter + custom setter → allowed (auto defines backing field only)
+///    - auto + auto duplicate → still rejected
 /// 4. 'property init' is only valid for auto-properties (SPY0408)
 /// 5. @abstract properties must have ellipsis body (SPY0409)
 /// 6. @final cannot be combined with @abstract or @virtual (SPY0410)
@@ -137,27 +141,62 @@ internal class PropertyValidator : SemanticValidatorBase
     }
 
     /// <summary>
-    /// Rule 3: Cannot mix auto-property and function-style for the same name.
+    /// Rule 3: Cannot mix auto-property and function-style for the same name,
+    /// UNLESS the function-style definitions are complementary custom accessors
+    /// (e.g., auto + custom setter, auto + custom getter, auto + both custom).
     /// </summary>
     private void ValidateMixedPropertyStyle(string typeName, string propName, List<PropertyDef> group)
     {
         if (group.Count < 2)
             return;
 
-        bool hasAuto = group.Any(p => !p.IsFunctionStyle);
-        bool hasFunction = group.Any(p => p.IsFunctionStyle);
+        var autoDefs = group.Where(p => !p.IsFunctionStyle).ToList();
+        var functionDefs = group.Where(p => p.IsFunctionStyle).ToList();
 
-        if (hasAuto && hasFunction)
+        if (autoDefs.Count == 0 || functionDefs.Count == 0)
+            return;
+
+        // Multiple auto-property definitions for the same name is always invalid
+        if (autoDefs.Count > 1)
         {
-            // Report on the second definition that conflicts
-            var conflicting = group.First(p => p.IsFunctionStyle && group.Any(q => !q.IsFunctionStyle))
-                ?? group[1];
+            AddError(_context,
+                $"Property '{propName}' in '{typeName}' has duplicate auto-property declarations",
+                autoDefs[1].LineStart, autoDefs[1].ColumnStart,
+                code: DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty,
+                span: autoDefs[1].Span);
+            return;
+        }
+
+        // Exactly one auto-property: function-style defs must be explicit get/set accessors
+        // (not PropertyAccessor.None which means it's another auto-like definition)
+        foreach (var funcDef in functionDefs)
+        {
+            if (funcDef.Accessor != PropertyAccessor.Get && funcDef.Accessor != PropertyAccessor.Set)
+            {
+                AddError(_context,
+                    $"Property '{propName}' in '{typeName}' cannot mix auto-property and function-style definitions",
+                    funcDef.LineStart, funcDef.ColumnStart,
+                    code: DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty,
+                    span: funcDef.Span);
+                return;
+            }
+        }
+
+        // Check for duplicate accessors (e.g., two custom setters)
+        var customGetters = functionDefs.Count(p => p.Accessor == PropertyAccessor.Get);
+        var customSetters = functionDefs.Count(p => p.Accessor == PropertyAccessor.Set);
+
+        if (customGetters > 1 || customSetters > 1)
+        {
+            var duplicate = functionDefs.Last();
             AddError(_context,
                 $"Property '{propName}' in '{typeName}' cannot mix auto-property and function-style definitions",
-                conflicting.LineStart, conflicting.ColumnStart,
+                duplicate.LineStart, duplicate.ColumnStart,
                 code: DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty,
-                span: conflicting.Span);
+                span: duplicate.Span);
         }
+
+        // Otherwise: auto + complementary custom accessors is allowed
     }
 
     /// <summary>

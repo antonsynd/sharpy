@@ -1,0 +1,5 @@
+Config(name=app, debug=False, retries=3)
+app
+False
+3
+Config(name=app, debug=True, retries=5)

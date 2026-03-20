@@ -1,0 +1,11 @@
+class Logger:
+    def log(self, msg: str):
+        pass
+
+    def describe(self) -> str:
+        return "Logger"
+
+def main():
+    l = Logger()
+    l.log("test")
+    print(l.describe())

@@ -1,0 +1,26 @@
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float
+
+    @abstract
+    def name(self) -> str
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, radius: float):
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return 3.14 * self.radius * self.radius
+
+    @override
+    def name(self) -> str:
+        return "Circle"
+
+def main():
+    c = Circle(5.0)
+    print(c.name())
+    print(c.area())

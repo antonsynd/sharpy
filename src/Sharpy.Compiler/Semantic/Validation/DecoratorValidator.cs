@@ -55,6 +55,7 @@ internal class DecoratorValidator : ValidatingAstWalker
             ? $"{_containingType.Name}.{node.Name}"
             : node.Name;
         ValidateDecorators(node.Decorators, definitionName);
+        ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
 
         if (_containingType != null)
         {
@@ -76,6 +77,7 @@ internal class DecoratorValidator : ValidatingAstWalker
     public override void VisitClassDef(ClassDef node)
     {
         ValidateDecorators(node.Decorators, node.Name);
+        ValidateDataclassArguments(node.Decorators, node.Name);
 
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Class);
@@ -86,6 +88,7 @@ internal class DecoratorValidator : ValidatingAstWalker
     public override void VisitStructDef(StructDef node)
     {
         ValidateDecorators(node.Decorators, node.Name);
+        ValidateDataclassOnNonClass(node.Decorators, node.Name, "struct");
 
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Struct);
@@ -96,6 +99,7 @@ internal class DecoratorValidator : ValidatingAstWalker
     public override void VisitInterfaceDef(InterfaceDef node)
     {
         ValidateDecorators(node.Decorators, node.Name);
+        ValidateDataclassOnNonClass(node.Decorators, node.Name, "interface");
         ValidateInterfaceDecorators(node);
 
         var previousType = _containingType;
@@ -106,7 +110,11 @@ internal class DecoratorValidator : ValidatingAstWalker
 
     public override void VisitPropertyDef(PropertyDef node)
     {
-        ValidateDecorators(node.Decorators, node.Name);
+        var definitionName = _containingType != null
+            ? $"{_containingType.Name}.{node.Name}"
+            : node.Name;
+        ValidateDecorators(node.Decorators, definitionName);
+        ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
         base.VisitPropertyDef(node);
     }
 
@@ -116,6 +124,7 @@ internal class DecoratorValidator : ValidatingAstWalker
             ? $"{_containingType.Name}.{node.Name}"
             : node.Name;
         ValidateDecorators(node.Decorators, definitionName);
+        ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
 
         if (_containingType != null)
         {
@@ -132,6 +141,8 @@ internal class DecoratorValidator : ValidatingAstWalker
             if (_containingType != null)
             {
                 ValidateFieldDecorators(node, _containingType.Name);
+                var definitionName = $"{_containingType.Name}.{node.Name}";
+                ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
             }
             else
             {
@@ -175,6 +186,48 @@ internal class DecoratorValidator : ValidatingAstWalker
         }
     }
 
+    private static readonly HashSet<string> AccessModifierDecorators = new()
+    {
+        DecoratorNames.Public,
+        DecoratorNames.Protected,
+        DecoratorNames.Private,
+        DecoratorNames.Internal,
+    };
+
+    /// <summary>
+    /// Validates access modifier decorators: no conflicts, no access modifiers on dunders.
+    /// </summary>
+    private void ValidateAccessModifierDecorators(IEnumerable<Decorator> decorators, string memberName, string definitionName)
+    {
+        var accessDecorators = decorators.Where(d => AccessModifierDecorators.Contains(d.Name)).ToList();
+
+        // Check for conflicting access modifiers
+        if (accessDecorators.Count > 1)
+        {
+            var names = string.Join(", ", accessDecorators.Select(d => $"@{d.Name}"));
+            var second = accessDecorators[1];
+            AddError(
+                $"Conflicting access modifier decorators on '{definitionName}': {names}. Only one access modifier is allowed.",
+                second.LineStart,
+                second.ColumnStart,
+                code: DiagnosticCodes.Validation.ConflictingAccessModifiers,
+                span: second.Span);
+        }
+
+        // Check for access modifiers on dunder methods
+        if (accessDecorators.Count > 0 && DunderDetector.IsDunderMethod(memberName))
+        {
+            var decorator = accessDecorators[0];
+            AddError(
+                $"Access modifier '@{decorator.Name}' cannot be applied to dunder method '{memberName}'. " +
+                "Dunder methods are protocol methods and their access level is determined by convention.",
+                decorator.LineStart,
+                decorator.ColumnStart,
+                code: DiagnosticCodes.Validation.AccessModifierOnDunder,
+                span: decorator.Span);
+        }
+    }
+
     private void ValidateDecorators(IEnumerable<Decorator> decorators, string definitionName)
     {
         foreach (var decorator in decorators)
@@ -199,8 +252,10 @@ internal class DecoratorValidator : ValidatingAstWalker
             }
 
             // For unknown decorators (custom attributes), validate arguments are compile-time constants
+            // Skip @dataclass — it's a known built-in with its own validation
             if (!DecoratorNames.KnownModifierDecorators.Contains(decorator.Name)
-                && !UnsupportedDecorators.ContainsKey(decorator.Name))
+                && !UnsupportedDecorators.ContainsKey(decorator.Name)
+                && decorator.Name != DecoratorNames.Dataclass)
             {
                 ValidateDecoratorArgumentsAreConstants(decorator);
             }
@@ -299,11 +354,12 @@ internal class DecoratorValidator : ValidatingAstWalker
     {
         foreach (var decorator in varDecl.Decorators)
         {
-            if (decorator.Name != DecoratorNames.Static)
+            if (decorator.Name != DecoratorNames.Static
+                && !AccessModifierDecorators.Contains(decorator.Name))
             {
                 AddError(
                     $"Decorator '@{decorator.Name}' is not valid on field '{varDecl.Name}' in '{typeName}'. " +
-                    "Only @static is allowed on field declarations.",
+                    "Only @static and access modifier decorators are allowed on field declarations.",
                     decorator.LineStart,
                     decorator.ColumnStart,
                     code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
@@ -411,6 +467,79 @@ internal class DecoratorValidator : ValidatingAstWalker
                 finalDecorator.ColumnStart,
                 code: DiagnosticCodes.Validation.FinalWithoutOverride,
                 span: finalDecorator.Span);
+        }
+    }
+
+    /// <summary>
+    /// Valid keyword argument names for @dataclass decorator.
+    /// </summary>
+    private static readonly HashSet<string> DataclassKnownOptions = new()
+    {
+        "frozen",
+        "eq",
+        "repr",
+    };
+
+    /// <summary>
+    /// Validates that @dataclass is not applied to a non-class type definition.
+    /// </summary>
+    private void ValidateDataclassOnNonClass(IEnumerable<Decorator> decorators, string typeName, string typeKind)
+    {
+        var dataclassDecorator = decorators.FirstOrDefault(d => d.Name == DecoratorNames.Dataclass);
+        if (dataclassDecorator != null)
+        {
+            AddError(
+                $"The '@dataclass' decorator can only be applied to classes, not to {typeKind} '{typeName}'.",
+                dataclassDecorator.LineStart,
+                dataclassDecorator.ColumnStart,
+                code: DiagnosticCodes.Semantic.DataclassOnNonClass,
+                span: dataclassDecorator.Span);
+        }
+    }
+
+    /// <summary>
+    /// Validates @dataclass decorator arguments: no positional args, only known keyword args with bool values.
+    /// </summary>
+    private void ValidateDataclassArguments(IEnumerable<Decorator> decorators, string typeName)
+    {
+        var dataclassDecorator = decorators.FirstOrDefault(d => d.Name == DecoratorNames.Dataclass);
+        if (dataclassDecorator == null)
+            return;
+
+        // No positional arguments allowed
+        if (dataclassDecorator.Arguments.Length > 0)
+        {
+            AddError(
+                $"'@dataclass' on '{typeName}' does not accept positional arguments. " +
+                "Use keyword arguments: @dataclass(frozen=True, eq=True, repr=True).",
+                dataclassDecorator.Arguments[0].LineStart,
+                dataclassDecorator.Arguments[0].ColumnStart,
+                code: DiagnosticCodes.Semantic.DataclassInvalidOption,
+                span: dataclassDecorator.Arguments[0].Span);
+        }
+
+        // Validate keyword arguments
+        foreach (var kwArg in dataclassDecorator.KeywordArguments)
+        {
+            if (!DataclassKnownOptions.Contains(kwArg.Name))
+            {
+                AddError(
+                    $"Unknown @dataclass option '{kwArg.Name}' on '{typeName}'. " +
+                    "Valid options are: frozen, eq, repr.",
+                    kwArg.Value.LineStart,
+                    kwArg.Value.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DataclassInvalidOption,
+                    span: kwArg.Value.Span);
+            }
+            else if (kwArg.Value is not BooleanLiteral)
+            {
+                AddError(
+                    $"@dataclass option '{kwArg.Name}' must be a boolean literal (True or False).",
+                    kwArg.Value.LineStart,
+                    kwArg.Value.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DataclassInvalidOption,
+                    span: kwArg.Value.Span);
+            }
         }
     }
 

@@ -233,7 +233,7 @@ def process_user_input(input: str) -> int !str:
 ```
 
 *Implementation*
-- *`union` declarations are implemented (parser, semantic, codegen). Unions lower to abstract base class + sealed nested case classes. `Result[T, E]` is implemented as a `readonly struct` in `Sharpy.Core`.*
+- *✅ Implemented — `Result[T, E]` is a struct-based tagged union in Sharpy.Core. Pattern matching with `Ok`/`Err`, the `?` operator, and `try` expressions are all supported.*
 
 ## Implementation Details
 
