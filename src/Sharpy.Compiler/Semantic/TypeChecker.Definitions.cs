@@ -1340,6 +1340,22 @@ internal partial class TypeChecker
         var fieldDecls = classDef.Body.OfType<VariableDeclaration>().ToList();
         var dataclassFields = new List<VariableSymbol>();
 
+        // Check for Assignment nodes in class body — these are untyped field declarations
+        // that need type annotations in a @dataclass context
+        foreach (var assignment in classDef.Body.OfType<Assignment>())
+        {
+            if (assignment.Target is Identifier ident && assignment.Operator == AssignmentOperator.Assign)
+            {
+                AddError(
+                    $"Dataclass field '{ident.Name}' in '{classDef.Name}' must have a type annotation " +
+                    $"(use '{ident.Name}: type = ...' instead of '{ident.Name} = ...').",
+                    assignment.LineStart,
+                    assignment.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DataclassFieldNoType,
+                    span: assignment.Span);
+            }
+        }
+
         // Collect inherited fields from parent @dataclass (parent fields first)
         if (classSymbol.BaseType is { IsDataclass: true, DataclassFields: { } parentFields })
         {

@@ -1,0 +1,4 @@
+@dataclass
+class Point:
+    x: int
+    y = 5

@@ -127,6 +127,7 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 50**: `ModuleLevelValidator` — Entry point validation
 - **Order 55**: `NamingConventionValidator` — Naming convention checks
 - **Order 60**: `DecoratorValidator` — Decorator validation
+- **Order 62**: `BodylessSyntaxValidator` — Deprecation warnings for body-less method syntax
 - **Order 150**: `SignatureValidator` — Dunder method signatures
 - **Order 155**: `GeneratorValidator` — Generator function validation
 - **Order 160**: `EqualityContractValidator` — Equality contract checks
