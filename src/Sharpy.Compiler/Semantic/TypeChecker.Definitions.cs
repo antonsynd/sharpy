@@ -1479,8 +1479,9 @@ internal partial class TypeChecker
             classSymbol.Methods.Add(eqSymbol);
         }
 
-        // Synthesize __hash__ if eq=True and (frozen=True or no explicit __hash__)
-        if (options.Eq && options.Frozen && !explicitMethods.Contains(DunderNames.Hash))
+        // Synthesize __hash__ if eq=True and no explicit __hash__
+        // .NET requires GetHashCode whenever Equals is overridden, regardless of frozen
+        if (options.Eq && !explicitMethods.Contains(DunderNames.Hash))
         {
             var hashSymbol = new FunctionSymbol
             {
