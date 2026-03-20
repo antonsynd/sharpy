@@ -188,3 +188,20 @@ Function types map to C# delegate types:
 
 *Implementation*
 - *✅ Native - Maps to `System.Action<>` and `System.Func<>` delegates.*
+
+## Delegates vs Function Types
+
+Function types (`(T) -> R`) and [delegates](delegates.md) (`delegate F(x: T) -> R`) both represent callable signatures, but serve different purposes:
+
+- **Function types** are anonymous and map to `Func<>`/`Action<>`. Use them for internal callbacks, higher-order function parameters, and `type` aliases.
+- **Delegates** are named C# types. Use them when you need variance annotations (`in`/`out`), event handler types, or a distinct named type for .NET interop.
+
+```python
+# Function type via type alias — preferred for internal use
+type Transform[T, U] = (T) -> U
+
+# Delegate — use when variance or events require it
+delegate Producer[out T]() -> T
+```
+
+When in doubt, start with a function type. Promote to a `delegate` only when you need a feature that function types cannot provide. See [Delegates — When to use delegates](delegates.md#when-to-use-delegates) and [Type Aliases](type_aliases.md).

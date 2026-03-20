@@ -28,5 +28,7 @@ def process_data[T, E](items: dict[str, list[Result[T, E]]]) -> dict[str, list[R
     return result
 ```
 
+Type aliases with function types are the preferred way to name callable signatures for internal use. For cases requiring variance annotations, event handler types, or a distinct named C# type, use a [delegate](delegates.md) instead. See [Delegates — When to use delegates](delegates.md#when-to-use-delegates) and [Function Types — Delegates vs function types](function_types.md#delegates-vs-function-types).
+
 *Implementation*
 - *🔄 Lowered - Inline expansion at use sites; `using` directive where possible.*
