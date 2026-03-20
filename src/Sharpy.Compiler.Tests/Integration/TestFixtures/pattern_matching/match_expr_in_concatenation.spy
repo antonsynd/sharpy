@@ -1,0 +1,8 @@
+def main():
+    x: int = 2
+    label: str = match x:
+        case 1: "one"
+        case 2: "two"
+        case _: "other"
+    result: str = "Value is: " + label
+    print(result)

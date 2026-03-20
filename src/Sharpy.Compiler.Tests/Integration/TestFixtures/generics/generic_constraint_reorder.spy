@@ -1,0 +1,29 @@
+from System import IComparable
+
+interface Printable:
+    def display(self) -> str: ...
+
+def show_max[T: IComparable[T]](a: T, b: T) -> str:
+    if a.compare_to(b) > 0:
+        return str(a)
+    return str(b)
+
+class Item(Printable, IComparable[Item]):
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def display(self) -> str:
+        return "Item(" + str(self.value) + ")"
+
+    def compare_to(self, other: Item) -> int:
+        return self.value - other.value
+
+def main():
+    a = Item(10)
+    b = Item(20)
+    print(show_max(a, b))

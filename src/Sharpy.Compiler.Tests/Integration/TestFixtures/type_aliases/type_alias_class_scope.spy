@@ -1,0 +1,10 @@
+class Container:
+    type ItemType = int
+
+    def get_item(self) -> ItemType:
+        x: ItemType = 42
+        return x
+
+def main():
+    c = Container()
+    print(c.get_item())

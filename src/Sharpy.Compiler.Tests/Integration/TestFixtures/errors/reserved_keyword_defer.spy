@@ -1,0 +1,3 @@
+def main():
+    defer: int = 42
+    print(defer)

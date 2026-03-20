@@ -1,0 +1,8 @@
+def main():
+    lst: list[int] = [10, 20, 30]
+    val: int? = lst.get(0)
+    print(val)
+    missing: int? = lst.get(5)
+    print(missing)
+    with_default: int = lst.get(5, -1)
+    print(with_default)

@@ -1,0 +1,2 @@
+def main():
+    result = 5 |> + 3
