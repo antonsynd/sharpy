@@ -1,0 +1,5 @@
+def main():
+    x: int = 1
+    y: int = 1
+    result: bool = x is y
+    print(result)

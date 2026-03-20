@@ -43,6 +43,28 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // Warn when is/is not is used with value types — identity comparison is
+        // meaningless because value types are boxed, so the result is always False.
+        if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)
+        {
+            var effectiveLeft = leftType is NullableType nl ? nl.UnderlyingType : leftType;
+            var effectiveRight = rightType is NullableType nr ? nr.UnderlyingType : rightType;
+
+            if (effectiveLeft.IsValueType && effectiveRight.IsValueType)
+            {
+                var opSymbol = binOp.Operator == BinaryOperator.Is ? "is" : "is not";
+                _diagnostics.AddWarning(
+                    $"'{opSymbol}' used with value types '{leftType.GetDisplayName()}' and " +
+                    $"'{rightType.GetDisplayName()}' — identity comparison is always False " +
+                    "due to boxing; use '==' or '!=' instead",
+                    binOp.LineStart,
+                    binOp.ColumnStart,
+                    _currentFilePath,
+                    code: DiagnosticCodes.Validation.IsWithValueTypes,
+                    phase: CompilerPhase.TypeChecking);
+            }
+        }
+
         return resultType;
     }
 

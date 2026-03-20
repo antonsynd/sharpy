@@ -429,7 +429,10 @@ public static class DiagnosticCodes
 
         // Deprecation warnings (SPY0464)
         public const string DeprecatedBodylessSyntax = "SPY0464";   // Active
-        // SPY0465-SPY0499: Reserved for future validation warnings
+
+        // Identity operator warnings (SPY0465)
+        public const string IsWithValueTypes = "SPY0465";           // Active
+        // SPY0466-SPY0499: Reserved for future validation warnings
 
         #endregion
     }
