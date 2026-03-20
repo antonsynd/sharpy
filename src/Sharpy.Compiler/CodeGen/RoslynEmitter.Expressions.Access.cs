@@ -22,6 +22,18 @@ internal partial class RoslynEmitter
         if (call.Function is IndexAccess indexAccess &&
             indexAccess.Object is Identifier genericName)
         {
+            // Handle array construction: array[T](size) -> new T[size]
+            if (genericName.Name == BuiltinNames.Array && call.Arguments.Length == 1)
+            {
+                var elementType = _typeMapper.MapTypeFromExpression(indexAccess.Index);
+                var sizeExpr = GenerateExpression(call.Arguments[0]);
+                return ArrayCreationExpression(
+                    ArrayType(elementType)
+                        .AddRankSpecifiers(
+                            ArrayRankSpecifier(
+                                SingletonSeparatedList<ExpressionSyntax>(sizeExpr))));
+            }
+
             var symbol = _context.LookupSymbol(genericName.Name);
 
             // Map the type argument(s)

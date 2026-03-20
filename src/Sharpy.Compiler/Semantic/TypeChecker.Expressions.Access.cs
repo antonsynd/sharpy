@@ -483,6 +483,22 @@ internal partial class TypeChecker
         // this represents a generic type with type arguments, not an index operation
         if (indexAccess.Object is Identifier typeId)
         {
+            // Handle array type reference: array[int] -> GenericType("array", [int])
+            if (typeId.Name == BuiltinNames.Array)
+            {
+                var arrayTypeArgs = TryResolveTypeArguments(indexAccess.Index);
+                if (arrayTypeArgs != null && arrayTypeArgs.Count == 1)
+                {
+                    var arrayType = new GenericType
+                    {
+                        Name = BuiltinNames.Array,
+                        TypeArguments = arrayTypeArgs
+                    };
+                    _semanticInfo.SetExpressionType(indexAccess, arrayType);
+                    return arrayType;
+                }
+            }
+
             var symbol = _symbolTable.Lookup(typeId.Name);
 
             // Handle generic type reference (e.g., Box[int])
