@@ -1,3 +1,4 @@
-a: float = 3.14
-b: decimal = 1.0m
-c = a + b
+def main():
+    a: float = 3.14
+    b: decimal = 1.0m
+    c = a + b

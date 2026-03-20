@@ -59,6 +59,9 @@ internal partial class RoslynEmitter
                 // x / y → true division with Python semantics (always returns float64)
                 // Cast at least one operand to double to ensure float result
                 // If either operand is already float, the division will naturally produce float
+                // Decimal division: no cast needed, C# decimal / decimal works natively
+                if (IsDecimalExpression(binOp.Left) || IsDecimalExpression(binOp.Right))
+                    return BinaryExpression(SyntaxKind.DivideExpression, left, right);
                 var leftIsFloat = IsFloatExpression(binOp.Left);
                 var rightIsFloat = IsFloatExpression(binOp.Right);
                 if (!leftIsFloat && !rightIsFloat)

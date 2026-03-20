@@ -1,1 +1,1 @@
-Unsupported float literal suffix 'm'
+Cannot assign type 'decimal' to variable of type 'float'

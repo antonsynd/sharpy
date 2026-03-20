@@ -201,6 +201,7 @@ internal class TypeResolver
             BuiltinNames.Float32 => SemanticType.Float32,   // float32 -> C# float
             "float64" => SemanticType.Double,    // float64 -> double
             BuiltinNames.Double => SemanticType.Double,
+            BuiltinNames.Decimal => SemanticType.Decimal,
             BuiltinNames.Bool => SemanticType.Bool,
             BuiltinNames.Str => SemanticType.Str,
             BuiltinNames.None => SemanticType.Void,

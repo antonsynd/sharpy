@@ -60,6 +60,7 @@ internal class TypeMapper
             BuiltinType builtin when type == SemanticType.Float => PredefinedType(Token(SyntaxKind.DoubleKeyword)), // Sharpy float = C# double
             BuiltinType builtin when type == SemanticType.Double => PredefinedType(Token(SyntaxKind.DoubleKeyword)),
             BuiltinType builtin when type == SemanticType.Float32 => PredefinedType(Token(SyntaxKind.FloatKeyword)),
+            BuiltinType builtin when type == SemanticType.Decimal => PredefinedType(Token(SyntaxKind.DecimalKeyword)),
             BuiltinType builtin => ParseTypeName(GetMappedTypeName(builtin.Name)),
 
             // Handle generic types

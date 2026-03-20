@@ -203,14 +203,12 @@ internal partial class RoslynEmitter
             if (literal.Suffix.Equals("d", StringComparison.OrdinalIgnoreCase))
                 return LiteralExpression(SyntaxKind.NumericLiteralExpression,
                     Literal(text, value));
-            // Unsupported suffix (e.g. 'm' for decimal) — Sharpy has no decimal type.
-            // Emit diagnostic (marks compilation as failed) and fall through to emit
-            // a default double literal as error recovery, allowing downstream codegen
-            // to continue and report additional errors.
-            _context.Diagnostics.AddError(
-                $"Unsupported float literal suffix '{literal.Suffix}'",
-                literal.LineStart, literal.ColumnStart,
-                code: DiagnosticCodes.CodeGen.EmitError);
+            if (literal.Suffix.Equals("m", StringComparison.OrdinalIgnoreCase))
+            {
+                var decimalValue = decimal.Parse(literal.Value, CultureInfo.InvariantCulture);
+                return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                    Literal(text, decimalValue));
+            }
         }
 
         // Append 'd' suffix to force Roslyn to preserve double literal semantics.
