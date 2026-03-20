@@ -1,0 +1,8 @@
+@dataclass(frozen=True)
+class Point:
+    x: int
+    y: int
+
+def main():
+    p = Point(1, 2)
+    p.x = 10
