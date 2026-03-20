@@ -1,0 +1,61 @@
+class Inner:
+    value: int
+    label: str?
+
+    def __init__(self, value: int, label: str?):
+        self.value = value
+        self.label = label
+
+    def get_label(self) -> str?:
+        return self.label
+
+class Outer:
+    inner: Inner?
+
+    def __init__(self, inner: Inner?):
+        self.inner = inner
+
+    def get_inner(self) -> Inner?:
+        return self.inner
+
+def main():
+    # --- Method returning T? via ?. should be T?, not T?? ---
+
+    # Case 1: Both Some — method returns Some("hello")
+    o1: Outer? = Some(Outer(Some(Inner(1, Some("hello")))))
+    r1: str? = o1?.get_inner()?.get_label()
+    print(r1)
+
+    # Case 2: Outer is None — short-circuits to None
+    o2: Outer? = None()
+    r2: str? = o2?.get_inner()?.get_label()
+    print(r2)
+
+    # Case 3: Inner is None — short-circuits to None
+    o3: Outer? = Some(Outer(None()))
+    r3: str? = o3?.get_inner()?.get_label()
+    print(r3)
+
+    # Case 4: Label is None — method itself returns None
+    o4: Outer? = Some(Outer(Some(Inner(2, None()))))
+    r4: str? = o4?.get_inner()?.get_label()
+    print(r4)
+
+    # --- Field of type T? via ?. should be T?, not T?? ---
+
+    # Case 5: Field access — inner.label via ?.
+    o5: Outer? = Some(Outer(Some(Inner(3, Some("world")))))
+    r5: str? = o5?.get_inner()?.label
+    print(r5)
+
+    # Case 6: Field is None
+    o6: Outer? = Some(Outer(Some(Inner(4, None()))))
+    r6: str? = o6?.get_inner()?.label
+    print(r6)
+
+    # --- Non-optional member via ?. gets wrapped once ---
+
+    # Case 7: value is int, accessed via ?. becomes int?
+    o7: Outer? = Some(Outer(Some(Inner(42, None()))))
+    r7: int? = o7?.get_inner()?.value
+    print(r7)

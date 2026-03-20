@@ -51,3 +51,44 @@ maybe_val = maybe_str?.len()  # maybe_val is int? = None()
 ```
 
 In this situation, the return type is `U?` where `U` is the expected type of the entire expression if it had evaluated.
+
+## Nullable Flattening
+
+When `?.` accesses a member whose type is already nullable or optional, the compiler
+**flattens** the result to avoid double-wrapping. Without flattening, `x?.get_label()`
+where `get_label()` returns `str?` would produce `str??` (an optional of an optional),
+which is not a valid type.
+
+The rule: if the accessed member already returns `T?` (Optional) or `T | None` (C#
+nullable), the `?.` operator does **not** add another layer of wrapping. The result type
+is the member's own type, unchanged.
+
+```python
+class Inner:
+    label: str?
+    def __init__(self, label: str?):
+        self.label = label
+    def get_label(self) -> str?:
+        return self.label
+
+class Outer:
+    inner: Inner?
+    def __init__(self, inner: Inner?):
+        self.inner = inner
+    def get_inner(self) -> Inner?:
+        return self.inner
+
+o: Outer? = Some(Outer(Some(Inner(Some("hello")))))
+
+# Method returning str? via ?. — result is str?, NOT str??
+r1: str? = o?.get_inner()?.get_label()
+
+# Field of type str? via ?. — result is str?, NOT str??
+r2: str? = o?.get_inner()?.label
+
+# Non-optional member (int) via ?. — wrapped once to int?
+r3: int? = o?.get_inner()?.value   # value: int → int?
+```
+
+This applies uniformly to fields, properties, and method return types, for both
+`T?` (Optional) and `T | None` (C# nullable) operand types.
