@@ -1,0 +1,10 @@
+class Foo:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+def main():
+    f = Foo(42)
+    print(f.x)
+    print(.5)
