@@ -18,7 +18,7 @@ namespace Sharpy
         /// divmod(10, 3)    # (3, 1)
         /// </code>
         /// </example>
-        public static (int, int) DivMod(int x, int y)
+        public static (int, int) Divmod(int x, int y)
         {
             if (y == 0)
             {
@@ -46,7 +46,7 @@ namespace Sharpy
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
         /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
-        public static (long, long) DivMod(long x, long y)
+        public static (long, long) Divmod(long x, long y)
         {
             if (y == 0)
             {
@@ -74,7 +74,7 @@ namespace Sharpy
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
         /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
-        public static (double, double) DivMod(double x, double y)
+        public static (double, double) Divmod(double x, double y)
         {
             const double epsilon = 1e-10;
             if (System.Math.Abs(y) < epsilon)
@@ -95,7 +95,7 @@ namespace Sharpy
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
         /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
-        public static (float, float) DivMod(float x, float y)
+        public static (float, float) Divmod(float x, float y)
         {
             const float epsilon = 1e-7f;
             if (System.Math.Abs(y) < epsilon)
