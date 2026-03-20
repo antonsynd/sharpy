@@ -532,6 +532,8 @@ public partial class Parser
             TokenType.Del or TokenType.To or TokenType.Maybe or TokenType.Super or
             // Future keywords
             TokenType.Defer or TokenType.Do or
+            // Rejected Python keywords
+            TokenType.Global or TokenType.Nonlocal or
             // Boolean operators (keywords)
             TokenType.And or TokenType.Or or TokenType.Not or TokenType.Is or
             // Boolean literals

@@ -133,6 +133,10 @@ public partial class Lexer
         { "defer", TokenType.Defer },
         { "do", TokenType.Do },
 
+        // Rejected Keywords (Python keywords not supported in Sharpy)
+        { "global", TokenType.Global },
+        { "nonlocal", TokenType.Nonlocal },
+
         // Boolean values and operators
         { "True", TokenType.True },
         { "False", TokenType.False },
@@ -755,10 +759,10 @@ public partial class Lexer
             }
         }
 
-        // Check for float starting with decimal point (not allowed in v0.1)
+        // Float starting with decimal point (.5, .123)
         if (c == '.' && _position + 1 < _source.Length && char.IsDigit(_source[_position + 1]))
         {
-            throw ReportError("Float literals must have at least one digit before the decimal point (e.g., use '0.5' instead of '.5'). This restriction is for v0.1.", startLine, startColumn, DiagnosticCodes.Lexer.InvalidFloatLiteral);
+            return LogAndReturn(ReadNumber());
         }
 
         // Single-character operators and delimiters

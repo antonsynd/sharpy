@@ -389,6 +389,12 @@ public partial class Parser
         if (Current.Type == TokenType.Async)
             return ParseAsyncStatement();
 
+        // Rejected Python keywords with helpful error messages
+        if (Current.Type == TokenType.Global)
+            throw ReportError("Sharpy does not support 'global' — C# scoping rules apply (Axiom 1)", Current.Line, Current.Column, DiagnosticCodes.Parser.RejectedPythonKeyword, span: CurrentSpan);
+        if (Current.Type == TokenType.Nonlocal)
+            throw ReportError("Sharpy does not support 'nonlocal' — C# scoping rules apply (Axiom 1)", Current.Line, Current.Column, DiagnosticCodes.Parser.RejectedPythonKeyword, span: CurrentSpan);
+
         return Current.Type switch
         {
             TokenType.Def => ParseFunctionDef(),

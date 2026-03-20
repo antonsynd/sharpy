@@ -84,6 +84,10 @@ public enum TokenType
     Defer,
     Do,
 
+    // Rejected Keywords (Python keywords not supported in Sharpy)
+    Global,
+    Nonlocal,
+
     // Boolean operators (keywords)
     And,
     Or,
