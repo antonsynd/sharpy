@@ -291,21 +291,9 @@ internal partial class NameResolver
 
         var accessLevel = DetermineAccessLevel(propDef.Name);
         // Override with explicit decorator
-        foreach (var decorator in propDef.Decorators)
-        {
-            switch (decorator.Name)
-            {
-                case "private":
-                    accessLevel = AccessLevel.Private;
-                    break;
-                case "protected":
-                    accessLevel = AccessLevel.Protected;
-                    break;
-                case "internal":
-                    accessLevel = AccessLevel.Internal;
-                    break;
-            }
-        }
+        var explicitAccess = GetExplicitAccessLevel(propDef.Decorators);
+        if (explicitAccess != null)
+            accessLevel = explicitAccess.Value;
 
         if (existingProp != null)
         {
@@ -372,24 +360,9 @@ internal partial class NameResolver
 
         var accessLevel = DetermineAccessLevel(eventDef.Name);
         // Override with explicit decorator
-        foreach (var decorator in eventDef.Decorators)
-        {
-            switch (decorator.Name)
-            {
-                case "private":
-                    accessLevel = AccessLevel.Private;
-                    break;
-                case "protected":
-                    accessLevel = AccessLevel.Protected;
-                    break;
-                case "internal":
-                    accessLevel = AccessLevel.Internal;
-                    break;
-                case "public":
-                    accessLevel = AccessLevel.Public;
-                    break;
-            }
-        }
+        var explicitAccess = GetExplicitAccessLevel(eventDef.Decorators);
+        if (explicitAccess != null)
+            accessLevel = explicitAccess.Value;
 
         if (existingEvent != null)
         {

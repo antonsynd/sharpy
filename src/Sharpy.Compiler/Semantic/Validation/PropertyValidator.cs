@@ -160,7 +160,7 @@ internal class PropertyValidator : SemanticValidatorBase
         if (autoDefs.Count > 1)
         {
             AddError(_context,
-                $"Property '{propName}' in '{typeName}' cannot mix auto-property and function-style definitions",
+                $"Property '{propName}' in '{typeName}' has duplicate auto-property declarations",
                 autoDefs[1].LineStart, autoDefs[1].ColumnStart,
                 code: DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty,
                 span: autoDefs[1].Span);

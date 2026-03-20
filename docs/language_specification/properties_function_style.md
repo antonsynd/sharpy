@@ -1,6 +1,26 @@
 # Function-Style Properties
 
-For properties requiring custom logic (validation, transformation, computation), use function-style syntax. The user must provide their own backing field or compute the value. You cannot combine get/set/init auto-properties with custom logic get/set/init, since the backing field for the auto-property cannot be accessed from the custom logic.
+For properties requiring custom logic (validation, transformation, computation), use function-style syntax.
+
+### Mixed Auto+Custom Properties
+
+You can combine an auto-property declaration with a custom getter, setter, or both. The auto-property declaration defines the type and a backing field (`_name`), while the custom accessor provides the logic:
+
+```python
+# Auto-getter generated, custom setter validates
+property name: str
+property set name(self, value: str):
+    if len(value) > 0:
+        self._name = value
+```
+
+**Semantics:**
+- `property name: str` defines the backing field (`_name`) and type
+- `property set name(self, value: str):` replaces the auto-setter
+- `property get name(self) -> str:` replaces the auto-getter
+- If both custom get and set are provided alongside an auto-declaration, the auto-declaration defines the backing field only (no auto-accessors generated)
+
+For fully custom properties with no auto-declaration, provide your own backing field or compute the value.
 
 ## Function-Style Getter
 

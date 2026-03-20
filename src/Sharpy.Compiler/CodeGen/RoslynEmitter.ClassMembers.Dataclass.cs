@@ -282,13 +282,17 @@ internal partial class RoslynEmitter
     /// </summary>
     private MethodDeclarationSyntax GenerateDataclassGetHashCode(List<VariableSymbol> fields)
     {
-        ExpressionSyntax hashExpr;
+        StatementSyntax[] statements;
         if (fields.Count == 0)
         {
-            hashExpr = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
+            statements = new[]
+            {
+                ReturnStatement(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)))
+            };
         }
-        else
+        else if (fields.Count <= 8)
         {
+            // Use HashCode.Combine for up to 8 fields (max overload arity)
             var args = fields.Select(f =>
             {
                 var propName = GetCodeGenInfo(f)?.CSharpName
@@ -296,12 +300,53 @@ internal partial class RoslynEmitter
                 return Argument(IdentifierName(propName));
             }).ToArray();
 
-            hashExpr = InvocationExpression(
+            var hashExpr = InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
                     IdentifierName("HashCode"),
                     IdentifierName("Combine")),
                 ArgumentList(SeparatedList(args)));
+
+            statements = new[] { ReturnStatement(hashExpr) };
+        }
+        else
+        {
+            // For 9+ fields, use incremental HashCode.Add
+            var stmts = new List<StatementSyntax>();
+
+            // var hc = new HashCode();
+            stmts.Add(LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator("hc")
+                            .WithInitializer(EqualsValueClause(
+                                ObjectCreationExpression(IdentifierName("HashCode"))
+                                    .WithArgumentList(ArgumentList())))))));
+
+            // hc.Add(Field) for each field
+            foreach (var f in fields)
+            {
+                var propName = GetCodeGenInfo(f)?.CSharpName
+                    ?? NameMangler.ToPascalCase(f.Name);
+                stmts.Add(ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName("hc"),
+                            IdentifierName("Add")),
+                        ArgumentList(SingletonSeparatedList(
+                            Argument(IdentifierName(propName)))))));
+            }
+
+            // return hc.ToHashCode();
+            stmts.Add(ReturnStatement(
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName("hc"),
+                        IdentifierName("ToHashCode")))));
+
+            statements = stmts.ToArray();
         }
 
         return MethodDeclaration(
@@ -309,7 +354,7 @@ internal partial class RoslynEmitter
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.OverrideKeyword)))
-            .WithBody(Block(ReturnStatement(hashExpr)));
+            .WithBody(Block(statements));
     }
 
     /// <summary>
