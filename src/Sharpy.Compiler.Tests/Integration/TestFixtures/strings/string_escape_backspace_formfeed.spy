@@ -1,0 +1,6 @@
+def main():
+    s1: str = "\b"
+    s2: str = "\f"
+    print(len(s1))
+    print(len(s2))
+    print(s1 == s2)

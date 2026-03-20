@@ -1,0 +1,4 @@
+def main():
+    print("\101")
+    print("\101" == "A")
+    print(len("\101"))
