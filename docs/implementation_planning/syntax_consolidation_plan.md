@@ -1,3 +1,6 @@
+<!-- Verified by /verify-plan on 2026-03-19 -->
+<!-- Verification result: PASS WITH CORRECTIONS -->
+
 # Syntax Consolidation Plan
 
 > Staff engineer assessment — aligned changes from the dataclass-property-syntax-analysis review.
@@ -63,12 +66,12 @@ distinction should be documented in the spec.
 **Semantic rule:**
 - `...` = abstract, no implementation provided (requires `@abstract` or interface context)
 - `pass` = concrete empty body (intentionally does nothing)
-- Body-less = deprecated, emit SPY0451 warning
+- Body-less = deprecated, emit SPY0464 warning [CORRECTED: SPY0451 is already assigned to UnusedVariable; SPY0464 is the next available warning code in the SPY0450-0499 range]
 
 **Files to change:**
-- `src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs` — add SPY0451
+- `src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs` — add SPY0464
 - `src/Sharpy.Compiler/Semantic/Validation/` — add or extend validator for body-less detection
-- `docs/language_specification/abstract_classes.md` — document `...` vs `pass` distinction
+- `docs/language_specification/decorators.md` — document `...` vs `pass` distinction (abstract body syntax is documented here, lines 148-199) [CORRECTED: `abstract_classes.md` does not exist; abstract class body syntax is in `decorators.md` and `classes.md`]
 - `docs/language_specification/interfaces.md` — same
 - Test fixtures using body-less form — update to use `...`
 
@@ -321,6 +324,8 @@ public class Point
 - `dataclass_explicit_init.spy` — explicit `__init__` overrides generated
 - `dataclass_eq_false.spy` — `@dataclass(eq=False)` skips `__eq__`
 - `dataclass_on_struct.error` — error: @dataclass on struct
+- `dataclass_on_interface.error` — error: @dataclass on interface
+- `dataclass_on_enum.error` — error: @dataclass on enum
 - `dataclass_ordering.error` — error: non-default field after default
 - `dataclass_no_type.error` — error: field without type annotation
 
@@ -370,3 +375,52 @@ interact with dataclass-generated properties.
 ## Related Issues
 
 - #416 — Property observers (willset/didset) — deferred, needs RFC after this plan lands
+
+---
+
+## Verification Summary
+
+**Result:** PASS WITH CORRECTIONS
+**Verified on:** 2026-03-19
+**Plan file:** `docs/implementation_planning/syntax_consolidation_plan.md`
+
+### Corrections Made
+
+1. **SPY0451 → SPY0464** (Section 1.2): SPY0451 is already assigned to `UnusedVariable` in `DiagnosticCodes.cs`. Changed to SPY0464, the next available warning code in the SPY0450-0499 range (SPY0460-0462 are reserved, SPY0463 is `NonExhaustiveMatch`).
+
+2. **`abstract_classes.md` → `decorators.md`** (Section 1.2): File `docs/language_specification/abstract_classes.md` does not exist. Abstract body syntax (ellipsis, body-less, pass) is documented in `decorators.md` (lines 148-199) and `interfaces.md`. Corrected file reference.
+
+3. **Added missing negative test cases** (Section 4.1): Plan listed `dataclass_on_struct.error` but not `dataclass_on_interface.error` or `dataclass_on_enum.error`, despite design rules stating "@dataclass can be applied to classes only (not structs, enums, interfaces, unions)". Added both.
+
+### Warnings
+
+1. **Synthetic method registration timing unclear** (Section 4.1, step 4): The plan says "register synthetic methods in symbol table" but doesn't specify *when* during the pipeline this happens. Synthetic `__init__`/`__eq__`/`__repr__` symbols need to exist before TypeChecker processes call sites that invoke them. Recommendation: register during TypeChecker.Definitions processing (after field collection, before method body type-checking).
+
+2. **Validator Order not specified for new @dataclass validation** (Section 4.1, step 6): The plan references `DecoratorValidator` (Order 60) for @dataclass validation but doesn't discuss whether field ordering/type validation should happen at Order 60 or later. Field type validation may need types to be resolved first (TypeResolver runs before TypeChecker). Recommendation: split @dataclass validation — decorator recognition at DecoratorValidator (60), field analysis during TypeChecker, field ordering/type enforcement in a new DataclassValidator or via PropertyValidator.
+
+3. **`frozen=True` mutability enforcement scope** (Section 4.1, step 6): The plan says "frozen=True with mutable field assignment in method → error" but doesn't address external assignment (`point.x = 5`). Since `init`-only properties prevent this at the C# level, it may not need explicit Sharpy-level enforcement, but should be documented.
+
+4. **C# output example uses `object?`** (Section 4.1): The `Equals(object? obj)` signature uses nullable reference type annotation. Verify that nullable annotations are enabled in the generated code context, or use `object` without `?`.
+
+### Missing Steps Added
+
+1. **`dataclass_on_interface.error`** and **`dataclass_on_enum.error`** test fixtures added to Section 4.1 test list.
+
+### Unchecked Claims
+
+1. **Issue #276/#277 status** (Section 5.2, OUT-2): These GitHub issues are referenced for `__getitem__`/`__setitem__` gap checking but were not verified against GitHub. The plan correctly defers this to implementation time.
+
+### Verified Claims (Confirmed Accurate)
+
+- All file paths exist except `abstract_classes.md` (corrected above)
+- `AccessValidator.DetermineAccessLevel(string name)` signature matches plan's "Before" exactly
+- `PropertyValidator.ValidateMixedPropertyStyle()` rejects mixed auto+function properties via SPY0407 — Phase 3 work is correctly scoped
+- `@private`/`@protected`/`@public`/`@internal` are defined in `DecoratorNames.cs` and recognized as `KnownModifierDecorators` but NOT used by `AccessValidator` — Phase 2 gap is real
+- No `ExplicitAccessLevel`, `IsDataclass`, `DataclassFields`, or `DataclassOptions` properties exist on Symbol/TypeSymbol — these are genuinely new additions
+- Parser already handles decorator arguments including keyword arguments (verified `ParseCallArguments()` in `Parser.cs` lines 448-475) — "no lexer/parser changes needed" is correct
+- `RoslynEmitter.ClassMembers.Dataclass.cs` naming follows established convention
+- `HashCode.Combine` is available in the generated code context (.NET 10 runtime; already used in compiler code)
+- `{ get; init; }` properties are valid C# 9.0 and available in .NET 10 runtime
+- DecoratorValidator Order is 60 — appropriate for @dataclass decorator recognition
+- Issue #416 exists, is OPEN, and matches plan description
+- All Phase 5 spec files exist and match audit item descriptions
