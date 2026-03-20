@@ -242,6 +242,44 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Merge an array of sorted lists into a single sorted sequence,
+        /// with an optional <paramref name="reverse"/> flag.
+        /// Inputs must be pre-sorted in the corresponding order.
+        /// </summary>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <param name="iterables">The array of sorted lists to merge.</param>
+        /// <param name="reverse">
+        /// If <c>true</c>, merge in descending order (inputs must be descending).
+        /// </param>
+        /// <returns>An <see cref="IEnumerable{T}"/> yielding elements in sorted order.</returns>
+        public static IEnumerable<T> Merge<T>(Sharpy.List<T>[] iterables, bool reverse = false) where T : IComparable<T>
+        {
+            Comparison<T> comparison = reverse
+                ? (x, y) => y.CompareTo(x)
+                : (Comparison<T>)((x, y) => x.CompareTo(y));
+            return MergeInternal(iterables, comparison);
+        }
+
+        /// <summary>
+        /// Merge an array of sorted lists into a single sorted sequence,
+        /// comparing elements by a <paramref name="key"/> function with an
+        /// optional <paramref name="reverse"/> flag.
+        /// Inputs must be pre-sorted according to the key/reverse order.
+        /// </summary>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <typeparam name="TKey">The key type used for comparison.</typeparam>
+        /// <param name="iterables">The array of sorted lists to merge.</param>
+        /// <param name="key">A function that extracts a comparison key from each element.</param>
+        /// <param name="reverse">
+        /// If <c>true</c>, merge in descending key order (inputs must be descending).
+        /// </param>
+        /// <returns>An <see cref="IEnumerable{T}"/> yielding elements in sorted order.</returns>
+        public static IEnumerable<T> Merge<T, TKey>(Sharpy.List<T>[] iterables, Func<T, TKey> key, bool reverse = false) where TKey : IComparable<TKey>
+        {
+            return MergeInternal(iterables, key, reverse);
+        }
+
+        /// <summary>
         /// Merge two sorted lists in reverse order (descending).
         /// Inputs must be pre-sorted in descending order.
         /// </summary>
