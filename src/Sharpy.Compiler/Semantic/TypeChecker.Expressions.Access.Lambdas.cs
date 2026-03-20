@@ -25,9 +25,13 @@ internal partial class TypeChecker
                 // Explicit type annotation — use it
                 paramTypes.Add(_typeResolver.ResolveTypeAnnotation(param.Type));
             }
-            else if (expectedFunc != null && i < expectedFunc.ParameterTypes.Count)
+            else if (expectedFunc != null && i < expectedFunc.ParameterTypes.Count
+                     && !ContainsTypeParameterType(expectedFunc.ParameterTypes[i]))
             {
-                // Infer from expected function type context
+                // Infer from expected function type context, but only if the expected
+                // type is fully resolved. Unresolved TypeParameterType entries (e.g., T
+                // in filter<T>(Func<T,bool>,...)) cannot be used for lambda param inference
+                // because T hasn't been inferred yet at this point.
                 paramTypes.Add(expectedFunc.ParameterTypes[i]);
             }
             else

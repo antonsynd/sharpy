@@ -524,18 +524,14 @@ internal class OverloadIndexBuilder
             var clrTypeArgs = clrType.GetGenericArguments();
             var genericDefName = clrType.GetGenericTypeDefinition().FullName;
 
-            // Func<T1,...,TResult> / Action<T1,...> containing method-level type params
-            // on methods whose declaring type is ALSO generic: encode as __func__ so
-            // ConvertTypeSignature reconstructs as FunctionType. This enables inference
-            // of method-level params (e.g., U in Result<T,E>.Map<U>).
-            // Skip for module-level generic functions (e.g., filter<T>) where all params
-            // are method-level — those are handled by generic function inference.
-            if ((genericDefName?.StartsWith("System.Func`") == true ||
-                 genericDefName?.StartsWith("System.Action`") == true) &&
-                clrTypeArgs.Any(a => a.IsGenericParameter && a.DeclaringMethod != null
-                    && a.DeclaringMethod.DeclaringType?.IsGenericType == true))
+            // Func<T1,...,TResult> / Action<T1,...> -> encode as __func__/__action__
+            // so ConvertTypeSignature reconstructs as FunctionType. This enables
+            // generic inference for all callback parameters (e.g., filter<T>, sorted key=,
+            // and Result<T,E>.Map<U>).
+            if (semanticType is FunctionType)
             {
-                signature.Name = genericDefName.StartsWith("System.Action`") ? TypeSignature.ActionSentinel : TypeSignature.FuncSentinel;
+                signature.Name = genericDefName?.StartsWith("System.Action`") == true
+                    ? TypeSignature.ActionSentinel : TypeSignature.FuncSentinel;
                 signature.IsGeneric = true;
                 signature.TypeArguments = clrTypeArgs
                     .Select(CreateTypeSignature)

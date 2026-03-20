@@ -292,6 +292,34 @@ internal class ClrTypeMapper
             };
         }
 
+        // Func<T1,...,TResult> -> FunctionType
+        if (genericDef.FullName?.StartsWith("System.Func`") == true)
+        {
+            // Last type arg is the return type, rest are parameter types
+            var paramTypes = typeArgs.Take(typeArgs.Length - 1)
+                .Select(MapClrTypeToSemanticType)
+                .ToList();
+            var returnType = MapClrTypeToSemanticType(typeArgs[typeArgs.Length - 1]);
+            return new FunctionType
+            {
+                ParameterTypes = paramTypes,
+                ReturnType = returnType
+            };
+        }
+
+        // Action<T1,...> -> FunctionType with void return
+        if (genericDef.FullName?.StartsWith("System.Action`") == true)
+        {
+            var paramTypes = typeArgs
+                .Select(MapClrTypeToSemanticType)
+                .ToList();
+            return new FunctionType
+            {
+                ParameterTypes = paramTypes,
+                ReturnType = SemanticType.Void
+            };
+        }
+
         // Unknown generic type - fallback to object
         return SemanticType.Object;
     }
