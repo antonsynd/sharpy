@@ -1,0 +1,5 @@
+def foo[T: class](x: T) -> T:
+    return x
+
+def main():
+    print(foo(42))

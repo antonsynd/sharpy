@@ -1,0 +1,5 @@
+def bar[T: struct](x: T) -> T:
+    return x
+
+def main():
+    print(bar(42))

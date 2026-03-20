@@ -1,0 +1,11 @@
+from collections import namedtuple
+
+Point = namedtuple("Point", ["x", "y"])
+
+def main():
+    p = Point(1, 2)
+    match p:
+        case Point(x=1, y=y_val):
+            print(f"x is 1, y is {y_val}")
+        case _:
+            print("no match")

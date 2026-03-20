@@ -1,0 +1,4 @@
+def main():
+    s: str = "😀"
+    print(len(s))
+    print(s[0] == s[1])
