@@ -81,9 +81,9 @@ type SomeFuncType = (int, str) -> None  # OK
 type AnotherFuncType = (int, str)       # ERROR
 ```
 
-## No Optional Parameters in Function Types
+## No Optional Parameters in Function Type Annotations
 
-Function types cannot specify optional parameters (parameters with default values). All parameters in a function type are required:
+Function type **annotations** cannot specify optional parameters (parameters with default values). All parameters in a function type annotation are required. Note that lambda expressions *can* have default parameters — this restriction applies only to the type annotation syntax:
 
 ```python
 # ❌ Invalid - cannot specify defaults in function types

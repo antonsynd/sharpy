@@ -49,7 +49,7 @@ process(1, "two", 3)          # ERROR: "two" is str, not int
 
 ### Position requirement
 
-The `*args` parameter must be the last parameter in the function signature:
+The `*args` parameter must appear after all positional parameters. Keyword-only parameters may follow `*args` (see [Flexible Arguments](flexible_arguments.md)):
 
 ```python
 # ✅ Valid - *args at the end
@@ -59,8 +59,14 @@ def greet(prefix: str, *names: str) -> None:
 
 greet("Hello", "Alice", "Bob", "Charlie")
 
-# ❌ Invalid - *args not at the end
-def broken(*items: int, suffix: str) -> None:  # ERROR
+# ✅ Valid - keyword-only parameters after *args
+def log(level: str, *messages: str, sep: str = " ") -> None:
+    print(sep.join(messages))
+
+log("INFO", "hello", "world", sep=", ")
+
+# ❌ Invalid - positional parameters after *args
+def broken(suffix: str, *items: int, other: str) -> None:  # ERROR: positional after *args not allowed
     pass
 ```
 

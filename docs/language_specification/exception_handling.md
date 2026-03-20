@@ -4,19 +4,31 @@
 
 Sharpy uses .NET's exception hierarchy directly:
 
-| Sharpy Name | .NET Type | Notes |
+| Sharpy Name | Base Type | Notes |
 |-------------|-----------|-------|
 | `Exception` | `System.Exception` | Base class for all exceptions |
-| `ValueError` | `System.ArgumentException` | Invalid argument value |
-| `TypeError` | `System.InvalidCastException` | Type mismatch |
-| `IndexError` | `System.IndexOutOfRangeException` | Index out of bounds |
-| `KeyError` | `System.Collections.Generic.KeyNotFoundException` | Dict key not found |
-| `RuntimeError` | `System.InvalidOperationException` | General runtime error |
-| `IOError` | `System.IO.IOException` | I/O operation failed |
-| `FileNotFoundError` | `System.IO.FileNotFoundException` | File not found |
-| `ZeroDivisionError` | `System.DivideByZeroException` | Division by zero |
-| `NotImplementedError` | `System.NotImplementedException` | Not yet implemented |
-| `StopIteration` | `System.InvalidOperationException` | Iterator exhausted |
+| `ValueError` | `Exception` | Invalid argument value |
+| `TypeError` | `Exception` | Type mismatch |
+| `RuntimeError` | `Exception` | General runtime error |
+| `NotImplementedError` | `Exception` | Not yet implemented |
+| `AttributeError` | `Exception` | Attribute not found |
+| `ZeroDivisionError` | `Exception` | Division by zero |
+| `OverflowError` | `Exception` | Numeric overflow |
+| `LookupError` | `Exception` | Base for key/index errors |
+| `IndexError` | `Exception` | Index out of bounds |
+| `KeyError` | `Exception` | Dict key not found |
+| `IOError` | `IOException` | I/O operation failed |
+| `OSError` | `IOError` | OS-level error (alias for IOError) |
+| `FileNotFoundError` | `FileNotFoundException` | File not found |
+| `FileExistsError` | `IOException` | File already exists |
+| `IsADirectoryError` | `IOException` | Expected file, got directory |
+| `PermissionError` | `UnauthorizedAccessException` | Permission denied |
+| `StopIteration` | `Exception` | Iterator exhausted |
+| `UnicodeEncodeError` | `Exception` | Unicode encoding failed |
+| `ArgumentError` | `Exception` | Generic argument error |
+| `SystemExit` | `Exception` | Program exit request |
+| `JSONDecodeError` | `ValueError` | Invalid JSON (in `json` module) |
+| `StatisticsError` | `Exception` | Statistics computation error (in `statistics` module) |
 
 ## Pythonic Aliases
 
