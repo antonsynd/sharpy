@@ -1,0 +1,7 @@
+# Chained identity operators (a is b is c) — GAP-39
+# Currently produces SPY0519 (unsupported in codegen chains)
+def main():
+    x: object = "hello"
+    y: object = x
+    z: object = x
+    print(x is y is z)

@@ -1,0 +1,25 @@
+# Covariant property return types — GAP-47
+# A derived class can override a virtual property
+
+class Base:
+    _value: str
+
+    def __init__(self):
+        self._value = "base"
+
+    @virtual
+    property get value(self) -> str:
+        return self._value
+
+class Derived(Base):
+    def __init__(self):
+        super().__init__()
+        self._value = "derived"
+
+    @override
+    property get value(self) -> str:
+        return self._value
+
+def main():
+    b: Base = Derived()
+    print(b.value)

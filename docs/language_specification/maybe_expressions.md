@@ -34,6 +34,17 @@ n: int = 42
 w = maybe n                      # ERROR: n is int, not int | None
 ```
 
+## Idempotency
+
+The `maybe` expression is **idempotent**: applying it twice to an `Optional[T]` is a type error on the second application (same as the single-wrapping case above).
+
+```python
+opt: str? = Some("hello")
+x = maybe opt                    # ERROR: opt is str?, not str | None
+```
+
+This is correct behavior — `maybe` requires a C# nullable, and `Optional[T]` is not nullable. If you have an `Optional[T]` already, `maybe` should not be applied to it.
+
 ## Precedence Rules
 
 Like `try`, the `maybe` expression has very low precedence (lower than `to`, arithmetic, comparisons, and logical operators), meaning it captures the entire following expression:

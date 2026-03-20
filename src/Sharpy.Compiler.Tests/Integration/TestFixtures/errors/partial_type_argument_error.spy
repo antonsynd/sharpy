@@ -1,0 +1,7 @@
+# Partial type argument error — GAP-46
+# Must specify all or none type arguments
+def foo[T](x: T) -> T:
+    return x
+
+def main():
+    print(foo[int, str](42))

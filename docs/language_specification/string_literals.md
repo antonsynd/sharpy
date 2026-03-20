@@ -29,6 +29,7 @@ multi-line string
 | `\b` | Backspace |
 | `\f` | Form feed |
 | `\0` | Null character |
+| `\ooo` | Character with octal value OOO (0–377) |
 | `\xHH` | Character with hex value HH |
 | `\uHHHH` | Unicode 16-bit |
 | `\UHHHHHHHH` | Unicode 32-bit |
