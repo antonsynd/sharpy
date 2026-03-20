@@ -198,3 +198,7 @@ result = [(x, y) for x in range(5) for y in range(5) if x + y < 4]
 filtered = [x for x in range(20) if x % 2 == 0 if x % 3 == 0]
 # [0, 6, 12, 18]
 ```
+
+## Async Comprehensions
+
+Async comprehensions (`async for` inside comprehensions and `await` inside comprehensions) are **intentionally not supported** in Sharpy. This is a deliberate design decision — see [async_programming.md](async_programming.md#async-comprehensions--deliberate-non-feature) for rationale and workarounds.

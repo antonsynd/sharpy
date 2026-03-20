@@ -114,8 +114,10 @@ process(lambda x: add(x))  # OK
 
 A function type `A` is assignable to function type `B` if:
 1. They have the same number of parameters
-2. Parameter types are contravariant (B's parameter types assignable to A's)
+2. Parameter types are compatible in **either direction** (A's param assignable to B's, or B's param assignable to A's)
 3. Return types are covariant (A's return type assignable to B's)
+
+> **Design note:** Parameter compatibility uses bidirectional assignability rather than strict contravariance. This is a deliberate choice that simplifies common callback patterns while remaining sound for the cases Sharpy supports (no mutable function-type containers that would expose the unsoundness). Strict contravariant checking is enforced at **declaration sites** via `VarianceValidator` for interface and delegate type parameters -- see [Generic Variance](generic_variance.md).
 
 ```python
 # Covariance in return types
@@ -125,12 +127,12 @@ type DogFactory = () -> Dog
 dog_factory: DogFactory = lambda: Dog()
 animal_factory: AnimalFactory = dog_factory  # OK: Dog is subtype of Animal
 
-# Contravariance in parameter types
+# Bidirectional parameter compatibility
 type AnimalHandler = (Animal) -> None
 type DogHandler = (Dog) -> None
 
 animal_handler: AnimalHandler = lambda a: print(a)
-# dog_handler: DogHandler = animal_handler  # OK: Animal handler can accept Dog
+dog_handler: DogHandler = animal_handler  # OK: Animal assignable to Dog's position (bidirectional)
 ```
 
 ## Using Function Types

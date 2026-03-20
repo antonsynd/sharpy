@@ -3,9 +3,12 @@
 > **Implementation status:** `async def` declarations are **partially implemented** (v0.2.x).
 > - `async def` is parsed and emits C# `async` methods returning `Task` or `Task<T>`.
 > - `await` expressions are **implemented** — `await` can be used inside `async def` functions to unwrap `Task<T>` results.
+> - `async for` is **implemented** — maps to `await foreach` over `IAsyncEnumerable<T>`.
+> - `async with` is **implemented** — supports both dunder protocol and `IAsyncDisposable`, including multiple context managers.
 > - Async generators (`async def` with `yield`) emit `IAsyncEnumerable<T>` return type.
 > - `yield from` in async generators is **implemented** (Sharpy extension beyond Python).
 > - Async constructors (`async def __init__`) are rejected at compile time (SPY0358).
+> - Async comprehensions (`[x async for x in ...]`, `[await f(x) for x in ...]`) are a **deliberate non-feature** — see [Async Comprehensions](#async-comprehensions--deliberate-non-feature) below.
 >
 > See [generators.md](generators.md) for synchronous and async generator documentation.
 
@@ -48,50 +51,38 @@ async def process():
 
 *Implementation: ✅ Implemented — `async def` with `yield` emits `IAsyncEnumerable<T>`. `async for` maps to `await foreach`. `yield from` in async generators auto-detects sync vs async iterables (Sharpy extension beyond Python).*
 
-**No Async Comprehensions:**
+### Async Comprehensions — Deliberate Non-Feature
 
-Sharpy does not support async comprehensions (`async for` inside comprehensions). C# 9.0's LINQ doesn't natively support `IAsyncEnumerable` in query syntax, making this feature complex to implement.
+Sharpy **intentionally does not support** async comprehensions (`async for` inside comprehensions) and **will not add them**. This is a deliberate design decision, not a missing feature or planned work item.
+
+**What is excluded:**
 
 ```python
-# ❌ NOT SUPPORTED - async comprehension
+# ❌ NOT SUPPORTED — async for inside comprehension
 results = [x async for x in async_iterator()]
 
-# ❌ NOT SUPPORTED - async comprehension with filter
+# ❌ NOT SUPPORTED — async for with filter
 results = [x async for x in async_iterator() if await predicate(x)]
+
+# ❌ NOT SUPPORTED — await inside comprehension
+results = [await fetch(url) for url in urls]
 ```
 
-**Await in synchronous comprehension (inside async function):**
+**Why this is intentional:**
 
-Using `await` inside a regular comprehension within an async function is also **not supported**:
-
-```python
-async def fetch_all(urls: list[str]) -> list[str]:
-    # ❌ NOT SUPPORTED - await inside comprehension
-    results = [await fetch(url) for url in urls]
-
-    # ✅ Use explicit loop instead
-    results: list[str] = []
-    for url in urls:
-        results.append(await fetch(url))
-    return results
-
-    # ✅ Or use asyncio.gather for concurrent execution
-    tasks = [fetch(url) for url in urls]  # Create tasks (no await)
-    results = await asyncio.gather(*tasks)
-    return results
-```
-
-**Rationale:** C# LINQ expressions don't support `await` inside query expressions. While it's technically possible to lower this to explicit loops, we've chosen to reject it for clarity and to encourage the use of `asyncio.gather` for concurrent operations.
+1. **C# LINQ does not support `await` in query expressions.** Comprehensions lower to LINQ (`.Select()`, `.Where()`, `.SelectMany()`), and C# lambdas passed to LINQ methods cannot use `await` without significant transformation.
+2. **Lowering to explicit loops would be misleading.** Async comprehensions in Python execute sequentially, but look like they could be concurrent. Requiring explicit loops makes the sequential nature visible.
+3. **`asyncio.gather` is the right pattern for concurrency.** When concurrent execution is desired, `asyncio.gather` maps directly to `Task.WhenAll()` and expresses intent clearly.
 
 **Workarounds:**
 
 ```python
-# ✅ Use explicit async loop instead
+# ✅ Use explicit async loop for sequential async iteration
 results: list[T] = []
 async for x in async_iterator():
     results.append(x)
 
-# ✅ Or with condition
+# ✅ With condition
 results: list[T] = []
 async for x in async_iterator():
     if await predicate(x):
@@ -101,8 +92,6 @@ async for x in async_iterator():
 async def fetch_all(urls: list[str]) -> list[str]:
     return await asyncio.gather(*[fetch(url) for url in urls])
 ```
-
-Async comprehensions may be added in a future version when better runtime support is available or if user demand justifies the implementation complexity.
 
 **Generator Return Types:**
 
@@ -157,8 +146,18 @@ async def main():
 - **Async dunder protocol**: Classes with `__aenter__`/`__aexit__` → try/finally with `await AenterAsync()`/`await AexitAsync()`
 - **`IAsyncDisposable`**: .NET types → `await using`
 
+**Multiple context managers** are supported in a single `async with` statement, just like synchronous `with`:
+
+```python
+async def main():
+    async with ResourceA() as a, ResourceB() as b:
+        print(f"using {a} and {b}")
+```
+
+Each context manager is nested inside-out in the generated code (last item wraps the body, first item wraps everything), ensuring proper cleanup order.
+
 See [context_managers.md](context_managers.md) for full details on both sync and async context manager protocols.
 
-*Implementation: ✅ Implemented — async dunder protocol emits try/finally; IAsyncDisposable emits `await using`.*
+*Implementation: ✅ Implemented — async dunder protocol emits try/finally; IAsyncDisposable emits `await using`. Multiple context managers in a single `async with` are supported.*
 
 ---

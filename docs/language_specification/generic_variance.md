@@ -278,6 +278,24 @@ interface IBroken[out T]:
     # ERROR: Type parameter 'T' is covariant but appears in contravariant position
 ```
 
+## Declaration-Site vs Usage-Site Enforcement
+
+Sharpy enforces variance at two levels, with different strictness:
+
+### Declaration-site enforcement (strict)
+
+The `VarianceValidator` (SPY0417-SPY0419) enforces strict variance rules at **declaration sites** -- that is, when defining interfaces and delegates with `in`/`out` type parameters. A covariant (`out`) type parameter must not appear in contravariant positions (parameter types), and vice versa. Nested variance flipping is correctly applied (e.g., a contravariant type parameter inside a contravariant position flips back to covariant). This is checked at compile time and produces errors for violations.
+
+### Usage-site enforcement (bidirectional)
+
+At **assignment sites**, when checking whether one function type is assignable to another (including function-to-delegate assignment), the compiler uses **bidirectional** parameter compatibility: a parameter type match succeeds if either type is assignable to the other. This is more permissive than strict contravariance, which would require only the target's parameter type to be assignable to the source's.
+
+This is a deliberate design choice. Strict contravariant checking at usage sites would reject common patterns like assigning an `(Animal) -> None` to a `(Dog) -> None` variable, even though the assignment is safe in practice for non-mutable function references. The bidirectional approach simplifies callback and handler patterns while the declaration-site checks ensure that generic type definitions remain sound.
+
+Return types use standard covariant checking at both levels.
+
+See [Function Types -- Function Type Compatibility](function_types.md#function-type-compatibility) for examples.
+
 ## See Also
 
 - [Generics](generics.md) — Generic types and constraints

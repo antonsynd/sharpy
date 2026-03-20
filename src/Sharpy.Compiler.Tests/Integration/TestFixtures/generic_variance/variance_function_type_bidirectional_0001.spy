@@ -1,0 +1,34 @@
+# Function type assignment uses bidirectional parameter compatibility.
+# An (Animal) -> str handler can be assigned to a (Dog) -> str variable
+# because Animal is assignable to Dog's position (bidirectional check).
+
+class Animal:
+    def __init__(self, name: str):
+        self.name: str = name
+
+    def speak(self) -> str:
+        return "..."
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    def speak(self) -> str:
+        return "Woof"
+
+# Covariant return: Dog -> Animal is fine
+def dog_namer() -> Dog:
+    return Dog("Rex")
+
+animal_namer: () -> Animal = dog_namer
+print(animal_namer().speak())
+
+# Bidirectional parameter compatibility
+def describe_animal(a: Animal) -> str:
+    return a.name
+
+describer: (Dog) -> str = describe_animal
+print(describer(Dog("Buddy")))
+
+def main():
+    pass
