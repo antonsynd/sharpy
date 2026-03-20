@@ -655,6 +655,8 @@ internal partial class TypeChecker
     /// <param name="ReturnFirstMatch">If true, returns the first matching overload (builtin behavior).
     /// If false, collects all matches and disambiguates by exact arity.</param>
     /// <param name="SkipUnknownTypes">If true, skip type comparison when either side is UnknownType.</param>
+    /// <param name="KeywordArgNames">Names of keyword arguments at the call site, used to filter out
+    /// overloads that lack matching parameter names (e.g., a params overload with no 'reverse' param).</param>
     internal record OverloadResolutionContext(
         List<FunctionSymbol> Candidates,
         int TotalArgCount,
@@ -662,7 +664,8 @@ internal partial class TypeChecker
         bool SkipSelfParam = false,
         Func<SemanticType, SemanticType>? TypeSubstitution = null,
         bool ReturnFirstMatch = false,
-        bool SkipUnknownTypes = false);
+        bool SkipUnknownTypes = false,
+        IReadOnlyCollection<string>? KeywordArgNames = null);
 
     /// <summary>
     /// Core overload resolution algorithm shared by all overload resolution methods.
@@ -686,6 +689,50 @@ internal partial class TypeChecker
                 return context.TotalArgCount >= requiredParams;
             return context.TotalArgCount >= requiredParams && context.TotalArgCount <= totalParams;
         }).ToList();
+
+        // Filter by keyword argument names: exclude overloads where
+        // (a) any keyword arg name has no matching parameter, or
+        // (b) the positional arg count doesn't cover the remaining required params
+        //     after removing keyword-satisfied ones.
+        // This disambiguates calls like merge(a, b, reverse=True) between a params
+        // overload and one with a named 'reverse' parameter.
+        if (context.KeywordArgNames is { Count: > 0 })
+        {
+            var positionalArgCount = context.TotalArgCount - context.KeywordArgNames.Count;
+            var kwFiltered = arityCandidates.Where(o =>
+            {
+                var selfOffset = GetSelfOffset(o);
+                var paramsAfterSelf = o.Parameters.Skip(selfOffset).ToList();
+                var paramNames = paramsAfterSelf.Select(p => p.Name).ToHashSet();
+
+                // Every keyword arg must have a matching parameter name
+                if (!context.KeywordArgNames.All(kw => paramNames.Contains(kw)))
+                    return false;
+
+                // For non-variadic overloads, verify that positional args cover
+                // exactly the required parameters NOT supplied by keyword args.
+                if (!paramsAfterSelf.Any(p => p.IsVariadic))
+                {
+                    var kwSet = context.KeywordArgNames.ToHashSet();
+                    var nonKwRequired = paramsAfterSelf
+                        .Where(p => !p.HasDefault && !kwSet.Contains(p.Name))
+                        .Count();
+                    var nonKwTotal = paramsAfterSelf
+                        .Where(p => !kwSet.Contains(p.Name))
+                        .Count();
+                    if (positionalArgCount < nonKwRequired || positionalArgCount > nonKwTotal)
+                        return false;
+                }
+
+                return true;
+            }).ToList();
+
+            // Only apply the filter if it leaves at least one candidate;
+            // otherwise fall through to normal resolution so existing error
+            // reporting (unknown keyword argument) kicks in.
+            if (kwFiltered.Count > 0)
+                arityCandidates = kwFiltered;
+        }
 
         // Second pass: check type compatibility
         var matchingOverloads = new List<FunctionSymbol>();
@@ -751,10 +798,30 @@ internal partial class TypeChecker
             if (exactArityMatches.Count == 1)
                 return (exactArityMatches[0], arityCandidates, false);
 
+            // When multiple exact-arity overloads remain, prefer the one with fewer
+            // type parameters. This breaks ties between e.g. Merge<T>(a, b, reverse)
+            // and Merge<T, TKey>(iterables[], key, reverse) by choosing the simpler generic.
+            var candidates = exactArityMatches.Count > 1 ? exactArityMatches : matchingOverloads;
+            var minTypeParams = candidates.Min(o => o.TypeParameters.Count);
+            var fewerTypeParamMatches = candidates.Where(o => o.TypeParameters.Count == minTypeParams).ToList();
+            if (fewerTypeParamMatches.Count == 1)
+                return (fewerTypeParamMatches[0], arityCandidates, false);
+
             return (null, arityCandidates, true);
         }
 
         return (matchingOverloads.Count == 1 ? matchingOverloads[0] : null, arityCandidates, false);
+    }
+
+    /// <summary>
+    /// Extracts keyword argument names from a function call for use in overload filtering.
+    /// Returns null when there are no keyword arguments (avoids allocating an empty collection).
+    /// </summary>
+    private static IReadOnlyCollection<string>? ExtractKeywordArgNames(FunctionCall call)
+    {
+        if (call.KeywordArguments.Length == 0)
+            return null;
+        return call.KeywordArguments.Select(kw => kw.Name).ToList();
     }
 
     /// <summary>
@@ -776,8 +843,10 @@ internal partial class TypeChecker
         if (!needsOverloadResolution)
             return null;
 
+        var kwNames = ExtractKeywordArgNames(call);
         var (matchingOverload, _, _) = ResolveOverloadCore(
-            new OverloadResolutionContext(overloads!, totalArgCount, argTypes, ReturnFirstMatch: true));
+            new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
+                ReturnFirstMatch: true, KeywordArgNames: kwNames));
 
         if (matchingOverload != null)
         {
@@ -874,10 +943,11 @@ internal partial class TypeChecker
             typeSubstitution = t => SubstituteTypeParameters(t, capturedTypeSymbol.TypeParameters, capturedTypeArgs);
         }
 
+        var kwNames = ExtractKeywordArgNames(call);
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads, totalArgCount, argTypes,
                 SkipSelfParam: true, TypeSubstitution: typeSubstitution,
-                SkipUnknownTypes: true));
+                SkipUnknownTypes: true, KeywordArgNames: kwNames));
 
         if (isAmbiguous || matchingOverload == null)
         {
@@ -1010,8 +1080,10 @@ internal partial class TypeChecker
         if (!moduleSymbol.FunctionOverloads.TryGetValue(memberAccess.Member, out var overloads) || overloads.Count <= 1)
             return null;
 
+        var kwNames = ExtractKeywordArgNames(call);
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
-            new OverloadResolutionContext(overloads, totalArgCount, argTypes, SkipUnknownTypes: true));
+            new OverloadResolutionContext(overloads, totalArgCount, argTypes,
+                SkipUnknownTypes: true, KeywordArgNames: kwNames));
 
         if (isAmbiguous || matchingOverload == null)
         {
@@ -1060,8 +1132,10 @@ internal partial class TypeChecker
                 return null;
         }
 
+        var kwNames = ExtractKeywordArgNames(call);
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
-            new OverloadResolutionContext(overloads!, totalArgCount, argTypes, SkipUnknownTypes: true));
+            new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
+                SkipUnknownTypes: true, KeywordArgNames: kwNames));
 
         if (isAmbiguous || matchingOverload == null)
         {

@@ -268,6 +268,45 @@ def main():
         Assert.Equal("bool:True\nint:42\n", result.StandardOutput);
     }
 
+    [Fact]
+    public void KeywordArgDisambiguates_VariadicVsNamed()
+    {
+        // When a keyword argument (reverse=True) is passed, the overload with a
+        // matching named parameter should be preferred over a params/variadic overload
+        // that lacks that parameter name.
+        var source = @"
+class Sorter:
+    def __init__(self):
+        pass
+
+    def merge(self, a: str, b: str) -> str:
+        return a + b
+
+    def merge(self, *parts: str) -> str:
+        result: str = """"
+        for p in parts:
+            result = result + p
+        return result
+
+    def merge(self, a: str, b: str, reverse: bool) -> str:
+        if reverse:
+            return b + a
+        return a + b
+
+def main():
+    s = Sorter()
+    # Without keyword: exact arity picks 2-param overload
+    print(s.merge(""x"", ""y""))
+    # With keyword: keyword name 'reverse' disambiguates
+    print(s.merge(""x"", ""y"", reverse=True))
+    # Variadic: 3 positional args
+    print(s.merge(""a"", ""b"", ""c""))
+";
+        var result = CompileAndExecute(source);
+        Assert.True(result.Success, FormatErrors(result));
+        Assert.Equal("xy\nyx\nabc\n", result.StandardOutput);
+    }
+
     private static string FormatErrors(ExecutionResult result)
     {
         return string.Join("\n", result.CompilationErrors);
