@@ -83,8 +83,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Parser diagnostic codes (SPY0100-SPY0199).
-    /// Active: SPY0100-SPY0133, SPY0135-SPY0136 (36 codes)
-    /// Reserved: SPY0134, SPY0137, SPY0138-SPY0199 (64 codes)
+    /// Active: SPY0100-SPY0136 (37 codes)
+    /// Reserved: SPY0137, SPY0138-SPY0199 (63 codes)
     /// </summary>
     public static class Parser
     {
@@ -147,7 +147,11 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0134: Reserved for future parser use
+        #region Rejected Python keywords (SPY0134)
+
+        public const string RejectedPythonKeyword = "SPY0134";   // Active
+
+        #endregion
 
         #region Event syntax errors (SPY0135-SPY0136)
 
@@ -156,8 +160,7 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0137: Reserved for future parser use
-        // SPY0138-SPY0199: Reserved for future parser diagnostics
+        // SPY0137-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>

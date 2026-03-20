@@ -1,0 +1,7 @@
+import asyncio
+
+async def fetch(x: int) -> int:
+    return x * 2
+
+def main():
+    result = [await fetch(x) for x in range(3)]

@@ -829,6 +829,24 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Checks if an expression evaluates to a decimal type.
+    /// Decimal division works natively in C# and must not be cast to double.
+    /// </summary>
+    private bool IsDecimalExpression(Expression expr)
+    {
+        var semanticType = GetExpressionSemanticType(expr);
+        if (semanticType != null)
+            return semanticType == SemanticType.Decimal;
+
+        return expr switch
+        {
+            FloatLiteral fl => fl.Suffix?.Equals("m", StringComparison.OrdinalIgnoreCase) == true,
+            Parenthesized paren => IsDecimalExpression(paren.Expression),
+            _ => false
+        };
+    }
+
+    /// <summary>
     /// Checks if an expression evaluates to a floating-point type.
     /// Used to determine floor division semantics.
     /// Consults SemanticInfo for resolved types when available (variables, function calls, etc.).

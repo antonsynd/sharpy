@@ -1,0 +1,17 @@
+def double(x: int) -> int:
+    return x * 2
+
+def format_result(value: int, label: str) -> str:
+    return label + ": " + str(value)
+
+def main():
+    code: int = 2
+    matched_val: int = match code:
+        case 1: 100
+        case 2: 200
+        case _: 0
+    matched_label: str = match code:
+        case 1: "first"
+        case 2: "second"
+        case _: "unknown"
+    print(format_result(double(matched_val), matched_label))

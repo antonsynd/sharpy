@@ -526,6 +526,7 @@ internal class ModuleLoader
             BuiltinNames.Float => SemanticType.Float,
             BuiltinNames.Double => SemanticType.Double,
             BuiltinNames.Float32 => SemanticType.Float32,
+            BuiltinNames.Decimal => SemanticType.Decimal,
             BuiltinNames.Bool => SemanticType.Bool,
             BuiltinNames.Str or "string" => SemanticType.Str,
             "void" or BuiltinNames.None => SemanticType.Void,

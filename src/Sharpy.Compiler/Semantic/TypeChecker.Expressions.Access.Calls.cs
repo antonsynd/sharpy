@@ -534,6 +534,38 @@ internal partial class TypeChecker
     private SemanticType? CheckGenericInstantiation(FunctionCall call, SemanticType calleeType,
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
     {
+        // Special handling for array construction: array[T](size) -> new T[size]
+        if (call.Function is IndexAccess arrayAccess &&
+            arrayAccess.Object is Identifier arrayId &&
+            arrayId.Name == BuiltinNames.Array)
+        {
+            var arrayTypeArgs = TryResolveTypeArguments(arrayAccess.Index);
+            if (arrayTypeArgs != null && arrayTypeArgs.Count == 1)
+            {
+                if (call.Arguments.Length != 1)
+                {
+                    AddError("Array constructor requires exactly 1 argument (the size)",
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: call.Span);
+                    return SemanticType.Unknown;
+                }
+
+                if (argTypes.Count > 0 && argTypes[0] != SemanticType.Unknown &&
+                    argTypes[0] != SemanticType.Int && argTypes[0] != SemanticType.Long)
+                {
+                    AddError("Array size must be an integer",
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: call.Span);
+                }
+
+                return new GenericType
+                {
+                    Name = BuiltinNames.Array,
+                    TypeArguments = arrayTypeArgs
+                };
+            }
+        }
+
         // Special handling for generic type instantiation: Box[int](42) or Pair[int, str](1, "a")
         // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int or TupleLiteral), Arguments: [...])
         if (call.Function is IndexAccess indexAccess &&

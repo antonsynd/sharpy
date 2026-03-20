@@ -1,0 +1,6 @@
+def greet(name: str, *, greeting: str = "Hello") -> str:
+    return f"{greeting}, {name}!"
+
+def main():
+    print(greet("Alice"))
+    print(greet("Bob", greeting="Hi"))

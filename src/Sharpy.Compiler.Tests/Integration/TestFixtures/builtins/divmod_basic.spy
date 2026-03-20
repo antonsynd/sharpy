@@ -1,5 +1,5 @@
-# Test divmod() builtin (called as div_mod in Sharpy)
+# Test divmod() builtin
 def main():
-    result: tuple[int, int] = div_mod(17, 5)
+    result: tuple[int, int] = divmod(17, 5)
     print(result[0])
     print(result[1])

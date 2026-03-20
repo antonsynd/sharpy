@@ -1,0 +1,10 @@
+def main():
+    # Shorthand syntax: int[] is equivalent to array[int]
+    arr: int[] = array[int](3)
+    arr[0] = 100
+    arr[1] = 200
+    arr[2] = 300
+    print(arr[0])
+    print(arr[1])
+    print(arr[2])
+    print(len(arr))

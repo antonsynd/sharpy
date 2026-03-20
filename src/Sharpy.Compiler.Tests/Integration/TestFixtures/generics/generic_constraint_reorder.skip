@@ -1,0 +1,1 @@
+TODO: Multiple generic constraints with + syntax not yet supported (GAP-19). Parser does not handle constraint composition.

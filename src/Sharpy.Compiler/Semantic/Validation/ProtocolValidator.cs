@@ -1,7 +1,8 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Discovery;
-using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -170,6 +171,13 @@ internal class ProtocolValidator : ValidatingAstWalker
         // Check generic container types — use TypeSymbol metadata (populated by discovery)
         if (type is GenericType generic)
         {
+            // Arrays support __len__, __iter__, __getitem__, __setitem__, __contains__
+            if (generic.Name == BuiltinNames.Array)
+            {
+                return dunderName is DunderNames.Len or DunderNames.Iter
+                    or DunderNames.GetItem or DunderNames.SetItem or DunderNames.Contains;
+            }
+
             var typeSymbol = Context.SymbolTable.BuiltinRegistry.GetType(generic.Name);
             if (typeSymbol != null)
                 return typeSymbol.ProtocolMethods.ContainsKey(dunderName);

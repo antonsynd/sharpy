@@ -196,6 +196,37 @@ async def combined_async() -> int:
 |---------|-----------|------------------------|
 | `async def` with `yield` | `-> T` | `IAsyncEnumerable<T>` |
 
+## Yield in Exception Handlers
+
+Due to a C# iterator limitation, `yield` cannot appear inside `try`/`except`/`finally` blocks. C#'s iterator state machine does not support `yield return` within exception handling constructs:
+
+```python
+def safe_items(items: list[int]) -> int:
+    for item in items:
+        # ❌ ERROR: yield inside try/except is not allowed
+        try:
+            yield item
+        except:
+            pass
+
+    # ✅ OK: yield outside try/except
+    for item in items:
+        yield item
+```
+
+**Workaround:** Collect results in a local variable within the try block, then yield after the block:
+
+```python
+def safe_items(items: list[int]) -> int:
+    for item in items:
+        value = 0
+        try:
+            value = process(item)
+        except:
+            continue
+        yield value
+```
+
 ## Restrictions
 
 ### No `yield` inside `__next__`

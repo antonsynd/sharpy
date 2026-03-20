@@ -1,0 +1,7 @@
+class Foo:
+    value: int
+    def __init__(self, value: int):
+        self.value = value
+
+def main():
+    result = 42 |> Foo

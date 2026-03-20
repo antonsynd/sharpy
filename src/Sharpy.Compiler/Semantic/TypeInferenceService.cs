@@ -185,8 +185,10 @@ internal class TypeInferenceService
                 BinaryOperator.FloorDivide or
                 BinaryOperator.Modulo => InferNumericResultType(left, right),
 
-                // Division always returns float64 (Python semantics)
-                BinaryOperator.Divide => SemanticType.Double,
+                // Division: decimal/decimal => decimal, otherwise float64 (Python semantics)
+                BinaryOperator.Divide => PrimitiveCatalog.IsDecimal(left) && PrimitiveCatalog.IsDecimal(right)
+                    ? InferNumericResultType(left, right) ?? SemanticType.Decimal
+                    : SemanticType.Double,
 
                 // Power: integer ** integer => Long, any float => Double
                 BinaryOperator.Power => InferPowerResultType(left, right),
@@ -816,13 +818,13 @@ internal class TypeInferenceService
         //   Math.Pow returns double, but we cast back to the promoted integer type
         // - Any float involvement → Double
         if (TypeUtils.IsInteger(left) && TypeUtils.IsInteger(right))
-            return InferNumericResultType(left, right);
+            return InferNumericResultType(left, right) ?? left;
         return SemanticType.Double;
     }
 
-    private static SemanticType InferNumericResultType(SemanticType left, SemanticType right)
+    private static SemanticType? InferNumericResultType(SemanticType left, SemanticType right)
     {
-        return PrimitiveCatalog.GetPromotedType(left, right) ?? left;
+        return PrimitiveCatalog.GetPromotedType(left, right);
     }
 
     private Type? GetClrType(SemanticType type)
@@ -879,6 +881,8 @@ internal class TypeInferenceService
             return SemanticType.Float32;
         if (clrType == typeof(double))
             return SemanticType.Double;
+        if (clrType == typeof(decimal))
+            return SemanticType.Decimal;
         if (clrType == typeof(bool))
             return SemanticType.Bool;
         if (clrType == typeof(string))

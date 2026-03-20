@@ -139,6 +139,7 @@ internal partial class TypeChecker
                             BuiltinNames.Long => SemanticType.Long,
                             BuiltinNames.Float => SemanticType.Float,
                             BuiltinNames.Float32 => SemanticType.Float32,
+                            BuiltinNames.Decimal => SemanticType.Decimal,
                             BuiltinNames.Double => SemanticType.Double,
                             BuiltinNames.Bool => SemanticType.Bool,
                             BuiltinNames.Str => SemanticType.Str,

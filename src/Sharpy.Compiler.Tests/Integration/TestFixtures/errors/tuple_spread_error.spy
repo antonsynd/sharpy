@@ -1,0 +1,4 @@
+def main():
+    t: tuple[int, int] = (1, 2)
+    result = (*t, 3)
+    print(result)

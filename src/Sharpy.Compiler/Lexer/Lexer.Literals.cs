@@ -310,6 +310,74 @@ public partial class Lexer
         var sb = new StringBuilder();
         var isFloat = false;
 
+        // Leading-decimal float literal (.5, .123)
+        if (_source[_position] == '.')
+        {
+            isFloat = true;
+            sb.Append("0.");
+            _position++;
+            _column++;
+
+            // Read fractional part
+            char? lastCharFrac = '.';
+            while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
+            {
+                var c = _source[_position];
+
+                if (c == '_' && lastCharFrac == '_')
+                    throw ReportError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+
+                if (c != '_')
+                    sb.Append(c);
+
+                lastCharFrac = c;
+                _position++;
+                _column++;
+            }
+
+            if (lastCharFrac == '_')
+                throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+
+            // Check for scientific notation
+            if (_position < _source.Length && (_source[_position] == 'e' || _source[_position] == 'E'))
+            {
+                sb.Append(_source[_position]);
+                _position++;
+                _column++;
+
+                if (_position < _source.Length && (_source[_position] == '+' || _source[_position] == '-'))
+                {
+                    sb.Append(_source[_position]);
+                    _position++;
+                    _column++;
+                }
+
+                if (_position >= _source.Length || !char.IsDigit(_source[_position]))
+                    throw ReportError("Invalid scientific notation: expected exponent digits", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+
+                char? lastCharExp = null;
+                while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
+                {
+                    var c = _source[_position];
+
+                    if (c == '_' && lastCharExp == '_')
+                        throw ReportError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+
+                    if (c != '_')
+                        sb.Append(c);
+
+                    lastCharExp = c;
+                    _position++;
+                    _column++;
+                }
+
+                if (lastCharExp == '_')
+                    throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+            }
+
+            return CreateToken(TokenType.Float, sb.ToString(), startLine, startColumn, startPosition);
+        }
+
         // Check for hex, binary, or octal prefix
         if (_source[_position] == '0' && _position + 1 < _source.Length)
         {

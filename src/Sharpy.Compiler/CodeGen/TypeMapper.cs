@@ -60,6 +60,7 @@ internal class TypeMapper
             BuiltinType builtin when type == SemanticType.Float => PredefinedType(Token(SyntaxKind.DoubleKeyword)), // Sharpy float = C# double
             BuiltinType builtin when type == SemanticType.Double => PredefinedType(Token(SyntaxKind.DoubleKeyword)),
             BuiltinType builtin when type == SemanticType.Float32 => PredefinedType(Token(SyntaxKind.FloatKeyword)),
+            BuiltinType builtin when type == SemanticType.Decimal => PredefinedType(Token(SyntaxKind.DecimalKeyword)),
             BuiltinType builtin => ParseTypeName(GetMappedTypeName(builtin.Name)),
 
             // Handle generic types
@@ -122,6 +123,13 @@ internal class TypeMapper
 
     private TypeSyntax MapGenericSemanticType(GenericType generic)
     {
+        // Array types map to C# T[] (not a generic type)
+        if (generic.Name == BuiltinNames.Array && generic.TypeArguments.Count == 1)
+        {
+            var elementType = MapSemanticType(generic.TypeArguments[0]);
+            return MakeArrayType(elementType);
+        }
+
         var baseTypeName = GetMappedTypeName(generic.Name);
         var typeArgs = generic.TypeArguments
             .Select(MapSemanticType)
@@ -310,6 +318,14 @@ internal class TypeMapper
                 }
             }
 
+            return WrapOptionalOrNullable(result, type);
+        }
+
+        // Handle array type annotations: array[T] or T[] -> C# T[]
+        if (type.Name == BuiltinNames.Array && type.TypeArguments.Length == 1)
+        {
+            var elementType = MapType(type.TypeArguments[0]);
+            var result = MakeArrayType(elementType);
             return WrapOptionalOrNullable(result, type);
         }
 

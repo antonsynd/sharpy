@@ -212,11 +212,11 @@ public class LexerTests
     // The float without leading digit restriction (.5) is properly enforced per v0.1 spec.
 
     [Fact]
-    public void Tokenize_FloatWithoutDigitBeforeDecimal_ThrowsLexerError()
+    public void Tokenize_FloatWithLeadingDecimal_ReturnsFloatToken()
     {
-        // v0.1 spec requires at least one digit before the decimal point
-        var source = ".5";
-        TokenizeExpectingError(source);
+        var token = SingleToken(".5");
+        token.Type.Should().Be(TokenType.Float);
+        token.Value.Should().Be("0.5");
     }
 
     #endregion

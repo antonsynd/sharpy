@@ -1,6 +1,6 @@
 # Test scientific notation float formatting
-# Python uses lowercase 'e' (e.g., 1e+20), .NET uses uppercase 'E' (e.g., 1E+20).
-# This is a known Axiom 1 (.NET) > Axiom 2 (Python) trade-off.
+# Python uses lowercase 'e' (e.g., 1e+20).
+# Sharpy matches Python's lowercase convention (Axiom 2).
 
 def main():
     # Large values that trigger scientific notation

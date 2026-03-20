@@ -414,10 +414,12 @@ x = 1";
     }
 
     [Fact]
-    public void ExitCriteria_FloatMustHaveDigitBeforeDecimal()
+    public void ExitCriteria_FloatWithLeadingDecimalIsValid()
     {
-        // .5 is not a valid float - must have digit before decimal
-        TokenizeExpectingError(".5");
+        // .5 is a valid float literal
+        var token = SingleToken(".5");
+        token.Type.Should().Be(TokenType.Float);
+        token.Value.Should().Be("0.5");
     }
 
     #endregion

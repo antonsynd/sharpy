@@ -1,0 +1,6 @@
+def add_decimals(a: decimal, b: decimal) -> decimal:
+    return a + b
+
+def main():
+    result: decimal = add_decimals(1.5m, 2.5m)
+    print(result)

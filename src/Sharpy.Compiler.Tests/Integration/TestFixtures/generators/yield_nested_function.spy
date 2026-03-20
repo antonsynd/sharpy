@@ -1,0 +1,9 @@
+def outer() -> int:
+    def inner() -> int:
+        yield 1
+        yield 2
+    yield from inner()
+
+def main():
+    for x in outer():
+        print(x)

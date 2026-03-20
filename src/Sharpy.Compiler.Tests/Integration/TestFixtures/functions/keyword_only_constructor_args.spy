@@ -1,0 +1,13 @@
+# Keyword-only arguments in constructors — Extension 8
+class Config:
+    debug: bool
+    verbose: bool
+
+    def __init__(self, *, debug: bool, verbose: bool):
+        self.debug = debug
+        self.verbose = verbose
+
+def main():
+    c = Config(debug=True, verbose=False)
+    print(c.debug)
+    print(c.verbose)

@@ -1,0 +1,7 @@
+def main():
+    x: decimal = 3.14m
+    y: decimal = 1.0m
+    print(x + y)
+    print(x * 2m)
+    print(x - y)
+    print(10.0m / 4.0m)

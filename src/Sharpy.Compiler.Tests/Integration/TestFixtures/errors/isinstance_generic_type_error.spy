@@ -1,0 +1,3 @@
+def main():
+    x: list[int] = [1, 2, 3]
+    print(isinstance(x, list[int]))

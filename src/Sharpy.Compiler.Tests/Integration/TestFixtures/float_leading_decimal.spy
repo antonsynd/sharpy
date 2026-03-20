@@ -1,0 +1,7 @@
+def main():
+    print(.5)
+    print(.123)
+    print(.0001)
+    print(.5 + .5)
+    x: float = .25
+    print(x)

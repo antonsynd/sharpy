@@ -147,28 +147,28 @@ public class StrTests
     [Theory]
     [InlineData(1e15, "1000000000000000.0")]
     [InlineData(1e16, "10000000000000000.0")]  // .NET "R" format still uses fixed notation at 1e16; Python uses "1e+16"
-    [InlineData(1e20, "1E+20")]
-    [InlineData(1e308, "1E+308")]
+    [InlineData(1e20, "1e+20")]
+    [InlineData(1e308, "1e+308")]
     public void Str_Double_LargeValues_FormatsConsistently(double value, string expected)
     {
         // Large floats near or beyond the scientific notation boundary.
         // Python: str(1e15) == "1000000000000000.0", str(1e16) == "1e+16"
         // .NET "R" keeps fixed notation longer (1e16 -> "10000000000000000"),
         // FormatFloat appends ".0" when no decimal/exponent present.
-        // .NET uses uppercase 'E' (1E+20) where Python uses lowercase 'e' (1e+20).
+        // FormatFloat now normalizes to lowercase 'e' to match Python (1e+20).
         Builtins.Str(value).Should().Be(expected);
     }
 
     [Theory]
     [InlineData(1e-4, "0.0001")]
-    [InlineData(1e-5, "1E-05")]
-    [InlineData(1.5e-10, "1.5E-10")]
-    [InlineData(1e-15, "1E-15")]
-    [InlineData(1e-16, "1E-16")]
+    [InlineData(1e-5, "1e-05")]
+    [InlineData(1.5e-10, "1.5e-10")]
+    [InlineData(1e-15, "1e-15")]
+    [InlineData(1e-16, "1e-16")]
     public void Str_Double_SmallValues_FormatsConsistently(double value, string expected)
     {
         // Very small floats that may trigger scientific notation.
-        // .NET uses uppercase 'E' where Python uses lowercase 'e'.
+        // FormatFloat now normalizes to lowercase 'e' to match Python.
         Builtins.Str(value).Should().Be(expected);
     }
 
@@ -177,7 +177,7 @@ public class StrTests
     {
         // 5e-324 is the smallest positive subnormal double
         var result = Builtins.Str(5e-324);
-        result.Should().Be("5E-324");
+        result.Should().Be("5e-324");
     }
 
     [Fact]
@@ -185,6 +185,6 @@ public class StrTests
     {
         var result = Builtins.Str(double.MaxValue);
         // double.MaxValue = 1.7976931348623157E+308
-        result.Should().Contain("E+308");
+        result.Should().Contain("e+308");
     }
 }

@@ -334,6 +334,11 @@ public static class DiagnosticExplanations
             "result = f(g(_)(_))",
             "Break into separate expressions:\ninner = g(_)\nresult = f(inner(_))");
 
+        Add(dict, DiagnosticCodes.Parser.RejectedPythonKeyword, "Rejected Python keyword", "Parser",
+            "This Python keyword is not supported in Sharpy. Sharpy follows C# scoping and lifetime rules (Axiom 1: .NET first), so Python-specific scope modifiers like 'global' and 'nonlocal' do not apply.",
+            "global x",
+            "Remove the keyword. Variables in Sharpy follow C# scoping rules — closures capture by reference automatically.");
+
         Add(dict, DiagnosticCodes.Parser.AutoEventWithBody, "Auto-event with accessor keyword", "Parser",
             "An auto-event declaration ('event name: DelegateType') must not have an 'add' or 'remove' accessor keyword. Auto-events generate backing delegate fields and accessors automatically.",
             "event add on_click: EventHandler",

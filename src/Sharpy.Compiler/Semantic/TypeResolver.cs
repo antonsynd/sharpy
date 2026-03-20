@@ -201,6 +201,7 @@ internal class TypeResolver
             BuiltinNames.Float32 => SemanticType.Float32,   // float32 -> C# float
             "float64" => SemanticType.Double,    // float64 -> double
             BuiltinNames.Double => SemanticType.Double,
+            BuiltinNames.Decimal => SemanticType.Decimal,
             BuiltinNames.Bool => SemanticType.Bool,
             BuiltinNames.Str => SemanticType.Str,
             BuiltinNames.None => SemanticType.Void,
@@ -225,6 +226,25 @@ internal class TypeResolver
             var okType = ResolveTypeAnnotation(annotation.TypeArguments[0]);
             var errorType = ResolveTypeAnnotation(annotation.TypeArguments[1]);
             return new ResultType { OkType = okType, ErrorType = errorType };
+        }
+
+        // Special handling for array types - array[T] maps to .NET T[]
+        if (annotation.Name == BuiltinNames.Array)
+        {
+            if (annotation.TypeArguments.Length != 1)
+            {
+                AddError("Array type 'array' requires exactly 1 type argument",
+                    annotation.LineStart, annotation.ColumnStart,
+                    code: DiagnosticCodes.Semantic.WrongArgumentCount, span: annotation.Span);
+                return SemanticType.Unknown;
+            }
+
+            var elementType = ResolveTypeAnnotation(annotation.TypeArguments[0]);
+            return new GenericType
+            {
+                Name = BuiltinNames.Array,
+                TypeArguments = new List<SemanticType> { elementType }
+            };
         }
 
         // Special handling for tuple types - they have variable arity (tuple[int], tuple[int, str], etc.)

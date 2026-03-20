@@ -34,8 +34,11 @@ internal class DecoratorValidator : ValidatingAstWalker
     private static readonly Dictionary<string, string> UnsupportedDecorators = new()
     {
         [DecoratorNames.StaticMethod] = "The '@staticmethod' decorator is not supported in Sharpy. " +
-                           "Methods without a 'self' parameter are automatically static.",
-        [DecoratorNames.ClassMethod] = "The '@classmethod' decorator is not supported in Sharpy.",
+                           "Methods without a 'self' parameter are automatically static. " +
+                           "Use @static for static fields.",
+        [DecoratorNames.ClassMethod] = "The '@classmethod' decorator is not supported in Sharpy. " +
+                          "Methods without a 'self' parameter are automatically static. " +
+                          "Use @static for static fields.",
     };
 
     public override void Validate(Module module, SemanticContext context)

@@ -33,9 +33,14 @@ public class LexerNegativeTests
     #region Invalid Numeric Literals
 
     [Fact]
-    public void RejectsMultipleDecimalPoints()
+    public void LexesMultipleDecimalPointsAsTwoFloats()
     {
-        TokenizeExpectingError("1.2.3");
+        // 1.2.3 is now two tokens: 1.2 (float) and .3 (leading-decimal float)
+        var tokens = Tokenize("1.2.3");
+        var floatTokens = tokens.Where(t => t.Type == LexerNs.TokenType.Float).ToList();
+        floatTokens.Should().HaveCount(2);
+        floatTokens[0].Value.Should().Be("1.2");
+        floatTokens[1].Value.Should().Be("0.3");
     }
 
     [Fact]
@@ -99,10 +104,10 @@ public class LexerNegativeTests
     }
 
     [Fact]
-    public void RejectsFloatStartingWithDecimal()
+    public void AcceptsFloatStartingWithDecimal()
     {
-        var errors = TokenizeExpectingError(".5");
-        errors.Should().Contain("at least one digit before");
+        var tokens = Tokenize(".5");
+        tokens.Should().Contain(t => t.Type == LexerNs.TokenType.Float && t.Value == "0.5");
     }
 
     [Fact]

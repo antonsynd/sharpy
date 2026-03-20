@@ -175,6 +175,22 @@ def process(value: object) -> str:
 
 *Implementation: ✅ Native - Maps to C# `is` pattern matching with type narrowing.*
 
+## Iterator Functions
+
+| Function | Purpose | C# Mapping |
+|----------|---------|------------|
+| `next(iterator)` | Get next value from iterator | Calls `MoveNext()` + `Current`; raises `StopIteration` if exhausted |
+| `next(iterator, default)` | Get next value or default | Calls `MoveNext()` + `Current`; returns `default` if exhausted |
+
+```python
+it = iter([1, 2, 3])
+print(next(it))          # 1
+print(next(it))          # 2
+print(next(it))          # 3
+print(next(it, -1))      # -1 (iterator exhausted, returns default)
+next(it)                  # Raises StopIteration
+```
+
 ## Collection Functions
 
 | Function | Purpose | C# Mapping |
@@ -187,9 +203,31 @@ def process(value: object) -> str:
 | `reversed(iter)` | Reverse | `.Reverse()` |
 | `enumerate(iter)` | Index + value | `.Select((x, i) => (i, x))` |
 
+**`min()` and `max()` Signatures:**
+
+The `min()` and `max()` functions accept an optional `default` parameter for empty iterables:
+
+| Form | Description |
+|------|-------------|
+| `min(iterable)` | Minimum value; raises `ValueError` if empty |
+| `min(iterable, default=value)` | Minimum value; returns `default` if empty |
+| `max(iterable)` | Maximum value; raises `ValueError` if empty |
+| `max(iterable, default=value)` | Maximum value; returns `default` if empty |
+
+```python
+numbers = [3, 1, 4, 1, 5]
+print(min(numbers))                    # 1
+print(max(numbers))                    # 5
+
+empty: list[int] = []
+print(min(empty, default=0))           # 0 (empty iterable, returns default)
+print(max(empty, default=-1))          # -1
+min(empty)                             # Raises ValueError
+```
+
 **`enumerate()` Signature:**
 
-The `enumerate()` function matches Python's signature:
+The `enumerate()` function takes the iterable and an optional positional `start` argument:
 
 ```python
 enumerate(iterable, start=0)
@@ -198,8 +236,8 @@ enumerate(iterable, start=0)
 | Form | Description |
 |------|-------------|
 | `enumerate(items)` | Indices start at 0 |
-| `enumerate(items, start=1)` | Indices start at 1 |
-| `enumerate(items, start=n)` | Indices start at n |
+| `enumerate(items, 1)` | Indices start at 1 |
+| `enumerate(items, start=1)` | Indices start at 1 (keyword form also accepted) |
 
 ```python
 names = ["Alice", "Bob", "Charlie"]
@@ -208,8 +246,8 @@ names = ["Alice", "Bob", "Charlie"]
 for i, name in enumerate(names):
     print(f"{i}: {name}")  # 0: Alice, 1: Bob, 2: Charlie
 
-# Start at 1 (useful for 1-based numbering)
-for i, name in enumerate(names, start=1):
+# Start at 1 (positional argument)
+for i, name in enumerate(names, 1):
     print(f"{i}. {name}")  # 1. Alice, 2. Bob, 3. Charlie
 ```
 

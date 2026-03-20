@@ -127,7 +127,8 @@ namespace Sharpy
             // If already contains a decimal point or scientific notation, return as-is
             if (s.IndexOf('.') >= 0 || s.IndexOf('E') >= 0 || s.IndexOf('e') >= 0)
             {
-                return s;
+                // Python uses lowercase 'e' in scientific notation (Axiom 2)
+                return s.Replace('E', 'e');
             }
 
             return s + ".0";
@@ -160,7 +161,8 @@ namespace Sharpy
             // If already contains a decimal point or scientific notation, return as-is
             if (s.IndexOf('.') >= 0 || s.IndexOf('E') >= 0 || s.IndexOf('e') >= 0)
             {
-                return s;
+                // Python uses lowercase 'e' in scientific notation (Axiom 2)
+                return s.Replace('E', 'e');
             }
 
             return s + ".0";

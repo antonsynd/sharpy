@@ -1,0 +1,3 @@
+def main():
+    do: int = 42
+    print(do)

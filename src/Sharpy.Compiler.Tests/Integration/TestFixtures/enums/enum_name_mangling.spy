@@ -1,0 +1,8 @@
+enum Color:
+    red_color = 1
+    green_color = 2
+
+def main():
+    print(Color.red_color)
+    print(Color.red_color.name)
+    print(Color.green_color.name)

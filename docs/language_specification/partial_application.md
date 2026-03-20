@@ -99,20 +99,29 @@ name = format_j_smith("Q")  # "John Q Smith"
 Haskell-style operator sections using `_` for partial application of operators:
 
 ```python
-# Unary operator sections
+# One-placeholder sections (one argument fixed, one placeholder)
 doubler = (_ * 2)        # Multiply by 2
 is_positive = (_ > 0)   # Check if positive
 negate = (-_)           # Negate number
+add_ten = (_ + 10)      # Add 10 to argument
+half = (_ / 2)          # Divide by 2
 
 # Usage
-[1, 2, 3].map(float)           # [2, 4, 6]
+[1, 2, 3].map(doubler)         # [2, 4, 6]
 [-1, 0, 1].filter(is_positive)  # [1]
 [5, -3, 8].map(negate)          # [-5, 3, -8]
 
-# Binary operator sections
-add_ten = (_ + 10)      # Add 10 to argument
-half = (_ / 2)          # Divide by 2
-starts_with_a = (_ startswith "a")
+# Two-placeholder sections (both operands are placeholders)
+adder = (_ + _)          # (a, b) => a + b
+multiplier = (_ * _)     # (a, b) => a * b
+
+# Usage: creates a two-argument lambda
+result = adder(3, 4)     # 7
+result = multiplier(5, 6) # 30
+
+# Two-placeholder sections are useful for reduce/fold
+from functools import reduce
+total = reduce((_ + _), [1, 2, 3, 4])  # 10
 ```
 
 ## With Lambda Syntax
