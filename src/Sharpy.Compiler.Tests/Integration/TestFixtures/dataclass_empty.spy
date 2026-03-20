@@ -1,0 +1,9 @@
+@dataclass
+class Empty:
+    pass
+
+def main():
+    e1 = Empty()
+    e2 = Empty()
+    print(e1)
+    print(e1 == e2)
