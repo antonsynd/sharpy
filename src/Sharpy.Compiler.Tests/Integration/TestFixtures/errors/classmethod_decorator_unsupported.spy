@@ -1,0 +1,8 @@
+# Test that @classmethod decorator produces a compile error
+class MathUtils:
+    @classmethod
+    def create(cls) -> MathUtils:
+        pass
+
+def main():
+    obj = MathUtils.create()
