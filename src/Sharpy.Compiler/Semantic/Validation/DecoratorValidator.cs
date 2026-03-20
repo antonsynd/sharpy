@@ -473,12 +473,7 @@ internal class DecoratorValidator : ValidatingAstWalker
     /// <summary>
     /// Valid keyword argument names for @dataclass decorator.
     /// </summary>
-    private static readonly HashSet<string> DataclassKnownOptions = new()
-    {
-        "frozen",
-        "eq",
-        "repr",
-    };
+    private static readonly IReadOnlySet<string> DataclassKnownOptions = DataclassOptionNames.KnownOptions;
 
     /// <summary>
     /// Validates that @dataclass is not applied to a non-class type definition.

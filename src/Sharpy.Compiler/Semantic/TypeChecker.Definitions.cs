@@ -1318,15 +1318,16 @@ internal partial class TypeChecker
         {
             if (kwArg.Value is BooleanLiteral boolLit)
             {
+                // Option names must match DataclassOptionNames.KnownOptions
                 switch (kwArg.Name)
                 {
-                    case "frozen":
+                    case DataclassOptionNames.Frozen:
                         frozen = boolLit.Value;
                         break;
-                    case "eq":
+                    case DataclassOptionNames.Eq:
                         eq = boolLit.Value;
                         break;
-                    case "repr":
+                    case DataclassOptionNames.Repr:
                         repr = boolLit.Value;
                         break;
                 }
