@@ -1276,6 +1276,11 @@ internal partial class TypeChecker
         // For methods like Map<U>(Func<T, U> f) -> Result<U, E>, the method-level
         // TypeParameterType("U") appears in both parameter types and return type.
         // We infer U from the actual argument types and substitute everywhere.
+        // TODO(#414): This ad-hoc inference block duplicates logic in
+        // GenericTypeInferenceService.Unify. It cannot be directly replaced because
+        // CheckLambdaCall operates on FunctionType (no FunctionSymbol available).
+        // A type-level inference API on GenericTypeInferenceService would allow
+        // unification. See also: CollectTypeParameterMappings in Utilities.
         if (ContainsTypeParameterType(returnType) || paramTypes.Any(ContainsTypeParameterType))
         {
             var typeParamMap = new Dictionary<string, SemanticType>();

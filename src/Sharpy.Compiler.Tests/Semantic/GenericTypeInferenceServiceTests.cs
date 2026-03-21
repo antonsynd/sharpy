@@ -4,6 +4,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Parser.Ast;
 using System.Collections.Immutable;
+using FunctionType = Sharpy.Compiler.Semantic.FunctionType;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -325,6 +326,442 @@ public class GenericTypeInferenceServiceTests
         result.InferredTypes.Should().HaveCount(2);
         result.InferredTypes![0].Should().Be(SemanticType.Int);
         result.InferredTypes![1].Should().Be(SemanticType.Str);
+    }
+
+    #endregion
+
+    #region FunctionType Unification
+
+    [Fact]
+    public void InferFromFunctionType_SingleParameter()
+    {
+        // Arrange: def apply[T](f: (T) -> bool, value: T) -> bool
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "apply",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "f",
+                    Type = new FunctionType
+                    {
+                        ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+                        ReturnType = SemanticType.Bool
+                    }
+                },
+                new ParameterSymbol
+                {
+                    Name = "value",
+                    Type = new TypeParameterType { Name = "T" }
+                }
+            },
+            ReturnType = SemanticType.Bool
+        };
+
+        // Act: call apply((int) -> bool, 42)
+        var argumentTypes = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Int },
+                ReturnType = SemanticType.Bool
+            },
+            SemanticType.Int
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        // Assert: T should be inferred as int
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(1);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferFromFunctionType_ParameterOnly()
+    {
+        // Arrange: matching (T) -> bool against (int) -> bool should infer T=int
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "predicate_test",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "pred",
+                    Type = new FunctionType
+                    {
+                        ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+                        ReturnType = SemanticType.Bool
+                    }
+                }
+            },
+            ReturnType = SemanticType.Bool
+        };
+
+        // Act: call predicate_test((int) -> bool)
+        var argumentTypes = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Int },
+                ReturnType = SemanticType.Bool
+            }
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        // Assert: T should be inferred as int from the function parameter type
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(1);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferFromFunctionType_ReturnType()
+    {
+        // Arrange: def transform[T, U](f: (T) -> U, value: T) -> U
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "transform",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" },
+                new TypeParameterDef { Name = "U" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "f",
+                    Type = new FunctionType
+                    {
+                        ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+                        ReturnType = new TypeParameterType { Name = "U" }
+                    }
+                },
+                new ParameterSymbol
+                {
+                    Name = "value",
+                    Type = new TypeParameterType { Name = "T" }
+                }
+            },
+            ReturnType = new TypeParameterType { Name = "U" }
+        };
+
+        // Act: call transform((str) -> int, "hello")
+        var argumentTypes = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Str },
+                ReturnType = SemanticType.Int
+            },
+            SemanticType.Str
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        // Assert: T=str (from function param + value), U=int (from function return type)
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(2);
+        result.InferredTypes![0].Should().Be(SemanticType.Str);
+        result.InferredTypes![1].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferFromFunctionType_FilterPattern()
+    {
+        // Arrange: def filter[T](pred: (T) -> bool, items: list[T]) -> list[T]
+        // This mimics the builtin filter() with Func<T, bool>
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "filter",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "pred",
+                    Type = new FunctionType
+                    {
+                        ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+                        ReturnType = SemanticType.Bool
+                    }
+                },
+                new ParameterSymbol
+                {
+                    Name = "items",
+                    Type = new GenericType
+                    {
+                        Name = "list",
+                        TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+                    }
+                }
+            },
+            ReturnType = new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+            }
+        };
+
+        // Act: call filter((int) -> bool, list[int])
+        var argumentTypes = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Int },
+                ReturnType = SemanticType.Bool
+            },
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { SemanticType.Int }
+            }
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        // Assert: T=int inferred consistently from both the lambda and the list
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(1);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferFromFunctionType_SortedKeyPattern()
+    {
+        // Arrange: def sorted[T](items: list[T], key: (T) -> int) -> list[T]
+        // This mimics sorted() with a key function (discovery layer emits FunctionType for Func<T, TResult>)
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "sorted",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "items",
+                    Type = new GenericType
+                    {
+                        Name = "list",
+                        TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+                    }
+                },
+                new ParameterSymbol
+                {
+                    Name = "key",
+                    Type = new FunctionType
+                    {
+                        ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+                        ReturnType = SemanticType.Int
+                    }
+                }
+            },
+            ReturnType = new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+            }
+        };
+
+        // Act: call sorted(list[str], (str) -> int)
+        var argumentTypes = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { SemanticType.Str }
+            },
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Str },
+                ReturnType = SemanticType.Int
+            }
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        // Assert: T=str inferred from list and confirmed by key function parameter
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(1);
+        result.InferredTypes![0].Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void InferFromFunctionType_MultipleParameters()
+    {
+        // Arrange: def combine[T, U](f: (T, U) -> str) with a two-parameter function
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "combine",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" },
+                new TypeParameterDef { Name = "U" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "f",
+                    Type = new FunctionType
+                    {
+                        ParameterTypes = new List<SemanticType>
+                        {
+                            new TypeParameterType { Name = "T" },
+                            new TypeParameterType { Name = "U" }
+                        },
+                        ReturnType = SemanticType.Str
+                    }
+                }
+            },
+            ReturnType = SemanticType.Str
+        };
+
+        // Act: call combine((int, float) -> str)
+        var argumentTypes = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Int, SemanticType.Float },
+                ReturnType = SemanticType.Str
+            }
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        // Assert: T=int, U=float
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(2);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+        result.InferredTypes![1].Should().Be(SemanticType.Float);
+    }
+
+    [Fact]
+    public void InferFromFunctionType_MismatchedArity_NoError()
+    {
+        // When function types have different parameter counts, unification should
+        // gracefully skip binding (not fail), since type validation is the caller's job
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "apply_unary",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "f",
+                    Type = new FunctionType
+                    {
+                        ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+                        ReturnType = SemanticType.Bool
+                    }
+                },
+                new ParameterSymbol
+                {
+                    Name = "value",
+                    Type = new TypeParameterType { Name = "T" }
+                }
+            },
+            ReturnType = SemanticType.Bool
+        };
+
+        // Act: pass a binary function where unary is expected, but also pass int value
+        var argumentTypes = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Int, SemanticType.Str },
+                ReturnType = SemanticType.Bool
+            },
+            SemanticType.Int
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        // Assert: T=int inferred from the second argument (the mismatched function type is skipped)
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(1);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferFromFunctionType_VoidReturn()
+    {
+        // Arrange: def for_each[T](action: (T) -> None, items: list[T]) -> None
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "for_each",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "action",
+                    Type = new FunctionType
+                    {
+                        ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+                        ReturnType = SemanticType.Void
+                    }
+                },
+                new ParameterSymbol
+                {
+                    Name = "items",
+                    Type = new GenericType
+                    {
+                        Name = "list",
+                        TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+                    }
+                }
+            },
+            ReturnType = SemanticType.Void
+        };
+
+        // Act: call for_each((str) -> None, list[str])
+        // This mimics Action<T> discovery (void-returning function type)
+        var argumentTypes = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Str },
+                ReturnType = SemanticType.Void
+            },
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { SemanticType.Str }
+            }
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        // Assert: T=str from both the action parameter and the list
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(1);
+        result.InferredTypes![0].Should().Be(SemanticType.Str);
     }
 
     #endregion

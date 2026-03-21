@@ -392,6 +392,14 @@ internal partial class TypeChecker
     /// Checks if a type contains any unresolved TypeParameterType instances.
     /// Used to detect method-level generic type parameters that need inference.
     /// </summary>
+    /// <remarks>
+    /// TODO(#414): This helper serves a different purpose than GenericTypeInferenceService.
+    /// GenericTypeInferenceService.InferTypeArguments operates on FunctionSymbol (function-level
+    /// generics with explicit TypeParameters), while this helper detects unresolved
+    /// TypeParameterType placeholders in raw SemanticType trees (e.g., FunctionType from
+    /// method resolution on generic classes). Unification into GenericTypeInferenceService
+    /// would require adding an overload that accepts FunctionType instead of FunctionSymbol.
+    /// </remarks>
     private static bool ContainsTypeParameterType(SemanticType type)
     {
         return type switch
@@ -412,6 +420,14 @@ internal partial class TypeChecker
     /// comparing a parameter type (with TypeParameterType placeholders) against an argument type
     /// (with concrete types). Used for method-level generic type parameter inference.
     /// </summary>
+    /// <remarks>
+    /// TODO(#414): This performs the same structural unification as
+    /// GenericTypeInferenceService.Unify, but operates on raw SemanticType pairs rather than
+    /// FunctionSymbol parameters. It is used by CheckLambdaCall where only a FunctionType is
+    /// available (no FunctionSymbol). Unifying these two code paths requires adding a
+    /// type-level inference API to GenericTypeInferenceService (e.g.,
+    /// InferFromTypes(List&lt;SemanticType&gt; formalTypes, List&lt;SemanticType&gt; actualTypes)).
+    /// </remarks>
     private static void CollectTypeParameterMappings(
         SemanticType paramType, SemanticType argType, Dictionary<string, SemanticType> map)
     {
@@ -449,6 +465,11 @@ internal partial class TypeChecker
     /// Applies a type parameter substitution map to a type.
     /// Delegates to SubstituteTypeParametersInType which handles all type forms.
     /// </summary>
+    /// <remarks>
+    /// TODO(#414): Thin wrapper around SubstituteTypeParametersInType, used only by
+    /// CheckLambdaCall. If CollectTypeParameterMappings is unified into
+    /// GenericTypeInferenceService, this method can be removed as well.
+    /// </remarks>
     private SemanticType ApplyTypeParameterMap(
         SemanticType type, Dictionary<string, SemanticType> map)
     {
