@@ -118,6 +118,20 @@ internal partial class RoslynEmitter
             return IdentifierName("value");
         }
 
+        // Builtin function references (e.g., key=len) need full qualification.
+        // Only applies when no local variable or user-defined function shadows the builtin.
+        if (_context.IsBuiltinFunction(name.Name)
+            && !_variableVersions.ContainsKey(name.Name))
+        {
+            var symbol = _context.LookupSymbol(name.Name);
+            // FunctionSymbol without CodeGenInfo = builtin (not user-defined)
+            if (symbol is FunctionSymbol { CodeGenInfo: null })
+            {
+                return MakeGlobalQualifiedName("Sharpy", "Builtins",
+                    NameMangler.ToPascalCase(name.Name));
+            }
+        }
+
         var mangledName = GetMangledVariableName(name.Name, isNewDeclaration: false);
         ExpressionSyntax expr = IdentifierName(mangledName);
 

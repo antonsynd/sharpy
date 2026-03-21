@@ -1,1 +1,0 @@
-TODO(#431): Codegen emits bare "len" instead of "Builtins.Len" when len is passed as a key function argument to heapq.merge().

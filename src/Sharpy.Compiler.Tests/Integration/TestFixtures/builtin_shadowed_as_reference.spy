@@ -1,0 +1,7 @@
+def len(x: str) -> int:
+    return 42
+
+def main():
+    words: list[str] = ["a", "bb", "ccc"]
+    result: list[int] = list(map(len, words))
+    print(result)

@@ -1,0 +1,4 @@
+def main():
+    words: list[str] = ["banana", "fig", "apple", "date"]
+    lengths: list[int] = list(map(len, words))
+    print(lengths)
