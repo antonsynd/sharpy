@@ -119,12 +119,13 @@ internal partial class RoslynEmitter
         }
 
         // Builtin function references (e.g., key=len) need full qualification.
-        // Only applies when no local variable or user-defined function shadows the builtin.
+        // Two-layer shadowing check:
+        //   1. _variableVersions — local variables (not visible to LookupSymbol)
+        //   2. CodeGenInfo — user-defined functions (builtins have null CodeGenInfo)
         if (_context.IsBuiltinFunction(name.Name)
             && !_variableVersions.ContainsKey(name.Name))
         {
             var symbol = _context.LookupSymbol(name.Name);
-            // FunctionSymbol without CodeGenInfo = builtin (not user-defined)
             if (symbol is FunctionSymbol { CodeGenInfo: null })
             {
                 return MakeGlobalQualifiedName("Sharpy", "Builtins",

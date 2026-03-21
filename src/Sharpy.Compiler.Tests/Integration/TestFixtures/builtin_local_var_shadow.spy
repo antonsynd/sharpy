@@ -1,0 +1,3 @@
+def main():
+    len: int = 42
+    print(len)
