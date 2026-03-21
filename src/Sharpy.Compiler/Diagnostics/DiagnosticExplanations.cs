@@ -1343,6 +1343,16 @@ public static class DiagnosticExplanations
             "@abstract\nclass Shape:\n    def area(self) -> float  # deprecated: no body",
             "Use ellipsis as the body:\n@abstract\nclass Shape:\n    def area(self) -> float: ...");
 
+        // ── Validation warnings: Identity operator (SPY0465) ──────────────
+
+        Add(dict, DiagnosticCodes.Validation.IsWithValueTypes,
+            "Identity operator used with value types",
+            "Validation",
+            "The 'is' operator (identity/reference equality) is used with a value type. " +
+            "Value types are compared by value, not by reference, so 'is' may not behave as expected. " +
+            "Use '==' for value comparison instead.",
+            "x: int = 42\nif x is 42: ...",
+            "Use '==' instead of 'is' for value types:\nif x == 42: ...");
         // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",
