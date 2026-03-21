@@ -33,79 +33,22 @@ internal partial class TypeChecker
             }
         }
 
-        // If object type is Unknown (e.g., from error recovery symbols), check if it's an
-        // enum type access (Color.RED) before giving up. TypeSymbol identifiers resolve to
-        // Unknown because they're not values, but enum member access IS a valid value expression.
+        // Resolve type-name member access (int.parse(), Color.RED, MyClass.FIELD, Shape.Circle)
+        // regardless of what CheckIdentifier returned for the type name. This handles cases
+        // where primitive TypeSymbols return FunctionType instead of Unknown (#432).
+        if (memberAccess.Object is Identifier typeId)
+        {
+            var sym = _symbolTable.Lookup(typeId.Name);
+            if (sym is TypeSymbol typeSym)
+            {
+                var resolved = TryResolveTypeMemberAccess(memberAccess, typeId, typeSym);
+                if (resolved != null)
+                    return resolved;
+            }
+        }
+
         if (objectType is UnknownType)
         {
-            // Check for enum type member access: Color.RED -> UserDefinedType(Color)
-            if (memberAccess.Object is Identifier enumId)
-            {
-                var sym = _symbolTable.Lookup(enumId.Name);
-                if (sym is TypeSymbol { TypeKind: TypeKind.Enum } enumTypeSym)
-                {
-                    return new UserDefinedType { Name = enumTypeSym.Name, Symbol = enumTypeSym };
-                }
-
-                // Check for union case access: Shape.Circle -> UserDefinedType(Circle)
-                if (sym is TypeSymbol { TypeKind: TypeKind.Union } unionTypeSym)
-                {
-                    var caseSymbol = unionTypeSym.UnionCases.FirstOrDefault(c => c.Name == memberAccess.Member);
-                    if (caseSymbol != null)
-                    {
-                        var caseType = new UserDefinedType { Name = caseSymbol.Name, Symbol = caseSymbol };
-                        _semanticInfo.SetExpressionType(memberAccess, caseType);
-                        _semanticInfo.SetMemberAccessResolution(memberAccess, unionTypeSym, caseSymbol);
-                        return caseType;
-                    }
-
-                    AddError(
-                        $"Union '{unionTypeSym.Name}' has no case '{memberAccess.Member}'",
-                        memberAccess.LineStart, memberAccess.ColumnStart,
-                        code: DiagnosticCodes.Semantic.UndefinedMember,
-                        span: memberAccess.Span);
-                    return SemanticType.Unknown;
-                }
-
-                // Check for static/const field access via type name: MyClass.FIELD
-                if (sym is TypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct } classTypeSym)
-                {
-                    var field = classTypeSym.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
-                    if (field != null && (field.IsConstant || field.IsStatic))
-                    {
-                        var fieldType = GetVariableType(field);
-                        _semanticInfo.SetExpressionType(memberAccess, fieldType);
-                        _semanticInfo.SetMemberAccessResolution(memberAccess, classTypeSym, field);
-                        return fieldType;
-                    }
-
-                    // Instance field via type name — error
-                    if (field != null)
-                    {
-                        AddError(
-                            $"Cannot access instance field '{memberAccess.Member}' via type name '{enumId.Name}'. " +
-                            "Mark it as @static or use an instance.",
-                            memberAccess.LineStart, memberAccess.ColumnStart,
-                            code: DiagnosticCodes.Semantic.InstanceFieldViaTypeName,
-                            span: memberAccess.Span);
-                        return SemanticType.Unknown;
-                    }
-
-                    // Check for static method access
-                    var method = classTypeSym.Methods.FirstOrDefault(m =>
-                        m.Name == memberAccess.Member && m.IsStatic);
-                    if (method != null)
-                    {
-                        _semanticInfo.SetMemberAccessResolution(memberAccess, classTypeSym, method);
-                        var paramTypes = method.Parameters.Select(p => p.Type).ToList();
-                        return new FunctionType
-                        {
-                            ParameterTypes = paramTypes,
-                            ReturnType = method.ReturnType
-                        };
-                    }
-                }
-            }
             return SemanticType.Unknown;
         }
 
@@ -463,6 +406,78 @@ internal partial class TypeChecker
     /// </summary>
     private (FunctionSymbol? Method, TypeSymbol? Owner) FindMethodInHierarchy(TypeSymbol type, string methodName)
         => TypeHierarchyService.FindMethod(type, methodName, SemanticBinding);
+
+    /// <summary>
+    /// Tries to resolve member access on a TypeSymbol (enum values, union cases,
+    /// static fields/methods). Returns null if no member was found.
+    /// </summary>
+    private SemanticType? TryResolveTypeMemberAccess(
+        MemberAccess memberAccess, Identifier typeId, TypeSymbol typeSym)
+    {
+        if (typeSym.TypeKind == TypeKind.Enum)
+        {
+            return new UserDefinedType { Name = typeSym.Name, Symbol = typeSym };
+        }
+
+        if (typeSym.TypeKind == TypeKind.Union)
+        {
+            var caseSymbol = typeSym.UnionCases.FirstOrDefault(c => c.Name == memberAccess.Member);
+            if (caseSymbol != null)
+            {
+                var caseType = new UserDefinedType { Name = caseSymbol.Name, Symbol = caseSymbol };
+                _semanticInfo.SetExpressionType(memberAccess, caseType);
+                _semanticInfo.SetMemberAccessResolution(memberAccess, typeSym, caseSymbol);
+                return caseType;
+            }
+
+            AddError(
+                $"Union '{typeSym.Name}' has no case '{memberAccess.Member}'",
+                memberAccess.LineStart, memberAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedMember,
+                span: memberAccess.Span);
+            return SemanticType.Unknown;
+        }
+
+        if (typeSym.TypeKind is TypeKind.Class or TypeKind.Struct)
+        {
+            var field = typeSym.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
+            if (field != null && (field.IsConstant || field.IsStatic))
+            {
+                var fieldType = GetVariableType(field);
+                _semanticInfo.SetExpressionType(memberAccess, fieldType);
+                _semanticInfo.SetMemberAccessResolution(memberAccess, typeSym, field);
+                return fieldType;
+            }
+
+            // Instance field via type name — error
+            if (field != null)
+            {
+                AddError(
+                    $"Cannot access instance field '{memberAccess.Member}' via type name '{typeId.Name}'. " +
+                    "Mark it as @static or use an instance.",
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InstanceFieldViaTypeName,
+                    span: memberAccess.Span);
+                return SemanticType.Unknown;
+            }
+
+            // Check for static method access
+            var method = typeSym.Methods.FirstOrDefault(m =>
+                m.Name == memberAccess.Member && m.IsStatic);
+            if (method != null)
+            {
+                _semanticInfo.SetMemberAccessResolution(memberAccess, typeSym, method);
+                var paramTypes = method.Parameters.Select(p => p.Type).ToList();
+                return new FunctionType
+                {
+                    ParameterTypes = paramTypes,
+                    ReturnType = method.ReturnType
+                };
+            }
+        }
+
+        return null;
+    }
 
     private SemanticType CheckIndexAccess(IndexAccess indexAccess)
     {

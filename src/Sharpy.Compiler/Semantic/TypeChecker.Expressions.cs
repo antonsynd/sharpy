@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic.Registry;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -209,20 +210,47 @@ internal partial class TypeChecker
                 ReturnType = funcSymbol.ReturnType
             },
             ModuleSymbol moduleSymbol => new ModuleType { Symbol = moduleSymbol },
-            // Type names used as values (constructors) are resolved at the FunctionCall level,
-            // not at the identifier level. Mark as error recovery since this is an expected gap.
+            // Primitive type names (int, str, bool, float, etc.) used as function references
+            // (e.g., map(int, items)) get a synthesized FunctionType so downstream consumers
+            // like BuiltinReturnTypeInference can extract the return type.
+            // Non-primitive TypeSymbols remain Unknown — resolved at FunctionCall level.
+            TypeSymbol ts when PrimitiveCatalog.IsPrimitive(ts.Name) =>
+                SynthesizePrimitiveFunctionType(ts),
             TypeSymbol => SemanticType.Unknown,
             _ => SemanticType.Unknown
         };
 
-        // Mark intentional Unknown types: TypeSymbol references and unhandled symbol kinds
-        // are not errors — they're expected gaps handled at higher levels (e.g., FunctionCall).
+        // Mark intentional Unknown types: non-primitive TypeSymbol references and unhandled
+        // symbol kinds are not errors — they're expected gaps handled at higher levels (e.g., FunctionCall).
+        // Primitive TypeSymbols get a FunctionType above and should NOT be marked as error recovery.
         if (identifierType is UnknownType && symbol is not null)
         {
             MarkExpressionAsErrorRecovery(id);
         }
 
         return identifierType;
+    }
+
+    /// <summary>
+    /// Synthesizes a FunctionType from the first single-parameter builtin overload for a
+    /// primitive type name (int, str, bool, float, etc.). The return type is always the
+    /// primitive type itself. Only the return type matters for downstream consumers like
+    /// BuiltinReturnTypeInference.InferMap — C# method group conversion handles actual
+    /// overload resolution in the generated code.
+    /// </summary>
+    private SemanticType SynthesizePrimitiveFunctionType(TypeSymbol ts)
+    {
+        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(ts.Name);
+        if (overloads == null || overloads.Count == 0)
+            return SemanticType.Unknown;
+
+        // Pick the first single-parameter overload for a representative FunctionType
+        var overload = overloads.FirstOrDefault(o => o.Parameters.Count == 1) ?? overloads[0];
+        return new FunctionType
+        {
+            ParameterTypes = overload.Parameters.Select(p => p.Type).ToList(),
+            ReturnType = overload.ReturnType
+        };
     }
 
     private SemanticType CheckWalrusExpression(WalrusExpression walrus)

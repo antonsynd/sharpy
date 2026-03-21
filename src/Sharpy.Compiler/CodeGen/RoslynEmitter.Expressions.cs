@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -118,15 +119,23 @@ internal partial class RoslynEmitter
             return IdentifierName("value");
         }
 
-        // Builtin function references (e.g., key=len) need full qualification.
-        // Two-layer shadowing check:
-        //   1. _variableVersions — local variables (not visible to LookupSymbol)
-        //   2. CodeGenInfo — user-defined functions (builtins have null CodeGenInfo)
-        if (_context.IsBuiltinFunction(name.Name)
-            && !_variableVersions.ContainsKey(name.Name))
+        // Builtin function references (e.g., key=len, map(int, items)) need full qualification.
+        // Shadowing check: if the semantic analysis resolved this identifier to a VariableSymbol,
+        // it's a local variable shadowing the builtin — skip the builtin emission path.
+        var resolvedSymbol = _context.SemanticInfo?.GetIdentifierSymbol(name);
+        if (resolvedSymbol is not VariableSymbol)
         {
             var symbol = _context.LookupSymbol(name.Name);
-            if (symbol is FunctionSymbol { CodeGenInfo: null })
+            if (symbol is FunctionSymbol { CodeGenInfo: null }
+                && _context.IsBuiltinFunction(name.Name))
+            {
+                return MakeGlobalQualifiedName("Sharpy", "Builtins",
+                    NameMangler.ToPascalCase(name.Name));
+            }
+
+            // Type-name builtin function references (e.g., map(int, items) → Builtins.Int)
+            // C# method group conversion handles overload selection automatically.
+            if (symbol is TypeSymbol && PrimitiveCatalog.IsPrimitive(name.Name))
             {
                 return MakeGlobalQualifiedName("Sharpy", "Builtins",
                     NameMangler.ToPascalCase(name.Name));

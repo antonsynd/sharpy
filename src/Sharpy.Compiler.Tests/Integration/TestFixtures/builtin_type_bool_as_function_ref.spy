@@ -1,0 +1,4 @@
+def main():
+    items: list[int] = [0, 1, 0, 42]
+    result: list[bool] = list(map(bool, items))
+    print(result)

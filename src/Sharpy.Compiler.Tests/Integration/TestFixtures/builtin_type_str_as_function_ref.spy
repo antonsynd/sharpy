@@ -1,0 +1,4 @@
+def main():
+    items: list[int] = [1, 2, 3]
+    result: list[str] = list(map(str, items))
+    print(result)

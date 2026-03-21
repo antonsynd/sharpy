@@ -1,1 +1,0 @@
-TODO(#432): Type-name builtins (int, str, bool, float) as first-class function references need context-aware semantic/codegen fix.
