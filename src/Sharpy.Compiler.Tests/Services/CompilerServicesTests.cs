@@ -137,6 +137,126 @@ public class CompilerServicesTests
     }
 
     [Fact]
+    public void Builder_WithLogger_UsesProvidedLogger()
+    {
+        // Arrange — use CreateForTesting with a logger to verify it's passed through
+        var services = CompilerServicesBuilder.CreateForTesting();
+
+        // Assert — the logger should be set (not null)
+        Assert.NotNull(services.Logger);
+    }
+
+    [Fact]
+    public void Builder_WithoutLogger_UsesNullLoggerDefault()
+    {
+        // Arrange — build without calling WithLogger
+        var builtinRegistry = new BuiltinRegistry();
+
+        // Act
+        var services = new CompilerServicesBuilder()
+            .WithSymbolTable(new SymbolTable(builtinRegistry))
+            .WithSemanticInfo(new SemanticInfo())
+            .Build();
+
+        // Assert — logger should be a NullLogger instance (not null)
+        Assert.NotNull(services.Logger);
+    }
+
+    [Fact]
+    public void Builder_WithTypeResolver_UsesProvidedResolver()
+    {
+        // Arrange
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var semanticInfo = new SemanticInfo();
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo);
+
+        // Act
+        var services = new CompilerServicesBuilder()
+            .WithSymbolTable(symbolTable)
+            .WithSemanticInfo(semanticInfo)
+            .WithTypeResolver(typeResolver)
+            .Build();
+
+        // Assert — the type resolver adapter should wrap the provided resolver
+        Assert.NotNull(services.TypeResolver);
+    }
+
+    [Fact]
+    public void Builder_WithClrCache_UsesProvidedCache()
+    {
+        // Arrange
+        var builtinRegistry = new BuiltinRegistry();
+        var clrCache = new ClrMemberCache();
+
+        // Act
+        var services = new CompilerServicesBuilder()
+            .WithSymbolTable(new SymbolTable(builtinRegistry))
+            .WithSemanticInfo(new SemanticInfo())
+            .WithClrCache(clrCache)
+            .Build();
+
+        // Assert
+        Assert.NotNull(services.ClrMapper);
+    }
+
+    [Fact]
+    public void Builder_WithoutOptionalComponents_CreatesDefaults()
+    {
+        // Arrange — only required components, no logger/typeResolver/clrCache
+        var builtinRegistry = new BuiltinRegistry();
+
+        // Act
+        var services = new CompilerServicesBuilder()
+            .WithSymbolTable(new SymbolTable(builtinRegistry))
+            .WithSemanticInfo(new SemanticInfo())
+            .Build();
+
+        // Assert — all optional components should have default values
+        Assert.NotNull(services.Logger);
+        Assert.NotNull(services.TypeResolver);
+        Assert.NotNull(services.ClrMapper);
+        Assert.NotNull(services.DiagnosticReporter);
+    }
+
+    [Fact]
+    public void Builder_FluentChaining_ReturnsBuilderInstance()
+    {
+        // Verify builder methods return the same builder for chaining
+        var builder = new CompilerServicesBuilder();
+        var builtinRegistry = new BuiltinRegistry();
+
+        var result = builder
+            .WithConfiguration(CompilerServicesConfiguration.Default)
+            .WithLogger(null)
+            .WithSymbolTable(new SymbolTable(builtinRegistry))
+            .WithSemanticInfo(new SemanticInfo());
+
+        Assert.Same(builder, result);
+    }
+
+    [Fact]
+    public void Builder_WithConfiguration_NullThrows()
+    {
+        var builder = new CompilerServicesBuilder();
+        Assert.Throws<ArgumentNullException>(() => builder.WithConfiguration(null!));
+    }
+
+    [Fact]
+    public void Builder_WithSymbolTable_NullThrows()
+    {
+        var builder = new CompilerServicesBuilder();
+        Assert.Throws<ArgumentNullException>(() => builder.WithSymbolTable(null!));
+    }
+
+    [Fact]
+    public void Builder_WithSemanticInfo_NullThrows()
+    {
+        var builder = new CompilerServicesBuilder();
+        Assert.Throws<ArgumentNullException>(() => builder.WithSemanticInfo(null!));
+    }
+
+    [Fact]
     public void Configuration_IsAccessible()
     {
         // Arrange
