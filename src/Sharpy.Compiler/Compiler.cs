@@ -666,43 +666,6 @@ public class Compiler
     }
 
     /// <summary>
-    /// Simple PascalCase conversion for file names to namespace components.
-    /// Handles snake_case, kebab-case, and ensures valid C# identifiers.
-    /// </summary>
-    private static string ToPascalCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-
-        // Replace invalid identifier characters with underscores
-        var sanitized = new System.Text.StringBuilder(name.Length);
-        foreach (var c in name)
-        {
-            if (char.IsLetterOrDigit(c) || c == '_')
-                sanitized.Append(c);
-            else
-                sanitized.Append('_');
-        }
-
-        // Split by underscore and capitalize each part
-        var parts = sanitized.ToString().Split('_', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0)
-            return "_";
-
-        var result = string.Join("", parts.Select(p =>
-            char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p[1..] : "")
-        ));
-
-        // If result starts with a digit, prefix with underscore
-        if (result.Length > 0 && char.IsDigit(result[0]))
-        {
-            result = "_" + result;
-        }
-
-        return result;
-    }
-
-    /// <summary>
     /// Generate C# code for a single module that has already been parsed and type-checked.
     /// Used for generating code for imported modules discovered during compilation.
     /// </summary>
