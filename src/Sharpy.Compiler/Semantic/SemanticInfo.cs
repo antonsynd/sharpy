@@ -12,12 +12,13 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Threading:</b> Dictionary fields use <see cref="ConcurrentDictionary{TKey,TValue}"/>
-/// for thread safety. HashSet fields are not concurrent but are only accessed during
-/// single-threaded analysis phases. Each compilation creates its own instance.
+/// <b>Threading:</b> Most mutable fields use <see cref="ConcurrentDictionary{TKey,TValue}"/>
+/// for thread safety. The <c>_symbolReferences</c> Dictionary is the sole exception
+/// — it uses single-threaded write access only (populated during type checking,
+/// read-only after analysis completes). Each compilation creates its own instance.
 /// </para>
 /// </remarks>
-[NotThreadSafe(Reason = "ConcurrentDictionary stores are thread-safe, but HashSet fields (_generatorFunctions, _eventAccessNodes) are single-threaded only. Safe under current per-file instance usage.")]
+[NotThreadSafe(Reason = "ConcurrentDictionary stores are thread-safe, but Dictionary field (_symbolReferences) uses single-threaded write access only. Safe under current per-file instance usage.")]
 public class SemanticInfo : ISemanticQuery
 {
     // Use ReferenceEqualityComparer because AST nodes are records with value-based equality,
@@ -57,12 +58,10 @@ public class SemanticInfo : ISemanticQuery
         new(ReferenceEqualityComparer.Instance);
 
     // Track functions that contain yield statements (generators)
-    // THREADING: single-threaded access only — not wrapped in ConcurrentDictionary
-    private readonly HashSet<FunctionDef> _generatorFunctions = new(ReferenceEqualityComparer.Instance);
+    private readonly ConcurrentDictionary<FunctionDef, byte> _generatorFunctions = new(ReferenceEqualityComparer.Instance);
 
     // Track member access expressions that resolve to events (for codegen to emit +=/-= correctly)
-    // THREADING: single-threaded access only — not wrapped in ConcurrentDictionary
-    private readonly HashSet<Expression> _eventAccessNodes = new(ReferenceEqualityComparer.Instance);
+    private readonly ConcurrentDictionary<Expression, byte> _eventAccessNodes = new(ReferenceEqualityComparer.Instance);
 
     // Map patterns to their resolved union case type symbols
     // Used when a PositionalPattern or MemberAccessPattern matches a union case
@@ -72,8 +71,7 @@ public class SemanticInfo : ISemanticQuery
     // Track expressions whose type was set to UnknownType due to a user error
     // (i.e., a diagnostic was already emitted for the node). This distinguishes
     // expected error-recovery Unknown types from unexpected ones (compiler bugs).
-    // THREADING: single-threaded access only — not wrapped in ConcurrentDictionary
-    private readonly HashSet<Expression> _errorRecoveryNodes =
+    private readonly ConcurrentDictionary<Expression, byte> _errorRecoveryNodes =
         new(ReferenceEqualityComparer.Instance);
 
     // Map with-item context expressions to their context manager kind
@@ -228,7 +226,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void MarkErrorRecovery(Expression expr)
     {
-        _errorRecoveryNodes.Add(expr);
+        _errorRecoveryNodes.TryAdd(expr, 0);
     }
 
     /// <summary>
@@ -237,28 +235,28 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public bool IsErrorRecoveryType(Expression expr)
     {
-        return _errorRecoveryNodes.Contains(expr);
+        return _errorRecoveryNodes.ContainsKey(expr);
     }
 
     /// <summary>
     /// Marks a function as a generator (contains yield statements).
     /// </summary>
-    public void MarkAsGenerator(FunctionDef funcDef) => _generatorFunctions.Add(funcDef);
+    public void MarkAsGenerator(FunctionDef funcDef) => _generatorFunctions.TryAdd(funcDef, 0);
 
     /// <summary>
     /// Returns true if the function has been marked as a generator.
     /// </summary>
-    public bool IsGenerator(FunctionDef funcDef) => _generatorFunctions.Contains(funcDef);
+    public bool IsGenerator(FunctionDef funcDef) => _generatorFunctions.ContainsKey(funcDef);
 
     /// <summary>
     /// Marks an expression as an event access (for codegen to emit event += / -= correctly).
     /// </summary>
-    public void MarkAsEventAccess(Expression expr) => _eventAccessNodes.Add(expr);
+    public void MarkAsEventAccess(Expression expr) => _eventAccessNodes.TryAdd(expr, 0);
 
     /// <summary>
     /// Returns true if the expression has been marked as an event access.
     /// </summary>
-    public bool IsEventAccess(Expression expr) => _eventAccessNodes.Contains(expr);
+    public bool IsEventAccess(Expression expr) => _eventAccessNodes.ContainsKey(expr);
 
     /// <summary>
     /// Returns true if any expression type in the semantic info is UnknownType.
@@ -276,7 +274,7 @@ public class SemanticInfo : ISemanticQuery
     public IReadOnlyList<Expression> GetUnexpectedUnknownExpressions()
     {
         return _expressionTypes
-            .Where(kvp => kvp.Value is UnknownType && !_errorRecoveryNodes.Contains(kvp.Key))
+            .Where(kvp => kvp.Value is UnknownType && !_errorRecoveryNodes.ContainsKey(kvp.Key))
             .Select(kvp => kvp.Key)
             .ToList();
     }
