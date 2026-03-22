@@ -36,15 +36,12 @@ internal partial class TypeChecker
         // Resolve type-name member access (int.parse(), Color.RED, MyClass.FIELD, Shape.Circle)
         // regardless of what CheckIdentifier returned for the type name. This handles cases
         // where primitive TypeSymbols return FunctionType instead of Unknown (#432).
-        if (memberAccess.Object is Identifier typeId)
+        if (memberAccess.Object is Identifier typeId
+            && _semanticInfo.GetIdentifierSymbol(typeId) is TypeSymbol typeSym)
         {
-            var sym = _symbolTable.Lookup(typeId.Name);
-            if (sym is TypeSymbol typeSym)
-            {
-                var resolved = TryResolveTypeMemberAccess(memberAccess, typeId, typeSym);
-                if (resolved != null)
-                    return resolved;
-            }
+            var resolved = TryResolveTypeMemberAccess(memberAccess, typeId, typeSym);
+            if (resolved != null)
+                return resolved;
         }
 
         if (objectType is UnknownType)
@@ -468,11 +465,13 @@ internal partial class TypeChecker
             {
                 _semanticInfo.SetMemberAccessResolution(memberAccess, typeSym, method);
                 var paramTypes = method.Parameters.Select(p => p.Type).ToList();
-                return new FunctionType
+                var funcType = new FunctionType
                 {
                     ParameterTypes = paramTypes,
                     ReturnType = method.ReturnType
                 };
+                _semanticInfo.SetExpressionType(memberAccess, funcType);
+                return funcType;
             }
         }
 

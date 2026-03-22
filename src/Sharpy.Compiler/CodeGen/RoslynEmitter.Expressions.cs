@@ -4,7 +4,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
-using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -135,7 +134,7 @@ internal partial class RoslynEmitter
 
             // Type-name builtin function references (e.g., map(int, items) → Builtins.Int)
             // C# method group conversion handles overload selection automatically.
-            if (symbol is TypeSymbol && PrimitiveCatalog.IsPrimitive(name.Name))
+            if (symbol is TypeSymbol && _context.IsBuiltinFunction(name.Name))
             {
                 return MakeGlobalQualifiedName("Sharpy", "Builtins",
                     NameMangler.ToPascalCase(name.Name));
