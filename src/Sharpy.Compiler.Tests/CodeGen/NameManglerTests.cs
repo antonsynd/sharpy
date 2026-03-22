@@ -327,6 +327,148 @@ public class NameManglerTests
 
     #endregion
 
+    #region Screaming Snake Case Tests
+
+    [Theory]
+    [InlineData("MAX_RETRIES", "MaxRetries")]
+    [InlineData("HTTP_STATUS_CODE", "HttpStatusCode")]
+    [InlineData("API_KEY", "ApiKey")]
+    public void ToPascalCase_ScreamingSnakeCase_NormalizesToPascalCase(string input, string expected)
+    {
+        var result = NameMangler.ToPascalCase(input);
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("MAX_RETRIES", "maxRetries")]
+    [InlineData("HTTP_STATUS_CODE", "httpStatusCode")]
+    public void ToCamelCase_ScreamingSnakeCase_NormalizesToCamelCase(string input, string expected)
+    {
+        var result = NameMangler.ToCamelCase(input);
+        result.Should().Be(expected);
+    }
+
+    #endregion
+
+    #region Consecutive Underscore Tests
+
+    [Theory]
+    [InlineData("foo__bar", "foo__bar")]       // Unrecognized, passed through
+    [InlineData("a__b__c", "a__b__c")]         // Unrecognized, passed through
+    public void ToPascalCase_ConsecutiveUnderscores_PassesThroughUnrecognized(string input, string expected)
+    {
+        var result = NameMangler.ToPascalCase(input);
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("foo__bar", "foo__bar")]
+    [InlineData("a__b__c", "a__b__c")]
+    public void ToCamelCase_ConsecutiveUnderscores_PassesThroughUnrecognized(string input, string expected)
+    {
+        var result = NameMangler.ToCamelCase(input);
+        result.Should().Be(expected);
+    }
+
+    #endregion
+
+    #region Names Starting With Digits
+
+    [Theory]
+    [InlineData("2d_vector", "2dVector")]       // Starts with digit — snake_case detected, segments capitalized
+    [InlineData("3x3_matrix", "3x3Matrix")]
+    public void ToPascalCase_StartsWithDigit_CapitalizesSegments(string input, string expected)
+    {
+        // Digits don't affect upper/lower classification, so these are treated as snake_case
+        var result = NameMangler.ToPascalCase(input);
+        result.Should().Be(expected);
+    }
+
+    #endregion
+
+    #region Double Private Prefix Tests
+
+    [Theory]
+    [InlineData("__private_method", "__privateMethod")]
+    [InlineData("__internal_data", "__internalData")]
+    public void ToCamelCase_DoublePrivatePrefix_PreservesPrefixAndAppliesCamelCase(string input, string expected)
+    {
+        var result = NameMangler.ToCamelCase(input);
+        result.Should().Be(expected);
+    }
+
+    #endregion
+
+    #region DunderNameMapping Coverage Tests
+
+    [Theory]
+    [InlineData("__init__", "Constructor")]
+    [InlineData("__str__", "ToString")]
+    [InlineData("__repr__", "ToString")]
+    [InlineData("__eq__", "Equals")]
+    [InlineData("__ne__", "NotEquals")]
+    [InlineData("__hash__", "GetHashCode")]
+    [InlineData("__getitem__", "GetItem")]
+    [InlineData("__setitem__", "SetItem")]
+    [InlineData("__len__", "Count")]
+    [InlineData("__contains__", "Contains")]
+    [InlineData("__iter__", "GetEnumerator")]
+    [InlineData("__reversed__", "GetReverseEnumerator")]
+    public void DunderNameMapping_KnownDunders_MapToExpectedCSharpNames(string dunder, string expected)
+    {
+        DunderNameMapping.GetCSharpName(dunder).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("__add__")]
+    [InlineData("__sub__")]
+    [InlineData("__mul__")]
+    [InlineData("__neg__")]
+    [InlineData("__bool__")]
+    public void DunderNameMapping_OperatorDunders_ReturnNull(string dunder)
+    {
+        // Operator dunders are not in the name mapping — they use inlined codegen paths
+        DunderNameMapping.GetCSharpName(dunder).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("__init__")]
+    [InlineData("__str__")]
+    [InlineData("__eq__")]
+    [InlineData("__len__")]
+    public void DunderNameMapping_HasMapping_ReturnsTrueForMappedDunders(string dunder)
+    {
+        DunderNameMapping.HasMapping(dunder).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("__add__")]
+    [InlineData("__unknown_method__")]
+    [InlineData("not_a_dunder")]
+    public void DunderNameMapping_HasMapping_ReturnsFalseForUnmappedNames(string name)
+    {
+        DunderNameMapping.HasMapping(name).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("__init__", "Constructor")]
+    [InlineData("__str__", "ToString")]
+    public void DunderNameMapping_ResolveCSharpName_ReturnsMappingForKnownDunders(string dunder, string expected)
+    {
+        DunderNameMapping.ResolveCSharpName(dunder).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("hello")]
+    [InlineData("_private")]
+    [InlineData("__x__")]     // Too short (length 5, needs > 5)
+    public void DunderNameMapping_ResolveCSharpName_ReturnsNullForNonDunders(string name)
+    {
+        DunderNameMapping.ResolveCSharpName(name).Should().BeNull();
+    }
+
+    #endregion
+
     #region Edge Cases
 
     [Fact]
