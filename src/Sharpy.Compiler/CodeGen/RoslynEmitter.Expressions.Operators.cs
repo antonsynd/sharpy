@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -182,9 +183,9 @@ internal partial class RoslynEmitter
                     // → string.Concat(System.Linq.Enumerable.Repeat(strExpr, System.Math.Max(0, countExpr)))
                     var leftType = GetExpressionSemanticType(binOp.Left);
                     var rightType = GetExpressionSemanticType(binOp.Right);
-                    if (leftType == SemanticType.Str && IsIntegerSemanticType(rightType))
+                    if (leftType == SemanticType.Str && rightType is not null && PrimitiveCatalog.IsSharpyInteger(rightType))
                         return GenerateStringRepetition(left, right, rightType);
-                    if (IsIntegerSemanticType(leftType) && rightType == SemanticType.Str)
+                    if (leftType is not null && PrimitiveCatalog.IsSharpyInteger(leftType) && rightType == SemanticType.Str)
                         return GenerateStringRepetition(right, left, leftType);
                     // Not string repetition — fall through to standard multiply
                     break;
