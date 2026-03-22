@@ -1,0 +1,6 @@
+# Test wildcard import: from module import *
+from helpers import *
+
+def main():
+    print(add(10, 20))
+    print(greet("world"))
