@@ -2,6 +2,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic.Collections;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Utilities;
 
@@ -696,7 +697,7 @@ internal partial class TypeChecker
             var valueType = CheckExpression(member.Value);
 
             // Rule 2: Ensure value is int or str
-            if (!IsIntType(valueType) && !IsStrType(valueType))
+            if (!PrimitiveCatalog.IsSharpyInteger(valueType) && !IsStrType(valueType))
             {
                 AddError(
                     $"Enum member '{member.Name}' has invalid value type '{valueType.GetDisplayName()}'. Enum values must be int or str.",
@@ -923,14 +924,6 @@ internal partial class TypeChecker
             superExpr.LineStart, superExpr.ColumnStart,
             code: DiagnosticCodes.Semantic.InvalidSuperUsage,
             span: superExpr.Span);
-    }
-
-    /// <summary>
-    /// Check if a type is an int type
-    /// </summary>
-    private static bool IsIntType(SemanticType type)
-    {
-        return type == SemanticType.Int || type == SemanticType.Long;
     }
 
     /// <summary>
