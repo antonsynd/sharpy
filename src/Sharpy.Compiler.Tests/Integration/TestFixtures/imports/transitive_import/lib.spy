@@ -1,0 +1,4 @@
+from utils import square
+
+def double_square(n: int) -> int:
+    return square(n) * 2

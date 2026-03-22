@@ -1,0 +1,6 @@
+# Test transitive imports: main uses lib, which uses utils internally
+from lib import double_square
+
+def main():
+    print(double_square(3))
+    print(double_square(5))
