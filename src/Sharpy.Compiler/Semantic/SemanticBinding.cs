@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using Sharpy.Compiler.Diagnostics;
-using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
 
@@ -44,16 +43,8 @@ namespace Sharpy.Compiler.Semantic;
 [NotThreadSafe(Reason = "ConcurrentDictionary stores are thread-safe, but freeze-gate bool flags are not volatile — concurrent freeze/write races are possible. Safe under current single-threaded-per-phase usage.")]
 public class SemanticBinding
 {
-    // Logger kept for backwards compatibility but no longer used after freeze violations became exceptions
-#pragma warning disable IDE0052 // Remove unread private member
-    private readonly ICompilerLogger _logger;
-#pragma warning restore IDE0052
-
-    public SemanticBinding() : this(NullLogger.Instance) { }
-
-    public SemanticBinding(ICompilerLogger logger)
+    public SemanticBinding()
     {
-        _logger = logger;
     }
 
     // Use ReferenceEqualityComparer for all symbol-keyed dictionaries.
