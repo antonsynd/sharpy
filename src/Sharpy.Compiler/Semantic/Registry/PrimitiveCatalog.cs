@@ -138,7 +138,15 @@ public static class PrimitiveCatalog
         return info != null && info.Kind != NumericKind.None;
     }
 
-    /// <summary>Returns true if the type is an integer (signed or unsigned).</summary>
+    /// <summary>
+    /// Returns true if the type is a Sharpy language-level integer (int or long only).
+    /// Use this for language semantics checks (e.g., enum values, string repetition).
+    /// For CLR-aware checks that include byte, short, uint, etc., use <see cref="IsInteger"/>.
+    /// </summary>
+    public static bool IsSharpyInteger(SemanticType type)
+        => type == SemanticType.Int || type == SemanticType.Long;
+
+    /// <summary>Returns true if the type is any integer (signed or unsigned), including CLR interop types.</summary>
     public static bool IsInteger(SemanticType type)
     {
         var info = GetPrimitiveInfo(type);
