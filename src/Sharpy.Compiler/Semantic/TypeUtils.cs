@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
@@ -38,22 +39,10 @@ internal static class TypeUtils
 
     /// <summary>
     /// Check if a type is an integer type (non-floating point).
+    /// Delegates to <see cref="PrimitiveCatalog.IsInteger"/> as the single source of truth.
     /// </summary>
     public static bool IsInteger(SemanticType type)
-    {
-        if (type is BuiltinType builtin && builtin.ClrType != null)
-        {
-            return builtin.ClrType == typeof(int) ||
-                   builtin.ClrType == typeof(long) ||
-                   builtin.ClrType == typeof(short) ||
-                   builtin.ClrType == typeof(byte) ||
-                   builtin.ClrType == typeof(sbyte) ||
-                   builtin.ClrType == typeof(ushort) ||
-                   builtin.ClrType == typeof(uint) ||
-                   builtin.ClrType == typeof(ulong);
-        }
-        return false;
-    }
+        => PrimitiveCatalog.IsInteger(type);
 
     /// <summary>
     /// Check if a type is a floating point type.
