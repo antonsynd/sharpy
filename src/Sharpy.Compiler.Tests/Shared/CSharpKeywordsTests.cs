@@ -120,4 +120,67 @@ public class CSharpKeywordsTests
         // C# has 84+ reserved keywords
         Assert.True(CSharpKeywords.All.Count >= 70);
     }
+
+    [Theory]
+    [InlineData("async")]
+    [InlineData("await")]
+    [InlineData("var")]
+    [InlineData("dynamic")]
+    [InlineData("yield")]
+    [InlineData("nameof")]
+    [InlineData("when")]
+    [InlineData("get")]
+    [InlineData("set")]
+    [InlineData("value")]
+    [InlineData("partial")]
+    [InlineData("where")]
+    [InlineData("global")]
+    public void IsKeyword_ReturnsFalse_ForContextualKeywords(string contextualKeyword)
+    {
+        // Contextual keywords are NOT reserved keywords in C# — they only have special
+        // meaning in certain contexts, so they should not be escaped
+        Assert.False(CSharpKeywords.IsKeyword(contextualKeyword));
+    }
+
+    [Theory]
+    [InlineData("async", "async")]
+    [InlineData("await", "await")]
+    [InlineData("var", "var")]
+    [InlineData("dynamic", "dynamic")]
+    public void EscapeIfNeeded_ReturnsUnchanged_ForContextualKeywords(string contextualKeyword, string expected)
+    {
+        // Contextual keywords are not escaped because they are not reserved
+        Assert.Equal(expected, CSharpKeywords.EscapeIfNeeded(contextualKeyword));
+    }
+
+    [Theory]
+    [InlineData("myVariable", "myVariable")]
+    [InlineData("Print", "Print")]
+    [InlineData("hello_world", "hello_world")]
+    [InlineData("_private", "_private")]
+    [InlineData("x123", "x123")]
+    [InlineData("SomeClassName", "SomeClassName")]
+    public void EscapeIfNeeded_ReturnsUnchanged_ForRegularIdentifiers(string input, string expected)
+    {
+        Assert.Equal(expected, CSharpKeywords.EscapeIfNeeded(input));
+    }
+
+    [Fact]
+    public void All_DoesNotContainContextualKeywords()
+    {
+        // Verify that contextual keywords are intentionally excluded
+        var contextualKeywords = new[] { "async", "await", "var", "dynamic", "yield", "nameof", "when", "get", "set", "value", "partial" };
+        foreach (var keyword in contextualKeywords)
+        {
+            Assert.False(CSharpKeywords.All.Contains(keyword), $"Contextual keyword '{keyword}' should not be in reserved keyword set");
+        }
+    }
+
+    [Fact]
+    public void All_ContainsExactCount()
+    {
+        // The set should have a specific, stable count of C# reserved keywords
+        // This ensures we don't accidentally add or remove keywords
+        Assert.Equal(77, CSharpKeywords.All.Count);
+    }
 }
