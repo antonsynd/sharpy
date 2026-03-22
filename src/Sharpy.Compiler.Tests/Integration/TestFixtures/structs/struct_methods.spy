@@ -1,0 +1,29 @@
+# Test struct with instance methods, static methods, and __str__
+struct Rectangle:
+    width: int
+    height: int
+
+    def __init__(self, width: int, height: int):
+        self.width = width
+        self.height = height
+
+    def area(self) -> int:
+        return self.width * self.height
+
+    def perimeter(self) -> int:
+        return 2 * (self.width + self.height)
+
+    def square(side: int) -> Rectangle:
+        return Rectangle(side, side)
+
+    def __str__(self) -> str:
+        return str(self.width) + "x" + str(self.height)
+
+def main():
+    r: Rectangle = Rectangle(3, 4)
+    print(r.area())
+    print(r.perimeter())
+    print(r)
+    s: Rectangle = Rectangle.square(5)
+    print(s.area())
+    print(s)
