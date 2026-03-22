@@ -1,0 +1,31 @@
+# Test struct copy-on-assignment and pass-by-value semantics
+struct Color:
+    r: int
+    g: int
+    b: int
+
+    def __init__(self, r: int, g: int, b: int):
+        self.r = r
+        self.g = g
+        self.b = b
+
+def modify(c: Color) -> None:
+    c.r = 255
+
+def main():
+    c1: Color = Color(10, 20, 30)
+    # Copy on assignment: c2 is an independent copy
+    c2: Color = c1
+    c2.r = 99
+    c2.g = 88
+    # Original unchanged
+    print(c1.r)
+    print(c1.g)
+    print(c1.b)
+    # Copy has new values
+    print(c2.r)
+    print(c2.g)
+    print(c2.b)
+    # Pass by value: function modifies a copy
+    modify(c1)
+    print(c1.r)
