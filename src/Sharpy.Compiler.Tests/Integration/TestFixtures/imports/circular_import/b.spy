@@ -1,0 +1,4 @@
+from a import greet
+
+def helper() -> str:
+    return greet()

@@ -1,0 +1,5 @@
+# Test circular import detection: main -> a -> b -> a
+from a import greet
+
+def main():
+    print(greet())
