@@ -22,7 +22,7 @@ No dual APIs. `try expr` / `maybe expr` bridge .NET's exceptions/nullables into 
 
 ---
 
-## Phase 0: Documentation Pipeline
+## Phase 0: Documentation Pipeline ✅ COMPLETED
 
 Every stdlib addition is wasted if the user can't discover it. This is the highest-ROI work and a prerequisite for everything else.
 
@@ -66,11 +66,11 @@ Existing Sharpy.Core docs have `<summary>` and `<param>` but few have `<example>
 
 ---
 
-## Phase 1: Builtin Gaps
+## Phase 1: Builtin Gaps ✅ COMPLETED
 
 Functions every Python developer expects to "just work."
 
-### 1a. Missing Builtins
+### 1a. Missing Builtins ✅ COMPLETED
 
 | Function | Signature | .NET Backing |
 |---|---|---|
@@ -80,7 +80,7 @@ Functions every Python developer expects to "just work."
 | `ascii(obj)` | `object -> str` | Escape non-ASCII chars to `\x`, `\u`, `\U` |
 | `breakpoint()` | `-> None` | `System.Diagnostics.Debugger.Break()` |
 
-### 1b. Builtin Parameter Completeness
+### 1b. Builtin Parameter Completeness ✅ COMPLETED
 
 These builtins exist but lack key parameters that are central to idiomatic Python usage:
 
@@ -102,7 +102,7 @@ These builtins exist but lack key parameters that are central to idiomatic Pytho
 
 All modules provide Pythonic APIs backed by .NET internally.
 
-### Tier A — Low effort, high value
+### Tier A — Low effort, high value ✅ COMPLETED
 
 | Module | Key APIs | .NET Backing | Error Convention |
 |---|---|---|---|
@@ -115,7 +115,7 @@ All modules provide Pythonic APIs backed by .NET internally.
 | **`textwrap`** | `wrap()`, `fill()`, `dedent()`, `indent()` | String manipulation | Pure functions, no errors |
 | **`fnmatch`** | `fnmatch(name, pat)`, `filter(names, pat)` | Regex translation | Pure functions |
 
-### Tier B — Medium effort, high value
+### Tier B — Medium effort, high value (7/8 done — missing functools.partial/lru_cache)
 
 | Module | Key APIs | .NET Backing | Error Convention |
 |---|---|---|---|
@@ -128,7 +128,7 @@ All modules provide Pythonic APIs backed by .NET internally.
 | **`bisect`** | `bisect_left()`, `bisect_right()`, `insort()` | `Array.BinarySearch` | Pure functions |
 | **`heapq`** | `heappush()`, `heappop()`, `heapify()`, `nlargest()` | `PriorityQueue` or manual | `heappop` on empty → exception (bug) |
 
-### Tier C — Pythonic wrappers over .NET subsystems
+### Tier C — Pythonic wrappers over .NET subsystems (not started)
 
 These are larger modules where .NET has excellent internal implementations. Sharpy wraps them with Python-familiar APIs.
 
@@ -160,9 +160,9 @@ These are larger modules where .NET has excellent internal implementations. Shar
 
 ---
 
-## Phase 3: Collection & Type Completeness
+## Phase 3: Collection & Type Completeness (partial)
 
-### 3a. str Methods Audit
+### 3a. str Methods Audit (not started — relies on CLR reflection)
 
 `str` maps to `System.String`, so methods are discoverable via CLR reflection — but the names differ. Decision needed: Python-name extension methods vs compiler aliasing.
 
@@ -181,22 +181,22 @@ These are larger modules where .NET has excellent internal implementations. Shar
 | `.encode()` | `Encoding.UTF8.GetBytes()` | Needs `bytes` type story |
 | `.zfill()`, `.ljust()`, `.rjust()`, `.center()` | `PadLeft()`, `PadRight()` | Extension methods |
 
-### 3b. Collection Method Gaps
+### 3b. Collection Method Gaps (partial — list.copy done, others missing)
 
 Audit against Python 3.12:
 
 - `dict.fromkeys()` — class method, needs static method support
-- `list.copy()` — shallow copy
-- `set.symmetric_difference()`, `.issubset()`, `.issuperset()` — verify completeness
+- `list.copy()` — shallow copy ✅ DONE
+- `set.symmetric_difference()`, `.issubset()`, `.issuperset()` — missing
 - `dict | other` merge operator — verify
 
-### 3c. bytes Type
+### 3c. bytes Type (partial — type exists, missing .hex() and .decode())
 
 `bytes` as a full type with `.decode()`, `.hex()`, slicing, indexing. Backed by `byte[]` or `ReadOnlyMemory<byte>`. This unlocks `hashlib`, `io.BytesIO`, binary file I/O.
 
 ---
 
-## Phase 4: Module Completion (existing modules)
+## Phase 4: Module Completion (existing modules — partial, needs audits)
 
 ### datetime
 
@@ -237,14 +237,15 @@ Priority order: `http` → `subprocess` → `urllib.parse` → `threading` → `
 
 ## Execution Order
 
-| Order | Work | Rationale |
+| Order | Work | Status |
 |---|---|---|
-| **0** | Documentation pipeline (Symbol docs → LSP) | Multiplier for all future work |
-| **1a** | `hex()`, `oct()`, `bin()` | Trivial, fills obvious gaps |
-| **1b** | `sorted/min/max/enumerate/zip` param completeness | Most impactful for idiomatic usage |
-| **2A** | `string`, `time`, `copy`, `tempfile`, `glob`, `shutil`, `textwrap`, `fnmatch` | Low-effort, daily-use |
-| **3a** | str method audit + Python-name resolution | str is the most-used type |
-| **3c** | `bytes` type | Unlocks hashlib, binary I/O, encode/decode |
-| **4** | `Counter`, `defaultdict`, `deque`, datetime tz, pathlib completion | Common patterns + existing module gaps |
-| **2B** | `functools`, `hashlib`, `csv`, `io`, `logging`, `statistics`, `bisect`, `heapq` | Higher effort, important |
-| **5** | `http`, `subprocess`, `urllib.parse`, `threading` | Largest scope, Pythonic wrappers over .NET |
+| **0** | Documentation pipeline (Symbol docs → LSP) | ✅ DONE |
+| **1a** | `hex()`, `oct()`, `bin()`, `ascii()`, `breakpoint()` | ✅ DONE |
+| **1b** | `sorted/min/max/enumerate/zip` param completeness | ✅ DONE |
+| **2A** | `string`, `time`, `copy`, `tempfile`, `glob`, `shutil`, `textwrap`, `fnmatch` | ✅ DONE |
+| **2B** | `functools`, `hashlib`, `csv`, `io`, `logging`, `statistics`, `bisect`, `heapq` | 7/8 done (functools.partial/lru_cache missing, #396) |
+| **3a** | str method audit + Python-name resolution | Not started |
+| **3b** | Collection method gaps (dict.fromkeys, set operations) | Partial |
+| **3c** | `bytes` type (.hex(), .decode()) | Partial |
+| **4** | `Counter`, `defaultdict`, `deque`, datetime tz, pathlib completion | Partial (Counter/deque exist, defaultdict missing) |
+| **5** | `http`, `subprocess`, `urllib.parse`, `threading` | Not started |

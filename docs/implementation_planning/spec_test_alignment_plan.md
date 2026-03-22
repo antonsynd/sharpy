@@ -9,7 +9,7 @@ The [spec-vs-test alignment synthesis audit](docs/audits/spec-test-alignment-syn
 
 This plan implements Anton's decisions: fix implementations where specified, add missing tests, update specs, and create GitHub issues for items deferred to later discussion.
 
-**Concurrency note:** The [syntax consolidation plan](docs/implementation_planning/syntax_consolidation_plan.md) may run in parallel. Its Phase 5 (Spec Alignment) covers DIV-1 through DIV-8 and OUT-1/OUT-2, but with **different decisions** than Anton made in the audit. **This plan supersedes syntax consolidation Phase 5** per Anton's audit decisions. Phases 1-4 of that plan (docs, access composability, mixed properties, @dataclass) are orthogonal and safe to run concurrently.
+**Concurrency note:** The syntax consolidation plan (now archived in `docs/completed_plans/`) is fully complete (Phases 1-4 done). Its Phase 5 (Spec Alignment) was superseded by this plan per Anton's audit decisions.
 
 ## Current State
 
@@ -37,7 +37,7 @@ Research verified these **partially exist** and need targeted additions:
 
 ## Implementation
 
-### Phase 1: Quick Implementation Fixes
+### Phase 1: Quick Implementation Fixes ✅ COMPLETED
 
 **Goal:** Fix small divergences between spec and implementation.
 
@@ -83,7 +83,7 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 2: Decimal Type Completion (DIV-1)
+### Phase 2: Decimal Type Completion (DIV-1) ✅ COMPLETED
 
 **Goal:** Wire the decimal type through the full pipeline. Lexer and SemanticType already exist.
 
@@ -103,7 +103,7 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 3: Critical Test Coverage
+### Phase 3: Critical Test Coverage (mostly done — 3 items skipped for future)
 
 **Goal:** Add tests for implemented features with zero coverage. Verify each feature works before writing the test; implement/fix if broken.
 
@@ -169,7 +169,7 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 4: array[T] Type Implementation (GAP-6)
+### Phase 4: array[T] Type Implementation (GAP-6) ✅ COMPLETED (negative indexing skipped)
 
 **Goal:** Implement the array[T] type for .NET interop. This is a full-pipeline feature.
 
@@ -209,7 +209,7 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 5: High-Priority Test Coverage
+### Phase 5: High-Priority Test Coverage (mostly done — 5 items skipped for future)
 
 **Goal:** Add tests for remaining high and medium gaps. Verify first, implement if broken.
 
@@ -274,7 +274,7 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 6: Low-Priority Test Coverage
+### Phase 6: Low-Priority Test Coverage (mostly done — 1 item skipped)
 
 **Goal:** Fill remaining test gaps from GAP-29 through GAP-47 and remaining items.
 
@@ -330,7 +330,7 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 7: Spec Updates
+### Phase 7: Spec Updates ✅ COMPLETED
 
 **Goal:** Fix documentation divergences, remove stale banners, enrich spec with undocumented features.
 
@@ -401,7 +401,7 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 8: GitHub Issues
+### Phase 8: GitHub Issues ✅ COMPLETED
 
 **Goal:** Create GitHub issues for items deferred to later discussion.
 
