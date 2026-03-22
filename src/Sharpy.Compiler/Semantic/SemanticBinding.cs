@@ -43,10 +43,6 @@ namespace Sharpy.Compiler.Semantic;
 [NotThreadSafe(Reason = "ConcurrentDictionary stores are thread-safe, but freeze-gate bool flags are not volatile — concurrent freeze/write races are possible. Safe under current single-threaded-per-phase usage.")]
 public class SemanticBinding
 {
-    public SemanticBinding()
-    {
-    }
-
     // Use ReferenceEqualityComparer for all symbol-keyed dictionaries.
     // Symbol types are records with mutable properties (BaseType, CodeGenInfo, etc.),
     // making their value-based GetHashCode/Equals unstable. Reference equality

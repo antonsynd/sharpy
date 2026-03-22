@@ -109,6 +109,31 @@ public class PrimitiveCatalogTests
     }
 
     [Fact]
+    public void IsSharpyInteger_ReturnsTrueForLanguageLevelIntegers()
+    {
+        PrimitiveCatalog.IsSharpyInteger(SemanticType.Int).Should().BeTrue();
+        PrimitiveCatalog.IsSharpyInteger(SemanticType.Long).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsSharpyInteger_ReturnsFalseForNonIntegers()
+    {
+        PrimitiveCatalog.IsSharpyInteger(SemanticType.Float).Should().BeFalse();
+        PrimitiveCatalog.IsSharpyInteger(SemanticType.Double).Should().BeFalse();
+        PrimitiveCatalog.IsSharpyInteger(SemanticType.Str).Should().BeFalse();
+        PrimitiveCatalog.IsSharpyInteger(SemanticType.Bool).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsSharpyInteger_ReturnsFalseForClrOnlyIntegerTypes()
+    {
+        PrimitiveCatalog.IsSharpyInteger(SemanticType.SByte).Should().BeFalse();
+        PrimitiveCatalog.IsSharpyInteger(SemanticType.Byte).Should().BeFalse();
+        PrimitiveCatalog.IsSharpyInteger(SemanticType.Short).Should().BeFalse();
+        PrimitiveCatalog.IsSharpyInteger(SemanticType.UShort).Should().BeFalse();
+    }
+
+    [Fact]
     public void IsInteger_CorrectlyClassifiesTypes()
     {
         PrimitiveCatalog.IsInteger(SemanticType.Int).Should().BeTrue();

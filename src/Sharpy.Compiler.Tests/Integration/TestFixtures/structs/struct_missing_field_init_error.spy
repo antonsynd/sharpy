@@ -1,0 +1,10 @@
+struct Point:
+    x: int
+    y: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+def main():
+    p: Point = Point(1)
+    print(p.x)
