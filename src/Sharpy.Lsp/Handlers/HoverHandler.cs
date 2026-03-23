@@ -127,6 +127,102 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                     break;
                 }
 
+            // Definition-site hover: show symbol info when hovering over definition names
+            case FunctionDef funcDef:
+                {
+                    // Check if cursor is on a parameter
+                    var param = funcDef.Parameters.FirstOrDefault(p =>
+                        IsPositionInRange(line, col, p.LineStart, p.ColumnStart, p.LineEnd, p.ColumnEnd));
+                    if (param != null)
+                    {
+                        string? className = null;
+                        var enclosingClass = _api.FindNodeOfType<ClassDef>(analysis.Ast!, line, col);
+                        if (enclosingClass != null)
+                            className = enclosingClass.Name;
+                        else
+                        {
+                            var enclosingStruct = _api.FindNodeOfType<StructDef>(analysis.Ast!, line, col);
+                            if (enclosingStruct != null)
+                                className = enclosingStruct.Name;
+                        }
+                        return SymbolFormatter.FormatParameterWithDocs(param.Name, param.Type != null
+                            ? query.GetTypeAnnotation(param.Type) : null, className);
+                    }
+
+                    // Hover on function name
+                    var funcSymbol = analysis.SymbolTable?.LookupFunction(funcDef.Name);
+                    if (funcSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(funcSymbol);
+                    break;
+                }
+
+            case ClassDef classDef:
+                {
+                    var typeSymbol = analysis.SymbolTable?.LookupType(classDef.Name);
+                    if (typeSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
+                    break;
+                }
+
+            case StructDef structDef:
+                {
+                    var typeSymbol = analysis.SymbolTable?.LookupType(structDef.Name);
+                    if (typeSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
+                    break;
+                }
+
+            case InterfaceDef interfaceDef:
+                {
+                    var typeSymbol = analysis.SymbolTable?.LookupType(interfaceDef.Name);
+                    if (typeSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
+                    break;
+                }
+
+            case EnumDef enumDef:
+                {
+                    var typeSymbol = analysis.SymbolTable?.LookupType(enumDef.Name);
+                    if (typeSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
+                    break;
+                }
+
+            case VariableDeclaration varDecl:
+                {
+                    var varSymbol = analysis.SymbolTable?.LookupVariable(varDecl.Name);
+                    if (varSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(varSymbol);
+                    break;
+                }
+
+            case PropertyDef propDef:
+                {
+                    // Check parameters first (for function-style properties)
+                    var param = propDef.Parameters.FirstOrDefault(p =>
+                        IsPositionInRange(line, col, p.LineStart, p.ColumnStart, p.LineEnd, p.ColumnEnd));
+                    if (param != null)
+                        return SymbolFormatter.FormatParameterWithDocs(param.Name, param.Type != null
+                            ? query.GetTypeAnnotation(param.Type) : null);
+
+                    // Property type info
+                    var typeStr = propDef.Type != null
+                        ? query.GetTypeAnnotation(propDef.Type)?.GetDisplayName() ?? "unknown"
+                        : propDef.ReturnType != null
+                            ? query.GetTypeAnnotation(propDef.ReturnType)?.GetDisplayName() ?? "unknown"
+                            : "unknown";
+                    return $"```sharpy\n(property) {propDef.Name}: {typeStr}\n```";
+                }
+
+            case TypeAlias typeAlias:
+                {
+                    Symbol? aliasSymbol = analysis.SymbolTable?.LookupTypeAlias(typeAlias.Name)
+                        ?? (Symbol?)analysis.SymbolTable?.LookupType(typeAlias.Name);
+                    if (aliasSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(aliasSymbol);
+                    break;
+                }
+
             case Expression expr:
                 {
                     var type = query.GetEffectiveType(expr);
@@ -137,6 +233,17 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
         }
 
         return null;
+    }
+
+    private static bool IsPositionInRange(int line, int col, int startLine, int startCol, int endLine, int endCol)
+    {
+        if (line < startLine || line > endLine)
+            return false;
+        if (line == startLine && col < startCol)
+            return false;
+        if (line == endLine && col > endCol)
+            return false;
+        return true;
     }
 
     protected override HoverRegistrationOptions CreateRegistrationOptions(

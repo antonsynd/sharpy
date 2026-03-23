@@ -49,14 +49,50 @@ internal static class SymbolFormatter
     private static string FormatVariable(VariableSymbol v)
     {
         var typeStr = v.Type?.GetDisplayName() ?? "unknown";
-        var prefix = v.IsConstant ? "(constant)" : "(variable)";
+        string prefix;
+        if (v.Name == "self")
+            prefix = "(self)";
+        else if (v.IsConstant)
+            prefix = "(constant)";
+        else
+            prefix = "(variable)";
         return $"{prefix} {v.Name}: {typeStr}";
+    }
+
+    /// <summary>
+    /// Formats a parameter as hover text (for parameters at declaration sites).
+    /// </summary>
+    public static string FormatParameter(string name, SemanticType? type, string? className = null)
+    {
+        if (name == "self" && className != null)
+            return $"(self) self: {className}";
+        if (name == "self")
+            return "(self) self";
+        if (name == "cls" && className != null)
+            return $"(cls) cls: type[{className}]";
+
+        var typeStr = type?.GetDisplayName() ?? "unknown";
+        return $"(parameter) {name}: {typeStr}";
+    }
+
+    /// <summary>
+    /// Formats a parameter with markdown code block wrapper.
+    /// </summary>
+    public static string FormatParameterWithDocs(string name, SemanticType? type, string? className = null)
+    {
+        var sig = FormatParameter(name, type, className);
+        return $"```sharpy\n{sig}\n```";
     }
 
     private static string FormatFunction(FunctionSymbol f)
     {
         var sb = new StringBuilder();
-        sb.Append("(function) def ");
+        var isMethod = f.DeclaringFilePath != null && f.Parameters.Count > 0
+            && f.Parameters[0].Name == "self";
+        sb.Append(isMethod ? "(method) " : "(function) ");
+        if (f.IsAsync)
+            sb.Append("async ");
+        sb.Append("def ");
         sb.Append(f.Name);
         sb.Append('(');
 
