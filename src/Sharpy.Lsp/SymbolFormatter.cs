@@ -32,10 +32,23 @@ internal static class SymbolFormatter
         sb.Append(signature);
         sb.Append("\n```");
 
-        if (!string.IsNullOrEmpty(symbol.Documentation))
+        var documentation = symbol.Documentation;
+        // Fall back to dunder documentation if no explicit docs
+        if (string.IsNullOrEmpty(documentation) && symbol is FunctionSymbol fs
+            && fs.Name.StartsWith("__") && fs.Name.EndsWith("__"))
+        {
+            documentation = DunderDocumentation.GetDocumentation(fs.Name);
+        }
+        // Fall back to module summaries if no explicit docs
+        if (string.IsNullOrEmpty(documentation) && symbol is ModuleSymbol ms)
+        {
+            documentation = ModuleDocumentation.GetSummary(ms.Name);
+        }
+
+        if (!string.IsNullOrEmpty(documentation))
         {
             sb.Append("\n\n");
-            sb.Append(symbol.Documentation);
+            sb.Append(documentation);
         }
 
         return sb.ToString();
