@@ -1,0 +1,21 @@
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def describe(self) -> Self:
+        print(self.name)
+        return self
+
+class Dog(Animal):
+    breed: str
+
+    def __init__(self, name: str, breed: str):
+        super().__init__(name)
+        self.breed = breed
+
+def main():
+    d = Dog("Rex", "Labrador")
+    result = d.describe()
+    print(result.name)

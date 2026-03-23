@@ -81,6 +81,9 @@ internal static class BuiltinNames
     // ---- Async types ----
     public const string Task = "Task";
 
+    // ---- Self type ----
+    public const string Self = "Self";
+
     // ---- Dict view types (returned by dict.items(), .keys(), .values()) ----
     public const string DictItemsView = "DictItemsView";
     public const string DictKeyView = "DictKeyView";

@@ -40,7 +40,7 @@ class Builder:
 
 - `Self` resolves to the concrete enclosing class type at compile time
 - `Self` can be used as a return type or parameter type in methods
-- `Self` is valid only inside class, struct, or interface bodies (SPY0384 outside)
+- `Self` is valid only inside class, struct, or interface bodies (SPY0384 outside, SPY0385 in static methods)
 - `Self` can also be used as a parameter type for same-type operations:
 
 ```python

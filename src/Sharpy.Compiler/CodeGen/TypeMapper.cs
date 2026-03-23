@@ -91,7 +91,7 @@ internal class TypeMapper
 
             // Handle Self type — emit as the concrete declaring class type
             SelfType selfType when selfType.DeclaringType != null =>
-                MapSemanticType(new UserDefinedType { Name = selfType.DeclaringType.Name, Symbol = selfType.DeclaringType }),
+                MapSelfType(selfType),
 
             // Handle function types
             Semantic.FunctionType funcType => MapSemanticFunctionType(funcType),
@@ -140,6 +140,22 @@ internal class TypeMapper
             .ToArray();
 
         return QualifiedGenericName(baseTypeName, typeArgs);
+    }
+
+    private TypeSyntax MapSelfType(SelfType selfType)
+    {
+        var declaringType = selfType.DeclaringType!;
+        if (declaringType.TypeParameters.Count > 0)
+        {
+            // For generic classes (e.g., Box[T]), emit Box<T> with type parameter references
+            var typeArgs = declaringType.TypeParameters
+                .Select(tp => (TypeSyntax)IdentifierName(tp.Name))
+                .ToArray();
+            var baseName = GetMappedTypeNameFromSymbol(new UserDefinedType { Name = declaringType.Name, Symbol = declaringType });
+            return GenericName(Identifier(baseName))
+                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
+        }
+        return MapSemanticType(new UserDefinedType { Name = declaringType.Name, Symbol = declaringType });
     }
 
     private TypeSyntax MapSemanticFunctionType(Semantic.FunctionType funcType)

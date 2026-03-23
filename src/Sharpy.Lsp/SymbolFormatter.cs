@@ -1,5 +1,6 @@
 using System.Text;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Lsp;
 
@@ -63,7 +64,7 @@ internal static class SymbolFormatter
     {
         var typeStr = v.Type?.GetDisplayName() ?? "unknown";
         string prefix;
-        if (v.Name == "self")
+        if (v.Name == PythonNames.Self)
             prefix = "(self)";
         else if (v.IsConstant)
             prefix = "(constant)";

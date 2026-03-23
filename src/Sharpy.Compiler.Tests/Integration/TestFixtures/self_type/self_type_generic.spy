@@ -1,0 +1,17 @@
+class Container[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+    def set_value(self, new_value: T) -> Self:
+        self.value = new_value
+        return self
+
+    def get_self(self) -> Self:
+        return self
+
+def main():
+    c = Container[int](10)
+    c2 = c.set_value(42).get_self()
+    print(c2.value)

@@ -179,7 +179,7 @@ public partial class Parser
         // Handle 'Self' as a type name (for -> Self return annotations)
         else if (Current.Type == TokenType.SelfType)
         {
-            name = "Self";
+            name = BuiltinNames.Self;
             Advance();
         }
         else

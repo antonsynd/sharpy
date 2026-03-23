@@ -20,6 +20,7 @@ internal class TypeResolver
     private readonly CancellationToken _cancellationToken;
     private bool _resolvingGenericAlias;
     private TypeSymbol? _currentTypeContext;
+    private bool _isStaticContext;
 
     public TypeResolver(SymbolTable symbolTable, SemanticInfo semanticInfo, ICompilerLogger? logger = null,
         CancellationToken cancellationToken = default)
@@ -37,6 +38,12 @@ internal class TypeResolver
     /// Sets the current class/struct/interface context for resolving Self types.
     /// </summary>
     public void SetCurrentTypeContext(TypeSymbol? type) => _currentTypeContext = type;
+
+    /// <summary>
+    /// Sets whether the current function context is static (no self parameter).
+    /// When true, Self type usage will emit SPY0385.
+    /// </summary>
+    public void SetIsStaticContext(bool isStatic) => _isStaticContext = isStatic;
 
     public SemanticType ResolveTypeAnnotation(TypeAnnotation? annotation)
     {
@@ -66,18 +73,25 @@ internal class TypeResolver
         }
 
         // Handle 'Self' type — resolves to the enclosing class/struct/interface
-        if (annotation.Name == "Self")
+        if (annotation.Name == BuiltinNames.Self)
         {
-            if (_currentTypeContext != null)
-            {
-                result = new SelfType { DeclaringType = _currentTypeContext };
-            }
-            else
+            if (_currentTypeContext == null)
             {
                 AddError("'Self' can only be used inside a class, struct, or interface definition",
                     annotation.LineStart, annotation.ColumnStart,
                     code: DiagnosticCodes.Semantic.SelfOutsideClass, span: annotation.Span);
                 result = SemanticType.Unknown;
+            }
+            else if (_isStaticContext)
+            {
+                AddError("'Self' cannot be used in static methods",
+                    annotation.LineStart, annotation.ColumnStart,
+                    code: DiagnosticCodes.Semantic.SelfInStaticMethod, span: annotation.Span);
+                result = SemanticType.Unknown;
+            }
+            else
+            {
+                result = new SelfType { DeclaringType = _currentTypeContext };
             }
             _semanticInfo.SetTypeAnnotation(annotation, result);
             return result;

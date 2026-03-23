@@ -129,6 +129,14 @@ internal partial class TypeChecker
             _symbolTable.Define(typeParamSymbol);
         }
 
+        // Set static context for Self type validation before resolving types.
+        // A method is static if it has @static decorator or doesn't have a self parameter.
+        bool isStaticMethod = _currentClass != null &&
+            (functionDef.Decorators.Any(d => d.Name == DecoratorNames.Static) ||
+             functionDef.Parameters.Length == 0 ||
+             functionDef.Parameters[0].Name != PythonNames.Self);
+        _typeResolver.SetIsStaticContext(isStaticMethod);
+
         // Resolve return type AFTER type parameters are registered
         var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
 
@@ -571,6 +579,7 @@ internal partial class TypeChecker
 
         _symbolTable.ExitScope();
         _currentFunctionReturnType = previousFunctionReturnType;
+        _typeResolver.SetIsStaticContext(false);
     }
 
     private void CheckClass(ClassDef classDef)
