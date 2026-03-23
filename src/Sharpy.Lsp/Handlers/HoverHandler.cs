@@ -223,6 +223,94 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                     break;
                 }
 
+            // Keyword expression hover
+            case AwaitExpression awaitExpr:
+                {
+                    var resultType = query.GetEffectiveType(awaitExpr);
+                    if (resultType != null)
+                        return $"```sharpy\n(await) -> {SymbolFormatter.FormatTypeInfo(resultType)}\n```";
+                    return "```sharpy\n(await)\n```";
+                }
+
+            case YieldStatement yieldStmt:
+                {
+                    if (yieldStmt.Value != null)
+                    {
+                        var yieldType = query.GetEffectiveType(yieldStmt.Value);
+                        if (yieldType != null)
+                            return $"```sharpy\n(yield) {SymbolFormatter.FormatTypeInfo(yieldType)}\n```";
+                    }
+                    return "```sharpy\n(yield)\n```";
+                }
+
+            case SuperExpression:
+                {
+                    var enclosingClassDef = _api.FindNodeOfType<ClassDef>(analysis.Ast!, line, col);
+                    if (enclosingClassDef != null)
+                    {
+                        var classSym = analysis.SymbolTable?.LookupType(enclosingClassDef.Name);
+                        if (classSym?.BaseType != null)
+                            return $"```sharpy\n(super) {classSym.BaseType.Name}\n```";
+                    }
+                    return "```sharpy\n(super)\n```";
+                }
+
+            // Suppress hover for builtin-type operators; show for user-defined overloads
+            case BinaryOp binOp:
+                {
+                    var leftType = query.GetEffectiveType(binOp.Left);
+                    if (leftType is BuiltinType)
+                        return null; // int + int is self-evident
+                    var resultType = query.GetEffectiveType(binOp);
+                    if (resultType != null)
+                        return $"```sharpy\n{SymbolFormatter.FormatTypeInfo(resultType)}\n```";
+                    break;
+                }
+
+            case UnaryOp unaryOp:
+                {
+                    var operandType = query.GetEffectiveType(unaryOp.Operand);
+                    if (operandType is BuiltinType)
+                        return null;
+                    var resultType = query.GetEffectiveType(unaryOp);
+                    if (resultType != null)
+                        return $"```sharpy\n{SymbolFormatter.FormatTypeInfo(resultType)}\n```";
+                    break;
+                }
+
+            case ComparisonChain compChain:
+                {
+                    if (compChain.Operands.Length > 0)
+                    {
+                        var firstType = query.GetEffectiveType(compChain.Operands[0]);
+                        if (firstType is BuiltinType)
+                            return null;
+                    }
+                    return $"```sharpy\nbool\n```";
+                }
+
+            // Import hover
+            case ImportStatement importStmt:
+                {
+                    if (importStmt.Names.Length > 0)
+                    {
+                        var moduleName = importStmt.Names[0].Name;
+                        var modSymbol = analysis.SymbolTable?.Lookup(moduleName) as ModuleSymbol;
+                        if (modSymbol != null)
+                            return SymbolFormatter.FormatSymbolWithDocs(modSymbol);
+                        return $"```sharpy\n(module) {moduleName}\n```";
+                    }
+                    break;
+                }
+
+            case FromImportStatement fromImport:
+                {
+                    var modSymbol = analysis.SymbolTable?.Lookup(fromImport.Module) as ModuleSymbol;
+                    if (modSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(modSymbol);
+                    return $"```sharpy\n(module) {fromImport.Module}\n```";
+                }
+
             case Expression expr:
                 {
                     var type = query.GetEffectiveType(expr);
