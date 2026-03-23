@@ -156,6 +156,8 @@ public partial class Parser
             return new VariableDeclaration
             {
                 Name = id.Name,
+                NameLineStart = id.LineStart,
+                NameColumnStart = id.ColumnStart,
                 Type = type,
                 InitialValue = initialValue,
                 IsConst = false,
@@ -223,6 +225,7 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.Def);
+        var nameToken = Current;
         var name = ExpectIdentifier();
 
         var typeParams = new List<TypeParameterDef>();
@@ -252,6 +255,8 @@ public partial class Parser
         {
             return CreateBodylessFunctionDef(
                 name,
+                nameToken.Line,
+                nameToken.Column,
                 typeParams.ToImmutableArray(),
                 parameters.ToImmutableArray(),
                 returnType,
@@ -266,6 +271,8 @@ public partial class Parser
         {
             return CreateBodylessFunctionDef(
                 name,
+                nameToken.Line,
+                nameToken.Column,
                 typeParams.ToImmutableArray(),
                 parameters.ToImmutableArray(),
                 returnType,
@@ -288,6 +295,8 @@ public partial class Parser
             return new FunctionDef
             {
                 Name = name,
+                NameLineStart = nameToken.Line,
+                NameColumnStart = nameToken.Column,
                 TypeParameters = typeParams.ToImmutableArray(),
                 Parameters = parameters.ToImmutableArray(),
                 ReturnType = returnType,
@@ -338,6 +347,8 @@ public partial class Parser
         return new FunctionDef
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             TypeParameters = typeParams.ToImmutableArray(),
             Parameters = parameters.ToImmutableArray(),
             ReturnType = returnType,
@@ -356,6 +367,8 @@ public partial class Parser
     /// </summary>
     private FunctionDef CreateBodylessFunctionDef(
         string name,
+        int nameLineStart,
+        int nameColumnStart,
         ImmutableArray<TypeParameterDef> typeParams,
         ImmutableArray<Parameter> parameters,
         TypeAnnotation? returnType,
@@ -376,6 +389,8 @@ public partial class Parser
         return new FunctionDef
         {
             Name = name,
+            NameLineStart = nameLineStart,
+            NameColumnStart = nameColumnStart,
             TypeParameters = typeParams,
             Parameters = parameters,
             ReturnType = returnType,
@@ -405,6 +420,7 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.Class);
+        var nameToken = Current;
         var name = ExpectIdentifier();
 
         var typeParams = new List<TypeParameterDef>();
@@ -459,6 +475,8 @@ public partial class Parser
         return new ClassDef
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             TypeParameters = typeParams.ToImmutableArray(),
             BaseClasses = baseClasses.ToImmutableArray(),
             Body = body.ToImmutableArray(),
@@ -478,6 +496,7 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.Struct);
+        var nameToken = Current;
         var name = ExpectIdentifier();
 
         var typeParams = new List<TypeParameterDef>();
@@ -532,6 +551,8 @@ public partial class Parser
         return new StructDef
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             TypeParameters = typeParams.ToImmutableArray(),
             BaseClasses = baseInterfaces.ToImmutableArray(),
             Body = body.ToImmutableArray(),
@@ -551,6 +572,7 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.Interface);
+        var nameToken = Current;
         var name = ExpectIdentifier();
 
         var typeParams = new List<TypeParameterDef>();
@@ -615,6 +637,8 @@ public partial class Parser
         return new InterfaceDef
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             TypeParameters = typeParams.ToImmutableArray(),
             BaseInterfaces = baseInterfaces.ToImmutableArray(),
             Body = body.ToImmutableArray(),
@@ -749,6 +773,7 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.Enum);
+        var nameToken = Current;
         var name = ExpectIdentifier();
         Expect(TokenType.Colon);
         ExpectNewline();
@@ -837,6 +862,8 @@ public partial class Parser
         return new EnumDef
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             Members = members.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
@@ -1154,6 +1181,7 @@ public partial class Parser
         }
 
         // Read property name (identifier)
+        var nameToken = Current;
         var name = ExpectIdentifier();
 
         // Check for explicit interface: Name.Name pattern
@@ -1162,6 +1190,7 @@ public partial class Parser
         {
             Advance(); // consume '.'
             explicitInterface = name;
+            nameToken = Current;
             name = ExpectIdentifier();
         }
 
@@ -1196,6 +1225,8 @@ public partial class Parser
                 return new PropertyDef
                 {
                     Name = name,
+                    NameLineStart = nameToken.Line,
+                    NameColumnStart = nameToken.Column,
                     Accessor = accessor,
                     IsFunctionStyle = true,
                     Parameters = parameters.ToImmutableArray(),
@@ -1233,6 +1264,8 @@ public partial class Parser
                 return new PropertyDef
                 {
                     Name = name,
+                    NameLineStart = nameToken.Line,
+                    NameColumnStart = nameToken.Column,
                     Accessor = accessor,
                     IsFunctionStyle = true,
                     Parameters = parameters.ToImmutableArray(),
@@ -1273,6 +1306,8 @@ public partial class Parser
             return new PropertyDef
             {
                 Name = name,
+                NameLineStart = nameToken.Line,
+                NameColumnStart = nameToken.Column,
                 Accessor = accessor,
                 IsFunctionStyle = true,
                 Parameters = parameters.ToImmutableArray(),
@@ -1304,6 +1339,8 @@ public partial class Parser
         return new PropertyDef
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             Accessor = accessor,
             Type = type,
             DefaultValue = defaultValue,
@@ -1489,6 +1526,7 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.Const);
+        var nameToken = Current;
         var name = ExpectIdentifier();
 
         // Type annotation is optional for const declarations
@@ -1509,6 +1547,8 @@ public partial class Parser
         return new VariableDeclaration
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             Type = type,
             InitialValue = value,
             IsConst = true,
