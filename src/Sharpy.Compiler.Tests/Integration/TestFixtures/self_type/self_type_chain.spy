@@ -1,0 +1,28 @@
+class Config:
+    _host: str
+    _port: int
+    _debug: bool
+
+    def __init__(self):
+        self._host = "localhost"
+        self._port = 8080
+        self._debug = False
+
+    def host(self, h: str) -> Self:
+        self._host = h
+        return self
+
+    def port(self, p: int) -> Self:
+        self._port = p
+        return self
+
+    def debug(self, d: bool) -> Self:
+        self._debug = d
+        return self
+
+    def summary(self) -> str:
+        return self._host + ":" + str(self._port) + " debug=" + str(self._debug)
+
+def main() -> None:
+    config: Config = Config().host("example.com").port(443).debug(True)
+    print(config.summary())

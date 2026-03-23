@@ -343,7 +343,9 @@ public static class DiagnosticCodes
         public const string DataclassFieldOrdering = "SPY0381";           // Active
         public const string DataclassFieldNoType = "SPY0382";             // Active
         public const string DataclassInvalidOption = "SPY0383";           // Active
-        // SPY0384-SPY0399: Reserved for future semantic diagnostics
+        // Self type errors (SPY0384-SPY0385)
+        public const string SelfOutsideClass = "SPY0384";
+        public const string SelfInStaticMethod = "SPY0385";
 
         #endregion
     }

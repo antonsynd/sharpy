@@ -27,16 +27,29 @@ class Person:
 - All instance fields must be declared at class level with type annotations or an assignment of a default value where the type can be inferred
 - The `self` parameter is required for instance methods
 - The `self` parameter is not type-annotated and cannot be annotated
-- There is no `Self` type in Sharpy currently (C# 9.0 has no equivalent; C# 11+ adds `TSelf` generic constraint patterns which may be supported in a future version)
-- For fluent APIs returning the same type, you must name the concrete type explicitly:
+- Sharpy supports the `Self` type (inspired by PEP 673) for methods that return the enclosing class type:
 
 ```python
 class Builder:
     name = ""
 
-    def with_name(self, name: str) -> Builder:  # Must name the type explicitly
+    def with_name(self, name: str) -> Self:
         self.name = name
         return self
+```
+
+- `Self` resolves to the concrete enclosing class type at compile time
+- `Self` can be used as a return type or parameter type in methods
+- `Self` is valid only inside class, struct, or interface bodies (SPY0384 outside)
+- `Self` can also be used as a parameter type for same-type operations:
+
+```python
+class Vector:
+    x: int
+    y: int
+
+    def add(self, other: Self) -> Self:
+        return Vector(self.x + other.x, self.y + other.y)
 ```
 
 - `__init__` return type is implicitly `None` and can be omitted or explicitly declared

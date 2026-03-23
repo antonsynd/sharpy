@@ -1021,6 +1021,18 @@ public static class DiagnosticExplanations
             "@dataclass(frozen=\"yes\")  # error: must be True/False\nclass Bad:\n    x: int",
             "Use boolean values for @dataclass options:\n@dataclass(frozen=True)\nclass Good:\n    x: int");
 
+        // ── Semantic errors: Self type (SPY0384-SPY0385) ────────────────────
+
+        Add(dict, DiagnosticCodes.Semantic.SelfOutsideClass, "Self type outside class", "Semantic",
+            "'Self' can only be used inside a class, struct, or interface definition. It refers to the enclosing type and has no meaning at module level or in standalone functions.",
+            "def make() -> Self:\n    ...",
+            "Use Self only inside a class:\nclass Builder:\n    def make(self) -> Self:\n        return self");
+
+        Add(dict, DiagnosticCodes.Semantic.SelfInStaticMethod, "Self type in static method", "Semantic",
+            "'Self' cannot be used in static methods because there is no instance type to refer to.",
+            "class Foo:\n    @static\n    def create() -> Self:\n        ...",
+            "Use the concrete class name instead:\nclass Foo:\n    @static\n    def create() -> Foo:\n        return Foo()");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",

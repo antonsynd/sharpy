@@ -128,6 +128,7 @@ public partial class Lexer
         { "to", TokenType.To },
         { "maybe", TokenType.Maybe },
         { "super", TokenType.Super },
+        { "Self", TokenType.SelfType },
 
         // Future Keywords (reserved)
         { "defer", TokenType.Defer },

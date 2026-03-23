@@ -1,0 +1,16 @@
+class Builder:
+    _value: int
+
+    def __init__(self):
+        self._value = 0
+
+    def set_value(self, v: int) -> Self:
+        self._value = v
+        return self
+
+    def build(self) -> int:
+        return self._value
+
+def main() -> None:
+    result: int = Builder().set_value(42).build()
+    print(result)

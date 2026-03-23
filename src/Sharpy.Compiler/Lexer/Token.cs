@@ -79,6 +79,7 @@ public enum TokenType
     To,             // Type coercion operator
     Maybe,          // Optional from nullable expressions
     Super,          // Super class access
+    SelfType,       // Self type for method return annotations
 
     // Future Keywords (reserved)
     Defer,

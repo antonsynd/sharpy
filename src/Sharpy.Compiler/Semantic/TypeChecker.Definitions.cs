@@ -634,9 +634,10 @@ internal partial class TypeChecker
         // Resolve event types (before checking methods that might reference them)
         ResolveEventTypes(classSymbol, classDef.Body);
 
-        // Set current class for method type checking (used for self parameter typing)
+        // Set current class for method type checking (used for self parameter typing and Self type resolution)
         var previousClass = _currentClass;
         _currentClass = classSymbol;
+        _typeResolver.SetCurrentTypeContext(classSymbol);
 
         // Check all members
         foreach (var statement in classDef.Body)
@@ -655,6 +656,7 @@ internal partial class TypeChecker
 
         // Restore previous class
         _currentClass = previousClass;
+        _typeResolver.SetCurrentTypeContext(previousClass);
         // Access validation is handled by AccessValidator in the validation pipeline
 
         _symbolTable.ExitScope();
@@ -721,6 +723,7 @@ internal partial class TypeChecker
         // Set current class for method type checking (structs behave like classes for self parameter)
         var previousClass = _currentClass;
         _currentClass = structSymbol;
+        _typeResolver.SetCurrentTypeContext(structSymbol);
 
         // Check all members
         foreach (var statement in structDef.Body)
@@ -736,6 +739,7 @@ internal partial class TypeChecker
 
         // Restore previous class
         _currentClass = previousClass;
+        _typeResolver.SetCurrentTypeContext(previousClass);
         // Access validation is handled by AccessValidator in the validation pipeline
 
         _symbolTable.ExitScope();
@@ -844,6 +848,7 @@ internal partial class TypeChecker
         // Set _currentClass to the interface symbol so CheckFunction resolves self correctly
         var previousClass = _currentClass;
         _currentClass = interfaceSymbol;
+        _typeResolver.SetCurrentTypeContext(interfaceSymbol);
 
         foreach (var statement in interfaceDef.Body)
         {
@@ -854,6 +859,7 @@ internal partial class TypeChecker
         }
 
         _currentClass = previousClass;
+        _typeResolver.SetCurrentTypeContext(previousClass);
 
         _symbolTable.ExitScope();
     }

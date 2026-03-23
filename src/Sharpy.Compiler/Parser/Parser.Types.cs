@@ -176,6 +176,12 @@ public partial class Parser
             name = "None";
             Advance();
         }
+        // Handle 'Self' as a type name (for -> Self return annotations)
+        else if (Current.Type == TokenType.SelfType)
+        {
+            name = "Self";
+            Advance();
+        }
         else
         {
             name = ExpectIdentifier();

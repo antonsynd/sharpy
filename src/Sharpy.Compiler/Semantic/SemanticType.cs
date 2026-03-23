@@ -307,6 +307,14 @@ public sealed record UserDefinedType : SemanticType
         if (base.IsAssignableTo(other))
             return true;
 
+        // UserDefinedType is assignable to SelfType if it matches the declaring class
+        if (other is SelfType selfType && selfType.DeclaringType != null && Symbol != null)
+        {
+            if (TypeHierarchyService.IsSameType(Symbol, selfType.DeclaringType)
+                || TypeHierarchyService.InheritsFrom(Symbol, selfType.DeclaringType))
+                return true;
+        }
+
         if (other is UserDefinedType otherUdt)
         {
             if (Symbol != null && otherUdt.Symbol != null)
@@ -709,6 +717,35 @@ public sealed record TypeParameterType : SemanticType
             return true;
 
         // Type parameters can be assigned to object
+        return base.IsAssignableTo(other);
+    }
+}
+
+/// <summary>
+/// Represents the Self type in class/struct/interface method return annotations.
+/// Self resolves to the enclosing class type, enabling builder patterns and
+/// covariant return types in subclasses.
+/// </summary>
+public sealed record SelfType : SemanticType
+{
+    /// <summary>
+    /// The class/struct/interface in which Self appears.
+    /// </summary>
+    public TypeSymbol? DeclaringType { get; init; }
+
+    public override string GetDisplayName() => "Self";
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        if (other is SelfType)
+            return true;
+
+        if (DeclaringType != null)
+        {
+            var selfAsUDT = new UserDefinedType { Name = DeclaringType.Name, Symbol = DeclaringType };
+            return selfAsUDT.IsAssignableTo(other);
+        }
+
         return base.IsAssignableTo(other);
     }
 }

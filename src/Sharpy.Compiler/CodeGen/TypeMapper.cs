@@ -89,6 +89,10 @@ internal class TypeMapper
             // Handle type parameters (e.g., T in class Box[T])
             TypeParameterType typeParam => IdentifierName(typeParam.Name),
 
+            // Handle Self type — emit as the concrete declaring class type
+            SelfType selfType when selfType.DeclaringType != null =>
+                MapSemanticType(new UserDefinedType { Name = selfType.DeclaringType.Name, Symbol = selfType.DeclaringType }),
+
             // Handle function types
             Semantic.FunctionType funcType => MapSemanticFunctionType(funcType),
 
@@ -257,6 +261,14 @@ internal class TypeMapper
                 // Function types typically shouldn't be nullable, but handle it anyway
                 return WrapOptionalOrNullable(expandedType, type);
             }
+        }
+
+        // Handle Self type — resolve via SemanticType to emit the concrete class type
+        if (type.Name == "Self")
+        {
+            var resolvedType = _context.SemanticInfo?.GetTypeAnnotation(type);
+            if (resolvedType is SelfType selfType && selfType.DeclaringType != null)
+                return WrapOptionalOrNullable(MapSemanticType(selfType), type);
         }
 
         // Get base type name

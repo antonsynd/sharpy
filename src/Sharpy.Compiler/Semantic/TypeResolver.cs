@@ -19,6 +19,7 @@ internal class TypeResolver
     private readonly DiagnosticBag _diagnostics = new();
     private readonly CancellationToken _cancellationToken;
     private bool _resolvingGenericAlias;
+    private TypeSymbol? _currentTypeContext;
 
     public TypeResolver(SymbolTable symbolTable, SemanticInfo semanticInfo, ICompilerLogger? logger = null,
         CancellationToken cancellationToken = default)
@@ -31,6 +32,11 @@ internal class TypeResolver
     }
 
     public DiagnosticBag Diagnostics => _diagnostics;
+
+    /// <summary>
+    /// Sets the current class/struct/interface context for resolving Self types.
+    /// </summary>
+    public void SetCurrentTypeContext(TypeSymbol? type) => _currentTypeContext = type;
 
     public SemanticType ResolveTypeAnnotation(TypeAnnotation? annotation)
     {
@@ -55,6 +61,24 @@ internal class TypeResolver
         if (annotation.Name == "auto")
         {
             result = SemanticType.Unknown;
+            _semanticInfo.SetTypeAnnotation(annotation, result);
+            return result;
+        }
+
+        // Handle 'Self' type — resolves to the enclosing class/struct/interface
+        if (annotation.Name == "Self")
+        {
+            if (_currentTypeContext != null)
+            {
+                result = new SelfType { DeclaringType = _currentTypeContext };
+            }
+            else
+            {
+                AddError("'Self' can only be used inside a class, struct, or interface definition",
+                    annotation.LineStart, annotation.ColumnStart,
+                    code: DiagnosticCodes.Semantic.SelfOutsideClass, span: annotation.Span);
+                result = SemanticType.Unknown;
+            }
             _semanticInfo.SetTypeAnnotation(annotation, result);
             return result;
         }
