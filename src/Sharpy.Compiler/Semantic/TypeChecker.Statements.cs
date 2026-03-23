@@ -842,7 +842,8 @@ internal partial class TypeChecker
                     Type = asVarType,
                     AccessLevel = AccessLevel.Public,
                     DeclarationLine = item.LineStart,
-                    DeclarationColumn = item.ColumnStart
+                    DeclarationColumn = item.ColumnStart,
+                    DeclaringFilePath = _currentFilePath
                 };
 
                 _symbolTable.Define(varSymbol);

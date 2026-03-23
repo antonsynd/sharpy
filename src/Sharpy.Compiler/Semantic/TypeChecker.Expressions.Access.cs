@@ -120,11 +120,41 @@ internal partial class TypeChecker
 
         if (memberLookupType is UserDefinedType udt && udt.Symbol != null)
         {
-            // CLR types have unpopulated Methods/Fields/Properties on their TypeSymbol —
-            // member resolution is deferred to the codegen layer via CLR discovery.
-            // Don't emit an error here; let codegen handle it like GenericType/BuiltinType.
+            // CLR-backed TypeSymbols may have Methods/Properties populated by CachedModuleDiscovery
+            // (with snake_case names via ReverseNameMangler). Attempt member resolution here;
+            // fall back to codegen only if the type has no discovered members at all.
             if (udt.Symbol.ClrType != null)
             {
+                var clrMemberName = memberAccess.Member;
+
+                // Check properties (is_completed, result, etc.)
+                var clrProp = udt.Symbol.Properties.FirstOrDefault(p => p.Name == clrMemberName);
+                if (clrProp != null)
+                    return clrProp.Type;
+
+                // Check methods
+                var clrMethod = udt.Symbol.Methods.FirstOrDefault(m => m.Name == clrMemberName);
+                if (clrMethod != null)
+                {
+                    var paramTypes = clrMethod.Parameters
+                        .Where(p => p.Name != "self")
+                        .Select(p => p.Type ?? SemanticType.Unknown)
+                        .ToList();
+                    return new FunctionType
+                    {
+                        ParameterTypes = paramTypes,
+                        ReturnType = clrMethod.ReturnType ?? SemanticType.Unknown
+                    };
+                }
+
+                // Check fields
+                var clrField = udt.Symbol.Fields.FirstOrDefault(f => f.Name == clrMemberName);
+                if (clrField != null)
+                    return GetVariableType(clrField);
+
+                // Member not found on CLR type — fall back to codegen rather than
+                // emitting an error, since the TypeSymbol may be a CLR shadow of a
+                // user-defined type with different members.
                 MarkExpressionAsErrorRecovery(memberAccess);
                 return SemanticType.Unknown;
             }
@@ -313,6 +343,21 @@ internal partial class TypeChecker
             }
         }
 
+        // Resolve TaskType member access: task.result, task.is_completed, etc.
+        // TaskType wraps System.Threading.Tasks.Task<T>, so resolve known properties directly.
+        if (memberLookupType is TaskType taskType)
+        {
+            return memberAccess.Member switch
+            {
+                "result" => taskType.ResultType ?? SemanticType.Unknown,
+                "is_completed" => SemanticType.Bool,
+                "is_faulted" => SemanticType.Bool,
+                "is_canceled" => SemanticType.Bool,
+                "is_completed_successfully" => SemanticType.Bool,
+                _ => SemanticType.Unknown
+            };
+        }
+
         // Resolve builtin type member access via BuiltinRegistry TypeSymbol metadata.
         // Handles: list.append(), dict.items(), result.unwrap(), optional.unwrap(),
         // str.upper(), int methods, etc.
@@ -413,7 +458,12 @@ internal partial class TypeChecker
     {
         if (typeSym.TypeKind == TypeKind.Enum)
         {
-            return new UserDefinedType { Name = typeSym.Name, Symbol = typeSym };
+            var enumType = new UserDefinedType { Name = typeSym.Name, Symbol = typeSym };
+            var enumMember = typeSym.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
+            _semanticInfo.SetExpressionType(memberAccess, enumType);
+            if (enumMember != null)
+                _semanticInfo.SetMemberAccessResolution(memberAccess, typeSym, enumMember);
+            return enumType;
         }
 
         if (typeSym.TypeKind == TypeKind.Union)

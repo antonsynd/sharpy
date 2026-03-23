@@ -78,6 +78,9 @@ internal static class BuiltinNames
     public const string Result = "Result";
     public const string Function = "function";
 
+    // ---- Async types ----
+    public const string Task = "Task";
+
     // ---- Dict view types (returned by dict.items(), .keys(), .values()) ----
     public const string DictItemsView = "DictItemsView";
     public const string DictKeyView = "DictKeyView";
