@@ -186,7 +186,7 @@ python3 -c "print([1,2,3][-1])"
 ### General
 
 - **C# 9.0 target** -- no global usings, file-scoped namespaces, or record structs
-- Run `dotnet format whitespace` before committing
+- Code formatting runs automatically via Claude Code hooks on save
 - Follow existing patterns in the codebase
 
 ### AST nodes

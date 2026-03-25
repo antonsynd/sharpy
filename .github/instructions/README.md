@@ -63,7 +63,7 @@ Lexer → Parser → Semantic → Validation → CodeGen → Tests
 
 ```bash
 dotnet build sharpy.sln && dotnet test           # Build + test all
-dotnet format whitespace                         # Format before commit
+dotnet format whitespace                         # Format code (auto-formatted on save by Claude hook)
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
 dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
 dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer

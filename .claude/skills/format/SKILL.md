@@ -1,6 +1,6 @@
 ---
 name: format
-description: Format code whitespace per project conventions (required before commits)
+description: Format code whitespace per project conventions (also auto-formatted on save by Claude hook)
 ---
 
 Format code whitespace using `dotnet format`. This is required before commits per CLAUDE.md guidelines.

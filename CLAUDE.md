@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 dotnet build sharpy.sln                              # Build all
 dotnet test                                          # Run all tests
-dotnet format whitespace                             # Required before committing
+dotnet format whitespace                             # Format code (auto-formatted on save by Claude hook)
 dotnet run --project src/Sharpy.Cli -- run file.spy # Compile and execute
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C#
 dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Inspect parsed AST
@@ -287,7 +287,7 @@ All commands below log full output to `.claude/tmp/*.log` for investigation whil
 |---------|---------|
 | `/run-tests [filter]` | Build + run tests; shows last 80 lines on failure (log: `last-test-run.log`) |
 | `/build` | Build solution; shows last 100 lines on failure (log: `last-build.log`) |
-| `/format` | Format whitespace (required before commits) |
+| `/format` | Format whitespace (auto-formatted on save by Claude hook) |
 | `/regenerate-snapshots` | Build + update `.expected.cs` files after codegen changes |
 
 ### Debug & Development

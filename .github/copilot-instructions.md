@@ -38,7 +38,7 @@ Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files com
 
 ```bash
 dotnet build sharpy.sln && dotnet test               # Build + test
-dotnet format whitespace                             # Required before committing
+dotnet format whitespace                             # Format code (auto-formatted on save by Claude hook)
 dotnet run --project src/Sharpy.Cli -- run file.spy  # Execute .spy file
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
 dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser

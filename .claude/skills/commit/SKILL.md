@@ -57,4 +57,4 @@ Run `git status` after the commit to confirm success. Report the commit hash.
 - **Never** amend a previous commit unless the user explicitly asks
 - If a pre-commit hook fails, fix the issue and create a **new** commit (do not use `--amend`)
 - If there are no changes to commit, say so and stop
-- If `dotnet format whitespace` hasn't been run (formatting changes appear in diff), run `/format` first before committing
+- Formatting is handled automatically by the PostToolUse Claude hook on every Edit/Write; no need to run `/format` manually

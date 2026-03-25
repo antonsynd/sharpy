@@ -57,7 +57,7 @@ For new language features, touch in order:
 
 ```bash
 dotnet build sharpy.sln && dotnet test   # Build + test all
-dotnet format whitespace                 # Format before commit
+dotnet format whitespace                 # Format code (auto-formatted on save by Claude hook)
 python3 -c "..."                         # Verify Python behavior
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
 dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
