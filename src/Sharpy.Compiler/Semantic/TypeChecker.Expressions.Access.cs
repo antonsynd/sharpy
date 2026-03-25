@@ -345,16 +345,16 @@ internal partial class TypeChecker
 
         // Resolve TaskType member access: task.result, task.is_completed, etc.
         // TaskType wraps System.Threading.Tasks.Task<T>, so resolve known properties directly.
-        // Use case-insensitive matching so both task.result and task.Result work.
+        // Accept both snake_case (Sharpy) and PascalCase (.NET) for common properties.
         if (memberLookupType is TaskType taskType)
         {
-            return memberAccess.Member.ToLowerInvariant() switch
+            return memberAccess.Member switch
             {
-                "result" => taskType.ResultType ?? SemanticType.Unknown,
-                "is_completed" => SemanticType.Bool,
-                "is_faulted" => SemanticType.Bool,
-                "is_canceled" => SemanticType.Bool,
-                "is_completed_successfully" => SemanticType.Bool,
+                "result" or "Result" => taskType.ResultType ?? SemanticType.Unknown,
+                "is_completed" or "IsCompleted" => SemanticType.Bool,
+                "is_faulted" or "IsFaulted" => SemanticType.Bool,
+                "is_canceled" or "IsCanceled" => SemanticType.Bool,
+                "is_completed_successfully" or "IsCompletedSuccessfully" => SemanticType.Bool,
                 _ => SemanticType.Unknown
             };
         }

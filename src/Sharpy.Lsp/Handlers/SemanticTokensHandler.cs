@@ -347,7 +347,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                         break;
                     case BinaryOperator.NotIn:
                         // "not in" — emit "not" then "in" as separate tokens
-                        EmitNotInKeywords(tokens, binary.Left, binary.Right);
+                        EmitNotInKeywords(tokens, binary.Right);
                         break;
                     case BinaryOperator.Is:
                         // "is" is 2 chars
@@ -355,7 +355,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                         break;
                     case BinaryOperator.IsNot:
                         // "is not" — emit "is" then "not" as separate tokens
-                        EmitIsNotKeywords(tokens, binary.Left, binary.Right);
+                        EmitIsNotKeywords(tokens, binary.Right);
                         break;
                 }
                 CollectExpressionTokens(binary.Right, tokens, parameterNames);
@@ -376,13 +376,13 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                             EmitInferredKeyword(tokens, rightOperand, 2);
                             break;
                         case ComparisonOperator.NotIn:
-                            EmitNotInKeywords(tokens, chain.Operands[i], rightOperand);
+                            EmitNotInKeywords(tokens, rightOperand);
                             break;
                         case ComparisonOperator.Is:
                             EmitInferredKeyword(tokens, rightOperand, 2);
                             break;
                         case ComparisonOperator.IsNot:
-                            EmitIsNotKeywords(tokens, chain.Operands[i], rightOperand);
+                            EmitIsNotKeywords(tokens, rightOperand);
                             break;
                     }
                 }
@@ -538,6 +538,8 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     /// <summary>
     /// Emits a keyword token at the inferred position before the right operand.
     /// The keyword is assumed to be at (rightOperand.LineStart, rightOperand.ColumnStart - length - 1).
+    /// TODO(#458): This assumes keyword and right operand are on the same line. Multi-line
+    /// expressions will produce tokens at wrong positions until operator positions are stored in AST.
     /// </summary>
     private static void EmitInferredKeyword(
         System.Collections.Generic.List<RawToken> tokens,
@@ -556,7 +558,6 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     /// </summary>
     private static void EmitNotInKeywords(
         System.Collections.Generic.List<RawToken> tokens,
-        Expression leftOperand,
         Expression rightOperand)
     {
         // "in" is right before the right operand
@@ -578,7 +579,6 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     /// </summary>
     private static void EmitIsNotKeywords(
         System.Collections.Generic.List<RawToken> tokens,
-        Expression leftOperand,
         Expression rightOperand)
     {
         // "not" is right before the right operand
