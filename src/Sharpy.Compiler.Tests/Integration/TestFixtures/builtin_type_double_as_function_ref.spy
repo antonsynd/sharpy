@@ -1,0 +1,4 @@
+def main():
+    items: list[str] = ["3.14", "2.0", "1.5"]
+    result: list[double] = list(map(double, items))
+    print(result)

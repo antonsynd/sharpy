@@ -1,0 +1,4 @@
+def main():
+    items: list[str] = ["100", "200", "300"]
+    result: list[long] = list(map(long, items))
+    print(result)
