@@ -25,6 +25,10 @@ internal static class SymbolFormatter
     /// <summary>
     /// Formats a symbol as a markdown code block with optional documentation text below.
     /// </summary>
+    // TODO(#441): Source docstrings flow to Symbol.Documentation via NameResolver, but stdlib
+    // module symbols (registered by BuiltinRegistry/ModuleLoader) may lack Documentation.
+    // DunderDocumentation and ModuleDocumentation serve as LSP-side fallbacks until
+    // all symbol sources consistently populate Documentation.
     public static string FormatSymbolWithDocs(Symbol symbol)
     {
         var signature = FormatSymbol(symbol);

@@ -9,6 +9,7 @@ internal static class ModuleDocumentation
     private static readonly Dictionary<string, string> Summaries = new()
     {
         ["argparse"] = "Command-line argument parsing.",
+        ["asyncio"] = "Async I/O primitives (sleep, gather, tasks).",
         ["builtins"] = "Built-in functions and types (print, len, range, etc.).",
         ["bisect"] = "Array bisection algorithm for sorted sequences.",
         ["collections"] = "Specialized container datatypes (defaultdict, Counter, deque).",

@@ -4,6 +4,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Lsp.Handlers;
@@ -62,6 +63,13 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
             case Identifier id:
                 {
                     var symbol = query.GetIdentifierSymbol(id);
+                    if (symbol is VariableSymbol vs && vs.Name == PythonNames.Self
+                        && (vs.Type is null or UnknownType))
+                    {
+                        var className = FindEnclosingTypeName(analysis, line, col);
+                        if (className != null)
+                            return $"```sharpy\n(self) self: {className}\n```";
+                    }
                     if (symbol != null)
                         return SymbolFormatter.FormatSymbolWithDocs(symbol);
 
@@ -91,7 +99,15 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                             return SymbolFormatter.FormatSymbolWithDocs(target);
                     }
 
-                    // Try resolving as a property on a builtin type (is_ok, is_err, is_some, etc.)
+                    // super().method — resolve parent class method
+                    if (memberAccess.Object is FunctionCall { Function: SuperExpression })
+                    {
+                        var superTarget = ResolveSuperMethodCall(analysis, line, col, memberAccess.Member);
+                        if (superTarget != null)
+                            return SymbolFormatter.FormatSymbolWithDocs(superTarget);
+                    }
+
+                    // Try resolving as a property or method on a builtin type
                     var objType = query.GetEffectiveType(memberAccess.Object);
                     if (objType != null && analysis.SymbolTable != null)
                     {
@@ -108,6 +124,11 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                             var prop = builtinType.Properties.FirstOrDefault(p => p.Name == memberAccess.Member);
                             if (prop != null)
                                 return SymbolFormatter.FormatPropertyWithDocs(prop);
+
+                            // Check methods (e.g., list.append, dict.get) — shows XML docs from Sharpy.Core
+                            var method = builtinType.Methods.FirstOrDefault(m => m.Name == memberAccess.Member);
+                            if (method != null)
+                                return SymbolFormatter.FormatSymbolWithDocs(method);
                         }
                     }
 
@@ -124,33 +145,42 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                     var target = query.GetCallTarget(call);
                     if (target != null)
                         return SymbolFormatter.FormatSymbolWithDocs(target);
+
+                    // super().method() — resolve parent class method
+                    if (call.Function is MemberAccess superMember
+                        && superMember.Object is FunctionCall { Function: SuperExpression })
+                    {
+                        var superTarget = ResolveSuperMethodCall(analysis, line, col, superMember.Member);
+                        if (superTarget != null)
+                            return SymbolFormatter.FormatSymbolWithDocs(superTarget);
+                    }
                     break;
                 }
 
             // Definition-site hover: show symbol info when hovering over definition names
             case FunctionDef funcDef:
                 {
+                    // Check if cursor is on a type annotation (return type or parameter type)
+                    var typeAnnotationHover = TryResolveTypeAnnotationHover(analysis, query, funcDef, line, col);
+                    if (typeAnnotationHover != null)
+                        return typeAnnotationHover;
+
                     // Check if cursor is on a parameter
                     var param = funcDef.Parameters.FirstOrDefault(p =>
                         IsPositionInRange(line, col, p.LineStart, p.ColumnStart, p.LineEnd, p.ColumnEnd));
                     if (param != null)
                     {
-                        string? className = null;
-                        var enclosingClass = _api.FindNodeOfType<ClassDef>(analysis.Ast!, line, col);
-                        if (enclosingClass != null)
-                            className = enclosingClass.Name;
-                        else
-                        {
-                            var enclosingStruct = _api.FindNodeOfType<StructDef>(analysis.Ast!, line, col);
-                            if (enclosingStruct != null)
-                                className = enclosingStruct.Name;
-                        }
+                        var className = FindEnclosingTypeName(analysis, line, col);
                         return SymbolFormatter.FormatParameterWithDocs(param.Name, param.Type != null
                             ? query.GetTypeAnnotation(param.Type) : null, className);
                     }
 
-                    // Hover on function name
+                    // Hover on function name — try global scope first, then class scope
                     var funcSymbol = analysis.SymbolTable?.LookupFunction(funcDef.Name);
+                    if (funcSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(funcSymbol);
+
+                    funcSymbol = LookupMethodOnType(analysis, line, col, funcDef.Name);
                     if (funcSymbol != null)
                         return SymbolFormatter.FormatSymbolWithDocs(funcSymbol);
                     break;
@@ -158,6 +188,14 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
 
             case ClassDef classDef:
                 {
+                    // Check if cursor is on a base class type annotation
+                    foreach (var baseClass in classDef.BaseClasses)
+                    {
+                        var baseHover = TryFormatTypeAnnotation(analysis, query, baseClass, line, col);
+                        if (baseHover != null)
+                            return baseHover;
+                    }
+
                     var typeSymbol = analysis.SymbolTable?.LookupType(classDef.Name);
                     if (typeSymbol != null)
                         return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
@@ -190,7 +228,19 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
 
             case VariableDeclaration varDecl:
                 {
+                    // Check if cursor is on the type annotation
+                    if (varDecl.Type != null)
+                    {
+                        var typeHover = TryFormatTypeAnnotation(analysis, query, varDecl.Type, line, col);
+                        if (typeHover != null)
+                            return typeHover;
+                    }
+
                     var varSymbol = analysis.SymbolTable?.LookupVariable(varDecl.Name);
+                    if (varSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(varSymbol);
+
+                    varSymbol = LookupFieldOnType(analysis, line, col, varDecl.Name);
                     if (varSymbol != null)
                         return SymbolFormatter.FormatSymbolWithDocs(varSymbol);
                     break;
@@ -311,6 +361,11 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                     return $"```sharpy\n(module) {fromImport.Module}\n```";
                 }
 
+            // String literals: suppress hover (self-evident type)
+            case StringLiteral:
+            case FStringLiteral:
+                return null;
+
             case Expression expr:
                 {
                     var type = query.GetEffectiveType(expr);
@@ -321,6 +376,96 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
         }
 
         return null;
+    }
+
+    private static string? TryResolveTypeAnnotationHover(
+        SemanticResult analysis, ISemanticQuery query, FunctionDef funcDef, int line, int col)
+    {
+        // Check return type annotation
+        if (funcDef.ReturnType != null)
+        {
+            var hover = TryFormatTypeAnnotation(analysis, query, funcDef.ReturnType, line, col);
+            if (hover != null)
+                return hover;
+        }
+
+        // Check parameter type annotations
+        foreach (var param in funcDef.Parameters)
+        {
+            if (param.Type != null)
+            {
+                var hover = TryFormatTypeAnnotation(analysis, query, param.Type, line, col);
+                if (hover != null)
+                    return hover;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? TryFormatTypeAnnotation(
+        SemanticResult analysis, ISemanticQuery query, TypeAnnotation typeAnnotation, int line, int col)
+    {
+        if (!IsPositionInRange(line, col,
+                typeAnnotation.LineStart, typeAnnotation.ColumnStart,
+                typeAnnotation.LineEnd, typeAnnotation.ColumnEnd))
+            return null;
+
+        // Try to resolve as a user-defined type
+        var typeSymbol = analysis.SymbolTable?.LookupType(typeAnnotation.Name);
+        if (typeSymbol != null)
+            return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
+
+        // Try to resolve the semantic type from the type annotation
+        var semanticType = query.GetTypeAnnotation(typeAnnotation);
+        if (semanticType != null)
+            return $"```sharpy\n(type) {SymbolFormatter.FormatTypeInfo(semanticType)}\n```";
+
+        return null;
+    }
+
+    private FunctionSymbol? ResolveSuperMethodCall(SemanticResult analysis, int line, int col, string methodName)
+    {
+        var classDef = _api.FindNodeOfType<ClassDef>(analysis.Ast!, line, col);
+        if (classDef == null)
+            return null;
+        var classSymbol = analysis.SymbolTable?.LookupType(classDef.Name);
+        var baseType = classSymbol?.BaseType;
+        if (baseType == null)
+            return null;
+        return baseType.Methods.FirstOrDefault(m => m.Name == methodName);
+    }
+
+    private string? FindEnclosingTypeName(SemanticResult analysis, int line, int col)
+    {
+        var classDef = _api.FindNodeOfType<ClassDef>(analysis.Ast!, line, col);
+        if (classDef != null)
+            return classDef.Name;
+        var structDef = _api.FindNodeOfType<StructDef>(analysis.Ast!, line, col);
+        if (structDef != null)
+            return structDef.Name;
+        var interfaceDef = _api.FindNodeOfType<InterfaceDef>(analysis.Ast!, line, col);
+        if (interfaceDef != null)
+            return interfaceDef.Name;
+        return null;
+    }
+
+    private FunctionSymbol? LookupMethodOnType(SemanticResult analysis, int line, int col, string methodName)
+    {
+        var typeName = FindEnclosingTypeName(analysis, line, col);
+        if (typeName == null)
+            return null;
+        var typeSymbol = analysis.SymbolTable?.LookupType(typeName);
+        return typeSymbol?.Methods.FirstOrDefault(m => m.Name == methodName);
+    }
+
+    private VariableSymbol? LookupFieldOnType(SemanticResult analysis, int line, int col, string fieldName)
+    {
+        var typeName = FindEnclosingTypeName(analysis, line, col);
+        if (typeName == null)
+            return null;
+        var typeSymbol = analysis.SymbolTable?.LookupType(typeName);
+        return typeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldName);
     }
 
     private static bool IsPositionInRange(int line, int col, int startLine, int startCol, int endLine, int endCol)
