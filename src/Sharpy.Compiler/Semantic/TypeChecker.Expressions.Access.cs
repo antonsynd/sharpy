@@ -345,9 +345,10 @@ internal partial class TypeChecker
 
         // Resolve TaskType member access: task.result, task.is_completed, etc.
         // TaskType wraps System.Threading.Tasks.Task<T>, so resolve known properties directly.
+        // Use case-insensitive matching so both task.result and task.Result work.
         if (memberLookupType is TaskType taskType)
         {
-            return memberAccess.Member switch
+            return memberAccess.Member.ToLowerInvariant() switch
             {
                 "result" => taskType.ResultType ?? SemanticType.Unknown,
                 "is_completed" => SemanticType.Bool,
