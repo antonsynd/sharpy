@@ -87,14 +87,14 @@ namespace Sharpy
         {
             if (string.IsNullOrWhiteSpace(s))
             {
-                throw new ValueError($"invalid literal for int() with base 10: '{s}'");
+                throw new ValueError($"invalid literal for long() with base 10: '{s}'");
             }
 
             s = s.Trim();
 
             if (!long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out long result))
             {
-                throw new ValueError($"invalid literal for int() with base 10: '{s}'");
+                throw new ValueError($"invalid literal for long() with base 10: '{s}'");
             }
 
             return result;
