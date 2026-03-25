@@ -1,0 +1,4 @@
+# Negative test: int64 (long) cannot be assigned to str
+def main():
+    x: long = 42L
+    y: str = x

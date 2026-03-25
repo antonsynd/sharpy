@@ -1,0 +1,4 @@
+# Negative test: x /= produces float64, cannot assign back to int
+def main():
+    x: int = 10
+    x /= 2

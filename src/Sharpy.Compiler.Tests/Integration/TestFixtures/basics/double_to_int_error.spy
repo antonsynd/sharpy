@@ -1,0 +1,4 @@
+# Negative test: float64 (double) cannot be implicitly assigned to int
+def main():
+    x: double = 3.14
+    y: int = x
