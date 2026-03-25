@@ -89,7 +89,8 @@ public class SemanticTokensTests
     {
         var tokens = CollectTokensFrom("def add(a: int, b: int) -> int:\n    return a + b\ndef main():\n    print(add(1, 2))");
         var params_ = tokens.Where(t => t.TokenType == TParameter).ToList();
-        params_.Should().HaveCount(2, "a and b should be parameter tokens");
+        // 2 declaration tokens (a, b) + 2 usage-site tokens (a, b in return a + b)
+        params_.Should().HaveCount(4, "a and b should have declaration and usage-site tokens");
     }
 
     [Fact]
@@ -306,9 +307,9 @@ def main():
     print(f.method(1))
 ");
         var paramTokens = tokens.Where(t => t.TokenType == TParameter).ToList();
-        // self should be skipped, only a should appear
-        paramTokens.Should().HaveCount(1);
-        paramTokens[0].Length.Should().Be(1, "parameter name 'a' has length 1");
+        // self should be skipped; "a" declaration + "a" usage in "return a + self.x"
+        paramTokens.Should().HaveCount(2);
+        paramTokens.Should().OnlyContain(t => t.Length == 1, "all parameter tokens should be for 'a' with length 1");
     }
 
     [Fact]
@@ -355,6 +356,118 @@ def main():
             Enumerable.Empty<Sharpy.Compiler.Parser.Ast.Statement>(),
             tokens);
         tokens.Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region Keyword tokens for operator-keywords
+
+    [Fact]
+    public void NotKeyword_GetsTokenTypeKeyword()
+    {
+        var tokens = CollectTokensFrom("def main():\n    x: bool = not True\n    print(x)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        keywords.Should().ContainSingle("'not' should produce a keyword token");
+        keywords[0].Length.Should().Be(3, "not has 3 characters");
+    }
+
+    [Fact]
+    public void AndKeyword_GetsTokenTypeKeyword()
+    {
+        var tokens = CollectTokensFrom("def main():\n    x: bool = True and False\n    print(x)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        keywords.Should().ContainSingle("'and' should produce a keyword token");
+        keywords[0].Length.Should().Be(3, "and has 3 characters");
+    }
+
+    [Fact]
+    public void OrKeyword_GetsTokenTypeKeyword()
+    {
+        var tokens = CollectTokensFrom("def main():\n    x: bool = True or False\n    print(x)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        keywords.Should().ContainSingle("'or' should produce a keyword token");
+        keywords[0].Length.Should().Be(2, "or has 2 characters");
+    }
+
+    [Fact]
+    public void InKeyword_InBinaryOp_GetsTokenTypeKeyword()
+    {
+        var tokens = CollectTokensFrom("def main():\n    items: list[int] = [1, 2, 3]\n    x: bool = 1 in items\n    print(x)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        keywords.Should().ContainSingle("'in' should produce a keyword token");
+        keywords[0].Length.Should().Be(2, "in has 2 characters");
+    }
+
+    [Fact]
+    public void NotKeyword_InUnaryExpression_HasCorrectPosition()
+    {
+        // "def main():\n    x: bool = not True"
+        // "not" starts at line 2 (1-based), column 15 (1-based) -> LSP line 1, col 14
+        var tokens = CollectTokensFrom("def main():\n    x: bool = not True\n    print(x)");
+        var keyword = tokens.First(t => t.TokenType == TKeyword);
+        keyword.Line.Should().Be(1, "not is on the second line (0-based)");
+        keyword.Col.Should().Be(14, "not starts at column 15 (1-based) -> 14 (0-based)");
+    }
+
+    [Fact]
+    public void MultipleKeywords_InComplexExpression()
+    {
+        var tokens = CollectTokensFrom("def main():\n    x: bool = not True and not False\n    print(x)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        // "not" (first), "and", "not" (second)
+        keywords.Should().HaveCount(3, "not, and, not should all produce keyword tokens");
+    }
+
+    #endregion
+
+    #region Parameter usage-site tokens
+
+    [Fact]
+    public void ParameterUsageSite_GetsTokenTypeParameter()
+    {
+        var tokens = CollectTokensFrom("def foo(id: int) -> int:\n    return id\ndef main():\n    print(foo(1))");
+        var paramTokens = tokens.Where(t => t.TokenType == TParameter).ToList();
+        // declaration of id + usage of id in return
+        paramTokens.Should().HaveCount(2, "id should have declaration and usage-site tokens");
+    }
+
+    [Fact]
+    public void ParameterUsageSite_InCondition_GetsTokenTypeParameter()
+    {
+        var tokens = CollectTokensFrom("def check(x: int) -> bool:\n    if x > 0:\n        return True\n    return False\ndef main():\n    print(check(1))");
+        var paramTokens = tokens.Where(t => t.TokenType == TParameter).ToList();
+        // declaration of x + usage in "if x > 0" + usage in neither (x is in a conditional expression)
+        paramTokens.Should().HaveCountGreaterThanOrEqualTo(2, "x should appear at declaration and at least one usage site");
+    }
+
+    [Fact]
+    public void ParameterUsageSite_InFunctionCall_GetsTokenTypeParameter()
+    {
+        var tokens = CollectTokensFrom("def greet(name: str) -> str:\n    return name.upper()\ndef main():\n    print(greet(\"test\"))");
+        var paramTokens = tokens.Where(t => t.TokenType == TParameter).ToList();
+        // declaration + usage in name.upper()
+        paramTokens.Should().HaveCount(2, "name should have declaration and usage-site tokens");
+    }
+
+    [Fact]
+    public void ParameterUsageSite_MultipleParams_GetsTokenTypeParameter()
+    {
+        var tokens = CollectTokensFrom("def add(a: int, b: int) -> int:\n    return a + b\ndef main():\n    print(add(1, 2))");
+        var paramTokens = tokens.Where(t => t.TokenType == TParameter).ToList();
+        // a declaration + b declaration + a usage + b usage
+        paramTokens.Should().HaveCount(4, "both parameters should have declaration and usage tokens");
+    }
+
+    [Fact]
+    public void ParameterUsageSite_DoesNotLeakBetweenFunctions()
+    {
+        var tokens = CollectTokensFrom(
+            "def foo(x: int) -> int:\n    return x\n" +
+            "def bar(y: int) -> int:\n    return y\n" +
+            "def main():\n    print(foo(1))");
+        var paramTokens = tokens.Where(t => t.TokenType == TParameter).ToList();
+        // foo: x declaration + x usage; bar: y declaration + y usage
+        paramTokens.Should().HaveCount(4, "each function's parameters should be tracked independently");
     }
 
     #endregion

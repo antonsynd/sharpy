@@ -134,6 +134,14 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         Statement stmt,
         System.Collections.Generic.List<RawToken> tokens)
     {
+        CollectStatementTokens(stmt, tokens, null);
+    }
+
+    private static void CollectStatementTokens(
+        Statement stmt,
+        System.Collections.Generic.List<RawToken> tokens,
+        HashSet<string>? parameterNames)
+    {
         switch (stmt)
         {
             case FunctionDef f:
@@ -172,6 +180,8 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                     varMods |= ModReadonly;
                 PushNameToken(tokens, v.NameLineStart, v.NameColumnStart, v.Name.Length, TVariable, varMods);
                 CollectDecorators(v.Decorators, tokens);
+                if (v.InitialValue != null)
+                    CollectExpressionTokens(v.InitialValue, tokens, parameterNames);
                 break;
 
             case PropertyDef p:
@@ -181,38 +191,87 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case IfStatement ifStmt:
-                CollectTokens(ifStmt.ThenBody, tokens);
+                CollectExpressionTokens(ifStmt.Test, tokens, parameterNames);
+                CollectStatementList(ifStmt.ThenBody, tokens, parameterNames);
                 foreach (var elif in ifStmt.ElifClauses)
-                    CollectTokens(elif.Body, tokens);
-                CollectTokens(ifStmt.ElseBody, tokens);
+                {
+                    CollectExpressionTokens(elif.Test, tokens, parameterNames);
+                    CollectStatementList(elif.Body, tokens, parameterNames);
+                }
+                CollectStatementList(ifStmt.ElseBody, tokens, parameterNames);
                 break;
 
             case ForStatement forStmt:
-                CollectTokens(forStmt.Body, tokens);
-                CollectTokens(forStmt.ElseBody, tokens);
+                CollectExpressionTokens(forStmt.Iterator, tokens, parameterNames);
+                CollectStatementList(forStmt.Body, tokens, parameterNames);
+                CollectStatementList(forStmt.ElseBody, tokens, parameterNames);
                 break;
 
             case WhileStatement whileStmt:
-                CollectTokens(whileStmt.Body, tokens);
-                CollectTokens(whileStmt.ElseBody, tokens);
+                CollectExpressionTokens(whileStmt.Test, tokens, parameterNames);
+                CollectStatementList(whileStmt.Body, tokens, parameterNames);
+                CollectStatementList(whileStmt.ElseBody, tokens, parameterNames);
                 break;
 
             case TryStatement tryStmt:
-                CollectTokens(tryStmt.Body, tokens);
+                CollectStatementList(tryStmt.Body, tokens, parameterNames);
                 foreach (var handler in tryStmt.Handlers)
-                    CollectTokens(handler.Body, tokens);
-                CollectTokens(tryStmt.ElseBody, tokens);
-                CollectTokens(tryStmt.FinallyBody, tokens);
+                    CollectStatementList(handler.Body, tokens, parameterNames);
+                CollectStatementList(tryStmt.ElseBody, tokens, parameterNames);
+                CollectStatementList(tryStmt.FinallyBody, tokens, parameterNames);
                 break;
 
             case WithStatement withStmt:
-                CollectTokens(withStmt.Body, tokens);
+                foreach (var item in withStmt.Items)
+                    CollectExpressionTokens(item.ContextExpression, tokens, parameterNames);
+                CollectStatementList(withStmt.Body, tokens, parameterNames);
                 break;
 
             case MatchStatement matchStmt:
+                CollectExpressionTokens(matchStmt.Scrutinee, tokens, parameterNames);
                 foreach (var matchCase in matchStmt.Cases)
-                    CollectTokens(matchCase.Body, tokens);
+                    CollectStatementList(matchCase.Body, tokens, parameterNames);
                 break;
+
+            case ExpressionStatement exprStmt:
+                CollectExpressionTokens(exprStmt.Expression, tokens, parameterNames);
+                break;
+
+            case ReturnStatement retStmt:
+                if (retStmt.Value != null)
+                    CollectExpressionTokens(retStmt.Value, tokens, parameterNames);
+                break;
+
+            case Assignment assignStmt:
+                CollectExpressionTokens(assignStmt.Target, tokens, parameterNames);
+                CollectExpressionTokens(assignStmt.Value, tokens, parameterNames);
+                break;
+
+            case AssertStatement assertStmt:
+                CollectExpressionTokens(assertStmt.Test, tokens, parameterNames);
+                if (assertStmt.Message != null)
+                    CollectExpressionTokens(assertStmt.Message, tokens, parameterNames);
+                break;
+
+            case RaiseStatement raiseStmt:
+                if (raiseStmt.Exception != null)
+                    CollectExpressionTokens(raiseStmt.Exception, tokens, parameterNames);
+                break;
+
+            case YieldStatement yieldStmt:
+                CollectExpressionTokens(yieldStmt.Value, tokens, parameterNames);
+                break;
+        }
+    }
+
+    private static void CollectStatementList(
+        IEnumerable<Statement> statements,
+        System.Collections.Generic.List<RawToken> tokens,
+        HashSet<string>? parameterNames)
+    {
+        foreach (var stmt in statements)
+        {
+            CollectStatementTokens(stmt, tokens, parameterNames);
         }
     }
 
@@ -231,15 +290,309 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
 
         CollectDecorators(f.Decorators, tokens);
 
-        // Parameters
+        // Parameters — collect names for usage-site tracking
+        HashSet<string>? parameterNames = null;
         foreach (var param in f.Parameters)
         {
             if (param.Name == "self" || param.Name == "cls")
                 continue;
             PushNameToken(tokens, param.LineStart, param.ColumnStart, param.Name.Length, TParameter, ModDeclaration);
+            parameterNames ??= new HashSet<string>();
+            parameterNames.Add(param.Name);
         }
 
-        CollectTokens(f.Body, tokens);
+        // Walk function body with parameter names for usage-site classification
+        foreach (var stmt in f.Body)
+        {
+            CollectStatementTokens(stmt, tokens, parameterNames);
+        }
+    }
+
+    /// <summary>
+    /// Recursively walks an expression tree to emit keyword tokens for operator-keywords
+    /// (not, and, or, in, is) and parameter usage-site tokens.
+    /// </summary>
+    private static void CollectExpressionTokens(
+        Expression expr,
+        System.Collections.Generic.List<RawToken> tokens,
+        HashSet<string>? parameterNames)
+    {
+        switch (expr)
+        {
+            case UnaryOp unary:
+                if (unary.Operator == UnaryOperator.Not)
+                {
+                    // "not" keyword is at the UnaryOp node's start position
+                    PushNameToken(tokens, unary.LineStart, unary.ColumnStart, 3, TKeyword, 0);
+                }
+                CollectExpressionTokens(unary.Operand, tokens, parameterNames);
+                break;
+
+            case BinaryOp binary:
+                CollectExpressionTokens(binary.Left, tokens, parameterNames);
+                // Emit keyword tokens for logical/membership operators
+                switch (binary.Operator)
+                {
+                    case BinaryOperator.And:
+                        // "and" is 3 chars, positioned before Right operand
+                        EmitInferredKeyword(tokens, binary.Right, 3);
+                        break;
+                    case BinaryOperator.Or:
+                        // "or" is 2 chars, positioned before Right operand
+                        EmitInferredKeyword(tokens, binary.Right, 2);
+                        break;
+                    case BinaryOperator.In:
+                        // "in" is 2 chars
+                        EmitInferredKeyword(tokens, binary.Right, 2);
+                        break;
+                    case BinaryOperator.NotIn:
+                        // "not in" — emit "not" then "in" as separate tokens
+                        EmitNotInKeywords(tokens, binary.Left, binary.Right);
+                        break;
+                    case BinaryOperator.Is:
+                        // "is" is 2 chars
+                        EmitInferredKeyword(tokens, binary.Right, 2);
+                        break;
+                    case BinaryOperator.IsNot:
+                        // "is not" — emit "is" then "not" as separate tokens
+                        EmitIsNotKeywords(tokens, binary.Left, binary.Right);
+                        break;
+                }
+                CollectExpressionTokens(binary.Right, tokens, parameterNames);
+                break;
+
+            case ComparisonChain chain:
+                for (int i = 0; i < chain.Operands.Length; i++)
+                {
+                    CollectExpressionTokens(chain.Operands[i], tokens, parameterNames);
+                }
+                // Emit keyword tokens for comparison operators that are keywords
+                for (int i = 0; i < chain.Operators.Length; i++)
+                {
+                    var rightOperand = chain.Operands[i + 1];
+                    switch (chain.Operators[i])
+                    {
+                        case ComparisonOperator.In:
+                            EmitInferredKeyword(tokens, rightOperand, 2);
+                            break;
+                        case ComparisonOperator.NotIn:
+                            EmitNotInKeywords(tokens, chain.Operands[i], rightOperand);
+                            break;
+                        case ComparisonOperator.Is:
+                            EmitInferredKeyword(tokens, rightOperand, 2);
+                            break;
+                        case ComparisonOperator.IsNot:
+                            EmitIsNotKeywords(tokens, chain.Operands[i], rightOperand);
+                            break;
+                    }
+                }
+                break;
+
+            case Identifier id:
+                // Emit TParameter for identifiers that match a parameter name
+                if (parameterNames != null && parameterNames.Contains(id.Name))
+                {
+                    PushNameToken(tokens, id.LineStart, id.ColumnStart, id.Name.Length, TParameter, 0);
+                }
+                break;
+
+            case ConditionalExpression cond:
+                CollectExpressionTokens(cond.ThenValue, tokens, parameterNames);
+                CollectExpressionTokens(cond.Test, tokens, parameterNames);
+                CollectExpressionTokens(cond.ElseValue, tokens, parameterNames);
+                break;
+
+            case FunctionCall call:
+                CollectExpressionTokens(call.Function, tokens, parameterNames);
+                foreach (var arg in call.Arguments)
+                    CollectExpressionTokens(arg, tokens, parameterNames);
+                foreach (var kwArg in call.KeywordArguments)
+                    CollectExpressionTokens(kwArg.Value, tokens, parameterNames);
+                break;
+
+            case MemberAccess member:
+                CollectExpressionTokens(member.Object, tokens, parameterNames);
+                break;
+
+            case IndexAccess idx:
+                CollectExpressionTokens(idx.Object, tokens, parameterNames);
+                CollectExpressionTokens(idx.Index, tokens, parameterNames);
+                break;
+
+            case SliceAccess slice:
+                CollectExpressionTokens(slice.Object, tokens, parameterNames);
+                if (slice.Start != null)
+                    CollectExpressionTokens(slice.Start, tokens, parameterNames);
+                if (slice.Stop != null)
+                    CollectExpressionTokens(slice.Stop, tokens, parameterNames);
+                if (slice.Step != null)
+                    CollectExpressionTokens(slice.Step, tokens, parameterNames);
+                break;
+
+            case ListLiteral list:
+                foreach (var el in list.Elements)
+                    CollectExpressionTokens(el, tokens, parameterNames);
+                break;
+
+            case DictLiteral dict:
+                foreach (var entry in dict.Entries)
+                {
+                    if (entry.Key != null)
+                        CollectExpressionTokens(entry.Key, tokens, parameterNames);
+                    CollectExpressionTokens(entry.Value, tokens, parameterNames);
+                }
+                break;
+
+            case SetLiteral set:
+                foreach (var el in set.Elements)
+                    CollectExpressionTokens(el, tokens, parameterNames);
+                break;
+
+            case TupleLiteral tuple:
+                foreach (var el in tuple.Elements)
+                    CollectExpressionTokens(el, tokens, parameterNames);
+                break;
+
+            case ListComprehension listComp:
+                CollectExpressionTokens(listComp.Element, tokens, parameterNames);
+                foreach (var clause in listComp.Clauses)
+                    CollectComprehensionClauseTokens(clause, tokens, parameterNames);
+                break;
+
+            case SetComprehension setComp:
+                CollectExpressionTokens(setComp.Element, tokens, parameterNames);
+                foreach (var clause in setComp.Clauses)
+                    CollectComprehensionClauseTokens(clause, tokens, parameterNames);
+                break;
+
+            case DictComprehension dictComp:
+                CollectExpressionTokens(dictComp.Key, tokens, parameterNames);
+                CollectExpressionTokens(dictComp.Value, tokens, parameterNames);
+                foreach (var clause in dictComp.Clauses)
+                    CollectComprehensionClauseTokens(clause, tokens, parameterNames);
+                break;
+
+            case Parenthesized paren:
+                CollectExpressionTokens(paren.Expression, tokens, parameterNames);
+                break;
+
+            case LambdaExpression lambda:
+                CollectExpressionTokens(lambda.Body, tokens, parameterNames);
+                break;
+
+            case TypeCoercion coercion:
+                CollectExpressionTokens(coercion.Value, tokens, parameterNames);
+                break;
+
+            case TypeCheck check:
+                CollectExpressionTokens(check.Value, tokens, parameterNames);
+                break;
+
+            case WalrusExpression walrus:
+                CollectExpressionTokens(walrus.Value, tokens, parameterNames);
+                break;
+
+            case FStringLiteral fstr:
+                foreach (var part in fstr.Parts)
+                {
+                    if (part.Expression != null)
+                        CollectExpressionTokens(part.Expression, tokens, parameterNames);
+                }
+                break;
+
+            case TryExpression tryExpr:
+                CollectExpressionTokens(tryExpr.Operand, tokens, parameterNames);
+                break;
+
+            case MaybeExpression maybeExpr:
+                CollectExpressionTokens(maybeExpr.Operand, tokens, parameterNames);
+                break;
+
+            case StarExpression star:
+                CollectExpressionTokens(star.Operand, tokens, parameterNames);
+                break;
+
+            case SpreadElement spread:
+                CollectExpressionTokens(spread.Value, tokens, parameterNames);
+                break;
+        }
+    }
+
+    private static void CollectComprehensionClauseTokens(
+        ComprehensionClause clause,
+        System.Collections.Generic.List<RawToken> tokens,
+        HashSet<string>? parameterNames)
+    {
+        switch (clause)
+        {
+            case ForClause forClause:
+                CollectExpressionTokens(forClause.Target, tokens, parameterNames);
+                CollectExpressionTokens(forClause.Iterator, tokens, parameterNames);
+                break;
+            case IfClause ifClause:
+                CollectExpressionTokens(ifClause.Condition, tokens, parameterNames);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Emits a keyword token at the inferred position before the right operand.
+    /// The keyword is assumed to be at (rightOperand.LineStart, rightOperand.ColumnStart - length - 1).
+    /// </summary>
+    private static void EmitInferredKeyword(
+        System.Collections.Generic.List<RawToken> tokens,
+        Expression rightOperand,
+        int keywordLength)
+    {
+        var col = rightOperand.ColumnStart - keywordLength - 1;
+        if (col >= 1) // 1-based compiler coordinates
+        {
+            PushNameToken(tokens, rightOperand.LineStart, col, keywordLength, TKeyword, 0);
+        }
+    }
+
+    /// <summary>
+    /// Emits "not" and "in" as separate keyword tokens for a "not in" operator.
+    /// </summary>
+    private static void EmitNotInKeywords(
+        System.Collections.Generic.List<RawToken> tokens,
+        Expression leftOperand,
+        Expression rightOperand)
+    {
+        // "in" is right before the right operand
+        var inCol = rightOperand.ColumnStart - 3; // "in "
+        if (inCol >= 1)
+        {
+            PushNameToken(tokens, rightOperand.LineStart, inCol, 2, TKeyword, 0);
+        }
+        // "not" is before "in"
+        var notCol = inCol - 4; // "not "
+        if (notCol >= 1)
+        {
+            PushNameToken(tokens, rightOperand.LineStart, notCol, 3, TKeyword, 0);
+        }
+    }
+
+    /// <summary>
+    /// Emits "is" and "not" as separate keyword tokens for an "is not" operator.
+    /// </summary>
+    private static void EmitIsNotKeywords(
+        System.Collections.Generic.List<RawToken> tokens,
+        Expression leftOperand,
+        Expression rightOperand)
+    {
+        // "not" is right before the right operand
+        var notCol = rightOperand.ColumnStart - 4; // "not "
+        if (notCol >= 1)
+        {
+            PushNameToken(tokens, rightOperand.LineStart, notCol, 3, TKeyword, 0);
+        }
+        // "is" is before "not"
+        var isCol = notCol - 3; // "is "
+        if (isCol >= 1)
+        {
+            PushNameToken(tokens, rightOperand.LineStart, isCol, 2, TKeyword, 0);
+        }
     }
 
     private static void CollectDecorators(
