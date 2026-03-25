@@ -1012,7 +1012,7 @@ x /= 2
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
-            e.Message.Contains("double") && e.Message.Contains("int"));
+            e.Message.Contains("float64") && e.Message.Contains("int"));
     }
 
     [Fact]

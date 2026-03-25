@@ -57,10 +57,10 @@ public abstract record SemanticType : ITypeInfo
     public static readonly SemanticType Unknown = new UnknownType();
     public static readonly SemanticType Void = new VoidType();
     public static readonly SemanticType Int = new BuiltinType { Name = "int", ClrType = typeof(int) };
-    public static readonly SemanticType Long = new BuiltinType { Name = "long", ClrType = typeof(long) };
+    public static readonly SemanticType Long = new BuiltinType { Name = "int64", ClrType = typeof(long) };
     // Per spec: Sharpy 'float' maps to C# 'double' (64-bit), 'float32' maps to C# 'float' (32-bit)
     public static readonly SemanticType Float = new BuiltinType { Name = "float", ClrType = typeof(double) };
-    public static readonly SemanticType Double = new BuiltinType { Name = "double", ClrType = typeof(double) };
+    public static readonly SemanticType Double = new BuiltinType { Name = "float64", ClrType = typeof(double) };
     public static readonly SemanticType Float32 = new BuiltinType { Name = "float32", ClrType = typeof(float) };
     // CLR numeric types without direct Sharpy syntax — used by PrimitiveCatalog promotion and CLR interop
     public static readonly SemanticType SByte = new BuiltinType { Name = "int8", ClrType = typeof(sbyte) };
