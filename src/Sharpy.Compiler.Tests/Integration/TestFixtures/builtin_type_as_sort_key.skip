@@ -1,1 +1,0 @@
-sorted(key=) codegen emits Sorted<T> instead of Sorted<T,TKey>, causing CS1739

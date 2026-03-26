@@ -1,5 +1,4 @@
-# Test: type-name builtin (int) as sort key
-# Blocked by sorted(key=) codegen bug — emits Sorted<T> instead of Sorted<T,TKey> (#456)
+# Test: type-name builtin (int) used directly as sort key (#456, #457)
 def main():
     data: list[str] = ["3", "1", "2"]
     result: list[str] = sorted(data, key=int)
