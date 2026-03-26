@@ -22,6 +22,7 @@ internal class ModuleOverloads
     public Dictionary<string, List<FunctionSignature>> Functions { get; set; } = new();
     public List<DiscoveredTypeInfo> Types { get; set; } = new();
     public Dictionary<string, FieldSignature> Fields { get; set; } = new();
+    public string? Documentation { get; set; }
 }
 
 /// <summary>
