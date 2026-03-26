@@ -502,6 +502,16 @@ public record BinaryOp : Expression
     public Expression Left { get; init; } = null!;
     public Expression Right { get; init; } = null!;
 
+    /// <summary>
+    /// Line of the operator token (1-based). 0 means not set (backward compatibility).
+    /// </summary>
+    public int OperatorLine { get; init; }
+
+    /// <summary>
+    /// Column of the operator token (1-based). 0 means not set (backward compatibility).
+    /// </summary>
+    public int OperatorColumn { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
@@ -569,6 +579,12 @@ public record ComparisonChain : Expression
     public ImmutableArray<Expression> Operands { get; init; } = ImmutableArray<Expression>.Empty;
     public ImmutableArray<ComparisonOperator> Operators { get; init; } = ImmutableArray<ComparisonOperator>.Empty;
 
+    /// <summary>
+    /// Positions of each operator token, parallel to Operators.
+    /// Empty means not set (backward compatibility).
+    /// </summary>
+    public ImmutableArray<(int Line, int Column)> OperatorPositions { get; init; } = ImmutableArray<(int Line, int Column)>.Empty;
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
@@ -578,6 +594,8 @@ public record ComparisonChain : Expression
         Debug.Assert(Operands.Length >= 2, "ComparisonChain.Operands must have at least 2 elements");
         Debug.Assert(Operators.Length == Operands.Length - 1,
             "ComparisonChain.Operators.Length must equal Operands.Length - 1");
+        Debug.Assert(OperatorPositions.IsEmpty || OperatorPositions.Length == Operators.Length,
+            "ComparisonChain.OperatorPositions.Length must equal Operators.Length when non-empty");
     }
 
     /// <inheritdoc/>
