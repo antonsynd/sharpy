@@ -232,11 +232,12 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Synthesizes a FunctionType from the first single-parameter builtin overload for a
-    /// primitive type name (int, str, bool, float, etc.). The return type is always the
-    /// primitive type itself. Only the return type matters for downstream consumers like
-    /// BuiltinReturnTypeInference.InferMap — C# method group conversion handles actual
-    /// overload resolution in the generated code.
+    /// Synthesizes a FunctionType for a primitive type name (int, str, bool, float, etc.)
+    /// used as a function reference (e.g., map(int, items), filter(bool, items)).
+    /// The return type is the primitive type itself. The input parameter uses a synthetic
+    /// TypeParameterType so that generic type inference (e.g., filter[T]) does not
+    /// over-constrain T from the predicate's parameter — only the iterable argument
+    /// should bind T.
     /// </summary>
     private SemanticType SynthesizePrimitiveFunctionType(TypeSymbol ts)
     {
@@ -244,11 +245,22 @@ internal partial class TypeChecker
         if (overloads == null || overloads.Count == 0)
             return SemanticType.Unknown;
 
-        // Pick the first single-parameter overload for a representative FunctionType
+        // Pick the first single-parameter overload for arity reference
         var overload = overloads.FirstOrDefault(o => o.Parameters.Count == 1) ?? overloads[0];
+
+        // Use a synthetic TypeParameterType for each input parameter so generic inference
+        // treats the parameter as unconstrained (see GenericTypeInferenceService.IsSyntheticTypeParameter).
+        var paramTypes = overload.Parameters
+            .Select((_, i) => (SemanticType)new TypeParameterType
+            {
+                Name = GenericTypeInferenceService.SyntheticTypeParameterPrefix + i,
+                DeclaringType = null
+            })
+            .ToList();
+
         return new FunctionType
         {
-            ParameterTypes = overload.Parameters.Select(p => p.Type).ToList(),
+            ParameterTypes = paramTypes,
             ReturnType = overload.ReturnType
         };
     }

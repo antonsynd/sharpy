@@ -79,6 +79,20 @@ internal enum InferenceErrorKind
 /// </remarks>
 internal class GenericTypeInferenceService
 {
+    /// <summary>
+    /// Prefix for synthetic type parameters created by SynthesizePrimitiveFunctionType.
+    /// Type parameters with this prefix are treated as unconstrained wildcards during
+    /// unification — a subsequent concrete binding replaces them.
+    /// </summary>
+    internal const string SyntheticTypeParameterPrefix = "__synth_T";
+
+    /// <summary>
+    /// Returns true if the type is a synthetic TypeParameterType used as a placeholder
+    /// in synthesized primitive function types (e.g., bool used as filter predicate).
+    /// </summary>
+    internal static bool IsSyntheticTypeParameter(SemanticType type)
+        => type is TypeParameterType tp && tp.Name.StartsWith(SyntheticTypeParameterPrefix, StringComparison.Ordinal);
+
     private readonly SymbolTable _symbolTable;
 
     /// <summary>
@@ -240,6 +254,15 @@ internal class GenericTypeInferenceService
     {
         if (substitutions.TryGetValue(paramName, out var existing))
         {
+            // If the existing binding is a synthetic type parameter (from synthesized
+            // primitive function types), replace it with the concrete type. Synthetic
+            // parameters carry no type information and should not block later bindings.
+            if (IsSyntheticTypeParameter(existing))
+            {
+                substitutions[paramName] = actual;
+                return InferenceResult.Succeeded(new List<SemanticType>());
+            }
+
             // Already bound - check consistency
             if (!TypesAreCompatible(existing, actual))
             {
@@ -249,6 +272,13 @@ internal class GenericTypeInferenceService
                     $"inferred '{existing.GetDisplayName()}' earlier, but now got '{actual.GetDisplayName()}'");
             }
             // Already bound to compatible type - success
+            return InferenceResult.Succeeded(new List<SemanticType>());
+        }
+
+        // Skip binding if actual is a synthetic type parameter — it carries no
+        // type information, so defer binding to a later argument with a concrete type.
+        if (IsSyntheticTypeParameter(actual))
+        {
             return InferenceResult.Succeeded(new List<SemanticType>());
         }
 
