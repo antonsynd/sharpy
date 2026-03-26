@@ -168,6 +168,14 @@ internal class ModuleRegistry
     }
 
     /// <summary>
+    /// Get the XML documentation summary for a module, or null if not available.
+    /// </summary>
+    public string? GetModuleDocumentation(string moduleName)
+    {
+        return _discovery.GetModuleDocumentation(moduleName);
+    }
+
+    /// <summary>
     /// Get all loaded module names.
     /// </summary>
     public IEnumerable<string> GetLoadedModules()

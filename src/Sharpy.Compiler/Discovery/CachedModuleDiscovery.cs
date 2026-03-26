@@ -329,6 +329,24 @@ internal class CachedModuleDiscovery
     }
 
     /// <summary>
+    /// Get the XML documentation summary for a module, or null if not available.
+    /// </summary>
+    public string? GetModuleDocumentation(string moduleName)
+    {
+        foreach (var lazy in _loadedIndices.Values)
+        {
+            var index = lazy.Value;
+            if (index.Modules.TryGetValue(moduleName, out var moduleOverloads)
+                && moduleOverloads.Documentation != null)
+            {
+                return moduleOverloads.Documentation;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Get all loaded modules.
     /// </summary>
     public IEnumerable<string> GetLoadedModules()

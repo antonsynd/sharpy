@@ -141,6 +141,7 @@ internal partial class ProjectCompiler
                                 Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
                                 FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                                 Documentation = moduleInfo.Module?.DocString
+                                    ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                             };
                             SymbolTable.TryDefine(aliasedModule);
                             continue;
@@ -159,6 +160,7 @@ internal partial class ProjectCompiler
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             Documentation = moduleInfo.Module?.DocString
+                                ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                         };
 
                         // Build nested structure from inside out

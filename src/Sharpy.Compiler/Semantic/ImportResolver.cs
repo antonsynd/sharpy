@@ -130,6 +130,7 @@ internal class ImportResolver
                             IsNetModule = moduleInfo.IsNetModule,
                             NetNamespaceName = moduleInfo.NetNamespaceName,
                             Documentation = moduleInfo.Module?.DocString
+                                ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                         };
                         symbolTable.TryDefine(aliasedModule);
                     }
@@ -149,6 +150,7 @@ internal class ImportResolver
                             IsNetModule = moduleInfo.IsNetModule,
                             NetNamespaceName = moduleInfo.NetNamespaceName,
                             Documentation = moduleInfo.Module?.DocString
+                                ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                         };
 
                         ModuleSymbol currentModule = leafModule;
