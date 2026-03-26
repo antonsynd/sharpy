@@ -331,32 +331,34 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
             case BinaryOp binary:
                 CollectExpressionTokens(binary.Left, tokens, parameterNames);
                 // Emit keyword tokens for logical/membership operators
-                switch (binary.Operator)
+                if (binary.OperatorLine > 0)
                 {
-                    case BinaryOperator.And:
-                        // "and" is 3 chars, positioned before Right operand
-                        EmitInferredKeyword(tokens, binary.Right, 3);
-                        break;
-                    case BinaryOperator.Or:
-                        // "or" is 2 chars, positioned before Right operand
-                        EmitInferredKeyword(tokens, binary.Right, 2);
-                        break;
-                    case BinaryOperator.In:
-                        // "in" is 2 chars
-                        EmitInferredKeyword(tokens, binary.Right, 2);
-                        break;
-                    case BinaryOperator.NotIn:
-                        // "not in" — emit "not" then "in" as separate tokens
-                        EmitNotInKeywords(tokens, binary.Right);
-                        break;
-                    case BinaryOperator.Is:
-                        // "is" is 2 chars
-                        EmitInferredKeyword(tokens, binary.Right, 2);
-                        break;
-                    case BinaryOperator.IsNot:
-                        // "is not" — emit "is" then "not" as separate tokens
-                        EmitIsNotKeywords(tokens, binary.Right);
-                        break;
+                    EmitOperatorKeywordFromPosition(tokens, binary.Operator, binary.OperatorLine, binary.OperatorColumn);
+                }
+                else
+                {
+                    // Fallback: infer position from right operand (same-line assumption)
+                    switch (binary.Operator)
+                    {
+                        case BinaryOperator.And:
+                            EmitInferredKeyword(tokens, binary.Right, 3);
+                            break;
+                        case BinaryOperator.Or:
+                            EmitInferredKeyword(tokens, binary.Right, 2);
+                            break;
+                        case BinaryOperator.In:
+                            EmitInferredKeyword(tokens, binary.Right, 2);
+                            break;
+                        case BinaryOperator.NotIn:
+                            EmitNotInKeywords(tokens, binary.Right);
+                            break;
+                        case BinaryOperator.Is:
+                            EmitInferredKeyword(tokens, binary.Right, 2);
+                            break;
+                        case BinaryOperator.IsNot:
+                            EmitIsNotKeywords(tokens, binary.Right);
+                            break;
+                    }
                 }
                 CollectExpressionTokens(binary.Right, tokens, parameterNames);
                 break;
@@ -369,21 +371,30 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 // Emit keyword tokens for comparison operators that are keywords
                 for (int i = 0; i < chain.Operators.Length; i++)
                 {
-                    var rightOperand = chain.Operands[i + 1];
-                    switch (chain.Operators[i])
+                    if (!chain.OperatorPositions.IsEmpty)
                     {
-                        case ComparisonOperator.In:
-                            EmitInferredKeyword(tokens, rightOperand, 2);
-                            break;
-                        case ComparisonOperator.NotIn:
-                            EmitNotInKeywords(tokens, rightOperand);
-                            break;
-                        case ComparisonOperator.Is:
-                            EmitInferredKeyword(tokens, rightOperand, 2);
-                            break;
-                        case ComparisonOperator.IsNot:
-                            EmitIsNotKeywords(tokens, rightOperand);
-                            break;
+                        var pos = chain.OperatorPositions[i];
+                        EmitComparisonKeywordFromPosition(tokens, chain.Operators[i], pos.Line, pos.Column);
+                    }
+                    else
+                    {
+                        // Fallback: infer position from right operand
+                        var rightOperand = chain.Operands[i + 1];
+                        switch (chain.Operators[i])
+                        {
+                            case ComparisonOperator.In:
+                                EmitInferredKeyword(tokens, rightOperand, 2);
+                                break;
+                            case ComparisonOperator.NotIn:
+                                EmitNotInKeywords(tokens, rightOperand);
+                                break;
+                            case ComparisonOperator.Is:
+                                EmitInferredKeyword(tokens, rightOperand, 2);
+                                break;
+                            case ComparisonOperator.IsNot:
+                                EmitIsNotKeywords(tokens, rightOperand);
+                                break;
+                        }
                     }
                 }
                 break;
@@ -536,10 +547,71 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     }
 
     /// <summary>
+    /// Emits keyword token(s) for a BinaryOp operator using stored position from the AST.
+    /// </summary>
+    private static void EmitOperatorKeywordFromPosition(
+        System.Collections.Generic.List<RawToken> tokens,
+        BinaryOperator op,
+        int line, int column)
+    {
+        switch (op)
+        {
+            case BinaryOperator.And:
+                PushNameToken(tokens, line, column, 3, TKeyword, 0); // "and"
+                break;
+            case BinaryOperator.Or:
+                PushNameToken(tokens, line, column, 2, TKeyword, 0); // "or"
+                break;
+            case BinaryOperator.In:
+                PushNameToken(tokens, line, column, 2, TKeyword, 0); // "in"
+                break;
+            case BinaryOperator.NotIn:
+                // "not in": position is at "not", "in" follows after "not "
+                PushNameToken(tokens, line, column, 3, TKeyword, 0);     // "not"
+                PushNameToken(tokens, line, column + 4, 2, TKeyword, 0); // "in"
+                break;
+            case BinaryOperator.Is:
+                PushNameToken(tokens, line, column, 2, TKeyword, 0); // "is"
+                break;
+            case BinaryOperator.IsNot:
+                // "is not": position is at "is", "not" follows after "is "
+                PushNameToken(tokens, line, column, 2, TKeyword, 0);     // "is"
+                PushNameToken(tokens, line, column + 3, 3, TKeyword, 0); // "not"
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Emits keyword token(s) for a ComparisonChain operator using stored position from the AST.
+    /// </summary>
+    private static void EmitComparisonKeywordFromPosition(
+        System.Collections.Generic.List<RawToken> tokens,
+        ComparisonOperator op,
+        int line, int column)
+    {
+        switch (op)
+        {
+            case ComparisonOperator.In:
+                PushNameToken(tokens, line, column, 2, TKeyword, 0); // "in"
+                break;
+            case ComparisonOperator.NotIn:
+                PushNameToken(tokens, line, column, 3, TKeyword, 0);     // "not"
+                PushNameToken(tokens, line, column + 4, 2, TKeyword, 0); // "in"
+                break;
+            case ComparisonOperator.Is:
+                PushNameToken(tokens, line, column, 2, TKeyword, 0); // "is"
+                break;
+            case ComparisonOperator.IsNot:
+                PushNameToken(tokens, line, column, 2, TKeyword, 0);     // "is"
+                PushNameToken(tokens, line, column + 3, 3, TKeyword, 0); // "not"
+                break;
+        }
+    }
+
+    /// <summary>
     /// Emits a keyword token at the inferred position before the right operand.
     /// The keyword is assumed to be at (rightOperand.LineStart, rightOperand.ColumnStart - length - 1).
-    /// TODO(#458): This assumes keyword and right operand are on the same line. Multi-line
-    /// expressions will produce tokens at wrong positions until operator positions are stored in AST.
+    /// Fallback for AST nodes without stored operator positions.
     /// </summary>
     private static void EmitInferredKeyword(
         System.Collections.Generic.List<RawToken> tokens,
