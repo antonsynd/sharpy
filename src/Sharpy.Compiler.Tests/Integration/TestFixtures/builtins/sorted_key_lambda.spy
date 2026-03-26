@@ -1,0 +1,5 @@
+# Test: sorted() with key=lambda for custom sort order
+def main():
+    data: list[str] = ["3", "1", "4", "1", "5", "9", "2", "6"]
+    result: list[str] = sorted(data, key=lambda x: int(x))
+    print(result)
