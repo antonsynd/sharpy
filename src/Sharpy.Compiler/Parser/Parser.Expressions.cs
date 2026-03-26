@@ -169,6 +169,8 @@ public partial class Parser
 
         while (Current.Type == TokenType.NullCoalesce)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             Advance();
             var right = ParseLogicalOr();
 
@@ -177,6 +179,8 @@ public partial class Parser
                 Operator = BinaryOperator.NullCoalesce,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
@@ -194,6 +198,8 @@ public partial class Parser
 
         while (Current.Type == TokenType.Or)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             Advance();
             var right = ParseLogicalAnd();
 
@@ -202,6 +208,8 @@ public partial class Parser
                 Operator = BinaryOperator.Or,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
@@ -219,6 +227,8 @@ public partial class Parser
 
         while (Current.Type == TokenType.And)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             Advance();
             var right = ParseLogicalNot();
 
@@ -227,6 +237,8 @@ public partial class Parser
                 Operator = BinaryOperator.And,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
@@ -299,9 +311,12 @@ public partial class Parser
         // Check for comparison chain (a < b < c)
         var operators = new List<ComparisonOperator>();
         var operands = new List<Expression> { left };
+        var operatorPositions = new List<(int Line, int Column)>();
 
         while (IsComparisonOperator(Current.Type))
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             var op = Current.Type;
             Advance();
 
@@ -321,6 +336,7 @@ public partial class Parser
                 operators.Add(TokenTypeToComparisonOperator(op));
             }
 
+            operatorPositions.Add((opLine, opCol));
             operands.Add(ParseCast());
         }
 
@@ -335,6 +351,8 @@ public partial class Parser
                 Operator = ComparisonOperatorToBinary(operators[0]),
                 Left = operands[0],
                 Right = operands[1],
+                OperatorLine = operatorPositions[0].Line,
+                OperatorColumn = operatorPositions[0].Column,
                 LineStart = operands[0].LineStart,
                 ColumnStart = operands[0].ColumnStart,
                 LineEnd = operands[1].LineEnd,
@@ -348,6 +366,7 @@ public partial class Parser
         {
             Operands = operands.ToImmutableArray(),
             Operators = operators.ToImmutableArray(),
+            OperatorPositions = operatorPositions.ToImmutableArray(),
             LineStart = operands[0].LineStart,
             ColumnStart = operands[0].ColumnStart,
             LineEnd = operands[^1].LineEnd,
@@ -399,6 +418,8 @@ public partial class Parser
 
         while (Current.Type == TokenType.PipeForward)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             Advance();
             var right = ParseBitwiseOr();
 
@@ -407,6 +428,8 @@ public partial class Parser
                 Operator = BinaryOperator.PipeForward,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
@@ -450,6 +473,8 @@ public partial class Parser
 
         while (Current.Type == TokenType.Pipe)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             Advance();
             var right = ParseBitwiseXor();
 
@@ -458,6 +483,8 @@ public partial class Parser
                 Operator = BinaryOperator.BitwiseOr,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
@@ -475,6 +502,8 @@ public partial class Parser
 
         while (Current.Type == TokenType.Caret)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             Advance();
             var right = ParseBitwiseAnd();
 
@@ -483,6 +512,8 @@ public partial class Parser
                 Operator = BinaryOperator.BitwiseXor,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
@@ -500,6 +531,8 @@ public partial class Parser
 
         while (Current.Type == TokenType.Ampersand)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             Advance();
             var right = ParseShift();
 
@@ -508,6 +541,8 @@ public partial class Parser
                 Operator = BinaryOperator.BitwiseAnd,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
@@ -525,6 +560,8 @@ public partial class Parser
 
         while (Current.Type == TokenType.LeftShift || Current.Type == TokenType.RightShift)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             var op = Current.Type == TokenType.LeftShift ? BinaryOperator.LeftShift : BinaryOperator.RightShift;
             Advance();
             var right = ParseAdditive();
@@ -534,6 +571,8 @@ public partial class Parser
                 Operator = op,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
@@ -551,6 +590,8 @@ public partial class Parser
 
         while (Current.Type == TokenType.Plus || Current.Type == TokenType.Minus)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             var op = Current.Type == TokenType.Plus ? BinaryOperator.Add : BinaryOperator.Subtract;
             Advance();
             var right = ParseMultiplicative();
@@ -560,6 +601,8 @@ public partial class Parser
                 Operator = op,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
@@ -578,6 +621,8 @@ public partial class Parser
         while (Current.Type == TokenType.Star || Current.Type == TokenType.Slash ||
                Current.Type == TokenType.DoubleSlash || Current.Type == TokenType.Percent)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             var op = Current.Type switch
             {
                 TokenType.Star => BinaryOperator.Multiply,
@@ -594,6 +639,8 @@ public partial class Parser
                 Operator = op,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
@@ -666,6 +713,8 @@ public partial class Parser
 
         if (Current.Type == TokenType.DoubleStar)
         {
+            var opLine = Current.Line;
+            var opCol = Current.Column;
             Advance();
             var right = ParseUnary();  // Right-associative
 
@@ -674,6 +723,8 @@ public partial class Parser
                 Operator = BinaryOperator.Power,
                 Left = left,
                 Right = right,
+                OperatorLine = opLine,
+                OperatorColumn = opCol,
                 LineStart = left.LineStart,
                 ColumnStart = left.ColumnStart,
                 LineEnd = right.LineEnd,
