@@ -13,7 +13,7 @@ internal class OverloadIndexCache
 {
     private readonly string _cacheDirectory;
     private readonly ICompilerLogger _logger;
-    internal const int CurrentCacheFormatVersion = 9;
+    internal const int CurrentCacheFormatVersion = 10;
 
     // Using camelCase for JSON serialization to reduce file size and follow common conventions.
     // DefaultIgnoreCondition.WhenWritingNull reduces cache file size by omitting null properties.
