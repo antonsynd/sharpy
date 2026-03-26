@@ -495,6 +495,13 @@ internal partial class RoslynEmitter
             }
         }
 
+        // When sorted() has a key= argument, omit explicit type args so C# infers both T and TKey.
+        // sorted(data, reverse=True) without key= should still emit Sorted<T>(...).
+        var hasKeyArg = name == BuiltinNames.Sorted
+            && allArgs.Any(a => a.NameColon?.Name.Identifier.Text == "key");
+        if (hasKeyArg)
+            typeArg = null;
+
         // Build: global::Sharpy.Builtins.Reversed<T>(args)
         var qualifiedBase = MakeGlobalQualifiedName("Sharpy", "Builtins");
         SimpleNameSyntax methodName = typeArg != null
