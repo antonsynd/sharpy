@@ -1,0 +1,6 @@
+# Test: type-name builtin (str) used directly as map function (#457)
+def main():
+    items: list[int] = [1, 2, 3]
+    result: list[str] = list(map(str, items))
+    for s in result:
+        print(s + " mapped")
