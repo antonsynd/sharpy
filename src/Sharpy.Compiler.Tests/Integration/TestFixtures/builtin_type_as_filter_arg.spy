@@ -1,6 +1,5 @@
-# Test: type-name builtin (bool) used in filter context via lambda
-# Direct filter(bool, items) blocked by type inference limitation (#457)
+# Test: type-name builtin (bool) used directly as filter predicate (#457)
 def main():
     items: list[int] = [0, 1, 0, 42, 0, 7]
-    result: list[int] = list(filter(lambda x: bool(x), items))
+    result: list[int] = list(filter(bool, items))
     print(result)
