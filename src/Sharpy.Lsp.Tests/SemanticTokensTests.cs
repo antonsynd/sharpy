@@ -418,6 +418,108 @@ def main():
         keywords.Should().HaveCount(3, "not, and, not should all produce keyword tokens");
     }
 
+    [Fact]
+    public void AndKeyword_MultiLine_HasCorrectPosition()
+    {
+        // "and" on a different line, using backslash line continuation
+        // Line 2: "    x: bool = True \"
+        // Line 3: "        and False"
+        // "and" is at line 3, col 9 (1-based) -> LSP (2, 8)
+        var tokens = CollectTokensFrom(
+            "def main():\n    x: bool = True \\\n        and False\n    print(x)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        keywords.Should().ContainSingle("'and' should produce a keyword token");
+        keywords[0].Line.Should().Be(2, "and is on line 3 (0-based: 2)");
+        keywords[0].Col.Should().Be(8, "and starts at column 9 (0-based: 8)");
+        keywords[0].Length.Should().Be(3);
+    }
+
+    [Fact]
+    public void OrKeyword_MultiLine_HasCorrectPosition()
+    {
+        // "or" on a different line, using backslash line continuation
+        // Line 2: "    x: bool = True \"
+        // Line 3: "        or False"
+        // "or" is at line 3, col 9 (1-based) -> LSP (2, 8)
+        var tokens = CollectTokensFrom(
+            "def main():\n    x: bool = True \\\n        or False\n    print(x)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        keywords.Should().ContainSingle("'or' should produce a keyword token");
+        keywords[0].Line.Should().Be(2, "or is on line 3 (0-based: 2)");
+        keywords[0].Col.Should().Be(8, "or starts at column 9 (0-based: 8)");
+        keywords[0].Length.Should().Be(2);
+    }
+
+    [Fact]
+    public void InKeyword_MultiLine_HasCorrectPosition()
+    {
+        // "in" on a different line, using backslash line continuation
+        // Line 2: "    items: list[int] = [1, 2, 3]"
+        // Line 3: "    x: bool = 1 \"
+        // Line 4: "        in items"
+        // "in" is at line 4, col 9 (1-based) -> LSP (3, 8)
+        var tokens = CollectTokensFrom(
+            "def main():\n    items: list[int] = [1, 2, 3]\n    x: bool = 1 \\\n        in items\n    print(x)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        keywords.Should().ContainSingle("'in' should produce a keyword token");
+        keywords[0].Line.Should().Be(3, "in is on line 4 (0-based: 3)");
+        keywords[0].Col.Should().Be(8, "in starts at column 9 (0-based: 8)");
+        keywords[0].Length.Should().Be(2);
+    }
+
+    [Fact]
+    public void NotInKeyword_MultiLine_HasCorrectPositions()
+    {
+        // "not in" on a different line, using backslash line continuation
+        // Line 3: "    x: bool = 1 \"
+        // Line 4: "        not in items"
+        // "not" at (4, 9) -> LSP (3, 8), "in" at (4, 13) -> LSP (3, 12)
+        var tokens = CollectTokensFrom(
+            "def main():\n    items: list[int] = [1, 2, 3]\n    x: bool = 1 \\\n        not in items\n    print(x)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        keywords.Should().HaveCount(2, "'not' and 'in' should each produce a keyword token");
+        var notToken = keywords.First(t => t.Length == 3);
+        var inToken = keywords.First(t => t.Length == 2);
+        notToken.Line.Should().Be(3, "not is on line 4 (0-based: 3)");
+        notToken.Col.Should().Be(8, "not starts at column 9 (0-based: 8)");
+        inToken.Line.Should().Be(3, "in is on line 4 (0-based: 3)");
+        inToken.Col.Should().Be(12, "in starts at column 13 (0-based: 12)");
+    }
+
+    [Fact]
+    public void IsNotKeyword_MultiLine_HasCorrectPositions()
+    {
+        // "is not" on a different line, using backslash line continuation
+        // Line 2: "    x: int = 5"
+        // Line 3: "    y: bool = x \"
+        // Line 4: "        is not None"
+        // "is" at (4, 9) -> LSP (3, 8), "not" at (4, 12) -> LSP (3, 11)
+        var tokens = CollectTokensFrom(
+            "def main():\n    x: int = 5\n    y: bool = x \\\n        is not None\n    print(y)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        keywords.Should().HaveCount(2, "'is' and 'not' should each produce a keyword token");
+        var isToken = keywords.First(t => t.Length == 2);
+        var notToken = keywords.First(t => t.Length == 3);
+        isToken.Line.Should().Be(3, "is is on line 4 (0-based: 3)");
+        isToken.Col.Should().Be(8, "is starts at column 9 (0-based: 8)");
+        notToken.Line.Should().Be(3, "not is on line 4 (0-based: 3)");
+        notToken.Col.Should().Be(11, "not starts at column 12 (0-based: 11)");
+    }
+
+    [Fact]
+    public void AndKeyword_SingleLine_RegressionPosition()
+    {
+        // Single-line: ensure stored positions work for same-line too
+        // "    x: bool = True and False"
+        // "and" at (2, 20) -> LSP (1, 19)
+        var tokens = CollectTokensFrom("def main():\n    x: bool = True and False\n    print(x)");
+        var keyword = tokens.Where(t => t.TokenType == TKeyword).ToList();
+        keyword.Should().ContainSingle();
+        keyword[0].Line.Should().Be(1, "and is on line 2 (0-based: 1)");
+        keyword[0].Col.Should().Be(19, "and starts at column 20 (0-based: 19)");
+        keyword[0].Length.Should().Be(3);
+    }
+
     #endregion
 
     #region Parameter usage-site tokens
