@@ -511,6 +511,52 @@ public class HoverTests : IDisposable
         ((GenericType)objType!).Name.Should().Be("list");
     }
 
+    [Fact]
+    public async Task Hover_StdlibModule_DocumentationFlowsFromXmlPipeline()
+    {
+        // Verify that module-level XML docs flow from Sharpy.Core through
+        // the discovery pipeline to ModuleSymbol.Documentation.
+
+        // Find Sharpy.Core.dll alongside the test assembly
+        var testDir = System.IO.Path.GetDirectoryName(typeof(HoverTests).Assembly.Location)!;
+        var corePath = System.IO.Path.Combine(testDir, "Sharpy.Core.dll");
+        if (!File.Exists(corePath))
+        {
+            // Skip if Sharpy.Core.dll is not available in the test output
+            return;
+        }
+
+        var api = new CompilerApi(null, new string[] { corePath });
+        using var workspace = new SharpyWorkspace(api, NullLogger<SharpyWorkspace>.Instance);
+
+        // Use csv module which has XML docs on its [SharpyModule] class
+        var source = "import csv\ndef main():\n    pass";
+        workspace.OpenDocument("file:///test_module_doc.spy", source, 1);
+
+        var analysis = await workspace.GetAnalysisAsync("file:///test_module_doc.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SymbolTable.Should().NotBeNull();
+
+        var symbol = analysis.SymbolTable!.Lookup("csv");
+        symbol.Should().NotBeNull("csv module should be in the symbol table");
+        symbol.Should().BeOfType<ModuleSymbol>();
+
+        var moduleSymbol = (ModuleSymbol)symbol!;
+
+        // The Documentation field should be populated from XML docs, not null.
+        // This verifies the full pipeline: OverloadIndexBuilder extracts XML doc summary
+        // -> ModuleOverloads.Documentation -> ModuleRegistry.GetModuleDocumentation()
+        // -> ImportResolver -> ModuleSymbol.Documentation
+        moduleSymbol.Documentation.Should().NotBeNullOrEmpty(
+            "csv module should have XML documentation from Sharpy.Core");
+
+        // Verify the formatted hover includes the documentation
+        var formatted = SymbolFormatter.FormatSymbolWithDocs(moduleSymbol);
+        formatted.Should().Contain("```sharpy");
+        formatted.Should().Contain("(module) csv");
+        formatted.Should().Contain(moduleSymbol.Documentation);
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();
