@@ -52,6 +52,14 @@ internal class OverloadIndexBuilder
             var moduleName = DeriveModuleName(exportType);
             var moduleOverloads = DiscoverModuleFunctions(exportType);
 
+            // Look up XML documentation for this module class
+            if (_xmlDocReader != null)
+            {
+                var fullName = (exportType.FullName ?? exportType.Name).Replace('+', '.');
+                var doc = _xmlDocReader.GetMemberDoc("T:" + fullName);
+                moduleOverloads.Documentation = doc?.Summary;
+            }
+
             // Register the module if it has functions or public fields (e.g., string module has only const fields).
             var hasPublicFields = exportType.GetFields(BindingFlags.Public | BindingFlags.Static)
                 .Any(f => !f.Name.StartsWith("<"));
