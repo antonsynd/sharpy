@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as path from "path";
 import {
   commands,
@@ -16,12 +17,51 @@ import {
   TransportKind,
 } from "vscode-languageclient/node";
 
+/**
+ * Validates an executable path before it is passed to `cp.spawn()` or a debug
+ * launch configuration. Returns `true` when the path is safe to use.
+ *
+ * - Bare command names (no path separator) are allowed — the OS resolves them
+ *   via PATH, same as typing the command in a terminal.
+ * - Paths containing a separator must resolve to an existing file.
+ * - Empty / whitespace-only strings are rejected.
+ */
+export function validateExecutablePath(execPath: string): boolean {
+  if (!execPath || !execPath.trim()) {
+    return false;
+  }
+
+  // Bare command name — trust PATH resolution
+  if (!execPath.includes("/") && !execPath.includes("\\")) {
+    return true;
+  }
+
+  // Path with separator — resolve and check existence
+  const resolved = path.resolve(execPath);
+  try {
+    const stat = fs.statSync(resolved);
+    return stat.isFile();
+  } catch {
+    return false;
+  }
+}
+
 let client: LanguageClient | undefined;
 let statusBarItem: StatusBarItem | undefined;
 
 function createClient(context: ExtensionContext): LanguageClient {
   const config = workspace.getConfiguration("sharpy");
-  const serverPath = config.get<string>("serverPath") || "sharpyc";
+  let serverPath = config.get<string>("serverPath") || "sharpyc";
+
+  if (!validateExecutablePath(serverPath)) {
+    const wasCustom = serverPath !== "sharpyc";
+    if (wasCustom) {
+      window.showWarningMessage(
+        `Sharpy: configured serverPath "${serverPath}" is not a valid executable. Falling back to "sharpyc".`
+      );
+      serverPath = "sharpyc";
+    }
+  }
 
   const serverOptions: ServerOptions = {
     command: serverPath,

@@ -8,6 +8,7 @@ import {
   workspace,
   WorkspaceFolder,
 } from "vscode";
+import { validateExecutablePath } from "./extension";
 
 export class SharpyDebugConfigProvider implements DebugConfigurationProvider {
   resolveDebugConfiguration(
@@ -36,6 +37,20 @@ export class SharpyDebugConfigProvider implements DebugConfigurationProvider {
     const serverPath = sharpyConfig.get<string>("serverPath") || "sharpyc";
     const dotnetPath =
       sharpyConfig.get<string>("debug.dotnetPath") || "dotnet";
+
+    if (!validateExecutablePath(serverPath)) {
+      window.showErrorMessage(
+        `Sharpy: configured serverPath "${serverPath}" is not a valid executable. Debug session cancelled.`
+      );
+      return undefined;
+    }
+
+    if (!validateExecutablePath(dotnetPath)) {
+      window.showErrorMessage(
+        `Sharpy: configured dotnetPath "${dotnetPath}" is not a valid executable. Debug session cancelled.`
+      );
+      return undefined;
+    }
 
     const spyFile = config.program as string;
     const workDir = folder?.uri.fsPath ?? path.dirname(spyFile);
