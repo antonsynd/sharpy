@@ -838,6 +838,15 @@ public static class DiagnosticExplanations
             "class Foo:\n    pass\n\ndef main():\n    with Foo() as f:\n        print(f)",
             "Either implement IDisposable on the class, or add __enter__ and __exit__ methods for the context manager protocol.");
 
+        Add(dict, DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
+            "Interface method not implemented",
+            "Semantic",
+            "A class or struct declares that it implements an interface but does not provide an implementation " +
+            "for one or more of the interface's abstract methods. All abstract methods from all implemented " +
+            "interfaces (including base interfaces) must be implemented unless the class is abstract.",
+            "interface Drawable:\n    def draw(self) -> str:\n        ...\n\nclass Circle(Drawable):\n    pass",
+            "Add the missing method implementation:\nclass Circle(Drawable):\n    def draw(self) -> str:\n        return \"circle\"");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",
