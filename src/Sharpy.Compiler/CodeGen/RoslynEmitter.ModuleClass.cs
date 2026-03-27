@@ -26,58 +26,8 @@ internal partial class RoslynEmitter
         // 2. Namespaces should use simple PascalCase without uniqueness tracking
 
         var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        var convertedParts = parts.Select(part => SimpleToPascalCase(part));
+        var convertedParts = parts.Select(part => NameMangler.ToNamespacePart(part));
         return string.Join(".", convertedParts);
-    }
-
-    private static string SimpleToPascalCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-
-        // Handle literal names (backtick-escaped)
-        if (name.StartsWith("`") && name.EndsWith("`"))
-        {
-            if (name.Length <= 2)
-                return name;
-            return name[1..^1];
-        }
-
-        // Check if this is a known acronym that should be all uppercase
-        if (UpperCaseAcronyms.Contains(name))
-        {
-            return name.ToUpperInvariant();
-        }
-
-        // Replace invalid identifier characters with underscores, then split
-        // Valid C# identifier chars: letters, digits (not at start), underscores
-        var sanitized = new System.Text.StringBuilder(name.Length);
-        foreach (var c in name)
-        {
-            if (char.IsLetterOrDigit(c) || c == '_')
-                sanitized.Append(c);
-            else
-                sanitized.Append('_');
-        }
-
-        // Split by underscore and capitalize each part
-        var parts = sanitized.ToString().Split('_', StringSplitOptions.RemoveEmptyEntries);
-
-        // Handle edge case where name is only underscores (e.g., "___")
-        if (parts.Length == 0)
-            return "_";
-
-        var result = string.Join("", parts.Select(p =>
-            char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p[1..] : "")
-        ));
-
-        // If result starts with a digit, prefix with underscore to make it valid
-        if (result.Length > 0 && char.IsDigit(result[0]))
-        {
-            result = "_" + result;
-        }
-
-        return string.IsNullOrEmpty(result) ? "_" : result;
     }
 
     /// <summary>
@@ -268,11 +218,11 @@ internal partial class RoslynEmitter
             {
                 string? typeName = stmt switch
                 {
-                    ClassDef cd => SimpleToPascalCase(cd.Name),
-                    StructDef sd => SimpleToPascalCase(sd.Name),
-                    InterfaceDef id => SimpleToPascalCase(id.Name),
-                    EnumDef ed => SimpleToPascalCase(ed.Name),
-                    DelegateDef dd => SimpleToPascalCase(dd.Name),
+                    ClassDef cd => NameMangler.ToNamespacePart(cd.Name),
+                    StructDef sd => NameMangler.ToNamespacePart(sd.Name),
+                    InterfaceDef id => NameMangler.ToNamespacePart(id.Name),
+                    EnumDef ed => NameMangler.ToNamespacePart(ed.Name),
+                    DelegateDef dd => NameMangler.ToNamespacePart(dd.Name),
                     _ => null
                 };
 
@@ -353,7 +303,7 @@ internal partial class RoslynEmitter
             {
                 // __init__.spy → use directory name as class name
                 var dirName = Path.GetFileName(Path.GetDirectoryName(_context.SourceFilePath));
-                return SimpleToPascalCase(dirName ?? "Module");
+                return NameMangler.ToNamespacePart(dirName ?? "Module");
             }
 
             // Entry point: main.spy → "Program" (avoids CS0542: Main.Main() conflict),
@@ -363,7 +313,7 @@ internal partial class RoslynEmitter
                 return "Program";
             }
 
-            return SimpleToPascalCase(fileName);
+            return NameMangler.ToNamespacePart(fileName);
         }
 
         return "Module"; // Fallback

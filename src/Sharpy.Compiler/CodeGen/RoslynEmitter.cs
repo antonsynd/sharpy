@@ -429,13 +429,6 @@ internal partial class RoslynEmitter
     // Used for inlined operator bodies: e.g., "other" → "right".
     private Dictionary<string, string>? _parameterNameOverrides;
 
-    // Common .NET namespace acronyms that should be all uppercase
-    private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp",
-        "smtp", "tcp", "udp", "ip", "uri", "url", "json", "csv", "guid"
-    };
-
     public RoslynEmitter(CodeGenContext context, CancellationToken cancellationToken = default)
     {
         _context = context;

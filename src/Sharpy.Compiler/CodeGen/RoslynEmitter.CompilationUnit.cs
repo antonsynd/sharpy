@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Sharpy.Compiler.CodeGen;
@@ -135,7 +136,7 @@ internal partial class RoslynEmitter
 
         var dirParts = relativeDir
             .Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => SimpleToPascalCase(p))
+            .Select(p => NameMangler.ToNamespacePart(p))
             .ToList();
 
         if (fileName == DunderNames.Init)
@@ -318,8 +319,8 @@ internal partial class RoslynEmitter
                     if (symbol is TypeSymbol { IsGeneric: true })
                         continue;
 
-                    var csharpName = importedName.AsName ?? SimpleToPascalCase(importedName.Name);
-                    var qualifiedName = $"global::{namespaceName}.{SimpleToPascalCase(importedName.Name)}";
+                    var csharpName = importedName.AsName ?? NameMangler.ToNamespacePart(importedName.Name);
+                    var qualifiedName = $"global::{namespaceName}.{NameMangler.ToNamespacePart(importedName.Name)}";
                     yield return UsingDirective(
                         NameEquals(csharpName),
                         ParseName(qualifiedName));
@@ -464,7 +465,7 @@ internal partial class RoslynEmitter
 
         var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
         // Stdlib classes use simple PascalCase (e.g., Json, Os, Re) — not the
-        // UpperCaseAcronyms logic used for user module names (which would produce JSON).
+        // NameMangler.ToNamespacePart acronym logic used for user module names (which would produce JSON).
         var className = string.Concat(parts.Select(StdlibToPascalCase));
         return $"global::Sharpy.{className}";
     }
