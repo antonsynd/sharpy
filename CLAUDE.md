@@ -129,6 +129,9 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 55**: `NamingConventionValidator` — Naming convention checks
 - **Order 60**: `DecoratorValidator` — Decorator validation
 - **Order 62**: `BodylessSyntaxValidator` — Deprecation warnings for body-less method syntax
+- **Order 140**: `ConstructorOverloadValidator` — Duplicate constructor signatures
+- **Order 145**: `StructRulesValidator` — Struct constructor field initialization
+- **Order 147**: `EnumRulesValidator` — Enum value type consistency
 - **Order 150**: `SignatureValidator` — Dunder method signatures
 - **Order 155**: `GeneratorValidator` — Generator function validation
 - **Order 160**: `EqualityContractValidator` — Equality contract checks
@@ -143,6 +146,7 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 430**: `UnusedImportValidator` — Unused import warnings
 - **Order 450**: `AccessValidator` — Private/protected member access
 - **Order 460**: `DunderInvocationValidator` — Direct dunder call warnings
+- **Order 480**: `InterfaceImplementationValidator` — Interface method implementation checks
 - **Order 500**: `ProtocolValidator` — Protocol validation
 - **Order 501**: `OperatorValidator` — Operator validation
 
@@ -169,14 +173,14 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 17 partial classes (~14,690 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
+The `RoslynEmitter` is split into 18 partial classes (~14,690 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
 - Local variables → runtime tracking via `_variableVersions` (handles redeclarations: x, x_1, x_2)
 - Types → SymbolTable lookup
 
-**Type mappings** (`CodeGen/TypeMapper.cs`): `int` → `int`, `long` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `Sharpy.List<T>`, `dict[K,V]` → `Sharpy.Dict<K,V>`, `set[T]` → `Sharpy.Set<T>` (Sharpy.Core wrappers delegate to .NET types internally). Collection type name constants live in `Shared/CSharpTypeNames.cs`. Note: a separate `Discovery/ClrTypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances.
+**Type mappings** (`CodeGen/TypeSyntaxMapper.cs`): `int` → `int`, `long` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `Sharpy.List<T>`, `dict[K,V]` → `Sharpy.Dict<K,V>`, `set[T]` → `Sharpy.Set<T>` (Sharpy.Core wrappers delegate to .NET types internally). Collection type name constants live in `Shared/CSharpTypeNames.cs`. Note: a separate `Discovery/ClrTypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances.
 
 **Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__init__` → constructor, `__add__` → `operator+`, `__str__` → `ToString()`
 
