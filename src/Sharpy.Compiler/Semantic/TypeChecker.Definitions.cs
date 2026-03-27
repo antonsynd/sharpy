@@ -737,9 +737,6 @@ internal partial class TypeChecker
             CheckStatement(statement);
         }
 
-        // Validate struct-specific rules
-        ValidateStructRules(structSymbol, structDef);
-
         // Validate interface implementations (structs must implement all interface methods)
         ValidateInterfaceImplementations(structSymbol, structDef.LineStart, structDef.ColumnStart, structDef.Span);
 
