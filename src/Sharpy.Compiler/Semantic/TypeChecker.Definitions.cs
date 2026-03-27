@@ -654,12 +654,6 @@ internal partial class TypeChecker
             CheckStatement(statement);
         }
 
-        // Validate interface implementations (skip for abstract classes)
-        if (!classSymbol.IsAbstract)
-        {
-            ValidateInterfaceImplementations(classSymbol, classDef.LineStart, classDef.ColumnStart, classDef.Span);
-        }
-
         // Restore previous class
         _currentClass = previousClass;
         _typeResolver.SetCurrentTypeContext(previousClass);
@@ -736,9 +730,6 @@ internal partial class TypeChecker
         {
             CheckStatement(statement);
         }
-
-        // Validate interface implementations (structs must implement all interface methods)
-        ValidateInterfaceImplementations(structSymbol, structDef.LineStart, structDef.ColumnStart, structDef.Span);
 
         // Restore previous class
         _currentClass = previousClass;
