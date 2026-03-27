@@ -52,7 +52,7 @@ internal partial class RoslynEmitter
             elementType = _typeMapper.InferElementType(list.Elements);
         }
 
-        var listType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyList, elementType);
+        var listType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyList, elementType);
 
         // If any element is a spread, use imperative builder pattern
         if (list.Elements.Any(e => e is SpreadElement))
@@ -99,7 +99,7 @@ internal partial class RoslynEmitter
             valueType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Value));
         }
 
-        var dictType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, keyType, valueType);
+        var dictType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, keyType, valueType);
 
         // If any entry is a spread (**expr), use imperative builder pattern
         if (dict.Entries.Any(entry => entry.Key == null))
@@ -147,7 +147,7 @@ internal partial class RoslynEmitter
             elementType = _typeMapper.InferElementType(set.Elements);
         }
 
-        var setType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpySet, elementType);
+        var setType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpySet, elementType);
 
         // If any element is a spread, use imperative builder pattern
         if (set.Elements.Any(e => e is SpreadElement))
@@ -222,7 +222,7 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapSemanticType(elementSemanticType)
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
-        var listType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyList, elementTypeSyntax);
+        var listType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyList, elementTypeSyntax);
 
         return ObjectCreationExpression(listType)
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(chain))));
@@ -259,7 +259,7 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapSemanticType(elementSemanticType)
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
-        var setType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpySet, elementTypeSyntax);
+        var setType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpySet, elementTypeSyntax);
 
         return ObjectCreationExpression(setType)
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(chain))));
@@ -304,7 +304,7 @@ internal partial class RoslynEmitter
 
         if (keySemanticType != null && valueSemanticType != null)
         {
-            var dictType = TypeMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict,
+            var dictType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict,
                     _typeMapper.MapSemanticType(keySemanticType),
                     _typeMapper.MapSemanticType(valueSemanticType));
             return CastExpression(dictType, ParenthesizedExpression(toDictInvocation));
@@ -345,7 +345,7 @@ internal partial class RoslynEmitter
             var vTypeSyntax = vType != null
                 ? _typeMapper.MapSemanticType(vType)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            collectionType = TypeMapper.QualifiedGenericName(
+            collectionType = TypeSyntaxMapper.QualifiedGenericName(
                     collInfo!.CSharpTypeName,
                     kTypeSyntax, vTypeSyntax);
         }
@@ -355,7 +355,7 @@ internal partial class RoslynEmitter
             var elemTypeSyntax = elemType != null
                 ? _typeMapper.MapSemanticType(elemType)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            collectionType = TypeMapper.QualifiedGenericName(collInfo!.CSharpTypeName, elemTypeSyntax);
+            collectionType = TypeSyntaxMapper.QualifiedGenericName(collInfo!.CSharpTypeName, elemTypeSyntax);
         }
 
         // var __comp_N = new CollectionType();

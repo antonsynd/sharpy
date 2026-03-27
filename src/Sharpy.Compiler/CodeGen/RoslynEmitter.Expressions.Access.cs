@@ -44,7 +44,7 @@ internal partial class RoslynEmitter
                 // Generate: new GenericType<TypeArgs>(args)
                 var csharpGenericTypeName = CSharpTypeNames.FromSharpyName(genericName.Name)
                     ?? NameMangler.ToPascalCase(genericName.Name);
-                var genericTypeSyntax = TypeMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
+                var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
 
                 // Generate arguments (reorder for C# compliance if needed)
                 var genericTypeCallTarget = ResolveConstructorForCall(genericTypeSymbol, call);
@@ -103,7 +103,7 @@ internal partial class RoslynEmitter
                 && call.Arguments[1] is Identifier typeId)
             {
                 var value = GenerateExpression(call.Arguments[0]);
-                // Use TypeMapper to correctly resolve builtin types (str→string, int→int)
+                // Use TypeSyntaxMapper to correctly resolve builtin types (str→string, int→int)
                 // and user-defined types (dog→Dog) via MapType.
                 var typeAnnotation = new TypeAnnotation { Name = typeId.Name };
                 var checkType = _typeMapper.MapType(typeAnnotation);
@@ -157,7 +157,7 @@ internal partial class RoslynEmitter
                         .Select(t => _typeMapper.MapSemanticType(t));
                     var csharpCollectionName = CSharpTypeNames.FromSharpyName(funcName.Name)
                         ?? NameMangler.ToPascalCase(funcName.Name);
-                    var genericTypeSyntax = TypeMapper.QualifiedGenericName(csharpCollectionName,
+                    var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpCollectionName,
                             typeArgsSyntax.ToArray());
                     return ObjectCreationExpression(genericTypeSyntax)
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));

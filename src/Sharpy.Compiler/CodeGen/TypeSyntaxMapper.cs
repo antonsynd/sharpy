@@ -13,14 +13,14 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// Maps Sharpy types to C# types using Roslyn syntax nodes
 /// </summary>
-internal class TypeMapper
+internal class TypeSyntaxMapper
 {
     private readonly CodeGenContext _context;
 
     // Built-in type mappings, populated from PrimitiveCatalog at startup
     private static readonly Dictionary<string, string> _builtinTypeMap;
 
-    static TypeMapper()
+    static TypeSyntaxMapper()
     {
         _builtinTypeMap = new Dictionary<string, string>();
 
@@ -37,7 +37,7 @@ internal class TypeMapper
         _builtinTypeMap[BuiltinNames.Tuple] = "System.ValueTuple";
     }
 
-    public TypeMapper(CodeGenContext context)
+    public TypeSyntaxMapper(CodeGenContext context)
     {
         _context = context;
     }

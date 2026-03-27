@@ -3,7 +3,7 @@ using System;
 namespace Sharpy.Compiler.Discovery;
 
 /// <summary>
-/// Shared CLR type inspection helpers used by both <see cref="TypeMapper"/>
+/// Shared CLR type inspection helpers used by both <see cref="CodeGen.TypeSyntaxMapper"/>
 /// and the protocol validator.
 /// </summary>
 internal static class ClrTypeHelper

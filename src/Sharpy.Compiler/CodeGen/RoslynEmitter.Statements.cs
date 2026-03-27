@@ -1257,7 +1257,7 @@ internal partial class RoslynEmitter
 
             if (key != null)
             {
-                // Use TypeMapper to resolve builtin types (str→string, int→int)
+                // Use TypeSyntaxMapper to resolve builtin types (str→string, int→int)
                 // and user-defined types (dog→Dog) to their C# names for casts.
                 var typeAnnotation = new TypeAnnotation { Name = typeId.Name };
                 var csharpType = _typeMapper.MapType(typeAnnotation).NormalizeWhitespace().ToFullString();

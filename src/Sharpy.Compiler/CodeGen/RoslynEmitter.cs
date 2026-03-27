@@ -25,7 +25,7 @@ namespace Sharpy.Compiler.CodeGen;
 internal partial class RoslynEmitter
 {
     private readonly CodeGenContext _context;
-    private readonly TypeMapper _typeMapper;
+    private readonly TypeSyntaxMapper _typeMapper;
     private readonly NameResolutionService _nameResolutionService;
     private readonly CancellationToken _cancellationToken;
     private readonly HashSet<string> _declaredVariables = new();
@@ -439,7 +439,7 @@ internal partial class RoslynEmitter
     public RoslynEmitter(CodeGenContext context, CancellationToken cancellationToken = default)
     {
         _context = context;
-        _typeMapper = new TypeMapper(context);
+        _typeMapper = new TypeSyntaxMapper(context);
         _nameResolutionService = new NameResolutionService(context.Logger);
         _cancellationToken = cancellationToken;
         _dunderRegistry = BuildDunderRegistry();

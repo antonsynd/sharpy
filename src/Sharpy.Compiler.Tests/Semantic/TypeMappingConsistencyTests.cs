@@ -44,7 +44,7 @@ public class TypeMappingConsistencyTests
     }
 
     [Fact]
-    public void CodeGenTypeMapper_UsesAllPrimitiveTypesFromCatalog()
+    public void CodeGenTypeSyntaxMapper_UsesAllPrimitiveTypesFromCatalog()
     {
         // Verify that all primitive types from PrimitiveCatalog are usable
         // by verifying that they all have a valid CSharpName
@@ -163,13 +163,13 @@ public class TypeMappingConsistencyTests
     }
 
     [Fact]
-    public void CodeGenTypeMapper_ProducesCorrectTypeSyntaxForAllPrimitives()
+    public void CodeGenTypeSyntaxMapper_ProducesCorrectTypeSyntaxForAllPrimitives()
     {
         // Create minimal CodeGenContext for testing
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins);
-        var mapper = new Sharpy.Compiler.CodeGen.TypeMapper(context);
+        var mapper = new Sharpy.Compiler.CodeGen.TypeSyntaxMapper(context);
 
         // Test each primitive (excluding void, which cannot be used as a value type)
         // Per spec: Sharpy 'float' -> C# 'double', 'float32' -> C# 'float'
@@ -201,7 +201,7 @@ public class TypeMappingConsistencyTests
             var syntaxText = typeSyntax.ToString();
 
             syntaxText.Should().Be(expectedCSharpType,
-                $"TypeMapper should map '{sharpyName}' to '{expectedCSharpType}'");
+                $"TypeSyntaxMapper should map '{sharpyName}' to '{expectedCSharpType}'");
         }
     }
 }

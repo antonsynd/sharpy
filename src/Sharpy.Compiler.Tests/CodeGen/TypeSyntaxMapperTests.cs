@@ -12,17 +12,17 @@ using AstTupleType = Sharpy.Compiler.Parser.Ast.TupleType;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
-public class TypeMapperTests
+public class TypeSyntaxMapperTests
 {
-    private readonly TypeMapper _typeMapper;
+    private readonly TypeSyntaxMapper _typeMapper;
     private readonly CodeGenContext _context;
 
-    public TypeMapperTests()
+    public TypeSyntaxMapperTests()
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
         _context = new CodeGenContext(symbolTable, builtins);
-        _typeMapper = new TypeMapper(_context);
+        _typeMapper = new TypeSyntaxMapper(_context);
     }
 
     #region Built-in Type Mapping Tests
