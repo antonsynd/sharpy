@@ -233,8 +233,8 @@ internal partial class NameResolver
     private void AddError(string message, int? line = null, int? column = null, string? code = null,
         Text.TextSpan? span = null)
     {
-        _diagnostics.AddError(message, span, line, column, _currentFilePath, code: code, phase: CompilerPhase.NameResolution);
-        _logger.LogError(message, line ?? 0, column ?? 0);
+        _diagnostics.AddPhaseError(message, CompilerPhase.NameResolution,
+            span, line, column, _currentFilePath, code, _logger);
     }
 
     private void ResolveClassInheritance(ClassDef classDef)

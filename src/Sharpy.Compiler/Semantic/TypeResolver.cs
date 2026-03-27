@@ -530,7 +530,7 @@ internal class TypeResolver
     private void AddError(string message, int? line = null, int? column = null, string? code = null,
         TextSpan? span = null)
     {
-        _diagnostics.AddError(message, span, line, column, code: code, phase: CompilerPhase.TypeChecking);
-        _logger.LogError(message, line ?? 0, column ?? 0);
+        _diagnostics.AddPhaseError(message, CompilerPhase.TypeChecking,
+            span, line, column, code: code, logger: _logger);
     }
 }

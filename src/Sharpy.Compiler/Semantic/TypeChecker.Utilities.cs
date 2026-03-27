@@ -1124,8 +1124,8 @@ internal partial class TypeChecker
             return;
         }
 
-        _diagnostics.AddError(message, span, line, column, _currentFilePath, code: code, phase: CompilerPhase.TypeChecking);
-        _logger.LogError(message, line ?? 0, column ?? 0);
+        _diagnostics.AddPhaseError(message, CompilerPhase.TypeChecking,
+            span, line, column, _currentFilePath, code, _logger);
     }
 
     /// <summary>
