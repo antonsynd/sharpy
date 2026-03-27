@@ -70,7 +70,7 @@ internal class InterfaceImplementationValidator : ValidatingAstWalker
                         $"Class '{typeSymbol.Name}' does not implement interface method '{iface.Name}.{interfaceMethod.Name}'",
                         declarationLine,
                         declarationColumn,
-                        code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                        code: DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
                         span: declarationSpan);
                     continue;
                 }

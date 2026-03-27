@@ -709,9 +709,8 @@ internal class TypeSyntaxMapper
     /// </summary>
     public TypeSyntax InferElementType(IEnumerable<Expression> expressions)
     {
-        // For v0.1, we'll use a simple heuristic:
-        // - If all expressions are the same literal type, use that
-        // - Otherwise, use object
+        // Infer element type by checking if all expressions share the same type.
+        // If they do, use that type; otherwise fall back to object.
 
         var exprs = expressions.ToList();
         if (exprs.Count == 0)

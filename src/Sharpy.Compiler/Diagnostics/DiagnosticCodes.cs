@@ -291,7 +291,8 @@ public static class DiagnosticCodes
         public const string InvalidDecoratorUsage = "SPY0322";      // Active
         public const string ConflictingSynthesizedInterface = "SPY0323"; // Active
         public const string WithNotDisposable = "SPY0324";          // Active
-        // SPY0325-SPY0339: Reserved for future protocol/operator diagnostics
+        public const string InterfaceMethodNotImplemented = "SPY0325"; // Active
+        // SPY0326-SPY0339: Reserved for future protocol/operator diagnostics
 
         #endregion
 
