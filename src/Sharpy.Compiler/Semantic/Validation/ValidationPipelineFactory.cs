@@ -20,6 +20,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new NamingConventionValidator())  // Order: 55 (naming convention warnings)
             .AddValidator(new DecoratorValidator())         // Order: 60 (validates decorator usage)
             .AddValidator(new BodylessSyntaxValidator())    // Order: 62 (deprecation warnings for body-less methods)
+            .AddValidator(new ConstructorOverloadValidator()) // Order: 140 (constructor overload validation)
             .AddValidator(new SignatureValidator())         // Order: 150 (early, validates dunder signatures)
             .AddValidator(new GeneratorValidator())         // Order: 155 (generator guard rails)
             .AddValidator(new EqualityContractValidator())  // Order: 160 (warns on __eq__ without object overload)

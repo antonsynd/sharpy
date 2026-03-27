@@ -654,9 +654,6 @@ internal partial class TypeChecker
             CheckStatement(statement);
         }
 
-        // Validate constructor overloads after all members are checked
-        ValidateConstructorOverloads(classSymbol, classDef.Body);
-
         // Validate interface implementations (skip for abstract classes)
         if (!classSymbol.IsAbstract)
         {
