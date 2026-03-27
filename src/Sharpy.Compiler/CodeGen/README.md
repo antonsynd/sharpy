@@ -17,7 +17,7 @@ This directory contains the Roslyn-based C# code generator.
   - `.CompilationUnit.cs` - Top-level compilation unit
   - `.Operators.cs` - Operator method emission
 - `CodeGenContext.cs` - Shared context for emission
-- `TypeMapper.cs` - Maps Sharpy types to C# types
+- `TypeSyntaxMapper.cs` - Maps Sharpy types to C# types
 - `NameMangler.cs` - Converts snake_case to PascalCase, dunder methods
 - `CodeValidator.cs` - Validates generated code compiles
 

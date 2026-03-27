@@ -39,7 +39,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new DunderInvocationValidator())  // Order: 460 (dunder call rules)
             .AddValidator(new InterfaceImplementationValidator()) // Order: 480 (interface impl checks)
             .AddValidator(new ProtocolValidator())          // Order: 500
-            .AddValidator(new OperatorValidator())          // Order: 500
+            .AddValidator(new OperatorValidator())          // Order: 501
             ;
     }
 
