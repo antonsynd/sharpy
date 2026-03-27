@@ -278,6 +278,69 @@ internal static class NameMangler
         return EscapeKeywordIfNeeded(name);
     }
 
+    // Common .NET namespace acronyms that should be all uppercase
+    private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp",
+        "smtp", "tcp", "udp", "ip", "uri", "url", "json", "csv", "guid"
+    };
+
+    /// <summary>
+    /// Convert a name to a valid C# namespace part using simple PascalCase.
+    /// Unlike <see cref="ToPascalCase"/>, this does not use form detection or
+    /// uniqueness tracking. It handles acronyms, sanitizes invalid characters,
+    /// and applies simple capitalize-first-of-each-segment logic.
+    /// </summary>
+    public static string ToNamespacePart(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return name;
+
+        // Handle literal names (backtick-escaped)
+        if (name.StartsWith("`") && name.EndsWith("`"))
+        {
+            if (name.Length <= 2)
+                return name;
+            return name[1..^1];
+        }
+
+        // Check if this is a known acronym that should be all uppercase
+        if (UpperCaseAcronyms.Contains(name))
+        {
+            return name.ToUpperInvariant();
+        }
+
+        // Replace invalid identifier characters with underscores, then split
+        // Valid C# identifier chars: letters, digits (not at start), underscores
+        var sanitized = new System.Text.StringBuilder(name.Length);
+        foreach (var c in name)
+        {
+            if (char.IsLetterOrDigit(c) || c == '_')
+                sanitized.Append(c);
+            else
+                sanitized.Append('_');
+        }
+
+        // Split by underscore and capitalize each part
+        var parts = sanitized.ToString().Split('_', StringSplitOptions.RemoveEmptyEntries);
+
+        // Handle edge case where name is only underscores (e.g., "___")
+        if (parts.Length == 0)
+            return "_";
+
+        var result = string.Join("", parts.Select(p =>
+            char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p[1..] : "")
+        ));
+
+        // If result starts with a digit, prefix with underscore to make it valid
+        if (result.Length > 0 && char.IsDigit(result[0]))
+        {
+            result = "_" + result;
+        }
+
+        return string.IsNullOrEmpty(result) ? "_" : result;
+    }
+
     /// <summary>
     /// Get the C# equivalent name for a Python list method, if it exists
     /// </summary>
