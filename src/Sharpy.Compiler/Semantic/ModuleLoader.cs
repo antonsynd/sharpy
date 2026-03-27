@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
@@ -13,9 +14,10 @@ internal class ModuleLoader
 {
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();
-    private readonly HashSet<string> _loadedModules = new();
+    private readonly ConcurrentDictionary<string, bool> _loadedModules = new();
     private readonly Stack<ImportChainEntry> _importChain = new();
-    private readonly Dictionary<string, ModuleInfo> _moduleCache = new();
+    private readonly object _importChainLock = new();
+    private readonly ConcurrentDictionary<string, ModuleInfo> _moduleCache = new();
     private CancellationToken _cancellationToken;
 
     /// <summary>
@@ -70,10 +72,11 @@ internal class ModuleLoader
         }
 
         // Check if already loaded
-        if (_loadedModules.Contains(modulePath))
+        if (_loadedModules.ContainsKey(modulePath))
         {
             _logger.LogDebug($"[ModuleLoader] LoadModule: {Path.GetFileName(modulePath)} (already loaded)");
-            return _moduleCache.GetValueOrDefault(modulePath);
+            _moduleCache.TryGetValue(modulePath, out var loaded);
+            return loaded;
         }
 
         _logger.LogInfo($"Loading module: {modulePath}");
@@ -84,12 +87,15 @@ internal class ModuleLoader
         _logger.LogDebug($"[ModuleLoader]   Canonical module name: {canonicalModuleName}");
 
         // Push to import chain before loading
-        _importChain.Push(new ImportChainEntry(
-            modulePath,
-            lineStart,
-            columnStart,
-            CurrentModulePath
-        ));
+        lock (_importChainLock)
+        {
+            _importChain.Push(new ImportChainEntry(
+                modulePath,
+                lineStart,
+                columnStart,
+                CurrentModulePath
+            ));
+        }
 
         try
         {
@@ -130,7 +136,7 @@ internal class ModuleLoader
             resolveModuleImports?.Invoke(module, moduleInfo, Path.GetDirectoryName(modulePath));
 
             _moduleCache[modulePath] = moduleInfo;
-            _loadedModules.Add(modulePath);
+            _loadedModules.TryAdd(modulePath, true);
 
             // Log final exported symbols
             _logger.LogDebug($"[ModuleLoader] Module {Path.GetFileName(modulePath)} loaded with {moduleInfo.ExportedSymbols.Count} exports:");
@@ -159,7 +165,10 @@ internal class ModuleLoader
         }
         finally
         {
-            _importChain.Pop();
+            lock (_importChainLock)
+            {
+                _importChain.Pop();
+            }
         }
     }
 
@@ -168,7 +177,8 @@ internal class ModuleLoader
     /// </summary>
     public ModuleInfo? GetCachedModule(string modulePath)
     {
-        return _moduleCache.GetValueOrDefault(modulePath);
+        _moduleCache.TryGetValue(modulePath, out var moduleInfo);
+        return moduleInfo;
     }
 
     /// <summary>
@@ -177,7 +187,7 @@ internal class ModuleLoader
     public void CacheModule(string key, ModuleInfo moduleInfo)
     {
         _moduleCache[key] = moduleInfo;
-        _loadedModules.Add(key);
+        _loadedModules.TryAdd(key, true);
     }
 
     /// <summary>
@@ -650,26 +660,32 @@ internal class ModuleLoader
 
     private bool IsModuleInChain(string modulePath)
     {
-        return _importChain.Any(e => e.ModulePath == modulePath);
+        lock (_importChainLock)
+        {
+            return _importChain.Any(e => e.ModulePath == modulePath);
+        }
     }
 
     private string FormatCircularImportChain(string cycleStartModule)
     {
-        var chain = new System.Text.StringBuilder();
-        chain.AppendLine("Circular import detected:");
-
-        var entries = _importChain.Reverse().ToList();
-        var cycleStartIndex = entries.FindIndex(e => e.ModulePath == cycleStartModule);
-
-        for (int i = cycleStartIndex; i < entries.Count; i++)
+        lock (_importChainLock)
         {
-            var entry = entries[i];
-            chain.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  -> {Path.GetFileName(entry.ModulePath)}");
+            var chain = new System.Text.StringBuilder();
+            chain.AppendLine("Circular import detected:");
+
+            var entries = _importChain.Reverse().ToList();
+            var cycleStartIndex = entries.FindIndex(e => e.ModulePath == cycleStartModule);
+
+            for (int i = cycleStartIndex; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+                chain.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  -> {Path.GetFileName(entry.ModulePath)}");
+            }
+
+            chain.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  -> {Path.GetFileName(cycleStartModule)} (cycle)");
+
+            return chain.ToString().TrimEnd();
         }
-
-        chain.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  -> {Path.GetFileName(cycleStartModule)} (cycle)");
-
-        return chain.ToString().TrimEnd();
     }
 
     private void AddError(string message, int? line, int? column, string? code = null)
