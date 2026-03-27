@@ -282,39 +282,11 @@ internal static class SymbolSerializer
 
     /// <summary>
     /// Serializes a SemanticType to a string ID for storage.
+    /// Delegates to <see cref="TypeCodecRegistry"/> for encode/decode logic.
     /// </summary>
     private static string SerializeType(SemanticType type)
     {
-        return type switch
-        {
-            BuiltinType bt => $"builtin:{bt.Name}",
-            GenericType gt => $"generic:{gt.Name}[{string.Join(",", gt.TypeArguments.Select(SerializeType))}]",
-            UserDefinedType udt => $"user:{udt.Name}",
-            NullableType nt => $"nullable:{SerializeType(nt.UnderlyingType)}",
-            OptionalType ot => $"optional:{SerializeType(ot.UnderlyingType)}",
-            FunctionType ft => $"func:({string.Join(",", ft.ParameterTypes.Select(SerializeType))})->{SerializeType(ft.ReturnType)}",
-            TupleType tt => $"tuple:[{string.Join(",", tt.ElementTypes.Select(SerializeType))}]",
-            VoidType => "void:",
-            UnknownType => "unknown:",
-            ModuleType mt => $"module:{mt.Symbol.Name}",
-            TypeParameterType tpt => $"typeparam:{tpt.Name}",
-            ResultType rt => $"result:{SerializeType(rt.OkType)}!{SerializeType(rt.ErrorType)}",
-
-            // GenericFunctionType: serialize as the underlying function with type args marker
-            GenericFunctionType gft => $"gfunc:{gft.FunctionSymbol.Name}[{string.Join(",", gft.TypeArguments.Select(SerializeType))}]",
-
-            // UnionType: placeholder for v0.2.x tagged unions
-            UnionType ut => $"union:{ut.Name}[{string.Join(",", ut.CaseTypes.Select(SerializeType))}]",
-
-            // TaskType: async task wrapper
-            TaskType tt => tt.ResultType == null
-                ? "task:"
-                : $"task:{SerializeType(tt.ResultType)}",
-
-            // Exhaustive check - if a new SemanticType is added, this will fail at runtime
-            _ => throw new NotSupportedException(
-                $"Unhandled SemanticType in SerializeType: {type.GetType().Name}")
-        };
+        return TypeCodecRegistry.Serialize(type);
     }
 
     #endregion
@@ -561,159 +533,13 @@ internal static class SymbolSerializer
 
     /// <summary>
     /// Resolves a type ID back to a SemanticType.
+    /// Delegates to <see cref="TypeCodecRegistry"/> for encode/decode logic.
     /// </summary>
     private static SemanticType ResolveTypeFromId(string typeId)
     {
-        if (string.IsNullOrEmpty(typeId))
-            return SemanticType.Unknown;
-
-        var colonIndex = typeId.IndexOf(':', StringComparison.Ordinal);
-        if (colonIndex < 0)
-            return SemanticType.Unknown;
-
-        var prefix = typeId[..colonIndex];
-        var value = typeId[(colonIndex + 1)..];
-
-        return prefix switch
-        {
-            "builtin" => ResolveBuiltinType(value),
-            "void" => SemanticType.Void,
-            "unknown" => SemanticType.Unknown,
-            "user" => new UserDefinedType { Name = value },
-            "nullable" => new NullableType { UnderlyingType = ResolveTypeFromId(value) },
-            "optional" => new OptionalType { UnderlyingType = ResolveTypeFromId(value) },
-            "module" => CreateModuleType(value),
-            "typeparam" => new TypeParameterType { Name = value },
-            "generic" => ResolveGenericType(value),
-            "tuple" => ResolveTupleType(value),
-            "func" => ResolveFunctionType(value),
-            "result" => ResolveResultType(value),
-            "gfunc" => ResolveGenericFunctionType(value),
-            "union" => ResolveUnionType(value),
-            "task" => ResolveTaskType(value),
-            // Unknown prefix - return Unknown for graceful degradation with older cache formats
-            _ => SemanticType.Unknown
-        };
+        return TypeCodecRegistry.Deserialize(typeId);
     }
 
-    private static SemanticType ResolveBuiltinType(string name)
-    {
-        return name.ToLowerInvariant() switch
-        {
-            "int" => BuiltinType.Int,
-            "long" => BuiltinType.Long,
-            "float" => BuiltinType.Float,
-            "double" => BuiltinType.Double,
-            "float32" => BuiltinType.Float32,
-            "bool" => BuiltinType.Bool,
-            "str" => BuiltinType.Str,
-            _ => SemanticType.Unknown
-        };
-    }
-
-    private static SemanticType CreateModuleType(string name)
-    {
-        // Create a placeholder ModuleSymbol for the ModuleType
-        // The actual symbol will be resolved later from the symbol table
-        var placeholderSymbol = new ModuleSymbol { Name = name, Kind = SymbolKind.Module };
-        return new ModuleType { Symbol = placeholderSymbol };
-    }
-
-    private static SemanticType ResolveGenericType(string value)
-    {
-        // Format: Name[Type1,Type2,...]
-        var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
-        if (bracketIndex < 0)
-            return new GenericType { Name = value, TypeArguments = new List<SemanticType>() };
-
-        var name = value[..bracketIndex];
-        var argsStr = value[(bracketIndex + 1)..^1]; // Remove [ and ]
-
-        var typeArgs = ParseTypeArguments(argsStr);
-        return new GenericType { Name = name, TypeArguments = typeArgs };
-    }
-
-    private static SemanticType ResolveTupleType(string value)
-    {
-        // Format: [Type1,Type2,...]
-        var inner = value.TrimStart('[').TrimEnd(']');
-        var elementTypes = ParseTypeArguments(inner);
-        return new TupleType { ElementTypes = elementTypes };
-    }
-
-    private static SemanticType ResolveFunctionType(string value)
-    {
-        // Format: (ParamType1,ParamType2,...)->ReturnType
-        var arrowIndex = value.IndexOf("->", StringComparison.Ordinal);
-        if (arrowIndex < 0)
-            return SemanticType.Unknown;
-
-        var paramsStr = value[1..(arrowIndex - 1)]; // Remove ( and )
-        var returnStr = value[(arrowIndex + 2)..];
-
-        var paramTypes = string.IsNullOrEmpty(paramsStr)
-            ? new List<SemanticType>()
-            : ParseTypeArguments(paramsStr);
-
-        var returnType = ResolveTypeFromId(returnStr);
-        return new FunctionType { ParameterTypes = paramTypes, ReturnType = returnType };
-    }
-
-    private static SemanticType ResolveResultType(string value)
-    {
-        // Format: OkType!ErrorType
-        var bangIndex = value.IndexOf('!', StringComparison.Ordinal);
-        if (bangIndex < 0)
-            return SemanticType.Unknown;
-
-        var okType = ResolveTypeFromId(value[..bangIndex]);
-        var errorType = ResolveTypeFromId(value[(bangIndex + 1)..]);
-        return new ResultType { OkType = okType, ErrorType = errorType };
-    }
-
-    private static SemanticType ResolveGenericFunctionType(string value)
-    {
-        // Format: FunctionName[Type1,Type2,...]
-        // Note: We can't fully restore GenericFunctionType without the FunctionSymbol,
-        // which requires the full symbol table. Return a placeholder that stores the name.
-        var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
-        if (bracketIndex < 0)
-        {
-            // No type arguments, just the function name - return Unknown
-            return SemanticType.Unknown;
-        }
-
-        var argsStr = value[(bracketIndex + 1)..^1]; // Remove [ and ]
-        var typeArgs = ParseTypeArguments(argsStr);
-
-        // Return as a generic type for now - full GenericFunctionType restoration
-        // requires the FunctionSymbol which isn't available during deserialization
-        return new GenericType { Name = value[..bracketIndex], TypeArguments = typeArgs };
-    }
-
-    private static SemanticType ResolveUnionType(string value)
-    {
-        // Format: UnionName[CaseType1,CaseType2,...]
-        var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
-        if (bracketIndex < 0)
-            return new UnionType { Name = value, CaseTypes = new List<SemanticType>() };
-
-        var name = value[..bracketIndex];
-        var argsStr = value[(bracketIndex + 1)..^1]; // Remove [ and ]
-        var caseTypes = ParseTypeArguments(argsStr);
-
-        return new UnionType { Name = name, CaseTypes = caseTypes };
-    }
-
-    private static SemanticType ResolveTaskType(string value)
-    {
-        // Format: (empty for Task, or ResultType for Task<T>)
-        if (string.IsNullOrEmpty(value))
-            return new TaskType { ResultType = null };
-
-        var resultType = ResolveTypeFromId(value);
-        return new TaskType { ResultType = resultType };
-    }
 
     /// <summary>
     /// Parses a comma-separated list of type IDs, handling nested brackets.
@@ -949,4 +775,201 @@ internal static class SymbolSerializer
     }
 
     #endregion
+
+    /// <summary>
+    /// Centralizes serialize/deserialize logic for each SemanticType subtype.
+    /// Adding a new SemanticType requires only one registration in <see cref="RegisterAll"/>.
+    /// </summary>
+    private static class TypeCodecRegistry
+    {
+        private delegate string Encoder(SemanticType type);
+        private delegate SemanticType Decoder(string value);
+
+        /// <summary>
+        /// Maps concrete SemanticType CLR types to their (prefix, encoder) pair.
+        /// </summary>
+        private static readonly Dictionary<Type, (string Prefix, Encoder Encode)> s_encoders = new();
+
+        /// <summary>
+        /// Maps serialized prefixes to their decoder function.
+        /// </summary>
+        private static readonly Dictionary<string, Decoder> s_decoders = new();
+
+        static TypeCodecRegistry()
+        {
+            RegisterAll();
+        }
+
+        /// <summary>
+        /// Registers a codec for a SemanticType subtype. Each registration pairs a string prefix
+        /// with an encoder (SemanticType -> value string) and decoder (value string -> SemanticType).
+        /// </summary>
+        private static void Register<T>(string prefix, Func<T, string> encode, Decoder decode) where T : SemanticType
+        {
+            s_encoders[typeof(T)] = (prefix, type => encode((T)type));
+            s_decoders[prefix] = decode;
+        }
+
+        private static void RegisterAll()
+        {
+            Register<BuiltinType>("builtin",
+                bt => bt.Name,
+                value => ResolveBuiltinType(value));
+
+            Register<GenericType>("generic",
+                gt => $"{gt.Name}[{string.Join(",", gt.TypeArguments.Select(Serialize))}]",
+                value =>
+                {
+                    var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
+                    if (bracketIndex < 0)
+                        return new GenericType { Name = value, TypeArguments = new List<SemanticType>() };
+                    var name = value[..bracketIndex];
+                    var argsStr = value[(bracketIndex + 1)..^1];
+                    return new GenericType { Name = name, TypeArguments = ParseTypeArguments(argsStr) };
+                });
+
+            Register<UserDefinedType>("user",
+                udt => udt.Name,
+                value => new UserDefinedType { Name = value });
+
+            Register<NullableType>("nullable",
+                nt => Serialize(nt.UnderlyingType),
+                value => new NullableType { UnderlyingType = Deserialize(value) });
+
+            Register<OptionalType>("optional",
+                ot => Serialize(ot.UnderlyingType),
+                value => new OptionalType { UnderlyingType = Deserialize(value) });
+
+            Register<FunctionType>("func",
+                ft => $"({string.Join(",", ft.ParameterTypes.Select(Serialize))})->{Serialize(ft.ReturnType)}",
+                value =>
+                {
+                    var arrowIndex = value.IndexOf("->", StringComparison.Ordinal);
+                    if (arrowIndex < 0)
+                        return SemanticType.Unknown;
+                    var paramsStr = value[1..(arrowIndex - 1)];
+                    var returnStr = value[(arrowIndex + 2)..];
+                    var paramTypes = string.IsNullOrEmpty(paramsStr)
+                        ? new List<SemanticType>()
+                        : ParseTypeArguments(paramsStr);
+                    return new FunctionType { ParameterTypes = paramTypes, ReturnType = Deserialize(returnStr) };
+                });
+
+            Register<TupleType>("tuple",
+                tt => $"[{string.Join(",", tt.ElementTypes.Select(Serialize))}]",
+                value =>
+                {
+                    var inner = value.TrimStart('[').TrimEnd(']');
+                    return new TupleType { ElementTypes = ParseTypeArguments(inner) };
+                });
+
+            Register<VoidType>("void",
+                _ => "",
+                _ => SemanticType.Void);
+
+            Register<UnknownType>("unknown",
+                _ => "",
+                _ => SemanticType.Unknown);
+
+            Register<ModuleType>("module",
+                mt => mt.Symbol.Name,
+                value =>
+                {
+                    var placeholderSymbol = new ModuleSymbol { Name = value, Kind = SymbolKind.Module };
+                    return new ModuleType { Symbol = placeholderSymbol };
+                });
+
+            Register<TypeParameterType>("typeparam",
+                tpt => tpt.Name,
+                value => new TypeParameterType { Name = value });
+
+            Register<ResultType>("result",
+                rt => $"{Serialize(rt.OkType)}!{Serialize(rt.ErrorType)}",
+                value =>
+                {
+                    var bangIndex = value.IndexOf('!', StringComparison.Ordinal);
+                    if (bangIndex < 0)
+                        return SemanticType.Unknown;
+                    return new ResultType { OkType = Deserialize(value[..bangIndex]), ErrorType = Deserialize(value[(bangIndex + 1)..]) };
+                });
+
+            // GenericFunctionType: serialize as the underlying function with type args marker
+            Register<GenericFunctionType>("gfunc",
+                gft => $"{gft.FunctionSymbol.Name}[{string.Join(",", gft.TypeArguments.Select(Serialize))}]",
+                value =>
+                {
+                    var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
+                    if (bracketIndex < 0)
+                        return SemanticType.Unknown;
+                    var argsStr = value[(bracketIndex + 1)..^1];
+                    var typeArgs = ParseTypeArguments(argsStr);
+                    // Return as GenericType -- full GenericFunctionType restoration
+                    // requires the FunctionSymbol which is not available during deserialization
+                    return new GenericType { Name = value[..bracketIndex], TypeArguments = typeArgs };
+                });
+
+            // UnionType: placeholder for v0.2.x tagged unions
+            Register<UnionType>("union",
+                ut => $"{ut.Name}[{string.Join(",", ut.CaseTypes.Select(Serialize))}]",
+                value =>
+                {
+                    var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
+                    if (bracketIndex < 0)
+                        return new UnionType { Name = value, CaseTypes = new List<SemanticType>() };
+                    var name = value[..bracketIndex];
+                    var argsStr = value[(bracketIndex + 1)..^1];
+                    return new UnionType { Name = name, CaseTypes = ParseTypeArguments(argsStr) };
+                });
+
+            // TaskType: async task wrapper
+            Register<TaskType>("task",
+                tt => tt.ResultType == null ? "" : Serialize(tt.ResultType),
+                value => string.IsNullOrEmpty(value)
+                    ? new TaskType { ResultType = null }
+                    : new TaskType { ResultType = Deserialize(value) });
+        }
+
+        public static string Serialize(SemanticType type)
+        {
+            if (s_encoders.TryGetValue(type.GetType(), out var codec))
+                return $"{codec.Prefix}:{codec.Encode(type)}";
+
+            throw new NotSupportedException(
+                $"Unhandled SemanticType in SerializeType: {type.GetType().Name}");
+        }
+
+        public static SemanticType Deserialize(string typeId)
+        {
+            if (string.IsNullOrEmpty(typeId))
+                return SemanticType.Unknown;
+
+            var colonIndex = typeId.IndexOf(':', StringComparison.Ordinal);
+            if (colonIndex < 0)
+                return SemanticType.Unknown;
+
+            var prefix = typeId[..colonIndex];
+            var value = typeId[(colonIndex + 1)..];
+
+            if (s_decoders.TryGetValue(prefix, out var decode))
+                return decode(value);
+
+            // Unknown prefix -- graceful degradation with older cache formats
+            return SemanticType.Unknown;
+        }
+
+        private static SemanticType ResolveBuiltinType(string name)
+        {
+            return name.ToLowerInvariant() switch
+            {
+                "int" => BuiltinType.Int,
+                "long" => BuiltinType.Long,
+                "float" => BuiltinType.Float,
+                "double" => BuiltinType.Double,
+                "float32" => BuiltinType.Float32,
+                "bool" => BuiltinType.Bool,
+                "str" => BuiltinType.Str,
+                _ => SemanticType.Unknown
+            };
+        }
+    }
 }
