@@ -557,63 +557,6 @@ public class Compiler
         }
     }
 
-    // ----- Phase Boundary Assertions (backward-compatible wrappers) -----
-    // These methods delegate to CompilerInvariants for backward compatibility
-    // with tests that directly call Compiler.AssertXxx() methods.
-
-    /// <summary>
-    /// Verify top-level statements have TextSpan populated.
-    /// Emits SPY0904 if any statement is missing its span.
-    /// </summary>
-    /// <remarks>
-    /// This method delegates to <see cref="CompilerInvariants.AssertStatementsHaveSpans"/>.
-    /// Kept for backward compatibility with existing tests.
-    /// </remarks>
-    internal static void AssertStatementsHaveSpans(Module module, DiagnosticBag diagnostics)
-        => CompilerInvariants.AssertStatementsHaveSpans(module, diagnostics);
-
-    /// <summary>
-    /// Verify all symbols in the global scope have non-empty names.
-    /// Emits SPY0904 for any symbol with a null/empty name.
-    /// </summary>
-    /// <remarks>
-    /// This method delegates to <see cref="CompilerInvariants.AssertAllSymbolsHaveNames"/>.
-    /// Kept for backward compatibility with existing tests.
-    /// </remarks>
-    internal static void AssertAllSymbolsHaveNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
-        => CompilerInvariants.AssertAllSymbolsHaveNames(symbolTable, diagnostics);
-
-    /// <summary>
-    /// Verify no duplicate type definitions exist in the symbol table.
-    /// </summary>
-    /// <remarks>
-    /// This method delegates to <see cref="CompilerInvariants.AssertNoDuplicateTypeNames"/>.
-    /// Kept for backward compatibility with existing tests.
-    /// </remarks>
-    internal static void AssertNoDuplicateTypeNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
-        => CompilerInvariants.AssertNoDuplicateTypeNames(symbolTable, diagnostics);
-
-    /// <summary>
-    /// Verify all UnresolvedBaseName/UnresolvedInterfaceNames have been resolved.
-    /// </summary>
-    /// <remarks>
-    /// This method delegates to <see cref="CompilerInvariants.AssertNoUnresolvedInheritance"/>.
-    /// Kept for backward compatibility with existing tests.
-    /// </remarks>
-    internal static void AssertNoUnresolvedInheritance(SymbolTable symbolTable, DiagnosticBag diagnostics)
-        => CompilerInvariants.AssertNoUnresolvedInheritance(symbolTable, diagnostics);
-
-    /// <summary>
-    /// Error if unexpected unknown expression types remain after successful type checking.
-    /// Unknown types from error recovery are expected; others indicate compiler bugs (SPY0907).
-    /// </summary>
-    /// <remarks>
-    /// This method delegates to <see cref="CompilerInvariants.WarnIfUnknownTypes"/>.
-    /// Kept for backward compatibility with existing tests.
-    /// </remarks>
-    internal static void WarnIfUnknownTypes(SemanticInfo semanticInfo, DiagnosticBag diagnostics)
-        => CompilerInvariants.WarnIfUnknownTypes(semanticInfo, diagnostics);
-
     /// <summary>
     /// Create CompilerServices from compilation state.
     /// </summary>

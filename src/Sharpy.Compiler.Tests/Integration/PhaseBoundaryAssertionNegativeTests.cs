@@ -29,7 +29,7 @@ public class PhaseBoundaryAssertionNegativeTests
         };
         var diagnostics = new DiagnosticBag();
 
-        Compiler.AssertStatementsHaveSpans(module, diagnostics);
+        CompilerInvariants.AssertStatementsHaveSpans(module, diagnostics);
 
         var violations = diagnostics.GetWarnings()
             .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
@@ -55,7 +55,7 @@ public class PhaseBoundaryAssertionNegativeTests
         };
         var diagnostics = new DiagnosticBag();
 
-        Compiler.AssertStatementsHaveSpans(module, diagnostics);
+        CompilerInvariants.AssertStatementsHaveSpans(module, diagnostics);
 
         var violations = diagnostics.GetWarnings()
             .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
@@ -75,7 +75,7 @@ public class PhaseBoundaryAssertionNegativeTests
         };
         var diagnostics = new DiagnosticBag();
 
-        Compiler.AssertStatementsHaveSpans(module, diagnostics);
+        CompilerInvariants.AssertStatementsHaveSpans(module, diagnostics);
 
         var violations = diagnostics.GetWarnings()
             .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
@@ -94,7 +94,7 @@ public class PhaseBoundaryAssertionNegativeTests
 
         var diagnostics = new DiagnosticBag();
 
-        Compiler.AssertAllSymbolsHaveNames(symbolTable, diagnostics);
+        CompilerInvariants.AssertAllSymbolsHaveNames(symbolTable, diagnostics);
 
         var violations = diagnostics.GetWarnings()
             .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
@@ -113,7 +113,7 @@ public class PhaseBoundaryAssertionNegativeTests
 
         var diagnostics = new DiagnosticBag();
 
-        Compiler.AssertAllSymbolsHaveNames(symbolTable, diagnostics);
+        CompilerInvariants.AssertAllSymbolsHaveNames(symbolTable, diagnostics);
 
         var violations = diagnostics.GetWarnings()
             .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
@@ -146,7 +146,7 @@ public class PhaseBoundaryAssertionNegativeTests
         });
 
         var diagnostics = new DiagnosticBag();
-        Compiler.AssertNoDuplicateTypeNames(symbolTable, diagnostics);
+        CompilerInvariants.AssertNoDuplicateTypeNames(symbolTable, diagnostics);
 
         var violations = diagnostics.GetWarnings()
             .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
@@ -178,7 +178,7 @@ public class PhaseBoundaryAssertionNegativeTests
 
         var diagnostics = new DiagnosticBag();
 
-        Compiler.AssertNoDuplicateTypeNames(symbolTable, diagnostics);
+        CompilerInvariants.AssertNoDuplicateTypeNames(symbolTable, diagnostics);
 
         var violations = diagnostics.GetWarnings()
             .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
@@ -203,7 +203,7 @@ public class PhaseBoundaryAssertionNegativeTests
 
         var diagnostics = new DiagnosticBag();
 
-        Compiler.AssertNoUnresolvedInheritance(symbolTable, diagnostics);
+        CompilerInvariants.AssertNoUnresolvedInheritance(symbolTable, diagnostics);
 
         var violations = diagnostics.GetWarnings()
             .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
@@ -230,7 +230,7 @@ public class PhaseBoundaryAssertionNegativeTests
 
         var diagnostics = new DiagnosticBag();
 
-        Compiler.AssertNoUnresolvedInheritance(symbolTable, diagnostics);
+        CompilerInvariants.AssertNoUnresolvedInheritance(symbolTable, diagnostics);
 
         var violations = diagnostics.GetWarnings()
             .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
@@ -250,7 +250,7 @@ public class PhaseBoundaryAssertionNegativeTests
         var expr = new IntegerLiteral { Value = "42", LineStart = 1, ColumnStart = 1 };
         semanticInfo.SetExpressionType(expr, SemanticType.Unknown);
 
-        Compiler.WarnIfUnknownTypes(semanticInfo, diagnostics);
+        CompilerInvariants.WarnIfUnknownTypes(semanticInfo, diagnostics);
 
         var violations = diagnostics.GetErrors()
             .Where(e => e.Code == DiagnosticCodes.Infrastructure.UnexpectedUnknownType)
@@ -270,7 +270,7 @@ public class PhaseBoundaryAssertionNegativeTests
         semanticInfo.SetExpressionType(expr, SemanticType.Unknown);
         diagnostics.AddError("Some type error", code: "SPY0220");
 
-        Compiler.WarnIfUnknownTypes(semanticInfo, diagnostics);
+        CompilerInvariants.WarnIfUnknownTypes(semanticInfo, diagnostics);
 
         // With errors present, the unknown type is expected (error recovery) — no violation
         var violations = diagnostics.GetWarnings()
@@ -289,7 +289,7 @@ public class PhaseBoundaryAssertionNegativeTests
         var expr = new IntegerLiteral { Value = "42", LineStart = 1, ColumnStart = 1 };
         semanticInfo.SetExpressionType(expr, SemanticType.Int);
 
-        Compiler.WarnIfUnknownTypes(semanticInfo, diagnostics);
+        CompilerInvariants.WarnIfUnknownTypes(semanticInfo, diagnostics);
 
         var violations = diagnostics.GetWarnings()
             .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
