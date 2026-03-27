@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Analysis.ControlFlow;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
@@ -57,11 +58,12 @@ internal class StructRulesValidator : ValidatingAstWalker
         if (constructorDef == null)
             return;
 
-        var initializedFields = new HashSet<string>();
-        AnalyzeConstructorForFieldInitialization(constructorDef.Body, initializedFields);
+        var cfgBuilder = new ControlFlowGraphBuilder();
+        var cfg = cfgBuilder.Build(constructorDef);
+        var definitelyAssigned = DefiniteFieldAssignmentAnalysis.FindDefinitelyAssignedFields(cfg);
 
         var uninitializedFields = structSymbol.Fields
-            .Where(f => !initializedFields.Contains(f.Name))
+            .Where(f => !definitelyAssigned.Contains(f.Name))
             .ToList();
 
         if (uninitializedFields.Count > 0)
@@ -74,33 +76,6 @@ internal class StructRulesValidator : ValidatingAstWalker
                 constructorDef.ColumnStart,
                 code: DiagnosticCodes.Semantic.UninitializedStructField,
                 span: constructorDef.Span);
-        }
-    }
-
-    private static void AnalyzeConstructorForFieldInitialization(
-        IReadOnlyList<Statement> statements,
-        HashSet<string> initializedFields)
-    {
-        foreach (var statement in statements)
-        {
-            switch (statement)
-            {
-                case Assignment assignment:
-                    if (assignment.Target is MemberAccess memberAccess &&
-                        memberAccess.Object is Identifier id &&
-                        id.Name == PythonNames.Self)
-                    {
-                        initializedFields.Add(memberAccess.Member);
-                    }
-                    break;
-
-                case IfStatement:
-                case WhileStatement:
-                case ForStatement:
-                case TryStatement:
-                    // Don't track fields initialized inside conditionals/loops/try
-                    break;
-            }
         }
     }
 }
