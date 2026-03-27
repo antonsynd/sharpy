@@ -677,6 +677,7 @@ internal class ModuleLoader
         var errorMessage = CurrentModulePath != null
             ? $"{message} (in {Path.GetFileName(CurrentModulePath)})"
             : message;
-        _diagnostics.AddError(errorMessage, line, column, CurrentModulePath, code, CompilerPhase.ImportResolution);
+        _diagnostics.AddPhaseError(errorMessage, CompilerPhase.ImportResolution,
+            line: line, column: column, filePath: CurrentModulePath, code: code);
     }
 }

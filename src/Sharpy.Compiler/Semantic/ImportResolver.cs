@@ -1002,7 +1002,8 @@ internal class ImportResolver
         var errorMessage = _currentModulePath != null
             ? $"{message} (in {Path.GetFileName(_currentModulePath)})"
             : message;
-        _diagnostics.AddError(errorMessage, span, line, column, _currentModulePath, code, CompilerPhase.ImportResolution);
+        _diagnostics.AddPhaseError(errorMessage, CompilerPhase.ImportResolution,
+            span: span, line: line, column: column, filePath: _currentModulePath, code: code);
     }
 
     /// <summary>

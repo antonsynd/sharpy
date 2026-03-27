@@ -64,7 +64,7 @@ internal class ModuleRegistry
             var resolvedPath = ResolveAssemblyPath(assemblyPath);
             if (resolvedPath == null)
             {
-                AddError($"Assembly not found: {assemblyPath}", DiagnosticCodes.Semantic.AssemblyNotFound);
+                _diagnostics.AddPhaseError($"Assembly not found: {assemblyPath}", CompilerPhase.ImportResolution, code: DiagnosticCodes.Semantic.AssemblyNotFound);
                 return false;
             }
 
@@ -87,17 +87,17 @@ internal class ModuleRegistry
         }
         catch (IOException ex)
         {
-            AddError($"Failed to load assembly '{assemblyPath}': {ex.Message}", DiagnosticCodes.Semantic.AssemblyLoadError);
+            _diagnostics.AddPhaseError($"Failed to load assembly '{assemblyPath}': {ex.Message}", CompilerPhase.ImportResolution, code: DiagnosticCodes.Semantic.AssemblyLoadError);
             return false;
         }
         catch (BadImageFormatException ex)
         {
-            AddError($"Invalid assembly format '{assemblyPath}': {ex.Message}", DiagnosticCodes.Semantic.AssemblyLoadError);
+            _diagnostics.AddPhaseError($"Invalid assembly format '{assemblyPath}': {ex.Message}", CompilerPhase.ImportResolution, code: DiagnosticCodes.Semantic.AssemblyLoadError);
             return false;
         }
         catch (UnauthorizedAccessException ex)
         {
-            AddError($"Access denied loading assembly '{assemblyPath}': {ex.Message}", DiagnosticCodes.Semantic.AssemblyLoadError);
+            _diagnostics.AddPhaseError($"Access denied loading assembly '{assemblyPath}': {ex.Message}", CompilerPhase.ImportResolution, code: DiagnosticCodes.Semantic.AssemblyLoadError);
             return false;
         }
     }
@@ -501,8 +501,4 @@ internal class ModuleRegistry
         return null;
     }
 
-    private void AddError(string message, string? code = null)
-    {
-        _diagnostics.AddError(message, code: code, phase: CompilerPhase.ImportResolution);
-    }
 }
