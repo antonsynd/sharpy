@@ -1,0 +1,12 @@
+struct Data:
+    value: int
+
+    def __init__(self):
+        try:
+            self.value = 42
+        except Exception:
+            pass
+
+def main():
+    d = Data()
+    print(d.value)

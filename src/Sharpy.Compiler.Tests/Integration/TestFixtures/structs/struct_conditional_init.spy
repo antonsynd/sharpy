@@ -1,0 +1,15 @@
+struct Point:
+    x: int
+    y: int
+
+    def __init__(self, condition: bool):
+        if condition:
+            self.x = 1
+        else:
+            self.x = 2
+        self.y = 0
+
+def main():
+    p = Point(True)
+    print(p.x)
+    print(p.y)
