@@ -469,6 +469,105 @@ public class NameManglerTests
 
     #endregion
 
+    #region ToNamespacePart Tests
+
+    [Fact]
+    public void ToNamespacePart_EmptyString_ReturnsEmpty()
+    {
+        NameMangler.ToNamespacePart("").Should().Be("");
+    }
+
+    [Fact]
+    public void ToNamespacePart_Null_ReturnsNull()
+    {
+        NameMangler.ToNamespacePart(null!).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("`MyName`", "MyName")]
+    [InlineData("`SomeLib`", "SomeLib")]
+    public void ToNamespacePart_BacktickEscaped_StripsBackticks(string input, string expected)
+    {
+        NameMangler.ToNamespacePart(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("``")]
+    [InlineData("`")]
+    public void ToNamespacePart_BacktickEdgeCase_ReturnsAsIs(string input)
+    {
+        NameMangler.ToNamespacePart(input).Should().Be(input);
+    }
+
+    [Theory]
+    [InlineData("io", "IO")]
+    [InlineData("api", "API")]
+    [InlineData("json", "JSON")]
+    [InlineData("IO", "IO")]
+    [InlineData("Api", "API")]
+    [InlineData("http", "HTTP")]
+    [InlineData("xml", "XML")]
+    [InlineData("csv", "CSV")]
+    [InlineData("guid", "GUID")]
+    public void ToNamespacePart_UppercaseAcronyms_ReturnsAllCaps(string input, string expected)
+    {
+        NameMangler.ToNamespacePart(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("my_module", "MyModule")]
+    [InlineData("sub_module", "SubModule")]
+    [InlineData("my_cool_lib", "MyCoolLib")]
+    public void ToNamespacePart_SnakeCase_ConvertsToPascalCase(string input, string expected)
+    {
+        NameMangler.ToNamespacePart(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("system", "System")]
+    [InlineData("module", "Module")]
+    [InlineData("animal", "Animal")]
+    public void ToNamespacePart_SingleWord_CapitalizesFirst(string input, string expected)
+    {
+        NameMangler.ToNamespacePart(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("3d_graphics", "_3dGraphics")]
+    [InlineData("2d", "_2d")]
+    public void ToNamespacePart_DigitPrefix_PrefixesWithUnderscore(string input, string expected)
+    {
+        NameMangler.ToNamespacePart(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("my-module", "MyModule")]
+    [InlineData("some.lib", "SomeLib")]
+    public void ToNamespacePart_InvalidChars_ReplacesWithUnderscoreAndSplits(string input, string expected)
+    {
+        NameMangler.ToNamespacePart(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("___")]
+    [InlineData("_")]
+    [InlineData("__")]
+    public void ToNamespacePart_OnlyUnderscores_ReturnsUnderscore(string input)
+    {
+        NameMangler.ToNamespacePart(input).Should().Be("_");
+    }
+
+    [Theory]
+    [InlineData("http_server", "HttpServer")]
+    [InlineData("json_parser", "JsonParser")]
+    public void ToNamespacePart_AcronymInCompound_DoesNotMatchAcronym(string input, string expected)
+    {
+        // "http_server" is not an exact acronym match, so it uses normal PascalCase
+        NameMangler.ToNamespacePart(input).Should().Be(expected);
+    }
+
+    #endregion
+
     #region Edge Cases
 
     [Fact]
