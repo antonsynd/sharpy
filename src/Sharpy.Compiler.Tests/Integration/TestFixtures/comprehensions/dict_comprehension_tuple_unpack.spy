@@ -1,0 +1,8 @@
+# Test: dict comprehension with tuple unpacking
+def main():
+    items: list[tuple[str, int]] = [("a", 1), ("b", 2), ("c", 3)]
+    result: dict[str, int] = {k: v * 10 for k, v in items}
+    print(result["a"])
+    print(result["b"])
+    print(result["c"])
+    print(len(result))

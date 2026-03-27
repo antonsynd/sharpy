@@ -1,0 +1,9 @@
+# Test: comprehensions over empty iterables produce empty results
+def main():
+    empty: list[int] = []
+    result: list[int] = [x * 2 for x in empty]
+    print(result)
+    result_set: set[int] = {x for x in empty}
+    print(len(result_set))
+    result_dict: dict[int, int] = {x: x for x in empty}
+    print(len(result_dict))

@@ -1,0 +1,6 @@
+# Test: multi-for comprehension with filter on inner loop
+def main():
+    groups: list[list[int]] = [[1, 2, 3], [4, 5, 6]]
+    result: list[int] = [x for group in groups for x in group if x % 2 == 0]
+    for r in result:
+        print(r)

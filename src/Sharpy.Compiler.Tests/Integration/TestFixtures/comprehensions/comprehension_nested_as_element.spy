@@ -1,0 +1,5 @@
+# Test: nested comprehension as element expression
+def main():
+    matrix: list[list[int]] = [[1, 2, 3], [4, 5, 6]]
+    result: list[list[int]] = [[y * 2 for y in row] for row in matrix]
+    print(result)

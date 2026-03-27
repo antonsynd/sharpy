@@ -1,0 +1,6 @@
+# Test: function calls in both element expression and filter
+def main():
+    nums: list[int] = [-3, -2, -1, 0, 1, 2, 3]
+    result: list[int] = [abs(x) for x in nums if abs(x) > 1]
+    for r in result:
+        print(r)

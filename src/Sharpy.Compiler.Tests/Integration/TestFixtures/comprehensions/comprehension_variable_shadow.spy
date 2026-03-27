@@ -1,0 +1,8 @@
+# Test: outer scope variable accessible in comprehension, loop var independent
+def main():
+    factor: int = 10
+    nums: list[int] = [1, 2, 3, 4, 5]
+    result: list[int] = [n * factor for n in nums]
+    print(factor)
+    for r in result:
+        print(r)

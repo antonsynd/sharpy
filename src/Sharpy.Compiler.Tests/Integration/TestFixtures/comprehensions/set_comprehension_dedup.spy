@@ -1,0 +1,6 @@
+# Test: set comprehension deduplicates results
+def main():
+    nums: list[int] = [1, 2, 3, 2, 1, 4, 3, 5, 4]
+    result: set[int] = {x for x in nums}
+    print(sorted(result))
+    print(len(result))
