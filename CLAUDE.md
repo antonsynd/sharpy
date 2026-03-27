@@ -114,6 +114,7 @@ SemanticType (abstract)
 ├── ModuleType        — Imported modules as namespaces
 ├── TypeParameterType — Generic type parameters (T in class Box[T])
 ├── ResultType        — T !E tagged union (OkType + ErrorType)
+├── SelfType          — Self type for covariant return annotations
 ├── UnionType         — Tagged unions (v0.2.x placeholder)
 ├── TaskType          — Async Task types (v0.2.x placeholder)
 ├── VoidType          — None return type
@@ -144,6 +145,10 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 460**: `DunderInvocationValidator` — Direct dunder call warnings
 - **Order 500**: `ProtocolValidator` — Protocol validation
 - **Order 501**: `OperatorValidator` — Operator validation
+
+**Validator base classes**:
+- `ValidatingAstWalker` — for validators that traverse the AST via visitor pattern (e.g., ProtocolValidator, AccessValidator). Override `VisitXxx` methods to inspect nodes.
+- `SemanticValidatorBase` — for validators with custom traversal logic (e.g., SignatureValidator, ModuleLevelValidator). Override `Validate()` and walk the AST manually.
 
 **Responsibility split**: TypeChecker handles type mismatches and in-progress inference. ValidationPipeline handles self-contained AST analyses that don't need active inference state.
 
