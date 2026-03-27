@@ -871,8 +871,15 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking enum: {enumDef.Name}");
 
-        // Validate enum-specific rules
-        ValidateEnumRules(enumDef);
+        // Type-check enum member values so their types are stored in SemanticInfo
+        // for downstream validation by EnumRulesValidator
+        foreach (var member in enumDef.Members)
+        {
+            if (member.Value != null)
+            {
+                CheckExpression(member.Value);
+            }
+        }
     }
 
     private void CheckUnion(UnionDef unionDef)
