@@ -538,7 +538,7 @@ internal class TypeSyntaxMapper
                 {
                     if (!string.IsNullOrEmpty(part) && part != ".")
                     {
-                        namespaceParts.Add(SimpleToPascalCase(part));
+                        namespaceParts.Add(NameMangler.ToNamespacePart(part));
                     }
                 }
             }
@@ -546,7 +546,7 @@ internal class TypeSyntaxMapper
             // Add file name part (skip __init__ as it represents the package itself)
             if (!string.Equals(fileName, DunderNames.Init, StringComparison.OrdinalIgnoreCase))
             {
-                namespaceParts.Add(SimpleToPascalCase(fileName));
+                namespaceParts.Add(NameMangler.ToNamespacePart(fileName));
             }
 
             if (namespaceParts.Count > 0)
@@ -557,7 +557,7 @@ internal class TypeSyntaxMapper
 
         // Fallback: just use file name
         var fallbackFileName = Path.GetFileNameWithoutExtension(filePath);
-        return SimpleToPascalCase(fallbackFileName);
+        return NameMangler.ToNamespacePart(fallbackFileName);
     }
 
     /// <summary>
@@ -592,15 +592,7 @@ internal class TypeSyntaxMapper
     private static string ConvertModuleToNamespace(string modulePath)
     {
         var parts = modulePath.Split('.');
-        return string.Join(".", parts.Select(p => SimpleToPascalCase(p)));
-    }
-
-    private static string SimpleToPascalCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-        // Use NameMangler for proper snake_case to PascalCase conversion
-        return NameMangler.ToPascalCase(name);
+        return string.Join(".", parts.Select(p => NameMangler.ToNamespacePart(p)));
     }
 
     /// <summary>
