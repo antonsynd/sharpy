@@ -145,13 +145,29 @@ public class HoverServiceTests
         var source = "class MyClass:\n    def method(self) -> int:\n        return 42\ndef main():\n    pass";
         var result = _api.Analyze(source);
 
-        // "    def method(self) -> int:" — 'self' starts at col 19
-        // Cols: "    def method(" = 15 chars, 'self' starts at col 16
+        // "    def method(self) -> int:" — 'self' starts at col 16
+        // Cols: "    def method(" = 15 chars, 'self' at col 16
         var hover = _hoverService.GetHoverMarkdown(result, 2, 16);
 
         hover.Should().NotBeNull();
         hover.Should().Contain("self");
         hover.Should().Contain("MyClass");
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OverSelfInMethodBody_ShowsClassName()
+    {
+        var source = "class Foo:\n    x: int = 0\n    def get_x(self) -> int:\n        return self.x\ndef main():\n    pass";
+        var result = _api.Analyze(source);
+
+        // Line 4: "        return self.x"
+        // Cols:    123456789012345678
+        // 'self' starts at col 16
+        var hover = _hoverService.GetHoverMarkdown(result, 4, 16);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("self");
+        hover.Should().Contain("Foo");
     }
 
     // --- #472: With-statement as-variable hover ---
@@ -179,6 +195,20 @@ public class HoverServiceTests
 
         // Line 7: "    with Conn() as c:"
         // Hover over 'Conn()' call at col 10
+        var hover = _hoverService.GetHoverMarkdown(result, 7, 10);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("Conn");
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OverWithWithoutAs_ReturnsContextExpressionType()
+    {
+        var source = "class Conn:\n    def __enter__(self) -> Conn:\n        return self\n    def __exit__(self):\n        pass\ndef main():\n    with Conn():\n        pass";
+        var result = _api.Analyze(source);
+
+        // Line 7: "    with Conn():"
+        // Hover over 'Conn()' at col 10
         var hover = _hoverService.GetHoverMarkdown(result, 7, 10);
 
         hover.Should().NotBeNull();
