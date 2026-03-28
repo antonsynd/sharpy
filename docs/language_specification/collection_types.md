@@ -5,7 +5,7 @@
 | `list[T]` | `[T]` | `Sharpy.Core.List<T>` | Mutable list |
 | `dict[K, V]` | `{K: V}` | `Sharpy.Core.Dict<K, V>` | Hash map |
 | `set[T]` | `{T}` | `Sharpy.Core.Set<T>` | Unique elements |
-| `tuple[T1, T2, ...]` | `(T1, T2, ...)` | `System.ValueTuple<T1, T2, ...>` | Fixed-size tuple |
+| `tuple[T1, T2, ...]` | `(T1, T2, ...)` | `System.ValueTuple<T1, T2, ...>` | Fixed-size tuple; supports [positional access](#tuple-positional-access) |
 
 With the exception of `tuple[...]`, Sharpy collection types use custom Pythonic wrappers around the corresponding .NET collection types.
 
@@ -86,7 +86,7 @@ print(p[1])    # 4.0 (same as p.y)
 Unlike Python, Sharpy does not support negative tuple indices. This is because tuple positional access is resolved at compile time (lowered to `.Item1`, `.Item2`, etc.), and negative indexing would require runtime tuple length information.
 
 *Implementation*
-- *🔄 Lowered — `tuple[i]` is lowered to `.Item{i+1}` (e.g., `tuple[0]` → `.Item1`, `tuple[1]` → `.Item2`).*
+- *🔄 Lowered - `tuple[i]` is lowered to `.Item{i+1}` (e.g., `tuple[0]` → `.Item1`, `tuple[1]` → `.Item2`).*
 
 ---
 

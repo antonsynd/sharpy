@@ -5,6 +5,10 @@ namespace Sharpy.Compiler.Lexer;
 
 public partial class Lexer
 {
+    // String/raw-string tokens set SourceLength so Token.Length reflects the full source
+    // extent (including quotes and r prefix) for accurate diagnostic spans and LSP features.
+    // FString tokens (Lexer.FStrings.cs) don't need this because their Value already
+    // equals the source text for each segment.
     private Token ReadString()
     {
         var startLine = _line;
