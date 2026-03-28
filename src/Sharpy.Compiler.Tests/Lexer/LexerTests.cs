@@ -1865,4 +1865,93 @@ y = 2";
     }
 
     #endregion
+
+    #region String Token Source Length
+
+    [Fact]
+    public void Token_StringLiteral_LengthIncludesQuotes()
+    {
+        // "hello" is 7 characters in source (quote + hello + quote)
+        var token = SingleToken("\"hello\"");
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("hello");
+        token.Length.Should().Be(7);
+        token.SourceLength.Should().Be(7);
+    }
+
+    [Fact]
+    public void Token_EmptyStringLiteral_LengthIncludesQuotes()
+    {
+        // "" is 2 characters in source
+        var token = SingleToken("\"\"");
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("");
+        token.Length.Should().Be(2);
+    }
+
+    [Fact]
+    public void Token_RawString_LengthIncludesPrefixAndQuotes()
+    {
+        // r"hello" is 8 characters in source (r + quote + hello + quote)
+        var token = SingleToken("r\"hello\"");
+        token.Type.Should().Be(TokenType.RawString);
+        token.Value.Should().Be("hello");
+        token.Length.Should().Be(8);
+    }
+
+    [Fact]
+    public void Token_TripleQuotedString_LengthIncludesAllQuotes()
+    {
+        // """hello""" is 11 characters in source (3 quotes + hello + 3 quotes)
+        var source = "\"\"\"hello\"\"\"";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("hello");
+        token.Length.Should().Be(11);
+    }
+
+    [Fact]
+    public void Token_TripleQuotedRawString_LengthIncludesPrefixAndAllQuotes()
+    {
+        // r"""hello""" is 12 characters in source
+        var source = "r\"\"\"hello\"\"\"";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.RawString);
+        token.Value.Should().Be("hello");
+        token.Length.Should().Be(12);
+    }
+
+    [Fact]
+    public void Token_StringWithEscapes_LengthMatchesSourceLength()
+    {
+        // "he\"llo" is 9 characters in source: " h e \ " l l o "
+        var source = "\"he\\\"llo\"";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("he\"llo");
+        token.Length.Should().Be(9);
+    }
+
+    [Fact]
+    public void Token_StringGetSpan_UsesSourceLength()
+    {
+        var source = "\"hello\"";
+        var token = SingleToken(source);
+        var span = token.GetSpan();
+        span.Should().NotBeNull();
+        span!.Value.Start.Should().Be(0);
+        span.Value.Length.Should().Be(7);
+    }
+
+    [Fact]
+    public void Token_NonStringToken_LengthUsesValueLength()
+    {
+        // Regular identifier should NOT have SourceLength set
+        var token = SingleToken("hello");
+        token.Type.Should().Be(TokenType.Identifier);
+        token.SourceLength.Should().BeNull();
+        token.Length.Should().Be(5);
+    }
+
+    #endregion
 }
