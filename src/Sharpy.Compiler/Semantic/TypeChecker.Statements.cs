@@ -914,7 +914,12 @@ internal partial class TypeChecker
         var enterName = isAsync ? DunderNames.Aenter : DunderNames.Enter;
         var enterMethod = typeSymbol.Methods.FirstOrDefault(m => m.Name == enterName);
         if (enterMethod?.ReturnType != null && enterMethod.ReturnType is not VoidType)
-            return enterMethod.ReturnType;
+        {
+            var returnType = enterMethod.ReturnType;
+            if (isAsync && returnType is TaskType taskType && taskType.ResultType != null)
+                returnType = taskType.ResultType;
+            return returnType;
+        }
 
         // Default: return self type (common pattern for __enter__)
         return type;
