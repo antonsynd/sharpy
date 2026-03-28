@@ -37,7 +37,8 @@ public partial class Lexer
             {
                 _position++;
                 _column++;
-                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition);
+                var sourceLength = _position - startPosition;
+                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
             }
 
             if (c == '\\')
@@ -78,7 +79,8 @@ public partial class Lexer
             {
                 _position += 3;
                 _column += 3;
-                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition);
+                var sourceLength = _position - startPosition;
+                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
             }
 
             var c = _source[_position];
@@ -151,7 +153,8 @@ public partial class Lexer
                 {
                     _position += 3;
                     _column += 3;
-                    return CreateToken(TokenType.RawString, sb.ToString(), startLine, startColumn, startPosition);
+                    var sourceLength = _position - startPosition;
+                    return CreateToken(TokenType.RawString, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
                 }
 
                 var c = _source[_position];
@@ -182,7 +185,8 @@ public partial class Lexer
             {
                 _position++;
                 _column++;
-                return CreateToken(TokenType.RawString, sb2.ToString(), startLine, startColumn, startPosition);
+                var sourceLength = _position - startPosition;
+                return CreateToken(TokenType.RawString, sb2.ToString(), startLine, startColumn, startPosition, sourceLength);
             }
 
             if (c == '\n' || c == '\r')
