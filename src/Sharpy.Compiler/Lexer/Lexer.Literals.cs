@@ -5,6 +5,10 @@ namespace Sharpy.Compiler.Lexer;
 
 public partial class Lexer
 {
+    // String/raw-string tokens set SourceLength so Token.Length reflects the full source
+    // extent (including quotes and r prefix) for accurate diagnostic spans and LSP features.
+    // FString tokens (Lexer.FStrings.cs) don't need this because their Value already
+    // equals the source text for each segment.
     private Token ReadString()
     {
         var startLine = _line;
@@ -37,7 +41,8 @@ public partial class Lexer
             {
                 _position++;
                 _column++;
-                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition);
+                var sourceLength = _position - startPosition;
+                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
             }
 
             if (c == '\\')
@@ -78,7 +83,8 @@ public partial class Lexer
             {
                 _position += 3;
                 _column += 3;
-                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition);
+                var sourceLength = _position - startPosition;
+                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
             }
 
             var c = _source[_position];
@@ -151,7 +157,8 @@ public partial class Lexer
                 {
                     _position += 3;
                     _column += 3;
-                    return CreateToken(TokenType.RawString, sb.ToString(), startLine, startColumn, startPosition);
+                    var sourceLength = _position - startPosition;
+                    return CreateToken(TokenType.RawString, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
                 }
 
                 var c = _source[_position];
@@ -182,7 +189,8 @@ public partial class Lexer
             {
                 _position++;
                 _column++;
-                return CreateToken(TokenType.RawString, sb2.ToString(), startLine, startColumn, startPosition);
+                var sourceLength = _position - startPosition;
+                return CreateToken(TokenType.RawString, sb2.ToString(), startLine, startColumn, startPosition, sourceLength);
             }
 
             if (c == '\n' || c == '\r')

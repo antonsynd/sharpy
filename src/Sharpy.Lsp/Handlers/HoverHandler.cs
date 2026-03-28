@@ -293,6 +293,17 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                     return "```sharpy\n(yield)\n```";
                 }
 
+            case ReturnStatement returnStmt:
+                {
+                    if (returnStmt.Value != null)
+                    {
+                        var returnType = query.GetEffectiveType(returnStmt.Value);
+                        if (returnType != null)
+                            return $"```sharpy\n(return) -> {SymbolFormatter.FormatTypeInfo(returnType)}\n```";
+                    }
+                    return "```sharpy\n(return) -> None\n```";
+                }
+
             case SuperExpression:
                 {
                     var enclosingClassDef = _api.FindNodeOfType<ClassDef>(analysis.Ast!, line, col);
@@ -410,6 +421,22 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                 typeAnnotation.LineStart, typeAnnotation.ColumnStart,
                 typeAnnotation.LineEnd, typeAnnotation.ColumnEnd))
             return null;
+
+        // Check type arguments first (most-specific match wins)
+        foreach (var typeArg in typeAnnotation.TypeArguments)
+        {
+            var argHover = TryFormatTypeAnnotation(analysis, query, typeArg, line, col);
+            if (argHover != null)
+                return argHover;
+        }
+
+        // Check error type for result types (T !E)
+        if (typeAnnotation.ErrorType != null)
+        {
+            var errorHover = TryFormatTypeAnnotation(analysis, query, typeAnnotation.ErrorType, line, col);
+            if (errorHover != null)
+                return errorHover;
+        }
 
         // Try to resolve as a user-defined type
         var typeSymbol = analysis.SymbolTable?.LookupType(typeAnnotation.Name);

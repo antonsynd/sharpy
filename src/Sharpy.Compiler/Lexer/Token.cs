@@ -220,10 +220,18 @@ public record Token : ILocatable
     public IReadOnlyList<Trivia>? TrailingTrivia { get; init; }
 
     /// <summary>
-    /// The length of this token in characters.
-    /// This equals Value.Length for most tokens.
+    /// The actual length of this token in the source text, including delimiters
+    /// (e.g., quotes for string literals, 'r' prefix for raw strings).
+    /// When set, this is used instead of Value.Length for span calculations.
     /// </summary>
-    public int Length => Value.Length;
+    public int? SourceLength { get; init; }
+
+    /// <summary>
+    /// The length of this token in characters.
+    /// Returns SourceLength when available (for tokens where Value differs from
+    /// source representation, like string literals), otherwise Value.Length.
+    /// </summary>
+    public int Length => SourceLength ?? Value.Length;
 
     public Token(TokenType type, string value, int line, int column)
     {
