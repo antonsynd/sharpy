@@ -55,6 +55,7 @@ public class Program
                     services.AddSingleton<SharpyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
                     services.AddSingleton<LanguageService>();
+                    services.AddSingleton<HoverService>();
                     // Code action providers
                     services.AddSingleton<ICodeActionProvider, DiagnosticQuickFixProvider>();
                     services.AddSingleton<ICodeActionProvider, OrganizeImportsProvider>();

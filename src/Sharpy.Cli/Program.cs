@@ -9,6 +9,7 @@ using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Diagnostics;
 using System.Text.Json;
 using Sharpy.Compiler.Text;
+using Sharpy.Lsp;
 
 namespace Sharpy.Cli;
 
@@ -273,11 +274,31 @@ class Program
             EmitDiagnostics(input, logger, format, warnAsError, nowarn, maxErrors, includeCodegen);
         });
 
+        var emitHoverCommand = new Command("hover", "Emit LSP hover information at a position");
+        var emitHoverInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
+        var emitHoverLineOpt = new Option<int>("--line") { Description = "1-based line number", Required = true };
+        var emitHoverColOpt = new Option<int>("--col") { Description = "1-based column number", Required = true };
+        emitHoverCommand.Arguments.Add(emitHoverInputArg);
+        emitHoverCommand.Options.Add(emitHoverLineOpt);
+        emitHoverCommand.Options.Add(emitHoverColOpt);
+        emitHoverCommand.SetAction((parseResult) =>
+        {
+            var input = parseResult.GetValue(emitHoverInputArg)!;
+            var line = parseResult.GetValue(emitHoverLineOpt);
+            var col = parseResult.GetValue(emitHoverColOpt);
+            var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+            var logFile = parseResult.GetValue(logFileOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
+            var logger = CreateLogger(logLevel, logFile);
+            EmitHover(input, line, col, logger, maxErrors);
+        });
+
         emitCommand.Subcommands.Add(emitTokensCommand);
         emitCommand.Subcommands.Add(emitAstCommand);
         emitCommand.Subcommands.Add(emitCsharpCommand);
         emitCommand.Subcommands.Add(emitParseCommand);
         emitCommand.Subcommands.Add(emitDiagnosticsCommand);
+        emitCommand.Subcommands.Add(emitHoverCommand);
 
         // === Cache Command (with subcommands) ===
         var cacheCommand = new Command("cache", "Manage the overload discovery cache");
@@ -1043,6 +1064,47 @@ class Program
             if (hasErrors)
             {
                 Environment.Exit(1);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+            Environment.Exit(1);
+        }
+    }
+
+    static void EmitHover(FileInfo inputFile, int line, int col, ICompilerLogger logger, int? maxErrors = null)
+    {
+        try
+        {
+            var source = File.ReadAllText(inputFile.FullName);
+            var api = new CompilerApi(logger);
+            var result = api.Analyze(source);
+
+            // Print diagnostics to stderr but don't bail — LSP provides hovers even with errors
+            foreach (var d in result.Diagnostics.Where(d => d.IsError))
+            {
+                var code = d.Code ?? "SPY????";
+                Console.Error.WriteLine($"error {code} ({d.Line ?? 0}:{d.Column ?? 0}): {d.Message}");
+            }
+
+            if (result.Ast == null || result.SemanticQuery == null)
+            {
+                Console.Error.WriteLine("Analysis failed: no AST or semantic info available.");
+                Environment.Exit(1);
+                return;
+            }
+
+            var hoverService = new HoverService(api);
+            var hover = hoverService.GetHoverMarkdown(result, line, col);
+
+            if (hover != null)
+            {
+                Console.WriteLine(hover);
+            }
+            else
+            {
+                Console.WriteLine("(no hover)");
             }
         }
         catch (Exception ex)
