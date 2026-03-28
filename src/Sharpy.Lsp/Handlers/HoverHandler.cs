@@ -422,6 +422,22 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                 typeAnnotation.LineEnd, typeAnnotation.ColumnEnd))
             return null;
 
+        // Check type arguments first (most-specific match wins)
+        foreach (var typeArg in typeAnnotation.TypeArguments)
+        {
+            var argHover = TryFormatTypeAnnotation(analysis, query, typeArg, line, col);
+            if (argHover != null)
+                return argHover;
+        }
+
+        // Check error type for result types (T !E)
+        if (typeAnnotation.ErrorType != null)
+        {
+            var errorHover = TryFormatTypeAnnotation(analysis, query, typeAnnotation.ErrorType, line, col);
+            if (errorHover != null)
+                return errorHover;
+        }
+
         // Try to resolve as a user-defined type
         var typeSymbol = analysis.SymbolTable?.LookupType(typeAnnotation.Name);
         if (typeSymbol != null)
