@@ -367,7 +367,7 @@ internal partial class TypeChecker
             // Special handling for 'self' parameter in methods
             if (i == 0 && param.Name == PythonNames.Self && _currentClass != null)
             {
-                paramType = new UserDefinedType { Symbol = _currentClass };
+                paramType = new UserDefinedType { Name = _currentClass.Name, Symbol = _currentClass };
             }
             else if (param.Type == null)
             {
@@ -1177,7 +1177,7 @@ internal partial class TypeChecker
             // Special handling for 'self' parameter
             if (i == 0 && param.Name == PythonNames.Self && _currentClass != null)
             {
-                paramType = new UserDefinedType { Symbol = _currentClass };
+                paramType = new UserDefinedType { Name = _currentClass.Name, Symbol = _currentClass };
             }
             else
             {
