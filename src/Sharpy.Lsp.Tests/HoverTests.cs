@@ -557,6 +557,47 @@ public class HoverTests : IDisposable
         formatted.Should().Contain(moduleSymbol.Documentation);
     }
 
+    [Fact]
+    public async Task Hover_ReturnWithValue_ShowsReturnedType()
+    {
+        var source = "def greet() -> str:\n    return \"hello\"\ndef main():\n    pass";
+        _workspace.OpenDocument("file:///test_return_hover.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_return_hover.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SemanticQuery.Should().NotBeNull();
+
+        // Line 2: "    return \"hello\"" — "return" starts at col 5
+        var node = _api.FindNodeAtPosition(analysis.Ast!, 2, 5);
+        node.Should().NotBeNull();
+        node.Should().BeOfType<ReturnStatement>();
+
+        var returnStmt = (ReturnStatement)node!;
+        returnStmt.Value.Should().NotBeNull();
+
+        var returnType = analysis.SemanticQuery!.GetEffectiveType(returnStmt.Value!);
+        returnType.Should().NotBeNull();
+        returnType!.GetDisplayName().Should().Be("str");
+    }
+
+    [Fact]
+    public async Task Hover_BareReturn_ShowsNone()
+    {
+        var source = "def do_nothing() -> None:\n    return\ndef main():\n    pass";
+        _workspace.OpenDocument("file:///test_bare_return.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_bare_return.spy");
+        analysis.Should().NotBeNull();
+
+        // Line 2: "    return" — "return" starts at col 5
+        var node = _api.FindNodeAtPosition(analysis!.Ast!, 2, 5);
+        node.Should().NotBeNull();
+        node.Should().BeOfType<ReturnStatement>();
+
+        var returnStmt = (ReturnStatement)node!;
+        returnStmt.Value.Should().BeNull("bare return has no value");
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();
