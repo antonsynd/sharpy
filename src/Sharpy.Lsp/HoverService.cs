@@ -208,8 +208,38 @@ public class HoverService
                     break;
                 }
 
+            case WithStatement withStmt:
+                {
+                    foreach (var item in withStmt.Items)
+                    {
+                        if (item.Name != null &&
+                            line == item.NameLineStart &&
+                            col >= item.NameColumnStart &&
+                            col < item.NameColumnStart + item.Name.Length)
+                        {
+                            var withVarSymbol = analysis.SymbolTable?.LookupVariable(item.Name);
+                            if (withVarSymbol != null)
+                                return SymbolFormatter.FormatSymbolWithDocs(withVarSymbol);
+                        }
+                    }
+                    break;
+                }
+
             case VariableDeclaration varDecl:
                 {
+                    // Check if cursor is on the variable name
+                    if (line == varDecl.NameLineStart &&
+                        col >= varDecl.NameColumnStart &&
+                        col < varDecl.NameColumnStart + varDecl.Name.Length)
+                    {
+                        var nameSymbol = analysis.SymbolTable?.LookupVariable(varDecl.Name);
+                        if (nameSymbol != null)
+                            return SymbolFormatter.FormatSymbolWithDocs(nameSymbol);
+                        nameSymbol = LookupFieldOnType(analysis, line, col, varDecl.Name);
+                        if (nameSymbol != null)
+                            return SymbolFormatter.FormatSymbolWithDocs(nameSymbol);
+                    }
+
                     // Check if cursor is on the type annotation
                     if (varDecl.Type != null)
                     {
