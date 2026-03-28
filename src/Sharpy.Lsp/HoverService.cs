@@ -10,7 +10,7 @@ namespace Sharpy.Lsp;
 /// Resolves hover information for AST nodes.
 /// Extracted from HoverHandler so it can be used by both the LSP server and the CLI.
 /// </summary>
-public class HoverService
+public sealed class HoverService
 {
     private readonly CompilerApi _api;
 
@@ -248,6 +248,9 @@ public class HoverService
                             return typeHover;
                     }
 
+                    // Fallback: cursor is on the declaration but not on the name or type annotation
+                    // (e.g., on '=' or whitespace within the node span). Show variable info as a
+                    // reasonable default rather than returning nothing.
                     var varSymbol = analysis.SymbolTable?.LookupVariable(varDecl.Name);
                     if (varSymbol != null)
                         return SymbolFormatter.FormatSymbolWithDocs(varSymbol);

@@ -214,4 +214,23 @@ public class HoverServiceTests
         hover.Should().NotBeNull();
         hover.Should().Contain("Conn");
     }
+
+    // --- #471: Async with TaskType unwrapping hover ---
+
+    [Fact(Skip = "TODO(#475): WithStatement hover uses SymbolTable.LookupVariable which can't find local-scope 'as' variables after analysis.")]
+    public void GetHoverMarkdown_OverAsyncWithAsVariable_ReturnsUnwrappedType()
+    {
+        var source = "class AsyncConn:\n    async def __aenter__(self) -> AsyncConn:\n        return self\n    async def __aexit__(self):\n        pass\nasync def main():\n    async with AsyncConn() as conn:\n        pass";
+        var result = _api.Analyze(source);
+
+        // Line 7: "    async with AsyncConn() as conn:"
+        // Cols:    1234567890123456789012345678901234
+        // 'conn' starts at col 31
+        var hover = _hoverService.GetHoverMarkdown(result, 7, 31);
+
+        hover.Should().NotBeNull();
+        // Should show AsyncConn (unwrapped), not Task[AsyncConn]
+        hover.Should().Contain("AsyncConn");
+        hover.Should().NotContain("Task");
+    }
 }
