@@ -334,9 +334,12 @@ public partial class Parser
             var contextExpr = ParseExpression();
 
             string? name = null;
+            int nameLineStart = 0, nameColumnStart = 0;
             if (Current.Type == TokenType.As)
             {
                 Advance();
+                nameLineStart = Current.Line;
+                nameColumnStart = Current.Column;
                 name = ExpectIdentifier();
             }
 
@@ -347,6 +350,8 @@ public partial class Parser
             {
                 ContextExpression = contextExpr,
                 Name = name,
+                NameLineStart = nameLineStart,
+                NameColumnStart = nameColumnStart,
                 LineStart = itemStartLine,
                 ColumnStart = itemStartColumn,
                 LineEnd = itemEndLine,

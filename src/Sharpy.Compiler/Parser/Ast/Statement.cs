@@ -414,6 +414,8 @@ public record WithItem
 {
     public Expression ContextExpression { get; init; } = null!;
     public string? Name { get; init; }  // The "as name" binding
+    public int NameLineStart { get; init; }
+    public int NameColumnStart { get; init; }
 
     // Source location
     public int LineStart { get; init; }
