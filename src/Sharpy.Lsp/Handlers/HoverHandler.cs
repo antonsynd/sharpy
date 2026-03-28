@@ -293,6 +293,17 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                     return "```sharpy\n(yield)\n```";
                 }
 
+            case ReturnStatement returnStmt:
+                {
+                    if (returnStmt.Value != null)
+                    {
+                        var returnType = query.GetEffectiveType(returnStmt.Value);
+                        if (returnType != null)
+                            return $"```sharpy\n(return) -> {SymbolFormatter.FormatTypeInfo(returnType)}\n```";
+                    }
+                    return "```sharpy\n(return) -> None\n```";
+                }
+
             case SuperExpression:
                 {
                     var enclosingClassDef = _api.FindNodeOfType<ClassDef>(analysis.Ast!, line, col);
