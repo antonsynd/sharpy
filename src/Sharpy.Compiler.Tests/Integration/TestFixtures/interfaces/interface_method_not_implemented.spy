@@ -1,0 +1,11 @@
+interface Drawable:
+    def draw(self) -> str:
+        ...
+
+class Circle(Drawable):
+    def area(self) -> float:
+        return 3.14
+
+def main():
+    c: Circle = Circle()
+    print(c.area())

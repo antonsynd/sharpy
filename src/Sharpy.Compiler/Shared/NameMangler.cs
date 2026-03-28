@@ -279,7 +279,7 @@ internal static class NameMangler
     }
 
     // Common .NET namespace acronyms that should be all uppercase
-    private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _upperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
     {
         "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp",
         "smtp", "tcp", "udp", "ip", "uri", "url", "json", "csv", "guid"
@@ -305,7 +305,7 @@ internal static class NameMangler
         }
 
         // Check if this is a known acronym that should be all uppercase
-        if (UpperCaseAcronyms.Contains(name))
+        if (_upperCaseAcronyms.Contains(name))
         {
             return name.ToUpperInvariant();
         }

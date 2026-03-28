@@ -1,0 +1,15 @@
+struct Counter:
+    total: int
+    count: int
+
+    def __init__(self, values: list[int]):
+        self.total = 0
+        self.count = 0
+        for v in values:
+            self.total = self.total + v
+            self.count = self.count + 1
+
+def main():
+    c = Counter([10, 20, 30])
+    print(c.total)
+    print(c.count)
