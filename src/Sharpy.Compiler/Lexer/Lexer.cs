@@ -498,9 +498,13 @@ public partial class Lexer
     /// Creates a token with position tracking.
     /// When trivia preservation is enabled, attaches any pending trivia as leading trivia.
     /// </summary>
-    private Token CreateToken(TokenType type, string value, int startLine, int startColumn, int startPosition)
+    private Token CreateToken(TokenType type, string value, int startLine, int startColumn, int startPosition,
+        int? sourceLength = null)
     {
         var token = new Token(type, value, startLine, startColumn, startPosition);
+
+        if (sourceLength.HasValue)
+            token = token with { SourceLength = sourceLength };
 
         if (_preserveTrivia && _pendingTrivia!.Count > 0)
         {
