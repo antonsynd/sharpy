@@ -598,6 +598,114 @@ public class HoverTests : IDisposable
         returnStmt.Value.Should().BeNull("bare return has no value");
     }
 
+    [Fact]
+    public async Task Hover_TypeArgument_IntInListInt_ShowsIntType()
+    {
+        // "def process(items: list[int]) -> None:\n    pass\ndef main():\n    pass"
+        // Line 1: "def process(items: list[int]) -> None:" — "int" inside list[int] starts at col 25
+        var source = "def process(items: list[int]) -> None:\n    pass\ndef main():\n    pass";
+        _workspace.OpenDocument("file:///test_type_arg_int.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_type_arg_int.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SemanticQuery.Should().NotBeNull();
+
+        var funcDef = _api.FindNodeOfType<FunctionDef>(analysis.Ast!, 1, 25);
+        funcDef.Should().NotBeNull();
+        var param = funcDef!.Parameters.FirstOrDefault(p => p.Name == "items");
+        param.Should().NotBeNull();
+        param!.Type.Should().NotBeNull();
+        param.Type!.Name.Should().Be("list");
+        param.Type.TypeArguments.Should().HaveCount(1);
+        param.Type.TypeArguments[0].Name.Should().Be("int");
+
+        // Verify the type argument resolves to int
+        var argType = analysis.SemanticQuery!.GetTypeAnnotation(param.Type.TypeArguments[0]);
+        argType.Should().NotBeNull();
+        argType!.GetDisplayName().Should().Be("int");
+    }
+
+    [Fact]
+    public async Task Hover_TypeArgument_StrInDictStrInt_ShowsStrType()
+    {
+        // "def process(data: dict[str, int]) -> None:\n    pass\ndef main():\n    pass"
+        // Line 1: "def process(data: dict[str, int]) -> None:" — "str" starts at col 24
+        var source = "def process(data: dict[str, int]) -> None:\n    pass\ndef main():\n    pass";
+        _workspace.OpenDocument("file:///test_type_arg_str.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_type_arg_str.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SemanticQuery.Should().NotBeNull();
+
+        var funcDef = _api.FindNodeOfType<FunctionDef>(analysis.Ast!, 1, 24);
+        funcDef.Should().NotBeNull();
+        var param = funcDef!.Parameters.FirstOrDefault(p => p.Name == "data");
+        param.Should().NotBeNull();
+        param!.Type.Should().NotBeNull();
+        param.Type!.Name.Should().Be("dict");
+        param.Type.TypeArguments.Should().HaveCount(2);
+        param.Type.TypeArguments[0].Name.Should().Be("str");
+
+        var argType = analysis.SemanticQuery!.GetTypeAnnotation(param.Type.TypeArguments[0]);
+        argType.Should().NotBeNull();
+        argType!.GetDisplayName().Should().Be("str");
+    }
+
+    [Fact]
+    public async Task Hover_TypeArgument_ListInListInt_ShowsListType()
+    {
+        // Hovering over "list" (the outer type name) in list[int] should show list[int], not int
+        var source = "def process(items: list[int]) -> None:\n    pass\ndef main():\n    pass";
+        _workspace.OpenDocument("file:///test_type_arg_list.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_type_arg_list.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SemanticQuery.Should().NotBeNull();
+
+        var funcDef = _api.FindNodeOfType<FunctionDef>(analysis.Ast!, 1, 20);
+        funcDef.Should().NotBeNull();
+        var param = funcDef!.Parameters.FirstOrDefault(p => p.Name == "items");
+        param.Should().NotBeNull();
+        param!.Type.Should().NotBeNull();
+
+        // The outer type resolves to list[int]
+        var outerType = analysis.SemanticQuery!.GetTypeAnnotation(param.Type!);
+        outerType.Should().NotBeNull();
+        outerType!.GetDisplayName().Should().Be("list[int]");
+    }
+
+    [Fact]
+    public async Task Hover_TypeArgument_NestedGeneric_ShowsInnerType()
+    {
+        // "def process(data: dict[str, list[int]]) -> None:\n    pass\ndef main():\n    pass"
+        // Hovering over "int" inside the nested list[int] should show int, not list or dict
+        var source = "def process(data: dict[str, list[int]]) -> None:\n    pass\ndef main():\n    pass";
+        _workspace.OpenDocument("file:///test_type_arg_nested.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_type_arg_nested.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SemanticQuery.Should().NotBeNull();
+
+        var funcDef = _api.FindNodeOfType<FunctionDef>(analysis.Ast!, 1, 34);
+        funcDef.Should().NotBeNull();
+        var param = funcDef!.Parameters.FirstOrDefault(p => p.Name == "data");
+        param.Should().NotBeNull();
+        param!.Type.Should().NotBeNull();
+        param.Type!.Name.Should().Be("dict");
+
+        // dict[str, list[int]] — TypeArguments[1] is list[int]
+        param.Type.TypeArguments.Should().HaveCount(2);
+        var listArg = param.Type.TypeArguments[1];
+        listArg.Name.Should().Be("list");
+        listArg.TypeArguments.Should().HaveCount(1);
+        listArg.TypeArguments[0].Name.Should().Be("int");
+
+        // Verify the innermost int resolves correctly
+        var innerType = analysis.SemanticQuery!.GetTypeAnnotation(listArg.TypeArguments[0]);
+        innerType.Should().NotBeNull();
+        innerType!.GetDisplayName().Should().Be("int");
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();
