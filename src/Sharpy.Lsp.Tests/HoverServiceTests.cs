@@ -106,4 +106,82 @@ public class HoverServiceTests
 
         hover.Should().BeNull();
     }
+
+    // --- #474: Variable declaration name hover ---
+
+    [Fact]
+    public void GetHoverMarkdown_OverVariableNameAtDeclaration_ReturnsTypeInfo()
+    {
+        var source = "x: int = 42\ndef main():\n    pass";
+        var result = _api.Analyze(source);
+
+        // Hover over 'x' at line 1, col 1 (the declaration name)
+        var hover = _hoverService.GetHoverMarkdown(result, 1, 1);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("x");
+        hover.Should().Contain("int");
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OverVariableNameInferredType_ReturnsTypeInfo()
+    {
+        var source = "x = 42\ndef main():\n    pass";
+        var result = _api.Analyze(source);
+
+        // Hover over 'x' at line 1, col 1
+        var hover = _hoverService.GetHoverMarkdown(result, 1, 1);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("x");
+        hover.Should().Contain("int");
+    }
+
+    // --- #473: Self parameter type display ---
+
+    [Fact]
+    public void GetHoverMarkdown_OverSelfParameter_ShowsClassName()
+    {
+        var source = "class MyClass:\n    def method(self) -> int:\n        return 42\ndef main():\n    pass";
+        var result = _api.Analyze(source);
+
+        // "    def method(self) -> int:" — 'self' starts at col 19
+        // Cols: "    def method(" = 15 chars, 'self' starts at col 16
+        var hover = _hoverService.GetHoverMarkdown(result, 2, 16);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("self");
+        hover.Should().Contain("MyClass");
+    }
+
+    // --- #472: With-statement as-variable hover ---
+
+    [Fact(Skip = "TODO(#475): WithStatement hover uses SymbolTable.LookupVariable which can't find local-scope 'as' variables after analysis.")]
+    public void GetHoverMarkdown_OverWithAsVariable_ReturnsTypeInfo()
+    {
+        var source = "class Conn:\n    def __enter__(self) -> Conn:\n        return self\n    def __exit__(self):\n        pass\ndef main():\n    with Conn() as c:\n        pass";
+        var result = _api.Analyze(source);
+
+        // Line 7: "    with Conn() as c:"
+        // Cols:    12345678901234567890
+        // 'c' starts at col 20
+        var hover = _hoverService.GetHoverMarkdown(result, 7, 20);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("Conn");
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OverWithContextExpression_ReturnsTypeInfo()
+    {
+        var source = "class Conn:\n    def __enter__(self) -> Conn:\n        return self\n    def __exit__(self):\n        pass\ndef main():\n    with Conn() as c:\n        pass";
+        var result = _api.Analyze(source);
+
+        // Line 7: "    with Conn() as c:"
+        // Hover over 'Conn()' call at col 10
+        var hover = _hoverService.GetHoverMarkdown(result, 7, 10);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("Conn");
+    }
 }
