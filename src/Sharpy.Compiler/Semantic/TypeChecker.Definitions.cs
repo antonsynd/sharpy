@@ -79,30 +79,7 @@ internal partial class TypeChecker
         _logger.LogDebug($"Type checking function: {functionDef.Name}");
 
         // Look up the function symbol to update its types
-        // For class methods, we need to look up from the class's Methods list
-        // since the methods were registered in a scope that no longer exists
-        FunctionSymbol? functionSymbol = null;
-        if (_currentClass != null)
-        {
-            if (functionDef.Name == DunderNames.Init)
-            {
-                // Find the matching constructor by declaration line number
-                // This uniquely identifies which overload we're checking
-                functionSymbol = _currentClass.Constructors
-                    .FirstOrDefault(c => c.DeclarationLine == functionDef.LineStart);
-            }
-            else
-            {
-                // Find the method in the class's Methods list by name and line number
-                functionSymbol = _currentClass.Methods
-                    .FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart);
-            }
-        }
-        else
-        {
-            // For top-level functions, look up from symbol table
-            functionSymbol = _symbolTable.LookupFunction(functionDef.Name);
-        }
+        var functionSymbol = LookupFunctionSymbol(functionDef);
 
         // Enter function scope FIRST so we can register type parameters before resolving types
         _symbolTable.EnterScope($"function:{functionDef.Name}");
@@ -138,25 +115,12 @@ internal partial class TypeChecker
         _typeResolver.SetIsStaticContext(isStaticMethod);
 
         // Resolve return type AFTER type parameters are registered
-        var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
+        var returnType = ResolveReturnType(functionDef);
 
-        // Special case: __init__ always returns None/void
-        // (signature validation is in SignatureValidator)
-        if (functionDef.Name == DunderNames.Init)
-        {
-            returnType = SemanticType.Void;
-        }
-        // Functions without explicit return type annotation default to void
-        else if (returnType == SemanticType.Unknown && functionDef.ReturnType == null)
-        {
-            returnType = SemanticType.Void;
-        }
-
-        // Save previous return type BEFORE overwriting (needed for nested function restore)
+        // Save and set method context for super() validation and nested function restore
         var previousFunctionReturnType = _currentFunctionReturnType;
         _currentFunctionReturnType = returnType;
 
-        // Save previous method context and set new context for super() validation
         var previousMethodName = _currentMethodName;
         var previousMethodIsOverride = _currentMethodIsOverride;
         var previousMethodIsDunder = _currentMethodIsDunder;
@@ -171,6 +135,117 @@ internal partial class TypeChecker
         _controlFlowDepth = 0;
         _superInitCalled = false;
 
+        // Validate override requirements and abstract method constraints
+        ValidateOverrideRequirements(functionDef);
+
+        // Validate self parameter for instance methods
+        ValidateSelfParameter(functionDef);
+
+        // Validate parameter ordering and register parameters in scope
+        RegisterFunctionParameters(functionDef, functionSymbol);
+
+        // Update function symbol return type and sync with owning TypeSymbol
+        UpdateFunctionSymbol(functionDef, functionSymbol, returnType);
+
+        // Save and set async/generator flags before body checking
+        var previousIsAsync = _currentFunctionIsAsync;
+        _currentFunctionIsAsync = functionDef.IsAsync;
+
+        var previousIsGenerator = _currentFunctionIsGenerator;
+        var isGenerator = ContainsYield(functionDef.Body);
+        _currentFunctionIsGenerator = isGenerator;
+
+        // Async constructors are not supported (C# constructors cannot be async)
+        if (functionDef.IsAsync && functionDef.Name == DunderNames.Init)
+        {
+            AddError(
+                "Constructors cannot be declared as 'async'; remove 'async' from '__init__'",
+                functionDef.LineStart, functionDef.ColumnStart,
+                code: DiagnosticCodes.Semantic.UnsupportedFeature,
+                span: functionDef.Span);
+        }
+
+        // Check function body
+        foreach (var statement in functionDef.Body)
+        {
+            CheckStatement(statement);
+        }
+
+        // Mark generator/async metadata and wrap return types
+        ProcessGeneratorMetadata(functionDef, functionSymbol, isGenerator);
+        ProcessAsyncMetadata(functionDef, functionSymbol, isGenerator);
+
+        // Restore previous method context
+        _currentMethodName = previousMethodName;
+        _currentMethodIsOverride = previousMethodIsOverride;
+        _currentMethodIsDunder = previousMethodIsDunder;
+        _currentFunctionIsGenerator = previousIsGenerator;
+        _currentFunctionIsAsync = previousIsAsync;
+        _controlFlowDepth = previousControlFlowDepth;
+        _superInitCalled = previousSuperInitCalled;
+
+        _symbolTable.ExitScope();
+        _currentFunctionReturnType = previousFunctionReturnType;
+        _typeResolver.SetIsStaticContext(false);
+    }
+
+    /// <summary>
+    /// Look up the function symbol for a FunctionDef — from the class's Methods/Constructors
+    /// list for class methods, or from the symbol table for top-level functions.
+    /// </summary>
+    private FunctionSymbol? LookupFunctionSymbol(FunctionDef functionDef)
+    {
+        if (_currentClass != null)
+        {
+            if (functionDef.Name == DunderNames.Init)
+            {
+                // Find the matching constructor by declaration line number
+                // This uniquely identifies which overload we're checking
+                return _currentClass.Constructors
+                    .FirstOrDefault(c => c.DeclarationLine == functionDef.LineStart);
+            }
+            else
+            {
+                // Find the method in the class's Methods list by name and line number
+                return _currentClass.Methods
+                    .FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart);
+            }
+        }
+        else
+        {
+            // For top-level functions, look up from symbol table
+            return _symbolTable.LookupFunction(functionDef.Name);
+        }
+    }
+
+    /// <summary>
+    /// Resolve the return type for a function definition from its type annotation.
+    /// </summary>
+    private SemanticType ResolveReturnType(FunctionDef functionDef)
+    {
+        var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
+
+        // Special case: __init__ always returns None/void
+        // (signature validation is in SignatureValidator)
+        if (functionDef.Name == DunderNames.Init)
+        {
+            returnType = SemanticType.Void;
+        }
+        // Functions without explicit return type annotation default to void
+        else if (returnType == SemanticType.Unknown && functionDef.ReturnType == null)
+        {
+            returnType = SemanticType.Void;
+        }
+
+        return returnType;
+    }
+
+    /// <summary>
+    /// Validate override decorator requirements: missing @override, invalid @override target,
+    /// and abstract method constraints.
+    /// </summary>
+    private void ValidateOverrideRequirements(FunctionDef functionDef)
+    {
         // Validate @override is required when a subclass method shadows a virtual, abstract, or override base method
         var currentClassBaseType = _currentClass != null ? GetBaseType(_currentClass) : null;
         if (_currentClass != null && !_currentMethodIsOverride && currentClassBaseType != null)
@@ -299,33 +374,44 @@ internal partial class TypeChecker
 
         // Note: Ellipsis body in concrete class is valid (generates NotImplementedException)
         // So we don't error on that case - it generates a stub that throws at runtime
+    }
 
-        // Validate self parameter for instance methods
-        // In Sharpy, methods without 'self' as the first parameter are treated as static methods
-        // This is consistent with how the code generator handles them
-        if (_currentClass != null)
+    /// <summary>
+    /// Validate self parameter for instance methods.
+    /// In Sharpy, methods without 'self' as the first parameter are treated as static methods.
+    /// </summary>
+    private void ValidateSelfParameter(FunctionDef functionDef)
+    {
+        if (_currentClass == null)
+            return;
+
+        // Check if this is a static method (explicitly decorated OR no self parameter)
+        bool hasStaticDecorator = functionDef.Decorators.Any(d =>
+            d.Name == DecoratorNames.Static);
+
+        bool hasSelfParameter = functionDef.Parameters.Length > 0 &&
+            functionDef.Parameters[0].Name == PythonNames.Self;
+
+        // Method is static if it has decorator OR doesn't have self parameter
+        // No error needed - code generator will make it static
+        if (!hasStaticDecorator && !hasSelfParameter)
         {
-            // Check if this is a static method (explicitly decorated OR no self parameter)
-            bool hasStaticDecorator = functionDef.Decorators.Any(d =>
-                d.Name == DecoratorNames.Static);
-
-            bool hasSelfParameter = functionDef.Parameters.Length > 0 &&
-                functionDef.Parameters[0].Name == PythonNames.Self;
-
-            // Method is static if it has decorator OR doesn't have self parameter
-            // No error needed - code generator will make it static
-            if (!hasStaticDecorator && !hasSelfParameter)
-            {
-                // This is implicitly a static method - valid, no error
-            }
-            else if (hasSelfParameter && hasStaticDecorator)
-            {
-                // Warning: static decorator with self parameter - self will be ignored
-                // This is allowed but could be confusing
-            }
-            // Instance methods with self are valid - no action needed
+            // This is implicitly a static method - valid, no error
         }
+        else if (hasSelfParameter && hasStaticDecorator)
+        {
+            // Warning: static decorator with self parameter - self will be ignored
+            // This is allowed but could be confusing
+        }
+        // Instance methods with self are valid - no action needed
+    }
 
+    /// <summary>
+    /// Validate parameter ordering (non-default cannot follow default) and register
+    /// all parameters in scope, updating the function symbol's parameter types.
+    /// </summary>
+    private void RegisterFunctionParameters(FunctionDef functionDef, FunctionSymbol? functionSymbol)
+    {
         // Validate parameter ordering: non-default parameters cannot follow default parameters
         // Keyword-only params (after * or *args) reset the default tracking since they
         // may be required even when previous normal/positional-only params have defaults
@@ -411,175 +497,148 @@ internal partial class TypeChecker
                 }
             }
         }
+    }
 
-        // Update the function symbol's return type and parameter types
-        if (functionSymbol != null)
+    /// <summary>
+    /// Update the function symbol's return type and sync with the owning TypeSymbol's
+    /// Methods/Constructors/MethodOverloads/OperatorMethods/ProtocolMethods lists.
+    /// </summary>
+    private void UpdateFunctionSymbol(FunctionDef functionDef, FunctionSymbol? functionSymbol, SemanticType returnType)
+    {
+        if (functionSymbol == null)
+            return;
+
+        // Create a new FunctionSymbol with updated return type
+        var updatedSymbol = functionSymbol with { ReturnType = returnType };
+        // Update the symbol in the symbol table
+        _symbolTable.UpdateSymbol(updatedSymbol);
+
+        // Also update the reference in the owning TypeSymbol's lists.
+        // The symbol table and TypeSymbol.Methods/Constructors are separate storage;
+        // without this sync, FindMethodInHierarchy reads stale Unknown return types.
+        if (_currentClass != null)
         {
-            // Create a new FunctionSymbol with updated return type
-            var updatedSymbol = functionSymbol with { ReturnType = returnType };
-            // Update the symbol in the symbol table
-            _symbolTable.UpdateSymbol(updatedSymbol);
-
-            // Also update the reference in the owning TypeSymbol's lists.
-            // The symbol table and TypeSymbol.Methods/Constructors are separate storage;
-            // without this sync, FindMethodInHierarchy reads stale Unknown return types.
-            if (_currentClass != null)
+            if (functionDef.Name == DunderNames.Init)
             {
-                if (functionDef.Name == DunderNames.Init)
-                {
-                    var idx = _currentClass.Constructors.IndexOf(functionSymbol);
-                    if (idx >= 0)
-                        _currentClass.Constructors[idx] = updatedSymbol;
+                var idx = _currentClass.Constructors.IndexOf(functionSymbol);
+                if (idx >= 0)
+                    _currentClass.Constructors[idx] = updatedSymbol;
 
-                    // __init__ is stored in both Constructors and Methods (NameResolver adds to both).
-                    // FindMethodInHierarchy searches Methods, so we must sync here too.
-                    var methodIdx = _currentClass.Methods.IndexOf(functionSymbol);
-                    if (methodIdx >= 0)
-                        _currentClass.Methods[methodIdx] = updatedSymbol;
+                // __init__ is stored in both Constructors and Methods (NameResolver adds to both).
+                // FindMethodInHierarchy searches Methods, so we must sync here too.
+                var methodIdx = _currentClass.Methods.IndexOf(functionSymbol);
+                if (methodIdx >= 0)
+                    _currentClass.Methods[methodIdx] = updatedSymbol;
+            }
+            else
+            {
+                var idx = _currentClass.Methods.IndexOf(functionSymbol);
+                if (idx >= 0)
+                    _currentClass.Methods[idx] = updatedSymbol;
+
+                // Also update MethodOverloads so ResolveUserMethodOverload
+                // reads resolved return types instead of stale Unknown.
+                if (_currentClass.MethodOverloads.TryGetValue(functionDef.Name, out var overloadList))
+                {
+                    var overloadIdx = overloadList.IndexOf(functionSymbol);
+                    if (overloadIdx >= 0)
+                        overloadList[overloadIdx] = updatedSymbol;
                 }
-                else
+
+                // Also update OperatorMethods/ProtocolMethods if the method appears there
+                foreach (var kvp in _currentClass.OperatorMethods)
                 {
-                    var idx = _currentClass.Methods.IndexOf(functionSymbol);
-                    if (idx >= 0)
-                        _currentClass.Methods[idx] = updatedSymbol;
-
-                    // Also update MethodOverloads so ResolveUserMethodOverload
-                    // reads resolved return types instead of stale Unknown.
-                    if (_currentClass.MethodOverloads.TryGetValue(functionDef.Name, out var overloadList))
-                    {
-                        var overloadIdx = overloadList.IndexOf(functionSymbol);
-                        if (overloadIdx >= 0)
-                            overloadList[overloadIdx] = updatedSymbol;
-                    }
-
-                    // Also update OperatorMethods/ProtocolMethods if the method appears there
-                    foreach (var kvp in _currentClass.OperatorMethods)
-                    {
-                        var opIdx = kvp.Value.IndexOf(functionSymbol);
-                        if (opIdx >= 0)
-                            kvp.Value[opIdx] = updatedSymbol;
-                    }
-                    foreach (var kvp in _currentClass.ProtocolMethods)
-                    {
-                        var protoIdx = kvp.Value.IndexOf(functionSymbol);
-                        if (protoIdx >= 0)
-                            kvp.Value[protoIdx] = updatedSymbol;
-                    }
+                    var opIdx = kvp.Value.IndexOf(functionSymbol);
+                    if (opIdx >= 0)
+                        kvp.Value[opIdx] = updatedSymbol;
+                }
+                foreach (var kvp in _currentClass.ProtocolMethods)
+                {
+                    var protoIdx = kvp.Value.IndexOf(functionSymbol);
+                    if (protoIdx >= 0)
+                        kvp.Value[protoIdx] = updatedSymbol;
                 }
             }
         }
+    }
 
-        // Save and set async flag before body checking so CheckAwaitExpression
-        // can validate that await is used inside async functions.
-        var previousIsAsync = _currentFunctionIsAsync;
-        _currentFunctionIsAsync = functionDef.IsAsync;
+    /// <summary>
+    /// Mark generator metadata on the function and wrap the return type
+    /// so callers see IEnumerable&lt;T&gt;/IAsyncEnumerable&lt;T&gt;.
+    /// </summary>
+    private void ProcessGeneratorMetadata(FunctionDef functionDef, FunctionSymbol? functionSymbol, bool isGenerator)
+    {
+        if (!isGenerator)
+            return;
 
-        // Detect generators early: set flag before body checking so CheckReturn
-        // knows bare return is valid (it becomes yield break).
-        var previousIsGenerator = _currentFunctionIsGenerator;
-        var isGenerator = ContainsYield(functionDef.Body);
-        _currentFunctionIsGenerator = isGenerator;
+        _semanticInfo.MarkAsGenerator(functionDef);
+        if (functionSymbol == null)
+            return;
 
-        // Async constructors are not supported (C# constructors cannot be async)
-        if (functionDef.IsAsync && functionDef.Name == DunderNames.Init)
+        // For class methods, look up the current symbol from the TypeSymbol's Methods list,
+        // because the TypeChecker creates a new class scope (NameResolver's scope was popped),
+        // so the symbol table doesn't contain the method. The Methods list has the
+        // updatedSymbol (from the return type update), which is also the same
+        // reference stored in ProtocolMethods/OperatorMethods.
+        // For top-level functions, fall back to the symbol table.
+        var currentSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
+            ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
+        Debug.Assert(currentSymbol != null, $"Generator function '{functionDef.Name}' not found in Methods list or SymbolTable");
+        if (currentSymbol != null)
         {
-            AddError(
-                "Constructors cannot be declared as 'async'; remove 'async' from '__init__'",
-                functionDef.LineStart, functionDef.ColumnStart,
-                code: DiagnosticCodes.Semantic.UnsupportedFeature,
-                span: functionDef.Span);
-        }
+            currentSymbol.IsGenerator = true;
 
-        // Check function body
-        foreach (var statement in functionDef.Body)
-        {
-            CheckStatement(statement);
-        }
-
-        // Mark generator metadata and update symbol after body checking
-        if (isGenerator)
-        {
-            _semanticInfo.MarkAsGenerator(functionDef);
-            if (functionSymbol != null)
+            // For non-dunder generators (standalone functions and regular class methods),
+            // wrap the return type so callers see IEnumerable<T>/IAsyncEnumerable<T> instead of T.
+            // Dunder methods (__iter__, __reversed__) keep their element type as ReturnType
+            // because SynthesisAnalyzer reads it to determine interface type arguments,
+            // and codegen handles the wrapping independently via AST annotations.
+            var isDunder = DunderDetector.IsDunderMethod(functionDef.Name);
+            if (!isDunder && currentSymbol.ReturnType is not (VoidType or UnknownType))
             {
-                // For class methods, look up the current symbol from the TypeSymbol's Methods list,
-                // because the TypeChecker creates a new class scope (NameResolver's scope was popped),
-                // so the symbol table doesn't contain the method. The Methods list has the
-                // updatedSymbol (from the return type update at line 319), which is also the same
-                // reference stored in ProtocolMethods/OperatorMethods.
-                // For top-level functions, fall back to the symbol table.
-                var currentSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
-                    ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
-                Debug.Assert(currentSymbol != null, $"Generator function '{functionDef.Name}' not found in Methods list or SymbolTable");
-                if (currentSymbol != null)
+                var enumerableName = functionDef.IsAsync
+                    ? Shared.CSharpTypeNames.IAsyncEnumerable
+                    : Shared.CSharpTypeNames.IEnumerable;
+                currentSymbol.ReturnType = new GenericType
                 {
-                    currentSymbol.IsGenerator = true;
-
-                    // For non-dunder generators (standalone functions and regular class methods),
-                    // wrap the return type so callers see IEnumerable<T>/IAsyncEnumerable<T> instead of T.
-                    // Dunder methods (__iter__, __reversed__) keep their element type as ReturnType
-                    // because SynthesisAnalyzer reads it to determine interface type arguments,
-                    // and codegen handles the wrapping independently via AST annotations.
-                    var isDunder = DunderDetector.IsDunderMethod(functionDef.Name);
-                    if (!isDunder && currentSymbol.ReturnType is not (VoidType or UnknownType))
-                    {
-                        var enumerableName = functionDef.IsAsync
-                            ? Shared.CSharpTypeNames.IAsyncEnumerable
-                            : Shared.CSharpTypeNames.IEnumerable;
-                        currentSymbol.ReturnType = new GenericType
-                        {
-                            Name = enumerableName,
-                            TypeArguments = new List<SemanticType> { currentSymbol.ReturnType }
-                        };
-                    }
-                }
+                    Name = enumerableName,
+                    TypeArguments = new List<SemanticType> { currentSymbol.ReturnType }
+                };
             }
         }
+    }
 
-        // Mark async metadata and wrap return type in TaskType.
-        // Skip if async was used in an invalid context (async __init__)
+    /// <summary>
+    /// Mark async metadata on the function and wrap the return type in TaskType.
+    /// Async generators skip Task wrapping since their type is already IAsyncEnumerable&lt;T&gt;.
+    /// </summary>
+    private void ProcessAsyncMetadata(FunctionDef functionDef, FunctionSymbol? functionSymbol, bool isGenerator)
+    {
+        // Skip if not async or if async was used in an invalid context (async __init__)
         // to avoid emitting broken C# (e.g., async constructor).
-        // Async generators get IsAsync but NOT TaskType wrapping — their return type
-        // is already IAsyncEnumerable<T> from the generator section above.
         var asyncHasError = functionDef.IsAsync && functionDef.Name == DunderNames.Init;
-        if (functionDef.IsAsync && !asyncHasError)
-        {
-            var asyncSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
-                ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
-            if (asyncSymbol != null)
-            {
-                asyncSymbol.IsAsync = true;
+        if (!functionDef.IsAsync || asyncHasError)
+            return;
 
-                // Async generators already have IAsyncEnumerable<T> return type — skip Task wrapping
-                if (!isGenerator)
-                {
-                    if (asyncSymbol.ReturnType is VoidType or UnknownType)
-                    {
-                        asyncSymbol.ReturnType = new TaskType { ResultType = null };
-                    }
-                    else
-                    {
-                        asyncSymbol.ReturnType = new TaskType { ResultType = asyncSymbol.ReturnType };
-                    }
-                }
+        var asyncSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
+            ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
+        if (asyncSymbol == null)
+            return;
+
+        asyncSymbol.IsAsync = true;
+
+        // Async generators already have IAsyncEnumerable<T> return type — skip Task wrapping
+        if (!isGenerator)
+        {
+            if (asyncSymbol.ReturnType is VoidType or UnknownType)
+            {
+                asyncSymbol.ReturnType = new TaskType { ResultType = null };
+            }
+            else
+            {
+                asyncSymbol.ReturnType = new TaskType { ResultType = asyncSymbol.ReturnType };
             }
         }
-
-        // Control flow validation (break/continue, unreachable code, missing return)
-        // is handled by ControlFlowValidator in the validation pipeline
-
-        // Restore previous method context
-        _currentMethodName = previousMethodName;
-        _currentMethodIsOverride = previousMethodIsOverride;
-        _currentMethodIsDunder = previousMethodIsDunder;
-        _currentFunctionIsGenerator = previousIsGenerator;
-        _currentFunctionIsAsync = previousIsAsync;
-        _controlFlowDepth = previousControlFlowDepth;
-        _superInitCalled = previousSuperInitCalled;
-
-        _symbolTable.ExitScope();
-        _currentFunctionReturnType = previousFunctionReturnType;
-        _typeResolver.SetIsStaticContext(false);
     }
 
     private void CheckClass(ClassDef classDef)
