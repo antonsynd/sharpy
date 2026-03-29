@@ -96,7 +96,10 @@ internal partial class TypeChecker
                     if (resolvedType is NullableType nullable)
                     {
                         narrowedTypes[narrowingKey] = nullable.UnderlyingType;
-                        optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, nullable.UnderlyingType, IsValueTypeNullable: true, NarrowInThenBranch: true));
+                        // Reference-type nullables (string?, etc.) don't need codegen narrowing —
+                        // C# automatically narrows them after a null check.
+                        if (nullable.IsValueType)
+                            optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, nullable.UnderlyingType, IsValueTypeNullable: true, NarrowInThenBranch: true));
                     }
                     else if (resolvedType is OptionalType optional)
                     {
@@ -129,7 +132,9 @@ internal partial class TypeChecker
                     if (resolvedType is NullableType nullable)
                     {
                         narrowedTypes[narrowingKey] = nullable.UnderlyingType;
-                        optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, nullable.UnderlyingType, IsValueTypeNullable: true, NarrowInThenBranch: false));
+                        // Reference-type nullables don't need codegen narrowing
+                        if (nullable.IsValueType)
+                            optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, nullable.UnderlyingType, IsValueTypeNullable: true, NarrowInThenBranch: false));
                     }
                     else if (resolvedType is OptionalType optional)
                     {

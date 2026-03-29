@@ -961,16 +961,9 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateIf(IfStatement ifStmt)
     {
-        // Detect Optional narrowing patterns:
-        // if x is not None: → x is narrowed to T in the then-body
-        // if x is None: → x is narrowed to T in the else-body
-        // if x is not None and y is not None: → both narrowed in then-body
-        var narrowingInfo = DetectOptionalNarrowings(ifStmt.Test);
-
-        // Detect isinstance narrowing patterns:
-        // if isinstance(x, MyType): → x is narrowed to MyType in the then-body
-        // if not isinstance(x, MyType): → x is narrowed to MyType in the else-body
-        var isInstanceNarrowingInfo = DetectIsInstanceNarrowings(ifStmt.Test);
+        // Read narrowing decisions from SemanticInfo (computed by TypeChecker)
+        var narrowingInfo = GetOptionalNarrowingsFromDecision(ifStmt.Test, narrowInThen: true);
+        var isInstanceNarrowingInfo = GetIsInstanceNarrowingsFromDecision(ifStmt.Test, narrowInThen: true);
 
         var condition = GenerateExpression(ifStmt.Test);
 
@@ -1036,21 +1029,24 @@ internal partial class RoslynEmitter
                 // Restore to pre-if scope so else doesn't see then-block variables (#363)
                 RestoreScope(preIfScope);
 
-                // Push isinstance narrowings for else-body when NarrowInThen is false
-                // (i.e., `not isinstance(x, T)` → narrow x to T in else branch)
-                if (isInstanceNarrowingInfo.HasValue && !isInstanceNarrowingInfo.Value.NarrowInThen)
+                // Read else-branch narrowings from SemanticInfo
+                var elseIsInstanceNarrowingInfo = GetIsInstanceNarrowingsFromDecision(ifStmt.Test, narrowInThen: false);
+                var elseNarrowingInfo = GetOptionalNarrowingsFromDecision(ifStmt.Test, narrowInThen: false);
+
+                // Push isinstance narrowings for else-body
+                if (elseIsInstanceNarrowingInfo.HasValue)
                 {
-                    foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
+                    foreach (var (varName, typeName) in elseIsInstanceNarrowingInfo.Value.Narrowings)
                         _narrowing.PushIsInstanceNarrowing(varName, typeName);
                 }
 
                 // Generate else-block with narrowing if applicable (is None → narrow in else)
-                if (narrowingInfo.HasValue && !narrowingInfo.Value.NarrowInThen)
+                if (elseNarrowingInfo.HasValue)
                 {
-                    foreach (var name in narrowingInfo.Value.VariableNames)
+                    foreach (var name in elseNarrowingInfo.Value.VariableNames)
                         _narrowing.PushNarrowing(name);
                     currentElse = Block(ifStmt.ElseBody.SelectMany(GenerateBodyStatements));
-                    foreach (var name in narrowingInfo.Value.VariableNames)
+                    foreach (var name in elseNarrowingInfo.Value.VariableNames)
                         _narrowing.PopNarrowing(name);
                 }
                 else
@@ -1059,9 +1055,9 @@ internal partial class RoslynEmitter
                 }
 
                 // Pop isinstance narrowings after else-body
-                if (isInstanceNarrowingInfo.HasValue && !isInstanceNarrowingInfo.Value.NarrowInThen)
+                if (elseIsInstanceNarrowingInfo.HasValue)
                 {
-                    foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
+                    foreach (var (varName, _) in elseIsInstanceNarrowingInfo.Value.Narrowings)
                         _narrowing.PopIsInstanceNarrowing(varName);
                 }
 
@@ -1076,9 +1072,9 @@ internal partial class RoslynEmitter
                 var elif = ifStmt.ElifClauses[i];
                 var elifCondition = GenerateExpression(elif.Test);
 
-                // Detect and apply narrowing for this elif's condition
-                var elifNarrowing = DetectOptionalNarrowings(elif.Test);
-                var elifIsInstanceNarrowingInfo = DetectIsInstanceNarrowings(elif.Test);
+                // Read narrowing decisions for this elif's condition from SemanticInfo
+                var elifNarrowing = GetOptionalNarrowingsFromDecision(elif.Test, narrowInThen: true);
+                var elifIsInstanceNarrowingInfo = GetIsInstanceNarrowingsFromDecision(elif.Test, narrowInThen: true);
 
                 // Push isinstance narrowings for elif body (only when NarrowInThen is true)
                 if (elifIsInstanceNarrowingInfo.HasValue && elifIsInstanceNarrowingInfo.Value.NarrowInThen)
@@ -1130,148 +1126,57 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Detects Optional narrowing patterns in a condition expression.
-    /// Returns the list of variable names to narrow and which branch they narrow in.
-    /// Handles simple patterns (x is not None), compound patterns (x is not None and y is not None),
-    /// and mixed compound patterns.
+    /// Reads Optional narrowing decisions from SemanticInfo for a given condition expression.
+    /// Filters entries by <paramref name="narrowInThen"/> to get either then-branch or else-branch narrowings.
+    /// Also registers value-type nullable narrowings via <see cref="NarrowingState.AddNullableNarrowing"/>
+    /// so the emitter uses <c>.Value</c> instead of <c>.Unwrap()</c>.
     /// </summary>
-    private (IReadOnlyList<string> VariableNames, bool NarrowInThen)? DetectOptionalNarrowings(Expression test)
+    private (IReadOnlyList<string> VariableNames, bool NarrowInThen)? GetOptionalNarrowingsFromDecision(
+        Expression test, bool narrowInThen)
     {
-        var isNotNone = new List<string>();
-        var isNone = new List<string>();
-        CollectNarrowingPatterns(test, isNotNone, isNone);
+        var decision = _context.SemanticInfo?.GetNarrowingDecision(test);
+        if (decision == null || decision.OptionalNarrowings.Count == 0)
+            return null;
 
-        // All `is not None` patterns → narrow in then-body
-        if (isNotNone.Count > 0 && isNone.Count == 0)
-            return (isNotNone, NarrowInThen: true);
-
-        // Single `is None` pattern (no compound) → narrow in else-body
-        if (isNone.Count > 0 && isNotNone.Count == 0)
-            return (isNone, NarrowInThen: false);
-
-        // Mixed or no narrowing patterns
-        return null;
-    }
-
-    /// <summary>
-    /// Recursively collects Optional narrowing patterns from an expression.
-    /// Only traverses `and` operators (all must be true → all can be narrowed).
-    /// `or` operators are not traversed (only one side needs to be true).
-    /// </summary>
-    private void CollectNarrowingPatterns(Expression expr, List<string> isNotNone, List<string> isNone)
-    {
-        if (expr is not BinaryOp binOp)
-            return;
-
-        // For `and`: both sides must be true, so collect from both
-        if (binOp.Operator == BinaryOperator.And)
+        var varNames = new List<string>();
+        foreach (var n in decision.OptionalNarrowings)
         {
-            CollectNarrowingPatterns(binOp.Left, isNotNone, isNone);
-            CollectNarrowingPatterns(binOp.Right, isNotNone, isNone);
-            return;
-        }
-
-        // For `or`: don't collect (can't narrow individual variables)
-        if (binOp.Operator == BinaryOperator.Or)
-            return;
-
-        if (binOp.Right is not NoneLiteral)
-            return;
-
-        // Extract narrowing key: simple identifier or dotted path (self.field)
-        var narrowingKey = AstHelper.ExtractNarrowingKey(binOp.Left);
-        if (narrowingKey == null)
-            return;
-
-        var leftType = GetExpressionSemanticType(binOp.Left);
-        if (leftType is null)
-            return;
-
-        bool isValueTypeNullable = leftType is NullableType && leftType.IsValueType;
-        bool isRefTypeNullable = leftType is NullableType && !leftType.IsValueType;
-
-        // Reference-type nullables (string?, etc.) don't need codegen narrowing —
-        // C# automatically narrows them after a null check.
-        if (isRefTypeNullable)
-            return;
-
-        if (leftType is not OptionalType && !isValueTypeNullable)
-            return;
-
-        if (binOp.Operator == BinaryOperator.IsNot)
-        {
-            isNotNone.Add(narrowingKey);
-            // Track value-type nullables so the emitter uses .Value instead of .Unwrap()
-            if (isValueTypeNullable)
-                _narrowing.AddNullableNarrowing(narrowingKey);
-        }
-        else if (binOp.Operator == BinaryOperator.Is)
-        {
-            isNone.Add(narrowingKey);
-            if (isValueTypeNullable)
-                _narrowing.AddNullableNarrowing(narrowingKey);
-        }
-    }
-
-    /// <summary>
-    /// Detects isinstance narrowing patterns in a condition expression.
-    /// Returns (variableName, csharpTypeName) pairs for each isinstance(var, Type) found,
-    /// along with a NarrowInThen flag indicating which branch the narrowing applies to.
-    /// Handles negated patterns: not isinstance(x, T) → narrow in else branch.
-    /// Handles compound `and` conditions: isinstance(x, A) and isinstance(y, B).
-    /// </summary>
-    private (IReadOnlyList<(string VariableName, string CSharpTypeName)> Narrowings, bool NarrowInThen)? DetectIsInstanceNarrowings(Expression test)
-    {
-        // Check for negated isinstance: not isinstance(x, T)
-        if (test is UnaryOp { Operator: UnaryOperator.Not } unary)
-        {
-            var negatedResult = new List<(string, string)>();
-            CollectIsInstancePatterns(unary.Operand, negatedResult);
-            if (negatedResult.Count > 0)
-                return (negatedResult, NarrowInThen: false);
-        }
-
-        var result = new List<(string, string)>();
-        CollectIsInstancePatterns(test, result);
-        if (result.Count > 0)
-            return (result, NarrowInThen: true);
-
-        return null;
-    }
-
-    private void CollectIsInstancePatterns(Expression expr, List<(string VariableName, string CSharpTypeName)> results)
-    {
-        // isinstance(var, Type) or isinstance(obj.member, Type)
-        if (expr is FunctionCall call
-            && call.Function is Identifier funcName
-            && funcName.Name == BuiltinFunctionNames.IsInstance
-            && call.Arguments.Length == 2
-            && call.Arguments[1] is Identifier typeId)
-        {
-            string? key = call.Arguments[0] switch
+            if (n.NarrowInThenBranch == narrowInThen)
             {
-                Identifier varId => varId.Name,
-                MemberAccess ma => TryBuildDottedPath(ma),
-                _ => null
-            };
-
-            if (key != null)
-            {
-                // Use TypeSyntaxMapper to resolve builtin types (str→string, int→int)
-                // and user-defined types (dog→Dog) to their C# names for casts.
-                var typeAnnotation = new TypeAnnotation { Name = typeId.Name };
-                var csharpType = _typeMapper.MapType(typeAnnotation).NormalizeWhitespace().ToFullString();
-                results.Add((key, csharpType));
-                return;
+                varNames.Add(n.VariableName);
+                // Preserve AddNullableNarrowing side effect for value-type nullables
+                if (n.IsValueTypeNullable)
+                    _narrowing.AddNullableNarrowing(n.VariableName);
             }
         }
 
-        // Compound `and`: both sides must be true
-        if (expr is BinaryOp binOp && binOp.Operator == BinaryOperator.And)
+        return varNames.Count > 0 ? (varNames, narrowInThen) : null;
+    }
+
+    /// <summary>
+    /// Reads isinstance narrowing decisions from SemanticInfo for a given condition expression.
+    /// Filters entries by <paramref name="narrowInThen"/> to get either then-branch or else-branch narrowings.
+    /// Maps <see cref="SemanticType"/> to C# type names via <see cref="TypeSyntaxMapper"/>.
+    /// </summary>
+    private (IReadOnlyList<(string VariableName, string CSharpTypeName)> Narrowings, bool NarrowInThen)?
+        GetIsInstanceNarrowingsFromDecision(Expression test, bool narrowInThen)
+    {
+        var decision = _context.SemanticInfo?.GetNarrowingDecision(test);
+        if (decision == null || decision.IsInstanceNarrowings.Count == 0)
+            return null;
+
+        var narrowings = new List<(string, string)>();
+        foreach (var n in decision.IsInstanceNarrowings)
         {
-            CollectIsInstancePatterns(binOp.Left, results);
-            CollectIsInstancePatterns(binOp.Right, results);
+            if (n.NarrowInThenBranch == narrowInThen)
+            {
+                var csharpType = _typeMapper.MapSemanticType(n.NarrowedType)
+                    .NormalizeWhitespace().ToFullString();
+                narrowings.Add((n.VariableName, csharpType));
+            }
         }
+
+        return narrowings.Count > 0 ? (narrowings, narrowInThen) : null;
     }
 
     /// <summary>
@@ -1283,14 +1188,9 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateWhile(WhileStatement whileStmt)
     {
-        // Detect Optional narrowing in while condition:
-        // while x is not None: → x is narrowed to T in the loop body
-        var narrowingInfo = DetectOptionalNarrowings(whileStmt.Test);
-
-        // Detect isinstance narrowing in while condition:
-        // while isinstance(x, MyType): → x is narrowed to MyType in the loop body
-        // (negated isinstance doesn't apply to while — loop body runs when condition is true)
-        var isInstanceNarrowingInfo = DetectIsInstanceNarrowings(whileStmt.Test);
+        // Read narrowing decisions from SemanticInfo (computed by TypeChecker)
+        var narrowingInfo = GetOptionalNarrowingsFromDecision(whileStmt.Test, narrowInThen: true);
+        var isInstanceNarrowingInfo = GetIsInstanceNarrowingsFromDecision(whileStmt.Test, narrowInThen: true);
 
         // For walrus operators in while conditions, use inline assignment mode so the
         // expression is re-evaluated each iteration instead of being hoisted once.

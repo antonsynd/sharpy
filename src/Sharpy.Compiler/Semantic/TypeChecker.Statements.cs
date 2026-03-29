@@ -516,11 +516,19 @@ internal partial class TypeChecker
         var (narrowedTypesInElse, elseDecision) = ExtractNarrowedTypes(ifStmt.Test, false);
 
         // Record narrowing decisions for codegen
-        // Merge then/else decisions — they describe opposite branches of the same test
-        var allOptional = new List<OptionalNarrowing>(thenDecision.OptionalNarrowings);
-        allOptional.AddRange(elseDecision.OptionalNarrowings);
-        var allIsInstance = new List<IsInstanceNarrowing>(thenDecision.IsInstanceNarrowings);
-        allIsInstance.AddRange(elseDecision.IsInstanceNarrowings);
+        // Merge then/else decisions — they describe opposite branches of the same test.
+        // thenDecision entries apply in the then-branch; elseDecision entries apply in the else-branch.
+        // Override NarrowInThenBranch to ensure correct tagging after merge.
+        var allOptional = new List<OptionalNarrowing>();
+        foreach (var n in thenDecision.OptionalNarrowings)
+            allOptional.Add(n with { NarrowInThenBranch = true });
+        foreach (var n in elseDecision.OptionalNarrowings)
+            allOptional.Add(n with { NarrowInThenBranch = false });
+        var allIsInstance = new List<IsInstanceNarrowing>();
+        foreach (var n in thenDecision.IsInstanceNarrowings)
+            allIsInstance.Add(n with { NarrowInThenBranch = true });
+        foreach (var n in elseDecision.IsInstanceNarrowings)
+            allIsInstance.Add(n with { NarrowInThenBranch = false });
         if (allOptional.Count > 0 || allIsInstance.Count > 0)
             _semanticInfo.SetNarrowingDecision(ifStmt.Test, new NarrowingDecision(allOptional, allIsInstance));
 
