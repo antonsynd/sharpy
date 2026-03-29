@@ -18,63 +18,12 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateCall(FunctionCall call)
     {
         // Handle generic type/function instantiation: Box[int](42) or identity[int](42)
-        // This is parsed as FunctionCall(Function: IndexAccess(Object: Box/identity, Index: int), Arguments: [42])
         if (call.Function is IndexAccess indexAccess &&
             indexAccess.Object is Identifier genericName)
         {
-            // Handle array construction: array[T](size) -> new T[size]
-            if (genericName.Name == BuiltinNames.Array && call.Arguments.Length == 1)
-            {
-                var elementType = _typeMapper.MapTypeFromExpression(indexAccess.Index);
-                var sizeExpr = GenerateExpression(call.Arguments[0]);
-                return ArrayCreationExpression(
-                    ArrayType(elementType)
-                        .AddRankSpecifiers(
-                            ArrayRankSpecifier(
-                                SingletonSeparatedList<ExpressionSyntax>(sizeExpr))));
-            }
-
-            var symbol = _context.LookupSymbol(genericName.Name);
-
-            // Map the type argument(s)
-            var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
-
-            if (symbol is TypeSymbol genericTypeSymbol && genericTypeSymbol.IsGeneric)
-            {
-                // Generate: new GenericType<TypeArgs>(args)
-                var csharpGenericTypeName = CSharpTypeNames.FromSharpyName(genericName.Name)
-                    ?? NameMangler.ToPascalCase(genericName.Name);
-                var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
-
-                // Generate arguments (reorder for C# compliance if needed)
-                var genericTypeCallTarget = ResolveConstructorForCall(genericTypeSymbol, call);
-                var allArgs = GenerateReorderedCallArguments(call, genericTypeCallTarget);
-
-                return ObjectCreationExpression(genericTypeSyntax)
-                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
-            }
-
-            if (symbol is FunctionSymbol genericFuncSymbol && genericFuncSymbol.IsGeneric)
-            {
-                // Generate: GenericFunction<TypeArgs>(args)
-                var genericFuncSyntax = GenericName(NameMangler.ToPascalCase(genericName.Name))
-                    .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
-
-                // Generate arguments (reorder for C# compliance if needed)
-                var allArgs = GenerateReorderedCallArguments(call, genericFuncSymbol);
-
-                // Builtin generic functions need qualification: global::Sharpy.Builtins.Map<T>(...)
-                if (_context.IsBuiltinFunction(genericName.Name))
-                {
-                    var qualifiedBase = MakeGlobalQualifiedName("Sharpy", "Builtins");
-                    return InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, qualifiedBase, genericFuncSyntax))
-                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
-                }
-
-                return InvocationExpression(genericFuncSyntax)
-                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
-            }
+            var result = GenerateGenericInstantiation(indexAccess, genericName, call);
+            if (result != null)
+                return result;
         }
 
         if (call.Function is Identifier funcName)
@@ -313,60 +262,7 @@ internal partial class RoslynEmitter
             // Handle null conditional method calls: obj?.Method(args)
             if (memberAccess.IsNullConditional)
             {
-                // For Optional<T>: lower to ternary since ?.  doesn't work on structs
-                if (GetExpressionSemanticType(memberAccess.Object) is OptionalType objOptType)
-                {
-                    // Ensure obj is only evaluated once for complex expressions
-                    var (safeObj, capture) = EnsureSingleEvaluation(obj, memberAccess.Object);
-                    // safeObj.IsSome ? safeObj.Unwrap().Method(args) : Optional<T>.None
-                    var methodCall = InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            InvocationExpression(
-                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                    safeObj, IdentifierName(ProtocolConstants.Unwrap)))
-                                .WithArgumentList(ArgumentList()),
-                            IdentifierName(methodName)))
-                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
-
-                    ExpressionSyntax cond = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        ParenthesizedExpression(safeObj), IdentifierName("IsSome"));
-                    if (capture != null)
-                        cond = BinaryExpression(SyntaxKind.LogicalAndExpression, capture, cond);
-
-                    // Determine the Optional type and whether to wrap the true branch.
-                    // Case 1: callType is OptionalType — the method itself returns Optional<T>
-                    //   (e.g., get_city() -> str?). The true branch already returns Optional<T>,
-                    //   so we use it as-is and only set the false branch to Optional<T>.None.
-                    // Case 2: callType is Unknown or non-Optional — the method returns a plain type
-                    //   (e.g., str.upper() -> str, resolved via CLR discovery). The true branch returns
-                    //   the raw type, so we wrap it in Optional<T>.Some() using the object's
-                    //   Optional underlying type. This ensures both branches have the same type.
-                    var callType = GetExpressionSemanticType(call);
-                    ExpressionSyntax trueBranch;
-                    ExpressionSyntax falseExpr;
-                    if (callType is OptionalType optCallType)
-                    {
-                        // Method returns Optional<T> — true branch is already correct
-                        trueBranch = methodCall;
-                        falseExpr = GenerateOptionalNone(optCallType);
-                    }
-                    else
-                    {
-                        // Method returns non-Optional (or Unknown) — wrap both branches
-                        trueBranch = WrapInOptionalSome(methodCall, objOptType);
-                        falseExpr = GenerateOptionalNone(objOptType);
-                    }
-                    return ConditionalExpression(cond, trueBranch, falseExpr);
-                }
-
-                // Generate: obj?.Method(args)
-                // Uses ConditionalAccessExpression with MemberBindingExpression for the method
-                // followed by InvocationExpression for the call
-                var memberBinding = MemberBindingExpression(IdentifierName(methodName));
-                var invocation = InvocationExpression(memberBinding)
-                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
-
-                return ConditionalAccessExpression(obj, invocation);
+                return GenerateNullConditionalMethodCall(obj, memberAccess, methodName, allArgs, call);
             }
 
             // Interface default method promotion: if the method is a default method
@@ -437,6 +333,136 @@ internal partial class RoslynEmitter
 
         return InvocationExpression(callTarget)
             .WithArgumentList(ArgumentList(SeparatedList(fallbackAllArgs)));
+    }
+
+    /// <summary>
+    /// Handle generic type/function instantiation: Box[int](42) or identity[int](42).
+    /// Parsed as FunctionCall(Function: IndexAccess(Object: Box/identity, Index: int), Arguments: [42]).
+    /// Returns null if the symbol is neither a generic type nor a generic function.
+    /// </summary>
+    private ExpressionSyntax? GenerateGenericInstantiation(
+        IndexAccess indexAccess, Identifier genericName, FunctionCall call)
+    {
+        // Handle array construction: array[T](size) -> new T[size]
+        if (genericName.Name == BuiltinNames.Array && call.Arguments.Length == 1)
+        {
+            var elementType = _typeMapper.MapTypeFromExpression(indexAccess.Index);
+            var sizeExpr = GenerateExpression(call.Arguments[0]);
+            return ArrayCreationExpression(
+                ArrayType(elementType)
+                    .AddRankSpecifiers(
+                        ArrayRankSpecifier(
+                            SingletonSeparatedList<ExpressionSyntax>(sizeExpr))));
+        }
+
+        var symbol = _context.LookupSymbol(genericName.Name);
+
+        // Map the type argument(s)
+        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+
+        if (symbol is TypeSymbol genericTypeSymbol && genericTypeSymbol.IsGeneric)
+        {
+            // Generate: new GenericType<TypeArgs>(args)
+            var csharpGenericTypeName = CSharpTypeNames.FromSharpyName(genericName.Name)
+                ?? NameMangler.ToPascalCase(genericName.Name);
+            var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
+
+            // Generate arguments (reorder for C# compliance if needed)
+            var genericTypeCallTarget = ResolveConstructorForCall(genericTypeSymbol, call);
+            var allArgs = GenerateReorderedCallArguments(call, genericTypeCallTarget);
+
+            return ObjectCreationExpression(genericTypeSyntax)
+                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+        }
+
+        if (symbol is FunctionSymbol genericFuncSymbol && genericFuncSymbol.IsGeneric)
+        {
+            // Generate: GenericFunction<TypeArgs>(args)
+            var genericFuncSyntax = GenericName(NameMangler.ToPascalCase(genericName.Name))
+                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+
+            // Generate arguments (reorder for C# compliance if needed)
+            var allArgs = GenerateReorderedCallArguments(call, genericFuncSymbol);
+
+            // Builtin generic functions need qualification: global::Sharpy.Builtins.Map<T>(...)
+            if (_context.IsBuiltinFunction(genericName.Name))
+            {
+                var qualifiedBase = MakeGlobalQualifiedName("Sharpy", "Builtins");
+                return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, qualifiedBase, genericFuncSyntax))
+                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+            }
+
+            return InvocationExpression(genericFuncSyntax)
+                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Handle null conditional method calls: obj?.Method(args).
+    /// For Optional&lt;T&gt;, lowers to a ternary since ?. doesn't work on structs.
+    /// For nullable reference types, uses ConditionalAccessExpression.
+    /// </summary>
+    private ExpressionSyntax GenerateNullConditionalMethodCall(
+        ExpressionSyntax obj, MemberAccess memberAccess, string methodName,
+        ArgumentSyntax[] allArgs, FunctionCall call)
+    {
+        // For Optional<T>: lower to ternary since ?.  doesn't work on structs
+        if (GetExpressionSemanticType(memberAccess.Object) is OptionalType objOptType)
+        {
+            // Ensure obj is only evaluated once for complex expressions
+            var (safeObj, capture) = EnsureSingleEvaluation(obj, memberAccess.Object);
+            // safeObj.IsSome ? safeObj.Unwrap().Method(args) : Optional<T>.None
+            var methodCall = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            safeObj, IdentifierName(ProtocolConstants.Unwrap)))
+                        .WithArgumentList(ArgumentList()),
+                    IdentifierName(methodName)))
+                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+
+            ExpressionSyntax cond = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                ParenthesizedExpression(safeObj), IdentifierName("IsSome"));
+            if (capture != null)
+                cond = BinaryExpression(SyntaxKind.LogicalAndExpression, capture, cond);
+
+            // Determine the Optional type and whether to wrap the true branch.
+            // Case 1: callType is OptionalType — the method itself returns Optional<T>
+            //   (e.g., get_city() -> str?). The true branch already returns Optional<T>,
+            //   so we use it as-is and only set the false branch to Optional<T>.None.
+            // Case 2: callType is Unknown or non-Optional — the method returns a plain type
+            //   (e.g., str.upper() -> str, resolved via CLR discovery). The true branch returns
+            //   the raw type, so we wrap it in Optional<T>.Some() using the object's
+            //   Optional underlying type. This ensures both branches have the same type.
+            var callType = GetExpressionSemanticType(call);
+            ExpressionSyntax trueBranch;
+            ExpressionSyntax falseExpr;
+            if (callType is OptionalType optCallType)
+            {
+                // Method returns Optional<T> — true branch is already correct
+                trueBranch = methodCall;
+                falseExpr = GenerateOptionalNone(optCallType);
+            }
+            else
+            {
+                // Method returns non-Optional (or Unknown) — wrap both branches
+                trueBranch = WrapInOptionalSome(methodCall, objOptType);
+                falseExpr = GenerateOptionalNone(objOptType);
+            }
+            return ConditionalExpression(cond, trueBranch, falseExpr);
+        }
+
+        // Generate: obj?.Method(args)
+        // Uses ConditionalAccessExpression with MemberBindingExpression for the method
+        // followed by InvocationExpression for the call
+        var memberBinding = MemberBindingExpression(IdentifierName(methodName));
+        var invocation = InvocationExpression(memberBinding)
+            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+
+        return ConditionalAccessExpression(obj, invocation);
     }
 
     /// <summary>
