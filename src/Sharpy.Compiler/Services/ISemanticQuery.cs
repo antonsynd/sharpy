@@ -66,4 +66,10 @@ public interface ISemanticQuery
     /// a different compilation (and thus reference equality won't match).
     /// </summary>
     IReadOnlyList<SymbolReference> FindReferencesBySymbolIdentity(string symbolName, string? declaringFilePath);
+
+    /// <summary>
+    /// Gets the variable symbol associated with a with-statement item's <c>as</c> variable.
+    /// Returns null if no symbol was recorded (e.g., no <c>as</c> clause).
+    /// </summary>
+    VariableSymbol? GetWithItemSymbol(WithItem item);
 }

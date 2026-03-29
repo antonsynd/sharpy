@@ -79,6 +79,11 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, ContextManagerKind> _contextManagerKinds =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map with-item nodes to their 'as' variable symbols
+    // Needed because the with-scope is exited after type checking, making SymbolTable lookup impossible
+    private readonly ConcurrentDictionary<WithItem, VariableSymbol> _withItemSymbols =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track all reference locations for each symbol (for find-references and rename).
     // Key is Symbol (reference-equality), value is list of (FilePath, Line, Column, Span) tuples.
     // The FilePath may be null for the main file in single-file compilation.
@@ -306,6 +311,24 @@ public class SemanticInfo : ISemanticQuery
     public ContextManagerKind? GetContextManagerKind(Expression contextExpr)
     {
         return _contextManagerKinds.TryGetValue(contextExpr, out var kind) ? kind : null;
+    }
+
+    /// <summary>
+    /// Records the variable symbol for a with-item's <c>as</c> variable.
+    /// Called during type checking so the symbol is retrievable after the with-scope is exited.
+    /// </summary>
+    public void SetWithItemSymbol(WithItem item, VariableSymbol symbol)
+    {
+        _withItemSymbols[item] = symbol;
+    }
+
+    /// <summary>
+    /// Gets the variable symbol for a with-item's <c>as</c> variable.
+    /// Returns null if no symbol was recorded (e.g., no <c>as</c> clause).
+    /// </summary>
+    public VariableSymbol? GetWithItemSymbol(WithItem item)
+    {
+        return _withItemSymbols.TryGetValue(item, out var symbol) ? symbol : null;
     }
 
     // === Symbol Reference Tracking ===

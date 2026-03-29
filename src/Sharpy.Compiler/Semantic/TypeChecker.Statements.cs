@@ -848,6 +848,7 @@ internal partial class TypeChecker
 
                 _symbolTable.Define(varSymbol);
                 SemanticBinding.SetVariableType(varSymbol, asVarType);
+                _semanticInfo.SetWithItemSymbol(item, varSymbol);
             }
         }
 

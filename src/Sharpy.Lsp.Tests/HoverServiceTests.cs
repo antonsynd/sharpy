@@ -172,7 +172,7 @@ public class HoverServiceTests
 
     // --- #472: With-statement as-variable hover ---
 
-    [Fact(Skip = "TODO(#475): WithStatement hover uses SymbolTable.LookupVariable which can't find local-scope 'as' variables after analysis.")]
+    [Fact]
     public void GetHoverMarkdown_OverWithAsVariable_ReturnsTypeInfo()
     {
         var source = "class Conn:\n    def __enter__(self) -> Conn:\n        return self\n    def __exit__(self):\n        pass\ndef main():\n    with Conn() as c:\n        pass";
@@ -217,7 +217,7 @@ public class HoverServiceTests
 
     // --- #471: Async with TaskType unwrapping hover ---
 
-    [Fact(Skip = "TODO(#475): WithStatement hover uses SymbolTable.LookupVariable which can't find local-scope 'as' variables after analysis.")]
+    [Fact]
     public void GetHoverMarkdown_OverAsyncWithAsVariable_ReturnsUnwrappedType()
     {
         var source = "class AsyncConn:\n    async def __aenter__(self) -> AsyncConn:\n        return self\n    async def __aexit__(self):\n        pass\nasync def main():\n    async with AsyncConn() as conn:\n        pass";

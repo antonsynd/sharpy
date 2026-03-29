@@ -153,4 +153,26 @@ public class SemanticQueryTests
         Assert.NotNull(result.SemanticQuery);
         Assert.Same(info, result.SemanticQuery);
     }
+
+    [Fact]
+    public void GetWithItemSymbol_ReturnsSetSymbol()
+    {
+        var info = new SemanticInfo();
+        var item = new WithItem { ContextExpression = new Identifier { Name = "conn" }, Name = "c" };
+        var symbol = new VariableSymbol { Name = "c", Kind = SymbolKind.Variable, Type = SemanticType.Int };
+        info.SetWithItemSymbol(item, symbol);
+
+        ISemanticQuery query = info;
+        var result = query.GetWithItemSymbol(item);
+        Assert.NotNull(result);
+        Assert.Same(symbol, result);
+    }
+
+    [Fact]
+    public void GetWithItemSymbol_ReturnsNull_WhenNotSet()
+    {
+        ISemanticQuery query = new SemanticInfo();
+        var item = new WithItem { ContextExpression = new Identifier { Name = "conn" } };
+        Assert.Null(query.GetWithItemSymbol(item));
+    }
 }

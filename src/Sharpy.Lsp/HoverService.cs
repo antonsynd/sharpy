@@ -217,7 +217,7 @@ public sealed class HoverService
                             col >= item.NameColumnStart &&
                             col < item.NameColumnStart + item.Name.Length)
                         {
-                            var withVarSymbol = analysis.SymbolTable?.LookupVariable(item.Name);
+                            var withVarSymbol = analysis.SemanticQuery?.GetWithItemSymbol(item);
                             if (withVarSymbol != null)
                                 return SymbolFormatter.FormatSymbolWithDocs(withVarSymbol);
                         }
