@@ -31,9 +31,11 @@ internal partial class TypeChecker
         return false;
     }
 
-    private Dictionary<string, SemanticType> ExtractNarrowedTypes(Expression condition, bool isPositiveBranch)
+    private (Dictionary<string, SemanticType> NarrowedTypes, NarrowingDecision Decision) ExtractNarrowedTypes(Expression condition, bool isPositiveBranch)
     {
         var narrowedTypes = new Dictionary<string, SemanticType>();
+        var optionalNarrowings = new List<OptionalNarrowing>();
+        var isInstanceNarrowings = new List<IsInstanceNarrowing>();
 
         // Handle 'not <expr>' pattern - flip the branch polarity and recurse
         if (condition is UnaryOp { Operator: UnaryOperator.Not } notOp)
@@ -45,8 +47,8 @@ internal partial class TypeChecker
         if (condition is BinaryOp { Operator: BinaryOperator.And } andOp && isPositiveBranch)
         {
             // In the positive branch, both conditions must be true, so we combine narrowings
-            var leftNarrowed = ExtractNarrowedTypes(andOp.Left, true);
-            var rightNarrowed = ExtractNarrowedTypes(andOp.Right, true);
+            var (leftNarrowed, leftDecision) = ExtractNarrowedTypes(andOp.Left, true);
+            var (rightNarrowed, rightDecision) = ExtractNarrowedTypes(andOp.Right, true);
 
             // Merge the dictionaries, with right side taking precedence if there's overlap
             foreach (var kvp in leftNarrowed)
@@ -60,7 +62,13 @@ internal partial class TypeChecker
                 narrowedTypes[kvp.Key] = kvp.Value;
             }
 
-            return narrowedTypes;
+            // Merge narrowing decisions from both sides
+            optionalNarrowings.AddRange(leftDecision.OptionalNarrowings);
+            optionalNarrowings.AddRange(rightDecision.OptionalNarrowings);
+            isInstanceNarrowings.AddRange(leftDecision.IsInstanceNarrowings);
+            isInstanceNarrowings.AddRange(rightDecision.IsInstanceNarrowings);
+
+            return (narrowedTypes, new NarrowingDecision(optionalNarrowings, isInstanceNarrowings));
         }
 
         // Handle 'x is not None' pattern (x can be identifier or member access like self.field)
@@ -86,9 +94,15 @@ internal partial class TypeChecker
                     }
 
                     if (resolvedType is NullableType nullable)
+                    {
                         narrowedTypes[narrowingKey] = nullable.UnderlyingType;
+                        optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, nullable.UnderlyingType, IsValueTypeNullable: true, NarrowInThenBranch: true));
+                    }
                     else if (resolvedType is OptionalType optional)
+                    {
                         narrowedTypes[narrowingKey] = optional.UnderlyingType;
+                        optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, optional.UnderlyingType, IsValueTypeNullable: false, NarrowInThenBranch: true));
+                    }
                 }
             }
         }
@@ -113,9 +127,15 @@ internal partial class TypeChecker
                     }
 
                     if (resolvedType is NullableType nullable)
+                    {
                         narrowedTypes[narrowingKey] = nullable.UnderlyingType;
+                        optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, nullable.UnderlyingType, IsValueTypeNullable: true, NarrowInThenBranch: false));
+                    }
                     else if (resolvedType is OptionalType optional)
+                    {
                         narrowedTypes[narrowingKey] = optional.UnderlyingType;
+                        optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, optional.UnderlyingType, IsValueTypeNullable: false, NarrowInThenBranch: false));
+                    }
                 }
             }
         }
@@ -150,13 +170,16 @@ internal partial class TypeChecker
                         if (builtinType != null)
                         {
                             narrowedTypes[narrowingKey] = builtinType;
+                            isInstanceNarrowings.Add(new IsInstanceNarrowing(narrowingKey, builtinType, NarrowInThenBranch: true));
                         }
                         else
                         {
                             var typeSymbol = _symbolTable.Lookup(typeId.Name) as TypeSymbol;
                             if (typeSymbol != null)
                             {
-                                narrowedTypes[narrowingKey] = new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                                var narrowedType = new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                                narrowedTypes[narrowingKey] = narrowedType;
+                                isInstanceNarrowings.Add(new IsInstanceNarrowing(narrowingKey, narrowedType, NarrowInThenBranch: true));
                             }
                         }
                     }
@@ -164,7 +187,7 @@ internal partial class TypeChecker
             }
         }
 
-        return narrowedTypes;
+        return (narrowedTypes, new NarrowingDecision(optionalNarrowings, isInstanceNarrowings));
     }
 
     /// <summary>

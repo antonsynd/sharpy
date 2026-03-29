@@ -512,8 +512,17 @@ internal partial class TypeChecker
         }
 
         // Check for type narrowing patterns
-        var narrowedTypesInThen = ExtractNarrowedTypes(ifStmt.Test, true);
-        var narrowedTypesInElse = ExtractNarrowedTypes(ifStmt.Test, false);
+        var (narrowedTypesInThen, thenDecision) = ExtractNarrowedTypes(ifStmt.Test, true);
+        var (narrowedTypesInElse, elseDecision) = ExtractNarrowedTypes(ifStmt.Test, false);
+
+        // Record narrowing decisions for codegen
+        // Merge then/else decisions — they describe opposite branches of the same test
+        var allOptional = new List<OptionalNarrowing>(thenDecision.OptionalNarrowings);
+        allOptional.AddRange(elseDecision.OptionalNarrowings);
+        var allIsInstance = new List<IsInstanceNarrowing>(thenDecision.IsInstanceNarrowings);
+        allIsInstance.AddRange(elseDecision.IsInstanceNarrowings);
+        if (allOptional.Count > 0 || allIsInstance.Count > 0)
+            _semanticInfo.SetNarrowingDecision(ifStmt.Test, new NarrowingDecision(allOptional, allIsInstance));
 
         // Check then branch with its own narrowing scope
         using (_narrowingContext.EnterScope())
@@ -539,7 +548,9 @@ internal partial class TypeChecker
                     span: elif.Test.Span);
             }
 
-            var narrowedTypesInElif = ExtractNarrowedTypes(elif.Test, true);
+            var (narrowedTypesInElif, elifDecision) = ExtractNarrowedTypes(elif.Test, true);
+            if (elifDecision.OptionalNarrowings.Count > 0 || elifDecision.IsInstanceNarrowings.Count > 0)
+                _semanticInfo.SetNarrowingDecision(elif.Test, elifDecision);
 
             using (_narrowingContext.EnterScope())
             {
@@ -582,7 +593,9 @@ internal partial class TypeChecker
         }
 
         // Check for type narrowing patterns (similar to if statement)
-        var narrowedTypesInBody = ExtractNarrowedTypes(whileStmt.Test, true);
+        var (narrowedTypesInBody, whileDecision) = ExtractNarrowedTypes(whileStmt.Test, true);
+        if (whileDecision.OptionalNarrowings.Count > 0 || whileDecision.IsInstanceNarrowings.Count > 0)
+            _semanticInfo.SetNarrowingDecision(whileStmt.Test, whileDecision);
 
         // Enter narrowing scope for while body
         using (_narrowingContext.EnterScope())
