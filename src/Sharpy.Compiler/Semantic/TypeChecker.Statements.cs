@@ -1535,30 +1535,50 @@ internal partial class TypeChecker
     /// </summary>
     private bool IsDisposableType(SemanticType type)
     {
+        // Builtin types with a CLR backing type (e.g., TextFile from open())
+        // Only IDisposable needs this check — async disposable builtins don't exist yet.
+        if (type is BuiltinType bt && bt.ClrType != null)
+            return typeof(System.IDisposable).IsAssignableFrom(bt.ClrType);
+
+        return IsImplementingInterface(type, typeof(System.IDisposable), "IDisposable");
+    }
+
+    /// <summary>
+    /// Checks whether a type implements IAsyncDisposable (required for 'async with' / C# 'await using').
+    /// </summary>
+    private bool IsAsyncDisposableType(SemanticType type)
+    {
+        return IsImplementingInterface(type, typeof(System.IAsyncDisposable), "IAsyncDisposable");
+    }
+
+    /// <summary>
+    /// Checks whether a type implements a given CLR interface by name and/or CLR type assignability.
+    /// Handles UnknownType passthrough, Nullable/Optional unwrapping, UserDefinedType and GenericType checks.
+    /// </summary>
+    private bool IsImplementingInterface(SemanticType type, Type clrInterface, string interfaceName)
+    {
         // Unknown type: skip to avoid cascading errors
         if (type is UnknownType)
             return true;
 
         // Nullable/Optional: check underlying type
         if (type is NullableType nullable)
-            return IsDisposableType(nullable.UnderlyingType);
+            return IsImplementingInterface(nullable.UnderlyingType, clrInterface, interfaceName);
         if (type is OptionalType optional)
-            return IsDisposableType(optional.UnderlyingType);
+            return IsImplementingInterface(optional.UnderlyingType, clrInterface, interfaceName);
 
         // User-defined types: check CLR type or interface list
         if (type is UserDefinedType udt && udt.Symbol != null)
         {
-            // Check CLR backing type
             if (udt.Symbol.ClrType != null)
-                return typeof(System.IDisposable).IsAssignableFrom(udt.Symbol.ClrType);
+                return clrInterface.IsAssignableFrom(udt.Symbol.ClrType);
 
-            // Check Sharpy interfaces for IDisposable
             var allInterfaces = CollectAllInterfaces(udt.Symbol);
             foreach (var iface in allInterfaces)
             {
-                if (iface.Name == "IDisposable")
+                if (iface.Name == interfaceName)
                     return true;
-                if (iface.ClrType != null && typeof(System.IDisposable).IsAssignableFrom(iface.ClrType))
+                if (iface.ClrType != null && clrInterface.IsAssignableFrom(iface.ClrType))
                     return true;
             }
 
@@ -1570,58 +1590,11 @@ internal partial class TypeChecker
         {
             var sym = _symbolTable.Lookup(gt.Name) as TypeSymbol;
             if (sym?.ClrType != null)
-                return typeof(System.IDisposable).IsAssignableFrom(sym.ClrType);
+                return clrInterface.IsAssignableFrom(sym.ClrType);
             return false;
         }
 
-        // Builtin types with a CLR backing type (e.g., TextFile from open())
-        if (type is BuiltinType bt && bt.ClrType != null)
-        {
-            return typeof(System.IDisposable).IsAssignableFrom(bt.ClrType);
-        }
-
-        // All other types (builtins without CLR type, functions, tuples, etc.) are not disposable
-        return false;
-    }
-
-    /// <summary>
-    /// Checks whether a type implements IAsyncDisposable (required for 'async with' / C# 'await using').
-    /// </summary>
-    private bool IsAsyncDisposableType(SemanticType type)
-    {
-        if (type is UnknownType)
-            return true;
-
-        if (type is NullableType nullable)
-            return IsAsyncDisposableType(nullable.UnderlyingType);
-        if (type is OptionalType optional)
-            return IsAsyncDisposableType(optional.UnderlyingType);
-
-        if (type is UserDefinedType udt && udt.Symbol != null)
-        {
-            if (udt.Symbol.ClrType != null)
-                return typeof(System.IAsyncDisposable).IsAssignableFrom(udt.Symbol.ClrType);
-
-            var allInterfaces = CollectAllInterfaces(udt.Symbol);
-            foreach (var iface in allInterfaces)
-            {
-                if (iface.Name == "IAsyncDisposable")
-                    return true;
-                if (iface.ClrType != null && typeof(System.IAsyncDisposable).IsAssignableFrom(iface.ClrType))
-                    return true;
-            }
-
-            return false;
-        }
-
-        if (type is GenericType gt)
-        {
-            var sym = _symbolTable.Lookup(gt.Name) as TypeSymbol;
-            if (sym?.ClrType != null)
-                return typeof(System.IAsyncDisposable).IsAssignableFrom(sym.ClrType);
-            return false;
-        }
-
+        // All other types (builtins without CLR type, functions, tuples, etc.)
         return false;
     }
 
