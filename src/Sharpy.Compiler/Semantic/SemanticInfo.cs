@@ -84,6 +84,11 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<WithItem, VariableSymbol> _withItemSymbols =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map conditional test expressions to their narrowing decisions
+    // Used by codegen to determine how to emit branches with type narrowing
+    private readonly ConcurrentDictionary<Expression, NarrowingDecision> _narrowingDecisions =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track all reference locations for each symbol (for find-references and rename).
     // Key is Symbol (reference-equality), value is list of (FilePath, Line, Column, Span) tuples.
     // The FilePath may be null for the main file in single-file compilation.
@@ -331,6 +336,24 @@ public class SemanticInfo : ISemanticQuery
         return _withItemSymbols.TryGetValue(item, out var symbol) ? symbol : null;
     }
 
+    /// <summary>
+    /// Records a narrowing decision for a conditional test expression.
+    /// Used by the TypeChecker to communicate narrowing context to codegen.
+    /// </summary>
+    public void SetNarrowingDecision(Expression test, NarrowingDecision decision)
+    {
+        _narrowingDecisions[test] = decision;
+    }
+
+    /// <summary>
+    /// Gets the narrowing decision for a conditional test expression.
+    /// Returns null if no narrowing was recorded for this expression.
+    /// </summary>
+    public NarrowingDecision? GetNarrowingDecision(Expression test)
+    {
+        return _narrowingDecisions.TryGetValue(test, out var decision) ? decision : null;
+    }
+
     // === Symbol Reference Tracking ===
 
     private void RecordReference(Symbol symbol, Node node)
@@ -396,3 +419,36 @@ public enum ContextManagerKind
     /// <summary>Implements __aenter__/__aexit__ async dunder protocol — emit AenterAsync()/AexitAsync() calls.</summary>
     AsyncDunderProtocol
 }
+
+/// <summary>
+/// Represents a narrowing decision for a conditional statement.
+/// Records all type narrowings that a condition's test expression implies,
+/// so codegen can emit the correct accessor patterns (e.g., <c>.Value</c> for value-type nullables).
+/// </summary>
+public sealed record NarrowingDecision(
+    IReadOnlyList<OptionalNarrowing> OptionalNarrowings,
+    IReadOnlyList<IsInstanceNarrowing> IsInstanceNarrowings);
+
+/// <summary>
+/// A variable narrowed from <see cref="OptionalType"/> or <see cref="NullableType"/> to its underlying type.
+/// </summary>
+/// <param name="VariableName">The name of the narrowed variable.</param>
+/// <param name="NarrowedType">The type after narrowing (the underlying type of Optional/Nullable).</param>
+/// <param name="IsValueTypeNullable">True if <see cref="NullableType"/> (value-type); needs <c>.Value</c> access in codegen.</param>
+/// <param name="NarrowInThenBranch">True if narrowing applies in the then-branch; false for the else-branch.</param>
+public sealed record OptionalNarrowing(
+    string VariableName,
+    SemanticType NarrowedType,
+    bool IsValueTypeNullable,
+    bool NarrowInThenBranch);
+
+/// <summary>
+/// A variable narrowed via an <c>isinstance()</c> check.
+/// </summary>
+/// <param name="VariableName">The name of the narrowed variable.</param>
+/// <param name="NarrowedType">The type after narrowing (the target type of the isinstance check).</param>
+/// <param name="NarrowInThenBranch">True if narrowing applies in the then-branch; false for the else-branch.</param>
+public sealed record IsInstanceNarrowing(
+    string VariableName,
+    SemanticType NarrowedType,
+    bool NarrowInThenBranch);
