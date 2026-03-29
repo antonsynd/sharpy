@@ -6,11 +6,23 @@ Goal: identify what Sharpy must add to serve as a full C# 9.0 replacement.
 > **Methodology:** Audited all C# features (1.0 through 9.0), cross-referenced against
 > the Sharpy language specification (`docs/language_specification/`), compiler implementation
 > (lexer tokens, AST nodes, codegen), 1,571 integration test fixtures, and open GitHub issues.
+> Second pass verified all claims against actual compiler source (lexer, parser AST, codegen
+> emitter, semantic analysis) and identified 8 additional gaps not in the initial audit.
 >
 > **C# version target:** Sharpy.Core targets `LangVersion 9.0` / `netstandard2.1`, making
 > C# 9.0 the effective ceiling for generated code.
 >
-> **Date:** 2026-03-29
+> **Last updated:** 2026-03-29
+
+---
+
+## Summary
+
+- **14 Tier 1 gaps** (high priority, blocking for C# replacement)
+- **17 Tier 2 gaps** (medium priority, workaroundable)
+- **14 Tier 3 items** (intentionally excluded or very niche)
+- **50+ C# features** already covered with Pythonic equivalents
+- **6 open GitHub issues** tracking specific gaps
 
 ---
 
@@ -152,79 +164,164 @@ many real-world C# 9.0 programs.
 - **Scope:** Parser (builtin or special form), Semantic (resolve at compile time), CodeGen
   (emit string literal)
 
+### 13. Object Initializers
+
+- **C# feature:** `new Foo { X = 1, Y = 2 }` — construct + set properties in one expression (C# 3.0)
+- **Sharpy status:** MISSING — only constructor calls supported. No way to construct an object
+  and set properties in a single expression.
+- **Impact:** Ubiquitous in C# for DTOs, EF entities, builder patterns, UI frameworks, LINQ
+  projections (`select new { ... }`). Independent of records (#10).
+- **Possible syntax:** `Foo(x=1, y=2)` (extend named args to set properties) or
+  `Foo() with { x: 1, y: 2 }` (reuse `with` syntax)
+- **Scope:** Parser (new expression syntax), Semantic (resolve property assignments), CodeGen
+  (emit `ObjectCreationExpression` with initializer list)
+
+### 14. `default` Literal and `default(T)` Expression
+
+- **C# feature:** `default(T)` (C# 2.0) and bare `default` literal (C# 7.1) — produces the
+  default value for any type (`0` for `int`, `null` for reference types, zeroed struct, etc.)
+- **Sharpy status:** MISSING — no `default` keyword in lexer or parser
+- **Impact:** Essential in generic code (`return default;`, `T value = default;`), used for
+  sentinel values, optional parameter defaults, and collection initialization.
+- **Scope:** Lexer (keyword), Parser (expression), Semantic (resolve type from context),
+  CodeGen (emit `default` / `default(T)`)
+
 ---
 
 ## Tier 2: Medium Priority (Common but Workaroundable)
 
 These features have workarounds in Sharpy but add friction when porting C# code.
 
-### 13. Static Classes
+### 15. Raise/Throw Expressions
+
+- **C# feature:** `throw` as an expression — `x ?? throw new ArgumentException()`,
+  `condition ? value : throw ...` (C# 7.0)
+- **Sharpy status:** MISSING — `raise` is statement-only. Cannot be used in `??`, ternary,
+  or null-coalescing contexts. The compiler internally generates C# throw expressions in
+  codegen, but users cannot write them.
+- **Impact:** Common pattern for argument validation and null-guard one-liners.
+- **Possible syntax:** Allow `raise` in expression position: `x ?? raise ValueError("missing")`
+- **Scope:** Parser (allow raise in expression context), CodeGen (emit `ThrowExpression`)
+- **Workaround:** Multi-line `if`/`raise` blocks.
+
+### 16. Multi-Catch Exception Types
+
+- **C# feature:** `catch (IOException | TimeoutException ex)` — catch multiple types in
+  one clause (C# 6.0, via exception filters)
+- **Sharpy status:** MISSING — each `except` clause catches a single type. No union syntax.
+- **Tracking:** #424 (RFC open for try expressions; also applies to except clauses)
+- **Impact:** Reduces boilerplate when the same handler applies to multiple exception types.
+- **Possible syntax:** `except ValueError | TypeError as e:` (Python 3 style)
+- **Scope:** Parser (union type in except), CodeGen (emit multiple catch clauses or filter)
+- **Workaround:** Separate `except` clauses with duplicated bodies.
+
+### 17. `is` Type Pattern Outside `match`
+
+- **C# feature:** `if (x is Type t) { ... }` — inline type test + binding (C# 7.0+),
+  also `x is not null`, `x is > 5` (C# 9.0 relational patterns in expressions)
+- **Sharpy status:** PARTIAL — `is None`, `is not None`, and `isinstance(x, Type)` work
+  in `if` statements with type narrowing. But type-binding patterns (`if x is int n:`) and
+  relational patterns (`if x is > 5:`) are only available inside `match` statements.
+- **Impact:** Very common C# 7+ idiom. Nearly every C# codebase uses `if (x is T t)`.
+- **Possible syntax:** `if x is int as n:` or `if isinstance(x, int) as n:`
+- **Scope:** Parser (allow pattern expressions in `if`), Semantic (type narrowing + binding),
+  CodeGen (emit `is` pattern)
+
+### 18. `notnull` Generic Constraint
+
+- **C# feature:** `where T : notnull` — constrains type parameter to non-nullable (C# 8.0)
+- **Sharpy status:** MISSING — constraint AST only defines `ClassConstraint`, `StructConstraint`,
+  `NewConstraint`, and `TypeConstraint`. No `notnull` or `unmanaged` variants.
+- **Impact:** Important for generic APIs that must reject nullable type arguments.
+  `unmanaged` constraint (C# 7.3) is also missing but more niche.
+- **Scope:** Parser (new constraint type), Semantic (validate nullability), CodeGen (emit constraint)
+
+### 19. Static Classes
 
 - **C# feature:** `static class` — cannot be instantiated, all members static (C# 2.0)
 - **Sharpy status:** MISSING — modules serve a similar purpose (module-level functions are
   emitted as static methods on a static class), but user-defined static classes aren't supported.
 - **Workaround:** Use module-level functions or a regular class with only `@static` members.
 
-### 14. Multi-Dimensional and Jagged Arrays
+### 20. Multi-Dimensional and Jagged Arrays
 
 - **C# feature:** `int[,]` (2D), `int[,,]` (3D), `int[][]` (jagged) (C# 1.0)
 - **Sharpy status:** MISSING — only 1D `array[T]` is supported
 - **Workaround:** `list[list[int]]` for jagged, no clean workaround for true multi-dimensional.
 
-### 15. LINQ Query Syntax
+### 21. LINQ Query Syntax
 
 - **C# feature:** `from x in y where z select x` (C# 3.0)
 - **Sharpy status:** MISSING — LINQ method syntax works via .NET interop
   (`items.where(lambda x: x > 0).select(lambda x: x * 2)`)
 - **Workaround:** Method syntax + comprehensions cover most use cases.
 
-### 16. Anonymous Types
+### 22. Anonymous Types
 
 - **C# feature:** `new { Name = "x", Value = 1 }` (C# 3.0)
 - **Sharpy status:** MISSING
 - **Workaround:** Named tuples `(name: "x", value: 1)` cover most use cases.
 
-### 17. Static Lambdas
+### 23. Static Lambdas
 
 - **C# feature:** `static x => x + 1` — prevents closure capture (C# 9.0)
 - **Sharpy status:** MISSING
 - **Impact:** Performance optimization to avoid accidental captures.
 
-### 18. `readonly struct`
+### 24. `readonly struct`
 
 - **C# feature:** `readonly struct` — all fields immutable (C# 7.2)
 - **Sharpy status:** MISSING — `@dataclass(frozen=True)` on structs provides similar
   semantics but doesn't emit `readonly struct`.
 
-### 19. `ref struct`
+### 25. `ref struct`
 
 - **C# feature:** `ref struct` — stack-only value types, cannot be boxed (C# 7.2)
 - **Sharpy status:** MISSING — `Span<T>` and `ReadOnlySpan<T>` can be used via .NET interop
   but users cannot define their own `ref struct`.
 
-### 20. `readonly` Fields
+### 26. `readonly` Fields
 
 - **C# feature:** `readonly` field modifier — assignable only in constructor (C# 1.0)
 - **Sharpy status:** PARTIAL — `const` exists for compile-time constants. No runtime
   `readonly` equivalent (assigned once in constructor, then immutable).
 
-### 21. Range/Index Operators
+### 27. Range/Index Operators
 
 - **C# feature:** `array[^1]`, `array[1..3]` (C# 8.0)
 - **Sharpy status:** MISSING — Python-style slicing `arr[1:3]`, `arr[-1]` covers most
   use cases but doesn't produce `System.Range`/`System.Index` types.
 
-### 22. `volatile` Fields
+### 28. Block-less Disposable Scope
+
+- **C# feature:** `using var x = new Foo();` — scopes disposable to enclosing block without
+  nesting (C# 8.0 using declaration)
+- **Sharpy status:** MISSING — `with` statement requires an indented block. No way to scope
+  a disposable to the enclosing function/block without introducing a nesting level.
+- **Impact:** Reduces nesting in methods with multiple disposables.
+- **Possible syntax:** `use x = Resource():` at statement level (scoped to enclosing block)
+- **Scope:** Parser (new statement), CodeGen (emit `using` declaration)
+- **Workaround:** `with Resource() as x:` (adds one nesting level per disposable).
+
+### 29. `volatile` Fields
 
 - **C# feature:** `volatile` modifier for thread-safe field access (C# 1.0)
 - **Sharpy status:** MISSING
 - **Impact:** Niche but important for lock-free programming.
 
-### 23. Lambda Type Annotations
+### 30. Lambda Type Annotations
 
 - **C# feature:** `(int x, int y) => x + y` — typed lambda parameters (C# 3.0)
 - **Sharpy status:** RFC open (#417) — syntax ambiguity with `lambda x: int: x + 1`
 - **Impact:** Required for disambiguation when type inference is insufficient.
+
+### 31. General Delegate Combination
+
+- **C# feature:** `combined = del1 + del2`, `del1 - del2` — multicast delegate arithmetic (C# 1.0)
+- **Sharpy status:** PARTIAL — `+=`/`-=` work for events, but arbitrary delegate combination
+  (`combined = handler1 + handler2`) is not supported.
+- **Impact:** Low — events cover the primary multicast use case.
+- **Workaround:** Use events, or manually invoke multiple delegates.
 
 ---
 
@@ -253,7 +350,8 @@ These features are either niche, contraddict Sharpy's design axioms, or have cle
 
 ## What Sharpy Already Covers
 
-For completeness, these C# 9.0 features are already implemented or have Pythonic equivalents:
+For completeness, these C# 9.0 features are already implemented or have Pythonic equivalents.
+Verified against compiler source (lexer, parser AST, codegen, semantic analysis) and test fixtures.
 
 | C# Feature | Sharpy Equivalent | Status |
 |------------|-------------------|--------|
@@ -261,58 +359,107 @@ For completeness, these C# 9.0 features are already implemented or have Pythonic
 | Structs | `struct` | Implemented |
 | Interfaces + default methods | `interface` + default implementations | Implemented |
 | Enums (incl. flags) | `enum` + `@flags` | Implemented |
-| Generics + constraints | `class Foo[T: IBar]` | Implemented |
+| Generics + constraints (`class`, `struct`, `new()`, interfaces) | `class Foo[T: IBar]`, `T: class & new()` | Implemented |
 | Generic variance (`in`/`out`) | `class Foo[out T]` | Implemented |
 | Properties (auto, get/set/init) | `property` keyword | Implemented |
 | Events (auto + custom) | `event` keyword | Implemented |
 | Delegates | `delegate` keyword | Implemented |
 | Operator overloading | Dunder methods | Implemented |
+| `operator true`/`operator false` | `__bool__` dunder (emits both) | Implemented |
+| Indexers (`this[T]`) | `__getitem__`/`__setitem__` dunders | Implemented |
 | Async/await, async streams | `async def` / `await` / `async for` | Implemented |
 | Generators/iterators | `yield` / `yield from` | Implemented |
 | Pattern matching (all C# 9.0 patterns) | `match` statement | Implemented |
-| String interpolation | f-strings | Implemented |
-| Null-conditional (`?.`) | Supported | Implemented |
+| — Relational patterns (`> 5`, `>= 0`) | `case > 5:` | Implemented |
+| — Property patterns (`{ Prop: value }`) | `case Foo(prop=value):` | Implemented |
+| — Positional patterns | `case Point(0, y):` | Implemented |
+| — Combinatorial patterns (`or`) | `case "a" \| "b":` | Implemented |
+| — Wildcard / discard (`_`) | `case _:` | Implemented |
+| — Guard clauses | `case x if x > 0:` | Implemented |
+| Pattern exhaustiveness checking | Warnings (statements) / errors (expressions) | Implemented |
+| String interpolation + format specifiers | f-strings (`f"{val:.2f}"`, `f"{val:04d}"`) | Implemented |
+| Null-conditional (`?.`) incl. chaining | `a?.b?.c` with nullable flattening | Implemented |
 | Null-coalescing (`??`, `??=`) | Supported | Implemented |
 | Exception handling (try/except/finally) | Supported | Implemented |
 | Context managers / IDisposable | `with` statement | Implemented |
-| Named/default arguments | Supported | Implemented |
+| Named/default arguments | Supported (compile-time constants only for defaults) | Implemented |
 | Method overloading | Supported | Implemented |
 | Constructor chaining | `self.__init__(...)` | Implemented |
 | Virtual/override/sealed | `@virtual` / `@override` / `@final` | Implemented |
 | Access modifiers | `@public`/`@private`/`@protected`/`@internal` | Implemented |
 | Static methods | `@static` / implicit (no `self`) | Implemented |
-| Constants | `const` keyword | Implemented |
+| Constants | `const` keyword (compile-time only) | Implemented |
 | Type aliases | `type X = Y` | Implemented |
+| Type casting | `x to Type` (direct), `x to Type?` (safe) | Implemented |
+| `typeof(T)` | `type(T)` builtin | Implemented |
 | Tuples + deconstruction | Named tuples + unpacking | Implemented |
 | Collection literals + comprehensions | `[...]`, `{...}`, comprehensions | Implemented |
 | Extension methods | Via .NET interop | Implemented |
-| Variadic params | `*args` | Implemented |
+| Variadic params (`params T[]`) | `*args` | Implemented |
+| Arbitrary .NET attributes | Unknown decorators → `[Attribute]` | Implemented |
+| Explicit interface implementation | `IInterface.member` syntax | Implemented |
 | Tagged unions | `union` keyword | Implemented |
 | Result/Optional types | `Result[T, E]` / `Optional[T]` | Implemented |
 | Init-only setters | `property init` | Implemented |
 | Covariant return types | Supported | Implemented |
 | Local functions | Nested `def` | Implemented |
+| Digit separators | `1_000_000` (same syntax) | Implemented |
+| Binary/hex/octal literals | `0b1010`, `0xFF`, `0o77` | Implemented |
+| Raw strings | `r"..."`, `r"""..."""` → C# `@"..."` | Implemented |
 | Comparison chaining | `a < b < c` | Implemented |
 | Walrus operator | `:=` | Implemented |
-| Pipe operator | `|>` | Implemented |
+| Pipe operator | `\|>` | Implemented |
 | Partial application | `_` placeholder | Implemented |
 | Try/Maybe expressions | `try expr` / `maybe expr` | Implemented |
+| `is None` / `is not None` checks | Type narrowing in `if` | Implemented |
+| `isinstance()` type narrowing | Narrows in `if` blocks | Implemented |
 
 ---
 
 ## Recommended Implementation Order
 
-For systematic gap closure, suggested sequence (respects dependencies):
+For systematic gap closure, suggested sequence (respects dependencies and
+maximizes value per effort). Grouped into phases.
 
-1. **`do...while`** — smallest scope, no dependencies, completes control flow
-2. **`nameof`** — small scope, high value
-3. **Exception filters** — small parser change, high value
-4. **`lock` statement** — small scope, high value for concurrency
-5. **`ref`/`out`/`in` parameters** (#419) — large scope but highest interop impact
-6. **`checked`/`unchecked`** — moderate scope
-7. **Nested types** — moderate scope, unlocks patterns
-8. **`private protected`** — small scope
-9. **Conversion operators** — moderate scope, type system completeness
-10. **Static constructors** — moderate scope
-11. **Partial classes** — large scope, unlocks code-gen scenarios
-12. **Records + `with` expressions** — largest scope, C# 9.0 flagship
+### Phase 1: Quick wins (small scope, high frequency in C# code)
+
+1. **`do...while`** (#6) — smallest scope, no dependencies, completes control flow
+2. **`nameof`** (#12) — small scope, high value for argument validation
+3. **`private protected`** (#11) — small scope, semantic + codegen only
+4. **`default` literal** (#14) — small scope, essential for generic code
+
+### Phase 2: Control flow completeness
+
+5. **Exception filters (`when`)** (#4) — small parser change, high value
+6. **Multi-catch** (#16) — small parser change, reduces boilerplate
+7. **Raise expressions** (#15) — allow `raise` in expression position
+8. **`lock` statement** (#5) — essential for concurrency
+9. **`is` pattern outside `match`** (#17) — very common C# 7+ idiom
+
+### Phase 3: Interop-critical
+
+10. **`ref`/`out`/`in` parameters** (#1, issue #419) — largest interop impact
+11. **`checked`/`unchecked`** (#8) — numeric safety
+12. **Object initializers** (#13) — ubiquitous in C# for DTOs, EF, etc.
+
+### Phase 4: Type system completeness
+
+13. **Nested types** (#3) — unlocks Builder pattern, private helpers
+14. **Conversion operators** (#2) — type system completeness
+15. **Static constructors** (#7) — one-time initialization
+16. **`notnull` constraint** (#18) — generic API correctness
+17. **`readonly` fields** (#26) — runtime immutability
+
+### Phase 5: Large features
+
+18. **Partial classes** (#9) — large scope, unlocks code-gen scenarios
+19. **Records + `with` expressions** (#10) — largest scope, C# 9.0 flagship
+
+### Phase 6: Polish (lower frequency, workarounds exist)
+
+20. **Block-less disposable scope** (#28) — convenience
+21. **Static classes** (#19) — modules cover most cases
+22. **`readonly struct`** (#24), **`ref struct`** (#25) — advanced value types
+23. **Static lambdas** (#23) — performance optimization
+24. **Lambda type annotations** (#30, issue #417) — pending RFC
+25. **Remaining items** — multi-dim arrays, LINQ query syntax, volatile, etc.
