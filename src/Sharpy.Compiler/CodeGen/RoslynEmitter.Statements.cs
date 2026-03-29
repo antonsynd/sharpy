@@ -1815,7 +1815,7 @@ internal partial class RoslynEmitter
         // so the if-body always executes and its return will be reached. C# can't prove
         // this statically, so the throw prevents CS0161 (not all code paths return).
         // Only added when the else body returns — void functions don't need this.
-        if (ContainsReturnStatement(tryStmt.ElseBody))
+        if (StatementWalker.Any(tryStmt.ElseBody, s => s is ReturnStatement))
         {
             allStatements.Add(ThrowStatement(
                 ObjectCreationExpression(
@@ -1898,59 +1898,6 @@ internal partial class RoslynEmitter
             return FinallyClause(finallyBlock);
         }
         return null;
-    }
-
-    /// <summary>
-    /// Recursively checks if a statement list contains a return statement.
-    /// Used to determine if a try/else block needs a dead-code throw for reachability.
-    /// </summary>
-    private static bool ContainsReturnStatement(ImmutableArray<Statement> statements)
-    {
-        foreach (var stmt in statements)
-        {
-            if (stmt is ReturnStatement)
-                return true;
-
-            if (stmt is IfStatement ifStmt)
-            {
-                if (ContainsReturnStatement(ifStmt.ThenBody) ||
-                    ifStmt.ElifClauses.Any(e => ContainsReturnStatement(e.Body)) ||
-                    ContainsReturnStatement(ifStmt.ElseBody))
-                    return true;
-            }
-            else if (stmt is ForStatement forStmt)
-            {
-                if (ContainsReturnStatement(forStmt.Body) ||
-                    ContainsReturnStatement(forStmt.ElseBody))
-                    return true;
-            }
-            else if (stmt is WhileStatement whileStmt)
-            {
-                if (ContainsReturnStatement(whileStmt.Body) ||
-                    ContainsReturnStatement(whileStmt.ElseBody))
-                    return true;
-            }
-            else if (stmt is TryStatement tryStmt)
-            {
-                if (ContainsReturnStatement(tryStmt.Body) ||
-                    tryStmt.Handlers.Any(h => ContainsReturnStatement(h.Body)) ||
-                    ContainsReturnStatement(tryStmt.ElseBody) ||
-                    ContainsReturnStatement(tryStmt.FinallyBody))
-                    return true;
-            }
-            else if (stmt is MatchStatement matchStmt)
-            {
-                if (matchStmt.Cases.Any(c => ContainsReturnStatement(c.Body)))
-                    return true;
-            }
-            else if (stmt is WithStatement withStmt)
-            {
-                if (ContainsReturnStatement(withStmt.Body))
-                    return true;
-            }
-        }
-
-        return false;
     }
 
     /// <summary>
