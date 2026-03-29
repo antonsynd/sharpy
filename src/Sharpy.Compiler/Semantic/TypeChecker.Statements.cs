@@ -1076,55 +1076,8 @@ internal partial class TypeChecker
                 }
 
             case TypePattern typePattern:
-                {
-                    var resolvedType = _typeResolver.ResolveTypeAnnotation(typePattern.Type);
-                    if (resolvedType is UnknownType)
-                    {
-                        // Try to resolve as a union case (e.g., case Point(): when matching Shape)
-                        var unionCaseSymbol = TryResolveUnionCaseFromPattern(
-                            typePattern.Type.Name, scrutineeType);
-                        if (unionCaseSymbol != null)
-                        {
-                            _semanticInfo.SetPatternUnionCase(typePattern, unionCaseSymbol);
-                            resolvedType = new UserDefinedType { Name = unionCaseSymbol.Name, Symbol = unionCaseSymbol };
-                        }
-                        else
-                        {
-                            AddError(
-                                $"Unknown type '{typePattern.Type.Name}' in type pattern",
-                                typePattern.LineStart, typePattern.ColumnStart,
-                                code: DiagnosticCodes.Semantic.UndefinedType,
-                                span: typePattern.Span);
-                        }
-                    }
-                    else if (scrutineeType is not UnknownType
-                        && !IsAssignable(resolvedType, scrutineeType)
-                        && !IsAssignable(scrutineeType, resolvedType))
-                    {
-                        AddError(
-                            $"Type pattern '{resolvedType.GetDisplayName()}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
-                            typePattern.LineStart, typePattern.ColumnStart,
-                            code: DiagnosticCodes.Semantic.TypePatternIncompatible,
-                            span: typePattern.Span);
-                    }
-                    if (typePattern.BindingName != null)
-                    {
-                        var newSymbol = new VariableSymbol
-                        {
-                            Name = typePattern.BindingName.Name,
-                            Kind = SymbolKind.Variable,
-                            Type = resolvedType,
-                            IsConstant = false,
-                            DeclarationLine = typePattern.BindingName.LineStart,
-                            DeclarationColumn = typePattern.BindingName.ColumnStart,
-                            AccessLevel = AccessLevel.Public
-                        };
-                        _symbolTable.Define(newSymbol);
-                        SemanticBinding.SetVariableType(newSymbol, resolvedType);
-                        _semanticInfo.SetIdentifierSymbol(typePattern.BindingName, newSymbol);
-                    }
-                    break;
-                }
+                CheckTypePattern(typePattern, scrutineeType);
+                break;
 
             case RelationalPattern relational:
                 {
@@ -1179,242 +1132,16 @@ internal partial class TypeChecker
                 }
 
             case PropertyPattern propertyPattern:
-                {
-                    TypeSymbol? typeSymbol = null;
-                    if (propertyPattern.Type != null)
-                    {
-                        var resolvedType = _typeResolver.ResolveTypeAnnotation(propertyPattern.Type);
-                        if (resolvedType is UnknownType)
-                        {
-                            AddError(
-                                $"Unknown type '{propertyPattern.Type.Name}' in property pattern",
-                                propertyPattern.LineStart, propertyPattern.ColumnStart,
-                                code: DiagnosticCodes.Semantic.UndefinedType,
-                                span: propertyPattern.Span);
-                        }
-                        else if (resolvedType is UserDefinedType udt)
-                        {
-                            typeSymbol = udt.Symbol;
-                        }
-                    }
-
-                    foreach (var field in propertyPattern.Fields)
-                    {
-                        if (typeSymbol != null)
-                        {
-                            var fieldSymbol = typeSymbol.Fields.FirstOrDefault(f => f.Name == field.Name);
-                            if (fieldSymbol == null)
-                            {
-                                AddError(
-                                    $"Type '{typeSymbol.Name}' has no field '{field.Name}'",
-                                    field.LineStart, field.ColumnStart,
-                                    code: DiagnosticCodes.Semantic.PropertyPatternUnknownField,
-                                    span: field.Span);
-                            }
-                            else
-                            {
-                                CheckPattern(field.Pattern, fieldSymbol.Type);
-                            }
-                        }
-                        else
-                        {
-                            CheckPattern(field.Pattern, scrutineeType);
-                        }
-                    }
-                    break;
-                }
+                CheckPropertyPattern(propertyPattern, scrutineeType);
+                break;
 
             case PositionalPattern positionalPattern:
-                {
-                    TypeSymbol? typeSymbol = null;
-                    if (positionalPattern.Type != null)
-                    {
-                        // Try to resolve as a union case first when scrutinee is a union type
-                        var unionCaseSymbol = TryResolveUnionCaseFromPattern(
-                            positionalPattern.Type.Name, scrutineeType);
-
-                        if (unionCaseSymbol != null)
-                        {
-                            typeSymbol = unionCaseSymbol;
-                            _semanticInfo.SetPatternUnionCase(positionalPattern, unionCaseSymbol);
-                        }
-                        else
-                        {
-                            var resolvedType = _typeResolver.ResolveTypeAnnotation(positionalPattern.Type);
-                            if (resolvedType is UnknownType)
-                            {
-                                AddError(
-                                    $"Unknown type '{positionalPattern.Type.Name}' in positional pattern",
-                                    positionalPattern.LineStart, positionalPattern.ColumnStart,
-                                    code: DiagnosticCodes.Semantic.UndefinedType,
-                                    span: positionalPattern.Span);
-                            }
-                            else if (resolvedType is UserDefinedType udt)
-                            {
-                                typeSymbol = udt.Symbol;
-                                // For non-union types, check if positional deconstruction is supported
-                                if (typeSymbol != null
-                                    && typeSymbol.BaseType?.TypeKind != TypeKind.Union
-                                    && typeSymbol.TypeKind != TypeKind.Union)
-                                {
-                                    bool hasDeconstruct = typeSymbol.Methods.Any(m => m.Name == "Deconstruct");
-                                    bool hasMatchingFields = typeSymbol.Fields.Count == positionalPattern.Elements.Length;
-                                    if (!hasDeconstruct && !hasMatchingFields)
-                                    {
-                                        AddError(
-                                            $"Type '{typeSymbol.Name}' does not support positional deconstruction (no Deconstruct method and field count {typeSymbol.Fields.Count} does not match pattern element count {positionalPattern.Elements.Length})",
-                                            positionalPattern.LineStart, positionalPattern.ColumnStart,
-                                            code: DiagnosticCodes.Semantic.PositionalPatternNoDeconstruct,
-                                            span: positionalPattern.Span);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (typeSymbol != null)
-                    {
-                        // Get field types, substituting type parameters for generic unions
-                        var fieldTypes = GetUnionCaseFieldTypes(typeSymbol, scrutineeType);
-
-                        if (positionalPattern.Elements.Length != fieldTypes.Count)
-                        {
-                            AddError(
-                                $"Positional pattern has {positionalPattern.Elements.Length} elements but type '{typeSymbol.Name}' has {fieldTypes.Count} fields",
-                                positionalPattern.LineStart, positionalPattern.ColumnStart,
-                                code: typeSymbol.BaseType is { TypeKind: TypeKind.Union }
-                                    ? DiagnosticCodes.Semantic.UnionCaseFieldMismatch
-                                    : DiagnosticCodes.Semantic.PositionalPatternCountMismatch,
-                                span: positionalPattern.Span);
-                        }
-                        else
-                        {
-                            for (int i = 0; i < positionalPattern.Elements.Length; i++)
-                            {
-                                CheckPattern(positionalPattern.Elements[i], fieldTypes[i]);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        foreach (var element in positionalPattern.Elements)
-                        {
-                            CheckPattern(element, scrutineeType);
-                        }
-                    }
-                    break;
-                }
+                CheckPositionalPattern(positionalPattern, scrutineeType);
+                break;
 
             case MemberAccessPattern memberAccess:
-                {
-                    // Resolve the dotted path as a member access (e.g., Color.RED).
-                    // Look up the first part as a type, then resolve subsequent parts as fields/members.
-                    var typeName = memberAccess.Parts[0];
-                    var typeSymbol = _symbolTable.Lookup(typeName) as TypeSymbol;
-                    if (typeSymbol == null)
-                    {
-                        AddError(
-                            $"Undefined type '{typeName}' in pattern",
-                            memberAccess.LineStart, memberAccess.ColumnStart,
-                            code: DiagnosticCodes.Semantic.UndefinedType,
-                            span: memberAccess.Span);
-                        break;
-                    }
-
-                    // Check if this is a union case pattern (e.g., Option.None, Result.Ok)
-                    if (typeSymbol.TypeKind == TypeKind.Union && memberAccess.Parts.Length == 2)
-                    {
-                        var caseName = memberAccess.Parts[1];
-                        var caseSymbol = typeSymbol.UnionCases.FirstOrDefault(c => c.Name == caseName);
-                        if (caseSymbol != null)
-                        {
-                            _semanticInfo.SetPatternUnionCase(memberAccess, caseSymbol);
-                            break;
-                        }
-                        else
-                        {
-                            AddError(
-                                $"Union '{typeSymbol.Name}' has no case '{caseName}'",
-                                memberAccess.LineStart, memberAccess.ColumnStart,
-                                code: DiagnosticCodes.Semantic.UnionCaseNotFound,
-                                span: memberAccess.Span);
-                            break;
-                        }
-                    }
-
-                    // Check if this is an enum member pattern (e.g., Color.RED)
-                    if (typeSymbol.TypeKind == TypeKind.Enum && memberAccess.Parts.Length == 2)
-                    {
-                        var memberName = memberAccess.Parts[1];
-                        var enumField = typeSymbol.Fields.FirstOrDefault(f => f.Name == memberName);
-                        if (enumField != null)
-                        {
-                            // Verify the enum type matches the scrutinee type
-                            if (scrutineeType is UserDefinedType udt && udt.Symbol == typeSymbol)
-                            {
-                                // Valid enum member pattern matching the scrutinee
-                                break;
-                            }
-                            else
-                            {
-                                AddError(
-                                    $"Enum member '{typeName}.{memberName}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
-                                    memberAccess.LineStart, memberAccess.ColumnStart,
-                                    code: DiagnosticCodes.Semantic.TypeMismatch,
-                                    span: memberAccess.Span);
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            AddError(
-                                $"Enum '{typeSymbol.Name}' has no member '{memberName}'",
-                                memberAccess.LineStart, memberAccess.ColumnStart,
-                                code: DiagnosticCodes.Semantic.UndefinedMember,
-                                span: memberAccess.Span);
-                            break;
-                        }
-                    }
-
-                    // Resolve remaining parts as field or property access
-                    SemanticType? resolvedType = null;
-                    for (int i = 1; i < memberAccess.Parts.Length; i++)
-                    {
-                        var fieldName = memberAccess.Parts[i];
-                        var field = typeSymbol.Fields.FirstOrDefault(f => f.Name == fieldName);
-                        if (field != null)
-                        {
-                            resolvedType = field.Type;
-                        }
-                        else
-                        {
-                            var prop = typeSymbol.Properties.FirstOrDefault(p => p.Name == fieldName);
-                            if (prop != null)
-                            {
-                                resolvedType = prop.Type;
-                            }
-                            else
-                            {
-                                AddError(
-                                    $"Type '{typeName}' has no member '{fieldName}'",
-                                    memberAccess.LineStart, memberAccess.ColumnStart,
-                                    code: DiagnosticCodes.Semantic.UndefinedMember,
-                                    span: memberAccess.Span);
-                                break;
-                            }
-                        }
-                    }
-
-                    if (resolvedType != null && !IsAssignable(resolvedType, scrutineeType) && !IsAssignable(scrutineeType, resolvedType))
-                    {
-                        AddError(
-                            $"Pattern type '{resolvedType.GetDisplayName()}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
-                            memberAccess.LineStart, memberAccess.ColumnStart,
-                            code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: memberAccess.Span);
-                    }
-                    break;
-                }
+                CheckMemberAccessPattern(memberAccess, scrutineeType);
+                break;
 
             default:
                 AddError(
@@ -1422,6 +1149,306 @@ internal partial class TypeChecker
                     pattern.LineStart, pattern.ColumnStart,
                     code: DiagnosticCodes.Semantic.UnsupportedFeature);
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Check a type pattern: resolve the type, handle union cases, validate compatibility,
+    /// and register any binding variable.
+    /// </summary>
+    private void CheckTypePattern(TypePattern typePattern, SemanticType scrutineeType)
+    {
+        var resolvedType = _typeResolver.ResolveTypeAnnotation(typePattern.Type);
+        if (resolvedType is UnknownType)
+        {
+            // Try to resolve as a union case (e.g., case Point(): when matching Shape)
+            var unionCaseSymbol = TryResolveUnionCaseFromPattern(
+                typePattern.Type.Name, scrutineeType);
+            if (unionCaseSymbol != null)
+            {
+                _semanticInfo.SetPatternUnionCase(typePattern, unionCaseSymbol);
+                resolvedType = new UserDefinedType { Name = unionCaseSymbol.Name, Symbol = unionCaseSymbol };
+            }
+            else
+            {
+                AddError(
+                    $"Unknown type '{typePattern.Type.Name}' in type pattern",
+                    typePattern.LineStart, typePattern.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UndefinedType,
+                    span: typePattern.Span);
+            }
+        }
+        else if (scrutineeType is not UnknownType
+            && !IsAssignable(resolvedType, scrutineeType)
+            && !IsAssignable(scrutineeType, resolvedType))
+        {
+            AddError(
+                $"Type pattern '{resolvedType.GetDisplayName()}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                typePattern.LineStart, typePattern.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypePatternIncompatible,
+                span: typePattern.Span);
+        }
+        if (typePattern.BindingName != null)
+        {
+            var newSymbol = new VariableSymbol
+            {
+                Name = typePattern.BindingName.Name,
+                Kind = SymbolKind.Variable,
+                Type = resolvedType,
+                IsConstant = false,
+                DeclarationLine = typePattern.BindingName.LineStart,
+                DeclarationColumn = typePattern.BindingName.ColumnStart,
+                AccessLevel = AccessLevel.Public
+            };
+            _symbolTable.Define(newSymbol);
+            SemanticBinding.SetVariableType(newSymbol, resolvedType);
+            _semanticInfo.SetIdentifierSymbol(typePattern.BindingName, newSymbol);
+        }
+    }
+
+    /// <summary>
+    /// Check a property pattern: resolve the type, then validate each field sub-pattern.
+    /// </summary>
+    private void CheckPropertyPattern(PropertyPattern propertyPattern, SemanticType scrutineeType)
+    {
+        TypeSymbol? typeSymbol = null;
+        if (propertyPattern.Type != null)
+        {
+            var resolvedType = _typeResolver.ResolveTypeAnnotation(propertyPattern.Type);
+            if (resolvedType is UnknownType)
+            {
+                AddError(
+                    $"Unknown type '{propertyPattern.Type.Name}' in property pattern",
+                    propertyPattern.LineStart, propertyPattern.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UndefinedType,
+                    span: propertyPattern.Span);
+            }
+            else if (resolvedType is UserDefinedType udt)
+            {
+                typeSymbol = udt.Symbol;
+            }
+        }
+
+        foreach (var field in propertyPattern.Fields)
+        {
+            if (typeSymbol != null)
+            {
+                var fieldSymbol = typeSymbol.Fields.FirstOrDefault(f => f.Name == field.Name);
+                if (fieldSymbol == null)
+                {
+                    AddError(
+                        $"Type '{typeSymbol.Name}' has no field '{field.Name}'",
+                        field.LineStart, field.ColumnStart,
+                        code: DiagnosticCodes.Semantic.PropertyPatternUnknownField,
+                        span: field.Span);
+                }
+                else
+                {
+                    CheckPattern(field.Pattern, fieldSymbol.Type);
+                }
+            }
+            else
+            {
+                CheckPattern(field.Pattern, scrutineeType);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Check a positional pattern: resolve the type (including union cases),
+    /// validate deconstruction support, and check element sub-patterns.
+    /// </summary>
+    private void CheckPositionalPattern(PositionalPattern positionalPattern, SemanticType scrutineeType)
+    {
+        TypeSymbol? typeSymbol = null;
+        if (positionalPattern.Type != null)
+        {
+            // Try to resolve as a union case first when scrutinee is a union type
+            var unionCaseSymbol = TryResolveUnionCaseFromPattern(
+                positionalPattern.Type.Name, scrutineeType);
+
+            if (unionCaseSymbol != null)
+            {
+                typeSymbol = unionCaseSymbol;
+                _semanticInfo.SetPatternUnionCase(positionalPattern, unionCaseSymbol);
+            }
+            else
+            {
+                var resolvedType = _typeResolver.ResolveTypeAnnotation(positionalPattern.Type);
+                if (resolvedType is UnknownType)
+                {
+                    AddError(
+                        $"Unknown type '{positionalPattern.Type.Name}' in positional pattern",
+                        positionalPattern.LineStart, positionalPattern.ColumnStart,
+                        code: DiagnosticCodes.Semantic.UndefinedType,
+                        span: positionalPattern.Span);
+                }
+                else if (resolvedType is UserDefinedType udt)
+                {
+                    typeSymbol = udt.Symbol;
+                    // For non-union types, check if positional deconstruction is supported
+                    if (typeSymbol != null
+                        && typeSymbol.BaseType?.TypeKind != TypeKind.Union
+                        && typeSymbol.TypeKind != TypeKind.Union)
+                    {
+                        bool hasDeconstruct = typeSymbol.Methods.Any(m => m.Name == "Deconstruct");
+                        bool hasMatchingFields = typeSymbol.Fields.Count == positionalPattern.Elements.Length;
+                        if (!hasDeconstruct && !hasMatchingFields)
+                        {
+                            AddError(
+                                $"Type '{typeSymbol.Name}' does not support positional deconstruction (no Deconstruct method and field count {typeSymbol.Fields.Count} does not match pattern element count {positionalPattern.Elements.Length})",
+                                positionalPattern.LineStart, positionalPattern.ColumnStart,
+                                code: DiagnosticCodes.Semantic.PositionalPatternNoDeconstruct,
+                                span: positionalPattern.Span);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (typeSymbol != null)
+        {
+            // Get field types, substituting type parameters for generic unions
+            var fieldTypes = GetUnionCaseFieldTypes(typeSymbol, scrutineeType);
+
+            if (positionalPattern.Elements.Length != fieldTypes.Count)
+            {
+                AddError(
+                    $"Positional pattern has {positionalPattern.Elements.Length} elements but type '{typeSymbol.Name}' has {fieldTypes.Count} fields",
+                    positionalPattern.LineStart, positionalPattern.ColumnStart,
+                    code: typeSymbol.BaseType is { TypeKind: TypeKind.Union }
+                        ? DiagnosticCodes.Semantic.UnionCaseFieldMismatch
+                        : DiagnosticCodes.Semantic.PositionalPatternCountMismatch,
+                    span: positionalPattern.Span);
+            }
+            else
+            {
+                for (int i = 0; i < positionalPattern.Elements.Length; i++)
+                {
+                    CheckPattern(positionalPattern.Elements[i], fieldTypes[i]);
+                }
+            }
+        }
+        else
+        {
+            foreach (var element in positionalPattern.Elements)
+            {
+                CheckPattern(element, scrutineeType);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Check a member access pattern: resolve dotted paths for enum members,
+    /// union cases, and field/property access chains.
+    /// </summary>
+    private void CheckMemberAccessPattern(MemberAccessPattern memberAccess, SemanticType scrutineeType)
+    {
+        // Resolve the dotted path as a member access (e.g., Color.RED).
+        // Look up the first part as a type, then resolve subsequent parts as fields/members.
+        var typeName = memberAccess.Parts[0];
+        var typeSymbol = _symbolTable.Lookup(typeName) as TypeSymbol;
+        if (typeSymbol == null)
+        {
+            AddError(
+                $"Undefined type '{typeName}' in pattern",
+                memberAccess.LineStart, memberAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedType,
+                span: memberAccess.Span);
+            return;
+        }
+
+        // Check if this is a union case pattern (e.g., Option.None, Result.Ok)
+        if (typeSymbol.TypeKind == TypeKind.Union && memberAccess.Parts.Length == 2)
+        {
+            var caseName = memberAccess.Parts[1];
+            var caseSymbol = typeSymbol.UnionCases.FirstOrDefault(c => c.Name == caseName);
+            if (caseSymbol != null)
+            {
+                _semanticInfo.SetPatternUnionCase(memberAccess, caseSymbol);
+                return;
+            }
+            else
+            {
+                AddError(
+                    $"Union '{typeSymbol.Name}' has no case '{caseName}'",
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UnionCaseNotFound,
+                    span: memberAccess.Span);
+                return;
+            }
+        }
+
+        // Check if this is an enum member pattern (e.g., Color.RED)
+        if (typeSymbol.TypeKind == TypeKind.Enum && memberAccess.Parts.Length == 2)
+        {
+            var memberName = memberAccess.Parts[1];
+            var enumField = typeSymbol.Fields.FirstOrDefault(f => f.Name == memberName);
+            if (enumField != null)
+            {
+                // Verify the enum type matches the scrutinee type
+                if (scrutineeType is UserDefinedType udt && udt.Symbol == typeSymbol)
+                {
+                    // Valid enum member pattern matching the scrutinee
+                    return;
+                }
+                else
+                {
+                    AddError(
+                        $"Enum member '{typeName}.{memberName}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                        memberAccess.LineStart, memberAccess.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: memberAccess.Span);
+                    return;
+                }
+            }
+            else
+            {
+                AddError(
+                    $"Enum '{typeSymbol.Name}' has no member '{memberName}'",
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UndefinedMember,
+                    span: memberAccess.Span);
+                return;
+            }
+        }
+
+        // Resolve remaining parts as field or property access
+        SemanticType? resolvedType = null;
+        for (int i = 1; i < memberAccess.Parts.Length; i++)
+        {
+            var fieldName = memberAccess.Parts[i];
+            var field = typeSymbol.Fields.FirstOrDefault(f => f.Name == fieldName);
+            if (field != null)
+            {
+                resolvedType = field.Type;
+            }
+            else
+            {
+                var prop = typeSymbol.Properties.FirstOrDefault(p => p.Name == fieldName);
+                if (prop != null)
+                {
+                    resolvedType = prop.Type;
+                }
+                else
+                {
+                    AddError(
+                        $"Type '{typeName}' has no member '{fieldName}'",
+                        memberAccess.LineStart, memberAccess.ColumnStart,
+                        code: DiagnosticCodes.Semantic.UndefinedMember,
+                        span: memberAccess.Span);
+                    return;
+                }
+            }
+        }
+
+        if (resolvedType != null && !IsAssignable(resolvedType, scrutineeType) && !IsAssignable(scrutineeType, resolvedType))
+        {
+            AddError(
+                $"Pattern type '{resolvedType.GetDisplayName()}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                memberAccess.LineStart, memberAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: memberAccess.Span);
         }
     }
 
