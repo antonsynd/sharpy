@@ -1,0 +1,11 @@
+# Test: not (x is None) narrows optional to unwrapped type
+def test_not_is_none(x: int?) -> int:
+    if not (x is None):
+        return x
+    return 0
+
+def main():
+    a: int? = Some(42)
+    b: int? = None()
+    print(test_not_is_none(a))
+    print(test_not_is_none(b))

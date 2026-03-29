@@ -1,0 +1,1 @@
+TODO: not (x is None) does not narrow x to unwrapped type. The TypeChecker only handles `x is not None` but not the negated parenthesized form `not (x is None)`.

@@ -1,0 +1,22 @@
+# Test: isinstance narrowing in elif chains with subclass methods
+class Animal:
+    pass
+
+class Dog(Animal):
+    def bark(self) -> str:
+        return "Woof"
+
+class Cat(Animal):
+    def meow(self) -> str:
+        return "Meow"
+
+def describe(a: Animal) -> str:
+    if isinstance(a, Dog):
+        return a.bark()
+    elif isinstance(a, Cat):
+        return a.meow()
+    return "Unknown"
+
+def main():
+    print(describe(Dog()))
+    print(describe(Cat()))

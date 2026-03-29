@@ -1,0 +1,13 @@
+# Test: and-combined narrowing with multiple optional parameters
+def both_present(x: int?, y: str?) -> str:
+    if x is not None and y is not None:
+        return str(x) + y
+    return "missing"
+
+def main():
+    a: int? = Some(42)
+    b: str? = Some(" hello")
+    c: int? = None()
+    d: str? = Some("world")
+    print(both_present(a, b))
+    print(both_present(c, d))
