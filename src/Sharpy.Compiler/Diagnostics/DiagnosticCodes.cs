@@ -178,10 +178,10 @@ public static class DiagnosticCodes
         public const string UndefinedType = "SPY0202";              // Active
         public const string UndefinedMember = "SPY0203";            // Active
         public const string DuplicateDefinition = "SPY0204";        // Active
-        public const string DuplicateClassField = "SPY0205";        // Active
+        // SPY0205: Reserved (removed — was DuplicateClassField, superseded by DuplicateDefinition)
         public const string DuplicateParameter = "SPY0206";         // Active
-        public const string DuplicateConstant = "SPY0207";          // Active
-        public const string DuplicateTypeAlias = "SPY0208";         // Active
+        // SPY0207: Reserved (removed — was DuplicateConstant, superseded by DuplicateDefinition)
+        // SPY0208: Reserved (removed — was DuplicateTypeAlias, superseded by DuplicateDefinition)
         public const string InvalidTypeAlias = "SPY0209";           // Active
         // SPY0210-SPY0219: Reserved for future name resolution diagnostics
 
@@ -276,7 +276,7 @@ public static class DiagnosticCodes
         public const string ModuleNotFound = "SPY0300";             // Active
         public const string ImportError = "SPY0301";                // Active
         public const string CircularImport = "SPY0302";             // Active
-        public const string ImportPrivateSymbol = "SPY0303";        // Active
+        // SPY0303: Reserved (removed — was ImportPrivateSymbol, never implemented)
         public const string ModuleLoadError = "SPY0304";            // Active
         public const string AssemblyNotFound = "SPY0305";           // Active
         public const string AssemblyLoadError = "SPY0306";          // Active
@@ -328,7 +328,7 @@ public static class DiagnosticCodes
         public const string PositionalPatternNoDeconstruct = "SPY0369"; // Active
         public const string PositionalOnlyPassedByKeyword = "SPY0370"; // Active
         public const string KeywordOnlyPassedPositionally = "SPY0371"; // Active
-        public const string DelegateWithBody = "SPY0372";           // Active
+        // SPY0372: Reserved (removed — was DelegateWithBody, never implemented)
 
         // Event errors (SPY0373-SPY0378)
         public const string EventTypeNotDelegate = "SPY0373";       // Active

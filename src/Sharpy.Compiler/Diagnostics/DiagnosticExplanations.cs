@@ -376,25 +376,10 @@ public static class DiagnosticExplanations
             "x: int = 1\nx: str = \"hello\"  # duplicate",
             "Use a different name or remove the duplicate definition.");
 
-        Add(dict, DiagnosticCodes.Semantic.DuplicateClassField, "Duplicate class field", "Semantic",
-            "A class or struct has two fields with the same name. Each field name must be unique within a type.",
-            "class Point:\n    x: int\n    x: float  # duplicate",
-            "Rename one of the fields:\nclass Point:\n    x: int\n    y: float");
-
         Add(dict, DiagnosticCodes.Semantic.DuplicateParameter, "Duplicate parameter", "Semantic",
             "A function or method has two parameters with the same name.",
             "def add(x: int, x: int) -> int:\n    return x + x",
             "Give each parameter a unique name:\ndef add(x: int, y: int) -> int:\n    return x + y");
-
-        Add(dict, DiagnosticCodes.Semantic.DuplicateConstant, "Duplicate constant", "Semantic",
-            "A constant was defined more than once in the same scope. Constants, like variables, must have unique names.",
-            "PI: float = 3.14\nPI: float = 3.14159  # duplicate",
-            "Remove the duplicate constant or use a different name.");
-
-        Add(dict, DiagnosticCodes.Semantic.DuplicateTypeAlias, "Duplicate type alias", "Semantic",
-            "A type alias was defined more than once. Each type alias name must be unique within its scope.",
-            "type IntList = list[int]\ntype IntList = list[int]  # duplicate",
-            "Remove the duplicate alias or use a different name.");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidTypeAlias, "Invalid type alias", "Semantic",
             "A type alias definition is invalid. The target type may not be a valid type expression.",
@@ -780,11 +765,6 @@ public static class DiagnosticExplanations
             "# a.spy\nfrom b import foo\n\n# b.spy\nfrom a import bar",
             "Break the cycle by:\n  1. Moving shared code to a third module\n  2. Restructuring the dependency graph\n  3. Using lazy imports where possible");
 
-        Add(dict, DiagnosticCodes.Semantic.ImportPrivateSymbol, "Cannot import private symbol", "Semantic",
-            "An import statement attempts to import a symbol that is private (prefixed with __ or _). Private and protected symbols cannot be imported from other modules.",
-            "from utils import _internal_helper  # protected symbol",
-            "Only import public symbols. If you need the functionality, use a public wrapper in the source module.");
-
         Add(dict, DiagnosticCodes.Semantic.ModuleLoadError, "Module load error", "Semantic",
             "A module was found but could not be loaded, typically due to syntax errors in the module's source file.",
             null,
@@ -969,11 +949,6 @@ public static class DiagnosticExplanations
             "A parameter that is declared as keyword-only (after '*' or '*args') was passed positionally. Keyword-only parameters must be passed by name.",
             "def foo(*, key: int) -> int:\n    return key\nfoo(1)  # error: 'key' is keyword-only",
             "Pass the argument by name:\nfoo(key=1)");
-
-        Add(dict, DiagnosticCodes.Semantic.DelegateWithBody, "Delegate declaration must not have a body", "Semantic",
-            "A delegate declaration defines a function signature type and cannot have a body. Delegates are pure type declarations.",
-            "delegate Handler(event: Event) -> bool:\n    pass  # error: delegates cannot have a body",
-            "Remove the body from the delegate declaration:\ndelegate Handler(event: Event) -> bool");
 
 
         // ── Semantic errors: Events (SPY0373-SPY0379) ──────────────────────
