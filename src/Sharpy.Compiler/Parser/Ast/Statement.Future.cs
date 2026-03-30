@@ -103,6 +103,8 @@ public record UnionDef : Statement
     /// </summary>
     public string Name { get; init; } = "";
 
+    public bool IsNameBacktickEscaped { get; init; }
+
     /// <summary>
     /// Type parameters for generic unions (e.g., T, E in Result[T, E]).
     /// </summary>
@@ -211,6 +213,8 @@ public record DelegateDef : Statement
     /// </summary>
     public string Name { get; init; } = "";
 
+    public bool IsNameBacktickEscaped { get; init; }
+
     /// <summary>
     /// Type parameters for generic delegates (e.g., T in Predicate[T]).
     /// </summary>
@@ -281,6 +285,8 @@ public record EventDef : Statement
     /// The event name.
     /// </summary>
     public string Name { get; init; } = "";
+
+    public bool IsNameBacktickEscaped { get; init; }
 
     /// <summary>
     /// The accessor kind: None for auto-events, Add or Remove for function-style events.

@@ -82,6 +82,7 @@ public record VariableDeclaration : Statement
     public string Name { get; init; } = "";
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
     public TypeAnnotation? Type { get; init; }
     public Expression? InitialValue { get; init; }
     public bool IsConst { get; init; }
@@ -441,6 +442,7 @@ public record FunctionDef : Statement
     public string Name { get; init; } = "";
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
     public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
     public ImmutableArray<Parameter> Parameters { get; init; } = ImmutableArray<Parameter>.Empty;
     public TypeAnnotation? ReturnType { get; init; }
@@ -482,6 +484,7 @@ public record ClassDef : Statement
     public string Name { get; init; } = "";
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
     public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
     public ImmutableArray<TypeAnnotation> BaseClasses { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
@@ -516,6 +519,7 @@ public record StructDef : Statement
     public string Name { get; init; } = "";
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
     public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
     public ImmutableArray<TypeAnnotation> BaseClasses { get; init; } = ImmutableArray<TypeAnnotation>.Empty;  // Interfaces only
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
@@ -550,6 +554,7 @@ public record InterfaceDef : Statement
     public string Name { get; init; } = "";
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
     public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
     public ImmutableArray<TypeAnnotation> BaseInterfaces { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
@@ -584,6 +589,7 @@ public record EnumDef : Statement
     public string Name { get; init; } = "";
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
     public ImmutableArray<EnumMember> Members { get; init; } = ImmutableArray<EnumMember>.Empty;
     public string? DocString { get; init; }
 
@@ -775,6 +781,7 @@ public enum ParameterKind
 public record Parameter
 {
     public string Name { get; init; } = "";
+    public bool IsNameBacktickEscaped { get; init; }
     public TypeAnnotation? Type { get; init; }
     public Expression? DefaultValue { get; init; }
     /// <summary>
@@ -816,6 +823,7 @@ public record PropertyDef : Statement
     public string Name { get; init; } = "";
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
     public PropertyAccessor Accessor { get; init; } = PropertyAccessor.None;
     public TypeAnnotation? Type { get; init; }
     public Expression? DefaultValue { get; init; }

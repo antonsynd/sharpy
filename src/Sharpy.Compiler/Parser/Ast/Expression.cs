@@ -331,6 +331,7 @@ public record IfClause : ComprehensionClause
 public record Identifier : Expression
 {
     public string Name { get; init; } = "";
+    public bool IsNameBacktickEscaped { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
