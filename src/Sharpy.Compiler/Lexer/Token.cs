@@ -220,6 +220,12 @@ public record Token : ILocatable
     public IReadOnlyList<Trivia>? TrailingTrivia { get; init; }
 
     /// <summary>
+    /// True when this identifier token was produced from a backtick-delimited
+    /// literal name (e.g., <c>`class`</c>). Default is false.
+    /// </summary>
+    public bool IsBacktickEscaped { get; init; }
+
+    /// <summary>
     /// The actual length of this token in the source text, including delimiters
     /// (e.g., quotes for string literals, 'r' prefix for raw strings).
     /// When set, this is used instead of Value.Length for span calculations.
