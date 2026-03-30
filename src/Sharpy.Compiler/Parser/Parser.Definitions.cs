@@ -158,6 +158,7 @@ public partial class Parser
                 Name = id.Name,
                 NameLineStart = id.LineStart,
                 NameColumnStart = id.ColumnStart,
+                IsNameBacktickEscaped = id.IsNameBacktickEscaped,
                 Type = type,
                 InitialValue = initialValue,
                 IsConst = false,
@@ -257,6 +258,7 @@ public partial class Parser
                 name,
                 nameToken.Line,
                 nameToken.Column,
+                nameToken.IsBacktickEscaped,
                 typeParams.ToImmutableArray(),
                 parameters.ToImmutableArray(),
                 returnType,
@@ -273,6 +275,7 @@ public partial class Parser
                 name,
                 nameToken.Line,
                 nameToken.Column,
+                nameToken.IsBacktickEscaped,
                 typeParams.ToImmutableArray(),
                 parameters.ToImmutableArray(),
                 returnType,
@@ -297,6 +300,7 @@ public partial class Parser
                 Name = name,
                 NameLineStart = nameToken.Line,
                 NameColumnStart = nameToken.Column,
+                IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                 TypeParameters = typeParams.ToImmutableArray(),
                 Parameters = parameters.ToImmutableArray(),
                 ReturnType = returnType,
@@ -349,6 +353,7 @@ public partial class Parser
             Name = name,
             NameLineStart = nameToken.Line,
             NameColumnStart = nameToken.Column,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams.ToImmutableArray(),
             Parameters = parameters.ToImmutableArray(),
             ReturnType = returnType,
@@ -369,6 +374,7 @@ public partial class Parser
         string name,
         int nameLineStart,
         int nameColumnStart,
+        bool isNameBacktickEscaped,
         ImmutableArray<TypeParameterDef> typeParams,
         ImmutableArray<Parameter> parameters,
         TypeAnnotation? returnType,
@@ -391,6 +397,7 @@ public partial class Parser
             Name = name,
             NameLineStart = nameLineStart,
             NameColumnStart = nameColumnStart,
+            IsNameBacktickEscaped = isNameBacktickEscaped,
             TypeParameters = typeParams,
             Parameters = parameters,
             ReturnType = returnType,
@@ -477,6 +484,7 @@ public partial class Parser
             Name = name,
             NameLineStart = nameToken.Line,
             NameColumnStart = nameToken.Column,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams.ToImmutableArray(),
             BaseClasses = baseClasses.ToImmutableArray(),
             Body = body.ToImmutableArray(),
@@ -553,6 +561,7 @@ public partial class Parser
             Name = name,
             NameLineStart = nameToken.Line,
             NameColumnStart = nameToken.Column,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams.ToImmutableArray(),
             BaseClasses = baseInterfaces.ToImmutableArray(),
             Body = body.ToImmutableArray(),
@@ -639,6 +648,7 @@ public partial class Parser
             Name = name,
             NameLineStart = nameToken.Line,
             NameColumnStart = nameToken.Column,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams.ToImmutableArray(),
             BaseInterfaces = baseInterfaces.ToImmutableArray(),
             Body = body.ToImmutableArray(),
@@ -864,6 +874,7 @@ public partial class Parser
             Name = name,
             NameLineStart = nameToken.Line,
             NameColumnStart = nameToken.Column,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             Members = members.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
@@ -881,6 +892,7 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.Union);
+        var nameToken = Current;
         var name = ExpectIdentifier();
 
         // Optional type parameters: union Result[T, E]:
@@ -1017,6 +1029,7 @@ public partial class Parser
         return new UnionDef
         {
             Name = name,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams,
             Cases = cases.ToImmutableArray(),
             DocString = docString,
@@ -1035,6 +1048,7 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.Delegate);
+        var nameToken = Current;
         var name = ExpectIdentifier();
 
         // Optional type parameters: delegate Predicate[T](item: T) -> bool
@@ -1061,6 +1075,7 @@ public partial class Parser
         return new DelegateDef
         {
             Name = name,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams.ToImmutableArray(),
             Parameters = parameters.ToImmutableArray(),
             ReturnType = returnType,
@@ -1227,6 +1242,7 @@ public partial class Parser
                     Name = name,
                     NameLineStart = nameToken.Line,
                     NameColumnStart = nameToken.Column,
+                    IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                     Accessor = accessor,
                     IsFunctionStyle = true,
                     Parameters = parameters.ToImmutableArray(),
@@ -1266,6 +1282,7 @@ public partial class Parser
                     Name = name,
                     NameLineStart = nameToken.Line,
                     NameColumnStart = nameToken.Column,
+                    IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                     Accessor = accessor,
                     IsFunctionStyle = true,
                     Parameters = parameters.ToImmutableArray(),
@@ -1308,6 +1325,7 @@ public partial class Parser
                 Name = name,
                 NameLineStart = nameToken.Line,
                 NameColumnStart = nameToken.Column,
+                IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                 Accessor = accessor,
                 IsFunctionStyle = true,
                 Parameters = parameters.ToImmutableArray(),
@@ -1341,6 +1359,7 @@ public partial class Parser
             Name = name,
             NameLineStart = nameToken.Line,
             NameColumnStart = nameToken.Column,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             Accessor = accessor,
             Type = type,
             DefaultValue = defaultValue,
@@ -1380,6 +1399,7 @@ public partial class Parser
         }
 
         // Read event name
+        var nameToken = Current;
         var name = ExpectIdentifier();
 
         // Function-style event: event add name(self, handler: T): body
@@ -1414,6 +1434,7 @@ public partial class Parser
                 return new EventDef
                 {
                     Name = name,
+                    IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                     Accessor = accessor,
                     IsFunctionStyle = true,
                     Parameters = parameters.ToImmutableArray(),
@@ -1439,6 +1460,7 @@ public partial class Parser
                 return new EventDef
                 {
                     Name = name,
+                    IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                     Accessor = accessor,
                     IsFunctionStyle = true,
                     Parameters = parameters.ToImmutableArray(),
@@ -1477,6 +1499,7 @@ public partial class Parser
             return new EventDef
             {
                 Name = name,
+                IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                 Accessor = accessor,
                 IsFunctionStyle = true,
                 Parameters = parameters.ToImmutableArray(),
@@ -1508,6 +1531,7 @@ public partial class Parser
         return new EventDef
         {
             Name = name,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             Accessor = EventAccessor.None,
             Type = type,
             IsFunctionStyle = false,
@@ -1549,6 +1573,7 @@ public partial class Parser
             Name = name,
             NameLineStart = nameToken.Line,
             NameColumnStart = nameToken.Column,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             Type = type,
             InitialValue = value,
             IsConst = true,

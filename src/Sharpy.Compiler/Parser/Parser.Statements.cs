@@ -976,6 +976,7 @@ public partial class Parser
                 Advance();  // Skip *
             }
 
+            var nameToken = Current;
             var name = ExpectIdentifier();
             TypeAnnotation? type = null;
             Expression? defaultValue = null;
@@ -1006,6 +1007,7 @@ public partial class Parser
             parameters.Add(new Parameter
             {
                 Name = name,
+                IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                 Type = type,
                 DefaultValue = defaultValue,
                 IsVariadic = isVariadic,
@@ -1341,6 +1343,7 @@ public partial class Parser
             Name = new Identifier
             {
                 Name = token.Value,
+                IsNameBacktickEscaped = token.IsBacktickEscaped,
                 LineStart = token.Line,
                 ColumnStart = token.Column,
                 LineEnd = token.Line,

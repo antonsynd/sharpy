@@ -196,6 +196,7 @@ public partial class Parser
                     return new Identifier
                     {
                         Name = name,
+                        IsNameBacktickEscaped = identToken.IsBacktickEscaped,
                         LineStart = startLine,
                         ColumnStart = startColumn,
                         LineEnd = Previous.Line,
@@ -623,6 +624,7 @@ public partial class Parser
                             parameters.Add(new Parameter
                             {
                                 Name = name,
+                                IsNameBacktickEscaped = paramToken.IsBacktickEscaped,
                                 Type = paramType,
                                 DefaultValue = defaultValue,
                                 LineStart = paramToken.Line,
