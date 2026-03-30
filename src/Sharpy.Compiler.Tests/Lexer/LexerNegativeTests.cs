@@ -518,6 +518,13 @@ public class LexerNegativeTests
     }
 
     [Fact]
+    public void RejectsDotInBacktickIdentifier()
+    {
+        var errors = TokenizeExpectingError("`System.IO`");
+        errors.Should().Contain("cannot contain dots");
+    }
+
+    [Fact]
     public void RejectsUnmatchedBrackets()
     {
         // Lexer shouldn't care about bracket matching, that's parser's job
