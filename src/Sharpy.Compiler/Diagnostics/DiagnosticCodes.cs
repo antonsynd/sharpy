@@ -24,8 +24,8 @@ public static class DiagnosticCodes
 {
     /// <summary>
     /// Lexer diagnostic codes (SPY0001-SPY0099).
-    /// Active: SPY0001-SPY0024 (24 codes)
-    /// Reserved: SPY0025-SPY0099 (75 codes for future lexer diagnostics)
+    /// Active: SPY0001-SPY0025 (25 codes)
+    /// Reserved: SPY0026-SPY0099 (74 codes for future lexer diagnostics)
     /// </summary>
     public static class Lexer
     {
@@ -78,7 +78,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0025-SPY0099: Reserved for future lexer diagnostics
+        #region Backtick identifier errors (SPY0025)
+
+        public const string DotInBacktickIdentifier = "SPY0025";    // Active
+
+        #endregion
+
+        // SPY0026-SPY0099: Reserved for future lexer diagnostics
     }
 
     /// <summary>

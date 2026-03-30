@@ -162,6 +162,11 @@ public static class DiagnosticExplanations
             "s: str = \"\\400\"",
             "Use a value within the valid range (\\000 to \\377):\n  s: str = \"\\377\"");
 
+        Add(dict, DiagnosticCodes.Lexer.DotInBacktickIdentifier, "Dot in backtick identifier", "Lexer",
+            "A backtick-delimited identifier contains a dot (.), which is not allowed. Dots are namespace/member separators and cannot appear inside a single identifier. Use separate backtick-delimited segments joined by dots instead.",
+            "import `System.IO`",
+            "Split into separate backtick segments:\n  import `System`.IO");
+
         // ── Parser errors (SPY0100-SPY0199) ─────────────────────────────
 
         Add(dict, DiagnosticCodes.Parser.UnexpectedToken, "Unexpected token", "Parser",
