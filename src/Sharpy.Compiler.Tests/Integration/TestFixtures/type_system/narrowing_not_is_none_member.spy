@@ -1,0 +1,19 @@
+# Test: not (self.field is None) narrows optional field
+class Config:
+    timeout: int?
+
+    def __init__(self, t: int?):
+        self.timeout = t
+
+    def get_timeout(self) -> int:
+        if not (self.timeout is None):
+            return self.timeout
+        return 30
+
+def main():
+    t1: int? = Some(42)
+    t2: int? = None()
+    c1: Config = Config(t1)
+    c2: Config = Config(t2)
+    print(c1.get_timeout())
+    print(c2.get_timeout())

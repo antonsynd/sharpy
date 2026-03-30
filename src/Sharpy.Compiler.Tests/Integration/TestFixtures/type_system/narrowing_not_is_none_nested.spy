@@ -1,0 +1,20 @@
+# Test: nested parenthesization and double negation with type narrowing
+def double_paren(x: int?) -> int:
+    # not ((x is None)) == not (x is None) -> narrows in then-branch
+    if not ((x is None)):
+        return x
+    return 0
+
+def double_negation(x: int?) -> int:
+    # not (not (x is not None)) == x is not None -> narrows in then-branch
+    if not (not (x is not None)):
+        return x
+    return 0
+
+def main():
+    a: int? = Some(42)
+    b: int? = None()
+    print(double_paren(a))
+    print(double_paren(b))
+    print(double_negation(a))
+    print(double_negation(b))
