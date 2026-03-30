@@ -616,12 +616,21 @@ public partial class Lexer
                 // Found closing backtick
                 _position++;
                 _column++;
-                return CreateToken(TokenType.Identifier, sb.ToString(), startLine, startColumn, startPosition);
+                return CreateToken(TokenType.Identifier, sb.ToString(), startLine, startColumn, startPosition)
+                    with { IsBacktickEscaped = true };
             }
 
             if (c == '\n' || c == '\r')
             {
                 throw ReportError("Unterminated literal name (backtick-delimited identifier)", _line, _column, DiagnosticCodes.Lexer.UnterminatedBacktickIdentifier);
+            }
+
+            if (c == '.')
+            {
+                throw ReportError(
+                    "Backtick-delimited identifier cannot contain dots. Use separate backtick segments (e.g., `System`.IO instead of `System.IO`)",
+                    _line, _column,
+                    DiagnosticCodes.Lexer.DotInBacktickIdentifier);
             }
 
             sb.Append(c);
