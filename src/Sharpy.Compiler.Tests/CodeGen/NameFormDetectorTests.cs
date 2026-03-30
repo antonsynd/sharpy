@@ -57,12 +57,6 @@ public class NameFormDetectorTests
     }
 
     [Fact]
-    public void Detect_Literal_ReturnsLiteral()
-    {
-        NameFormDetector.Detect("`some_name`").Should().Be(NameForm.Literal);
-    }
-
-    [Fact]
     public void Detect_ConsecutiveUnderscores_ReturnsUnrecognized()
     {
         NameFormDetector.Detect("foo__bar").Should().Be(NameForm.Unrecognized);

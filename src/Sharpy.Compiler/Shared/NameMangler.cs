@@ -23,10 +23,6 @@ internal static class NameMangler
         if (string.IsNullOrEmpty(name))
             return name;
 
-        // Handle literal names (backtick-escaped) - strip backticks and return as-is
-        if (name.StartsWith("`") && name.EndsWith("`"))
-            return name[1..^1];
-
         // Types preserve user's exact casing
         return EscapeKeywordIfNeeded(name);
     }
@@ -44,10 +40,6 @@ internal static class NameMangler
     {
         if (string.IsNullOrEmpty(name))
             return name;
-
-        // Handle literal names (backtick-escaped) - strip backticks and return as-is
-        if (name.StartsWith("`") && name.EndsWith("`"))
-            return name[1..^1];
 
         // Handle double-private prefix (__foo but NOT __foo__)
         var hasDoublePrivatePrefix = name.StartsWith("__") && !name.EndsWith("__");
@@ -81,7 +73,7 @@ internal static class NameMangler
             NameForm.PascalCase or NameForm.SingleWordUpper => cleanName,
             NameForm.CamelCase => cleanName,
             NameForm.Dunder => cleanName, // Dunders pass through — callers use DunderMapping directly
-            _ => cleanName, // Unrecognized, Literal
+            _ => cleanName, // Unrecognized
         };
 
         // Restore trailing underscores
@@ -111,10 +103,6 @@ internal static class NameMangler
     {
         if (string.IsNullOrEmpty(name))
             return name;
-
-        // Handle literal names (backtick-escaped)
-        if (name.StartsWith("`") && name.EndsWith("`"))
-            return name[1..^1];
 
         // Handle dunder methods - shouldn't be used for variables, but just in case
         if (name.StartsWith("__") && name.EndsWith("__") && name.Length > 4)
@@ -203,10 +191,6 @@ internal static class NameMangler
         if (string.IsNullOrEmpty(name))
             return name;
 
-        // Handle literal names
-        if (name.StartsWith("`") && name.EndsWith("`"))
-            return name[1..^1];
-
         var form = NameFormDetector.Detect(name);
         var result = form switch
         {
@@ -228,10 +212,6 @@ internal static class NameMangler
     {
         if (string.IsNullOrEmpty(name))
             return name;
-
-        // Handle literal names (backtick-escaped) - strip backticks and return as-is
-        if (name.StartsWith("`") && name.EndsWith("`"))
-            return name[1..^1];
 
         // Split by underscores (RemoveEmptyEntries handles consecutive underscores)
         var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
@@ -270,10 +250,6 @@ internal static class NameMangler
         if (string.IsNullOrEmpty(name))
             return name;
 
-        // Handle literal names (backtick-escaped) - strip backticks and return as-is
-        if (name.StartsWith("`") && name.EndsWith("`"))
-            return name[1..^1];
-
         // Interfaces preserve user's exact casing
         return EscapeKeywordIfNeeded(name);
     }
@@ -295,14 +271,6 @@ internal static class NameMangler
     {
         if (string.IsNullOrEmpty(name))
             return name;
-
-        // Handle literal names (backtick-escaped)
-        if (name.StartsWith("`") && name.EndsWith("`"))
-        {
-            if (name.Length <= 2)
-                return name;
-            return name[1..^1];
-        }
 
         // Check if this is a known acronym that should be all uppercase
         if (_upperCaseAcronyms.Contains(name))

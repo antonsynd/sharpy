@@ -36,10 +36,6 @@ internal static class NameFormDetector
         if (nameBody.StartsWith("__") && nameBody.EndsWith("__") && nameBody.Length > 4)
             return NameForm.Dunder;
 
-        // Literal: starts with ` and ends with `
-        if (nameBody.StartsWith("`") && nameBody.EndsWith("`"))
-            return NameForm.Literal;
-
         // Consecutive underscores → Unrecognized
         if (nameBody.Contains("__", StringComparison.Ordinal))
             return NameForm.Unrecognized;
