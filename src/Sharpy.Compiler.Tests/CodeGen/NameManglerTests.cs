@@ -105,34 +105,8 @@ public class NameManglerTests
 
     #endregion
 
-    #region Literal Name Tests
-
-    [Theory]
-    [InlineData("`ExactName`", "ExactName")]
-    [InlineData("`MyClass`", "MyClass")]
-    [InlineData("`some_method`", "some_method")]
-    public void ToPascalCase_LiteralName_RemovesBackticksKeepsOriginal(string input, string expected)
-    {
-        // Act
-        var result = NameMangler.ToPascalCase(input);
-
-        // Assert
-        result.Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("`exactVar`", "exactVar")]
-    [InlineData("`myVar`", "myVar")]
-    public void ToCamelCase_LiteralName_RemovesBackticksKeepsOriginal(string input, string expected)
-    {
-        // Act
-        var result = NameMangler.ToCamelCase(input);
-
-        // Assert
-        result.Should().Be(expected);
-    }
-
-    #endregion
+    // Literal name (backtick) tests removed: backticks are stripped by the lexer
+    // before names reach NameMangler, so these paths are no longer reachable (#477)
 
     #region Dunder Method Passthrough Tests
 
@@ -317,7 +291,6 @@ public class NameManglerTests
     [InlineData("DARK_BLUE", "DarkBlue")]
     [InlineData("MAX_RETRY_COUNT", "MaxRetryCount")]
     [InlineData("already_lower", "AlreadyLower")]
-    [InlineData("`ExactName`", "ExactName")]
     [InlineData("", "")]
     public void ToEnumMemberName_ConvertsCorrectly(string input, string expected)
     {
@@ -483,21 +456,8 @@ public class NameManglerTests
         NameMangler.ToNamespacePart(null!).Should().BeNull();
     }
 
-    [Theory]
-    [InlineData("`MyName`", "MyName")]
-    [InlineData("`SomeLib`", "SomeLib")]
-    public void ToNamespacePart_BacktickEscaped_StripsBackticks(string input, string expected)
-    {
-        NameMangler.ToNamespacePart(input).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("``")]
-    [InlineData("`")]
-    public void ToNamespacePart_BacktickEdgeCase_ReturnsAsIs(string input)
-    {
-        NameMangler.ToNamespacePart(input).Should().Be(input);
-    }
+    // Backtick tests for ToNamespacePart removed: backticks are stripped by the
+    // lexer before names reach NameMangler (#477)
 
     [Theory]
     [InlineData("io", "IO")]

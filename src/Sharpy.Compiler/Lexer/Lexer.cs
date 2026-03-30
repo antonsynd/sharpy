@@ -617,7 +617,8 @@ public partial class Lexer
                 _position++;
                 _column++;
                 return CreateToken(TokenType.Identifier, sb.ToString(), startLine, startColumn, startPosition)
-                    with { IsBacktickEscaped = true };
+                    with
+                { IsBacktickEscaped = true };
             }
 
             if (c == '\n' || c == '\r')
