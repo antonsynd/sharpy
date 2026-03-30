@@ -70,7 +70,7 @@ def main():
     if not (missing is not None):
         print(99)
     else:
-        m: int = missing.unwrap()  # Still need unwrap here
+        m: int = missing  # Narrowed to int in else branch
         if not (m > 20):
             print(99)
         else:

@@ -37,6 +37,12 @@ internal partial class TypeChecker
         var optionalNarrowings = new List<OptionalNarrowing>();
         var isInstanceNarrowings = new List<IsInstanceNarrowing>();
 
+        // Unwrap parenthesized expressions
+        if (condition is Parenthesized paren)
+        {
+            return ExtractNarrowedTypes(paren.Expression, isPositiveBranch);
+        }
+
         // Handle 'not <expr>' pattern - flip the branch polarity and recurse
         if (condition is UnaryOp { Operator: UnaryOperator.Not } notOp)
         {
