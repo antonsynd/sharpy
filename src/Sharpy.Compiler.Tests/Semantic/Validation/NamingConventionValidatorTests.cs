@@ -278,13 +278,38 @@ enum Color:
     #region Backtick Escaping Tests
 
     [Fact]
-    public void BacktickEscaped_ConsecutiveUnderscores_WarnsAfterLexerStripping()
+    public void BacktickEscaped_ConsecutiveUnderscores_NoWarning()
     {
-        // The lexer strips backticks from literal names, so by the time the AST is built,
-        // `foo__bar` becomes just "foo__bar" — indistinguishable from a regular name.
-        // The validator cannot suppress the warning at this pipeline stage.
+        // The lexer strips backticks but sets IsNameBacktickEscaped on the AST node,
+        // so the validator can suppress the warning for backtick-escaped identifiers.
         ValidateCode("`foo__bar`: int = 1", out var warnings);
+        Assert.Empty(warnings);
+    }
+
+    [Fact]
+    public void BacktickEscaped_Function_ConsecutiveUnderscores_NoWarning()
+    {
+        var code = @"
+def `foo__bar`():
+    pass
+";
+        ValidateCode(code, out var warnings);
+        Assert.Empty(warnings);
+    }
+
+    [Fact]
+    public void BacktickEscaped_Variable_ConsecutiveUnderscores_NoWarning()
+    {
+        ValidateCode("`foo__bar`: int = 1", out var warnings);
+        Assert.Empty(warnings);
+    }
+
+    [Fact]
+    public void NonBacktick_Variable_ConsecutiveUnderscores_StillWarns()
+    {
+        ValidateCode("foo__bar: int = 1", out var warnings);
         Assert.Single(warnings);
+        Assert.Contains("foo__bar", warnings[0].Message);
     }
 
     #endregion
