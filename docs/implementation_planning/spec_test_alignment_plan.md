@@ -103,7 +103,7 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 3: Critical Test Coverage (mostly done — 3 items skipped for future)
+### Phase 3: Critical Test Coverage (6/7 done — 1 TODO)
 
 **Goal:** Add tests for implemented features with zero coverage. Verify each feature works before writing the test; implement/fix if broken.
 
@@ -160,7 +160,7 @@ Research verified these **partially exist** and need targeted additions:
     - Acceptance: `isinstance(x, list[int])` produces compile error
     - Commit: `test: add isinstance generic type rejection test (GAP-15)`
 
-13. **type(None) compile error (GAP-17)** — test fixtures
+13. **type(None) compile error (GAP-17)** — TODO: test fixture exists but `.skip`ped; compiler doesn't reject `type(None)` yet
     - Verify with `/quick-check`: `type(None)` — should produce error per spec
     - Add test fixture: `type_none_error.error`
     - If not rejected (research says it returns `typeof(object)`), implement the rejection
@@ -169,7 +169,7 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 4: array[T] Type Implementation (GAP-6) ✅ COMPLETED (negative indexing skipped)
+### Phase 4: array[T] Type Implementation (GAP-6) ✅ COMPLETED (1 TODO: negative indexing)
 
 **Goal:** Implement the array[T] type for .NET interop. This is a full-pipeline feature.
 
@@ -194,7 +194,7 @@ Research verified these **partially exist** and need targeted additions:
     - Support indexing, length, iteration
     - Commit: `feat(codegen): emit CLR arrays for array[T]`
 
-17. **Sharpy.Core: array helpers** — `src/Sharpy.Core/`
+17. **Sharpy.Core: array helpers** — TODO: negative indexing not implemented; CLR arrays need Sharpy.Core wrapper; test `.skip`ped
     - Add any needed runtime helpers for array operations
     - Python-style negative indexing on arrays
     - Commit: `feat(core): add array runtime helpers`
@@ -209,30 +209,30 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 5: High-Priority Test Coverage (mostly done — 5 items skipped for future)
+### Phase 5: High-Priority Test Coverage (5/10 done — 5 TODO)
 
 **Goal:** Add tests for remaining high and medium gaps. Verify first, implement if broken.
 
 #### Tasks
 
-19. **Type alias at class/function scope (GAP-18)** — test fixtures
+19. **Type alias at class/function scope (GAP-18)** — TODO: test fixtures exist but `.skip`ped; class-scoped type aliases not yet supported
     - Verify: `type` alias inside a class body and inside a function body
     - Add fixtures: `type_alias_class_scope.spy`, `type_alias_function_scope.spy`
     - If not working, narrow the spec to module-level only
     - Commit: `test: add scoped type alias tests (GAP-18)`
 
-20. **Constraint reordering (GAP-19)** — test fixtures
+20. **Constraint reordering (GAP-19)** — TODO: test fixture exists but `.skip`ped; parser doesn't handle constraint composition with `+` syntax
     - Verify: write constraints in "wrong" C# order (e.g., interface before `class`) and confirm compiler silently reorders
     - Add fixture: `generic_constraint_reorder.spy` + `.expected`
     - Commit: `test: add generic constraint reordering test (GAP-19)`
 
-21. **Pipe operator negative tests (GAP-20)** — test fixtures
+21. **Pipe operator negative tests (GAP-20)** — TODO (partial): `pipe_to_operator.error` done; `pipe_to_constructor` `.skip`ped (passes semantic but fails at C# compilation, needs semantic-level rejection)
     - Add: `pipe_to_constructor.error` (can't pipe to constructor)
     - Add: `pipe_to_operator.error` (can't pipe to operator)
     - Verify these are correctly rejected; implement rejection if not
     - Commit: `test: add pipe operator negative tests (GAP-20)`
 
-22. **Tuple rest-patterns and count mismatch (GAP-21)** — test fixtures
+22. **Tuple rest-patterns and count mismatch (GAP-21)** — TODO (partial): `tuple_unpack_count_mismatch.error` done; `tuple_rest_pattern` `.skip`ped (missing GetSlice method at C# level)
     - Add: `tuple_rest_pattern.spy` + `.expected` (star-unpack with tuples)
     - Add: `tuple_unpack_count_mismatch.error` (SPY0239)
     - Commit: `test: add tuple rest-pattern and mismatch tests (GAP-21)`
@@ -250,7 +250,7 @@ Research verified these **partially exist** and need targeted additions:
     - Create GitHub issues for any unimplemented async features
     - Commit: `test: add async feature rejection tests (GAP-26)`
 
-25. **list.get() method (GAP-13)** — `src/Sharpy.Core/Partial.List/`
+25. **list.get() method (GAP-13)** — TODO: test fixture exists but `.skip`ped; `list.get()` not implemented in Sharpy.Core
     - Implement `get(index)` returning `Optional<T>` (like dict.get())
     - Implement `get(index, default)` returning `T`
     - Add fixture: `list_get.spy` + `.expected`
@@ -274,13 +274,13 @@ Research verified these **partially exist** and need targeted additions:
 
 ---
 
-### Phase 6: Low-Priority Test Coverage (mostly done — 1 item skipped)
+### Phase 6: Low-Priority Test Coverage (14/16 done — 2 TODO)
 
 **Goal:** Fill remaining test gaps from GAP-29 through GAP-47 and remaining items.
 
 #### Tasks
 
-29. **Float trailing decimal (GAP-29)** — Verify `5.` behavior, add test
+29. **Float trailing decimal (GAP-29)** — TODO: only negative/error test exists; needs positive test for `5.` parsing as `5.0`
     - Commit: `test: add trailing-decimal float test (GAP-29)`
 
 30. **\b/\f escape sequences (GAP-30)** — Add isolated test for backspace/form-feed escapes
@@ -289,7 +289,7 @@ Research verified these **partially exist** and need targeted additions:
 31. **Octal string escapes spec update (GAP-31)** — Update spec to document octal escapes
     - Commit: `docs: add octal escape documentation to spec (GAP-31)`
 
-32. **Yield in nested functions (GAP-34)** — Test inner generator doesn't propagate to outer
+32. **Yield in nested functions (GAP-34)** — TODO: no test exists for nested generator yield isolation
     - Commit: `test: add nested function yield isolation test (GAP-34)`
 
 33. **Positional-only + keyword-only + partial (GAP-35)** — Add combinatorial test
