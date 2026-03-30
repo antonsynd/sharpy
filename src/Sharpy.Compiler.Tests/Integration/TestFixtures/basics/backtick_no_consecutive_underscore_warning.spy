@@ -1,0 +1,5 @@
+def `crazyNameA__bC`() -> str:
+    return "hello"
+
+def main():
+    print(`crazyNameA__bC`())
