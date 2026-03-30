@@ -17,32 +17,32 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
 
     public override void VisitFunctionDef(FunctionDef node)
     {
-        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span, isBacktickEscaped: node.IsNameBacktickEscaped);
         ValidateParameters(node.Parameters);
         base.VisitFunctionDef(node);
     }
 
     public override void VisitClassDef(ClassDef node)
     {
-        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span, isBacktickEscaped: node.IsNameBacktickEscaped);
         base.VisitClassDef(node);
     }
 
     public override void VisitStructDef(StructDef node)
     {
-        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span, isBacktickEscaped: node.IsNameBacktickEscaped);
         base.VisitStructDef(node);
     }
 
     public override void VisitInterfaceDef(InterfaceDef node)
     {
-        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span, isBacktickEscaped: node.IsNameBacktickEscaped);
         base.VisitInterfaceDef(node);
     }
 
     public override void VisitEnumDef(EnumDef node)
     {
-        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span, isBacktickEscaped: node.IsNameBacktickEscaped);
 
         foreach (var member in node.Members)
         {
@@ -54,7 +54,7 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
 
     public override void VisitUnionDef(UnionDef node)
     {
-        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span, isBacktickEscaped: node.IsNameBacktickEscaped);
 
         foreach (var caseDef in node.Cases)
         {
@@ -74,26 +74,26 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
 
     public override void VisitDelegateDef(DelegateDef node)
     {
-        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span, isBacktickEscaped: node.IsNameBacktickEscaped);
         ValidateParameters(node.Parameters);
         base.VisitDelegateDef(node);
     }
 
     public override void VisitVariableDeclaration(VariableDeclaration node)
     {
-        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span, isBacktickEscaped: node.IsNameBacktickEscaped);
         base.VisitVariableDeclaration(node);
     }
 
     public override void VisitPropertyDef(PropertyDef node)
     {
-        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span, isBacktickEscaped: node.IsNameBacktickEscaped);
         base.VisitPropertyDef(node);
     }
 
     public override void VisitEventDef(EventDef node)
     {
-        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span);
+        CheckName(node.Name, node.LineStart, node.ColumnStart, node.Span, isBacktickEscaped: node.IsNameBacktickEscaped);
         base.VisitEventDef(node);
     }
 
@@ -129,7 +129,7 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
     {
         foreach (var param in parameters)
         {
-            CheckName(param.Name, param.LineStart, param.ColumnStart, param.Span);
+            CheckName(param.Name, param.LineStart, param.ColumnStart, param.Span, isBacktickEscaped: param.IsNameBacktickEscaped);
         }
     }
 
@@ -138,7 +138,7 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
         switch (target)
         {
             case Identifier id:
-                CheckName(id.Name, id.LineStart, id.ColumnStart, id.Span);
+                CheckName(id.Name, id.LineStart, id.ColumnStart, id.Span, isBacktickEscaped: id.IsNameBacktickEscaped);
                 break;
             case TupleLiteral tuple:
                 foreach (var element in tuple.Elements)
@@ -176,13 +176,13 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
     /// Checks a single name for consecutive underscores and emits SPY0453 if found.
     /// Skips dunder names and backtick-escaped literals.
     /// </summary>
-    private void CheckName(string name, int line, int column, TextSpan? span)
+    private void CheckName(string name, int line, int column, TextSpan? span, bool isBacktickEscaped = false)
     {
         if (string.IsNullOrEmpty(name))
             return;
 
-        // Skip backtick-escaped literals
-        if (name.StartsWith("`") && name.EndsWith("`"))
+        // Skip backtick-escaped literals — user explicitly opted into the name
+        if (isBacktickEscaped)
             return;
 
         // Skip dunder names (__init__, __str__, etc.)
