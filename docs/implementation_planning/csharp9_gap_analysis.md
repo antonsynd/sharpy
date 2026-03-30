@@ -8,6 +8,10 @@ Goal: identify what Sharpy must add to serve as a full C# 9.0 replacement.
 > (lexer tokens, AST nodes, codegen), 1,571 integration test fixtures, and open GitHub issues.
 > Second pass verified all claims against actual compiler source (lexer, parser AST, codegen
 > emitter, semantic analysis) and identified 8 additional gaps not in the initial audit.
+> Third pass cross-referenced the complete Microsoft C# version history (every feature from
+> 1.0–9.0), verified 15 specific features against compiler source, and incorporated findings
+> from 13 skipped test fixtures and GAP markers. Added 6 new Tier 2 gaps (#32–#37) and
+> 7 new Tier 3 items.
 >
 > **C# version target:** Sharpy.Core targets `LangVersion 9.0` / `netstandard2.1`, making
 > C# 9.0 the effective ceiling for generated code.
@@ -19,10 +23,11 @@ Goal: identify what Sharpy must add to serve as a full C# 9.0 replacement.
 ## Summary
 
 - **14 Tier 1 gaps** (high priority, blocking for C# replacement)
-- **17 Tier 2 gaps** (medium priority, workaroundable)
-- **14 Tier 3 items** (intentionally excluded or very niche)
+- **22 Tier 2 gaps** (medium priority, workaroundable)
+- **20 Tier 3 items** (intentionally excluded or very niche)
 - **50+ C# features** already covered with Pythonic equivalents
 - **6 open GitHub issues** tracking specific gaps
+- **13 skipped test fixtures** tracking implementation gaps
 
 ---
 
@@ -323,6 +328,70 @@ These features have workarounds in Sharpy but add friction when porting C# code.
 - **Impact:** Low — events cover the primary multicast use case.
 - **Workaround:** Use events, or manually invoke multiple delegates.
 
+### 32. Expression Trees
+
+- **C# feature:** `Expression<Func<T>>` — represent code as data for LINQ providers (C# 3.0)
+- **Sharpy status:** MISSING — lambdas always compile to delegates, never expression trees.
+  No way to produce `Expression<Func<T>>` for IQueryable-based APIs.
+- **Impact:** Required for Entity Framework Core, LINQ-to-SQL, and any custom IQueryable
+  provider. Without this, ORM usage is limited to raw SQL or non-queryable APIs.
+- **Scope:** Semantic (detect `Expression<>` target type), CodeGen (emit expression tree
+  construction instead of delegate). Large scope — expression tree construction requires
+  building `System.Linq.Expressions` API calls for every expression node type.
+- **Workaround:** Use raw SQL or method-based LINQ with `Func<T>` delegates (evaluates
+  client-side, not in database).
+
+### 33. Caller Info Attributes
+
+- **C# feature:** `[CallerMemberName]`, `[CallerFilePath]`, `[CallerLineNumber]` on
+  default parameters — compiler fills in values automatically (C# 5.0)
+- **Sharpy status:** MISSING — no syntax for applying these attributes to parameters.
+  Arbitrary .NET attributes go on decorators (`@SomeAttribute`), but parameter-level
+  attributes have no Sharpy syntax.
+- **Impact:** Common in WPF (`INotifyPropertyChanged`), logging frameworks, and diagnostics.
+- **Possible syntax:** `def log(msg: str, member: str = @CallerMemberName):` or parameter
+  attribute syntax `def log(msg: str, @CallerMemberName member: str = ""):`.
+- **Scope:** Parser (parameter-level attributes), CodeGen (emit attribute on parameter)
+- **Workaround:** Manually pass values, or use `nameof` (#12) once implemented.
+
+### 34. Await in Catch/Finally
+
+- **C# feature:** `await` expressions allowed inside `catch` and `finally` blocks (C# 6.0)
+- **Sharpy status:** MISSING — `await` inside `except` or `finally` is not supported.
+- **Impact:** Important for async error handling — logging to async services, async cleanup.
+- **Scope:** Semantic (lift restriction), CodeGen (already emits async state machines, but
+  catch/finally need special handling)
+- **Workaround:** Store exception, exit catch, then await in outer scope.
+
+### 35. Ref Locals and Ref Returns
+
+- **C# feature:** `ref int x = ref arr[0]` (ref local) and `ref int Find(...)` (ref return)
+  — extends beyond just ref parameters (C# 7.0)
+- **Sharpy status:** MISSING — depends on ref/out/in parameter support (#1). Even when #1
+  is implemented, ref locals and ref returns are a separate feature.
+- **Impact:** Performance-critical code that avoids copies of large structs.
+- **Scope:** Parser (ref in local declarations and return types), Semantic, CodeGen
+- **Workaround:** Use ref parameters or accept the copy overhead.
+
+### 36. Tuple Equality
+
+- **C# feature:** `(1, "a") == (1, "a")` — element-wise `==`/`!=` on tuples (C# 7.3)
+- **Sharpy status:** MISSING — tuples cannot be compared with `==`/`!=`.
+- **Impact:** Common for value comparisons. Small implementation scope.
+- **Scope:** Semantic (recognize tuple `==`/`!=`), CodeGen (emit element-wise comparison)
+- **Workaround:** Compare individual elements manually.
+
+### 37. Static Local Functions
+
+- **C# feature:** `static` modifier on local functions prevents closure capture (C# 8.0)
+- **Sharpy status:** MISSING — nested `def` always allows captures. No `@static` on
+  local functions.
+- **Impact:** Performance optimization to avoid accidental closure allocations.
+- **Possible syntax:** `@static def helper():` inside a function body.
+- **Scope:** Parser (allow `@static` on nested def), Semantic (validate no captures),
+  CodeGen (emit `static` on local function)
+- **Workaround:** Manually ensure no captures (no compile-time enforcement).
+
 ---
 
 ## Tier 3: Low Priority / Intentionally Excluded
@@ -345,6 +414,13 @@ These features are either niche, contraddict Sharpy's design axioms, or have cle
 | `new` member hiding | 1.0 | Generally considered a C# anti-pattern. |
 | Target-typed `new` (`Foo f = new(...)`) | 9.0 | N/A — Sharpy uses `Foo(...)` directly. |
 | Top-level statements | 9.0 | N/A — Sharpy already has module-level code. |
+| Static imports (`using static`) | 6.0 | Sharpy's `from module import func` covers Sharpy modules; for .NET static classes, use full qualification. |
+| Nullable reference types (NRT / `#nullable`) | 8.0 | Sharpy has its own null safety model (`Optional[T]` vs `T?`). NRT annotations are a different paradigm. |
+| Interpolated verbatim strings (`$@"..."`) | 8.0 | Sharpy has f-strings and raw strings separately. Combined form is rarely needed. |
+| Non-trailing named arguments | 7.2 | `DoWork(name: "x", 42)` — niche ordering flexibility. |
+| Null-forgiving operator (`x!`) | 8.0 | Only meaningful with NRT system, which Sharpy doesn't use. |
+| `[field: ...]` backing field attributes | 7.3 | Niche serialization scenario (`[field: NonSerialized]`). |
+| Generalized async return types | 7.0 | `ValueTask<T>` works via .NET interop; custom `[AsyncMethodBuilder]` is niche. |
 
 ---
 
@@ -416,6 +492,31 @@ Verified against compiler source (lexer, parser AST, codegen, semantic analysis)
 
 ---
 
+## Known Gaps from Skipped Test Fixtures
+
+These are Sharpy-specific implementation gaps tracked by `.skip` files in the test suite.
+Not all are C# feature gaps — some are Sharpy stdlib or semantic issues.
+
+| GAP ID | Test Fixture | Issue |
+|--------|-------------|-------|
+| GAP-13 | `builtins/list_get` | `list.get()` not implemented in Sharpy.Core |
+| GAP-18 | `type_aliases/type_alias_class_scope`, `type_alias_function_scope` | Class/function-scoped type aliases not resolved |
+| GAP-19 | `generics/generic_constraint_reorder` | Multiple generic constraints with `+` syntax not parsed |
+| GAP-20 | `errors/pipe_to_constructor` | Pipe to constructor passes semantic but fails C# compilation |
+| GAP-21 | `pattern_matching/tuple_rest_pattern` | Tuple star-unpack rest pattern not supported |
+| GAP-39 | `expressions/chained_identity_operators` | `a is b is c` chaining not supported |
+| GAP-46 | `errors/partial_type_argument_error` | Partial type argument error handling |
+| GAP-47 | `properties/covariant_property_return` | Covariant property return types |
+| #476 | `type_system/narrowing_not_is_none` | `not (x is None)` doesn't narrow types |
+| — | `pattern_matching/match_named_tuple` | `collections.namedtuple` import fails |
+| — | `generators/yield_nested_function` | Nested function identifiers not resolved in generators |
+| — | `errors/type_none_error` | `type(None)` returns `System.Object` instead of compile error |
+| — | `arrays/array_negative_index` | CLR arrays don't support negative indexing natively |
+| — | `stdlib_argparse` | `type(x).__name__` not supported |
+| — | `stdlib_csv_dictwriter` | StringIO doesn't extend `System.IO.TextWriter` |
+
+---
+
 ## Recommended Implementation Order
 
 For systematic gap closure, suggested sequence (respects dependencies and
@@ -427,39 +528,46 @@ maximizes value per effort). Grouped into phases.
 2. **`nameof`** (#12) — small scope, high value for argument validation
 3. **`private protected`** (#11) — small scope, semantic + codegen only
 4. **`default` literal** (#14) — small scope, essential for generic code
+5. **Tuple equality** (#36) — small codegen change, element-wise `==`/`!=`
 
 ### Phase 2: Control flow completeness
 
-5. **Exception filters (`when`)** (#4) — small parser change, high value
-6. **Multi-catch** (#16) — small parser change, reduces boilerplate
-7. **Raise expressions** (#15) — allow `raise` in expression position
-8. **`lock` statement** (#5) — essential for concurrency
-9. **`is` pattern outside `match`** (#17) — very common C# 7+ idiom
+6. **Exception filters (`when`)** (#4) — small parser change, high value
+7. **Multi-catch** (#16) — small parser change, reduces boilerplate
+8. **Raise expressions** (#15) — allow `raise` in expression position
+9. **`lock` statement** (#5) — essential for concurrency
+10. **`is` pattern outside `match`** (#17) — very common C# 7+ idiom
+11. **Await in catch/finally** (#34) — important for async error handling
 
 ### Phase 3: Interop-critical
 
-10. **`ref`/`out`/`in` parameters** (#1, issue #419) — largest interop impact
-11. **`checked`/`unchecked`** (#8) — numeric safety
-12. **Object initializers** (#13) — ubiquitous in C# for DTOs, EF, etc.
+12. **`ref`/`out`/`in` parameters** (#1, issue #419) — largest interop impact
+13. **Ref locals and ref returns** (#35) — extends #1 to locals/returns
+14. **`checked`/`unchecked`** (#8) — numeric safety
+15. **Object initializers** (#13) — ubiquitous in C# for DTOs, EF, etc.
+16. **Caller info attributes** (#33) — common in WPF, logging
 
 ### Phase 4: Type system completeness
 
-13. **Nested types** (#3) — unlocks Builder pattern, private helpers
-14. **Conversion operators** (#2) — type system completeness
-15. **Static constructors** (#7) — one-time initialization
-16. **`notnull` constraint** (#18) — generic API correctness
-17. **`readonly` fields** (#26) — runtime immutability
+17. **Nested types** (#3) — unlocks Builder pattern, private helpers
+18. **Conversion operators** (#2) — type system completeness
+19. **Static constructors** (#7) — one-time initialization
+20. **`notnull` constraint** (#18) — generic API correctness
+21. **`readonly` fields** (#26) — runtime immutability
+22. **Static local functions** (#37) — prevents accidental closure capture
 
 ### Phase 5: Large features
 
-18. **Partial classes** (#9) — large scope, unlocks code-gen scenarios
-19. **Records + `with` expressions** (#10) — largest scope, C# 9.0 flagship
+23. **Partial classes** (#9) — large scope, unlocks code-gen scenarios
+24. **Records + `with` expressions** (#10) — largest scope, C# 9.0 flagship
+25. **Expression trees** (#32) — large scope, enables LINQ providers / EF Core
 
 ### Phase 6: Polish (lower frequency, workarounds exist)
 
-20. **Block-less disposable scope** (#28) — convenience
-21. **Static classes** (#19) — modules cover most cases
-22. **`readonly struct`** (#24), **`ref struct`** (#25) — advanced value types
-23. **Static lambdas** (#23) — performance optimization
-24. **Lambda type annotations** (#30, issue #417) — pending RFC
-25. **Remaining items** — multi-dim arrays, LINQ query syntax, volatile, etc.
+26. **Block-less disposable scope** (#28) — convenience
+27. **Static classes** (#19) — modules cover most cases
+28. **`readonly struct`** (#24), **`ref struct`** (#25) — advanced value types
+29. **Static lambdas** (#23) — performance optimization
+30. **Lambda type annotations** (#30, issue #417) — pending RFC
+31. **Remaining items** — multi-dim arrays, LINQ query syntax, volatile, delegate
+    combination, etc.
