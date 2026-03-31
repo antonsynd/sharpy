@@ -12,7 +12,6 @@ internal enum NameForm
     SingleWordLower,      // hello (all lowercase, no underscores)
     SingleWordUpper,      // HTTP (all uppercase, no underscores)
     Dunder,               // __init__ (double underscore bookends)
-    Literal,              // `backtick_escaped`
     Unrecognized          // foo__bar, Foo_bar, mixed patterns
 }
 
@@ -25,7 +24,7 @@ internal static class NameFormDetector
     /// <summary>
     /// Detect the naming form of a name body.
     /// Callers should strip <c>_</c>/<c>__</c> prefixes and trailing underscores before calling,
-    /// except for dunders and literals which are detected from the full name.
+    /// except for dunders which are detected from the full name.
     /// </summary>
     public static NameForm Detect(string nameBody)
     {

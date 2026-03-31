@@ -160,7 +160,7 @@ internal static class NameMangler
                 result = cleanName;
                 break;
             default:
-                result = cleanName; // Unrecognized, Dunder, Literal — pass through
+                result = cleanName; // Unrecognized, Dunder — pass through
                 break;
         }
 
