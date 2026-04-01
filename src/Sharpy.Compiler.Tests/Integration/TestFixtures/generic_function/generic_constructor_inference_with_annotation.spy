@@ -1,0 +1,12 @@
+# Test that explicit type annotation takes precedence over inference
+class Cell[T]:
+    value: T
+    def __init__(self, initial: T):
+        self.value = initial
+    def get(self) -> T:
+        return self.value
+
+def main():
+    # Explicit annotation Cell[int] takes precedence
+    c: Cell[int] = Cell[int](42)
+    print(c.get())

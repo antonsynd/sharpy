@@ -1,0 +1,28 @@
+# Test generic constructor type argument inference from __init__ parameters
+class Cell[T]:
+    value: T
+    def __init__(self, initial: T):
+        self.value = initial
+    def get(self) -> T:
+        return self.value
+
+class Pair[A, B]:
+    first: A
+    second: B
+    def __init__(self, a: A, b: B):
+        self.first = a
+        self.second = b
+
+def main():
+    # Infer T=int from argument 42
+    c1: Cell[int] = Cell(42)
+    print(c1.get())
+
+    # Infer T=str from argument "hello"
+    c2: Cell[str] = Cell("hello")
+    print(c2.get())
+
+    # Infer A=int, B=str from arguments (1, "two")
+    p: Pair[int, str] = Pair(1, "two")
+    print(p.first)
+    print(p.second)

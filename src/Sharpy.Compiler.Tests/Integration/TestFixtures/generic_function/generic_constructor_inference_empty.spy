@@ -1,0 +1,8 @@
+# Test that Cell() without args or annotation produces an error
+class Cell[T]:
+    value: T
+    def __init__(self, initial: T):
+        self.value = initial
+
+def main():
+    c = Cell()
