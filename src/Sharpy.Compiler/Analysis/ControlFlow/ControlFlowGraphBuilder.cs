@@ -832,6 +832,18 @@ internal class ControlFlowGraphBuilder
             return new HashSet<string>(gt.GenericDefinition.UnionCases.Select(c => c.Name));
         }
 
+        // Optional type: Some and None
+        if (scrutineeType is OptionalType)
+        {
+            return new HashSet<string> { "Some", "None" };
+        }
+
+        // Result type: Ok and Err
+        if (scrutineeType is ResultType)
+        {
+            return new HashSet<string> { "Ok", "Err" };
+        }
+
         return null;
     }
 
@@ -846,6 +858,12 @@ internal class ControlFlowGraphBuilder
                 if (literal.Literal is BooleanLiteral boolLit)
                 {
                     covered.Add(boolLit.Value ? "True" : "False");
+                }
+                // Check for union case recorded by type checker (e.g., None() for Optional)
+                var litUnionCase = _semanticInfo?.GetPatternUnionCase(literal);
+                if (litUnionCase != null)
+                {
+                    covered.Add(litUnionCase.Name);
                 }
                 break;
 

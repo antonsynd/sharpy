@@ -171,6 +171,18 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
             return gt.GenericDefinition.UnionCases.Select(c => c.Name).ToList();
         }
 
+        // Optional type: Some and None
+        if (scrutineeType is OptionalType)
+        {
+            return new List<string> { "Some", "None" };
+        }
+
+        // Result type: Ok and Err
+        if (scrutineeType is ResultType)
+        {
+            return new List<string> { "Ok", "Err" };
+        }
+
         return null; // Not a finite type
     }
 
@@ -200,6 +212,12 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
                 if (literal.Literal is BooleanLiteral boolLit)
                 {
                     covered.Add(boolLit.Value ? "True" : "False");
+                }
+                // Check for union case recorded by type checker (e.g., None() for Optional)
+                var litUnionCase = _context.SemanticInfo.GetPatternUnionCase(literal);
+                if (litUnionCase != null)
+                {
+                    covered.Add(litUnionCase.Name);
                 }
                 break;
 

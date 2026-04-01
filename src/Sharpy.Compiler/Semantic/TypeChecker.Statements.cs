@@ -1034,6 +1034,27 @@ internal partial class TypeChecker
 
             case LiteralPattern literal:
                 {
+                    // Handle None() pattern when matching against Optional[T]
+                    if (literal.Literal is FunctionCall { Function: NoneLiteral } noneCall
+                        && noneCall.Arguments.Length == 0
+                        && scrutineeType is OptionalType)
+                    {
+                        // Record synthetic None union case for exhaustiveness checking
+                        var synth = GetSyntheticOptionalUnion();
+                        var noneCase = synth.UnionCases.First(c => c.Name == "None");
+                        _semanticInfo.SetPatternUnionCase(literal, noneCase);
+                        break;
+                    }
+
+                    // Handle bare None literal when matching against Optional[T]
+                    if (literal.Literal is NoneLiteral && scrutineeType is OptionalType)
+                    {
+                        var synth = GetSyntheticOptionalUnion();
+                        var noneCase = synth.UnionCases.First(c => c.Name == "None");
+                        _semanticInfo.SetPatternUnionCase(literal, noneCase);
+                        break;
+                    }
+
                     var litType = CheckExpression(literal.Literal);
                     if (!IsAssignable(litType, scrutineeType) && !IsAssignable(scrutineeType, litType))
                     {
@@ -1527,7 +1548,133 @@ internal partial class TypeChecker
             return (gt.GenericDefinition, gt.TypeArguments);
         }
 
+        // OptionalType -> synthetic union with Some(T) and None() cases
+        if (scrutineeType is OptionalType optionalType)
+        {
+            var synth = GetSyntheticOptionalUnion();
+            return (synth, new List<SemanticType> { optionalType.UnderlyingType });
+        }
+
+        // ResultType -> synthetic union with Ok(T) and Err(E) cases
+        if (scrutineeType is ResultType resultType)
+        {
+            var synth = GetSyntheticResultUnion();
+            return (synth, new List<SemanticType> { resultType.OkType, resultType.ErrorType });
+        }
+
         return (null, null);
+    }
+
+    private TypeSymbol? _syntheticOptionalUnion;
+    private TypeSymbol? _syntheticResultUnion;
+
+    /// <summary>
+    /// Returns a synthetic union TypeSymbol for Optional[T] with cases Some(T) and None().
+    /// The type parameter T is substituted at pattern-check time via GetUnionCaseFieldTypes.
+    /// </summary>
+    private TypeSymbol GetSyntheticOptionalUnion()
+    {
+        if (_syntheticOptionalUnion != null)
+            return _syntheticOptionalUnion;
+
+        var tParam = new TypeParameterType { Name = "T" };
+
+        var someCase = new TypeSymbol
+        {
+            Name = "Some",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            Fields = new List<VariableSymbol>
+            {
+                new() { Name = "value", Kind = SymbolKind.Variable, Type = tParam, AccessLevel = AccessLevel.Public }
+            }
+        };
+
+        var noneCase = new TypeSymbol
+        {
+            Name = "None",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            Fields = new List<VariableSymbol>()
+        };
+
+        var optionalUnion = new TypeSymbol
+        {
+            Name = "Optional",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Union,
+            AccessLevel = AccessLevel.Public,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new() { Name = "T" }
+            },
+            UnionCases = new List<TypeSymbol> { someCase, noneCase }
+        };
+
+        someCase.BaseType = optionalUnion;
+        noneCase.BaseType = optionalUnion;
+
+        _syntheticOptionalUnion = optionalUnion;
+        return optionalUnion;
+    }
+
+    /// <summary>
+    /// Returns a synthetic union TypeSymbol for Result[T, E] with cases Ok(T) and Err(E).
+    /// The type parameters T and E are substituted at pattern-check time via GetUnionCaseFieldTypes.
+    /// </summary>
+    private TypeSymbol GetSyntheticResultUnion()
+    {
+        if (_syntheticResultUnion != null)
+            return _syntheticResultUnion;
+
+        var tParam = new TypeParameterType { Name = "T" };
+        var eParam = new TypeParameterType { Name = "E" };
+
+        var okCase = new TypeSymbol
+        {
+            Name = "Ok",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            Fields = new List<VariableSymbol>
+            {
+                new() { Name = "value", Kind = SymbolKind.Variable, Type = tParam, AccessLevel = AccessLevel.Public }
+            }
+        };
+
+        var errCase = new TypeSymbol
+        {
+            Name = "Err",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            Fields = new List<VariableSymbol>
+            {
+                new() { Name = "error", Kind = SymbolKind.Variable, Type = eParam, AccessLevel = AccessLevel.Public }
+            }
+        };
+
+        var resultUnion = new TypeSymbol
+        {
+            Name = "Result",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Union,
+            AccessLevel = AccessLevel.Public,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new() { Name = "T" },
+                new() { Name = "E" }
+            },
+            UnionCases = new List<TypeSymbol> { okCase, errCase }
+        };
+
+        okCase.BaseType = resultUnion;
+        errCase.BaseType = resultUnion;
+
+        _syntheticResultUnion = resultUnion;
+        return resultUnion;
     }
 
     /// <summary>

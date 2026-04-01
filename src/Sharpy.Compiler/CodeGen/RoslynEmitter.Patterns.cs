@@ -117,6 +117,14 @@ internal partial class RoslynEmitter
         {
             allCases = new HashSet<string>(gt.GenericDefinition.UnionCases.Select(c => c.Name));
         }
+        else if (scrutineeType is OptionalType)
+        {
+            allCases = new HashSet<string> { "Some", "None" };
+        }
+        else if (scrutineeType is ResultType)
+        {
+            allCases = new HashSet<string> { "Ok", "Err" };
+        }
 
         if (allCases == null)
             return false;
@@ -144,6 +152,9 @@ internal partial class RoslynEmitter
                 {
                     covered.Add(boolLit.Value ? "True" : "False");
                 }
+                var litUnionCase = _context.SemanticInfo?.GetPatternUnionCase(literal);
+                if (litUnionCase != null)
+                    covered.Add(litUnionCase.Name);
                 break;
 
             case MemberAccessPattern memberAccess:
