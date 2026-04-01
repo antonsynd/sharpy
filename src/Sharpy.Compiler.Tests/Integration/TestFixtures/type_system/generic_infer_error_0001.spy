@@ -1,0 +1,7 @@
+# Error: cannot infer type args when no arguments provide type info
+class Box[T]:
+    def __init__(self):
+        pass
+
+def main():
+    b = Box()

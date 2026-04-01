@@ -1,0 +1,26 @@
+# Explicit type args still work alongside inference
+class Cell[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+def identity[T](x: T) -> T:
+    return x
+
+def main():
+    # Explicit type arguments
+    c1 = Cell[int](42)
+    print(c1.value)
+
+    # Inferred type arguments
+    c2 = Cell("hello")
+    print(c2.value)
+
+    # Explicit on function
+    r1 = identity[str]("world")
+    print(r1)
+
+    # Inferred on function
+    r2 = identity(99)
+    print(r2)

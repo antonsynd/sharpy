@@ -1,0 +1,9 @@
+# Generic function type inference: identity("hi") infers T=str
+def identity[T](x: T) -> T:
+    return x
+
+def main():
+    result = identity("hi")
+    print(result)
+    num = identity(42)
+    print(num)

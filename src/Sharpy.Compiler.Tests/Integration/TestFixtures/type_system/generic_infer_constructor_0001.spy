@@ -1,0 +1,14 @@
+# Generic constructor type inference: Cell(42) infers T=int
+class Cell[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
+
+def main():
+    c = Cell(42)
+    print(c.get())
+    print(c.value)

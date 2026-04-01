@@ -1,0 +1,13 @@
+# Multi-param generic constructor inference: Pair("a", 1) infers T=str, U=int
+class Pair[T, U]:
+    first: T
+    second: U
+
+    def __init__(self, first: T, second: U):
+        self.first = first
+        self.second = second
+
+def main():
+    p = Pair("hello", 42)
+    print(p.first)
+    print(p.second)

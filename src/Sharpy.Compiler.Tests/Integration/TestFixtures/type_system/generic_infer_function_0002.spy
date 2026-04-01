@@ -1,0 +1,12 @@
+# Generic function with multiple type params
+def first_of[T, U](a: T, b: U) -> T:
+    return a
+
+def second_of[T, U](a: T, b: U) -> U:
+    return b
+
+def main():
+    r1 = first_of("hello", 42)
+    print(r1)
+    r2 = second_of("hello", 42)
+    print(r2)
