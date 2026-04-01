@@ -1,0 +1,14 @@
+def double(x: int) -> int:
+    return x * 2
+
+def triple(x: int) -> int:
+    return x * 3
+
+def main():
+    results: list[int] = [
+        double(5),
+        triple(3),
+        double(7)
+    ]
+    for r in results:
+        print(r)

@@ -1,0 +1,20 @@
+union Color:
+    case Red()
+    case Blue()
+    case Green()
+
+def main():
+    colors: list[Color] = [
+        Color.Red(),
+        Color.Blue(),
+        Color.Green()
+    ]
+    print(len(colors))
+    for c in colors:
+        match c:
+            case Color.Red:
+                print("red")
+            case Color.Blue:
+                print("blue")
+            case Color.Green:
+                print("green")

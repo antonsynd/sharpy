@@ -339,6 +339,14 @@ public partial class Lexer
             if (indentToken != null)
                 return indentToken;
         }
+        else if (_atLineStart && _bracketDepth > 0)
+        {
+            // Inside brackets, skip indentation but clear the flag so that
+            // when bracket depth returns to 0, HandleLineStartIndentation
+            // doesn't fire on a subsequent newline (which would swallow
+            // the Newline token needed to terminate the enclosing statement).
+            _atLineStart = false;
+        }
 
         // Skip whitespace (except newlines)
         SkipWhitespace();
