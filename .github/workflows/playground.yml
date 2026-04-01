@@ -1,0 +1,58 @@
+name: Deploy Playground
+
+on:
+  push:
+    branches: [ "mainline" ]
+    paths:
+      - 'src/Sharpy.Playground/**'
+      - 'src/Sharpy.Compiler/**'
+      - 'src/Sharpy.Core/**'
+      - '.github/workflows/playground.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install WASM workload
+        run: dotnet workload install wasm-tools
+
+      - name: Publish Playground
+        run: dotnet publish src/Sharpy.Playground/Sharpy.Playground.csproj -c Release -o release
+
+      - name: Rewrite base href
+        run: sed -i 's|<base href="/" />|<base href="/sharpy/" />|g' release/wwwroot/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: release/wwwroot
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

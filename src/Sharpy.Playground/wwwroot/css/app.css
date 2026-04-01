@@ -1,0 +1,257 @@
+:root {
+    --bg-primary: #1e1e1e;
+    --bg-secondary: #252526;
+    --bg-tertiary: #2d2d2d;
+    --border: #3e3e42;
+    --text-primary: #cccccc;
+    --text-secondary: #969696;
+    --accent: #4ec9b0;
+    --accent-hover: #5edbc2;
+    --error: #f44747;
+    --warning: #cca700;
+    --success: #6a9955;
+    --tab-active: #1e1e1e;
+    --tab-inactive: #2d2d2d;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    overflow: hidden;
+}
+
+.playground-app {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.header select {
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.header select:focus {
+    outline: 1px solid var(--accent);
+}
+
+.btn-compile {
+    padding: 5px 16px;
+    background: var(--accent);
+    color: #1e1e1e;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-compile:hover {
+    background: var(--accent-hover);
+}
+
+.btn-compile:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.header-spacer {
+    flex: 1;
+}
+
+.header-links {
+    display: flex;
+    gap: 12px;
+    font-size: 13px;
+}
+
+.header-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.header-links a:hover {
+    color: var(--text-primary);
+}
+
+/* Editor panels */
+.editor-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.panel-divider {
+    width: 4px;
+    background: var(--border);
+    cursor: col-resize;
+    flex-shrink: 0;
+}
+
+.panel-divider:hover {
+    background: var(--accent);
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    height: 32px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.panel-body {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Tabs */
+.tab-bar {
+    display: flex;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.tab {
+    padding: 6px 16px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--tab-inactive);
+    border: none;
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.tab:hover {
+    color: var(--text-primary);
+}
+
+.tab.active {
+    color: var(--text-primary);
+    background: var(--tab-active);
+    border-bottom: 2px solid var(--accent);
+}
+
+/* Status indicator */
+.status-indicator {
+    margin-left: auto;
+    padding: 0 12px;
+    font-size: 11px;
+}
+
+.status-indicator.success {
+    color: var(--success);
+}
+
+.status-indicator.error {
+    color: var(--error);
+}
+
+.status-indicator.compiling {
+    color: var(--warning);
+}
+
+/* Loading screen */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: var(--bg-primary);
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.loading-content h1 {
+    color: var(--accent);
+    margin-bottom: 12px;
+}
+
+.loading-content p {
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Blazor error UI */
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    padding: 8px;
+    background: var(--error);
+    color: white;
+    text-align: center;
+    font-size: 13px;
+    z-index: 1000;
+}
+
+#blazor-error-ui .reload,
+#blazor-error-ui .dismiss {
+    color: white;
+    margin-left: 12px;
+}

@@ -18,6 +18,8 @@
     <InternalsVisibleTo Include="Sharpy.Lsp" />
     <!-- Allow LSP tests to construct FunctionSymbol with internal-set ReturnType -->
     <InternalsVisibleTo Include="Sharpy.Lsp.Tests" />
+    <!-- Allow Playground to access AstDumper for AST tab -->
+    <InternalsVisibleTo Include="Sharpy.Playground" />
   </ItemGroup>
 
   <ItemGroup>

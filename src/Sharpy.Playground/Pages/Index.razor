@@ -1,0 +1,160 @@
+@page "/"
+@using Sharpy.Playground.Examples
+@using Sharpy.Playground.Models
+@inject CompilerService Compiler
+
+<div class="header">
+    <h1>Sharpy Playground</h1>
+    <select @onchange="OnExampleChanged">
+        <option value="">-- Load Example --</option>
+        @for (var i = 0; i < ExampleSnippets.All.Count; i++)
+        {
+            <option value="@i">@ExampleSnippets.All[i].Name</option>
+        }
+    </select>
+    <button class="btn-compile" @onclick="OnCompile" disabled="@_isCompiling">
+        @(_isCompiling ? "Compiling..." : "Compile")
+    </button>
+    <div class="header-spacer"></div>
+    <div class="header-links">
+        <a href="https://github.com/antonsynd/sharpy" target="_blank">GitHub</a>
+        <a href="https://github.com/antonsynd/sharpy/tree/mainline/docs/language_specification" target="_blank">Language Spec</a>
+    </div>
+</div>
+
+<div class="editor-container">
+    @* Input panel *@
+    <div class="panel">
+        <div class="panel-header">Input (.spy)</div>
+        <div class="panel-body">
+            <StandaloneCodeEditor @ref="_inputEditor"
+                Id="input-editor"
+                ConstructionOptions="InputEditorOptions" />
+        </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    @* Output panel *@
+    <div class="panel">
+        <div class="tab-bar">
+            @foreach (var tab in _tabs)
+            {
+                <button class="tab @(tab == _activeTab ? "active" : "")"
+                    @onclick="() => SetActiveTab(tab)">
+                    @tab
+                </button>
+            }
+            @if (_output != null)
+            {
+                <span class="status-indicator @(_output.Success ? "success" : "error")">
+                    @(_output.Success ? "OK" : "Error")
+                </span>
+            }
+            else if (_isCompiling)
+            {
+                <span class="status-indicator compiling">Compiling...</span>
+            }
+        </div>
+        <div class="panel-body">
+            <StandaloneCodeEditor @ref="_outputEditor"
+                Id="output-editor"
+                ConstructionOptions="OutputEditorOptions" />
+        </div>
+    </div>
+</div>
+
+@code {
+    private StandaloneCodeEditor _inputEditor = null!;
+    private StandaloneCodeEditor _outputEditor = null!;
+    private CompilerOutput? _output;
+    private bool _isCompiling;
+
+    private readonly string[] _tabs = ["C#", "AST", "Tokens", "Diagnostics"];
+    private string _activeTab = "C#";
+
+    private StandaloneEditorConstructionOptions InputEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "python",
+            Theme = "vs-dark",
+            Value = ExampleSnippets.All[0].Source,
+            FontSize = 14,
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            RenderLineHighlight = "line",
+            TabSize = 4,
+            InsertSpaces = true,
+        };
+    }
+
+    private StandaloneEditorConstructionOptions OutputEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "csharp",
+            Theme = "vs-dark",
+            Value = "// Click \"Compile\" to see the generated C# output",
+            FontSize = 14,
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            ReadOnly = true,
+            RenderLineHighlight = "none",
+        };
+    }
+
+    private async Task OnExampleChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var index) && index >= 0 && index < ExampleSnippets.All.Count)
+        {
+            await _inputEditor.SetValue(ExampleSnippets.All[index].Source);
+        }
+    }
+
+    private async Task OnCompile()
+    {
+        if (_isCompiling) return;
+
+        _isCompiling = true;
+        StateHasChanged();
+
+        // Yield to let the UI update before blocking on compilation
+        await Task.Delay(1);
+
+        var source = await _inputEditor.GetValue();
+        _output = Compiler.Compile(source);
+        _isCompiling = false;
+
+        await UpdateOutputEditor();
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        _activeTab = tab;
+        _ = UpdateOutputEditor();
+    }
+
+    private async Task UpdateOutputEditor()
+    {
+        if (_output == null) return;
+
+        var (content, language) = _activeTab switch
+        {
+            "C#" => (_output.CSharp, "csharp"),
+            "AST" => (_output.Ast, "plaintext"),
+            "Tokens" => (_output.Tokens, "plaintext"),
+            "Diagnostics" => (_output.Diagnostics, "plaintext"),
+            _ => ("", "plaintext"),
+        };
+
+        var model = await _outputEditor.GetModel();
+        if (model != null)
+        {
+            await BlazorMonaco.Editor.Global.SetModelLanguage(null!, model, language);
+        }
+        await _outputEditor.SetValue(content);
+    }
+}
