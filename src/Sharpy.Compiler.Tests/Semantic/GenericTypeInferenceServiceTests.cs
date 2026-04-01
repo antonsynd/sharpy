@@ -765,4 +765,143 @@ public class GenericTypeInferenceServiceTests
     }
 
     #endregion
+
+    #region Constructor-like Parameter Patterns
+
+    // These tests verify that InferTypeArguments works for patterns typical of
+    // generic class constructors, where type parameters come from the class
+    // (e.g., class Box[T] → __init__(self, value: T)).
+
+    [Fact]
+    public void ConstructorPattern_SingleTypeParam_SingleArg()
+    {
+        // Simulates: class Box[T] with __init__(self, value: T), called as Box(42)
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "__init__",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "value",
+                    Type = new TypeParameterType { Name = "T" }
+                }
+            },
+            ReturnType = SemanticType.Void
+        };
+
+        var argumentTypes = new List<SemanticType> { SemanticType.Int };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(1);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void ConstructorPattern_MultiTypeParams()
+    {
+        // Simulates: class Pair[A, B] with __init__(self, a: A, b: B), called as Pair(42, "hello")
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "__init__",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "A" },
+                new TypeParameterDef { Name = "B" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol { Name = "a", Type = new TypeParameterType { Name = "A" } },
+                new ParameterSymbol { Name = "b", Type = new TypeParameterType { Name = "B" } }
+            },
+            ReturnType = SemanticType.Void
+        };
+
+        var argumentTypes = new List<SemanticType> { SemanticType.Int, SemanticType.Str };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(2);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+        result.InferredTypes![1].Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void ConstructorPattern_NestedGeneric()
+    {
+        // Simulates: class Wrapper[T] with __init__(self, items: list[T]), called as Wrapper([1, 2, 3])
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "__init__",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "items",
+                    Type = new GenericType
+                    {
+                        Name = "list",
+                        TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+                    }
+                }
+            },
+            ReturnType = SemanticType.Void
+        };
+
+        var argumentTypes = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { SemanticType.Int }
+            }
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(1);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void ConstructorPattern_ConflictingArgs()
+    {
+        // Simulates: class Container[T] with __init__(self, a: T, b: T), called as Container(42, "hello")
+        // Should fail because T can't be both int and str
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "__init__",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol { Name = "a", Type = new TypeParameterType { Name = "T" } },
+                new ParameterSymbol { Name = "b", Type = new TypeParameterType { Name = "T" } }
+            },
+            ReturnType = SemanticType.Void
+        };
+
+        var argumentTypes = new List<SemanticType> { SemanticType.Int, SemanticType.Str };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKind.Should().Be(InferenceErrorKind.ConflictingTypes);
+    }
+
+    #endregion
 }
