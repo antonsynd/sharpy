@@ -130,6 +130,11 @@ class Cell[T]:
 
 def identity[T](x: T) -> T:
     return x
+
+def main():
+    c = Cell[int](42)
+    print(c.get())          # 42
+    print(identity[str]("hi"))  # hi
 ```
 
 ### Properties
