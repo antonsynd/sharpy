@@ -327,18 +327,41 @@ internal partial class TypeChecker
                                 }
                             }
 
-                            // Fall through to Unknown if inference failed
-                            typeArgs ??= Enumerable.Range(0, typeSymbol.TypeParameters.Count)
-                                .Select(_ => (SemanticType)SemanticType.Unknown)
-                                .ToList();
+                            // Fallback: try __init__-based inference for user-defined generic constructors
+                            if (typeArgs == null)
+                            {
+                                typeArgs = TryInferConstructorTypeArgs(typeSymbol, call, argTypes);
+                            }
                         }
                         else
                         {
-                            // Multiple arguments or keyword arguments: cannot infer type args
-                            typeArgs = Enumerable.Range(0, typeSymbol.TypeParameters.Count)
-                                .Select(_ => (SemanticType)SemanticType.Unknown)
-                                .ToList();
+                            // Multiple arguments or keyword arguments: infer type args from __init__ parameters
+                            typeArgs = TryInferConstructorTypeArgs(typeSymbol, call, argTypes);
                         }
+
+                        // If inference failed, fall back to UnknownType args for builtin
+                        // collections (lets C# compiler report the real error) or emit
+                        // a diagnostic for user-defined generic types.
+                        if (typeArgs == null)
+                        {
+                            if (typeSymbol.Name is BuiltinNames.List or BuiltinNames.Set or BuiltinNames.Dict)
+                            {
+                                typeArgs = Enumerable.Range(0, typeSymbol.TypeParameters.Count)
+                                    .Select(_ => (SemanticType)SemanticType.Unknown)
+                                    .ToList();
+                            }
+                            else
+                            {
+                                AddError(
+                                    $"Cannot infer type arguments for '{typeSymbol.Name}'; " +
+                                    $"use explicit syntax: {typeSymbol.Name}[{string.Join(", ", typeSymbol.TypeParameters.Select(tp => tp.Name))}](...)",
+                                    call.LineStart, call.ColumnStart,
+                                    code: DiagnosticCodes.Semantic.CannotInferGenericType,
+                                    span: call.Span);
+                                return SemanticType.Unknown;
+                            }
+                        }
+
                         return new GenericType
                         {
                             Name = typeSymbol.Name,
@@ -1597,6 +1620,42 @@ internal partial class TypeChecker
 
         // 5. Return the inferred return type
         return lambdaType is FunctionType ft ? ft.ReturnType : SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Attempts to infer generic type arguments for a constructor call by creating a synthetic
+    /// FunctionSymbol from the class's __init__ method and using GenericTypeInferenceService.
+    /// Returns null if inference fails (caller should fall back to error or UnknownType).
+    /// </summary>
+    private List<SemanticType>? TryInferConstructorTypeArgs(
+        TypeSymbol typeSymbol, FunctionCall call, List<SemanticType> argTypes)
+    {
+        var initMethods = typeSymbol.Methods.Where(m => m.Name == DunderNames.Init).ToList();
+        if (initMethods.Count != 1)
+            return null;
+
+        var initMethod = initMethods[0];
+        // Skip 'self' parameter
+        var initParams = initMethod.Parameters.Skip(1).ToList();
+
+        // Create a synthetic FunctionSymbol with the class's type parameters
+        // and the __init__'s parameters (minus self) so GenericTypeInferenceService
+        // can unify the argument types against the parameter types.
+        var syntheticFunc = new FunctionSymbol
+        {
+            Name = typeSymbol.Name,
+            Parameters = initParams,
+            TypeParameters = typeSymbol.TypeParameters,
+        };
+
+        var inferenceResult = _genericInference.InferTypeArguments(syntheticFunc, argTypes);
+        if (inferenceResult.Success && inferenceResult.InferredTypes != null)
+        {
+            _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);
+            return inferenceResult.InferredTypes;
+        }
+
+        return null;
     }
 
 }
