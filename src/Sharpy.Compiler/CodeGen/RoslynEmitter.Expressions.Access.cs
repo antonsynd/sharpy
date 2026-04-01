@@ -96,7 +96,7 @@ internal partial class RoslynEmitter
                 // For type instantiation, use fully qualified name if type is from another file
                 var name = GetFullyQualifiedTypeName(typeSymbolForName, funcName.Name);
 
-                // For generic types called without explicit type arguments (e.g., set()),
+                // For generic types called without explicit type arguments (e.g., set(), Cell(42)),
                 // use the resolved expression type to supply type arguments.
                 var exprType = _context.SemanticInfo?.GetExpressionType(call);
                 if (exprType is GenericType resolvedGeneric && resolvedGeneric.TypeArguments.Count > 0
@@ -107,6 +107,23 @@ internal partial class RoslynEmitter
                     var csharpCollectionName = CSharpTypeNames.FromSharpyName(funcName.Name)
                         ?? NameMangler.ToPascalCase(funcName.Name);
                     var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpCollectionName,
+                            typeArgsSyntax.ToArray());
+                    return ObjectCreationExpression(genericTypeSyntax)
+                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+                }
+
+                // Fallback: if the expression type has UnknownType type args, check for
+                // inferred type arguments from semantic analysis (generic constructor inference).
+                // C# does not support generic constructor inference, so we must always emit
+                // explicit type arguments: Cell(42) -> new Cell<int>(42)
+                var inferredTypeArgs = _context.SemanticInfo?.GetInferredTypeArguments(call);
+                if (inferredTypeArgs is { Count: > 0 })
+                {
+                    var typeArgsSyntax = inferredTypeArgs
+                        .Select(t => _typeMapper.MapSemanticType(t));
+                    var csharpName = CSharpTypeNames.FromSharpyName(funcName.Name)
+                        ?? NameMangler.ToPascalCase(funcName.Name);
+                    var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpName,
                             typeArgsSyntax.ToArray());
                     return ObjectCreationExpression(genericTypeSyntax)
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
