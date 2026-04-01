@@ -149,6 +149,13 @@ html, body {
     flex: 1;
     overflow: hidden;
     position: relative;
+    min-height: 0;
+}
+
+/* Monaco editor containers need explicit dimensions */
+.panel-body > div {
+    width: 100%;
+    height: 100%;
 }
 
 /* Tabs */
