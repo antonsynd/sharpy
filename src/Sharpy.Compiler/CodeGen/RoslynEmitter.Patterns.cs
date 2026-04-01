@@ -233,6 +233,21 @@ internal partial class RoslynEmitter
 
             case LiteralPattern literal:
                 {
+                    // Handle None()/None patterns on Optional scrutinees
+                    var litUnionCase = _context.SemanticInfo?.GetPatternUnionCase(literal);
+                    if (litUnionCase?.Name == "None" && scrutineeType is OptionalType)
+                    {
+                        // Optional<T>.Deconstruct(out bool hasValue, out T value)
+                        // None → (false, _)
+                        return RecursivePattern()
+                            .WithPositionalPatternClause(
+                                PositionalPatternClause(SeparatedList(new[]
+                                {
+                                    Subpattern(ConstantPattern(LiteralExpression(SyntaxKind.FalseLiteralExpression))),
+                                    Subpattern(VarPattern(DiscardDesignation()))
+                                })));
+                    }
+
                     var literalExpr = GenerateExpression(literal.Literal);
                     return ConstantPattern(literalExpr);
                 }
@@ -402,6 +417,12 @@ internal partial class RoslynEmitter
                     var unionCase = _context.SemanticInfo?.GetPatternUnionCase(positionalPattern);
                     if (unionCase != null)
                     {
+                        // Handle Optional/Result synthetic union cases via Deconstruct
+                        var optResultPattern = TryGenerateOptionalResultPattern(
+                            positionalPattern, unionCase, scrutineeType, memberGuards, ref matchVarCounter);
+                        if (optResultPattern != null)
+                            return optResultPattern;
+
                         return GenerateUnionCasePositionalPattern(
                             positionalPattern, unionCase, scrutineeType, memberGuards, ref matchVarCounter);
                     }
@@ -473,6 +494,93 @@ internal partial class RoslynEmitter
                 // since an error was already reported above.
                 return DiscardPattern();
         }
+    }
+
+    /// <summary>
+    /// Generates a C# positional deconstruction pattern for Optional/Result synthetic union cases.
+    /// Returns null if the union case is not from a synthetic Optional/Result union.
+    ///
+    /// Optional[T].Deconstruct(out bool hasValue, out T value):
+    ///   Some(v)  → (true, var v)
+    ///   None()   → (false, _)
+    ///
+    /// Result[T, E].Deconstruct(out bool isOk, out T value, out E error):
+    ///   Ok(v)    → (true, var v, _)
+    ///   Err(e)   → (false, _, var e)
+    /// </summary>
+    private PatternSyntax? TryGenerateOptionalResultPattern(
+        PositionalPattern positionalPattern,
+        TypeSymbol unionCaseSymbol,
+        SemanticType? scrutineeType,
+        List<ExpressionSyntax> memberGuards,
+        ref int matchVarCounter)
+    {
+        if (scrutineeType is OptionalType && unionCaseSymbol.Name == "Some")
+        {
+            // Some(v) → (true, var v)
+            var subPatterns = new List<SubpatternSyntax>
+            {
+                Subpattern(ConstantPattern(LiteralExpression(SyntaxKind.TrueLiteralExpression)))
+            };
+            if (positionalPattern.Elements.Length == 1)
+            {
+                subPatterns.Add(Subpattern(GenerateMatchPattern(
+                    positionalPattern.Elements[0], memberGuards, ref matchVarCounter)));
+            }
+            else
+            {
+                subPatterns.Add(Subpattern(VarPattern(DiscardDesignation())));
+            }
+            return RecursivePattern()
+                .WithPositionalPatternClause(
+                    PositionalPatternClause(SeparatedList(subPatterns)));
+        }
+
+        if (scrutineeType is ResultType && unionCaseSymbol.Name == "Ok")
+        {
+            // Ok(v) → (true, var v, _)
+            var subPatterns = new List<SubpatternSyntax>
+            {
+                Subpattern(ConstantPattern(LiteralExpression(SyntaxKind.TrueLiteralExpression)))
+            };
+            if (positionalPattern.Elements.Length == 1)
+            {
+                subPatterns.Add(Subpattern(GenerateMatchPattern(
+                    positionalPattern.Elements[0], memberGuards, ref matchVarCounter)));
+            }
+            else
+            {
+                subPatterns.Add(Subpattern(VarPattern(DiscardDesignation())));
+            }
+            subPatterns.Add(Subpattern(VarPattern(DiscardDesignation())));
+            return RecursivePattern()
+                .WithPositionalPatternClause(
+                    PositionalPatternClause(SeparatedList(subPatterns)));
+        }
+
+        if (scrutineeType is ResultType && unionCaseSymbol.Name == "Err")
+        {
+            // Err(e) → (false, _, var e)
+            var subPatterns = new List<SubpatternSyntax>
+            {
+                Subpattern(ConstantPattern(LiteralExpression(SyntaxKind.FalseLiteralExpression))),
+                Subpattern(VarPattern(DiscardDesignation()))
+            };
+            if (positionalPattern.Elements.Length == 1)
+            {
+                subPatterns.Add(Subpattern(GenerateMatchPattern(
+                    positionalPattern.Elements[0], memberGuards, ref matchVarCounter)));
+            }
+            else
+            {
+                subPatterns.Add(Subpattern(VarPattern(DiscardDesignation())));
+            }
+            return RecursivePattern()
+                .WithPositionalPatternClause(
+                    PositionalPatternClause(SeparatedList(subPatterns)));
+        }
+
+        return null;
     }
 
     /// <summary>
