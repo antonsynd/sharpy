@@ -123,12 +123,12 @@ html, body {
 .panel-divider {
     width: 4px;
     background: var(--border);
-    cursor: col-resize;
+    cursor: default;
     flex-shrink: 0;
 }
 
 .panel-divider:hover {
-    background: var(--accent);
+    background: var(--border);
 }
 
 .panel-header {

@@ -131,10 +131,10 @@
         await UpdateOutputEditor();
     }
 
-    private void SetActiveTab(string tab)
+    private async Task SetActiveTab(string tab)
     {
         _activeTab = tab;
-        _ = UpdateOutputEditor();
+        await UpdateOutputEditor();
     }
 
     private async Task UpdateOutputEditor()

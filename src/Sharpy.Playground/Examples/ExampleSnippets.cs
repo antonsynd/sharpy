@@ -74,8 +74,10 @@ public static class ExampleSnippets
         def main():
             c = Shape.Circle(5.0)
             r = Shape.Rectangle(3.0, 4.0)
+            t = Shape.Triangle(6.0, 3.0)
             print(describe(c))
             print(describe(r))
+            print(describe(t))
         """;
 
     private const string OptionalTypes = """
