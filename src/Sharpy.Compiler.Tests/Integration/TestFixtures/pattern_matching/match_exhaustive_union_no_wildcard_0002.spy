@@ -1,0 +1,16 @@
+union Shape:
+    case Circle(radius: float)
+    case Square(side: float)
+
+def describe(s: Shape) -> str:
+    result: str = ""
+    match s:
+        case Circle(r):
+            result = "circle"
+        case Square(side):
+            result = "square"
+    return result
+
+def main():
+    print(describe(Shape.Circle(5.0)))
+    print(describe(Shape.Square(3.0)))

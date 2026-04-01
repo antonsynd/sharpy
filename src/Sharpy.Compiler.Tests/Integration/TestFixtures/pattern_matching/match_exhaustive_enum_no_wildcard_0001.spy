@@ -1,0 +1,18 @@
+enum Color:
+    RED = 0
+    GREEN = 1
+    BLUE = 2
+
+def name(c: Color) -> str:
+    match c:
+        case Color.RED:
+            return "red"
+        case Color.GREEN:
+            return "green"
+        case Color.BLUE:
+            return "blue"
+
+def main():
+    print(name(Color.RED))
+    print(name(Color.GREEN))
+    print(name(Color.BLUE))

@@ -65,7 +65,117 @@ internal partial class RoslynEmitter
                 List<StatementSyntax>(bodyStatements)));
         }
 
+        // If the match is semantically exhaustive (covers all cases of a finite type)
+        // but has no wildcard/default case, add a default throw to satisfy the C# compiler's
+        // definite return analysis. This is unreachable at runtime.
+        bool hasDefault = matchStmt.Cases.Any(c =>
+            c.Guard == null && c.Pattern is WildcardPattern or BindingPattern);
+        if (!hasDefault && IsFiniteTypeExhaustiveMatch(matchStmt, scrutineeType))
+        {
+            var throwStatement = ThrowStatement(
+                ObjectCreationExpression(
+                    QualifiedName(
+                        IdentifierName("System"),
+                        IdentifierName("InvalidOperationException")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(LiteralExpression(
+                        SyntaxKind.StringLiteralExpression,
+                        Literal("Unreachable: exhaustive match")))))));
+            sections.Add(SwitchSection(
+                SingletonList<SwitchLabelSyntax>(DefaultSwitchLabel()),
+                SingletonList<StatementSyntax>(throwStatement)));
+        }
+
         return SwitchStatement(scrutineeExpr, List(sections));
+    }
+
+    /// <summary>
+    /// Checks if a match statement exhaustively covers all cases of a finite type
+    /// (bool, enum, or tagged union). Used by the emitter to add a default throw
+    /// for the C# compiler's definite return analysis.
+    /// </summary>
+    private bool IsFiniteTypeExhaustiveMatch(MatchStatement matchStmt, SemanticType? scrutineeType)
+    {
+        if (scrutineeType == null || _context.SemanticInfo == null)
+            return false;
+
+        HashSet<string>? allCases = null;
+
+        if (scrutineeType is BuiltinType bt && bt == BuiltinType.Bool)
+        {
+            allCases = new HashSet<string> { "True", "False" };
+        }
+        else if (scrutineeType is UserDefinedType udt && udt.Symbol?.TypeKind == TypeKind.Enum)
+        {
+            allCases = new HashSet<string>(udt.Symbol.Fields.Select(f => f.Name));
+        }
+        else if (scrutineeType is UserDefinedType unionUdt && unionUdt.Symbol?.TypeKind == TypeKind.Union)
+        {
+            allCases = new HashSet<string>(unionUdt.Symbol.UnionCases.Select(c => c.Name));
+        }
+        else if (scrutineeType is GenericType gt && gt.GenericDefinition?.TypeKind == TypeKind.Union)
+        {
+            allCases = new HashSet<string>(gt.GenericDefinition.UnionCases.Select(c => c.Name));
+        }
+
+        if (allCases == null)
+            return false;
+
+        var coveredCases = new HashSet<string>();
+        foreach (var matchCase in matchStmt.Cases)
+        {
+            if (matchCase.Guard != null)
+                continue;
+            CollectCoveredCasesForEmitter(matchCase.Pattern, coveredCases);
+        }
+
+        return allCases.All(coveredCases.Contains);
+    }
+
+    /// <summary>
+    /// Collects case names covered by a pattern for emitter exhaustiveness checking.
+    /// </summary>
+    private void CollectCoveredCasesForEmitter(Pattern pattern, HashSet<string> covered)
+    {
+        switch (pattern)
+        {
+            case LiteralPattern literal:
+                if (literal.Literal is BooleanLiteral boolLit)
+                {
+                    covered.Add(boolLit.Value ? "True" : "False");
+                }
+                break;
+
+            case MemberAccessPattern memberAccess:
+                if (memberAccess.Parts.Length >= 2)
+                {
+                    var unionCase = _context.SemanticInfo?.GetPatternUnionCase(memberAccess);
+                    if (unionCase != null)
+                        covered.Add(unionCase.Name);
+                    else
+                        covered.Add(memberAccess.Parts[^1]);
+                }
+                break;
+
+            case PositionalPattern positionalPattern:
+                var posUnionCase = _context.SemanticInfo?.GetPatternUnionCase(positionalPattern);
+                if (posUnionCase != null)
+                    covered.Add(posUnionCase.Name);
+                break;
+
+            case TypePattern typePattern:
+                var typeUnionCase = _context.SemanticInfo?.GetPatternUnionCase(typePattern);
+                if (typeUnionCase != null)
+                    covered.Add(typeUnionCase.Name);
+                else
+                    covered.Add(typePattern.Type.Name);
+                break;
+
+            case OrPattern orPattern:
+                foreach (var alt in orPattern.Alternatives)
+                    CollectCoveredCasesForEmitter(alt, covered);
+                break;
+        }
     }
 
     private ExpressionSyntax GenerateMemberAccessValue(MemberAccessPattern memberAccess)

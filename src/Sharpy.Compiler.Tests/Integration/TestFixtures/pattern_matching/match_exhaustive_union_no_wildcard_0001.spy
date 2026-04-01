@@ -1,0 +1,14 @@
+union Shape:
+    case Circle(radius: float)
+    case Square(side: float)
+
+def area(s: Shape) -> float:
+    match s:
+        case Circle(r):
+            return 3.14 * r * r
+        case Square(side):
+            return side * side
+
+def main():
+    print(area(Shape.Circle(5.0)))
+    print(area(Shape.Square(3.0)))

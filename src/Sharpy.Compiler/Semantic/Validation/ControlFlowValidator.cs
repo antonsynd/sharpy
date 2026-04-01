@@ -22,12 +22,13 @@ internal class ControlFlowValidator : ValidatingAstWalker
     public override string Name => "ControlFlowValidator";
     public override int Order => 400; // After type checking (300)
 
-    private readonly ControlFlowGraphBuilder _cfgBuilder = new();
+    private ControlFlowGraphBuilder _cfgBuilder = new();
     private ICompilerLogger _logger = NullLogger.Instance;
 
     public override void Validate(Module module, SemanticContext context)
     {
         _logger = context.Logger;
+        _cfgBuilder = new ControlFlowGraphBuilder(context.SemanticInfo);
         _logger.LogDebug("Starting CFG-based control flow validation");
         base.Validate(module, context);
     }
