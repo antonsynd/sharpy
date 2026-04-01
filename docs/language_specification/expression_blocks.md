@@ -270,4 +270,4 @@ x = do:
 - You need loops (use comprehensions or regular code instead)
 
 *Implementation*
-- *🔄 Lowered - Transformed to immediately-invoked lambda expression (IILE)*
+- *❌ Deferred post-v0.2.x. When implemented, will be lowered to immediately-invoked lambda expression (IILE).*

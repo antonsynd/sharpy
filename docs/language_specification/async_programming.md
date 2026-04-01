@@ -1,10 +1,11 @@
 # Async Programming
 
-> **Implementation status:** `async def` declarations are **partially implemented** (v0.2.x).
+> **Implementation status:** ✅ Implemented (v0.2.x).
 > - `async def` is parsed and emits C# `async` methods returning `Task` or `Task<T>`.
 > - `await` expressions are **implemented** — `await` can be used inside `async def` functions to unwrap `Task<T>` results.
 > - `async for` is **implemented** — maps to `await foreach` over `IAsyncEnumerable<T>`.
 > - `async with` is **implemented** — supports both dunder protocol and `IAsyncDisposable`, including multiple context managers.
+> - `asyncio.gather()` is **implemented** — maps to `Task.WhenAll()`.
 > - Async generators (`async def` with `yield`) emit `IAsyncEnumerable<T>` return type.
 > - `yield from` in async generators is **implemented** (Sharpy extension beyond Python).
 > - Async constructors (`async def __init__`) are rejected at compile time (SPY0358).
@@ -35,7 +36,7 @@ async def fetch_all(urls: list[str]) -> list[str]:
     return results
 ```
 
-*Implementation: ❌ Not yet implemented — requires `async def` and `await`. Will map to `Task.WhenAll()`.*
+*Implementation: ✅ Implemented — `asyncio.gather(*tasks)` maps to `await Task.WhenAll(tasks)`.*
 
 ## Async Iteration
 
