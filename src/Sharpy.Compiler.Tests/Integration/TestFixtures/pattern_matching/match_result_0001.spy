@@ -1,0 +1,12 @@
+def describe(val: int !str) -> str:
+    match val:
+        case Ok(v):
+            return "ok: " + str(v)
+        case Err(e):
+            return "err: " + e
+
+def main():
+    x: int !str = Ok(42)
+    y: int !str = Err("failed")
+    print(describe(x))
+    print(describe(y))

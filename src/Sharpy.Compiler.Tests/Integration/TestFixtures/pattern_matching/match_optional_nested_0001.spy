@@ -1,0 +1,13 @@
+def outer(val: int?) -> str:
+    match val:
+        case Some(v):
+            if v > 10:
+                return "big: " + str(v)
+            return "small: " + str(v)
+        case None():
+            return "none"
+
+def main():
+    print(outer(Some(42)))
+    print(outer(Some(5)))
+    print(outer(None()))

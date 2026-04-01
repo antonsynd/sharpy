@@ -1,0 +1,12 @@
+def describe(val: int?) -> str:
+    match val:
+        case Some(v):
+            return "value: " + str(v)
+        case None():
+            return "none"
+
+def main():
+    x: int? = Some(42)
+    y: int? = None()
+    print(describe(x))
+    print(describe(y))

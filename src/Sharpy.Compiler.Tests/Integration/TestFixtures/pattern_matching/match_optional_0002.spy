@@ -1,0 +1,12 @@
+def describe(val: str?) -> str:
+    match val:
+        case Some(s):
+            return "got: " + s
+        case _:
+            return "nothing"
+
+def main():
+    x: str? = Some("hello")
+    y: str? = None()
+    print(describe(x))
+    print(describe(y))

@@ -1,0 +1,10 @@
+def unwrap_or_msg(val: int !str) -> str:
+    match val:
+        case Ok(v):
+            return str(v)
+        case Err(e):
+            return e
+
+def main():
+    print(unwrap_or_msg(Ok(42)))
+    print(unwrap_or_msg(Err("err")))

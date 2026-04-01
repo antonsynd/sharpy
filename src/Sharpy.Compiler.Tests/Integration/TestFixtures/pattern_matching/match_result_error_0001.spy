@@ -1,0 +1,7 @@
+def describe(val: int !str) -> str:
+    match val:
+        case Ok(v):
+            return str(v)
+
+def main():
+    print(describe(Ok(1)))

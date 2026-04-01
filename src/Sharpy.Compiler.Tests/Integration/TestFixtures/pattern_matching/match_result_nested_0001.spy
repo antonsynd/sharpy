@@ -1,0 +1,13 @@
+def classify(val: int !str) -> str:
+    match val:
+        case Ok(v):
+            if v >= 0:
+                return "positive: " + str(v)
+            return "negative: " + str(v)
+        case Err(e):
+            return "error: " + e
+
+def main():
+    print(classify(Ok(5)))
+    print(classify(Ok(-3)))
+    print(classify(Err("bad")))

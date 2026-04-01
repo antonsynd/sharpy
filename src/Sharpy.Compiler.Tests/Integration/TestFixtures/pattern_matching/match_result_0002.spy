@@ -1,0 +1,12 @@
+def is_ok(val: int !str) -> str:
+    match val:
+        case Ok(v):
+            return "yes: " + str(v)
+        case _:
+            return "no"
+
+def main():
+    x: int !str = Ok(10)
+    y: int !str = Err("oops")
+    print(is_ok(x))
+    print(is_ok(y))

@@ -1,0 +1,10 @@
+def unwrap_or_default(val: int?) -> int:
+    match val:
+        case Some(v):
+            return v
+        case None():
+            return 0
+
+def main():
+    print(unwrap_or_default(Some(42)))
+    print(unwrap_or_default(None()))
