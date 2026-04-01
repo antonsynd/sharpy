@@ -4,7 +4,6 @@ See [introduction.md](introduction.md) for goals, principles, and philosophy.
 
 > **Note:** This reference describes the complete Sharpy language design. Some features are not yet implemented
 > in the compiler — these are marked with implementation status banners in their respective documents.
-> For the implementation roadmap, see [phases2.md](../implementation_planning/phases2.md).
 
 ## Lexical Structure
 
@@ -191,7 +190,7 @@ See [function_default_parameters.md](function_default_parameters.md) for default
 
 See [function_variadic_arguments.md](function_variadic_arguments.md) for variadic arguments (*args), unpacking, and C# interop.
 
-See [flexible_arguments.md](flexible_arguments.md) for positional-only (`/`), keyword-only (`*`), `@kwargs`, and `@dynamic_kwargs`.
+See [flexible_arguments.md](flexible_arguments.md) for positional-only (`/`) and keyword-only (`*`) parameter separators.
 
 See [parameter_modifiers.md](parameter_modifiers.md) for `ref`, `out`, and `in` pass-by-reference parameters.
 
@@ -340,8 +339,6 @@ See [context_managers.md](context_managers.md) for with statement and context ma
 ## Events
 
 See [events.md](events.md) for event declaration and handling.
-
-See [events_alt.md](events_alt.md) for alternate event design document.
 
 ---
 
