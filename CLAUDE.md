@@ -173,7 +173,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 18 partial classes (~14,650 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
+The `RoslynEmitter` is split into 18 partial classes (~14,540 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -308,6 +308,8 @@ All `/spy-*` skills accept **inline source** or a file path. Inline source is wr
 | `/spy-emit <mode> <source>` | Emit compiler output: `csharp`, `ast`, `tokens`, or `diagnostics` (log: `last-spy-emit.log`) |
 | `/spy-run <source>` | Compile and execute (log: `last-spy-run.log`) |
 | `/quick-check <source>` | Emit C# + run in one shot (logs: `last-quick-check-{emit,run}.log`) |
+| `/lsp-hover <pos>` | Get LSP hover tooltip for a position in a .spy file (emulates VS Code hover) |
+| `/lsp-review` | Interactive LSP review session — report hover/coloring issues from VS Code |
 | `/verify-python <expr>` | Run Python 3 to verify behavior before implementing |
 | `/clean-dotnet` | Kill zombie dotnet processes that cause hangs |
 
@@ -317,6 +319,7 @@ All `/spy-*` skills accept **inline source** or a file path. Inline source is wr
 |---------|---------|
 | `/commit [message]` | Stage and commit changes with auto-generated message |
 | `/push [--close-issues N,N]` | Push current branch; optionally close GitHub issues |
+| `/close-issues [N,N]` | Close GitHub issues that have been implemented, with verification |
 
 ### Analysis & Planning
 
@@ -389,6 +392,7 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 
 `.github/workflows/`:
 - `dotnet10.yml` — Active; tests on .NET 10
+- `playground.yml` — Blazor WASM "Try Sharpy Online" playground
 - `python-build-tools.yml` — Runs pytest for `build_tools/` on Python 3.12
 - `benchmarks.yml` — Performance benchmarks
 - `vscode-extension.yml` — VS Code extension CI
