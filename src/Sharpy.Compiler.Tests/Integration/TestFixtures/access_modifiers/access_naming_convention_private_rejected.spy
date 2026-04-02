@@ -1,0 +1,13 @@
+class Foo:
+    __secret: int
+
+    def __init__(self):
+        self.__secret = 42
+
+    def __private_method(self) -> int:
+        return self.__secret
+
+def main():
+    f = Foo()
+    x = f.__secret
+    y = f.__private_method()
