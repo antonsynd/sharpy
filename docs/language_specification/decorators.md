@@ -76,6 +76,11 @@ class Example:
         pass
 ```
 
+> **Note:** When `@public` overrides a naming-convention access level (e.g., `@public __should_be_public`),
+> the generated C# member retains the underscore prefix (`public int __ShouldBePublic`). Downstream C#
+> analyzers (StyleCop, Roslyn analyzers) may flag this as a naming violation on the generated output.
+> These warnings on generated code can be safely ignored.
+
 *Implementation: ✅ Native - Direct mapping to C# access modifiers.*
 
 ## Method Modifiers
