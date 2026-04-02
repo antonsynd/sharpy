@@ -1,0 +1,42 @@
+# Test that underscore naming convention sets correct access modifiers on methods
+# __name → private, _name → protected, name → public
+# Dunder methods (__init__, __str__) remain public
+
+class Base:
+    def __init__(self):
+        pass
+
+    def __str__(self) -> str:
+        return "Base"
+
+    def __private_method(self) -> int:
+        return 42
+
+    def _protected_method(self) -> str:
+        return "protected"
+
+    def public_method(self) -> bool:
+        return True
+
+    def call_private(self) -> int:
+        return self.__private_method()
+
+class Child(Base):
+    def __init__(self):
+        super().__init__()
+
+    def call_protected(self) -> str:
+        return self._protected_method()
+
+def main():
+    b: Base = Base()
+    # Dunder __str__ remains public
+    print(str(b))
+    # Public method accessible from outside
+    print(b.public_method())
+    # Private method accessible through public wrapper
+    print(b.call_private())
+
+    c: Child = Child()
+    # Protected method accessible from subclass
+    print(c.call_protected())

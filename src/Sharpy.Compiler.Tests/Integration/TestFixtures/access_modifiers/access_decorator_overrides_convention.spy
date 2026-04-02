@@ -1,0 +1,19 @@
+# Test that explicit access decorators override underscore naming convention
+# @public on _name → public, @public on __name → public
+
+class Config:
+    @public
+    __should_be_public: int
+
+    @public
+    def _should_be_public(self) -> str:
+        return "overridden"
+
+    def __init__(self):
+        self.__should_be_public = 99
+
+def main():
+    c: Config = Config()
+    # Both are accessible from outside despite underscore prefixes
+    print(c.__should_be_public)
+    print(c._should_be_public())

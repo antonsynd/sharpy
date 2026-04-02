@@ -1,0 +1,31 @@
+# Test that underscore naming convention sets correct access modifiers on fields
+# __name → private, _name → protected, name → public
+
+class MyClass:
+    __private_field: int
+    _protected_field: int
+    public_field: int
+
+    def __init__(self, a: int, b: int, c: int):
+        self.__private_field = a
+        self._protected_field = b
+        self.public_field = c
+
+    def get_private(self) -> int:
+        return self.__private_field
+
+class Child(MyClass):
+    def __init__(self):
+        super().__init__(1, 2, 3)
+
+    def get_protected(self) -> int:
+        return self._protected_field
+
+def main():
+    obj: MyClass = MyClass(10, 20, 30)
+    print(obj.get_private())
+    print(obj.public_field)
+
+    child: Child = Child()
+    print(child.get_protected())
+    print(child.public_field)
