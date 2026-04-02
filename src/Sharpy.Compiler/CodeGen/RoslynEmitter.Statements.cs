@@ -1911,31 +1911,53 @@ internal partial class RoslynEmitter
             elementTypeSyntax = _typeMapper.MapSemanticType(listType.TypeArguments[0]);
         }
 
-        // Elements before star: var name = __t[i]
+        // Elements before star: name = __t[i] (update) or var name = __t[i] (declare)
         for (int i = 0; i < numBefore; i++)
         {
             if (elements[i] is Identifier id)
             {
-                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
-                _declaredVariables.Add(varName);
-                statements.Add(LocalDeclarationStatement(
-                    VariableDeclaration(IdentifierName("var"))
-                        .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(varName))
-                                .WithInitializer(EqualsValueClause(
-                                    ElementAccessExpression(IdentifierName(sourceVar))
-                                        .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
-                                            Argument(LiteralExpression(
-                                                SyntaxKind.NumericLiteralExpression,
-                                                Literal(i))))))))))));
+                var indexExpr = ElementAccessExpression(IdentifierName(sourceVar))
+                    .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
+                        Argument(LiteralExpression(
+                            SyntaxKind.NumericLiteralExpression,
+                            Literal(i))))));
+
+                var baseName = NameMangler.ToCamelCase(id.Name);
+                var sym = _context.LookupSymbol(id.Name);
+                var existsAsModuleLevel = sym != null && GetCodeGenInfo(sym)?.IsModuleLevel == true;
+                var existsAsLocal = _variableVersions.ContainsKey(baseName);
+
+                if (existsAsModuleLevel || existsAsLocal)
+                {
+                    _narrowing.ClearNarrowing(id.Name);
+                    var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                    statements.Add(ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(currentName),
+                            indexExpr)));
+                }
+                else
+                {
+                    var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                    _declaredVariables.Add(varName);
+                    statements.Add(LocalDeclarationStatement(
+                        VariableDeclaration(IdentifierName("var"))
+                            .WithVariables(SingletonSeparatedList(
+                                VariableDeclarator(Identifier(varName))
+                                    .WithInitializer(EqualsValueClause(indexExpr))))));
+                }
             }
         }
 
-        // Star element: var rest = __t.GetSlice(new Sharpy.Slice(start, end))
+        // Star element: rest = __t.GetSlice(...) (update) or var rest = __t.GetSlice(...) (declare)
         if (elements[starIndex] is StarExpression starExpr && starExpr.Operand is Identifier starId)
         {
-            var starVarName = GetMangledVariableName(starId.Name, isNewDeclaration: true);
-            _declaredVariables.Add(starVarName);
+            var starBaseName = NameMangler.ToCamelCase(starId.Name);
+            var starSym = _context.LookupSymbol(starId.Name);
+            var starExistsAsModuleLevel = starSym != null && GetCodeGenInfo(starSym)?.IsModuleLevel == true;
+            var starExistsAsLocal = _variableVersions.ContainsKey(starBaseName);
+            var starIsExisting = starExistsAsModuleLevel || starExistsAsLocal;
 
             // Build Slice constructor args: new Sharpy.Slice((int?)start, (int?)end)
             var startArg = numBefore > 0
@@ -1965,14 +1987,29 @@ internal partial class RoslynEmitter
                     IdentifierName("GetSlice")))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(newSlice))));
 
-            statements.Add(LocalDeclarationStatement(
-                VariableDeclaration(IdentifierName("var"))
-                    .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(starVarName))
-                            .WithInitializer(EqualsValueClause(sliceCall))))));
+            if (starIsExisting)
+            {
+                _narrowing.ClearNarrowing(starId.Name);
+                var currentStarName = GetMangledVariableName(starId.Name, isNewDeclaration: false);
+                statements.Add(ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(currentStarName),
+                        sliceCall)));
+            }
+            else
+            {
+                var starVarName = GetMangledVariableName(starId.Name, isNewDeclaration: true);
+                _declaredVariables.Add(starVarName);
+                statements.Add(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(starVarName))
+                                .WithInitializer(EqualsValueClause(sliceCall))))));
+            }
         }
 
-        // Elements after star: var name = __t[-n]
+        // Elements after star: name = __t[-n] (update) or var name = __t[-n] (declare)
         for (int i = 0; i < numAfter; i++)
         {
             int elemIndex = starIndex + 1 + i;
@@ -1980,20 +2017,39 @@ internal partial class RoslynEmitter
 
             if (elements[elemIndex] is Identifier id)
             {
-                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
-                _declaredVariables.Add(varName);
-                statements.Add(LocalDeclarationStatement(
-                    VariableDeclaration(IdentifierName("var"))
-                        .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(varName))
-                                .WithInitializer(EqualsValueClause(
-                                    ElementAccessExpression(IdentifierName(sourceVar))
-                                        .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
-                                            Argument(PrefixUnaryExpression(
-                                                SyntaxKind.UnaryMinusExpression,
-                                                LiteralExpression(
-                                                    SyntaxKind.NumericLiteralExpression,
-                                                    Literal(negIndex)))))))))))));
+                var negIndexExpr = ElementAccessExpression(IdentifierName(sourceVar))
+                    .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
+                        Argument(PrefixUnaryExpression(
+                            SyntaxKind.UnaryMinusExpression,
+                            LiteralExpression(
+                                SyntaxKind.NumericLiteralExpression,
+                                Literal(negIndex)))))));
+
+                var baseName = NameMangler.ToCamelCase(id.Name);
+                var sym = _context.LookupSymbol(id.Name);
+                var existsAsModuleLevel = sym != null && GetCodeGenInfo(sym)?.IsModuleLevel == true;
+                var existsAsLocal = _variableVersions.ContainsKey(baseName);
+
+                if (existsAsModuleLevel || existsAsLocal)
+                {
+                    _narrowing.ClearNarrowing(id.Name);
+                    var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                    statements.Add(ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(currentName),
+                            negIndexExpr)));
+                }
+                else
+                {
+                    var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                    _declaredVariables.Add(varName);
+                    statements.Add(LocalDeclarationStatement(
+                        VariableDeclaration(IdentifierName("var"))
+                            .WithVariables(SingletonSeparatedList(
+                                VariableDeclarator(Identifier(varName))
+                                    .WithInitializer(EqualsValueClause(negIndexExpr))))));
+                }
             }
         }
     }
@@ -2010,13 +2066,33 @@ internal partial class RoslynEmitter
 
             if (targets[i] is Identifier id)
             {
-                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
-                _declaredVariables.Add(varName);
-                statements.Add(LocalDeclarationStatement(
-                    VariableDeclaration(IdentifierName("var"))
-                        .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(varName))
-                                .WithInitializer(EqualsValueClause(itemAccess))))));
+                var baseName = NameMangler.ToCamelCase(id.Name);
+                var symbol = _context.LookupSymbol(id.Name);
+                var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
+                var existsAsLocal = _variableVersions.ContainsKey(baseName);
+
+                if (existsAsModuleLevel || existsAsLocal)
+                {
+                    // Existing variable — update
+                    _narrowing.ClearNarrowing(id.Name);
+                    var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                    statements.Add(ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(currentName),
+                            itemAccess)));
+                }
+                else
+                {
+                    // New variable — declare
+                    var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                    _declaredVariables.Add(varName);
+                    statements.Add(LocalDeclarationStatement(
+                        VariableDeclaration(IdentifierName("var"))
+                            .WithVariables(SingletonSeparatedList(
+                                VariableDeclarator(Identifier(varName))
+                                    .WithInitializer(EqualsValueClause(itemAccess))))));
+                }
             }
             else if (targets[i] is TupleLiteral nestedTuple)
             {
