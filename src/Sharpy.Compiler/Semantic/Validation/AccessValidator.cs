@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Semantic.Validation;
@@ -118,13 +119,7 @@ internal class AccessValidator : ValidatingAstWalker
             return symbol.ExplicitAccessLevel.Value;
 
         // Fall back to name-based convention
-        if (name.StartsWith("__") && !name.EndsWith("__"))
-            return AccessLevel.Private;
-
-        if (name.StartsWith("_") && !name.StartsWith("__"))
-            return AccessLevel.Protected;
-
-        return AccessLevel.Public;
+        return AccessLevelConventions.FromName(name);
     }
 
     /// <summary>
