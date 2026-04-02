@@ -28,9 +28,53 @@ internal class ControlFlowValidator : ValidatingAstWalker
     public override void Validate(Module module, SemanticContext context)
     {
         _logger = context.Logger;
-        _cfgBuilder = new ControlFlowGraphBuilder(context.SemanticInfo);
+        var exhaustiveMatches = PreComputeExhaustiveMatches(module, context.SemanticInfo);
+        _cfgBuilder = new ControlFlowGraphBuilder(exhaustiveMatches);
         _logger.LogDebug("Starting CFG-based control flow validation");
         base.Validate(module, context);
+    }
+
+    /// <summary>
+    /// Pre-computes which match statements are semantically exhaustive over finite types.
+    /// This decouples the CFG builder from SemanticInfo.
+    /// </summary>
+    private static HashSet<MatchStatement>? PreComputeExhaustiveMatches(
+        Module module, SemanticInfo semanticInfo)
+    {
+        var collector = new MatchStatementCollector();
+        collector.Visit(module);
+
+        if (collector.MatchStatements.Count == 0)
+            return null;
+
+        var exhaustive = new HashSet<MatchStatement>(ReferenceEqualityComparer.Instance);
+        foreach (var stmt in collector.MatchStatements)
+        {
+            var scrutineeType = semanticInfo.GetExpressionType(stmt.Scrutinee);
+            if (scrutineeType == null)
+                continue;
+
+            if (ExhaustivenessHelper.IsExhaustiveMatch(
+                scrutineeType,
+                stmt.Cases.Select(c => (c.Pattern, c.Guard)),
+                semanticInfo))
+            {
+                exhaustive.Add(stmt);
+            }
+        }
+
+        return exhaustive.Count > 0 ? exhaustive : null;
+    }
+
+    private class MatchStatementCollector : AstVisitor
+    {
+        public List<MatchStatement> MatchStatements { get; } = new();
+
+        public override void VisitMatchStatement(MatchStatement node)
+        {
+            MatchStatements.Add(node);
+            DefaultVisit(node);
+        }
     }
 
     public override void VisitFunctionDef(FunctionDef node)
