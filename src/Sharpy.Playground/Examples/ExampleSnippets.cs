@@ -87,20 +87,42 @@ public static class ExampleSnippets
                     return Some(item)
             return None()
 
+        def describe(val: int?) -> str:
+            match val:
+                case Some(v):
+                    if v > 100:
+                        return f"big value: {v}"
+                    return f"value: {v}"
+                case None():
+                    return "nothing"
+
         def main():
             fruits = ["apple", "banana", "cherry"]
 
+            # Pattern matching on Optional
             result = find_item(fruits, "banana")
-            print(f"Found: {result.unwrap()}")
+            match result:
+                case Some(fruit):
+                    print(f"Found: {fruit}")
+                case None():
+                    print("Not found")
 
             result2 = find_item(fruits, "grape")
-            print(f"Fallback: {result2.unwrap_or('nothing')}")
+            match result2:
+                case Some(fruit):
+                    print(f"Found: {fruit}")
+                case None():
+                    print("Not found")
 
-            some_val: int? = Some(42)
-            print(f"Value: {some_val.unwrap()}")
+            # Nested logic in match arms
+            print(describe(Some(42)))
+            print(describe(Some(200)))
+            print(describe(None()))
 
-            no_val: int? = None()
-            print(f"Default: {no_val.unwrap_or(0)}")
+            # unwrap helpers still work too
+            some_val: int? = Some(10)
+            print(f"Unwrapped: {some_val.unwrap()}")
+            print(f"Fallback: {None().unwrap_or(0)}")
         """;
 
     private const string ResultTypes = """
@@ -111,24 +133,37 @@ public static class ExampleSnippets
                 return Err("Age seems unrealistic")
             return Ok(age)
 
+        def classify(val: int !str) -> str:
+            match val:
+                case Ok(v):
+                    if v >= 18:
+                        return f"adult, age {v}"
+                    return f"minor, age {v}"
+                case Err(e):
+                    return f"invalid: {e}"
+
         def main():
-            # Ok path
-            r1 = validate_age(25)
-            print(f"Valid age: {r1.unwrap_or(-1)}")
+            # Pattern matching on Result
+            ages = [25, -5, 200, 10]
+            for age in ages:
+                result = validate_age(age)
+                match result:
+                    case Ok(v):
+                        print(f"Valid age: {v}")
+                    case Err(e):
+                        print(f"Error: {e}")
 
-            # Error paths
-            r2 = validate_age(-5)
-            print(f"Negative: {r2.unwrap_or(-1)}")
-
-            r3 = validate_age(200)
-            print(f"Too high: {r3.unwrap_or(-1)}")
+            # Nested logic in match arms
+            print(classify(Ok(25)))
+            print(classify(Ok(10)))
+            print(classify(Err("bad input")))
 
             # try expression wraps exceptions in Result
-            r4: int !Exception = try int("42")
-            print(f"Parsed: {r4.unwrap_or(0)}")
+            r1: int !Exception = try int("42")
+            print(f"Parsed: {r1.unwrap_or(0)}")
 
-            r5: int !Exception = try int("hello")
-            print(f"Failed: {r5.unwrap_or(-1)}")
+            r2: int !Exception = try int("hello")
+            print(f"Failed: {r2.unwrap_or(-1)}")
         """;
 
     private const string ListComprehensions = """
