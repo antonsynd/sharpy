@@ -278,6 +278,6 @@ public class ParserLoopSafetyAuditTests
 
         // Allow some variance but flag significant changes
         totalLoops.Should().BeGreaterThan(30, "Parser should have a reasonable number of loops");
-        totalLoops.Should().BeLessThan(80, "Unexpectedly high loop count - verify new loops are protected");
+        totalLoops.Should().BeLessThan(85, "Unexpectedly high loop count - verify new loops are protected");
     }
 }

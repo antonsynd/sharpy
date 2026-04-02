@@ -12,6 +12,35 @@ namespace Sharpy.Compiler.Parser;
 /// </summary>
 public partial class Parser
 {
+    /// <summary>
+    /// Parses an expression, and if a comma follows, continues parsing comma-separated
+    /// expressions and wraps them in a <see cref="TupleLiteral"/>. Used in contexts where
+    /// bare (unparenthesized) tuples are valid: assignment RHS, return, and yield.
+    /// </summary>
+    private Expression ParseExpressionOrBareTuple()
+    {
+        var first = ParseExpression();
+        if (Current.Type != TokenType.Comma)
+            return first;
+
+        var elements = new List<Expression> { first };
+        while (Current.Type == TokenType.Comma)
+        {
+            Advance();
+            elements.Add(ParseExpression());
+        }
+
+        return new TupleLiteral
+        {
+            Elements = elements.ToImmutableArray(),
+            LineStart = first.LineStart,
+            ColumnStart = first.ColumnStart,
+            LineEnd = elements[^1].LineEnd,
+            ColumnEnd = elements[^1].ColumnEnd,
+            Span = CombineSpans(first.Span, elements[^1].Span)
+        };
+    }
+
     private Expression ParseExpression()
     {
         if (++_recursionDepth > MaxRecursionDepth)
