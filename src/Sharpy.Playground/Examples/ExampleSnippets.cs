@@ -285,9 +285,7 @@ public static class ExampleSnippets
             b = 1
             while a < limit:
                 yield a
-                temp = a
-                a = b
-                b = temp + b
+                a, b = b, a + b
 
         def inner() -> int:
             yield 10
