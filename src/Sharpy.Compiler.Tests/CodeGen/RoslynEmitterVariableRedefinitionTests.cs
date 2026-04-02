@@ -276,11 +276,12 @@ public class RoslynEmitterVariableRedefinitionTests
 
         // Should generate:
         // var(x, y) = (1, 2);
-        // var(x_1, y_1) = (3, 4);
-        // return x_1;
+        // (x, y) = (3, 4);  -- update, not re-declaration
+        // return x;
         Assert.Contains("var(x, y) = (1, 2);", result);
-        Assert.Contains("var(x_1, y_1) = (3, 4);", result);
-        Assert.Contains("return x_1;", result);
+        Assert.Contains("(x, y) = (3, 4);", result);
+        Assert.DoesNotContain("var(x_1", result);
+        Assert.Contains("return x;", result);
     }
 
     #endregion

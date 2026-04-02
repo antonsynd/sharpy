@@ -483,30 +483,112 @@ internal partial class RoslynEmitter
             {
                 var identifiers = tuple.Elements.Cast<Identifier>().ToList();
 
-                // In Sharpy, tuple unpacking is always a new declaration/redefinition
-                // Use: var (x, y) = expr
-                var variables = identifiers
-                    .Select(id =>
+                // Check which variables already exist (mirrors simple assignment path)
+                var existenceFlags = identifiers.Select(id =>
+                {
+                    var baseName = NameMangler.ToCamelCase(id.Name);
+                    var symbol = _context.LookupSymbol(id.Name);
+                    var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
+                    var existsAsLocal = _variableVersions.ContainsKey(baseName);
+                    return existsAsModuleLevel || existsAsLocal;
+                }).ToList();
+
+                bool allExist = existenceFlags.All(e => e);
+                bool noneExist = existenceFlags.All(e => !e);
+
+                if (noneExist)
+                {
+                    // All new — emit: var (a, b) = expr
+                    var variables = identifiers
+                        .Select(id =>
+                        {
+                            var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                            _declaredVariables.Add(varName);
+                            return SingleVariableDesignation(Identifier(varName));
+                        })
+                        .ToList();
+
+                    var tuplePattern = ParenthesizedVariableDesignation(
+                        SeparatedList<VariableDesignationSyntax>(variables));
+
+                    var declExpr = DeclarationExpression(
+                        IdentifierName("var"),
+                        tuplePattern);
+
+                    return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            declExpr,
+                            value));
+                }
+                else if (allExist)
+                {
+                    // All existing — emit: (a, b) = expr (no var)
+                    var arguments = identifiers
+                        .Select(id =>
+                        {
+                            _narrowing.ClearNarrowing(id.Name);
+                            var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                            return Argument(IdentifierName(currentName));
+                        })
+                        .ToList();
+
+                    var tupleExpr = TupleExpression(SeparatedList(arguments));
+
+                    return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            tupleExpr,
+                            value));
+                }
+                else
+                {
+                    // Mixed — some new, some existing: use temp + individual assignments
+                    var stmts = new List<StatementSyntax>();
+                    var mixedTempName = $"__t{_tempVarCounter++}";
+                    stmts.Add(LocalDeclarationStatement(
+                        VariableDeclaration(IdentifierName("var"))
+                            .WithVariables(SingletonSeparatedList(
+                                VariableDeclarator(Identifier(mixedTempName))
+                                    .WithInitializer(EqualsValueClause(value))))));
+
+                    for (int i = 0; i < identifiers.Count; i++)
                     {
-                        var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
-                        _declaredVariables.Add(varName);
-                        return SingleVariableDesignation(Identifier(varName));
-                    })
-                    .ToList();
+                        var id = identifiers[i];
+                        var itemAccess = MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(mixedTempName),
+                            IdentifierName($"Item{i + 1}"));
 
-                var tuplePattern = ParenthesizedVariableDesignation(
-                    SeparatedList<VariableDesignationSyntax>(variables));
+                        if (existenceFlags[i])
+                        {
+                            // Existing — update
+                            _narrowing.ClearNarrowing(id.Name);
+                            var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                            stmts.Add(ExpressionStatement(
+                                AssignmentExpression(
+                                    SyntaxKind.SimpleAssignmentExpression,
+                                    IdentifierName(currentName),
+                                    itemAccess)));
+                        }
+                        else
+                        {
+                            // New — declare
+                            var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                            _declaredVariables.Add(varName);
+                            stmts.Add(LocalDeclarationStatement(
+                                VariableDeclaration(IdentifierName("var"))
+                                    .WithVariables(SingletonSeparatedList(
+                                        VariableDeclarator(Identifier(varName))
+                                            .WithInitializer(EqualsValueClause(itemAccess))))));
+                        }
+                    }
 
-                // Create a declaration expression
-                var declExpr = DeclarationExpression(
-                    IdentifierName("var"),
-                    tuplePattern);
-
-                return ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        declExpr,
-                        value));
+                    // Hoist all but the last statement
+                    for (int i = 0; i < stmts.Count - 1; i++)
+                        _hoistedStatements.Add(stmts[i]);
+                    return stmts[^1];
+                }
             }
 
             // Complex tuple unpacking: (a, b), c = expr
