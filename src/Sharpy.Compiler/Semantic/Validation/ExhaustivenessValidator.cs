@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -113,7 +114,7 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
         IEnumerable<(Pattern Pattern, Expression? Guard)> cases)
     {
         // Get the set of all possible case names for this type
-        var allCases = GetFiniteTypeCases(scrutineeType);
+        var allCases = ExhaustivenessHelper.GetFiniteTypeCases(scrutineeType);
         if (allCases == null)
             return null; // Not a finite type
 
@@ -132,7 +133,7 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
                 break;
             }
 
-            CollectCoveredCases(pattern, scrutineeType, coveredCases);
+            ExhaustivenessHelper.CollectCoveredCases(pattern, _context.SemanticInfo, coveredCases);
         }
 
         if (hasWildcard)
@@ -140,50 +141,6 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
 
         var missing = allCases.Where(c => !coveredCases.Contains(c)).ToList();
         return missing;
-    }
-
-    /// <summary>
-    /// Gets all possible case names for a finite type, or null if the type is not finite.
-    /// </summary>
-    private List<string>? GetFiniteTypeCases(SemanticType scrutineeType)
-    {
-        // Bool type: True and False
-        if (scrutineeType is BuiltinType bt && bt == BuiltinType.Bool)
-        {
-            return new List<string> { "True", "False" };
-        }
-
-        // Enum type: all enum member names
-        if (scrutineeType is UserDefinedType udt && udt.Symbol?.TypeKind == TypeKind.Enum)
-        {
-            return udt.Symbol.Fields.Select(f => f.Name).ToList();
-        }
-
-        // Tagged union type (non-generic): all union case names
-        if (scrutineeType is UserDefinedType unionUdt && unionUdt.Symbol?.TypeKind == TypeKind.Union)
-        {
-            return unionUdt.Symbol.UnionCases.Select(c => c.Name).ToList();
-        }
-
-        // Tagged union type (generic): all union case names
-        if (scrutineeType is GenericType gt && gt.GenericDefinition?.TypeKind == TypeKind.Union)
-        {
-            return gt.GenericDefinition.UnionCases.Select(c => c.Name).ToList();
-        }
-
-        // Optional type: Some and None
-        if (scrutineeType is OptionalType)
-        {
-            return new List<string> { "Some", "None" };
-        }
-
-        // Result type: Ok and Err
-        if (scrutineeType is ResultType)
-        {
-            return new List<string> { "Ok", "Err" };
-        }
-
-        return null; // Not a finite type
     }
 
     /// <summary>
@@ -198,80 +155,6 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
             OrPattern or => or.Alternatives.Any(PatternCoversAll),
             _ => false
         };
-    }
-
-    /// <summary>
-    /// Collects the case names covered by a pattern into the provided set.
-    /// </summary>
-    private void CollectCoveredCases(Pattern pattern, SemanticType scrutineeType, HashSet<string> covered)
-    {
-        switch (pattern)
-        {
-            case LiteralPattern literal:
-                // For bools: True/False literals
-                if (literal.Literal is BooleanLiteral boolLit)
-                {
-                    covered.Add(boolLit.Value ? "True" : "False");
-                }
-                // Check for union case recorded by type checker (e.g., None() for Optional)
-                var litUnionCase = _context.SemanticInfo.GetPatternUnionCase(literal);
-                if (litUnionCase != null)
-                {
-                    covered.Add(litUnionCase.Name);
-                }
-                break;
-
-            case MemberAccessPattern memberAccess:
-                // For enums: Color.RED -> "RED"
-                // For union unit cases: Option.None -> "None"
-                if (memberAccess.Parts.Length >= 2)
-                {
-                    // The resolved union case from SemanticInfo takes priority
-                    var unionCase = _context.SemanticInfo.GetPatternUnionCase(memberAccess);
-                    if (unionCase != null)
-                    {
-                        covered.Add(unionCase.Name);
-                    }
-                    else
-                    {
-                        // For enums, the last part is the member name
-                        covered.Add(memberAccess.Parts[^1]);
-                    }
-                }
-                break;
-
-            case PositionalPattern positionalPattern:
-                // For union cases: Ok(v) -> "Ok"
-                // Only use semantically resolved union case — if resolution failed,
-                // a semantic error was already emitted and we should not guess from strings
-                var posUnionCase = _context.SemanticInfo.GetPatternUnionCase(positionalPattern);
-                if (posUnionCase != null)
-                {
-                    covered.Add(posUnionCase.Name);
-                }
-                break;
-
-            case TypePattern typePattern:
-                // Type patterns can match union cases — prefer resolved union case
-                var typeUnionCase = _context.SemanticInfo.GetPatternUnionCase(typePattern);
-                if (typeUnionCase != null)
-                {
-                    covered.Add(typeUnionCase.Name);
-                }
-                else
-                {
-                    covered.Add(typePattern.Type.Name);
-                }
-                break;
-
-            case OrPattern orPattern:
-                // Or pattern covers the union of its alternatives
-                foreach (var alt in orPattern.Alternatives)
-                {
-                    CollectCoveredCases(alt, scrutineeType, covered);
-                }
-                break;
-        }
     }
 
     /// <summary>
