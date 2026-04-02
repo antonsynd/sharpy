@@ -61,8 +61,8 @@ internal partial class RoslynEmitter
         var declaration = VariableDeclaration(fieldType)
             .WithVariables(SingletonSeparatedList(variable));
 
-        // Determine access modifier from decorators, defaulting to public
-        var accessToken = Token(SyntaxKind.PublicKeyword);
+        // Determine access modifier from decorators, defaulting based on name convention
+        var accessToken = Token(GetAccessModifierFromNameConvention(varDecl.Name));
         foreach (var decorator in varDecl.Decorators)
         {
             switch (decorator.Name)
@@ -111,7 +111,7 @@ internal partial class RoslynEmitter
         CollectSourceVariableNames(primaryFunc.Body);
 
         // Determine modifiers from the primary function's decorators
-        var modifiers = GenerateMethodModifiersFromDecorators(primaryFunc.Decorators);
+        var modifiers = GenerateMethodModifiers(primaryFunc.Name, primaryFunc.Decorators);
 
         // Check if abstract
         bool hasAbstractDecorator = primaryFunc.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
@@ -420,7 +420,7 @@ internal partial class RoslynEmitter
         }
 
         // Apply modifiers from decorators on the auto-property
-        var modifiers = GenerateMethodModifiersFromDecorators(autoProp.Decorators);
+        var modifiers = GenerateMethodModifiers(autoProp.Name, autoProp.Decorators);
 
         var property = PropertyDeclaration(propertyType, propertyName)
             .WithModifiers(modifiers)
@@ -472,7 +472,7 @@ internal partial class RoslynEmitter
 
         // Determine property-level modifiers from the getter (or first property)
         var modifierSource = getterProp ?? first;
-        var modifiers = GenerateMethodModifiersFromDecorators(modifierSource.Decorators);
+        var modifiers = GenerateMethodModifiers(modifierSource.Name, modifierSource.Decorators);
 
         // Handle static: if any accessor has self, property is not static
         bool hasSelfParameter = propGroup.Any(p => p.Parameters.Any(param =>
@@ -539,7 +539,7 @@ internal partial class RoslynEmitter
             }
 
             // Apply accessor-level access modifier if it differs from property-level
-            var accessorModifiers = GenerateMethodModifiersFromDecorators(prop.Decorators);
+            var accessorModifiers = GenerateMethodModifiers(prop.Name, prop.Decorators);
             var accessorAccess = GetAccessModifier(accessorModifiers);
 
             if (accessorAccess != null && accessorAccess != propertyAccess)
@@ -665,7 +665,7 @@ internal partial class RoslynEmitter
         }
 
         // Apply modifiers from decorators
-        var modifiers = GenerateMethodModifiersFromDecorators(propDef.Decorators);
+        var modifiers = GenerateMethodModifiers(propDef.Name, propDef.Decorators);
 
         var property = PropertyDeclaration(propertyType, propertyName)
             .WithAccessorList(AccessorList(List(accessors)));
@@ -753,7 +753,7 @@ internal partial class RoslynEmitter
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
 
         // Apply modifiers from decorators
-        var modifiers = GenerateMethodModifiersFromDecorators(propDef.Decorators);
+        var modifiers = GenerateMethodModifiers(propDef.Name, propDef.Decorators);
 
         // Remove static if it has 'self' parameter (Pythonic convention)
         bool hasSelfParameter = propDef.Parameters.Any(p =>
@@ -982,7 +982,7 @@ internal partial class RoslynEmitter
         var nullableType = NullableType(delegateType);
 
         // Build modifiers from decorators
-        var modifiers = GenerateMethodModifiersFromDecorators(eventDef.Decorators);
+        var modifiers = GenerateMethodModifiers(eventDef.Name, eventDef.Decorators);
 
         // Check for abstract: abstract events don't need nullable type
         bool isAbstract = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract)
@@ -1029,7 +1029,7 @@ internal partial class RoslynEmitter
         }
 
         // Determine event-level modifiers from decorators
-        var modifiers = GenerateMethodModifiersFromDecorators(first.Decorators);
+        var modifiers = GenerateMethodModifiers(first.Name, first.Decorators);
 
         // Handle static: if any accessor has self, event is not static
         bool hasSelfParameter = eventGroup.Any(e => e.Parameters.Any(p =>
@@ -1092,7 +1092,7 @@ internal partial class RoslynEmitter
             }
 
             // Apply accessor-level access modifier if it differs from event-level
-            var accessorModifiers = GenerateMethodModifiersFromDecorators(eventDef.Decorators);
+            var accessorModifiers = GenerateMethodModifiers(eventDef.Name, eventDef.Decorators);
             var accessorAccess = GetAccessModifier(accessorModifiers);
 
             if (accessorAccess != null && accessorAccess != eventAccess)

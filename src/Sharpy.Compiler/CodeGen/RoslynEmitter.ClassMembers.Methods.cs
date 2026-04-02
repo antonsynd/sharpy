@@ -75,7 +75,7 @@ internal partial class RoslynEmitter
         }
 
         // Process decorators to determine modifiers
-        var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
+        var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
 
         // Add override keyword for methods that override Object methods
         // Uses the protocol variable already fetched above, plus special handling for operator dunders
@@ -289,7 +289,7 @@ internal partial class RoslynEmitter
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
 
         // Apply modifiers from decorators (handles public/virtual/override/abstract)
-        var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
+        var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
 
         // Ensure abstract modifier is present for abstract properties
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
@@ -348,7 +348,7 @@ internal partial class RoslynEmitter
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
 
         // Apply modifiers from decorators (handles public/virtual/override/abstract)
-        var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
+        var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
 
         // Ensure abstract modifier is present for abstract properties
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
@@ -386,7 +386,31 @@ internal partial class RoslynEmitter
         return property;
     }
 
-    private SyntaxTokenList GenerateMethodModifiersFromDecorators(IReadOnlyList<Decorator> decorators)
+    private static SyntaxKind GetAccessModifierFromNameConvention(string memberName)
+    {
+        // Dunder names (__init__, __str__, etc.) are always public
+        if (memberName.StartsWith("__") && memberName.EndsWith("__"))
+        {
+            return SyntaxKind.PublicKeyword;
+        }
+
+        // Double underscore prefix (not dunder) → private
+        if (memberName.StartsWith("__"))
+        {
+            return SyntaxKind.PrivateKeyword;
+        }
+
+        // Single underscore prefix → protected
+        if (memberName.StartsWith("_"))
+        {
+            return SyntaxKind.ProtectedKeyword;
+        }
+
+        // No prefix → public
+        return SyntaxKind.PublicKeyword;
+    }
+
+    private SyntaxTokenList GenerateMethodModifiers(string memberName, IReadOnlyList<Decorator> decorators)
     {
         var tokens = new List<SyntaxToken>();
 
@@ -415,10 +439,10 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Default to public if no access modifier specified
+        // Default access modifier based on name convention when no explicit decorator
         if (!hasAccessModifier)
         {
-            tokens.Add(Token(SyntaxKind.PublicKeyword));
+            tokens.Add(Token(GetAccessModifierFromNameConvention(memberName)));
         }
 
         // Check for other modifiers
