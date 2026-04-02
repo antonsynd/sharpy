@@ -493,7 +493,7 @@ public partial class Parser
 
         Expression? value = null;
         if (Current.Type != TokenType.Newline && Current.Type != TokenType.Dedent && !IsAtEnd)
-            value = ParseExpression();
+            value = ParseExpressionOrBareTuple();
 
         ExpectStatementEnd();
 
@@ -525,7 +525,7 @@ public partial class Parser
             Advance();
         }
 
-        var value = ParseExpression();
+        var value = isFrom ? ParseExpression() : ParseExpressionOrBareTuple();
 
         ExpectStatementEnd();
 

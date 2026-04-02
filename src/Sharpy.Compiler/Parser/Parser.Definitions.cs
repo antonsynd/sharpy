@@ -94,7 +94,7 @@ public partial class Parser
 
                 var op = TokenTypeToAssignmentOperator(Current.Type);
                 Advance();
-                var value = ParseExpression();
+                var value = ParseExpressionOrBareTuple();
                 ExpectStatementEnd();
 
                 return new Assignment

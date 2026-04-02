@@ -1,0 +1,7 @@
+def gen() -> tuple[int, int]:
+    yield 1, 2
+    yield 3, 4
+
+def main():
+    for item in gen():
+        print(item)
