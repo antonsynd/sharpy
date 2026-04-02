@@ -25,6 +25,16 @@ internal partial class RoslynEmitter
 
         foreach (var matchCase in matchStmt.Cases)
         {
+            // Collect all MemberAccessPattern guards (including nested in tuples).
+            // matchVarCounter resets per case arm — each switch section is an independent
+            // scope in C#, so __spy_pm_0, __spy_pm_1 etc. can safely repeat across arms.
+            var memberGuards = new List<ExpressionSyntax>();
+            int matchVarCounter = 0;
+            var pattern = GenerateMatchPattern(matchCase.Pattern, memberGuards, ref matchVarCounter, scrutineeType);
+
+            // Generate body AFTER pattern — pattern registration in _variableVersions
+            // must precede body generation so f-strings and other references see the
+            // correct mangled variable names.
             var bodyStatements = matchCase.Body.SelectMany(GenerateBodyStatements).ToList();
 
             // Only add break if the last statement isn't an unconditional jump
@@ -35,13 +45,6 @@ internal partial class RoslynEmitter
             {
                 bodyStatements.Add(BreakStatement());
             }
-
-            // Collect all MemberAccessPattern guards (including nested in tuples).
-            // matchVarCounter resets per case arm — each switch section is an independent
-            // scope in C#, so __spy_pm_0, __spy_pm_1 etc. can safely repeat across arms.
-            var memberGuards = new List<ExpressionSyntax>();
-            int matchVarCounter = 0;
-            var pattern = GenerateMatchPattern(matchCase.Pattern, memberGuards, ref matchVarCounter, scrutineeType);
             SwitchLabelSyntax caseLabel;
 
             var combinedGuard = CombineGuards(memberGuards, matchCase.Guard);
