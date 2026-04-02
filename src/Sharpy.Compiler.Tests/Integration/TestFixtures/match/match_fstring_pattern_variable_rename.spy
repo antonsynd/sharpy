@@ -1,0 +1,16 @@
+def main():
+    x: str? = Some("x")
+
+    match x:
+        case Some(fruit):
+            print(f"1: {fruit}")
+        case None():
+            pass
+
+    y: str? = Some("y")
+
+    match y:
+        case Some(fruit):
+            print(f"2: {fruit}")
+        case None():
+            pass
