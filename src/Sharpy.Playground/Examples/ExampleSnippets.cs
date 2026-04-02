@@ -109,8 +109,8 @@ public static class ExampleSnippets
 
             result2 = find_item(fruits, "grape")
             match result2:
-                case Some(fruit):
-                    print(f"Found: {fruit}")
+                case Some(f):
+                    print(f"Found: {f}")
                 case None():
                     print("Not found")
 
@@ -122,7 +122,8 @@ public static class ExampleSnippets
             # unwrap helpers still work too
             some_val: int? = Some(10)
             print(f"Unwrapped: {some_val.unwrap()}")
-            print(f"Fallback: {None().unwrap_or(0)}")
+            none_val: int? = None()
+            print(f"Fallback: {none_val.unwrap_or(0)}")
         """;
 
     private const string ResultTypes = """
