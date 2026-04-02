@@ -386,30 +386,6 @@ internal partial class RoslynEmitter
         return property;
     }
 
-    private static SyntaxKind GetAccessModifierFromNameConvention(string memberName)
-    {
-        // Dunder names (__init__, __str__, etc.) are always public
-        if (memberName.StartsWith("__") && memberName.EndsWith("__"))
-        {
-            return SyntaxKind.PublicKeyword;
-        }
-
-        // Double underscore prefix (not dunder) → private
-        if (memberName.StartsWith("__"))
-        {
-            return SyntaxKind.PrivateKeyword;
-        }
-
-        // Single underscore prefix → protected
-        if (memberName.StartsWith("_"))
-        {
-            return SyntaxKind.ProtectedKeyword;
-        }
-
-        // No prefix → public
-        return SyntaxKind.PublicKeyword;
-    }
-
     private SyntaxTokenList GenerateMethodModifiers(string memberName, IReadOnlyList<Decorator> decorators)
     {
         var tokens = new List<SyntaxToken>();

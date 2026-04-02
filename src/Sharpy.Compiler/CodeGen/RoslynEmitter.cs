@@ -1097,4 +1097,14 @@ internal partial class RoslynEmitter
         _context.AddError(message, code, line, column);
         return EmptyStatement();
     }
+
+    private static SyntaxKind GetAccessModifierFromNameConvention(string memberName)
+    {
+        return AccessLevelConventions.FromName(memberName) switch
+        {
+            AccessLevel.Private => SyntaxKind.PrivateKeyword,
+            AccessLevel.Protected => SyntaxKind.ProtectedKeyword,
+            _ => SyntaxKind.PublicKeyword,
+        };
+    }
 }
