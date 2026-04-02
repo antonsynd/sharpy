@@ -23,6 +23,8 @@ CORE_DIR: Path = SRC_DIR / "Sharpy.Core"
 CORE_TEST_DIR: Path = SRC_DIR / "Sharpy.Core.Tests"
 CLI_DIR: Path = SRC_DIR / "Sharpy.Cli"
 
+PLAYGROUND_DIR: Path = SRC_DIR / "Sharpy.Playground"
+
 EDITORS_DIR: Path = ROOT_DIR / "editors"
 VSCODE_EXT_DIR: Path = EDITORS_DIR / "vscode"
 
@@ -84,6 +86,8 @@ def main() -> None:
         install(args=args, rest=rest)
     elif command == "test":
         test(args=args, rest=rest, release=False)
+    elif command == "playground":
+        playground(args=args, rest=rest)
     elif command == "help":
         parser.print_help()
     else:
@@ -156,6 +160,16 @@ def create_parser() -> argparse.ArgumentParser:
         choices=TARGET_CONSTS,
         default=None,
     )
+    playground_parser = subparsers.add_parser(
+        "playground", help="Runs the Blazor WASM playground locally."
+    )
+    playground_parser.add_argument("--release", action="store_true")
+    playground_parser.add_argument(
+        "--no-watch",
+        action="store_true",
+        help="Run without hot reload (dotnet run instead of dotnet watch run)",
+    )
+
     _ = subparsers.add_parser("help", help="Prints this help message.")
 
     return parser
@@ -271,6 +285,32 @@ def build_tests(release: bool) -> None:
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
+
+
+def playground(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    build_type: str = "Release" if args.release else "Debug"
+    project: str = str(PLAYGROUND_DIR)
+
+    get_logger().info(f"Starting playground ({build_type.lower()})...")
+    get_logger().info("Open http://localhost:5000 or https://localhost:5001 in your browser")
+    get_logger().info("Press Ctrl+C to stop")
+
+    try:
+        if args.no_watch:
+            subprocess.run(
+                ["dotnet", "run", "--project", project, "-c", build_type, *rest],
+                check=True,
+            )
+        else:
+            subprocess.run(
+                ["dotnet", "watch", "run", "--project", project, "-c", build_type, *rest],
+                check=True,
+            )
+    except subprocess.CalledProcessError as e:
+        get_logger().error(f"Playground failed: {e}")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        get_logger().info("Playground stopped.")
 
 
 def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
