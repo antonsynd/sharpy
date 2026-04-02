@@ -11,6 +11,12 @@ public static class ExampleSnippets
         ("Result Types", ResultTypes),
         ("List Comprehensions", ListComprehensions),
         ("Properties & Access Modifiers", PropertiesAndAccess),
+        ("Operator Overloading", OperatorOverloading),
+        ("Pipe Operator", PipeOperator),
+        ("Generators", Generators),
+        ("Partial Application", PartialApplication),
+        ("Try & Maybe Expressions", TryAndMaybeExpressions),
+        ("Null-Conditional & Coalescing", NullConditionalAndCoalescing),
     ];
 
     private const string HelloWorld = """
@@ -204,5 +210,211 @@ public static class ExampleSnippets
             print(temp)
             temp.celsius = 0.0
             print(temp)
+        """;
+
+    private const string OperatorOverloading = """
+        class Vector:
+            x: int
+            y: int
+
+            def __init__(self, x: int, y: int):
+                self.x = x
+                self.y = y
+
+            def __add__(self, other: Vector) -> Vector:
+                return Vector(self.x + other.x, self.y + other.y)
+
+            def __sub__(self, other: Vector) -> Vector:
+                return Vector(self.x - other.x, self.y - other.y)
+
+            def __mul__(self, scalar: int) -> Vector:
+                return Vector(self.x * scalar, self.y * scalar)
+
+            def __neg__(self) -> Vector:
+                return Vector(-self.x, -self.y)
+
+            @override
+            def __str__(self) -> str:
+                return f"({self.x}, {self.y})"
+
+        def main():
+            a = Vector(5, 10)
+            b = Vector(2, 3)
+            print(a + b)
+            print(a - b)
+            print(a * 3)
+            print(-a)
+        """;
+
+    private const string PipeOperator = """
+        def double(x: int) -> int:
+            return x * 2
+
+        def add_one(x: int) -> int:
+            return x + 1
+
+        def to_str(x: int) -> str:
+            return str(x)
+
+        def format_with_prefix(text: str, prefix: str) -> str:
+            return f"{prefix}: {text}"
+
+        def main():
+            # Basic pipe
+            result = 5 |> double()
+            print(result)
+
+            # Chained pipes
+            result2: str = 3 |> double() |> add_one() |> to_str()
+            print(result2)
+
+            # Pipe with extra arguments
+            msg: str = "hello" |> format_with_prefix("MSG")
+            print(msg)
+        """;
+
+    private const string Generators = """
+        def count_up(n: int) -> int:
+            i = 0
+            while i < n:
+                yield i
+                i += 1
+
+        def fibonacci(limit: int) -> int:
+            a = 0
+            b = 1
+            while a < limit:
+                yield a
+                temp = a
+                a = b
+                b = temp + b
+
+        def inner() -> int:
+            yield 10
+            yield 20
+
+        def outer() -> int:
+            yield from inner()
+            yield 30
+
+        def main():
+            for x in count_up(5):
+                print(x)
+
+            for f in fibonacci(50):
+                print(f)
+
+            for x in outer():
+                print(x)
+        """;
+
+    private const string PartialApplication = """
+        def add(x: int, y: int) -> int:
+            return x + y
+
+        def clamp(value: float, minimum: float, maximum: float) -> float:
+            if value < minimum:
+                return minimum
+            if value > maximum:
+                return maximum
+            return value
+
+        def main():
+            # Fix one argument
+            add_five: (int) -> int = add(5, _)
+            print(add_five(3))
+
+            add_to_ten: (int) -> int = add(_, 10)
+            print(add_to_ten(7))
+
+            # Operator sections
+            doubler: (int) -> int = (_ * 2)
+            is_positive: (int) -> bool = (_ > 0)
+            negate: (int) -> int = (-_)
+            print(doubler(5))
+            print(is_positive(-3))
+            print(negate(7))
+
+            # Practical: clamping function
+            limit_0_100 = clamp(_, 0.0, 100.0)
+            print(limit_0_100(150.0))
+            print(limit_0_100(-50.0))
+        """;
+
+    private const string TryAndMaybeExpressions = """
+        def parse_number(text: str) -> int !ValueError:
+            return try[ValueError] int(text)
+
+        class Config:
+            value: str
+
+            def __init__(self, value: str):
+                self.value = value
+
+            def get_value(self) -> str:
+                return self.value
+
+        def get_config() -> Config | None:
+            return Config("production")
+
+        def get_none_config() -> Config | None:
+            return None
+
+        def main():
+            # try wraps exceptions into Result
+            r1 = parse_number("42")
+            print(r1.unwrap())
+
+            r2 = parse_number("oops")
+            print(r2.unwrap_or(-1))
+
+            # maybe converts T|None to T? (Optional)
+            cfg: Config? = maybe get_config()
+            print(cfg?.get_value() ?? "fallback")
+
+            cfg2: Config? = maybe get_none_config()
+            print(cfg2?.get_value() ?? "fallback")
+        """;
+
+    private const string NullConditionalAndCoalescing = """
+        class City:
+            _name: str
+
+            def __init__(self, name: str):
+                self._name = name
+
+            def get_name(self) -> str:
+                return self._name
+
+        class Address:
+            _city: City?
+
+            def __init__(self, city: City?):
+                self._city = city
+
+            def get_city(self) -> City?:
+                return self._city
+
+        def main():
+            # Null-coalescing: provide defaults
+            x: int? = None()
+            print(x ?? 42)
+
+            y: int? = Some(100)
+            print(y ?? 0)
+
+            # Chained coalescing
+            first: int? = None()
+            second: int? = None()
+            print(first ?? second ?? 77)
+
+            # Null-conditional: safe navigation
+            addr = Address(Some(City("Tokyo")))
+            name: str? = addr.get_city()?.get_name()
+            print(name ?? "unknown")
+
+            empty_addr = Address(None())
+            name2: str? = empty_addr.get_city()?.get_name()
+            print(name2 ?? "unknown")
         """;
 }
