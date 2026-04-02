@@ -1,5 +1,4 @@
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Analysis.ControlFlow;
 
@@ -18,8 +17,8 @@ internal class ControlFlowGraphBuilder
     private BasicBlock _entry = null!;
     private BasicBlock _exit = null!;
 
-    // Optional semantic info for semantic exhaustiveness checking in match statements
-    private readonly SemanticInfo? _semanticInfo;
+    // Optional set of match statements known to be exhaustive (precomputed by caller)
+    private readonly HashSet<MatchStatement>? _exhaustiveMatches;
 
     // Loop tracking for break/continue
     private readonly Stack<LoopContext> _loopStack = new();
@@ -27,11 +26,11 @@ internal class ControlFlowGraphBuilder
     // Exception handler tracking for re-raise
     private readonly Stack<BasicBlock> _handlerStack = new();
 
-    public ControlFlowGraphBuilder() : this(null) { }
+    public ControlFlowGraphBuilder() : this((HashSet<MatchStatement>?)null) { }
 
-    public ControlFlowGraphBuilder(SemanticInfo? semanticInfo)
+    public ControlFlowGraphBuilder(HashSet<MatchStatement>? exhaustiveMatches)
     {
-        _semanticInfo = semanticInfo;
+        _exhaustiveMatches = exhaustiveMatches;
     }
 
     /// <summary>
@@ -771,144 +770,11 @@ internal class ControlFlowGraphBuilder
     }
 
     /// <summary>
-    /// Checks whether a match statement is semantically exhaustive over a finite type
-    /// (bool, enum, or tagged union) by examining the scrutinee's type and covered cases.
-    /// Requires SemanticInfo to be available.
+    /// Checks whether a match statement is semantically exhaustive.
+    /// Uses the precomputed set of exhaustive match statements passed to the constructor.
     /// </summary>
     private bool IsSemanticallyExhaustiveMatch(MatchStatement stmt)
     {
-        if (_semanticInfo == null)
-            return false;
-
-        var scrutineeType = _semanticInfo.GetExpressionType(stmt.Scrutinee);
-        if (scrutineeType == null)
-            return false;
-
-        // Get all possible cases for finite types
-        var allCases = GetFiniteTypeCases(scrutineeType);
-        if (allCases == null)
-            return false;
-
-        // Collect covered cases from unguarded match arms
-        var coveredCases = new HashSet<string>();
-        foreach (var matchCase in stmt.Cases)
-        {
-            // Guarded arms don't guarantee coverage
-            if (matchCase.Guard != null)
-                continue;
-
-            CollectCoveredCases(matchCase.Pattern, coveredCases);
-        }
-
-        return allCases.All(coveredCases.Contains);
-    }
-
-    /// <summary>
-    /// Gets all possible case names for a finite type, or null if the type is not finite.
-    /// </summary>
-    private static HashSet<string>? GetFiniteTypeCases(SemanticType scrutineeType)
-    {
-        // Bool type: True and False
-        if (scrutineeType is BuiltinType bt && bt == BuiltinType.Bool)
-        {
-            return new HashSet<string> { "True", "False" };
-        }
-
-        // Enum type: all enum member names
-        if (scrutineeType is UserDefinedType udt && udt.Symbol?.TypeKind == TypeKind.Enum)
-        {
-            return new HashSet<string>(udt.Symbol.Fields.Select(f => f.Name));
-        }
-
-        // Tagged union type (non-generic): all union case names
-        if (scrutineeType is UserDefinedType unionUdt && unionUdt.Symbol?.TypeKind == TypeKind.Union)
-        {
-            return new HashSet<string>(unionUdt.Symbol.UnionCases.Select(c => c.Name));
-        }
-
-        // Tagged union type (generic): all union case names
-        if (scrutineeType is GenericType gt && gt.GenericDefinition?.TypeKind == TypeKind.Union)
-        {
-            return new HashSet<string>(gt.GenericDefinition.UnionCases.Select(c => c.Name));
-        }
-
-        // Optional type: Some and None
-        if (scrutineeType is OptionalType)
-        {
-            return new HashSet<string> { "Some", "None" };
-        }
-
-        // Result type: Ok and Err
-        if (scrutineeType is ResultType)
-        {
-            return new HashSet<string> { "Ok", "Err" };
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Collects the case names covered by a pattern into the provided set.
-    /// </summary>
-    private void CollectCoveredCases(Pattern pattern, HashSet<string> covered)
-    {
-        switch (pattern)
-        {
-            case LiteralPattern literal:
-                if (literal.Literal is BooleanLiteral boolLit)
-                {
-                    covered.Add(boolLit.Value ? "True" : "False");
-                }
-                // Check for union case recorded by type checker (e.g., None() for Optional)
-                var litUnionCase = _semanticInfo?.GetPatternUnionCase(literal);
-                if (litUnionCase != null)
-                {
-                    covered.Add(litUnionCase.Name);
-                }
-                break;
-
-            case MemberAccessPattern memberAccess:
-                if (memberAccess.Parts.Length >= 2)
-                {
-                    var unionCase = _semanticInfo?.GetPatternUnionCase(memberAccess);
-                    if (unionCase != null)
-                    {
-                        covered.Add(unionCase.Name);
-                    }
-                    else
-                    {
-                        // For enums, the last part is the member name
-                        covered.Add(memberAccess.Parts[^1]);
-                    }
-                }
-                break;
-
-            case PositionalPattern positionalPattern:
-                var posUnionCase = _semanticInfo?.GetPatternUnionCase(positionalPattern);
-                if (posUnionCase != null)
-                {
-                    covered.Add(posUnionCase.Name);
-                }
-                break;
-
-            case TypePattern typePattern:
-                var typeUnionCase = _semanticInfo?.GetPatternUnionCase(typePattern);
-                if (typeUnionCase != null)
-                {
-                    covered.Add(typeUnionCase.Name);
-                }
-                else
-                {
-                    covered.Add(typePattern.Type.Name);
-                }
-                break;
-
-            case OrPattern orPattern:
-                foreach (var alt in orPattern.Alternatives)
-                {
-                    CollectCoveredCases(alt, covered);
-                }
-                break;
-        }
+        return _exhaustiveMatches?.Contains(stmt) == true;
     }
 }
