@@ -129,6 +129,10 @@ internal partial class NameResolver
             {
                 ResolveEventDeclaration(eventDef, typeSymbol);
             }
+            else if (statement is TypeAlias typeAlias)
+            {
+                ResolveTypeAliasDeclaration(typeAlias);
+            }
         }
 
         _symbolTable.ExitScope();
@@ -200,6 +204,10 @@ internal partial class NameResolver
             else if (statement is EventDef eventDef)
             {
                 ResolveEventDeclaration(eventDef, typeSymbol);
+            }
+            else if (statement is TypeAlias typeAlias)
+            {
+                ResolveTypeAliasDeclaration(typeAlias);
             }
         }
 
