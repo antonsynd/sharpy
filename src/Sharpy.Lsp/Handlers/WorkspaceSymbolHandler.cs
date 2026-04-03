@@ -43,7 +43,8 @@ internal sealed class SharpyWorkspaceSymbolHandler : WorkspaceSymbolsHandlerBase
             if (analysis?.SymbolTable == null)
                 continue;
 
-            foreach (var symbol in analysis.SymbolTable.GlobalScope.GetAllSymbols())
+            foreach (var symbol in analysis.SymbolTable.GlobalScope.GetAllSymbols()
+                .Concat(analysis.SymbolTable.GetAllModuleScopeSymbols()))
             {
                 // Skip builtins (no declaration location)
                 if (symbol.DeclarationLine == null)

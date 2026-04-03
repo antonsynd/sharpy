@@ -169,6 +169,38 @@ public class SymbolTable
     internal BuiltinRegistry BuiltinRegistry => _builtins;
 
     /// <summary>
+    /// Looks up a symbol by name, searching all module scopes (and their parents).
+    /// Used when the current scope is the global scope but symbols may be in module scopes.
+    /// Returns the first match found, or null if not found in any module scope.
+    /// </summary>
+    public Symbol? LookupInModuleScopes(string name)
+    {
+        foreach (var (_, scope) in _moduleScopes)
+        {
+            var symbol = scope.Lookup(name, searchParent: false);
+            if (symbol != null)
+                return symbol;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Returns all symbols from all module scopes (excluding the global scope).
+    /// Used by LSP handlers and metrics that need to see all project symbols
+    /// regardless of which module scope they're in.
+    /// </summary>
+    public IEnumerable<Symbol> GetAllModuleScopeSymbols()
+    {
+        foreach (var (_, scope) in _moduleScopes)
+        {
+            foreach (var symbol in scope.GetAllSymbols())
+            {
+                yield return symbol;
+            }
+        }
+    }
+
+    /// <summary>
     /// Collects all visible symbol names by walking the scope chain from the current scope
     /// up through all parent scopes. Used for "did you mean?" suggestions.
     /// </summary>

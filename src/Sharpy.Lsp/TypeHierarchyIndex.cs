@@ -38,12 +38,14 @@ internal sealed class TypeHierarchyIndex
         // so that BaseType / InterfaceReference.Definition references originating
         // from a different compilation context are resolved to the same instance.
         var nameToSymbol = new Dictionary<string, TypeSymbol>(StringComparer.Ordinal);
-        foreach (var sym in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        var allSymbols = symbolTable.GlobalScope.GetAllSymbols()
+            .Concat(symbolTable.GetAllModuleScopeSymbols());
+        foreach (var sym in allSymbols.OfType<TypeSymbol>())
         {
             nameToSymbol.TryAdd(sym.Name, sym);
         }
 
-        foreach (var type in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        foreach (var type in allSymbols.OfType<TypeSymbol>())
         {
             // Skip CLR types (builtins from ModuleRegistry)
             if (type.ClrType != null)

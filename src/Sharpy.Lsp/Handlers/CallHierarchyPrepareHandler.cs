@@ -71,13 +71,15 @@ internal sealed class SharpyCallHierarchyPrepareHandler : CallHierarchyPrepareHa
         if (analysis.SymbolTable == null)
             return null;
 
-        // Try top-level function first.
-        var sym = analysis.SymbolTable.Lookup(fd.Name);
+        // Try top-level function first (current scope, then module scopes).
+        var sym = analysis.SymbolTable.Lookup(fd.Name)
+            ?? analysis.SymbolTable.LookupInModuleScopes(fd.Name);
         if (sym is FunctionSymbol)
             return sym;
 
         // Search class methods by name + line.
-        foreach (var ts in analysis.SymbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        foreach (var ts in analysis.SymbolTable.GlobalScope.GetAllSymbols()
+            .Concat(analysis.SymbolTable.GetAllModuleScopeSymbols()).OfType<TypeSymbol>())
         {
             var method = ts.Methods.Find(m =>
                 string.Equals(m.Name, fd.Name, StringComparison.Ordinal)

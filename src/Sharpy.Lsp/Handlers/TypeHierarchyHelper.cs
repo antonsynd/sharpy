@@ -62,7 +62,7 @@ internal static class TypeHierarchyHelper
 
         // Try to extract name from Data
         var name = (item.Data as JObject)?["name"]?.ToString() ?? item.Name;
-        return symbolTable.Lookup(name) as TypeSymbol;
+        return (symbolTable.Lookup(name) ?? symbolTable.LookupInModuleScopes(name)) as TypeSymbol;
     }
 
     private static LspSymbolKind MapTypeKind(TypeKind kind) => kind switch

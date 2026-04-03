@@ -85,8 +85,10 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
             Identifier id => query.GetIdentifierSymbol(id),
             FunctionCall call => query.GetCallTarget(call),
             MemberAccess ma => ResolveFromMemberAccess(ma, analysis),
-            ClassDef cd => analysis.SymbolTable?.Lookup(cd.Name),
-            InterfaceDef ifd => analysis.SymbolTable?.Lookup(ifd.Name),
+            ClassDef cd => analysis.SymbolTable?.Lookup(cd.Name)
+                ?? analysis.SymbolTable?.LookupInModuleScopes(cd.Name),
+            InterfaceDef ifd => analysis.SymbolTable?.Lookup(ifd.Name)
+                ?? analysis.SymbolTable?.LookupInModuleScopes(ifd.Name),
             FunctionDef fd => ResolveFunction(fd, analysis),
             _ => null
         };
@@ -98,7 +100,8 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
         if (analysis.SymbolTable == null)
             return null;
 
-        foreach (var sym in analysis.SymbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        foreach (var sym in analysis.SymbolTable.GlobalScope.GetAllSymbols()
+            .Concat(analysis.SymbolTable.GetAllModuleScopeSymbols()).OfType<TypeSymbol>())
         {
             var method = sym.Methods.Find(m =>
                 string.Equals(m.Name, fd.Name, StringComparison.Ordinal)
@@ -108,7 +111,8 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
         }
 
         // Fall back to top-level function lookup.
-        return analysis.SymbolTable.Lookup(fd.Name);
+        return analysis.SymbolTable.Lookup(fd.Name)
+            ?? analysis.SymbolTable.LookupInModuleScopes(fd.Name);
     }
 
     private static Symbol? ResolveFromMemberAccess(MemberAccess ma, SemanticResult analysis)
@@ -137,12 +141,14 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
     private static Symbol? ReResolveInTable(Symbol symbol, SymbolTable symbolTable)
     {
         if (symbol is TypeSymbol)
-            return symbolTable.Lookup(symbol.Name);
+            return symbolTable.Lookup(symbol.Name)
+                ?? symbolTable.LookupInModuleScopes(symbol.Name);
 
         if (symbol is FunctionSymbol funcSym)
         {
             // Methods aren't top-level — search declaring types by name + line.
-            foreach (var ts in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+            foreach (var ts in symbolTable.GlobalScope.GetAllSymbols()
+                .Concat(symbolTable.GetAllModuleScopeSymbols()).OfType<TypeSymbol>())
             {
                 var method = ts.Methods.Find(m =>
                     string.Equals(m.Name, funcSym.Name, StringComparison.Ordinal)
@@ -152,10 +158,12 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
             }
 
             // Fall back to top-level function.
-            return symbolTable.Lookup(symbol.Name);
+            return symbolTable.Lookup(symbol.Name)
+                ?? symbolTable.LookupInModuleScopes(symbol.Name);
         }
 
-        return symbolTable.Lookup(symbol.Name);
+        return symbolTable.Lookup(symbol.Name)
+            ?? symbolTable.LookupInModuleScopes(symbol.Name);
     }
 
     private SymbolTable? GetBestSymbolTable(SemanticResult analysis)
@@ -217,7 +225,8 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
     {
         // Find the declaring type by matching method name and declaration line.
         TypeSymbol? declaringType = null;
-        foreach (var sym in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        foreach (var sym in symbolTable.GlobalScope.GetAllSymbols()
+                .Concat(symbolTable.GetAllModuleScopeSymbols()).OfType<TypeSymbol>())
         {
             if (sym.Methods.Any(m =>
                 string.Equals(m.Name, funcSymbol.Name, StringComparison.Ordinal)

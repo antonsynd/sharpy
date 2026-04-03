@@ -58,7 +58,8 @@ internal sealed class SharpyCallHierarchyIncomingHandler : CallHierarchyIncoming
                 var references = analysis.SemanticQuery.FindReferencesBySymbolIdentity(symbolName, filePath);
                 if (references.Count == 0)
                 {
-                    var sym = analysis.SymbolTable?.Lookup(symbolName);
+                    var sym = analysis.SymbolTable?.Lookup(symbolName)
+                        ?? analysis.SymbolTable?.LookupInModuleScopes(symbolName);
                     if (sym != null)
                         references = analysis.SemanticQuery.GetReferences(sym);
                 }
@@ -70,7 +71,8 @@ internal sealed class SharpyCallHierarchyIncomingHandler : CallHierarchyIncoming
                         continue;
 
                     // Resolve the containing function's symbol
-                    var containingSymbol = analysis.SymbolTable?.Lookup(containingFunc.Name) as FunctionSymbol;
+                    var containingSymbol = (analysis.SymbolTable?.Lookup(containingFunc.Name)
+                        ?? analysis.SymbolTable?.LookupInModuleScopes(containingFunc.Name)) as FunctionSymbol;
                     if (containingSymbol == null)
                         continue;
 
