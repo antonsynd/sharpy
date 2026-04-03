@@ -44,55 +44,64 @@ internal partial class ProjectCompiler
             if (unit.Phase != CompilationPhase.TypeChecked || unit.Ast == null)
                 continue;
 
-            // Get the file metrics we created during parsing
-            var fileMetrics = unit.Metrics;
-
-            fileMetrics?.StartPhase("Code Generation");
-
-            // Determine if this file is the entry point
-            var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
-
-            var isPackageInit = Path.GetFileNameWithoutExtension(sourceFile) == DunderNames.Init;
-
-            var codeGenContext = new CodeGenContext(SymbolTable, builtinRegistry)
+            // Enter per-module scope so code generation resolves names from the correct scope
+            SymbolTable.EnterModuleScope(unit.ModulePath);
+            try
             {
-                SourceFilePath = sourceFile,
-                ProjectNamespace = config.RootNamespace,
-                ProjectRootPath = ComputeSourceRootPath(config),
-                IsEntryPoint = isEntryPoint,
-                IsPackageInit = isPackageInit,
-                Logger = _logger,
-                SemanticBinding = _projectModel.SemanticBinding,
-                SemanticInfo = SemanticInfo
-            };
+                // Get the file metrics we created during parsing
+                var fileMetrics = unit.Metrics;
 
-            var emitter = new RoslynEmitter(codeGenContext, _cancellationToken);
-            var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
-            var csharpCode = roslynCompilationUnit.ToFullString();
+                fileMetrics?.StartPhase("Code Generation");
 
-            fileMetrics?.EndPhase();
+                // Determine if this file is the entry point
+                var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
 
-            // Check for code generation errors
-            if (codeGenContext.HasErrors)
-            {
-                unit.Diagnostics.Merge(codeGenContext.Diagnostics);
-                _diagnostics.Merge(codeGenContext.Diagnostics);
-                unit.Phase = CompilationPhase.Failed;
-                continue;
+                var isPackageInit = Path.GetFileNameWithoutExtension(sourceFile) == DunderNames.Init;
+
+                var codeGenContext = new CodeGenContext(SymbolTable, builtinRegistry)
+                {
+                    SourceFilePath = sourceFile,
+                    ProjectNamespace = config.RootNamespace,
+                    ProjectRootPath = ComputeSourceRootPath(config),
+                    IsEntryPoint = isEntryPoint,
+                    IsPackageInit = isPackageInit,
+                    Logger = _logger,
+                    SemanticBinding = _projectModel.SemanticBinding,
+                    SemanticInfo = SemanticInfo
+                };
+
+                var emitter = new RoslynEmitter(codeGenContext, _cancellationToken);
+                var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
+                var csharpCode = roslynCompilationUnit.ToFullString();
+
+                fileMetrics?.EndPhase();
+
+                // Check for code generation errors
+                if (codeGenContext.HasErrors)
+                {
+                    unit.Diagnostics.Merge(codeGenContext.Diagnostics);
+                    _diagnostics.Merge(codeGenContext.Diagnostics);
+                    unit.Phase = CompilationPhase.Failed;
+                    continue;
+                }
+
+                // Store generated C# in CompilationUnit
+                unit.GeneratedCSharp = csharpCode;
+                unit.Phase = CompilationPhase.CodeGenerated;
+                CompilerInvariants.AssertPostCodeGen(csharpCode, _diagnostics);
+
+                // Log per-file code gen metrics at Debug level
+                if (_logger.IsEnabled(CompilerLogLevel.Debug) && fileMetrics != null)
+                {
+                    _logger.LogDebug($"Generated {Path.GetFileName(sourceFile)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
+                }
+
+                generatedCSharp[csharpFileName] = csharpCode;
             }
-
-            // Store generated C# in CompilationUnit
-            unit.GeneratedCSharp = csharpCode;
-            unit.Phase = CompilationPhase.CodeGenerated;
-            CompilerInvariants.AssertPostCodeGen(csharpCode, _diagnostics);
-
-            // Log per-file code gen metrics at Debug level
-            if (_logger.IsEnabled(CompilerLogLevel.Debug) && fileMetrics != null)
+            finally
             {
-                _logger.LogDebug($"Generated {Path.GetFileName(sourceFile)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
+                SymbolTable.ExitScope();
             }
-
-            generatedCSharp[csharpFileName] = csharpCode;
         }
 
         return generatedCSharp;
