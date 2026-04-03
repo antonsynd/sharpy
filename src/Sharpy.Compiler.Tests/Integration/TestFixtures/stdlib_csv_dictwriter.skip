@@ -1,1 +1,1 @@
-Blocked: Sharpy StringIO does not extend System.IO.TextWriter (#398)
+Blocked: Sharpy StringIO does not extend System.IO.TextWriter (#502)

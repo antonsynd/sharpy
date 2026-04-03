@@ -1,1 +1,1 @@
-TODO: Tuple star-unpack (rest pattern) not yet supported (GAP-21). Fails at C# compilation with missing GetSlice method.
+Tuple star-unpack (rest pattern) not yet supported (#509)

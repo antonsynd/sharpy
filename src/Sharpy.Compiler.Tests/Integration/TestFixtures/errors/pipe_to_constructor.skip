@@ -1,1 +1,1 @@
-TODO: Pipe to constructor passes semantic analysis but fails at C# compilation (GAP-20). Needs semantic-level rejection.
+Pipe to constructor passes semantic analysis but should produce compile error (#505)

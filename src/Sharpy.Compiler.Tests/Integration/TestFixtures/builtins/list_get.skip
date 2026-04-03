@@ -1,1 +1,1 @@
-TODO: list.get() method not yet implemented in Sharpy.Core (GAP-13). Needs get(index) -> Optional<T> and get(index, default) -> T overloads.
+list.get() method not yet implemented in Sharpy.Core (#504)

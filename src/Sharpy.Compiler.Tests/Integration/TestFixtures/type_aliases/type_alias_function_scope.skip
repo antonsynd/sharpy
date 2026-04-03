@@ -1,1 +1,1 @@
-TODO: Function-scoped type aliases not yet supported (GAP-18). Type aliases defined inside function bodies are not resolved.
+Function-scoped type aliases not yet supported (#510)

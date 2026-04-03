@@ -1,1 +1,1 @@
-TODO: Class-scoped type aliases not yet supported (GAP-18). Type aliases defined inside class bodies are not resolved.
+Class-scoped type aliases not yet supported (#510)

@@ -1,1 +1,1 @@
-Nested function definitions are not supported - inner function identifiers are not resolved
+Nested function definitions are not supported (#507)

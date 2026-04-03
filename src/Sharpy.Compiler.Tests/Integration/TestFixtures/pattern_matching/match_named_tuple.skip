@@ -1,1 +1,1 @@
-namedtuple not yet supported - collections.namedtuple import fails
+collections.namedtuple not yet supported (#508)

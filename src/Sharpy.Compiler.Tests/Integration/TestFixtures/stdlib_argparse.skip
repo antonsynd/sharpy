@@ -1,1 +1,1 @@
-type(x).__name__ requires Builtins.Type() wrapper with __name__ property
+type(x).__name__ requires Builtins.Type() wrapper with __name__ property (#501)

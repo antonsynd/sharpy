@@ -1,1 +1,1 @@
-CLR arrays don't support negative indexing natively; needs Sharpy.Core wrapper (plan Task 17)
+CLR arrays do not support negative indexing natively; needs Sharpy.Core wrapper (#503)
