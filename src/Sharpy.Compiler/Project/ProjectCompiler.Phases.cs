@@ -43,13 +43,24 @@ internal partial class ProjectCompiler
             // Use unit.FilePath for original path (Units dictionary keys are normalized)
             _sharedNameResolver.SetCurrentFilePath(unit.FilePath);
 
+            // Enter per-module scope so each file's declarations are isolated
+            SymbolTable.EnterModuleScope(unit.ModulePath);
+            _sharedNameResolver.SetCurrentModulePath(unit.ModulePath);
+
             // Only collect declarations - don't resolve inheritance yet
             // The NameResolver.ResolveDeclarations() method registers type names
             // and stores ClassDef/StructDef/InterfaceDef in internal lists
             _sharedNameResolver.ResolveDeclarations(unit.Ast, cancellationToken);
 
+            // Capture the module scope on the CompilationUnit for later phases
+            unit.ModuleScope = SymbolTable.CurrentScope;
+
             // Update phase
             unit.Phase = CompilationPhase.NamesResolved;
+
+            // Exit module scope and clear module path
+            SymbolTable.ExitScope();
+            _sharedNameResolver.SetCurrentModulePath(null);
         }
 
         // NOTE: Inheritance resolution is now done in ResolveInheritanceRelationships()
