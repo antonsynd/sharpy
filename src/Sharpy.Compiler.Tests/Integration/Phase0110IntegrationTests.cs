@@ -1412,14 +1412,12 @@ def main():
     }
 
     [Fact]
-    public void FromImport_SameNamedType_FirstWins()
+    public void FromImport_DuplicateName_FromDifferentModule_EmitsError()
     {
-        // NOTE: Python uses "last import wins" semantics, but TryDefine uses "first wins".
-        // The first from-import of 'Config' registers in the importing module's scope;
-        // subsequent imports of the same name are silently skipped.
-        // TODO(#512): Consider implementing Python's "last wins" shadowing semantics.
+        // #514: Duplicate from-import of the same name from different modules is a compile-time error.
+        // Axiom 1 (.NET) takes precedence — C# treats ambiguous usings as errors.
         var helper = CreateHelper();
-        helper.WithRootNamespace("FromImportShadowTest");
+        helper.WithRootNamespace("FromImportDuplicateTest");
 
         helper.AddPackage("pkg_a", "");
         helper.AddPackageFile("pkg_a", "helper.spy", @"
@@ -1445,10 +1443,40 @@ def main():
 ");
 
         helper.WithEntryPoint("main.spy");
+        var result = helper.Compile();
+
+        Assert.False(result.Success, "Expected compilation to fail due to duplicate from-import");
+        Assert.Contains(result.Diagnostics.GetErrors(),
+            d => d.Message.Contains("already imported", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void FromImport_SameNameFromSameModule_Succeeds()
+    {
+        // Idempotent re-import from the same module should be silently allowed.
+        var helper = CreateHelper();
+        helper.WithRootNamespace("FromImportIdempotentTest");
+
+        helper.AddPackage("pkg_a", "");
+        helper.AddPackageFile("pkg_a", "helper.spy", @"
+class Config:
+    def get_id(self) -> int:
+        return 1
+");
+
+        helper.AddSourceFile("main.spy", @"
+from pkg_a.helper import Config
+from pkg_a.helper import Config
+
+def main():
+    c = Config()
+    print(c.get_id())
+");
+
+        helper.WithEntryPoint("main.spy");
         var result = helper.CompileAndExecute();
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        // First import wins (TryDefine semantics) — pkg_a's Config is used
         Assert.Equal("1\n", result.StandardOutput);
     }
 

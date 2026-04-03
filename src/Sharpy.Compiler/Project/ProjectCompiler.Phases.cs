@@ -130,6 +130,8 @@ internal partial class ProjectCompiler
 
             // Enter per-module scope so imported symbols register in the correct scope
             SymbolTable.EnterModuleScope(unit.ModulePath);
+            // Track from-imported symbol sources per-file for duplicate detection (#514)
+            var importedSymbolSources = new Dictionary<string, string>();
             try
             {
 
@@ -231,6 +233,7 @@ internal partial class ProjectCompiler
                             // everywhere. Function symbols use re-exported copies because the TypeChecker
                             // updates them via record `with` expressions that create new instances.
                             var sourceModuleScope = SymbolTable.GetModuleScope(fromImport.Module);
+                            var sourceModule = moduleInfo.CanonicalModuleName ?? fromImport.Module;
 
                             // Add specific imported symbols (skip if already defined from project files)
                             if (fromImport.ImportAll)
@@ -238,7 +241,15 @@ internal partial class ProjectCompiler
                                 foreach (var (name, symbol) in symbolsToImport)
                                 {
                                     var symbolToRegister = ResolveImportSymbol(symbol, name, sourceModuleScope);
-                                    SymbolTable.TryDefine(symbolToRegister);
+                                    if (!SymbolTable.TryDefine(symbolToRegister))
+                                    {
+                                        ReportDuplicateFromImport(name, sourceModule, importedSymbolSources,
+                                            fromImport, importAlias: null, unit.FilePath);
+                                    }
+                                    else
+                                    {
+                                        importedSymbolSources[name] = sourceModule;
+                                    }
                                 }
                             }
                             else
@@ -252,7 +263,15 @@ internal partial class ProjectCompiler
                                         var symbolToRegister = importAlias.AsName == null
                                             ? ResolveImportSymbol(symbol, originalName, sourceModuleScope)
                                             : symbol;
-                                        SymbolTable.TryDefine(symbolToRegister);
+                                        if (!SymbolTable.TryDefine(symbolToRegister))
+                                        {
+                                            ReportDuplicateFromImport(symbolName, sourceModule, importedSymbolSources,
+                                                fromImport, importAlias, unit.FilePath);
+                                        }
+                                        else
+                                        {
+                                            importedSymbolSources[symbolName] = sourceModule;
+                                        }
                                     }
                                 }
                             }
@@ -321,6 +340,30 @@ internal partial class ProjectCompiler
         // Missing imports produce Unknown types, which prevents cascading errors
         // in the type checker (UnknownType.IsAssignableTo returns true).
         return true;
+    }
+
+    /// <summary>
+    /// Reports a duplicate from-import error if the symbol was previously imported from a different module.
+    /// Same-module re-imports (idempotent) are silently skipped.
+    /// </summary>
+    private void ReportDuplicateFromImport(
+        string registerName,
+        string sourceModule,
+        Dictionary<string, string> importedSources,
+        FromImportStatement fromImport,
+        ImportAlias? importAlias,
+        string filePath)
+    {
+        if (importedSources.TryGetValue(registerName, out var existingModule)
+            && !string.Equals(existingModule, sourceModule, StringComparison.Ordinal))
+        {
+            var line = importAlias?.LineStart ?? fromImport.LineStart;
+            var column = importAlias?.ColumnStart ?? fromImport.ColumnStart;
+            var message = $"'{registerName}' is already imported from '{existingModule}' (in {Path.GetFileName(filePath)})";
+            _projectModel!.GlobalDiagnostics.AddError(message, code: DiagnosticCodes.Semantic.DuplicateDefinition);
+            _diagnostics.AddError(message, line, column,
+                code: DiagnosticCodes.Semantic.DuplicateDefinition, phase: CompilerPhase.ImportResolution);
+        }
     }
 
     /// <summary>

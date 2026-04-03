@@ -96,6 +96,7 @@ internal class ImportResolver
         _cancellationToken = cancellationToken;
         _logger.LogInfo("Starting import resolution");
         var importCount = 0;
+        var importedSymbolSources = new Dictionary<string, string>();
 
         foreach (var statement in module.Body)
         {
@@ -184,6 +185,7 @@ internal class ImportResolver
                     _logger.LogDebug($"  Module resolved: {moduleInfo.Path}");
                     _logger.LogDebug($"  Exported symbols: [{string.Join(", ", moduleInfo.ExportedSymbols.Keys)}]");
                     var reExportedSymbols = _semanticBinding.GetReExportedSymbols(fromImport) ?? moduleInfo.ExportedSymbols;
+                    var sourceModule = moduleInfo.CanonicalModuleName ?? fromImport.Module;
 
                     if (fromImport.ImportAll)
                     {
@@ -194,7 +196,8 @@ internal class ImportResolver
                                 continue;
 
                             _logger.LogDebug($"  Defining symbol (import *): {name}");
-                            symbolTable.TryDefine(symbol);
+                            TryDefineFromImport(symbolTable, symbol, name, sourceModule,
+                                importedSymbolSources, fromImport, importAlias: null);
 
                             // Propagate function overloads for wildcard imports
                             if (moduleInfo.FunctionOverloads.TryGetValue(name, out var wildOverloads) && wildOverloads.Count > 1)
@@ -216,7 +219,8 @@ internal class ImportResolver
                                 {
                                     symbol = CloneSymbolWithName(symbol, registerName);
                                 }
-                                symbolTable.TryDefine(symbol);
+                                TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
+                                    importedSymbolSources, fromImport, importAlias);
 
                                 // Propagate function overloads for named imports
                                 if (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads) && overloads.Count > 1)
@@ -228,7 +232,8 @@ internal class ImportResolver
                             {
                                 // Fallback: error recovery modules may register symbols under alias name
                                 _logger.LogDebug($"  Defining imported symbol (alias fallback): {registerName} ({symbol.Kind})");
-                                symbolTable.TryDefine(symbol);
+                                TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
+                                    importedSymbolSources, fromImport, importAlias);
 
                                 // Propagate function overloads for alias fallback path
                                 if (moduleInfo.FunctionOverloads.TryGetValue(registerName, out var fallbackOverloads) && fallbackOverloads.Count > 1)
@@ -996,6 +1001,42 @@ internal class ImportResolver
     public TypeSymbol? FindTypeInLoadedModules(string typeName)
     {
         return _moduleLoader.FindTypeInLoadedModules(typeName);
+    }
+
+    /// <summary>
+    /// Attempts to define a from-imported symbol. If the symbol already exists and was
+    /// imported from a different module, emits a DuplicateDefinition error.
+    /// Same-module re-imports (idempotent) are silently skipped.
+    /// </summary>
+    private bool TryDefineFromImport(
+        SymbolTable symbolTable,
+        Symbol symbol,
+        string registerName,
+        string sourceModule,
+        Dictionary<string, string> importedSources,
+        FromImportStatement fromImport,
+        ImportAlias? importAlias)
+    {
+        if (symbolTable.TryDefine(symbol))
+        {
+            importedSources[registerName] = sourceModule;
+            return true;
+        }
+
+        // Duplicate — error only if from a different module
+        if (importedSources.TryGetValue(registerName, out var existingModule)
+            && !string.Equals(existingModule, sourceModule, StringComparison.Ordinal))
+        {
+            var line = importAlias?.LineStart ?? fromImport.LineStart;
+            var column = importAlias?.ColumnStart ?? fromImport.ColumnStart;
+            var span = importAlias?.Span ?? fromImport.Span;
+            AddError($"'{registerName}' is already imported from '{existingModule}'",
+                line, column,
+                code: DiagnosticCodes.Semantic.DuplicateDefinition,
+                span: span);
+        }
+
+        return false;
     }
 
     private void AddError(string message, int? line, int? column, string? code = null,
