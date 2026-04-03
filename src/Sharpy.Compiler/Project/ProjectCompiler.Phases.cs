@@ -369,63 +369,72 @@ internal partial class ProjectCompiler
             if (fileMetrics == null)
                 continue;
 
-            // Type checking via shared pipeline
-            fileMetrics.StartPhase("Type Checking");
-            var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
-            var typeCheckResult = compilationPipeline.TypeCheck(
-                unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
-                computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,
-                cancellationToken: cancellationToken);
-            var typeChecker = typeCheckResult.TypeChecker;
-
-            if (typeCheckResult.Aborted)
+            // Enter per-module scope so type checking resolves symbols from the correct scope
+            SymbolTable.EnterModuleScope(unit.ModulePath);
+            try
             {
-                // End the Type Checking phase even on error for consistent metrics
+                // Type checking via shared pipeline
+                fileMetrics.StartPhase("Type Checking");
+                var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
+                var typeCheckResult = compilationPipeline.TypeCheck(
+                    unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
+                    computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,
+                    cancellationToken: cancellationToken);
+                var typeChecker = typeCheckResult.TypeChecker;
+
+                if (typeCheckResult.Aborted)
+                {
+                    // End the Type Checking phase even on error for consistent metrics
+                    fileMetrics.EndPhase();
+
+                    // Capture artifact counts even on error paths for better observability
+                    fileMetrics.SymbolCount = SymbolTable.GlobalScope.GetAllSymbols().Count();
+                    if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> errorValidatorDict)
+                    {
+                        fileMetrics.SetValidatorTimes(errorValidatorDict);
+                    }
+                    fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
+
+                    // Preserve all accumulated diagnostics from the type checker
+                    _diagnostics.Merge(typeChecker.Diagnostics);
+                    unit.Phase = CompilationPhase.Failed;
+                    continue;
+                }
                 fileMetrics.EndPhase();
 
-                // Capture artifact counts even on error paths for better observability
-                fileMetrics.SymbolCount = SymbolTable.GlobalScope.GetAllSymbols().Count();
-                if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> errorValidatorDict)
+                // Capture per-validator timing for performance analysis
+                if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> validatorDict)
                 {
-                    fileMetrics.SetValidatorTimes(errorValidatorDict);
+                    fileMetrics.SetValidatorTimes(validatorDict);
                 }
-                fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
 
-                // Preserve all accumulated diagnostics from the type checker
+                // Merge all type checking diagnostics to both unit and project level
+                unit.Diagnostics.Merge(typeChecker.Diagnostics);
                 _diagnostics.Merge(typeChecker.Diagnostics);
-                unit.Phase = CompilationPhase.Failed;
-                continue;
+
+                // Capture per-file artifact counts
+                fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count;
+                fileMetrics.SymbolCount = SymbolTable.GlobalScope.GetAllSymbols().Count();
+
+                if (typeChecker.Diagnostics.HasErrors)
+                {
+                    unit.Phase = CompilationPhase.Failed;
+                }
+                else
+                {
+                    unit.Phase = CompilationPhase.TypeChecked;
+                    CompilerInvariants.AssertPostTypeChecking(SemanticInfo, typeChecker.Diagnostics);
+                }
+
+                // Log per-file semantic analysis metrics at Debug level
+                if (_logger.IsEnabled(CompilerLogLevel.Debug))
+                {
+                    _logger.LogDebug($"Analyzed {Path.GetFileName(unit.FilePath)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
+                }
             }
-            fileMetrics.EndPhase();
-
-            // Capture per-validator timing for performance analysis
-            if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> validatorDict)
+            finally
             {
-                fileMetrics.SetValidatorTimes(validatorDict);
-            }
-
-            // Merge all type checking diagnostics to both unit and project level
-            unit.Diagnostics.Merge(typeChecker.Diagnostics);
-            _diagnostics.Merge(typeChecker.Diagnostics);
-
-            // Capture per-file artifact counts
-            fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count;
-            fileMetrics.SymbolCount = SymbolTable.GlobalScope.GetAllSymbols().Count();
-
-            if (typeChecker.Diagnostics.HasErrors)
-            {
-                unit.Phase = CompilationPhase.Failed;
-            }
-            else
-            {
-                unit.Phase = CompilationPhase.TypeChecked;
-                CompilerInvariants.AssertPostTypeChecking(SemanticInfo, typeChecker.Diagnostics);
-            }
-
-            // Log per-file semantic analysis metrics at Debug level
-            if (_logger.IsEnabled(CompilerLogLevel.Debug))
-            {
-                _logger.LogDebug($"Analyzed {Path.GetFileName(unit.FilePath)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
+                SymbolTable.ExitScope();
             }
         }
 
