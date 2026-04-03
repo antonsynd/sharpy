@@ -1,0 +1,10 @@
+class Container:
+    type Pair[T] = tuple[T, T]
+
+    def get_pair(self) -> Pair[int]:
+        return (1, 2)
+
+def main():
+    c = Container()
+    p = c.get_pair()
+    print(p[0] + p[1])

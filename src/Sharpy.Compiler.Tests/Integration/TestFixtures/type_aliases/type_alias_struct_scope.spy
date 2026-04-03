@@ -1,0 +1,10 @@
+struct Point:
+    type Coord = int
+
+    def get_x(self) -> Coord:
+        x: Coord = 10
+        return x
+
+def main():
+    p = Point()
+    print(p.get_x())

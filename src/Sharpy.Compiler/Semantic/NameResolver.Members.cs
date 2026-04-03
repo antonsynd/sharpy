@@ -453,22 +453,7 @@ internal partial class NameResolver
             return;
         }
 
-        // Create type alias symbol
-        var aliasSymbol = new TypeAliasSymbol
-        {
-            Name = typeAlias.Name,
-            Kind = SymbolKind.TypeAlias,
-            AccessLevel = AccessLevel.Public,
-            TypeAnnotation = typeAlias.Type,
-            FunctionType = typeAlias.FunctionType,
-            TypeParameters = typeAlias.TypeParameters.IsEmpty
-                ? Array.Empty<TypeParameterDef>()
-                : typeAlias.TypeParameters.ToArray(),
-            DeclarationLine = typeAlias.LineStart,
-            DeclarationColumn = typeAlias.ColumnStart
-        };
-
-        _symbolTable.Define(aliasSymbol);
+        _symbolTable.Define(TypeAliasSymbol.CreateFrom(typeAlias));
     }
 
     /// <summary>

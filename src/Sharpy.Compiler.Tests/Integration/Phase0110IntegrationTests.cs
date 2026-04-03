@@ -903,6 +903,7 @@ def main():
     public void EdgeCase_ImportSameName_FromDifferentPackages_Works()
     {
         var helper = CreateHelper();
+        helper.WithRootNamespace("ImportSameNameTest");
 
         helper.AddPackage("package_a", "");
         helper.AddPackageFile("package_a", "helper.spy", @"
@@ -928,9 +929,10 @@ def main():
 ");
 
         helper.WithEntryPoint("main.spy");
-        var result = helper.Compile();
+        var result = helper.CompileAndExecute();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("1\n2\n", result.StandardOutput);
     }
 
     [Fact]
@@ -962,6 +964,7 @@ def main():
     public void EdgeCase_ThreeLevelNesting_SameLeafName_Works()
     {
         var helper = CreateHelper();
+        helper.WithRootNamespace("ThreeLevelNestingTest");
 
         helper.AddPackage("a", "");
         helper.AddPackage("a/b", "");
@@ -989,15 +992,17 @@ def main():
 ");
 
         helper.WithEntryPoint("main.spy");
-        var result = helper.Compile();
+        var result = helper.CompileAndExecute();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("10\n20\n", result.StandardOutput);
     }
 
     [Fact]
     public void EdgeCase_SamePackage_TwoModules_SameNamedFunctions_Works()
     {
         var helper = CreateHelper();
+        helper.WithRootNamespace("SamePackageTwoModulesTest");
 
         helper.AddPackage("mypkg", "");
         helper.AddPackageFile("mypkg", "mod_a.spy", @"
@@ -1021,9 +1026,46 @@ def main():
 ");
 
         helper.WithEntryPoint("main.spy");
-        var result = helper.Compile();
+        var result = helper.CompileAndExecute();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("100\n200\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void EdgeCase_MixedImportStyles_SameNamedModules_Works()
+    {
+        var helper = CreateHelper();
+        helper.WithRootNamespace("MixedImportStylesTest");
+
+        helper.AddPackage("alpha", "");
+        helper.AddPackageFile("alpha", "helper.spy", @"
+def get_alpha() -> int:
+    return 10
+");
+
+        helper.AddPackage("beta", "");
+        helper.AddPackageFile("beta", "helper.spy", @"
+def get_beta() -> int:
+    return 20
+");
+
+        helper.AddSourceFile("main.spy", @"
+import alpha.helper
+from beta.helper import get_beta
+
+def main():
+    a: int = alpha.helper.get_alpha()
+    b: int = get_beta()
+    print(a)
+    print(b)
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.CompileAndExecute();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("10\n20\n", result.StandardOutput);
     }
 
     #endregion
@@ -1090,8 +1132,9 @@ def main() -> int:
     public void Combined_PackageIsolation_WithScopedTypeAliases_Works()
     {
         var helper = CreateHelper();
+        helper.WithRootNamespace("CombinedIsolationAliasesTest");
 
-        // Two packages with same-named modules, using function-scoped aliases
+        // Two packages with same-named modules, using function-scoped type alias
         helper.AddPackage("pkg_a", "");
         helper.AddPackageFile("pkg_a", "models.spy", @"
 def get_value() -> int:
@@ -1117,9 +1160,10 @@ def main():
 ");
 
         helper.WithEntryPoint("main.spy");
-        var result = helper.Compile();
+        var result = helper.CompileAndExecute();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("1\n2\n", result.StandardOutput);
     }
 
     #endregion

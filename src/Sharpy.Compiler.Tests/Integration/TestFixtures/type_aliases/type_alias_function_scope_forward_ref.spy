@@ -1,0 +1,4 @@
+def main():
+    x: Number = 42
+    type Number = int
+    print(x)

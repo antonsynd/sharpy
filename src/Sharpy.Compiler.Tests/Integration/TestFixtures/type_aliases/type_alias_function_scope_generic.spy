@@ -1,0 +1,4 @@
+def main():
+    type Pair[T] = tuple[T, T]
+    p: Pair[int] = (3, 7)
+    print(p[0] + p[1])

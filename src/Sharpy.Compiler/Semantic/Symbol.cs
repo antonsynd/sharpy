@@ -386,6 +386,25 @@ public record TypeAliasSymbol : Symbol
     public Parser.Ast.FunctionType? FunctionType { get; init; }
     public IReadOnlyList<TypeParameterDef> TypeParameters { get; init; } = Array.Empty<TypeParameterDef>();
 
+    /// <summary>
+    /// Creates a TypeAliasSymbol from a TypeAlias AST node.
+    /// Used by both NameResolver (module/class scope) and TypeChecker (function scope)
+    /// to avoid duplicating construction logic.
+    /// </summary>
+    public static TypeAliasSymbol CreateFrom(TypeAlias typeAlias) => new()
+    {
+        Name = typeAlias.Name,
+        Kind = SymbolKind.TypeAlias,
+        AccessLevel = AccessLevel.Public,
+        TypeAnnotation = typeAlias.Type,
+        FunctionType = typeAlias.FunctionType,
+        TypeParameters = typeAlias.TypeParameters.IsEmpty
+            ? Array.Empty<TypeParameterDef>()
+            : typeAlias.TypeParameters.ToArray(),
+        DeclarationLine = typeAlias.LineStart,
+        DeclarationColumn = typeAlias.ColumnStart
+    };
+
     public virtual bool Equals(TypeAliasSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
