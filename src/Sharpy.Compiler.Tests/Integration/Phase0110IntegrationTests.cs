@@ -899,7 +899,7 @@ def main():
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
-    [Fact(Skip = "Requires package namespace isolation - symbols from different packages currently share the same global scope")]
+    [Fact(Skip = "Requires package namespace isolation (#500) - symbols from different packages currently share the same global scope")]
     public void EdgeCase_ImportSameName_FromDifferentPackages_Works()
     {
         var helper = CreateHelper();
