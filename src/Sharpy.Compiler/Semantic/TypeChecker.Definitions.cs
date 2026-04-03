@@ -673,6 +673,17 @@ internal partial class TypeChecker
             _symbolTable.Define(typeParamSymbol);
         }
 
+        // Re-register class-scoped type aliases in this scope
+        // (aliases are first registered during NameResolver Pass 1, but that scope is destroyed;
+        // we re-register here so they're visible during type checking)
+        foreach (var statement in classDef.Body)
+        {
+            if (statement is TypeAlias typeAlias)
+            {
+                RegisterScopedTypeAlias(typeAlias);
+            }
+        }
+
         // Resolve field types first (before checking methods that might reference them)
         for (int i = 0; i < classSymbol.Fields.Count; i++)
         {
@@ -751,6 +762,15 @@ internal partial class TypeChecker
                 DeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
+        }
+
+        // Re-register struct-scoped type aliases in this scope
+        foreach (var statement in structDef.Body)
+        {
+            if (statement is TypeAlias typeAlias)
+            {
+                RegisterScopedTypeAlias(typeAlias);
+            }
         }
 
         // Resolve field types first (before checking methods that might reference them)

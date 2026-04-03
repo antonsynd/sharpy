@@ -184,6 +184,10 @@ internal partial class RoslynEmitter
                     // Ignore ellipsis in class body
                     break;
 
+                case TypeAlias:
+                    // Type aliases are compile-time only, no C# output
+                    break;
+
                 default:
                     _context.AddError(
                         $"Internal: unrecognized statement type '{stmt.GetType().Name}' in class body was not emitted. This is a compiler bug — please report it.",

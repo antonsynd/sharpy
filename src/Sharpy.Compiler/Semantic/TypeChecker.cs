@@ -394,8 +394,10 @@ internal partial class TypeChecker
                 // Import validation handled elsewhere
                 break;
 
-            case TypeAlias:
-                // Type aliases are compile-time only, no type checking needed
+            case TypeAlias typeAlias:
+                // Register function-scoped type aliases so they're visible
+                // to subsequent statements in the same function body
+                RegisterScopedTypeAlias(typeAlias);
                 break;
 
             case PropertyDef:

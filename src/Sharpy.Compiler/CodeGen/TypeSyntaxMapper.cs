@@ -250,8 +250,23 @@ internal class TypeSyntaxMapper
                     TypeArgumentList(SeparatedList(new[] { okType, errType })));
         }
 
-        // Check if this is a type alias and expand it
+        // Check if this is a type alias and expand it.
+        // First try SymbolTable lookup (works for module-scoped aliases).
         var aliasSymbol = _context.SymbolTable.LookupTypeAlias(type.Name);
+
+        // If no alias found in SymbolTable, check SemanticInfo for the resolved type.
+        // This handles class/function-scoped aliases whose scope no longer exists during codegen.
+        // The SemanticInfo type already includes optional/nullable wrapping, so we use
+        // MapSemanticType directly without WrapOptionalOrNullable.
+        if (aliasSymbol == null)
+        {
+            var resolvedFromSemantic = _context.SemanticInfo?.GetTypeAnnotation(type);
+            if (resolvedFromSemantic != null && resolvedFromSemantic is not UnknownType)
+            {
+                return MapSemanticType(resolvedFromSemantic);
+            }
+        }
+
         if (aliasSymbol != null)
         {
             // Generic type alias: use the resolved SemanticType which has substitutions applied

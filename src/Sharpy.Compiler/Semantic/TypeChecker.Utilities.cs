@@ -1040,4 +1040,59 @@ internal partial class TypeChecker
 
         return FindEventInHierarchy(owningType, memberAccess.Member);
     }
+
+    /// <summary>
+    /// Registers a scoped type alias in the current symbol table scope.
+    /// Used to re-register class-scoped aliases (which are first registered during Pass 1
+    /// in a scope that no longer exists) and to register function-scoped aliases.
+    /// </summary>
+    private void RegisterScopedTypeAlias(TypeAlias typeAlias)
+    {
+        // Skip if already defined in current scope (e.g., re-entry)
+        if (_symbolTable.Lookup(typeAlias.Name, searchParents: false) is TypeAliasSymbol)
+            return;
+
+        // Validate that exactly one of Type or FunctionType is set
+        if (typeAlias.Type == null && typeAlias.FunctionType == null)
+        {
+            AddError($"Type alias '{typeAlias.Name}' must have a type",
+                typeAlias.LineStart, typeAlias.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidTypeAlias, span: typeAlias.Span);
+            return;
+        }
+
+        if (typeAlias.Type != null && typeAlias.FunctionType != null)
+        {
+            AddError($"Type alias '{typeAlias.Name}' cannot have both Type and FunctionType",
+                typeAlias.LineStart, typeAlias.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidTypeAlias, span: typeAlias.Span);
+            return;
+        }
+
+        // Check for redefinition by a non-alias symbol
+        var existing = _symbolTable.Lookup(typeAlias.Name, searchParents: false);
+        if (existing != null)
+        {
+            AddError($"Type alias '{typeAlias.Name}' is already defined",
+                typeAlias.LineStart, typeAlias.ColumnStart,
+                code: DiagnosticCodes.Semantic.DuplicateDefinition, span: typeAlias.Span);
+            return;
+        }
+
+        var aliasSymbol = new TypeAliasSymbol
+        {
+            Name = typeAlias.Name,
+            Kind = SymbolKind.TypeAlias,
+            AccessLevel = AccessLevel.Public,
+            TypeAnnotation = typeAlias.Type,
+            FunctionType = typeAlias.FunctionType,
+            TypeParameters = typeAlias.TypeParameters.IsEmpty
+                ? Array.Empty<TypeParameterDef>()
+                : typeAlias.TypeParameters.ToArray(),
+            DeclarationLine = typeAlias.LineStart,
+            DeclarationColumn = typeAlias.ColumnStart
+        };
+
+        _symbolTable.Define(aliasSymbol);
+    }
 }
