@@ -219,12 +219,20 @@ internal partial class ProjectCompiler
                                                 ?? fromImport.ReExportedSymbols;
                         var symbolsToImport = reExportedSymbols ?? moduleInfo.ExportedSymbols;
 
+                        // For project-internal from-imports of TYPE symbols, prefer the Phase 3
+                        // original over the re-exported copy. This ensures all modules reference
+                        // the same TypeSymbol, so inheritance info set in Phase 4b is visible
+                        // everywhere. Function symbols use re-exported copies because the TypeChecker
+                        // updates them via record `with` expressions that create new instances.
+                        var sourceModuleScope = SymbolTable.GetModuleScope(fromImport.Module);
+
                         // Add specific imported symbols (skip if already defined from project files)
                         if (fromImport.ImportAll)
                         {
                             foreach (var (name, symbol) in symbolsToImport)
                             {
-                                SymbolTable.TryDefine(symbol);
+                                var symbolToRegister = ResolveImportSymbol(symbol, name, sourceModuleScope);
+                                SymbolTable.TryDefine(symbolToRegister);
                             }
                         }
                         else
@@ -234,7 +242,11 @@ internal partial class ProjectCompiler
                                 var symbolName = importAlias.AsName ?? importAlias.Name;
                                 if (symbolsToImport.TryGetValue(symbolName, out var symbol))
                                 {
-                                    SymbolTable.TryDefine(symbol);
+                                    var originalName = importAlias.Name;
+                                    var symbolToRegister = importAlias.AsName == null
+                                        ? ResolveImportSymbol(symbol, originalName, sourceModuleScope)
+                                        : symbol;
+                                    SymbolTable.TryDefine(symbolToRegister);
                                 }
                             }
                         }
@@ -299,6 +311,45 @@ internal partial class ProjectCompiler
         // Missing imports produce Unknown types, which prevents cascading errors
         // in the type checker (UnknownType.IsAssignableTo returns true).
         return true;
+    }
+
+    /// <summary>
+    /// For project-internal from-imports, prefer the Phase 3 original symbol over the
+    /// re-exported copy created by ImportResolver. This ensures all modules reference the
+    /// same Symbol instance, so mutations during later phases (e.g., inheritance resolution
+    /// in Phase 4b, return type resolution in Phase 5) are visible everywhere.
+    ///
+    /// First tries the source module scope. If not found there (e.g., transitive imports
+    /// where the source module hasn't been processed yet), searches all module scopes for
+    /// a matching Phase 3 declaration.
+    /// </summary>
+    private Symbol ResolveImportSymbol(Symbol reExported, string originalName, Scope? sourceModuleScope)
+    {
+        // Try direct source module scope first
+        if (sourceModuleScope != null)
+        {
+            var original = sourceModuleScope.Lookup(originalName, searchParent: false);
+            if (original != null)
+                return original;
+        }
+
+        // For transitive imports, the source module may not have been processed yet.
+        // Search all module scopes for the original Phase 3 declaration.
+        if (_projectModel != null)
+        {
+            foreach (var (_, unit) in _projectModel.Units)
+            {
+                var moduleScope = SymbolTable.GetModuleScope(unit.ModulePath);
+                if (moduleScope != null)
+                {
+                    var original = moduleScope.Lookup(originalName, searchParent: false);
+                    if (original != null && original.GetType() == reExported.GetType())
+                        return original;
+                }
+            }
+        }
+
+        return reExported;
     }
 
     /// <summary>

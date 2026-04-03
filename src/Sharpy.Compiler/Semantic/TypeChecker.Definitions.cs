@@ -67,9 +67,10 @@ internal partial class TypeChecker
             }
         }
 
-        // Update the function symbol with resolved types
-        var updatedSymbol = functionSymbol with { ReturnType = returnType };
-        _symbolTable.UpdateSymbol(updatedSymbol);
+        // Mutate the function symbol in-place so that all scopes referencing
+        // this symbol (e.g., importing module scopes) see the updated return type.
+        // Using `with` would create a new record, breaking reference sharing.
+        functionSymbol.ReturnType = returnType;
 
         _symbolTable.ExitScope();
     }
