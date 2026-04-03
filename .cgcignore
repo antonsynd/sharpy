@@ -1,6 +1,10 @@
 # Git
 .git/
 
+*.md
+*.csproj
+*.spyproj
+
 # Build artifacts & .NET output
 **/bin/
 **/obj/
@@ -13,6 +17,7 @@ node_modules/
 
 # Test fixtures (compiled .cs from .spy, not real source)
 src/Sharpy.Compiler.Tests/Integration/TestFixtures/**/*.cs
+src/Sharpy.Playground/wwwroot/
 
 # Dogfood output (generated test sessions)
 dogfood_output/
