@@ -10,6 +10,7 @@ public class SymbolTable
     private readonly Stack<Scope> _scopeStack = new();
     private readonly Scope _globalScope;
     private readonly BuiltinRegistry _builtins;
+    private readonly Dictionary<string, Scope> _moduleScopes = new();
 
     internal SymbolTable(BuiltinRegistry builtins)
     {
@@ -51,6 +52,37 @@ public class SymbolTable
     {
         var newScope = new Scope(name, CurrentScope);
         _scopeStack.Push(newScope);
+    }
+
+    /// <summary>
+    /// Enter (or re-enter) a per-module scope that is a direct child of the global scope.
+    /// Module scopes isolate per-file declarations so that same-named types in different
+    /// modules don't collide. The scope is lazily created on first call and reused on
+    /// subsequent calls for the same module name.
+    /// </summary>
+    public void EnterModuleScope(string moduleName)
+    {
+        if (CurrentScope != _globalScope)
+        {
+            throw new InvalidOperationException(
+                $"EnterModuleScope must be called from the global scope, but current scope is '{CurrentScope.Name}'");
+        }
+
+        if (!_moduleScopes.TryGetValue(moduleName, out var moduleScope))
+        {
+            moduleScope = new Scope($"module:{moduleName}", _globalScope);
+            _moduleScopes[moduleName] = moduleScope;
+        }
+
+        _scopeStack.Push(moduleScope);
+    }
+
+    /// <summary>
+    /// Returns the module scope for the given module name, or null if it hasn't been created yet.
+    /// </summary>
+    public Scope? GetModuleScope(string moduleName)
+    {
+        return _moduleScopes.GetValueOrDefault(moduleName);
     }
 
     public void ExitScope()
