@@ -195,6 +195,7 @@ internal static class SymbolSerializer
             DeclarationColumn = ms.DeclarationColumn,
             DeclarationSpanStart = ms.DeclarationSpan?.Start,
             DeclarationSpanLength = ms.DeclarationSpan?.Length,
+            CanonicalModuleName = ms.CanonicalModuleName,
             ExportIds = ms.Exports.ToDictionary(
                 kvp => kvp.Key,
                 kvp => ComputeSymbolId(kvp.Value, ms.FilePath)),
@@ -442,6 +443,7 @@ internal static class SymbolSerializer
             DeclarationSpan = DeserializeDeclarationSpan(cached),
             DeclaringFilePath = cached.FilePath,
             FilePath = cached.FilePath,
+            CanonicalModuleName = cached.CanonicalModuleName,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)

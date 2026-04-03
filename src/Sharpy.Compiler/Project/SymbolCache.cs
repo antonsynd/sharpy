@@ -127,6 +127,11 @@ internal record CachedSymbol
     public bool IsGenerator { get; init; }
 
     /// <summary>
+    /// For ModuleSymbol: canonical (fully-qualified) module name
+    /// </summary>
+    public string? CanonicalModuleName { get; init; }
+
+    /// <summary>
     /// For ModuleSymbol: exports (symbol IDs)
     /// </summary>
     public Dictionary<string, string>? ExportIds { get; init; }

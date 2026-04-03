@@ -140,6 +140,7 @@ internal partial class ProjectCompiler
                                 FilePath = moduleInfo.Path,
                                 Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
                                 FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                                CanonicalModuleName = moduleInfo.CanonicalModuleName,
                                 Documentation = moduleInfo.Module?.DocString
                                     ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                             };
@@ -159,6 +160,7 @@ internal partial class ProjectCompiler
                             FilePath = moduleInfo.Path,
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                            CanonicalModuleName = moduleInfo.CanonicalModuleName,
                             Documentation = moduleInfo.Module?.DocString
                                 ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                         };

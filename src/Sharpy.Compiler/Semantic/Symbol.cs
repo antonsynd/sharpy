@@ -362,6 +362,12 @@ public record ModuleSymbol : Symbol
     public bool IsNetModule { get; init; } = false;
 
     /// <summary>
+    /// The canonical (fully-qualified) module name (e.g., "package_a.helper").
+    /// Derived from ModuleInfo.CanonicalModuleName during import resolution.
+    /// </summary>
+    public string? CanonicalModuleName { get; init; }
+
+    /// <summary>
     /// The .NET namespace name for CLR namespace modules (e.g., "System" for "system").
     /// Null for Sharpy stdlib modules and non-.NET modules.
     /// </summary>

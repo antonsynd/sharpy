@@ -899,7 +899,7 @@ def main():
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
-    [Fact(Skip = "Requires package namespace isolation (#500) - symbols from different packages currently share the same global scope")]
+    [Fact]
     public void EdgeCase_ImportSameName_FromDifferentPackages_Works()
     {
         var helper = CreateHelper();
@@ -921,8 +921,10 @@ import package_a.helper
 import package_b.helper
 
 def main():
-    val_a = package_a.helper.func()
-    val_b = package_b.helper.func()
+    val_a: int = package_a.helper.func()
+    val_b: int = package_b.helper.func()
+    print(val_a)
+    print(val_b)
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -948,6 +950,74 @@ import level1.level2.level3
 
 def main():
     result = level1.level2.level3.deep_func()
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.Compile();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+    }
+
+    [Fact]
+    public void EdgeCase_ThreeLevelNesting_SameLeafName_Works()
+    {
+        var helper = CreateHelper();
+
+        helper.AddPackage("a", "");
+        helper.AddPackage("a/b", "");
+        helper.AddPackageFile("a/b", "helper.spy", @"
+def func() -> int:
+    return 10
+");
+
+        helper.AddPackage("c", "");
+        helper.AddPackage("c/d", "");
+        helper.AddPackageFile("c/d", "helper.spy", @"
+def func() -> int:
+    return 20
+");
+
+        helper.AddSourceFile("main.spy", @"
+import a.b.helper
+import c.d.helper
+
+def main():
+    val_a: int = a.b.helper.func()
+    val_c: int = c.d.helper.func()
+    print(val_a)
+    print(val_c)
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.Compile();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+    }
+
+    [Fact]
+    public void EdgeCase_SamePackage_TwoModules_SameNamedFunctions_Works()
+    {
+        var helper = CreateHelper();
+
+        helper.AddPackage("mypkg", "");
+        helper.AddPackageFile("mypkg", "mod_a.spy", @"
+def compute() -> int:
+    return 100
+");
+        helper.AddPackageFile("mypkg", "mod_b.spy", @"
+def compute() -> int:
+    return 200
+");
+
+        helper.AddSourceFile("main.spy", @"
+import mypkg.mod_a
+import mypkg.mod_b
+
+def main():
+    a: int = mypkg.mod_a.compute()
+    b: int = mypkg.mod_b.compute()
+    print(a)
+    print(b)
 ");
 
         helper.WithEntryPoint("main.spy");

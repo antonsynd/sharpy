@@ -128,6 +128,7 @@ internal class ImportResolver
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
+                            CanonicalModuleName = moduleInfo.CanonicalModuleName,
                             NetNamespaceName = moduleInfo.NetNamespaceName,
                             Documentation = moduleInfo.Module?.DocString
                                 ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
@@ -148,6 +149,7 @@ internal class ImportResolver
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
+                            CanonicalModuleName = moduleInfo.CanonicalModuleName,
                             NetNamespaceName = moduleInfo.NetNamespaceName,
                             Documentation = moduleInfo.Module?.DocString
                                 ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
