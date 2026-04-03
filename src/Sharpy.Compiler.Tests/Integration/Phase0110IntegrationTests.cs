@@ -1083,4 +1083,44 @@ def main() -> int:
     }
 
     #endregion
+
+    #region Combined Feature Tests
+
+    [Fact]
+    public void Combined_PackageIsolation_WithScopedTypeAliases_Works()
+    {
+        var helper = CreateHelper();
+
+        // Two packages with same-named modules, using function-scoped aliases
+        helper.AddPackage("pkg_a", "");
+        helper.AddPackageFile("pkg_a", "models.spy", @"
+def get_value() -> int:
+    return 1
+");
+
+        helper.AddPackage("pkg_b", "");
+        helper.AddPackageFile("pkg_b", "models.spy", @"
+def get_value() -> int:
+    return 2
+");
+
+        helper.AddSourceFile("main.spy", @"
+import pkg_a.models
+import pkg_b.models
+
+def main():
+    type Result = int
+    a: Result = pkg_a.models.get_value()
+    b: Result = pkg_b.models.get_value()
+    print(a)
+    print(b)
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.Compile();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+    }
+
+    #endregion
 }
