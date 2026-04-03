@@ -124,6 +124,9 @@ internal partial class ProjectCompiler
             // Use unit.FilePath for original path (Units dictionary keys are normalized)
             ImportResolver.SetCurrentModule(unit.FilePath);
 
+            // Enter per-module scope so imported symbols register in the correct scope
+            SymbolTable.EnterModuleScope(unit.ModulePath);
+
             foreach (var statement in unit.Ast.Body)
             {
                 if (statement is ImportStatement import)
@@ -238,6 +241,9 @@ internal partial class ProjectCompiler
                     }
                 }
             }
+
+            // Exit module scope after processing this file's imports
+            SymbolTable.ExitScope();
         }
 
         // Build the dependency graph after all imports are resolved
