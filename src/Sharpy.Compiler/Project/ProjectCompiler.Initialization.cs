@@ -57,6 +57,13 @@ internal partial class ProjectCompiler
 
         foreach (var filePath in _filesToSkip)
         {
+            // Enter the file's module scope so restored symbols register in the correct scope
+            var unit = _projectModel!.GetUnit(filePath);
+            if (unit != null)
+                SymbolTable.EnterModuleScope(unit.ModulePath);
+
+            try
+            {
             if (_incrementalCache.RestoreSymbols(filePath, _restoredSymbols))
             {
                 // Register the restored symbols in the symbol table
@@ -132,6 +139,12 @@ internal partial class ProjectCompiler
                     }
                 }
                 restoredCount++;
+            }
+            }
+            finally
+            {
+                if (unit != null)
+                    SymbolTable.ExitScope();
             }
         }
 
