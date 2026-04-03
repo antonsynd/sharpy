@@ -1,0 +1,14 @@
+type X = int
+
+class Foo:
+    type X = str
+
+    def get_x(self) -> X:
+        return "class"
+
+def main():
+    type X = float
+    f = Foo()
+    print(f.get_x())
+    y: X = 3.14
+    print(y)

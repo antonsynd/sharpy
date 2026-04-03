@@ -1,0 +1,14 @@
+type Number = str
+
+class Calculator:
+    type Number = int
+
+    def compute(self) -> Number:
+        x: Number = 42
+        return x
+
+def main():
+    c = Calculator()
+    print(c.compute())
+    y: Number = "hello"
+    print(y)

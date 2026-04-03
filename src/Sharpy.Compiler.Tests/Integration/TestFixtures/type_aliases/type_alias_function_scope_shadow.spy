@@ -1,0 +1,6 @@
+type Number = str
+
+def main():
+    type Number = int
+    x: Number = 42
+    print(x)
