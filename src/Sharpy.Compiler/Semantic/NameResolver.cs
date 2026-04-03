@@ -90,9 +90,15 @@ internal partial class NameResolver
             cancellationToken.ThrowIfCancellationRequested();
             if (modulePath != null)
                 _symbolTable.EnterModuleScope(modulePath);
-            ResolveClassInheritance(classDef);
-            if (modulePath != null)
-                _symbolTable.ExitScope();
+            try
+            {
+                ResolveClassInheritance(classDef);
+            }
+            finally
+            {
+                if (modulePath != null)
+                    _symbolTable.ExitScope();
+            }
         }
 
         foreach (var (structDef, modulePath) in _structDefs)
@@ -100,9 +106,15 @@ internal partial class NameResolver
             cancellationToken.ThrowIfCancellationRequested();
             if (modulePath != null)
                 _symbolTable.EnterModuleScope(modulePath);
-            ResolveStructInheritance(structDef);
-            if (modulePath != null)
-                _symbolTable.ExitScope();
+            try
+            {
+                ResolveStructInheritance(structDef);
+            }
+            finally
+            {
+                if (modulePath != null)
+                    _symbolTable.ExitScope();
+            }
         }
 
         foreach (var (interfaceDef, modulePath) in _interfaceDefs)
@@ -110,9 +122,15 @@ internal partial class NameResolver
             cancellationToken.ThrowIfCancellationRequested();
             if (modulePath != null)
                 _symbolTable.EnterModuleScope(modulePath);
-            ResolveInterfaceInheritance(interfaceDef);
-            if (modulePath != null)
-                _symbolTable.ExitScope();
+            try
+            {
+                ResolveInterfaceInheritance(interfaceDef);
+            }
+            finally
+            {
+                if (modulePath != null)
+                    _symbolTable.ExitScope();
+            }
         }
 
         DetectCircularInheritance();

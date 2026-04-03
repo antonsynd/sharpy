@@ -39,7 +39,8 @@ internal sealed class TypeHierarchyIndex
         // from a different compilation context are resolved to the same instance.
         var nameToSymbol = new Dictionary<string, TypeSymbol>(StringComparer.Ordinal);
         var allSymbols = symbolTable.GlobalScope.GetAllSymbols()
-            .Concat(symbolTable.GetAllModuleScopeSymbols());
+            .Concat(symbolTable.GetAllModuleScopeSymbols())
+            .ToList();
         foreach (var sym in allSymbols.OfType<TypeSymbol>())
         {
             nameToSymbol.TryAdd(sym.Name, sym);

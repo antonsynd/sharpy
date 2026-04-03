@@ -46,21 +46,25 @@ internal partial class ProjectCompiler
             // Enter per-module scope so each file's declarations are isolated
             SymbolTable.EnterModuleScope(unit.ModulePath);
             _sharedNameResolver.SetCurrentModulePath(unit.ModulePath);
+            try
+            {
+                // Only collect declarations - don't resolve inheritance yet
+                // The NameResolver.ResolveDeclarations() method registers type names
+                // and stores ClassDef/StructDef/InterfaceDef in internal lists
+                _sharedNameResolver.ResolveDeclarations(unit.Ast, cancellationToken);
 
-            // Only collect declarations - don't resolve inheritance yet
-            // The NameResolver.ResolveDeclarations() method registers type names
-            // and stores ClassDef/StructDef/InterfaceDef in internal lists
-            _sharedNameResolver.ResolveDeclarations(unit.Ast, cancellationToken);
+                // Capture the module scope on the CompilationUnit for later phases
+                unit.ModuleScope = SymbolTable.CurrentScope;
 
-            // Capture the module scope on the CompilationUnit for later phases
-            unit.ModuleScope = SymbolTable.CurrentScope;
-
-            // Update phase
-            unit.Phase = CompilationPhase.NamesResolved;
-
-            // Exit module scope and clear module path
-            SymbolTable.ExitScope();
-            _sharedNameResolver.SetCurrentModulePath(null);
+                // Update phase
+                unit.Phase = CompilationPhase.NamesResolved;
+            }
+            finally
+            {
+                // Exit module scope and clear module path
+                SymbolTable.ExitScope();
+                _sharedNameResolver.SetCurrentModulePath(null);
+            }
         }
 
         // NOTE: Inheritance resolution is now done in ResolveInheritanceRelationships()
@@ -126,30 +130,52 @@ internal partial class ProjectCompiler
 
             // Enter per-module scope so imported symbols register in the correct scope
             SymbolTable.EnterModuleScope(unit.ModulePath);
-
-            foreach (var statement in unit.Ast.Body)
+            try
             {
-                if (statement is ImportStatement import)
+
+                foreach (var statement in unit.Ast.Body)
                 {
-                    var modules = ImportResolver.ResolveImport(import, config.ProjectDirectory);
-
-                    // Match each resolved module with its import alias to get the correct name/alias
-                    for (int i = 0; i < import.Names.Length && i < modules.Count; i++)
+                    if (statement is ImportStatement import)
                     {
-                        var importAlias = import.Names[i];
-                        var moduleInfo = modules[i];
+                        var modules = ImportResolver.ResolveImport(import, config.ProjectDirectory);
 
-                        // Skip failed imports (null entries maintain positional alignment)
-                        if (moduleInfo == null)
-                            continue;
-
-                        // Handle aliased imports (import x as y)
-                        if (importAlias.AsName != null)
+                        // Match each resolved module with its import alias to get the correct name/alias
+                        for (int i = 0; i < import.Names.Length && i < modules.Count; i++)
                         {
-                            // Create a single ModuleSymbol with the alias name
-                            var aliasedModule = new ModuleSymbol
+                            var importAlias = import.Names[i];
+                            var moduleInfo = modules[i];
+
+                            // Skip failed imports (null entries maintain positional alignment)
+                            if (moduleInfo == null)
+                                continue;
+
+                            // Handle aliased imports (import x as y)
+                            if (importAlias.AsName != null)
                             {
-                                Name = importAlias.AsName,
+                                // Create a single ModuleSymbol with the alias name
+                                var aliasedModule = new ModuleSymbol
+                                {
+                                    Name = importAlias.AsName,
+                                    Kind = SymbolKind.Module,
+                                    FilePath = moduleInfo.Path,
+                                    Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
+                                    FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                                    CanonicalModuleName = moduleInfo.CanonicalModuleName,
+                                    Documentation = moduleInfo.Module?.DocString
+                                        ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
+                                };
+                                SymbolTable.TryDefine(aliasedModule);
+                                continue;
+                            }
+
+                            // Handle non-aliased imports by building nested module structure
+                            // For "import lib.math", we need lib -> math -> (exports)
+                            var parts = importAlias.Name.Split('.');
+
+                            // Create the leaf module with actual exports
+                            var leafModule = new ModuleSymbol
+                            {
+                                Name = parts[^1], // Last part (e.g., "math")
                                 Kind = SymbolKind.Module,
                                 FilePath = moduleInfo.Path,
                                 Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
@@ -158,104 +184,88 @@ internal partial class ProjectCompiler
                                 Documentation = moduleInfo.Module?.DocString
                                     ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                             };
-                            SymbolTable.TryDefine(aliasedModule);
-                            continue;
-                        }
 
-                        // Handle non-aliased imports by building nested module structure
-                        // For "import lib.math", we need lib -> math -> (exports)
-                        var parts = importAlias.Name.Split('.');
-
-                        // Create the leaf module with actual exports
-                        var leafModule = new ModuleSymbol
-                        {
-                            Name = parts[^1], // Last part (e.g., "math")
-                            Kind = SymbolKind.Module,
-                            FilePath = moduleInfo.Path,
-                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
-                            FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
-                            CanonicalModuleName = moduleInfo.CanonicalModuleName,
-                            Documentation = moduleInfo.Module?.DocString
-                                ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
-                        };
-
-                        // Build nested structure from inside out
-                        ModuleSymbol currentModule = leafModule;
-                        for (int j = parts.Length - 2; j >= 0; j--)
-                        {
-                            var parentModule = new ModuleSymbol
+                            // Build nested structure from inside out
+                            ModuleSymbol currentModule = leafModule;
+                            for (int j = parts.Length - 2; j >= 0; j--)
                             {
-                                Name = parts[j],
-                                Kind = SymbolKind.Module,
-                                FilePath = "", // Parent modules don't have their own file
-                                Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } }
-                            };
-                            currentModule = parentModule;
-                        }
+                                var parentModule = new ModuleSymbol
+                                {
+                                    Name = parts[j],
+                                    Kind = SymbolKind.Module,
+                                    FilePath = "", // Parent modules don't have their own file
+                                    Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } }
+                                };
+                                currentModule = parentModule;
+                            }
 
-                        // Register the root module (or merge with existing if it exists)
-                        var rootName = parts[0];
-                        var existingSymbol = SymbolTable.Lookup(rootName, searchParents: false);
-                        if (existingSymbol is ModuleSymbol existingModule)
-                        {
-                            // Merge: add the new nested exports to the existing module
-                            MergeModuleExports(existingModule, currentModule);
-                        }
-                        else
-                        {
-                            SymbolTable.TryDefine(currentModule);
-                        }
-                    }
-                }
-                else if (statement is FromImportStatement fromImport)
-                {
-                    var moduleInfo = ImportResolver.ResolveFromImport(fromImport, config.ProjectDirectory);
-                    if (moduleInfo != null)
-                    {
-                        // Use ReExportedSymbols which have DefiningModule set for cross-module type references
-                        // This is populated by ImportResolver.ResolveFromImport via CreateReExportSymbol
-                        // Check SemanticBinding first, then fall back to AST property for backward compatibility
-                        var reExportedSymbols = _projectModel!.SemanticBinding.GetReExportedSymbols(fromImport)
-                                                ?? fromImport.ReExportedSymbols;
-                        var symbolsToImport = reExportedSymbols ?? moduleInfo.ExportedSymbols;
-
-                        // For project-internal from-imports of TYPE symbols, prefer the Phase 3
-                        // original over the re-exported copy. This ensures all modules reference
-                        // the same TypeSymbol, so inheritance info set in Phase 4b is visible
-                        // everywhere. Function symbols use re-exported copies because the TypeChecker
-                        // updates them via record `with` expressions that create new instances.
-                        var sourceModuleScope = SymbolTable.GetModuleScope(fromImport.Module);
-
-                        // Add specific imported symbols (skip if already defined from project files)
-                        if (fromImport.ImportAll)
-                        {
-                            foreach (var (name, symbol) in symbolsToImport)
+                            // Register the root module (or merge with existing if it exists)
+                            var rootName = parts[0];
+                            var existingSymbol = SymbolTable.Lookup(rootName, searchParents: false);
+                            if (existingSymbol is ModuleSymbol existingModule)
                             {
-                                var symbolToRegister = ResolveImportSymbol(symbol, name, sourceModuleScope);
-                                SymbolTable.TryDefine(symbolToRegister);
+                                // Merge: add the new nested exports to the existing module
+                                MergeModuleExports(existingModule, currentModule);
+                            }
+                            else
+                            {
+                                SymbolTable.TryDefine(currentModule);
                             }
                         }
-                        else
+                    }
+                    else if (statement is FromImportStatement fromImport)
+                    {
+                        var moduleInfo = ImportResolver.ResolveFromImport(fromImport, config.ProjectDirectory);
+                        if (moduleInfo != null)
                         {
-                            foreach (var importAlias in fromImport.Names)
+                            // Use ReExportedSymbols which have DefiningModule set for cross-module type references
+                            // This is populated by ImportResolver.ResolveFromImport via CreateReExportSymbol
+                            // Check SemanticBinding first, then fall back to AST property for backward compatibility
+                            var reExportedSymbols = _projectModel!.SemanticBinding.GetReExportedSymbols(fromImport)
+                                                    ?? fromImport.ReExportedSymbols;
+                            var symbolsToImport = reExportedSymbols ?? moduleInfo.ExportedSymbols;
+
+                            // For project-internal from-imports of TYPE symbols, prefer the Phase 3
+                            // original over the re-exported copy. This ensures all modules reference
+                            // the same TypeSymbol, so inheritance info set in Phase 4b is visible
+                            // everywhere. Function symbols use re-exported copies because the TypeChecker
+                            // updates them via record `with` expressions that create new instances.
+                            var sourceModuleScope = SymbolTable.GetModuleScope(fromImport.Module);
+
+                            // Add specific imported symbols (skip if already defined from project files)
+                            if (fromImport.ImportAll)
                             {
-                                var symbolName = importAlias.AsName ?? importAlias.Name;
-                                if (symbolsToImport.TryGetValue(symbolName, out var symbol))
+                                foreach (var (name, symbol) in symbolsToImport)
                                 {
-                                    var originalName = importAlias.Name;
-                                    var symbolToRegister = importAlias.AsName == null
-                                        ? ResolveImportSymbol(symbol, originalName, sourceModuleScope)
-                                        : symbol;
+                                    var symbolToRegister = ResolveImportSymbol(symbol, name, sourceModuleScope);
                                     SymbolTable.TryDefine(symbolToRegister);
+                                }
+                            }
+                            else
+                            {
+                                foreach (var importAlias in fromImport.Names)
+                                {
+                                    var symbolName = importAlias.AsName ?? importAlias.Name;
+                                    if (symbolsToImport.TryGetValue(symbolName, out var symbol))
+                                    {
+                                        var originalName = importAlias.Name;
+                                        var symbolToRegister = importAlias.AsName == null
+                                            ? ResolveImportSymbol(symbol, originalName, sourceModuleScope)
+                                            : symbol;
+                                        SymbolTable.TryDefine(symbolToRegister);
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // Exit module scope after processing this file's imports
-            SymbolTable.ExitScope();
+            }
+            finally
+            {
+                // Exit module scope after processing this file's imports
+                SymbolTable.ExitScope();
+            }
         }
 
         // Build the dependency graph after all imports are resolved
