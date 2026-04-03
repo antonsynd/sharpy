@@ -13,10 +13,11 @@ internal partial class NameResolver
     private readonly ICompilerLogger _logger;
     private readonly SemanticBinding _semanticBinding;
     private readonly DiagnosticBag _diagnostics = new();
-    private readonly List<ClassDef> _classDefs = new();
-    private readonly List<StructDef> _structDefs = new();
-    private readonly List<InterfaceDef> _interfaceDefs = new();
+    private readonly List<(ClassDef Def, string? ModulePath)> _classDefs = new();
+    private readonly List<(StructDef Def, string? ModulePath)> _structDefs = new();
+    private readonly List<(InterfaceDef Def, string? ModulePath)> _interfaceDefs = new();
     private string? _currentFilePath;
+    private string? _currentModulePath;
 
     public NameResolver(SymbolTable symbolTable, ICompilerLogger? logger = null, SemanticBinding? semanticBinding = null)
     {
@@ -33,6 +34,16 @@ internal partial class NameResolver
     public void SetCurrentFilePath(string? filePath)
     {
         _currentFilePath = filePath;
+    }
+
+    /// <summary>
+    /// Set the current module path for tracking which module each type belongs to.
+    /// Used by ProjectCompiler to associate type definitions with their module scope
+    /// so that inheritance resolution enters the correct scope.
+    /// </summary>
+    public void SetCurrentModulePath(string? modulePath)
+    {
+        _currentModulePath = modulePath;
     }
 
     /// <summary>
@@ -74,22 +85,34 @@ internal partial class NameResolver
     {
         _logger.LogInfo("Starting name resolution pass 2: Inheritance relationships");
 
-        foreach (var classDef in _classDefs)
+        foreach (var (classDef, modulePath) in _classDefs)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (modulePath != null)
+                _symbolTable.EnterModuleScope(modulePath);
             ResolveClassInheritance(classDef);
+            if (modulePath != null)
+                _symbolTable.ExitScope();
         }
 
-        foreach (var structDef in _structDefs)
+        foreach (var (structDef, modulePath) in _structDefs)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (modulePath != null)
+                _symbolTable.EnterModuleScope(modulePath);
             ResolveStructInheritance(structDef);
+            if (modulePath != null)
+                _symbolTable.ExitScope();
         }
 
-        foreach (var interfaceDef in _interfaceDefs)
+        foreach (var (interfaceDef, modulePath) in _interfaceDefs)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (modulePath != null)
+                _symbolTable.EnterModuleScope(modulePath);
             ResolveInterfaceInheritance(interfaceDef);
+            if (modulePath != null)
+                _symbolTable.ExitScope();
         }
 
         DetectCircularInheritance();
@@ -101,47 +124,77 @@ internal partial class NameResolver
     private void DetectCircularInheritance()
     {
         // Check class base-type chains for cycles
-        foreach (var classDef in _classDefs)
+        foreach (var (classDef, modulePath) in _classDefs)
         {
-            var typeSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
-            if (typeSymbol == null)
-                continue;
-
-            var visited = new HashSet<string>();
-            var current = typeSymbol;
-            while (current != null)
+            if (modulePath != null)
+                _symbolTable.EnterModuleScope(modulePath);
+            try
             {
-                if (!visited.Add(current.Name))
+                var typeSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
+                if (typeSymbol == null)
+                    continue;
+
+                var visited = new HashSet<string>();
+                var current = typeSymbol;
+                while (current != null)
                 {
-                    // Found a cycle - build the chain for the error message
-                    var chain = string.Join(" -> ", visited) + " -> " + current.Name;
-                    AddError($"Circular inheritance detected: {chain}",
-                        classDef.LineStart, classDef.ColumnStart,
-                        code: DiagnosticCodes.Semantic.CircularInheritance, span: classDef.Span);
-                    break;
+                    if (!visited.Add(current.Name))
+                    {
+                        // Found a cycle - build the chain for the error message
+                        var chain = string.Join(" -> ", visited) + " -> " + current.Name;
+                        AddError($"Circular inheritance detected: {chain}",
+                            classDef.LineStart, classDef.ColumnStart,
+                            code: DiagnosticCodes.Semantic.CircularInheritance, span: classDef.Span);
+                        break;
+                    }
+                    current = _semanticBinding.GetBaseType(current);
                 }
-                current = _semanticBinding.GetBaseType(current);
+            }
+            finally
+            {
+                if (modulePath != null)
+                    _symbolTable.ExitScope();
             }
         }
 
         // Check struct base-type chains for cycles (structs only implement interfaces)
-        foreach (var structDef in _structDefs)
+        foreach (var (structDef, modulePath) in _structDefs)
         {
-            var typeSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
-            if (typeSymbol == null)
-                continue;
+            if (modulePath != null)
+                _symbolTable.EnterModuleScope(modulePath);
+            try
+            {
+                var typeSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
+                if (typeSymbol == null)
+                    continue;
 
-            DetectInterfaceCycleForType(typeSymbol, structDef.LineStart, structDef.ColumnStart, structDef.Span);
+                DetectInterfaceCycleForType(typeSymbol, structDef.LineStart, structDef.ColumnStart, structDef.Span);
+            }
+            finally
+            {
+                if (modulePath != null)
+                    _symbolTable.ExitScope();
+            }
         }
 
         // Check interface chains for cycles
-        foreach (var interfaceDef in _interfaceDefs)
+        foreach (var (interfaceDef, modulePath) in _interfaceDefs)
         {
-            var typeSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
-            if (typeSymbol == null)
-                continue;
+            if (modulePath != null)
+                _symbolTable.EnterModuleScope(modulePath);
+            try
+            {
+                var typeSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
+                if (typeSymbol == null)
+                    continue;
 
-            DetectInterfaceCycle(typeSymbol, interfaceDef);
+                DetectInterfaceCycle(typeSymbol, interfaceDef);
+            }
+            finally
+            {
+                if (modulePath != null)
+                    _symbolTable.ExitScope();
+            }
         }
     }
 

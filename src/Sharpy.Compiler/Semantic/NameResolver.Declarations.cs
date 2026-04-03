@@ -90,7 +90,7 @@ internal partial class NameResolver
         _symbolTable.Define(typeSymbol);
 
         // Store for second pass (inheritance resolution)
-        _classDefs.Add(classDef);
+        _classDefs.Add((classDef, _currentModulePath));
 
         // Enter class scope to resolve members
         _symbolTable.EnterScope($"class:{classDef.Name}");
@@ -167,7 +167,7 @@ internal partial class NameResolver
         _symbolTable.Define(typeSymbol);
 
         // Store for second pass (inheritance resolution)
-        _structDefs.Add(structDef);
+        _structDefs.Add((structDef, _currentModulePath));
 
         _symbolTable.EnterScope($"struct:{structDef.Name}");
 
@@ -243,7 +243,7 @@ internal partial class NameResolver
         _symbolTable.Define(typeSymbol);
 
         // Store for second pass (inheritance resolution)
-        _interfaceDefs.Add(interfaceDef);
+        _interfaceDefs.Add((interfaceDef, _currentModulePath));
 
         _symbolTable.EnterScope($"interface:{interfaceDef.Name}");
 
