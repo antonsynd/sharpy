@@ -1,3 +1,7 @@
 class Config:
     def get_id(self) -> int:
         return 2
+
+def make_config() -> int:
+    c = Config()
+    return c.get_id()
