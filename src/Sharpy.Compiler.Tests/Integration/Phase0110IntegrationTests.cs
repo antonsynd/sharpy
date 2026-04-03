@@ -1167,4 +1167,342 @@ def main():
     }
 
     #endregion
+
+    #region Cross-Package Same-Named Type Tests (#512)
+
+    [Fact]
+    public void CrossPackage_SameNamedClass_Works()
+    {
+        var helper = CreateHelper();
+        helper.WithRootNamespace("CrossPkgClassTest");
+
+        helper.AddPackage("pkg_a", "");
+        helper.AddPackageFile("pkg_a", "helper.spy", @"
+class Config:
+    def get_id(self) -> int:
+        return 1
+
+def make_config() -> int:
+    c = Config()
+    return c.get_id()
+");
+
+        helper.AddPackage("pkg_b", "");
+        helper.AddPackageFile("pkg_b", "helper.spy", @"
+class Config:
+    def get_id(self) -> int:
+        return 2
+
+def make_config() -> int:
+    c = Config()
+    return c.get_id()
+");
+
+        helper.AddSourceFile("main.spy", @"
+import pkg_a.helper
+import pkg_b.helper
+
+def main():
+    print(pkg_a.helper.make_config())
+    print(pkg_b.helper.make_config())
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.CompileAndExecute();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("1\n2\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void CrossPackage_SameNamedStruct_Works()
+    {
+        var helper = CreateHelper();
+        helper.WithRootNamespace("CrossPkgStructTest");
+
+        helper.AddPackage("pkg_a", "");
+        helper.AddPackageFile("pkg_a", "helper.spy", @"
+struct Config:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def get_id(self) -> int:
+        return 1
+
+def make_config() -> int:
+    c = Config(10)
+    return c.get_id()
+");
+
+        helper.AddPackage("pkg_b", "");
+        helper.AddPackageFile("pkg_b", "helper.spy", @"
+struct Config:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def get_id(self) -> int:
+        return 2
+
+def make_config() -> int:
+    c = Config(20)
+    return c.get_id()
+");
+
+        helper.AddSourceFile("main.spy", @"
+import pkg_a.helper
+import pkg_b.helper
+
+def main():
+    print(pkg_a.helper.make_config())
+    print(pkg_b.helper.make_config())
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.CompileAndExecute();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("1\n2\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void CrossPackage_SameNamedEnum_Works()
+    {
+        var helper = CreateHelper();
+        helper.WithRootNamespace("CrossPkgEnumTest");
+
+        helper.AddPackage("pkg_a", "");
+        helper.AddPackageFile("pkg_a", "helper.spy", @"
+enum Color:
+    RED = 0
+    GREEN = 1
+
+def get_first_name() -> str:
+    c: Color = Color.RED
+    return c.name
+");
+
+        helper.AddPackage("pkg_b", "");
+        helper.AddPackageFile("pkg_b", "helper.spy", @"
+enum Color:
+    BLUE = 0
+    YELLOW = 1
+
+def get_first_name() -> str:
+    c: Color = Color.BLUE
+    return c.name
+");
+
+        helper.AddSourceFile("main.spy", @"
+import pkg_a.helper
+import pkg_b.helper
+
+def main():
+    print(pkg_a.helper.get_first_name())
+    print(pkg_b.helper.get_first_name())
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.CompileAndExecute();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("Red\nBlue\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void CrossPackage_SameNamedInterface_Works()
+    {
+        var helper = CreateHelper();
+        helper.WithRootNamespace("CrossPkgInterfaceTest");
+
+        helper.AddPackage("pkg_a", "");
+        helper.AddPackageFile("pkg_a", "helper.spy", @"
+interface Identifiable:
+    def get_id(self) -> int: ...
+
+class Widget(Identifiable):
+    def get_id(self) -> int:
+        return 1
+
+def make_widget() -> int:
+    w = Widget()
+    return w.get_id()
+");
+
+        helper.AddPackage("pkg_b", "");
+        helper.AddPackageFile("pkg_b", "helper.spy", @"
+interface Identifiable:
+    def get_id(self) -> int: ...
+
+class Widget(Identifiable):
+    def get_id(self) -> int:
+        return 2
+
+def make_widget() -> int:
+    w = Widget()
+    return w.get_id()
+");
+
+        helper.AddSourceFile("main.spy", @"
+import pkg_a.helper
+import pkg_b.helper
+
+def main():
+    print(pkg_a.helper.make_widget())
+    print(pkg_b.helper.make_widget())
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.CompileAndExecute();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("1\n2\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void CrossPackage_MixedTypes_SameName_Works()
+    {
+        var helper = CreateHelper();
+        helper.WithRootNamespace("CrossPkgMixedTest");
+
+        helper.AddPackage("pkg_a", "");
+        helper.AddPackageFile("pkg_a", "helper.spy", @"
+class Config:
+    def get_id(self) -> int:
+        return 1
+
+def make_config() -> int:
+    c = Config()
+    return c.get_id()
+");
+
+        helper.AddPackage("pkg_b", "");
+        helper.AddPackageFile("pkg_b", "helper.spy", @"
+struct Config:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def get_id(self) -> int:
+        return 2
+
+def make_config() -> int:
+    c = Config(10)
+    return c.get_id()
+");
+
+        helper.AddSourceFile("main.spy", @"
+import pkg_a.helper
+import pkg_b.helper
+
+def main():
+    print(pkg_a.helper.make_config())
+    print(pkg_b.helper.make_config())
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.CompileAndExecute();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("1\n2\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void FromImport_SameNamedType_FirstWins()
+    {
+        // NOTE: Python uses "last import wins" semantics, but TryDefine uses "first wins".
+        // The first from-import of 'Config' registers in the importing module's scope;
+        // subsequent imports of the same name are silently skipped.
+        // TODO(#512): Consider implementing Python's "last wins" shadowing semantics.
+        var helper = CreateHelper();
+        helper.WithRootNamespace("FromImportShadowTest");
+
+        helper.AddPackage("pkg_a", "");
+        helper.AddPackageFile("pkg_a", "helper.spy", @"
+class Config:
+    def get_id(self) -> int:
+        return 1
+");
+
+        helper.AddPackage("pkg_b", "");
+        helper.AddPackageFile("pkg_b", "helper.spy", @"
+class Config:
+    def get_id(self) -> int:
+        return 2
+");
+
+        helper.AddSourceFile("main.spy", @"
+from pkg_a.helper import Config
+from pkg_b.helper import Config
+
+def main():
+    c = Config()
+    print(c.get_id())
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.CompileAndExecute();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        // First import wins (TryDefine semantics) — pkg_a's Config is used
+        Assert.Equal("1\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void CrossPackage_SameNamedTypes_WithInheritance_Works()
+    {
+        var helper = CreateHelper();
+        helper.WithRootNamespace("CrossPkgInheritanceTest");
+
+        helper.AddPackage("pkg_a", "");
+        helper.AddPackageFile("pkg_a", "helper.spy", @"
+class Base:
+    def get_id(self) -> int:
+        return 1
+
+class Derived(Base):
+    def get_label(self) -> str:
+        return 'a'
+
+def test_derived() -> str:
+    d = Derived()
+    return str(d.get_id()) + d.get_label()
+");
+
+        helper.AddPackage("pkg_b", "");
+        helper.AddPackageFile("pkg_b", "helper.spy", @"
+class Base:
+    def get_id(self) -> int:
+        return 2
+
+class Derived(Base):
+    def get_label(self) -> str:
+        return 'b'
+
+def test_derived() -> str:
+    d = Derived()
+    return str(d.get_id()) + d.get_label()
+");
+
+        helper.AddSourceFile("main.spy", @"
+import pkg_a.helper
+import pkg_b.helper
+
+def main():
+    print(pkg_a.helper.test_derived())
+    print(pkg_b.helper.test_derived())
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.CompileAndExecute();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("1a\n2b\n", result.StandardOutput);
+    }
+
+    #endregion
 }

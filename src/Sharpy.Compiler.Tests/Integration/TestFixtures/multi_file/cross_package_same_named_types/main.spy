@@ -1,5 +1,8 @@
-from pkg_a.helper import Config
+from pkg_a.helper import Config as ConfigA
+from pkg_b.helper import Config as ConfigB
 
 def main():
-    c = Config()
-    print(c.get_id())
+    a = ConfigA()
+    b = ConfigB()
+    print(a.get_id())
+    print(b.get_id())
