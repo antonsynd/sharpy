@@ -1,0 +1,3 @@
+class Config:
+    def get_id(self) -> int:
+        return 1
