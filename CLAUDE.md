@@ -11,6 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Quick Reference
 
+> **Prerequisites:** .NET 10 SDK (`net10.0` TFM). Python 3.9+ for `build_tools/`.
+
 ```bash
 dotnet build sharpy.sln                              # Build all
 dotnet test                                          # Run all tests
@@ -173,7 +175,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 18 partial classes (~14,540 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
+The `RoslynEmitter` is split into 18 partial classes (~14,845 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -455,6 +457,8 @@ code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
 the codebase.** The graph is faster, cheaper (fewer tokens), and gives
 you structural context (callers, dependents, test coverage) that file
 scanning cannot.
+
+> **Note:** The code-review-graph MCP server is configured in `.mcp.json`. If it is not connected in the current session, fall back to Serena and CodeGraphContext for structural queries, or Grep/Glob for text search.
 
 ### When to use graph tools FIRST
 
