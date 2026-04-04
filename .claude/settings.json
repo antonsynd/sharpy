@@ -6,24 +6,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "code-review-graph update --quiet",
+            "command": "code-review-graph update 2>/dev/null",
             "timeout": 5000
           }
         ]
       }
     ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "code-review-graph status --json",
-            "timeout": 3000
-          }
-        ]
-      }
-    ],
-    "PreCommit": [
+    "Stop": [
       {
         "hooks": [
           {
