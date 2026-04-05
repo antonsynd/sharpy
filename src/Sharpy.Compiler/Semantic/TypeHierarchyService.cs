@@ -95,6 +95,15 @@ internal static class TypeHierarchyService
                 return true;
         }
 
+        // CLR fallback: when both symbols have CLR type metadata (e.g., module-discovered types
+        // like StringIO and TextWriter), use reflection to check inheritance. This covers cases
+        // where BaseType isn't set on TypeSymbols created from CLR discovery.
+        if (derived.ClrType != null && baseType.ClrType != null)
+        {
+            if (baseType.ClrType.IsAssignableFrom(derived.ClrType))
+                return true;
+        }
+
         return false;
     }
 

@@ -227,7 +227,7 @@ internal class CachedModuleDiscovery
             })
             .ToList();
 
-        return new TypeSymbol
+        var typeSymbol = new TypeSymbol
         {
             Name = typeInfo.Name,
             Kind = SymbolKind.Type,
@@ -241,6 +241,18 @@ internal class CachedModuleDiscovery
             Properties = properties,
             Documentation = typeInfo.Documentation
         };
+
+        // Populate MethodOverloads for methods that share the same name
+        // (e.g., StringIO.write(char) and write(string) after extending TextWriter).
+        var overloadGroups = typeSymbol.Methods
+            .GroupBy(m => m.Name)
+            .Where(g => g.Count() > 1);
+        foreach (var group in overloadGroups)
+        {
+            typeSymbol.MethodOverloads[group.Key] = group.ToList();
+        }
+
+        return typeSymbol;
     }
 
     /// <summary>

@@ -724,6 +724,7 @@ internal class ImportResolver
             TypeParameters = originalType.TypeParameters,
             Fields = originalType.Fields,
             Methods = originalType.Methods,
+            MethodOverloads = originalType.MethodOverloads,
             Properties = originalType.Properties,
             OperatorMethods = originalType.OperatorMethods,
             ProtocolMethods = originalType.ProtocolMethods,

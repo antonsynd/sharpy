@@ -299,6 +299,19 @@ internal partial class TypeChecker
             }
         }
 
+        // CLR fallback: when both types have CLR metadata (e.g., module-discovered types like
+        // StringIO and TextWriter that may be different SemanticType subtypes), use reflection
+        // to check inheritance. This covers cross-subtype assignability that the standard
+        // IsAssignableTo checks miss.
+        // Note: BuiltinType.ClrType uses 'new' (not override), so we must access it through
+        // the concrete type to get the actual CLR type.
+        var sourceClr = source.ClrType ?? source.DeclaringSymbol?.ClrType
+            ?? (source is BuiltinType sb ? sb.ClrType : null);
+        var targetClr = target.ClrType ?? target.DeclaringSymbol?.ClrType
+            ?? (target is BuiltinType tb ? tb.ClrType : null);
+        if (sourceClr != null && targetClr != null && targetClr.IsAssignableFrom(sourceClr))
+            return true;
+
         return false;
     }
 

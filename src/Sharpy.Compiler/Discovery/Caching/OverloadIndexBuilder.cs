@@ -182,11 +182,24 @@ internal class OverloadIndexBuilder
             .Where(m => !ExcludedObjectMethods.Contains(m.Name))
             .ToList();
 
+        // Collect names of methods declared directly on this type (including overrides and
+        // 'new' methods). Inherited methods with the same mangled name are excluded so that
+        // e.g. TextWriter.Write(char) doesn't shadow StringIO.Write(string) after mangling.
+        var declaredNames = new HashSet<string>(
+            type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(m => !m.IsSpecialName)
+                .Select(m => GetFunctionName(m)));
+
         var methodGroups = methods.GroupBy(m => GetFunctionName(m));
 
         foreach (var group in methodGroups)
         {
-            foreach (var method in group)
+            // When the type declares its own methods with this name, skip inherited ones
+            var relevantMethods = declaredNames.Contains(group.Key)
+                ? group.Where(m => m.DeclaringType == type)
+                : group;
+
+            foreach (var method in relevantMethods)
             {
                 try
                 {

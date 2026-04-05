@@ -1,17 +1,22 @@
 using System;
+using System.IO;
 using System.Text;
 
 namespace Sharpy
 {
     /// <summary>
     /// In-memory text stream using a string buffer, similar to Python's io.StringIO.
+    /// Extends TextWriter so it can be used anywhere a TextWriter is expected (e.g., csv module).
     /// </summary>
     [SharpyModuleType("io")]
-    public sealed class StringIO : IDisposable
+    public sealed class StringIO : TextWriter
     {
         private StringBuilder _buffer;
         private int _position;
         private bool _closed;
+
+        /// <inheritdoc />
+        public override Encoding Encoding => Encoding.UTF8;
 
         /// <summary>
         /// Create a new StringIO instance with optional initial content.
@@ -25,12 +30,42 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Write a single character to the buffer at the current position.
+        /// This override satisfies the TextWriter contract.
+        /// </summary>
+        public override void Write(char value)
+        {
+            ThrowIfClosed();
+
+            if (_position == _buffer.Length)
+            {
+                _buffer.Append(value);
+            }
+            else if (_position > _buffer.Length)
+            {
+                int padding = _position - _buffer.Length;
+                _buffer.Append(new string('\0', padding));
+                _buffer.Append(value);
+            }
+            else
+            {
+                _buffer[_position] = value;
+            }
+
+            _position++;
+        }
+
+        /// <summary>
         /// Write a string to the buffer at the current position.
+        /// Returns the number of characters written (Python semantics).
+        /// Hides the base TextWriter.Write(string?) which returns void.
+        /// When called through a TextWriter reference, the base Write(string?) delegates
+        /// to Write(char) which correctly updates the buffer.
         /// </summary>
         /// <param name="s">The string to write.</param>
         /// <returns>The number of characters written.</returns>
         /// <exception cref="ValueError">Thrown if the stream is closed.</exception>
-        public int Write(string s)
+        public new int Write(string s)
         {
             ThrowIfClosed();
             if (s == null)
@@ -193,17 +228,17 @@ namespace Sharpy
         /// <summary>
         /// Mark the stream as closed. Further operations will raise ValueError.
         /// </summary>
-        public void Close()
+        public override void Close()
         {
             _closed = true;
+            base.Close();
         }
 
-        /// <summary>
-        /// Dispose the StringIO, marking it as closed.
-        /// </summary>
-        public void Dispose()
+        /// <inheritdoc />
+        protected override void Dispose(bool disposing)
         {
-            Close();
+            _closed = true;
+            base.Dispose(disposing);
         }
 
         private void ThrowIfClosed()
