@@ -96,6 +96,12 @@ internal class ImportResolver
         _cancellationToken = cancellationToken;
         _logger.LogInfo("Starting import resolution");
         var importCount = 0;
+        // Tracks which module each symbol name was imported from, used only by
+        // from-imports. Plain `import` statements register a ModuleSymbol whose
+        // name is the module itself, so name collisions are module-vs-module (handled
+        // by SymbolTable.TryDefine). From-imports pull individual symbols into the
+        // current scope, where the same name can arrive from different modules —
+        // importedSymbolSources detects that conflict and emits a diagnostic.
         var importedSymbolSources = new Dictionary<string, string>();
 
         foreach (var statement in module.Body)
