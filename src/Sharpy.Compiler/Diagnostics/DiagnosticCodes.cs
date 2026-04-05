@@ -354,6 +354,9 @@ public static class DiagnosticCodes
         public const string SelfOutsideClass = "SPY0384";
         public const string SelfInStaticMethod = "SPY0385";
 
+        // Builtin call errors (SPY0386+)
+        public const string UnsupportedTypeNone = "SPY0386";           // Active
+
         #endregion
     }
 

@@ -1,1 +1,0 @@
-type(None) should produce a compile error per spec (#506)

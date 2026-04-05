@@ -53,6 +53,16 @@ internal partial class TypeChecker
             return CheckIifeLambdaCall(call, iifeLambda);
         }
 
+        // type(None) has no Sharpy equivalent — NoneType is not a real type
+        if (call.Function is Identifier { Name: "type" } && call.Arguments.Length == 1
+            && call.Arguments[0] is NoneLiteral)
+        {
+            AddError("type(None) is not supported; NoneType has no Sharpy equivalent",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UnsupportedTypeNone,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+
         // Check if this is a null conditional method call (obj?.method())
         bool isNullConditionalCall = call.Function is MemberAccess { IsNullConditional: true };
         bool isOptionalNullConditional = false;

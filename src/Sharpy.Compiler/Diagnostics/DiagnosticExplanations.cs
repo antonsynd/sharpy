@@ -1022,6 +1022,13 @@ public static class DiagnosticExplanations
             "class Foo:\n    @static\n    def create() -> Self:\n        ...",
             "Use the concrete class name instead:\nclass Foo:\n    @static\n    def create() -> Foo:\n        return Foo()");
 
+        // ── Semantic errors: Builtin call errors (SPY0386+) ─────────────
+
+        Add(dict, DiagnosticCodes.Semantic.UnsupportedTypeNone, "type(None) is not supported", "Semantic",
+            "Python's type(None) returns <class 'NoneType'>, but NoneType has no Sharpy equivalent. None in Sharpy is a null literal, not an instance of a type.",
+            "x = type(None)",
+            "Use a type annotation or isinstance() check instead of type(None).");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",
