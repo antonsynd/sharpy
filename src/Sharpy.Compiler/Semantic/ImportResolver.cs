@@ -714,7 +714,7 @@ internal class ImportResolver
         _logger.LogDebug($"[ImportResolver]   New DefiningModule: {definingModule}");
         _logger.LogDebug($"[ImportResolver]   FromImport.Module: {fromImport.Module}");
 
-        return new TypeSymbol
+        var reExported = new TypeSymbol
         {
             Name = effectiveName,
             Kind = originalType.Kind,
@@ -740,6 +740,21 @@ internal class ImportResolver
             OriginalModule = fromImport.Module,
             DefiningModule = definingModule
         };
+
+        // When the type is aliased (effectiveName != originalType.Name), store the original
+        // name so code generation uses the correct C# type name (e.g., "Config" not "Cfg").
+        if (!string.Equals(effectiveName, originalType.Name, StringComparison.Ordinal))
+        {
+            reExported.CodeGenInfo = new CodeGenInfo
+            {
+                CSharpName = NameMangler.ToPascalCase(originalType.Name),
+                OriginalName = effectiveName,
+                ImportKind = ImportKind.FromImportWithAlias,
+                OriginalImportName = originalType.Name
+            };
+        }
+
+        return reExported;
     }
 
     /// <summary>

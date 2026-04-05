@@ -1,0 +1,5 @@
+from helper import Config as Cfg
+
+def main():
+    c: Cfg = Cfg("test_config")
+    print(c.get_name())

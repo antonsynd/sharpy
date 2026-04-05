@@ -93,8 +93,11 @@ internal partial class RoslynEmitter
 
             if (isTypeInstantiation && symbol is TypeSymbol typeSymbolForName)
             {
-                // For type instantiation, use fully qualified name if type is from another file
-                var name = GetFullyQualifiedTypeName(typeSymbolForName, funcName.Name);
+                // For type instantiation, use fully qualified name if type is from another file.
+                // For aliased imports (e.g., "from helper import Config as Cfg"), resolve the
+                // original type name so we generate "Helper.Config", not "Helper.Cfg".
+                var originalTypeName = typeSymbolForName.CodeGenInfo?.OriginalImportName ?? funcName.Name;
+                var name = GetFullyQualifiedTypeName(typeSymbolForName, originalTypeName);
 
                 // For generic types called without explicit type arguments (e.g., set(), Cell(42)),
                 // use the resolved expression type to supply type arguments.

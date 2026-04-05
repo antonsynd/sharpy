@@ -422,20 +422,26 @@ internal class TypeSyntaxMapper
         var typeSymbol = _context.SymbolTable.LookupType(sharpyTypeName);
         if (typeSymbol != null)
         {
+            // For aliased imports, resolve the original type name for code generation.
+            // E.g., "from helper import Config as Cfg" should generate "Helper.Config", not "Helper.Cfg".
+            var codeGenInfo = _context.SemanticBinding.GetCodeGenInfo(typeSymbol)
+                ?? typeSymbol.CodeGenInfo;
+            var resolvedName = codeGenInfo?.OriginalImportName ?? sharpyTypeName;
+
             // Check if type is from a different file (cross-file reference in same project)
             if (!string.IsNullOrEmpty(typeSymbol.DefiningFilePath) &&
                 !string.IsNullOrEmpty(_context.SourceFilePath) &&
                 !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
             {
                 // Type from another file - use fully qualified name
-                return GetFullyQualifiedTypeName(typeSymbol, sharpyTypeName);
+                return GetFullyQualifiedTypeName(typeSymbol, resolvedName);
             }
 
             // Check if type is from an external module (imported)
             if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
             {
                 // Type from another module - use fully qualified name
-                return GetFullyQualifiedTypeName(typeSymbol, sharpyTypeName);
+                return GetFullyQualifiedTypeName(typeSymbol, resolvedName);
             }
 
             // Type is in current scope (user-defined in current file) - use simple name
@@ -574,23 +580,31 @@ internal class TypeSyntaxMapper
 
     /// <summary>
     /// Maps a UserDefinedType to its fully qualified C# name, using the Symbol if available.
+    /// For aliased imports (e.g., "from pkg import Config as Cfg"), uses the original type
+    /// name from the Symbol rather than the alias from the UserDefinedType.
     /// </summary>
     private string GetMappedTypeNameFromSymbol(UserDefinedType udt)
     {
         if (udt.Symbol != null)
         {
+            // Use OriginalImportName for aliased imports, otherwise Symbol.Name.
+            // This ensures "from pkg import Config as Cfg" generates "Pkg.Config", not "Pkg.Cfg".
+            var codeGenInfo = _context.SemanticBinding.GetCodeGenInfo(udt.Symbol)
+                ?? udt.Symbol.CodeGenInfo;
+            var originalName = codeGenInfo?.OriginalImportName ?? udt.Symbol.Name;
+
             // Check if type is from a different file (cross-file reference)
             if (!string.IsNullOrEmpty(udt.Symbol.DefiningFilePath) &&
                 !string.IsNullOrEmpty(_context.SourceFilePath) &&
                 !string.Equals(udt.Symbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
             {
-                return GetFullyQualifiedTypeName(udt.Symbol, udt.Name);
+                return GetFullyQualifiedTypeName(udt.Symbol, originalName);
             }
 
             // Check if type is from an external module (imported)
             if (!string.IsNullOrEmpty(udt.Symbol.DefiningModule))
             {
-                return GetFullyQualifiedTypeName(udt.Symbol, udt.Name);
+                return GetFullyQualifiedTypeName(udt.Symbol, originalName);
             }
         }
 
