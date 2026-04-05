@@ -235,7 +235,9 @@ z = x + y
         Assert.NotEmpty(functions1);
         Assert.Equal(functions1.Count, functions2.Count);
 
-        // First call may include JIT/init overhead — only assert on cached call
+        // First call timing is non-deterministic due to JIT/CLR init; first-call assertion
+        // removed because no stable threshold exists for CI environments. The cached-call
+        // assertion below is stable.
         Assert.True(secondWatch.ElapsedMilliseconds < 50,
             $"Cached retrieval took {secondWatch.ElapsedMilliseconds}ms");
     }
