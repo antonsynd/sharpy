@@ -1,0 +1,3 @@
+class Helper:
+    def greet(self) -> str:
+        return "hello from B"

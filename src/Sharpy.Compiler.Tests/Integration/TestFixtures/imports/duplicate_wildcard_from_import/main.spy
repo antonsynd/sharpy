@@ -1,0 +1,6 @@
+from mod_a import *
+from mod_b import *
+
+def main():
+    h = Helper()
+    print(h.greet())
