@@ -528,6 +528,16 @@ public class NameManglerTests
 
     #endregion
 
+    #region Underscore-Digit Suffix Tests
+
+    [Fact]
+    public void ToPascalCase_UnderscoreDigitSuffix_StripsUnderscore()
+    {
+        Assert.Equal("X1", NameMangler.ToPascalCase("x_1"));
+    }
+
+    #endregion
+
     #region Edge Cases
 
     [Fact]

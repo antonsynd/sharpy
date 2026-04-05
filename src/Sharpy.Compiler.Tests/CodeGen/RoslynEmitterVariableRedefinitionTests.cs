@@ -504,6 +504,7 @@ public class RoslynEmitterVariableRedefinitionTests
         // Since x_1 is mangled to x1 (camelCase removes underscore),
         // and the generated versioned name is x_1 (underscore preserved),
         // there is NO collision. This tests that the naming is correct.
+        // Note: depends on NameMangler.ToPascalCase("x_1") -> "X1" (see NameManglerTests).
         var func = new FunctionDef
         {
             Name = "test_collision",
