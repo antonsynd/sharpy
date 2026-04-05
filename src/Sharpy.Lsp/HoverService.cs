@@ -285,7 +285,8 @@ public sealed class HoverService
                         ?? (Symbol?)analysis.SymbolTable?.LookupType(typeAlias.Name);
                     if (aliasSymbol != null)
                         return SymbolFormatter.FormatSymbolWithDocs(aliasSymbol);
-                    break;
+                    // Fallback for scoped aliases not in SymbolTable
+                    return FormatTypeAliasFromAst(typeAlias);
                 }
 
             // Keyword expression hover
@@ -508,6 +509,31 @@ public sealed class HoverService
             return null;
         var typeSymbol = analysis.SymbolTable?.LookupType(typeName);
         return typeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldName);
+    }
+
+    private static string FormatTypeAliasFromAst(TypeAlias typeAlias)
+    {
+        var typeName = typeAlias.Type != null
+            ? FormatTypeAnnotationName(typeAlias.Type)
+            : typeAlias.FunctionType != null
+                ? FormatFunctionTypeName(typeAlias.FunctionType)
+                : "unknown";
+        return $"```sharpy\n(type alias) {typeAlias.Name} = {typeName}\n```";
+    }
+
+    private static string FormatTypeAnnotationName(TypeAnnotation type)
+    {
+        if (type.TypeArguments.Length == 0)
+            return type.Name;
+        var args = string.Join(", ", type.TypeArguments.Select(FormatTypeAnnotationName));
+        return $"{type.Name}[{args}]";
+    }
+
+    private static string FormatFunctionTypeName(Compiler.Parser.Ast.FunctionType funcType)
+    {
+        var paramTypes = string.Join(", ", funcType.ParameterTypes.Select(FormatTypeAnnotationName));
+        var returnType = FormatTypeAnnotationName(funcType.ReturnType);
+        return $"({paramTypes}) -> {returnType}";
     }
 
     internal static bool IsPositionInRange(int line, int col, int startLine, int startCol, int endLine, int endCol)

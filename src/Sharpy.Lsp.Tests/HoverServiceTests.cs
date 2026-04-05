@@ -233,4 +233,53 @@ public class HoverServiceTests
         hover.Should().Contain("AsyncConn");
         hover.Should().NotContain("Task");
     }
+
+    // --- #511: Type alias hover ---
+
+    [Fact]
+    public void GetHoverMarkdown_OverModuleLevelTypeAlias_ReturnsAliasInfo()
+    {
+        var source = "type MyInt = int\ndef main():\n    pass";
+        var result = _api.Analyze(source);
+
+        // Line 1: "type MyInt = int"
+        // 'MyInt' starts at col 6
+        var hover = _hoverService.GetHoverMarkdown(result, 1, 6);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("type alias");
+        hover.Should().Contain("MyInt");
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OverClassScopedTypeAlias_ReturnsAliasInfo()
+    {
+        var source = "class Foo:\n    type Alias = int\n    x: Alias = 0\ndef main():\n    pass";
+        var result = _api.Analyze(source);
+
+        // Line 2: "    type Alias = int"
+        // 'Alias' starts at col 10
+        var hover = _hoverService.GetHoverMarkdown(result, 2, 10);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("type alias");
+        hover.Should().Contain("Alias");
+        hover.Should().Contain("int");
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OverFunctionScopedTypeAlias_ReturnsAliasInfo()
+    {
+        var source = "def main():\n    type LocalAlias = str\n    x: LocalAlias = \"hi\"";
+        var result = _api.Analyze(source);
+
+        // Line 2: "    type LocalAlias = str"
+        // 'LocalAlias' starts at col 10
+        var hover = _hoverService.GetHoverMarkdown(result, 2, 10);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("type alias");
+        hover.Should().Contain("LocalAlias");
+        hover.Should().Contain("str");
+    }
 }
