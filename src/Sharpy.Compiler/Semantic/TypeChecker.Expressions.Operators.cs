@@ -91,6 +91,21 @@ internal partial class TypeChecker
         }
 
         // Case 2: x |> f - right side is an identifier or expression that should be callable
+        // Pre-check: if right side is an identifier that resolves to a TypeSymbol, emit the
+        // constructor-pipe error immediately. CheckExpression returns UnknownType for non-primitive
+        // TypeSymbols, which would hide this case behind a silent early return.
+        if (binOp.Right is Identifier preId)
+        {
+            var preSymbol = _symbolTable.Lookup(preId.Name);
+            if (preSymbol is TypeSymbol)
+            {
+                AddError($"Piping to constructors is not yet supported",
+                    binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget,
+                    span: binOp.Right.Span);
+                return SemanticType.Unknown;
+            }
+        }
+
         var rightType = CheckExpression(binOp.Right);
 
         if (rightType is UnknownType)

@@ -1,1 +1,0 @@
-Pipe to constructor passes semantic analysis but should produce compile error (#505)
