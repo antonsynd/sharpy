@@ -1596,7 +1596,10 @@ internal partial class RoslynEmitter
             {
                 var identifiers = tuple.Elements.Cast<Identifier>().ToList();
 
-                // Register all tuple element variables BEFORE generating body
+                // Register all tuple element variables BEFORE generating body.
+                // For-loop variables are always new declarations in the loop scope —
+                // no need to check _variableVersions existence unlike the assignment
+                // tuple unpacking path which must distinguish new vs existing variables.
                 foreach (var id in identifiers)
                 {
                     var name = NameMangler.ToCamelCase(id.Name);
