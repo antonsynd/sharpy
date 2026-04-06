@@ -29,8 +29,8 @@ Return the factorial of n. Raises ValueError if n is negative or OverflowExcepti
 
 **Raises:**
 
-- `ValueError` -- Thrown if  is negative.
-- `OverflowException` -- Thrown if  is greater than 20.
+- `ValueError` -- Thrown if *n* is negative.
+- `OverflowException` -- Thrown if *n* is greater than 20.
 
 ### `math.lcm(a: long, b: long) -> long`
 
@@ -50,7 +50,7 @@ Return the number of ways to choose k items from n items without repetition and 
 
 **Raises:**
 
-- `ValueError` -- Thrown if  or  is negative.
+- `ValueError` -- Thrown if *n* or *k* is negative.
 
 ### `math.perm(n: int, k: int) -> long`
 
@@ -59,7 +59,7 @@ If k is not specified, then k defaults to n and the function returns n!.
 
 **Raises:**
 
-- `ValueError` -- Thrown if  or  is negative.
+- `ValueError` -- Thrown if *n* or *k* is negative.
 
 ### `math.perm(n: int) -> long`
 
@@ -89,7 +89,7 @@ Return the ceiling of x, the smallest integer greater than or equal to x.
 
 - `x` (float) -- The value to ceil.
 
-**Returns:** The smallest integer greater than or equal to .
+**Returns:** The smallest integer greater than or equal to *x*.
 
 ```python
 math.ceil(3.2)    # 4.0
@@ -97,9 +97,9 @@ math.ceil(-0.5)   # 0.0
 ```
 
 !!! note
-    Unlike Python's math.ceil which returns int,
-    Sharpy returns double to match .NET's
-    (Axiom 1: .NET compatibility). Cast to int if needed: int(math.ceil(x)).
+    Unlike Python's `math.ceil` which returns `int`,
+    Sharpy returns `double` to match .NET's `System.Math.Ceiling(double)`
+    (Axiom 1: .NET compatibility). Cast to int if needed: `int(math.ceil(x))`.
 
 ### `math.floor(x: float) -> float`
 
@@ -109,7 +109,7 @@ Return the floor of x, the largest integer less than or equal to x.
 
 - `x` (float) -- The value to floor.
 
-**Returns:** The largest integer less than or equal to .
+**Returns:** The largest integer less than or equal to *x*.
 
 ```python
 math.floor(3.7)    # 3.0
@@ -117,9 +117,9 @@ math.floor(-0.5)   # -1.0
 ```
 
 !!! note
-    Unlike Python's math.floor which returns int,
-    Sharpy returns double to match .NET's
-    (Axiom 1: .NET compatibility). Cast to int if needed: int(math.floor(x)).
+    Unlike Python's `math.floor` which returns `int`,
+    Sharpy returns `double` to match .NET's `System.Math.Floor(double)`
+    (Axiom 1: .NET compatibility). Cast to int if needed: `int(math.floor(x))`.
 
 ### `math.fabs(x: float) -> float`
 
@@ -129,7 +129,7 @@ Return the absolute value of x as a float.
 
 - `x` (float) -- The value
 
-**Returns:** The absolute value of
+**Returns:** The absolute value of *x*
 
 ### `math.copysign(x: float, y: float) -> float`
 
@@ -140,7 +140,7 @@ Return x with the sign of y.
 - `x` (float) -- The magnitude
 - `y` (float) -- The value whose sign is used
 
-**Returns:** with the sign of
+**Returns:** *x* with the sign of *y*
 
 ### `math.sqrt(x: float) -> float`
 
@@ -150,7 +150,7 @@ Return the square root of x.
 
 - `x` (float) -- The value to compute the square root of.
 
-**Returns:** The square root of .
+**Returns:** The square root of *x*.
 
 ```python
 math.sqrt(16.0)    # 4.0
@@ -166,7 +166,7 @@ Return x raised to the power y.
 - `x` (float) -- The base.
 - `y` (float) -- The exponent.
 
-**Returns:** raised to the power .
+**Returns:** *x* raised to the power *y*.
 
 ### `math.exp(x: float) -> float`
 
@@ -176,7 +176,7 @@ Return e raised to the power x.
 
 - `x` (float) -- The exponent.
 
-**Returns:** e raised to the power .
+**Returns:** e raised to the power *x*.
 
 ### `math.log(x: float) -> float`
 
@@ -186,7 +186,7 @@ Return the natural logarithm of x (to base e).
 
 - `x` (float) -- The value.
 
-**Returns:** The natural logarithm of .
+**Returns:** The natural logarithm of *x*.
 
 ### `math.log(x: float, base_value: float) -> float`
 
@@ -197,7 +197,7 @@ Return the logarithm of x to the given base.
 - `x` (float) -- The value.
 - `base_value` (float)
 
-**Returns:** The logarithm of  to base .
+**Returns:** The logarithm of *x* to base *baseValue*.
 
 ### `math.log10(x: float) -> float`
 
@@ -207,7 +207,7 @@ Return the base-10 logarithm of x.
 
 - `x` (float) -- The value.
 
-**Returns:** The base-10 logarithm of .
+**Returns:** The base-10 logarithm of *x*.
 
 ### `math.log2(x: float) -> float`
 
@@ -217,7 +217,7 @@ Return the base-2 logarithm of x.
 
 - `x` (float) -- The value.
 
-**Returns:** The base-2 logarithm of .
+**Returns:** The base-2 logarithm of *x*.
 
 ### `math.sin(x: float) -> float`
 
@@ -227,7 +227,7 @@ Return the sine of x radians.
 
 - `x` (float) -- The angle in radians.
 
-**Returns:** The sine of .
+**Returns:** The sine of *x*.
 
 ### `math.cos(x: float) -> float`
 
@@ -237,7 +237,7 @@ Return the cosine of x radians.
 
 - `x` (float) -- The angle in radians.
 
-**Returns:** The cosine of .
+**Returns:** The cosine of *x*.
 
 ### `math.tan(x: float) -> float`
 
@@ -247,7 +247,7 @@ Return the tangent of x radians.
 
 - `x` (float) -- The angle in radians.
 
-**Returns:** The tangent of .
+**Returns:** The tangent of *x*.
 
 ### `math.asin(x: float) -> float`
 
@@ -257,7 +257,7 @@ Return the arc sine of x, in radians.
 
 - `x` (float) -- The value.
 
-**Returns:** The arc sine of  in radians.
+**Returns:** The arc sine of *x* in radians.
 
 ### `math.acos(x: float) -> float`
 
@@ -267,7 +267,7 @@ Return the arc cosine of x, in radians.
 
 - `x` (float) -- The value.
 
-**Returns:** The arc cosine of  in radians.
+**Returns:** The arc cosine of *x* in radians.
 
 ### `math.atan(x: float) -> float`
 
@@ -277,7 +277,7 @@ Return the arc tangent of x, in radians.
 
 - `x` (float) -- The value.
 
-**Returns:** The arc tangent of  in radians.
+**Returns:** The arc tangent of *x* in radians.
 
 ### `math.atan2(y: float, x: float) -> float`
 
@@ -288,7 +288,7 @@ Return the arc tangent of y/x, in radians.
 - `y` (float) -- The y coordinate.
 - `x` (float) -- The x coordinate.
 
-**Returns:** The arc tangent of / in radians.
+**Returns:** The arc tangent of *y*/*x* in radians.
 
 ### `math.sinh(x: float) -> float`
 
@@ -298,7 +298,7 @@ Return the hyperbolic sine of x.
 
 - `x` (float) -- The value.
 
-**Returns:** The hyperbolic sine of .
+**Returns:** The hyperbolic sine of *x*.
 
 ### `math.cosh(x: float) -> float`
 
@@ -308,7 +308,7 @@ Return the hyperbolic cosine of x.
 
 - `x` (float) -- The value.
 
-**Returns:** The hyperbolic cosine of .
+**Returns:** The hyperbolic cosine of *x*.
 
 ### `math.tanh(x: float) -> float`
 
@@ -318,7 +318,7 @@ Return the hyperbolic tangent of x.
 
 - `x` (float) -- The value.
 
-**Returns:** The hyperbolic tangent of .
+**Returns:** The hyperbolic tangent of *x*.
 
 ### `math.degrees(x: float) -> float`
 
@@ -348,7 +348,7 @@ Return True if x is neither an infinity nor a NaN, and False otherwise.
 
 - `x` (float) -- The value to check.
 
-**Returns:** true if  is finite; otherwise false.
+**Returns:** `true` if *x* is finite; otherwise `false`.
 
 ### `math.isinf(x: float) -> bool`
 
@@ -358,7 +358,7 @@ Return True if x is a positive or negative infinity, and False otherwise.
 
 - `x` (float) -- The value to check.
 
-**Returns:** true if  is infinite; otherwise false.
+**Returns:** `true` if *x* is infinite; otherwise `false`.
 
 ### `math.isnan(x: float) -> bool`
 
@@ -368,7 +368,7 @@ Return True if x is a NaN (not a number), and False otherwise.
 
 - `x` (float) -- The value to check.
 
-**Returns:** true if  is NaN; otherwise false.
+**Returns:** `true` if *x* is NaN; otherwise `false`.
 
 ### `math.trunc(x: float) -> float`
 
@@ -378,7 +378,7 @@ Return the integer part of x, removing all fractional digits.
 
 - `x` (float) -- The value to truncate.
 
-**Returns:** The integer part of .
+**Returns:** The integer part of *x*.
 
 ### `math.expm1(x: float) -> float`
 
@@ -388,7 +388,7 @@ Return e raised to the power x, minus 1. Accurate for small x.
 
 - `x` (float) -- The exponent.
 
-**Returns:** e raised to the power , minus 1.
+**Returns:** e raised to the power *x*, minus 1.
 
 ### `math.log1p(x: float) -> float`
 
@@ -398,11 +398,11 @@ Return the natural logarithm of 1+x (base e). Accurate for small x.
 
 - `x` (float) -- The value (must be greater than -1).
 
-**Returns:** The natural logarithm of 1 + .
+**Returns:** The natural logarithm of 1 + *x*.
 
 **Raises:**
 
-- `ValueError` -- Thrown if  is less than or equal to -1.
+- `ValueError` -- Thrown if *x* is less than or equal to -1.
 
 ### `math.remainder(x: float, y: float) -> float`
 
@@ -413,8 +413,8 @@ Return the IEEE 754-style remainder of x with respect to y.
 - `x` (float) -- The dividend.
 - `y` (float) -- The divisor.
 
-**Returns:** The IEEE 754-style remainder of  / .
+**Returns:** The IEEE 754-style remainder of *x* / *y*.
 
 **Raises:**
 
-- `ValueError` -- Thrown if  is zero.
+- `ValueError` -- Thrown if *y* is zero.

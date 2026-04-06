@@ -227,20 +227,24 @@ def _parse_xml_doc(lines: list[str]) -> dict:
 
     result: dict = {}
 
+    def _inner_xml(el: ElementTree.Element) -> str:
+        """Get inner XML content of an element, preserving child tags."""
+        parts = [el.text or ""]
+        for child in el:
+            # tostring() includes the child's tail text automatically
+            parts.append(ElementTree.tostring(child, encoding="unicode"))
+        return "".join(parts)
+
     # Summary
     summary_el = root.find("summary")
     if summary_el is not None:
-        result["summary"] = _strip_xml_tags(
-            ElementTree.tostring(summary_el, encoding="unicode", method="text") or ""
-        ).strip()
+        result["summary"] = _strip_xml_tags(_inner_xml(summary_el)).strip()
 
     # Parameters
     params = []
     for param_el in root.findall("param"):
         name = param_el.get("name", "")
-        desc = _strip_xml_tags(
-            ElementTree.tostring(param_el, encoding="unicode", method="text") or ""
-        ).strip()
+        desc = _strip_xml_tags(_inner_xml(param_el)).strip()
         params.append((name, desc))
     if params:
         result["params"] = params
@@ -248,9 +252,7 @@ def _parse_xml_doc(lines: list[str]) -> dict:
     # Returns
     returns_el = root.find("returns")
     if returns_el is not None:
-        result["returns"] = _strip_xml_tags(
-            ElementTree.tostring(returns_el, encoding="unicode", method="text") or ""
-        ).strip()
+        result["returns"] = _strip_xml_tags(_inner_xml(returns_el)).strip()
 
     # Example
     example_el = root.find("example")
@@ -264,17 +266,13 @@ def _parse_xml_doc(lines: list[str]) -> dict:
     # Remarks
     remarks_el = root.find("remarks")
     if remarks_el is not None:
-        result["remarks"] = _strip_xml_tags(
-            ElementTree.tostring(remarks_el, encoding="unicode", method="text") or ""
-        ).strip()
+        result["remarks"] = _strip_xml_tags(_inner_xml(remarks_el)).strip()
 
     # Exceptions
     exceptions = []
     for exc_el in root.findall("exception"):
         cref = exc_el.get("cref", "")
-        desc = _strip_xml_tags(
-            ElementTree.tostring(exc_el, encoding="unicode", method="text") or ""
-        ).strip()
+        desc = _strip_xml_tags(_inner_xml(exc_el)).strip()
         exceptions.append((cref, desc))
     if exceptions:
         result["exceptions"] = exceptions
@@ -283,9 +281,7 @@ def _parse_xml_doc(lines: list[str]) -> dict:
     typeparams = []
     for tp_el in root.findall("typeparam"):
         name = tp_el.get("name", "")
-        desc = _strip_xml_tags(
-            ElementTree.tostring(tp_el, encoding="unicode", method="text") or ""
-        ).strip()
+        desc = _strip_xml_tags(_inner_xml(tp_el)).strip()
         typeparams.append((name, desc))
     if typeparams:
         result["typeparams"] = typeparams

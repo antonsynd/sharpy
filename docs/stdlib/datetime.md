@@ -24,8 +24,8 @@ import datetime
 | `second` | `int` | The second component (0-59). |
 | `days` | `int` | The days component of the time interval. |
 | `seconds` | `int` | Gets the seconds component (0-59) of the time interval, not the total number of seconds.
-This matches the behavior of Python's timedelta.seconds property.
-For the total number of seconds, use . |
+This matches the behavior of Python's `timedelta.seconds` property.
+For the total number of seconds, use `TotalSeconds`. |
 | `total_seconds` | `float` | The total number of seconds represented by this timedelta. |
 
 ## Functions
@@ -34,7 +34,7 @@ For the total number of seconds, use . |
 
 Return the current local date.
 
-**Returns:** A  representing today.
+**Returns:** A `Date` representing today.
 
 ```python
 d = date.today()
@@ -45,7 +45,7 @@ print(d)    # "2024-01-15"
 
 Return the current local datetime.
 
-**Returns:** A  representing the current local date and time.
+**Returns:** A `DateTime` representing the current local date and time.
 
 ```python
 dt = datetime.now()
@@ -65,7 +65,7 @@ Combine a date and a time to create a datetime.
 - `date` (Date) -- The date component.
 - `time` (Time) -- The time component.
 
-**Returns:** A new  combining the date and time.
+**Returns:** A new `DateTime` combining the date and time.
 
 ```python
 d = date(2024, 1, 15)

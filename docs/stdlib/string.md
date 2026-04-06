@@ -13,7 +13,7 @@ import string
 |------|------|-------------|
 | `ascii_lowercase` | `str` | The lowercase letters 'abcdefghijklmnopqrstuvwxyz'. |
 | `ascii_uppercase` | `str` | The uppercase letters 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'. |
-| `ascii_letters` | `str` | The concatenation of  and . |
+| `ascii_letters` | `str` | The concatenation of `ascii_lowercase` and `ascii_uppercase`. |
 | `digits` | `str` | The string '0123456789'. |
 | `hexdigits` | `str` | The string '0123456789abcdefABCDEF'. |
 | `octdigits` | `str` | The string '01234567'. |
@@ -22,5 +22,5 @@ in the C locale: !"#$%&'()*+,-./:;?@[\]^_`{|}~ |
 | `whitespace` | `str` | A string containing whitespace characters: space, tab, linefeed,
 return, formfeed, and vertical tab. |
 | `printable` | `str` | String of ASCII characters which are considered printable.
-This is a combination of , ,
-, and . |
+This is a combination of `digits`, `ascii_letters`,
+`punctuation`, and `whitespace`. |

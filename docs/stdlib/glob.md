@@ -1,7 +1,7 @@
 # glob
 
 Unix-style pathname pattern expansion, similar to Python's glob module.
-Supports *, ?, [seq], and ** patterns.
+Supports `*`, `?`, `[seq]`, and `**` patterns.
 
 ```python
 import glob
@@ -12,7 +12,7 @@ import glob
 ### `glob.glob(pattern: str) -> list[str]`
 
 Return a sorted list of pathnames matching a pathname pattern.
-Similar to Python's glob.glob().
+Similar to Python's `glob.glob()`.
 
 **Parameters:**
 
@@ -28,9 +28,9 @@ glob.glob("src/[ab]*.py")   # files starting with a or b
 
 ### `glob.iglob(pattern: str) -> Iterable[str]`
 
-Return an iterator which yields the same values as 
+Return an iterator which yields the same values as `Glob`
 without actually storing them all simultaneously.
-Similar to Python's glob.iglob().
+Similar to Python's `glob.iglob()`.
 
 **Parameters:**
 
@@ -41,8 +41,8 @@ Similar to Python's glob.iglob().
 ### `glob.escape(pathname: str) -> str`
 
 Escape all special characters in a pathname.
-Similar to Python's glob.escape().
-Special characters *, ?, and [ are escaped
+Similar to Python's `glob.escape()`.
+Special characters `*`, `?`, and `[` are escaped
 by wrapping them in brackets.
 
 **Parameters:**

@@ -1,7 +1,7 @@
 # csv
 
 Reads CSV data and maps each row to a dictionary keyed by field names,
-similar to Python's csv.DictReader.
+similar to Python's `csv.DictReader`.
 
 ```python
 import csv
@@ -26,7 +26,7 @@ Create a CSV reader from an enumerable of lines.
 
 - `lines` (Iterable[str]) -- An enumerable of CSV lines to parse.
 
-**Returns:** A  that iterates over parsed rows.
+**Returns:** A `CsvReader` that iterates over parsed rows.
 
 ### `csv.writer(output: System.IO.TextWriter) -> CsvWriter`
 
@@ -36,7 +36,7 @@ Create a CSV writer that writes to a TextWriter.
 
 - `output` (System.IO.TextWriter) -- The output writer to write CSV data to.
 
-**Returns:** A  for writing CSV rows.
+**Returns:** A `CsvWriter` for writing CSV rows.
 
 ### `csv.dict_reader(lines: Iterable[str], fieldnames: list[str]? = null) -> CsvDictReader`
 
@@ -47,7 +47,7 @@ Create a CSV DictReader from an enumerable of lines.
 - `lines` (Iterable[str]) -- An enumerable of CSV lines to parse.
 - `fieldnames` (list[str]?) -- Optional field names. If null, the first row is used as field names.
 
-**Returns:** A  that iterates over parsed rows as dictionaries.
+**Returns:** A `CsvDictReader` that iterates over parsed rows as dictionaries.
 
 ### `csv.dict_writer(output: System.IO.TextWriter, fieldnames: list[str]) -> CsvDictWriter`
 
@@ -58,17 +58,17 @@ Create a CSV DictWriter that writes to a TextWriter.
 - `output` (System.IO.TextWriter) -- The output writer to write CSV data to.
 - `fieldnames` (list[str]) -- The field names determining column order.
 
-**Returns:** A  for writing CSV rows as dictionaries.
+**Returns:** A `CsvDictWriter` for writing CSV rows as dictionaries.
 
 ## csv
 
 Reads CSV data and maps each row to a dictionary keyed by field names,
-similar to Python's csv.DictReader.
+similar to Python's `csv.DictReader`.
 
 ## csv
 
 Writes CSV data from dictionaries keyed by field names,
-similar to Python's csv.DictWriter.
+similar to Python's `csv.DictWriter`.
 
 ### `writeheader()`
 

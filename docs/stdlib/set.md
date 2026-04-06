@@ -1,6 +1,6 @@
 # set
 
-A mutable set of unique elements, similar to Python's set.
+A mutable set of unique elements, similar to Python's `set`.
 Supports set operations: union, intersection, difference, and symmetric difference.
 
 ## Properties
@@ -31,7 +31,7 @@ Returns whether this set is a proper subset of other (subset but not equal).
 
 - `other` (set[T]) -- The set to compare against
 
-**Returns:** true if this set is a proper subset of
+**Returns:** `true` if this set is a proper subset of *other*
 
 ### `is_subset(other: set[T]) -> bool`
 
@@ -41,7 +41,7 @@ Returns whether this set is a subset of other (all elements in other).
 
 - `other` (set[T]) -- The set to compare against.
 
-**Returns:** true if every element in this set is also in .
+**Returns:** `true` if every element in this set is also in *other*.
 
 ```python
 a = {1, 2}
@@ -57,7 +57,7 @@ Returns whether this set is a proper superset of other (superset but not equal).
 
 - `other` (set[T]) -- The set to compare against
 
-**Returns:** true if this set is a proper superset of
+**Returns:** `true` if this set is a proper superset of *other*
 
 ### `is_superset(other: set[T]) -> bool`
 
@@ -67,7 +67,7 @@ Returns whether this set is a superset of other (contains all elements of other)
 
 - `other` (set[T]) -- The set to compare against.
 
-**Returns:** true if every element in  is also in this set.
+**Returns:** `true` if every element in *other* is also in this set.
 
 ```python
 a = {1, 2, 3}
@@ -226,7 +226,7 @@ Returns whether the item is in the set.
 
 - `x` (T) -- The element to check for.
 
-**Returns:** true if the element is found; otherwise false.
+**Returns:** `true` if the element is found; otherwise `false`.
 
 ```python
 s = {1, 2, 3}
@@ -242,7 +242,7 @@ Returns whether this set has no elements in common with other.
 
 - `other` (set[T]) -- The set to test against.
 
-**Returns:** true if the sets have no common elements.
+**Returns:** `true` if the sets have no common elements.
 
 ```python
 a = {1, 2}

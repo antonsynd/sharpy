@@ -1,6 +1,6 @@
 # re
 
-Wraps a .NET  with Python-compatible API.
+Wraps a .NET `System.Text.RegularExpressions.Match` with Python-compatible API.
 
 ```python
 import re
@@ -106,7 +106,7 @@ Scan through string looking for the first location where the pattern produces a 
 - `s` (str) -- The string to search.
 - `flags` (int) -- Optional regex flags (e.g., re.IGNORECASE).
 
-**Returns:** A match object, or null if no match is found.
+**Returns:** A match object, or `null` if no match is found.
 
 ```python
 m = re.search(r"\d+", "abc123")
@@ -123,7 +123,7 @@ Try to apply the pattern at the start of the string.
 - `s` (str) -- The string to match against.
 - `flags` (int) -- Optional regex flags.
 
-**Returns:** A match object, or null if the pattern does not match at the start.
+**Returns:** A match object, or `null` if the pattern does not match at the start.
 
 ```python
 m = re.match(r"\d+", "123abc")

@@ -13,7 +13,7 @@ Functions available without any import.
 ### `abs(x: int) -> int`
 
 Return the absolute value of a number.
-Python: abs(x)
+Python: `abs(x)`
 
 **Parameters:**
 
@@ -30,32 +30,32 @@ abs(-2.5)    # 2.5
 ### `abs(x: long) -> long`
 
 Return the absolute value of a number.
-Python: abs(x)
+Python: `abs(x)`
 
 ### `abs(x: float) -> float`
 
 Return the absolute value of a number.
-Python: abs(x)
+Python: `abs(x)`
 
 ### `abs(x: float32) -> float32`
 
 Return the absolute value of a number.
-Python: abs(x)
+Python: `abs(x)`
 
 ### `abs(x: decimal) -> decimal`
 
 Return the absolute value of a number.
-Python: abs(x)
+Python: `abs(x)`
 
 ### `abs(x: short) -> short`
 
 Return the absolute value of a number.
-Python: abs(x)
+Python: `abs(x)`
 
 ### `abs(x: sbyte) -> sbyte`
 
 Return the absolute value of a number.
-Python: abs(x)
+Python: `abs(x)`
 
 ### `all(iterable: Iterable[T]) -> bool`
 
@@ -282,7 +282,7 @@ bool(None)     # False
 Drop into the debugger. No-op when no debugger is attached.
 
 !!! note
-    Maps to .
+    Maps to `System.Diagnostics.Debugger.Break()`.
     When no debugger is attached, this method does nothing.
 
 ### `chr(i: int) -> str`
@@ -512,7 +512,7 @@ Return a new empty frozenset object.
 ### `hash(obj: object) -> int`
 
 Return the hash value of an object.
-Calls  on the given object.
+Calls `object.GetHashCode()` on the given object.
 
 **Parameters:**
 
@@ -527,7 +527,7 @@ hash(42)         # 42
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null
+- `TypeError` -- Thrown when *obj* is null
 
 ### `hex(x: int) -> str`
 
@@ -575,7 +575,7 @@ id(x)    # unique integer identity
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null
+- `TypeError` -- Thrown when *obj* is null
 
 ### `input() -> str`
 
@@ -765,14 +765,14 @@ len({})           # 0
 ```
 
 !!! note
-    Uses the non-generic  interface
+    Uses the non-generic `System.Collections.ICollection` interface
     which is implemented by arrays, List{T}, Dictionary{K,V}, etc.
     This avoids overload ambiguity when a type implements both
-    and .
+    `ICollection{T}` and `IReadOnlyCollection{T}`.
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null
+- `TypeError` -- Thrown when *c* is null
 
 ### `len(sized: ISized) -> int`
 
@@ -780,13 +780,13 @@ Return the length of an ISized type (user-defined types with __len__).
 
 **Parameters:**
 
-- `sized` (ISized) -- An object implementing
+- `sized` (ISized) -- An object implementing `ISized`
 
 **Returns:** The number of elements
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null
+- `TypeError` -- Thrown when *sized* is null
 
 ### `len(s: str) -> int`
 
@@ -1181,7 +1181,7 @@ incrementing by step.
 
 **Raises:**
 
-- `ValueError` -- Thrown when  is zero
+- `ValueError` -- Thrown when *step* is zero
 
 ### `repr(obj: object?) -> str`
 
@@ -1200,7 +1200,7 @@ repr(None)         # "None"
 ```
 
 !!! note
-    Uses  to get the representation.
+    Uses `object.ToString()` to get the representation.
     Sharpy types (List, Set, Dict) override ToString() to produce
     Python-compatible repr output (e.g., "[1, 2, 3]", "{1, 2}", etc.).
 
@@ -1220,17 +1220,17 @@ list(reversed("abc"))        # ["c", "b", "a"]
 ```
 
 !!! note
-    For  implementations, iterates backwards efficiently.
+    For `IList{T}` implementations, iterates backwards efficiently.
     For other sequences, materializes the sequence and reverses using LINQ.
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null
+- `TypeError` -- Thrown when *sequence* is null
 
 ### `reversed(reversible: IReverseEnumerable[T]) -> Iterator[T]`
 
-Return a reverse iterator for types that implement 
-but not  (i.e., types with __reversed__ but no __iter__).
+Return a reverse iterator for types that implement `IReverseEnumerable{T}`
+but not `IEnumerable{T}` (i.e., types with __reversed__ but no __iter__).
 
 ### `move_next() -> bool`
 
@@ -1385,9 +1385,9 @@ Return a new sorted list using a key function, optionally in reverse order.
 
 ### `str(x: object) -> str`
 
-Convert an arbitrary object to .
-Returns "None" for null, Python-style "True"/"False"
-for booleans, and  for everything else.
+Convert an arbitrary object to `string`.
+Returns `"None"` for null, Python-style `"True"`/`"False"`
+for booleans, and `object.ToString` for everything else.
 
 **Parameters:**
 
@@ -1404,47 +1404,47 @@ str(None)      # "None"
 
 ### `str(s: str) -> str`
 
-Return the C#  unchanged.
+Return the C# `string` unchanged.
 
 ### `str(c: char) -> str`
 
-Convert a  to  without boxing.
+Convert a `char` to `string` without boxing.
 
 ### `str(i: int) -> str`
 
-Convert an  to  without boxing.
+Convert an `int` to `string` without boxing.
 
 ### `str(l: long) -> str`
 
-Convert a  to  without boxing.
+Convert a `long` to `string` without boxing.
 
 ### `str(d: float) -> str`
 
-Convert a  to  without boxing.
-Formats with Python-compatible trailing .0 for whole numbers.
+Convert a `double` to `string` without boxing.
+Formats with Python-compatible trailing `.0` for whole numbers.
 
 ### `str(f: float32) -> str`
 
-Convert a  to  without boxing.
-Formats with Python-compatible trailing .0 for whole numbers.
+Convert a `float` to `string` without boxing.
+Formats with Python-compatible trailing `.0` for whole numbers.
 
 ### `format_float(value: float) -> str`
 
 Format a floating-point value with Python-compatible representation.
 NaN, Infinity, and -Infinity use Python's lowercase forms.
-Whole-number values get a trailing .0.
-NOTE: Keep in sync with  overload.
+Whole-number values get a trailing `.0`.
+NOTE: Keep in sync with `FormatFloat(float)` overload.
 
 ### `format_float(value: float32) -> str`
 
-Format a  value with Python-compatible representation.
+Format a `float` value with Python-compatible representation.
 Overload to avoid float→double widening precision issues.
-NOTE: Keep in sync with  overload.
+NOTE: Keep in sync with `FormatFloat(double)` overload.
 
 ### `str(b: bool) -> str`
 
-Convert a  to .
-Returns Python-style "True" or "False".
+Convert a `bool` to `string`.
+Returns Python-style `"True"` or `"False"`.
 
 ### `sum(iterable: Iterable[int]) -> int`
 
@@ -1464,7 +1464,7 @@ sum([])              # 0
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null
+- `TypeError` -- Thrown when *iterable* is null
 
 ### `sum(iterable: Iterable[long]) -> long`
 
@@ -1478,7 +1478,7 @@ Sums a sequence of longs.
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null
+- `TypeError` -- Thrown when *iterable* is null
 
 ### `sum(iterable: Iterable[float32]) -> float32`
 
@@ -1492,7 +1492,7 @@ Sums a sequence of floats.
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null
+- `TypeError` -- Thrown when *iterable* is null
 
 ### `sum(iterable: Iterable[float]) -> float`
 
@@ -1506,7 +1506,7 @@ Sums a sequence of doubles.
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null
+- `TypeError` -- Thrown when *iterable* is null
 
 ### `sum(iterable: Iterable[decimal]) -> decimal`
 
@@ -1520,7 +1520,7 @@ Sums a sequence of decimals.
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null
+- `TypeError` -- Thrown when *iterable* is null
 
 ### `sum(iterable: Iterable[int], start: int) -> int`
 
@@ -1639,7 +1639,7 @@ This is the fallback overload for dynamically-typed scenarios.
 
 **Raises:**
 
-- `TypeError` -- Thrown when  is null or has no len()
+- `TypeError` -- Thrown when *obj* is null or has no len()
 
 ### `format_align(value: str, width: int, fill: char, alignment: char) -> str`
 
@@ -1654,7 +1654,7 @@ and center-alignment.
 - `fill` (char) -- The fill character for padding
 - `alignment` (char) -- Alignment mode: '' right, '^' center, '=' numeric sign-aware
 
-**Returns:** The aligned string, or  unchanged if already wider than
+**Returns:** The aligned string, or *value* unchanged if already wider than *width*
 
 ### `print(values: list[object?])`
 

@@ -11,9 +11,9 @@ import shutil
 
 ### `shutil.copy(src: str, dst: str) -> str`
 
-Copy a file to a destination. If  is a directory,
+Copy a file to a destination. If *dst* is a directory,
 the file is copied into that directory with its original name.
-Similar to Python's shutil.copy().
+Similar to Python's `shutil.copy()`.
 
 **Parameters:**
 
@@ -34,8 +34,8 @@ shutil.copy("src.txt", "/tmp/")          # copy into directory
 ### `shutil.copy2(src: str, dst: str) -> str`
 
 Copy a file to a destination, preserving file metadata (timestamps).
-If  is a directory, the file is copied into that directory.
-Similar to Python's shutil.copy2().
+If *dst* is a directory, the file is copied into that directory.
+Similar to Python's `shutil.copy2()`.
 
 **Parameters:**
 
@@ -54,9 +54,9 @@ shutil.copy2("src.txt", "dst.txt")    # copy with timestamps
 
 ### `shutil.copytree(src: str, dst: str) -> str`
 
-Recursively copy a directory tree from  to .
+Recursively copy a directory tree from *src* to *dst*.
 The destination directory must not already exist.
-Similar to Python's shutil.copytree().
+Similar to Python's `shutil.copytree()`.
 
 **Parameters:**
 
@@ -76,7 +76,7 @@ shutil.copytree("src_dir", "dst_dir")    # recursive copy
 ### `shutil.rmtree(path: str)`
 
 Recursively delete a directory tree.
-Similar to Python's shutil.rmtree().
+Similar to Python's `shutil.rmtree()`.
 
 **Parameters:**
 
@@ -93,7 +93,7 @@ shutil.rmtree("/tmp/mydir")    # delete directory and all contents
 ### `shutil.move(src: str, dst: str) -> str`
 
 Move a file or directory to another location.
-Similar to Python's shutil.move().
+Similar to Python's `shutil.move()`.
 
 **Parameters:**
 
@@ -114,14 +114,14 @@ shutil.move("old_dir", "new_dir")         # rename/move directory
 ### `shutil.which(name: str) -> str?`
 
 Return the path to an executable which would be run if the given command
-was called. Returns null if no executable is found.
-Similar to Python's shutil.which().
+was called. Returns `null` if no executable is found.
+Similar to Python's `shutil.which()`.
 
 **Parameters:**
 
 - `name` (str) -- The command name to search for.
 
-**Returns:** The full path to the executable, or null if not found.
+**Returns:** The full path to the executable, or `null` if not found.
 
 ```python
 shutil.which("python")    # "/usr/bin/python"

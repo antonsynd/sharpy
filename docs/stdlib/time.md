@@ -1,7 +1,7 @@
 # time
 
 Represents a time value as a named tuple of components, similar to Python's
-time.struct_time.
+`time.struct_time`.
 
 ```python
 import time
@@ -28,7 +28,7 @@ Return the time in nanoseconds since the epoch (1970-01-01T00:00:00Z).
 
 !!! note
     On netstandard2.x, precision is limited to milliseconds. The value is
-    derived from  multiplied
+    derived from `DateTimeOffset.ToUnixTimeMilliseconds` multiplied
     by 1,000,000.
 
 ### `time.sleep(secs: float)`
@@ -78,7 +78,7 @@ Uses the current local time.
 **Parameters:**
 
 - `format` (str) -- A format string using Python-style format codes
-(e.g. %Y-%m-%d %H:%M:%S).
+(e.g. `%Y-%m-%d %H:%M:%S`).
 
 **Returns:** The formatted time string.
 
@@ -88,10 +88,10 @@ time.strftime("%Y-%m-%d")    # e.g. "2024-01-15"
 
 ### `time.gmtime() -> StructTime`
 
-Convert current UTC time to a  (similar to Python's
-time.gmtime()).
+Convert current UTC time to a `StructTime` (similar to Python's
+`time.gmtime()`).
 
-**Returns:** A  representing the current UTC time.
+**Returns:** A `StructTime` representing the current UTC time.
 
 ```python
 t = time.gmtime()
@@ -100,14 +100,14 @@ print(t.tm_year)    # e.g. 2024
 
 ### `time.gmtime(seconds: float) -> StructTime`
 
-Convert a Unix timestamp (seconds since the epoch) to a 
-in UTC (similar to Python's time.gmtime(secs)).
+Convert a Unix timestamp (seconds since the epoch) to a `StructTime`
+in UTC (similar to Python's `time.gmtime(secs)`).
 
 **Parameters:**
 
 - `seconds` (float) -- Seconds since the Unix epoch (1970-01-01T00:00:00Z).
 
-**Returns:** A  representing the specified UTC time.
+**Returns:** A `StructTime` representing the specified UTC time.
 
 ```python
 t = time.gmtime(0)
@@ -116,10 +116,10 @@ print(t.tm_year)    # 1970
 
 ### `time.localtime() -> StructTime`
 
-Convert current local time to a  (similar to Python's
-time.localtime()).
+Convert current local time to a `StructTime` (similar to Python's
+`time.localtime()`).
 
-**Returns:** A  representing the current local time.
+**Returns:** A `StructTime` representing the current local time.
 
 ```python
 t = time.localtime()
@@ -128,14 +128,14 @@ print(t.tm_hour)    # current local hour
 
 ### `time.localtime(seconds: float) -> StructTime`
 
-Convert a Unix timestamp (seconds since the epoch) to a 
-in local time (similar to Python's time.localtime(secs)).
+Convert a Unix timestamp (seconds since the epoch) to a `StructTime`
+in local time (similar to Python's `time.localtime(secs)`).
 
 **Parameters:**
 
 - `seconds` (float) -- Seconds since the Unix epoch (1970-01-01T00:00:00Z).
 
-**Returns:** A  representing the specified local time.
+**Returns:** A `StructTime` representing the specified local time.
 
 ```python
 t = time.localtime(86400)
@@ -145,4 +145,4 @@ print(t.tm_mday)    # depends on local timezone
 ## time
 
 Represents a time value as a named tuple of components, similar to Python's
-time.struct_time.
+`time.struct_time`.

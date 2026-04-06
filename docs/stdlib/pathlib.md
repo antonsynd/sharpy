@@ -16,7 +16,7 @@ Immutable — all mutation methods return new Path instances.
 
 Whether the path exists on the filesystem.
 
-**Returns:** true if the path exists.
+**Returns:** `true` if the path exists.
 
 ```python
 Path("/tmp").exists()        # True

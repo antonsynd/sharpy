@@ -11,7 +11,7 @@ import heapq
 
 ### `heapq.heappush(heap: IList[T], item: T)`
 
-Push  onto , maintaining
+Push *item* onto *heap*, maintaining
 the min-heap invariant.
 
 **Parameters:**
@@ -28,7 +28,7 @@ heapq.heappush(h, 2)    # h[0] is now 1
 
 ### `heapq.heappop(heap: IList[T]) -> T`
 
-Pop and return the smallest item from ,
+Pop and return the smallest item from *heap*,
 maintaining the min-heap invariant.
 
 **Parameters:**
@@ -48,7 +48,7 @@ heapq.heappop(h)    # returns 1
 
 ### `heapq.heapify(x: IList[T])`
 
-Transform  into a min-heap, in-place, in O(n) time
+Transform *x* into a min-heap, in-place, in O(n) time
 using Floyd's algorithm.
 
 **Parameters:**
@@ -62,8 +62,8 @@ heapq.heapify(x)    # x is now a valid min-heap
 
 ### `heapq.heapreplace(heap: IList[T], item: T) -> T`
 
-Pop and return the smallest item from , then push
-. More efficient than separate pop and push.
+Pop and return the smallest item from *heap*, then push
+*item*. More efficient than separate pop and push.
 
 **Parameters:**
 
@@ -78,7 +78,7 @@ Pop and return the smallest item from , then push
 
 ### `heapq.heappushpop(heap: IList[T], item: T) -> T`
 
-Push  onto , then pop and
+Push *item* onto *heap*, then pop and
 return the smallest item. More efficient than separate push and pop.
 
 **Parameters:**
@@ -90,15 +90,15 @@ return the smallest item. More efficient than separate push and pop.
 
 ### `heapq.nlargest(n: int, iterable: IList[T]) -> list[T]`
 
-Return the  largest elements from
-, in descending order.
+Return the *n* largest elements from
+*iterable*, in descending order.
 
 **Parameters:**
 
 - `n` (int) -- The number of largest elements to return.
 - `iterable` (IList[T]) -- The collection to search.
 
-**Returns:** A list of the  largest elements.
+**Returns:** A list of the *n* largest elements.
 
 ```python
 heapq.nlargest(3, [3, 1, 4, 1, 5, 9, 2, 6])    # [9, 6, 5]
@@ -106,15 +106,15 @@ heapq.nlargest(3, [3, 1, 4, 1, 5, 9, 2, 6])    # [9, 6, 5]
 
 ### `heapq.nsmallest(n: int, iterable: IList[T]) -> list[T]`
 
-Return the  smallest elements from
-, in ascending order.
+Return the *n* smallest elements from
+*iterable*, in ascending order.
 
 **Parameters:**
 
 - `n` (int) -- The number of smallest elements to return.
 - `iterable` (IList[T]) -- The collection to search.
 
-**Returns:** A list of the  smallest elements.
+**Returns:** A list of the *n* smallest elements.
 
 ```python
 heapq.nsmallest(3, [3, 1, 4, 1, 5, 9, 2, 6])    # [1, 1, 2]
@@ -130,7 +130,7 @@ elements lazily in ascending order.
 - `a` (list[T]) -- First sorted list.
 - `b` (list[T]) -- Second sorted list.
 
-**Returns:** An  yielding elements in sorted order.
+**Returns:** An `IEnumerable{T}` yielding elements in sorted order.
 
 ### `heapq.merge(a: list[T], b: list[T], c: list[T]) -> Iterable[T]`
 
@@ -153,30 +153,30 @@ Inputs must be pre-sorted according to the key/reverse order.
 ### `heapq.merge(iterables: list[list[T]], reverse: bool = false) -> Iterable[T]`
 
 Merge an array of sorted lists into a single sorted sequence,
-with an optional  flag.
+with an optional *reverse* flag.
 Inputs must be pre-sorted in the corresponding order.
 
 **Parameters:**
 
 - `iterables` (list[list[T]]) -- The array of sorted lists to merge.
-- `reverse` (bool) -- If true, merge in descending order (inputs must be descending).
+- `reverse` (bool) -- If `true`, merge in descending order (inputs must be descending).
 
-**Returns:** An  yielding elements in sorted order.
+**Returns:** An `IEnumerable{T}` yielding elements in sorted order.
 
 ### `heapq.merge(iterables: list[list[T]], key: Func[T, TKey], reverse: bool = false) -> Iterable[T]`
 
 Merge an array of sorted lists into a single sorted sequence,
-comparing elements by a  function with an
-optional  flag.
+comparing elements by a *key* function with an
+optional *reverse* flag.
 Inputs must be pre-sorted according to the key/reverse order.
 
 **Parameters:**
 
 - `iterables` (list[list[T]]) -- The array of sorted lists to merge.
 - `key` (Func[T, TKey]) -- A function that extracts a comparison key from each element.
-- `reverse` (bool) -- If true, merge in descending key order (inputs must be descending).
+- `reverse` (bool) -- If `true`, merge in descending key order (inputs must be descending).
 
-**Returns:** An  yielding elements in sorted order.
+**Returns:** An `IEnumerable{T}` yielding elements in sorted order.
 
 ### `heapq.merge(a: list[T], b: list[T], reverse: bool) -> Iterable[T]`
 

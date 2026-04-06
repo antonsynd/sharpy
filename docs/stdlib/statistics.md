@@ -1,6 +1,6 @@
 # statistics
 
-Mathematical statistics functions, similar to Python's statistics module.
+Mathematical statistics functions, similar to Python's `statistics` module.
 
 ```python
 import statistics
@@ -10,7 +10,7 @@ import statistics
 
 ### `statistics.mean(data: Iterable[float]) -> float`
 
-Return the arithmetic mean (average) of .
+Return the arithmetic mean (average) of *data*.
 
 **Parameters:**
 
@@ -24,20 +24,20 @@ statistics.mean([1, 2, 3, 4, 5])    # 3.0
 
 **Raises:**
 
-- `StatisticsError` -- Thrown if  is empty.
+- `StatisticsError` -- Thrown if *data* is empty.
 
 ### `statistics.mean(data: Iterable[int]) -> float`
 
-Return the arithmetic mean of  (integer overload).
+Return the arithmetic mean of *data* (integer overload).
 
 ### `statistics.mean(data: Iterable[long]) -> float`
 
-Return the arithmetic mean of  (long overload).
+Return the arithmetic mean of *data* (long overload).
 
 ### `statistics.fmean(data: Iterable[float]) -> float`
 
-Return the arithmetic mean of  as a float.
-For this implementation, equivalent to .
+Return the arithmetic mean of *data* as a float.
+For this implementation, equivalent to `Mean(IEnumerable{double})`.
 
 **Parameters:**
 
@@ -47,19 +47,19 @@ For this implementation, equivalent to .
 
 **Raises:**
 
-- `StatisticsError` -- Thrown if  is empty.
+- `StatisticsError` -- Thrown if *data* is empty.
 
 ### `statistics.fmean(data: Iterable[int]) -> float`
 
-Return the arithmetic mean of  as a float (integer overload).
+Return the arithmetic mean of *data* as a float (integer overload).
 
 ### `statistics.fmean(data: Iterable[long]) -> float`
 
-Return the arithmetic mean of  as a float (long overload).
+Return the arithmetic mean of *data* as a float (long overload).
 
 ### `statistics.median(data: Iterable[float]) -> float`
 
-Return the median (middle value) of .
+Return the median (middle value) of *data*.
 When the number of data points is even, the median is the average of the
 two middle values.
 
@@ -76,19 +76,19 @@ statistics.median([1, 2, 3])       # 2.0
 
 **Raises:**
 
-- `StatisticsError` -- Thrown if  is empty.
+- `StatisticsError` -- Thrown if *data* is empty.
 
 ### `statistics.median(data: Iterable[int]) -> float`
 
-Return the median of  (integer overload).
+Return the median of *data* (integer overload).
 
 ### `statistics.median(data: Iterable[long]) -> float`
 
-Return the median of  (long overload).
+Return the median of *data* (long overload).
 
 ### `statistics.median_low(data: Iterable[float]) -> float`
 
-Return the low median of .
+Return the low median of *data*.
 When the number of data points is even, the low median is the smaller
 of the two middle values.
 
@@ -100,19 +100,19 @@ of the two middle values.
 
 **Raises:**
 
-- `StatisticsError` -- Thrown if  is empty.
+- `StatisticsError` -- Thrown if *data* is empty.
 
 ### `statistics.median_low(data: Iterable[int]) -> float`
 
-Return the low median of  (integer overload).
+Return the low median of *data* (integer overload).
 
 ### `statistics.median_low(data: Iterable[long]) -> float`
 
-Return the low median of  (long overload).
+Return the low median of *data* (long overload).
 
 ### `statistics.median_high(data: Iterable[float]) -> float`
 
-Return the high median of .
+Return the high median of *data*.
 When the number of data points is even, the high median is the larger
 of the two middle values.
 
@@ -124,19 +124,19 @@ of the two middle values.
 
 **Raises:**
 
-- `StatisticsError` -- Thrown if  is empty.
+- `StatisticsError` -- Thrown if *data* is empty.
 
 ### `statistics.median_high(data: Iterable[int]) -> float`
 
-Return the high median of  (integer overload).
+Return the high median of *data* (integer overload).
 
 ### `statistics.median_high(data: Iterable[long]) -> float`
 
-Return the high median of  (long overload).
+Return the high median of *data* (long overload).
 
 ### `statistics.mode(data: Iterable[T]) -> T`
 
-Return the single most common data point from .
+Return the single most common data point from *data*.
 If there are multiple modes (tied), the first encountered value wins.
 
 **Parameters:**
@@ -151,12 +151,12 @@ statistics.mode([1, 1, 2, 3])    # 1
 
 **Raises:**
 
-- `StatisticsError` -- Thrown if  is empty.
+- `StatisticsError` -- Thrown if *data* is empty.
 
 ### `statistics.stdev(data: Iterable[float]) -> float`
 
 Return the sample standard deviation (the square root of the sample
-variance) of . Uses n-1 in the denominator.
+variance) of *data*. Uses `n-1` in the denominator.
 
 **Parameters:**
 
@@ -170,7 +170,7 @@ statistics.stdev([2, 4, 4, 4, 5, 5, 7, 9])    # ~2.138
 
 **Raises:**
 
-- `StatisticsError` -- Thrown if  has fewer than 2 elements.
+- `StatisticsError` -- Thrown if *data* has fewer than 2 elements.
 
 ### `statistics.stdev(data: Iterable[int]) -> float`
 
@@ -183,7 +183,7 @@ Return the sample standard deviation (long overload).
 ### `statistics.pstdev(data: Iterable[float]) -> float`
 
 Return the population standard deviation (the square root of the
-population variance) of . Uses n in the
+population variance) of *data*. Uses `n` in the
 denominator.
 
 **Parameters:**
@@ -194,7 +194,7 @@ denominator.
 
 **Raises:**
 
-- `StatisticsError` -- Thrown if  is empty.
+- `StatisticsError` -- Thrown if *data* is empty.
 
 ### `statistics.pstdev(data: Iterable[int]) -> float`
 
@@ -206,7 +206,7 @@ Return the population standard deviation (long overload).
 
 ### `statistics.variance(data: Iterable[float]) -> float`
 
-Return the sample variance of . Uses n-1
+Return the sample variance of *data*. Uses `n-1`
 in the denominator (Bessel's correction).
 
 **Parameters:**
@@ -217,7 +217,7 @@ in the denominator (Bessel's correction).
 
 **Raises:**
 
-- `StatisticsError` -- Thrown if  has fewer than 2 elements.
+- `StatisticsError` -- Thrown if *data* has fewer than 2 elements.
 
 ### `statistics.variance(data: Iterable[int]) -> float`
 
@@ -229,7 +229,7 @@ Return the sample variance (long overload).
 
 ### `statistics.pvariance(data: Iterable[float]) -> float`
 
-Return the population variance of . Uses n
+Return the population variance of *data*. Uses `n`
 in the denominator.
 
 **Parameters:**
@@ -240,7 +240,7 @@ in the denominator.
 
 **Raises:**
 
-- `StatisticsError` -- Thrown if  is empty.
+- `StatisticsError` -- Thrown if *data* is empty.
 
 ### `statistics.pvariance(data: Iterable[int]) -> float`
 

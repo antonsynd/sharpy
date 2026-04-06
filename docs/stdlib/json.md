@@ -25,7 +25,7 @@ Serialize obj to a JSON formatted string.
 
 - `obj` (object?) -- The object to serialize.
 
-**Returns:** A JSON string representation of .
+**Returns:** A JSON string representation of *obj*.
 
 ```python
 json.dumps({"key": "value"})    # '{"key": "value"}'
@@ -43,7 +43,7 @@ Serialize obj to a JSON formatted string with formatting options.
 - `sort_keys` (bool)
 - `ensure_ascii` (bool)
 
-**Returns:** A JSON string representation of .
+**Returns:** A JSON string representation of *obj*.
 
 ### `json.loads(s: str) -> object?`
 

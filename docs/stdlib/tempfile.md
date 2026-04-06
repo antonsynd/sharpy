@@ -11,7 +11,7 @@ import tempfile
 ### `tempfile.gettempdir() -> str`
 
 Return the name of the directory used for temporary files.
-Similar to Python's tempfile.gettempdir().
+Similar to Python's `tempfile.gettempdir()`.
 
 **Returns:** The path to the system temporary directory, without a trailing separator.
 
@@ -22,7 +22,7 @@ tempfile.gettempdir()    # "/tmp" on Unix, "C:\Users\...\Temp" on Windows
 ### `tempfile.mkdtemp(prefix: str = "tmp") -> str`
 
 Create a temporary directory and return its absolute pathname.
-Similar to Python's tempfile.mkdtemp().
+Similar to Python's `tempfile.mkdtemp()`.
 
 **Parameters:**
 

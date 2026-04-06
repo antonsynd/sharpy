@@ -1,6 +1,6 @@
 # list
 
-A mutable sequence of elements, similar to Python's list.
+A mutable sequence of elements, similar to Python's `list`.
 Supports negative indexing, slicing, and Python-style methods.
 
 ## Properties
@@ -39,7 +39,7 @@ sort customization, see Sorted() for their explanation).
 
 **Parameters:**
 
-- `reverse` (bool) -- If true, sort in descending order.
+- `reverse` (bool) -- If `true`, sort in descending order.
 
 ```python
 x = [3, 1, 2]
@@ -185,7 +185,7 @@ x.count(5)    # 0
 ### `index(x: T, start: int = 0, end: int = -1) -> int`
 
 Return zero-based index in the list of the first item whose value
-is equal to x. Raises a  if there is no
+is equal to x. Raises a `ValueError` if there is no
 such item.
 
 **Parameters:**
@@ -221,7 +221,7 @@ Returns whether the item is in the list.
 
 - `x` (T) -- The value to check for.
 
-**Returns:** true if the item is found; otherwise false.
+**Returns:** `true` if the item is found; otherwise `false`.
 
 ```python
 x = [1, 2, 3]
@@ -247,7 +247,7 @@ Sets a slice of the list from another list.
 
 **Raises:**
 
-- `TypeError` -- Thrown if  is null.
+- `TypeError` -- Thrown if *other* is null.
 - `ValueError` -- Thrown if slice step is zero or assignment size mismatches extended slice.
 
 ### `delete_at(index: int)`

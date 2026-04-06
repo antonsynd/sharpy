@@ -27,7 +27,7 @@ Return a logger with the specified name, creating it if necessary.
 
 - `name` (str) -- The logger name. Defaults to "root".
 
-**Returns:** A  instance with the given name.
+**Returns:** A `Logger` instance with the given name.
 
 ### `logging.basic_config(level: int = WARNING)`
 

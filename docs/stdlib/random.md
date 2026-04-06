@@ -33,7 +33,7 @@ Return a random integer N such that a <= N <= b.
 - `a` (int) -- The lower bound (inclusive).
 - `b` (int) -- The upper bound (inclusive).
 
-**Returns:** A random integer between  and .
+**Returns:** A random integer between *a* and *b*.
 
 ```python
 random.randint(1, 6)    # 4 (random die roll)
@@ -50,7 +50,7 @@ and b <= N <= a for b < a.
 - `a` (float) -- One end of the range.
 - `b` (float) -- The other end of the range.
 
-**Returns:** A random double between  and .
+**Returns:** A random double between *a* and *b*.
 
 ### `random.choice(seq: IList[T]) -> T`
 
@@ -94,7 +94,7 @@ random.shuffle(items)    # items is now shuffled in place
 
 **Raises:**
 
-- `TypeError` -- Thrown if  is null.
+- `TypeError` -- Thrown if *x* is null.
 
 ### `random.randrange(stop: int) -> int`
 
@@ -104,7 +104,7 @@ Return a randomly-selected element from range(stop) or range(start, stop, step).
 
 - `stop` (int) -- The exclusive upper bound.
 
-**Returns:** A random integer from range(0, ).
+**Returns:** A random integer from range(0, *stop*).
 
 ### `random.randrange(start: int, stop: int) -> int`
 
@@ -115,7 +115,7 @@ Return a randomly-selected element from range(start, stop).
 - `start` (int) -- The inclusive lower bound.
 - `stop` (int) -- The exclusive upper bound.
 
-**Returns:** A random integer from range(, ).
+**Returns:** A random integer from range(*start*, *stop*).
 
 ### `random.randrange(start: int, stop: int, step: int) -> int`
 
@@ -127,7 +127,7 @@ Return a randomly-selected element from range(start, stop, step).
 - `stop` (int) -- The exclusive upper bound.
 - `step` (int) -- The step between elements.
 
-**Returns:** A random integer from range(, , ).
+**Returns:** A random integer from range(*start*, *stop*, *step*).
 
 **Raises:**
 
@@ -153,11 +153,11 @@ Returns a non-negative integer with k random bits.
 
 - `k` (int) -- The number of random bits (0 to 30).
 
-**Returns:** A non-negative integer with  random bits.
+**Returns:** A non-negative integer with *k* random bits.
 
 **Raises:**
 
-- `ValueError` -- Thrown if  is negative or greater than 30.
+- `ValueError` -- Thrown if *k* is negative or greater than 30.
 
 ### `random.choices(population: IList[T], weights: IList[float]? = null, k: int = 1) -> list[T]`
 
@@ -170,7 +170,7 @@ optionally weighted.
 - `weights` (IList[float]?) -- Optional weights for each element.
 - `k` (int) -- The number of elements to choose.
 
-**Returns:** A list of  randomly chosen elements.
+**Returns:** A list of *k* randomly chosen elements.
 
 **Raises:**
 
@@ -185,9 +185,9 @@ Return a k length list of unique elements chosen from the population sequence.
 - `population` (IList[T]) -- The population to sample from.
 - `k` (int) -- The number of unique elements to select.
 
-**Returns:** A list of  unique elements from .
+**Returns:** A list of *k* unique elements from *population*.
 
 **Raises:**
 
-- `TypeError` -- Thrown if  is null.
-- `ValueError` -- Thrown if  is negative or larger than the population.
+- `TypeError` -- Thrown if *population* is null.
+- `ValueError` -- Thrown if *k* is negative or larger than the population.

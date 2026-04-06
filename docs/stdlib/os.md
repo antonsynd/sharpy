@@ -53,7 +53,7 @@ Rename a file or directory.
 
 **Raises:**
 
-- `FileNotFoundError` -- Thrown if  does not exist.
+- `FileNotFoundError` -- Thrown if *src* does not exist.
 
 ### `os.mkdir(path: str)`
 
@@ -75,11 +75,11 @@ Create a directory and all intermediate directories.
 **Parameters:**
 
 - `path` (str) -- The directory path to create.
-- `exist_ok` (bool) -- If true, do not raise an error if the directory already exists.
+- `exist_ok` (bool) -- If `true`, do not raise an error if the directory already exists.
 
 **Raises:**
 
-- `FileExistsError` -- Thrown if the directory exists and  is false.
+- `FileExistsError` -- Thrown if the directory exists and *exist_ok* is `false`.
 
 ### `os.rmdir(path: str)`
 
@@ -139,7 +139,7 @@ Get an environment variable, returning None if not set.
 
 - `key` (str) -- The environment variable name.
 
-**Returns:** The value, or null if not set.
+**Returns:** The value, or `null` if not set.
 
 ```python
 os.getenv("HOME")       # "/home/user"
@@ -155,7 +155,7 @@ Get an environment variable with a default value.
 - `key` (str) -- The environment variable name.
 - `default_` (str) -- The value to return if the variable is not set.
 
-**Returns:** The variable value, or  if not set.
+**Returns:** The variable value, or *default_* if not set.
 
 ### `os.putenv(key: str, value: str)`
 
@@ -174,7 +174,7 @@ Get file or directory status, similar to Python's os.stat().
 
 - `path` (str) -- The file or directory path.
 
-**Returns:** A  containing size, timestamps, and mode.
+**Returns:** A `StatResult` containing size, timestamps, and mode.
 
 **Raises:**
 
@@ -188,7 +188,7 @@ Check if a path exists (file or directory).
 
 - `path` (str) -- The path to check.
 
-**Returns:** true if the path exists; otherwise false.
+**Returns:** `true` if the path exists; otherwise `false`.
 
 ### `os.join(a: str, b: str) -> str`
 
@@ -222,7 +222,7 @@ Test whether a path exists.
 
 - `path` (str) -- The path to test.
 
-**Returns:** true if the path exists.
+**Returns:** `true` if the path exists.
 
 ```python
 os.path.exists("/tmp")         # True

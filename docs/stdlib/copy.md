@@ -1,6 +1,6 @@
 # copy
 
-Shallow and deep copy operations, similar to Python's copy module.
+Shallow and deep copy operations, similar to Python's `copy` module.
 
 ```python
 import copy
@@ -16,17 +16,17 @@ import copy
 
 ### `copy.copy(x: object) -> object`
 
-Return a shallow copy of .
-For Sharpy collections (, ,
-), a new collection is created with the same element
+Return a shallow copy of *x*.
+For Sharpy collections (`List{T}`, `Dict{K,V}`,
+`Set{T}`), a new collection is created with the same element
 references. For value types the value is returned as-is. For other
-reference types, MemberwiseClone is invoked via reflection.
+reference types, `MemberwiseClone` is invoked via reflection.
 
 **Parameters:**
 
 - `x` (object) -- The object to copy.
 
-**Returns:** A shallow copy of .
+**Returns:** A shallow copy of *x*.
 
 ```python
 a = [1, 2, 3]
@@ -35,7 +35,7 @@ b = copy.copy(a)    # new list, same element references
 
 ### `copy.deepcopy(x: object) -> object`
 
-Return a deep copy of .
+Return a deep copy of *x*.
 For Sharpy collections, elements are recursively deep-copied. An identity
 dictionary tracks already-copied objects to handle circular references.
 For non-collection objects, falls back to a shallow copy.
@@ -44,7 +44,7 @@ For non-collection objects, falls back to a shallow copy.
 
 - `x` (object) -- The object to deep-copy.
 
-**Returns:** A deep copy of .
+**Returns:** A deep copy of *x*.
 
 ```python
 a = [[1, 2], [3, 4]]

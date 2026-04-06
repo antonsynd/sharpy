@@ -12,7 +12,7 @@ import textwrap
 
 Wraps a single paragraph of text and returns a list of wrapped lines.
 Whitespace in the input is collapsed, and words longer than
- are broken to fit.
+*width* are broken to fit.
 
 **Parameters:**
 
@@ -36,7 +36,7 @@ containing the wrapped paragraph. This is shorthand for
 
 ### `textwrap.dedent(text: str) -> str`
 
-Remove any common leading whitespace from all lines in .
+Remove any common leading whitespace from all lines in *text*.
 Lines that consist solely of whitespace are treated as if they have
 no indentation (they don't affect the common prefix calculation) but
 their leading whitespace is still stripped.
@@ -49,8 +49,8 @@ their leading whitespace is still stripped.
 
 ### `textwrap.indent(text: str, prefix: str) -> str`
 
-Add  to the beginning of selected lines in
-. By default, the prefix is added to all lines
+Add *prefix* to the beginning of selected lines in
+*text*. By default, the prefix is added to all lines
 that do not consist solely of whitespace (including any line endings).
 
 **Parameters:**

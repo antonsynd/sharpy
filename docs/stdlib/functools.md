@@ -12,7 +12,7 @@ import functools
 ### `functools.reduce(func: Func[T, T, T], iterable: Iterable[T]) -> T`
 
 Apply a function of two arguments cumulatively to the items of
-, from left to right, so as to reduce
+*iterable*, from left to right, so as to reduce
 the iterable to a single value.
 
 **Parameters:**
@@ -33,8 +33,8 @@ functools.reduce(lambda x, y: x + y, [1, 2, 3, 4, 5])    # 15
 ### `functools.reduce(func: Func[T, T, T], iterable: Iterable[T], initial: T) -> T`
 
 Apply a function of two arguments cumulatively to the items of
-, from left to right, starting with
-, so as to reduce the iterable to a
+*iterable*, from left to right, starting with
+*initial*, so as to reduce the iterable to a
 single value.
 
 **Parameters:**
@@ -52,7 +52,7 @@ functools.reduce(lambda x, y: x + y, [1, 2, 3, 4, 5], 10)    # 25
 ### `functools.cmp_to_key(func: Func[T, T, int]) -> IComparer[T]`
 
 Convert a comparison function into a key function suitable for use
-with sorting. Returns an  that wraps the
+with sorting. Returns an `IComparer{T}` that wraps the
 comparison function.
 
 **Parameters:**
@@ -60,7 +60,7 @@ comparison function.
 - `func` (Func[T, T, int]) -- A comparison function that returns a negative number
 for less-than, zero for equal, or a positive number for greater-than.
 
-**Returns:** An  wrapping the comparison function.
+**Returns:** An `IComparer{T}` wrapping the comparison function.
 
 ```python
 comparer = functools.cmp_to_key(lambda a, b: a - b)

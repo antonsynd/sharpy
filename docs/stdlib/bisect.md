@@ -12,8 +12,8 @@ import bisect
 
 ### `bisect.bisect_left(a: IList[T], x: T, lo: int = 0, hi: int = -1) -> int`
 
-Locate the leftmost insertion point for  in
- to maintain sorted order.
+Locate the leftmost insertion point for *x* in
+*a* to maintain sorted order.
 
 **Parameters:**
 
@@ -22,7 +22,7 @@ Locate the leftmost insertion point for  in
 - `lo` (int) -- The lower bound of the slice to search (inclusive).
 - `hi` (int) -- The upper bound of the slice to search (exclusive). -1 means len(a).
 
-**Returns:** The leftmost index where  can be inserted.
+**Returns:** The leftmost index where *x* can be inserted.
 
 ```python
 bisect.bisect_left([1, 2, 3, 4, 5], 3)    # 2
@@ -31,8 +31,8 @@ bisect.bisect_left([1, 1, 1], 1)           # 0
 
 ### `bisect.bisect_right(a: IList[T], x: T, lo: int = 0, hi: int = -1) -> int`
 
-Locate the rightmost insertion point for  in
- to maintain sorted order.
+Locate the rightmost insertion point for *x* in
+*a* to maintain sorted order.
 
 **Parameters:**
 
@@ -41,7 +41,7 @@ Locate the rightmost insertion point for  in
 - `lo` (int) -- The lower bound of the slice to search (inclusive).
 - `hi` (int) -- The upper bound of the slice to search (exclusive). -1 means len(a).
 
-**Returns:** The rightmost index where  can be inserted.
+**Returns:** The rightmost index where *x* can be inserted.
 
 ```python
 bisect.bisect_right([1, 2, 3, 4, 5], 3)   # 3
@@ -50,8 +50,8 @@ bisect.bisect_right([1, 1, 1], 1)          # 3
 
 ### `bisect.bisect(a: IList[T], x: T, lo: int = 0, hi: int = -1) -> int`
 
-Alias for . Locate the rightmost insertion point
-for  in  to maintain sorted order.
+Alias for `BisectRight{T}`. Locate the rightmost insertion point
+for *x* in *a* to maintain sorted order.
 
 **Parameters:**
 
@@ -60,15 +60,15 @@ for  in  to maintain sorted order.
 - `lo` (int) -- The lower bound of the slice to search (inclusive).
 - `hi` (int) -- The upper bound of the slice to search (exclusive). -1 means len(a).
 
-**Returns:** The rightmost index where  can be inserted.
+**Returns:** The rightmost index where *x* can be inserted.
 
 !!! note
-    This is the Python bisect.bisect() function, which is an alias for
-    bisect_right.
+    This is the Python `bisect.bisect()` function, which is an alias for
+    `bisect_right`.
 
 ### `bisect.insort_left(a: IList[T], x: T, lo: int = 0, hi: int = -1)`
 
-Insert  in  in sorted order,
+Insert *x* in *a* in sorted order,
 inserting at the leftmost suitable position.
 
 **Parameters:**
@@ -85,7 +85,7 @@ bisect.insort_left(a, 3)    # a is now [1, 3, 3, 5]
 
 ### `bisect.insort_right(a: IList[T], x: T, lo: int = 0, hi: int = -1)`
 
-Insert  in  in sorted order,
+Insert *x* in *a* in sorted order,
 inserting at the rightmost suitable position.
 
 **Parameters:**
@@ -102,8 +102,8 @@ bisect.insort_right(a, 4)    # a is now [1, 3, 4, 5]
 
 ### `bisect.insort(a: IList[T], x: T, lo: int = 0, hi: int = -1)`
 
-Alias for . Insert  in
- in sorted order.
+Alias for `InsortRight{T}`. Insert *x* in
+*a* in sorted order.
 
 **Parameters:**
 

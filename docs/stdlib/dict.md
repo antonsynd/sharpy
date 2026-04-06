@@ -30,19 +30,19 @@ d.clear()    # {}
 
 ### `contains(key: K) -> bool`
 
-Check if  exists in the dictionary.
-Used by the compiler for key in dict expressions.
+Check if *key* exists in the dictionary.
+Used by the compiler for `key in dict` expressions.
 
 ### `get(key: K) -> Optional[V]`
 
-Return the value for  if present, otherwise
-.
+Return the value for *key* if present, otherwise
+`Optional{T}.None`.
 
 **Parameters:**
 
 - `key` (K) -- The key to look up.
 
-**Returns:** An  containing the value, or None.
+**Returns:** An `Optional{T}` containing the value, or None.
 
 ```python
 d = {"a": 1}
@@ -52,8 +52,8 @@ d.get("z")    # None
 
 ### `get(key: K, @default: V) -> V`
 
-Return the value for  if present, otherwise
-.
+Return the value for *key* if present, otherwise
+*default*.
 
 **Parameters:**
 
@@ -72,7 +72,7 @@ d.get("z", 0)    # 0
 
 Return a view of the dictionary's key-value pairs.
 
-**Returns:** A view of (key, value) pairs.
+**Returns:** A view of `(key, value)` pairs.
 
 ```python
 d = {"a": 1, "b": 2}
@@ -94,7 +94,7 @@ d.keys()    # ["a", "b"]
 ### `pop(key: K) -> V`
 
 Remove the specified key and return the corresponding value.
-Raises  if the key is not found.
+Raises `KeyError` if the key is not found.
 
 **Parameters:**
 
@@ -114,7 +114,7 @@ d.pop("a")    # 1, d is {"b": 2}
 ### `pop(key: K, @default: V) -> V`
 
 Remove the specified key and return the corresponding value.
-If the key is not found, return .
+If the key is not found, return *default*.
 
 **Parameters:**
 
@@ -130,9 +130,9 @@ d.pop("z", 0)    # 0
 
 ### `set_default(key: K, @default: V) -> V`
 
-If  is in the dictionary, return its value.
-If not, insert  with 
-and return .
+If *key* is in the dictionary, return its value.
+If not, insert *key* with *default*
+and return *default*.
 
 **Parameters:**
 
@@ -149,7 +149,7 @@ d.setdefault("b", 0)    # 0, d is {"a": 1, "b": 0}
 
 ### `update(other: IReadOnlyDictionary[K, V])`
 
-Update the dictionary with key-value pairs from ,
+Update the dictionary with key-value pairs from *other*,
 overwriting existing keys.
 
 **Parameters:**
