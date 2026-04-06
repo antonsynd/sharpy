@@ -285,7 +285,9 @@ Sharpy follows three axioms in strict priority order:
 
 ## Documentation
 
-- [Language Specification](docs/language_specification/) - Complete language reference
+- [Documentation Site](https://antonsynd.github.io/sharpy/) - Full documentation (language reference, stdlib API, tooling)
+- [Try Sharpy Online](https://antonsynd.github.io/sharpy/playground/) - Browser-based playground
+- [Language Specification](docs/language_specification/) - Complete language reference (source)
 - [Contributing Guide](CONTRIBUTING.md) - How to contribute
 
 ## Project Structure
@@ -297,7 +299,7 @@ sharpy/
 │   ├── Sharpy.Core/                 # Standard library (runtime)
 │   ├── Sharpy.Cli/                  # CLI tool
 │   ├── Sharpy.Lsp/                  # Language Server Protocol server
-│   ├── Sharpy.Compiler.Tests/       # 1,264 test fixtures + unit tests
+│   ├── Sharpy.Compiler.Tests/       # 4,914 test fixtures + unit tests
 │   ├── Sharpy.Compiler.Benchmarks/  # Performance benchmarks
 │   ├── Sharpy.Core.Tests/           # Runtime library tests
 │   └── Sharpy.Lsp.Tests/            # LSP server tests
@@ -328,4 +330,4 @@ See [docs/tooling/editor-integration.md](docs/tooling/editor-integration.md) for
 
 MIT License - see [LICENSE](LICENSE) for details.
 
-**Links:** [GitHub](https://github.com/antonsynd/sharpy) · [Documentation](docs/) · [Issues](https://github.com/antonsynd/sharpy/issues)
+**Links:** [GitHub](https://github.com/antonsynd/sharpy) · [Documentation](https://antonsynd.github.io/sharpy/) · [Playground](https://antonsynd.github.io/sharpy/playground/) · [Issues](https://github.com/antonsynd/sharpy/issues)
