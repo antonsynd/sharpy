@@ -68,10 +68,6 @@ internal class ModuleLevelValidator : SemanticValidatorBase
                     // Const declarations without type annotation are OK (inferred from value)
                     break;
 
-                case Assignment assign when _context.SemanticInfo.GetNamedTupleDefinition(assign) != null:
-                    // namedtuple definitions are type declarations, not executable
-                    break;
-
                 case ExpressionStatement:
                 case Assignment:
                 case IfStatement:

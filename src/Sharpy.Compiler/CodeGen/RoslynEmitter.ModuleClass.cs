@@ -502,8 +502,6 @@ internal partial class RoslynEmitter
             VariableDeclaration varDecl => GenerateModuleLevelField(varDecl),
             TypeAlias => null,  // Type aliases are compile-time only, no C# output
             ReturnStatement ret => GenerateReturn(ret),
-            Assignment assign when _context.SemanticInfo?.GetNamedTupleDefinition(assign) is TypeSymbol ntSym
-                => GenerateNamedTupleRecord(ntSym),
             Assignment assign => GenerateAssignment(assign),
             ImportStatement => null,       // Imports are resolved at semantic level, no C# output
             FromImportStatement => null,   // Imports are resolved at semantic level, no C# output
@@ -511,85 +509,4 @@ internal partial class RoslynEmitter
         };
     }
 
-    /// <summary>
-    /// Generates a C# record class for a namedtuple definition.
-    /// Example: Point = namedtuple("Point", ["x", "y"]) generates:
-    ///   public record Point(object X, object Y)
-    ///   {
-    ///       public override string ToString() => $"Point(x={X}, y={Y})";
-    ///   }
-    /// </summary>
-    private RecordDeclarationSyntax GenerateNamedTupleRecord(TypeSymbol typeSymbol)
-    {
-        var typeName = NameMangler.Transform(typeSymbol.Name, NameContext.Type);
-
-        // Generate primary constructor parameters from fields
-        var parameters = typeSymbol.Fields.Select(field =>
-        {
-            var paramType = _typeMapper.MapSemanticType(field.Type ?? SemanticType.Object);
-            var paramName = NameMangler.Transform(field.Name, NameContext.Field);
-            return Parameter(Identifier(paramName)).WithType(paramType);
-        }).ToArray();
-
-        var parameterList = ParameterList(SeparatedList(parameters));
-
-        // Build ToString() override using interpolated string: $"Point(x={X}, y={Y})"
-        var toStringMethod = MethodDeclaration(
-                PredefinedType(Token(SyntaxKind.StringKeyword)),
-                "ToString")
-            .WithModifiers(TokenList(
-                Token(SyntaxKind.PublicKeyword),
-                Token(SyntaxKind.OverrideKeyword)))
-            .WithExpressionBody(ArrowExpressionClause(
-                InterpolatedStringExpression(Token(SyntaxKind.InterpolatedStringStartToken))
-                    .WithContents(BuildNamedTupleToStringContents(typeSymbol))))
-            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
-
-        var record = RecordDeclaration(Token(SyntaxKind.RecordKeyword), typeName)
-            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
-            .WithParameterList(parameterList)
-            .WithOpenBraceToken(Token(SyntaxKind.OpenBraceToken))
-            .WithMembers(SingletonList<MemberDeclarationSyntax>(toStringMethod))
-            .WithCloseBraceToken(Token(SyntaxKind.CloseBraceToken));
-
-        return record;
-    }
-
-    /// <summary>
-    /// Builds the interpolated string contents for namedtuple ToString():
-    /// "Point(x={X}, y={Y})" using SyntaxFactory nodes.
-    /// </summary>
-    private static SyntaxList<InterpolatedStringContentSyntax> BuildNamedTupleToStringContents(
-        TypeSymbol typeSymbol)
-    {
-        var contents = new List<InterpolatedStringContentSyntax>();
-
-        // Leading text: "TypeName("
-        contents.Add(InterpolatedStringText(
-            Token(TriviaList(), SyntaxKind.InterpolatedStringTextToken,
-                $"{typeSymbol.Name}(", $"{typeSymbol.Name}(", TriviaList())));
-
-        for (int i = 0; i < typeSymbol.Fields.Count; i++)
-        {
-            var field = typeSymbol.Fields[i];
-            var originalName = field.Name;
-            var propertyName = NameMangler.Transform(field.Name, NameContext.Field);
-
-            // "x=" prefix (with ", " separator for non-first fields)
-            var prefix = i > 0 ? $", {originalName}=" : $"{originalName}=";
-            contents.Add(InterpolatedStringText(
-                Token(TriviaList(), SyntaxKind.InterpolatedStringTextToken,
-                    prefix, prefix, TriviaList())));
-
-            // {PropertyName} interpolation
-            contents.Add(Interpolation(IdentifierName(propertyName)));
-        }
-
-        // Closing ")"
-        contents.Add(InterpolatedStringText(
-            Token(TriviaList(), SyntaxKind.InterpolatedStringTextToken,
-                ")", ")", TriviaList())));
-
-        return List(contents);
-    }
 }
