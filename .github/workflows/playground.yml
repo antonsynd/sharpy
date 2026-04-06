@@ -41,7 +41,7 @@ jobs:
         run: sed -i 's|<base href="/" />|<base href="/sharpy/" />|g' release/wwwroot/index.html
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: release/wwwroot
 
