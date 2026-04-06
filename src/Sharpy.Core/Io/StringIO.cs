@@ -60,7 +60,9 @@ namespace Sharpy
         /// Returns the number of characters written (Python semantics).
         /// Hides the base TextWriter.Write(string?) which returns void.
         /// When called through a TextWriter reference, the base Write(string?) delegates
-        /// to Write(char) which correctly updates the buffer.
+        /// to Write(char) which correctly updates the buffer, but the return value
+        /// (character count) is silently discarded. Direct StringIO callers get the count;
+        /// TextWriter callers do not.
         /// </summary>
         /// <param name="s">The string to write.</param>
         /// <returns>The number of characters written.</returns>

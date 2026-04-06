@@ -242,14 +242,10 @@ internal class CachedModuleDiscovery
             Documentation = typeInfo.Documentation
         };
 
-        // Populate MethodOverloads for methods that share the same name
-        // (e.g., StringIO.write(char) and write(string) after extending TextWriter).
-        var overloadGroups = typeSymbol.Methods
-            .GroupBy(m => m.Name)
-            .Where(g => g.Count() > 1);
-        foreach (var group in overloadGroups)
+        // Populate MethodOverloads using the canonical helper (filters dunders, groups by name).
+        foreach (var kvp in TypeSymbol.BuildMethodOverloads(typeSymbol.Methods))
         {
-            typeSymbol.MethodOverloads[group.Key] = group.ToList();
+            typeSymbol.MethodOverloads[kvp.Key] = kvp.Value;
         }
 
         return typeSymbol;

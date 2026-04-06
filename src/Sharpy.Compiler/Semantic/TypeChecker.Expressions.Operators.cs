@@ -99,7 +99,7 @@ internal partial class TypeChecker
             var preSymbol = _symbolTable.Lookup(preId.Name);
             if (preSymbol is TypeSymbol)
             {
-                AddError($"Piping to constructors is not yet supported",
+                AddError("Piping to constructors is not yet supported",
                     binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget,
                     span: binOp.Right.Span);
                 return SemanticType.Unknown;
@@ -180,7 +180,7 @@ internal partial class TypeChecker
             {
                 // Constructor call via pipe - x |> SomeClass → SomeClass(x)
                 // This is allowed, handled similarly to function call
-                AddError($"Piping to constructors is not yet supported",
+                AddError("Piping to constructors is not yet supported",
                     binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget,
                     span: binOp.Right.Span);
                 return SemanticType.Unknown;
@@ -338,7 +338,7 @@ internal partial class TypeChecker
             if (symbol is TypeSymbol typeSymbol)
             {
                 // Constructor call via pipe - x |> SomeClass(y) → SomeClass(x, y)
-                AddError($"Piping to constructors is not yet supported",
+                AddError("Piping to constructors is not yet supported",
                     binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget,
                     span: binOp.Right.Span);
                 return SemanticType.Unknown;
