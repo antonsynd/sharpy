@@ -543,44 +543,96 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    // Mixed — some new, some existing: use temp + individual assignments
+                    // Mixed — some new, some existing: use temp + individual assignments.
+                    // .ItemN access is only valid on ValueTuple types. When the RHS is
+                    // a non-tuple type (e.g., list), fall back to deconstruction into
+                    // fresh temp variables, then assign each to the correct target.
+                    var rhsType = GetExpressionSemanticType(assign.Value);
+                    var isTupleRhs = rhsType is Semantic.TupleType;
+
                     var stmts = new List<StatementSyntax>();
-                    var mixedTempName = $"__t{_tempVarCounter++}";
-                    stmts.Add(LocalDeclarationStatement(
-                        VariableDeclaration(IdentifierName("var"))
-                            .WithVariables(SingletonSeparatedList(
-                                VariableDeclarator(Identifier(mixedTempName))
-                                    .WithInitializer(EqualsValueClause(value))))));
 
-                    for (int i = 0; i < identifiers.Count; i++)
+                    if (isTupleRhs)
                     {
-                        var id = identifiers[i];
-                        var itemAccess = MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName(mixedTempName),
-                            IdentifierName($"Item{i + 1}"));
+                        // ValueTuple RHS — use .ItemN access (common case: a, b = b, a + b)
+                        var mixedTempName = $"__t{_tempVarCounter++}";
+                        stmts.Add(LocalDeclarationStatement(
+                            VariableDeclaration(IdentifierName("var"))
+                                .WithVariables(SingletonSeparatedList(
+                                    VariableDeclarator(Identifier(mixedTempName))
+                                        .WithInitializer(EqualsValueClause(value))))));
 
-                        if (existenceFlags[i])
+                        for (int i = 0; i < identifiers.Count; i++)
                         {
-                            // Existing — update
-                            _narrowing.ClearNarrowing(id.Name);
-                            var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
-                            stmts.Add(ExpressionStatement(
-                                AssignmentExpression(
-                                    SyntaxKind.SimpleAssignmentExpression,
-                                    IdentifierName(currentName),
-                                    itemAccess)));
+                            var id = identifiers[i];
+                            var itemAccess = MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                IdentifierName(mixedTempName),
+                                IdentifierName($"Item{i + 1}"));
+
+                            if (existenceFlags[i])
+                            {
+                                _narrowing.ClearNarrowing(id.Name);
+                                var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                                stmts.Add(ExpressionStatement(
+                                    AssignmentExpression(
+                                        SyntaxKind.SimpleAssignmentExpression,
+                                        IdentifierName(currentName),
+                                        itemAccess)));
+                            }
+                            else
+                            {
+                                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                                _declaredVariables.Add(varName);
+                                stmts.Add(LocalDeclarationStatement(
+                                    VariableDeclaration(IdentifierName("var"))
+                                        .WithVariables(SingletonSeparatedList(
+                                            VariableDeclarator(Identifier(varName))
+                                                .WithInitializer(EqualsValueClause(itemAccess))))));
+                            }
                         }
-                        else
+                    }
+                    else
+                    {
+                        // Non-tuple RHS — deconstruct into fresh temps, then assign
+                        var tempNames = identifiers.Select(_ => $"__d{_tempVarCounter++}").ToList();
+                        var tempDesignations = tempNames
+                            .Select(n => (VariableDesignationSyntax)SingleVariableDesignation(Identifier(n)))
+                            .ToList();
+
+                        var deconstructPattern = ParenthesizedVariableDesignation(
+                            SeparatedList(tempDesignations));
+                        stmts.Add(ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                DeclarationExpression(IdentifierName("var"), deconstructPattern),
+                                value)));
+
+                        for (int i = 0; i < identifiers.Count; i++)
                         {
-                            // New — declare
-                            var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
-                            _declaredVariables.Add(varName);
-                            stmts.Add(LocalDeclarationStatement(
-                                VariableDeclaration(IdentifierName("var"))
-                                    .WithVariables(SingletonSeparatedList(
-                                        VariableDeclarator(Identifier(varName))
-                                            .WithInitializer(EqualsValueClause(itemAccess))))));
+                            var id = identifiers[i];
+                            var tempRef = IdentifierName(tempNames[i]);
+
+                            if (existenceFlags[i])
+                            {
+                                _narrowing.ClearNarrowing(id.Name);
+                                var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                                stmts.Add(ExpressionStatement(
+                                    AssignmentExpression(
+                                        SyntaxKind.SimpleAssignmentExpression,
+                                        IdentifierName(currentName),
+                                        tempRef)));
+                            }
+                            else
+                            {
+                                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                                _declaredVariables.Add(varName);
+                                stmts.Add(LocalDeclarationStatement(
+                                    VariableDeclaration(IdentifierName("var"))
+                                        .WithVariables(SingletonSeparatedList(
+                                            VariableDeclarator(Identifier(varName))
+                                                .WithInitializer(EqualsValueClause(tempRef))))));
+                            }
                         }
                     }
 
