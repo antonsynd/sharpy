@@ -1,0 +1,229 @@
+site_name: Sharpy
+site_url: https://antonsynd.github.io/sharpy/
+site_description: A statically-typed Pythonic language for .NET
+repo_url: https://github.com/antonsynd/sharpy
+repo_name: antonsynd/sharpy
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - attr_list
+  - def_list
+  - tables
+
+plugins:
+  - search
+
+exclude_docs: |
+  audits/
+  rejected_proposals/
+  completed_plans/
+  implementation_planning/
+
+nav:
+  - Home: index.md
+  - Language Reference:
+    - Overview: language_specification/README.md
+    - Introduction: language_specification/introduction.md
+    - Lexical Structure:
+      - Source Files: language_specification/source_files.md
+      - Identifiers: language_specification/identifiers.md
+      - Keywords: language_specification/keywords.md
+      - Indentation: language_specification/indentation.md
+      - Comments: language_specification/comments.md
+      - Lexer Implementation: language_specification/lexer_implementation.md
+    - Literals:
+      - Integer Literals: language_specification/integer_literals.md
+      - Float Literals: language_specification/float_literals.md
+      - Extended Numeric Literals: language_specification/extended_numeric_literals.md
+      - String Literals: language_specification/string_literals.md
+      - F-Strings: language_specification/fstrings.md
+      - Boolean Literals: language_specification/boolean_literals.md
+      - None Literal: language_specification/none_literal.md
+      - Ellipsis Literal: language_specification/ellipsis_literal.md
+    - Types:
+      - Primitive Types: language_specification/primitive_types.md
+      - String Type: language_specification/string_type.md
+      - Type Annotations: language_specification/type_annotations.md
+      - Type Annotation Shorthand: language_specification/type_annotation_shorthand.md
+      - Type Hierarchy: language_specification/type_hierarchy.md
+      - Nullable Types: language_specification/nullable_types.md
+      - Named Tuples: language_specification/named_tuples.md
+    - Function Types:
+      - Function Types: language_specification/function_types.md
+      - Delegates: language_specification/delegates.md
+    - Operators:
+      - Arithmetic: language_specification/arithmetic_operators.md
+      - Comparison: language_specification/comparison_operators.md
+      - Comparison Chaining: language_specification/comparison_chaining.md
+      - Logical: language_specification/logical_operators.md
+      - Bitwise: language_specification/bitwise_operators.md
+      - String Operators: language_specification/string_operators.md
+      - Membership: language_specification/membership_operators.md
+      - Identity: language_specification/identity_operators.md
+      - Assignment: language_specification/assignment_operators.md
+      - Null Coalescing (??): language_specification/null_coalescing_operator.md
+      - Null Coalescing Assignment (??=): language_specification/null_coalescing_assignment.md
+      - Null Conditional Access (?.): language_specification/null_conditional_access.md
+      - Pipe Operator (|>): language_specification/pipe_operator.md
+      - Operator Precedence: language_specification/operator_precedence.md
+      - Type Narrowing: language_specification/type_narrowing.md
+    - Expressions:
+      - Expressions: language_specification/expressions.md
+      - Type Casting: language_specification/type_casting.md
+      - Lambdas: language_specification/lambdas.md
+      - Partial Application: language_specification/partial_application.md
+      - Expression Blocks: language_specification/expression_blocks.md
+    - Collection Types:
+      - Collections: language_specification/collection_types.md
+      - Spread Operator: language_specification/spread_operator.md
+    - Statements:
+      - Statements: language_specification/statements.md
+      - Variable Declaration: language_specification/variable_declaration.md
+      - Del Statement: language_specification/del_statement.md
+    - Variable Scoping:
+      - Scoping Rules: language_specification/variable_scoping.md
+      - Pass Statement: language_specification/pass_statement.md
+      - Break and Continue: language_specification/break_continue.md
+      - Return Statement: language_specification/return_statement.md
+      - Assert Statement: language_specification/assert_statement.md
+    - Control Flow:
+      - If Statement: language_specification/if_statement.md
+      - While Statement: language_specification/while_statement.md
+      - For Statement: language_specification/for_statement.md
+      - Loop Else: language_specification/loop_else.md
+    - Exception Handling: language_specification/exception_handling.md
+    - Functions:
+      - Function Definition: language_specification/function_definition.md
+      - Function Parameters: language_specification/function_parameters.md
+      - Method Overloading: language_specification/method_overloading.md
+      - Default Parameters: language_specification/function_default_parameters.md
+      - Variadic Arguments: language_specification/function_variadic_arguments.md
+      - Flexible Arguments: language_specification/flexible_arguments.md
+      - Parameter Modifiers: language_specification/parameter_modifiers.md
+      - Generators: language_specification/generators.md
+    - Classes:
+      - Classes: language_specification/classes.md
+      - Class Methods: language_specification/class_methods.md
+      - Constructors: language_specification/constructors.md
+    - Imports:
+      - Import Statements: language_specification/import_statements.md
+      - Module Resolution: language_specification/module_resolution.md
+      - Module System: language_specification/module_system.md
+    - Structs: language_specification/structs.md
+    - Interfaces:
+      - Interfaces: language_specification/interfaces.md
+      - Default Methods: language_specification/interface_default_methods.md
+    - Inheritance: language_specification/inheritance.md
+    - Decorators: language_specification/decorators.md
+    - Generics:
+      - Generics: language_specification/generics.md
+      - Generic Variance: language_specification/generic_variance.md
+    - Enumerations: language_specification/enums.md
+    - Operator Overloading:
+      - Operator Overloading: language_specification/operator_overloading.md
+      - Dunder Methods: language_specification/dunder_methods.md
+      - Dunder Recommendations: language_specification/dunder_methods_recommendations.md
+      - Dunder Invocation Rules: language_specification/dunder_invocation_rules.md
+      - Conversion Operators: language_specification/conversion_operators.md
+    - Pattern Matching: language_specification/match_statement.md
+    - Type Aliases: language_specification/type_aliases.md
+    - Tagged Unions:
+      - Tagged Unions: language_specification/tagged_unions.md
+      - Result Type: language_specification/tagged_unions_result.md
+      - Optional Type: language_specification/tagged_unions_optional.md
+    - Try Expressions: language_specification/try_expressions.md
+    - Maybe Expressions: language_specification/maybe_expressions.md
+    - Comprehensions:
+      - Comprehensions: language_specification/comprehensions.md
+      - Tuple Unpacking: language_specification/tuple_unpacking.md
+    - Walrus Operator: language_specification/walrus_operator.md
+    - Properties:
+      - Properties: language_specification/properties.md
+      - Function-Style Properties: language_specification/properties_function_style.md
+      - Property Inheritance: language_specification/properties_inheritance.md
+    - Context Managers: language_specification/context_managers.md
+    - Events: language_specification/events.md
+    - Async Programming: language_specification/async_programming.md
+    - Built-in Functions: language_specification/builtin_functions.md
+    - Name Mangling: language_specification/name_mangling.md
+    - .NET Interop: language_specification/dotnet_interop.md
+    - Static Methods: language_specification/static_methods.md
+    - Naming Conventions:
+      - Naming Conventions: language_specification/naming_conventions.md
+      - Conventions: language_specification/conventions.md
+    - Program Entry Point: language_specification/program_entry_point.md
+    - Dataclass: language_specification/dataclass.md
+    - Deferred Features: language_specification/deferred_features.md
+  - Standard Library:
+    - Overview: stdlib/index.md
+    - Built-in Functions: stdlib/builtins.md
+    - Core Types:
+      - list: stdlib/list.md
+      - dict: stdlib/dict.md
+      - set: stdlib/set.md
+      - str: stdlib/str.md
+      - complex: stdlib/complex.md
+    - Modules:
+      - argparse: stdlib/argparse.md
+      - bisect: stdlib/bisect.md
+      - collections: stdlib/collections.md
+      - copy: stdlib/copy.md
+      - csv: stdlib/csv.md
+      - datetime: stdlib/datetime.md
+      - fnmatch: stdlib/fnmatch.md
+      - functools: stdlib/functools.md
+      - glob: stdlib/glob.md
+      - hashlib: stdlib/hashlib.md
+      - heapq: stdlib/heapq.md
+      - io: stdlib/io.md
+      - itertools: stdlib/itertools.md
+      - json: stdlib/json.md
+      - logging: stdlib/logging.md
+      - math: stdlib/math.md
+      - operator: stdlib/operator.md
+      - os: stdlib/os.md
+      - pathlib: stdlib/pathlib.md
+      - random: stdlib/random.md
+      - re: stdlib/re.md
+      - shutil: stdlib/shutil.md
+      - statistics: stdlib/statistics.md
+      - string: stdlib/string.md
+      - sys: stdlib/sys.md
+      - tempfile: stdlib/tempfile.md
+      - textwrap: stdlib/textwrap.md
+      - time: stdlib/time.md
+  - Tooling:
+    - Editor Integration: tooling/editor-integration.md
+    - VS Code Extension: tooling/vscode-extension.md
+    - LSP Server: tooling/lsp-server.md
+  - Playground: https://antonsynd.github.io/sharpy/playground/

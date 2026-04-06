@@ -2,6 +2,9 @@ editors/vscode/out/
 
 mcp.json
 
+# MkDocs build output
+site/
+
 node_modules/
 .serena/
 

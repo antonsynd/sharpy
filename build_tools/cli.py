@@ -56,6 +56,7 @@ try:
             cmd_logs as builder_logs,
         )
         from build_tools.sharpy_auto_builder.config import Config as BuilderConfig
+        from build_tools.generate_stdlib_docs import generate as stdlib_generate
     except ImportError:
         # Fallback to relative imports
         from .generate_code_walkthroughs import (
@@ -78,6 +79,7 @@ try:
             cmd_logs as builder_logs,
         )
         from .sharpy_auto_builder.config import Config as BuilderConfig
+        from .generate_stdlib_docs import generate as stdlib_generate
 except ImportError as e:
     print(f"Error importing build tools: {e}", file=sys.stderr)
     print("Make sure you're running from the Sharpy project root", file=sys.stderr)
@@ -702,6 +704,60 @@ def build_logs(
         builder_logs(args)
     except SystemExit:
         raise
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+# ==============================================================================
+# Stdlib Documentation Commands
+# ==============================================================================
+
+
+@cli.group()
+def stdlib():
+    """Generate standard library API documentation."""
+    pass
+
+
+@stdlib.command(name="generate")
+@click.option(
+    "--source-dir",
+    "-s",
+    type=click.Path(exists=True, path_type=Path),
+    default="src/Sharpy.Core",
+    help="Path to Sharpy.Core source directory (default: src/Sharpy.Core)",
+)
+@click.option(
+    "--output-dir",
+    "-o",
+    type=click.Path(path_type=Path),
+    default="docs/stdlib",
+    help="Output directory for generated docs (default: docs/stdlib)",
+)
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Overwrite existing files (default: skip existing)",
+)
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Print progress information",
+)
+def stdlib_gen(source_dir: Path, output_dir: Path, force: bool, verbose: bool):
+    """Generate stdlib API reference pages from Sharpy.Core C# source."""
+    try:
+        generated = stdlib_generate(
+            source_dir=source_dir.resolve(),
+            output_dir=output_dir.resolve(),
+            force=force,
+            verbose=verbose,
+        )
+        if not verbose:
+            click.echo(f"Generated {len(generated)} files in {output_dir}")
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)

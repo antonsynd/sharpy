@@ -1,13 +1,15 @@
-name: Deploy Playground
+name: Deploy Documentation
 
 on:
   push:
     branches: [ "mainline" ]
     paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
       - 'src/Sharpy.Playground/**'
       - 'src/Sharpy.Compiler/**'
       - 'src/Sharpy.Core/**'
-      - '.github/workflows/playground.yml'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 permissions:
@@ -26,6 +28,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Build MkDocs site
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install MkDocs Material
+        run: pip install mkdocs-material
+
+      - name: Build documentation
+        run: mkdocs build --strict
+
+      # Build Blazor WASM playground
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
@@ -35,15 +50,19 @@ jobs:
         run: dotnet workload install wasm-tools
 
       - name: Publish Playground
-        run: dotnet publish src/Sharpy.Playground/Sharpy.Playground.csproj -c Release -o release
+        run: dotnet publish src/Sharpy.Playground/Sharpy.Playground.csproj -c Release -o playground-release
 
-      - name: Rewrite base href
-        run: sed -i 's|<base href="/" />|<base href="/sharpy/" />|g' release/wwwroot/index.html
+      - name: Rewrite base href for playground subdirectory
+        run: sed -i 's|<base href="/" />|<base href="/sharpy/playground/" />|g' playground-release/wwwroot/index.html
+
+      # Combine into single site
+      - name: Copy playground into docs site
+        run: cp -r playground-release/wwwroot site/playground
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: release/wwwroot
+          path: site
 
   deploy:
     environment:

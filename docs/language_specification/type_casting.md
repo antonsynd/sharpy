@@ -226,7 +226,7 @@ value is int _temp ? (int?)_temp : null
 
 ## Note on `as`
 
-`as` is **not** a casting operator in Sharpy. The `as` keyword is reserved for other contexts (exception binding, context managers, import aliases, and match/case pattern binding). See [SRP-0005](../../rejected_proposals/SRP-0005-as-casting-operator.md) for rationale.
+`as` is **not** a casting operator in Sharpy. The `as` keyword is reserved for other contexts (exception binding, context managers, import aliases, and match/case pattern binding). See SRP-0005 (rejected proposal) for rationale.
 
 ## See Also
 
