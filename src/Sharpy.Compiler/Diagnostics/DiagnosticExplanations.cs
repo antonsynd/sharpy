@@ -1341,6 +1341,17 @@ public static class DiagnosticExplanations
             "class Foo:\n    @private\n    def __init__(self) -> None:\n        ...",
             "Remove the access modifier decorator from the dunder method:\nclass Foo:\n    def __init__(self) -> None:\n        ...");
 
+        // ── Validation errors: Unsupported Python constructs (SPY0432) ──
+
+        Add(dict, DiagnosticCodes.Validation.NamedtupleNotSupported,
+            "collections.namedtuple is not supported",
+            "Validation",
+            "Sharpy does not support collections.namedtuple. Use native named tuples " +
+            "(type aliases with named fields) or @dataclass for data-holding classes instead.",
+            "from collections import namedtuple\nPoint = namedtuple(\"Point\", [\"x\", \"y\"])",
+            "Use native named tuples:\ntype Point = tuple[x: float, y: float]\n\n" +
+            "Or use @dataclass:\n@dataclass\nclass Point:\n    x: float\n    y: float");
+
         // ── Validation warnings: Deprecation (SPY0464) ─────────────────
 
         Add(dict, DiagnosticCodes.Validation.DeprecatedBodylessSyntax,

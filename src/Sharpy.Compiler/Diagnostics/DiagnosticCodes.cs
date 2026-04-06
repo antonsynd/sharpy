@@ -417,7 +417,8 @@ public static class DiagnosticCodes
         // Access modifier decorator validation (SPY0430-SPY0431)
         public const string ConflictingAccessModifiers = "SPY0430"; // Active
         public const string AccessModifierOnDunder = "SPY0431";     // Active
-        // SPY0432-SPY0449: Reserved for future validation errors
+        public const string NamedtupleNotSupported = "SPY0432";     // Active
+        // SPY0433-SPY0449: Reserved for future validation errors
 
         #endregion
 

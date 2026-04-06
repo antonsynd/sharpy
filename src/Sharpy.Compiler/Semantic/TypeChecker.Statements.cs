@@ -1910,8 +1910,32 @@ internal partial class TypeChecker
         }
         else if (valueType is TupleType tupleType)
         {
-            // For tuples, use a common element type (first element's type for simplicity)
-            elementType = tupleType.ElementTypes.Count > 0 ? tupleType.ElementTypes[0] : SemanticType.Unknown;
+            // For tuples, compute the starred variable's element type from the rest elements
+            int starIdx = targetTuple.Elements.ToList().FindIndex(e => e is StarExpression);
+            int nBefore = starIdx;
+            int nAfter = targetTuple.Elements.Length - starIdx - 1;
+            int tupleArity = tupleType.ElementTypes.Count;
+
+            // Collect the types of elements that go into the rest variable
+            var restTypes = new List<SemanticType>();
+            for (int ri = nBefore; ri < tupleArity - nAfter; ri++)
+            {
+                if (ri >= 0 && ri < tupleArity)
+                    restTypes.Add(tupleType.ElementTypes[ri]);
+            }
+
+            if (restTypes.Count == 0)
+            {
+                elementType = tupleType.ElementTypes.Count > 0 ? tupleType.ElementTypes[0] : SemanticType.Unknown;
+            }
+            else if (restTypes.All(t => t.Equals(restTypes[0])))
+            {
+                elementType = restTypes[0];
+            }
+            else
+            {
+                elementType = BuiltinType.Object;
+            }
         }
         else
         {

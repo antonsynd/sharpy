@@ -338,6 +338,43 @@ internal class ImportResolver
             _logger.LogDebug($"[ImportResolver]   Current module: {Path.GetFileName(_currentModulePath)}");
         }
 
+        // Helpful error for unsupported Python constructs: intercept before module resolution
+        // so the error fires even when the module has no remaining exported functions.
+        if (fromImport.Module == "collections" && !fromImport.ImportAll)
+        {
+            foreach (var alias in fromImport.Names)
+            {
+                if (alias.Name == "namedtuple")
+                {
+                    AddError(
+                        "collections.namedtuple is not supported in Sharpy. " +
+                        "Use 'type Point = tuple[x: float, y: float]' for named tuples, " +
+                        "or '@dataclass class Point: x: float; y: float' for data classes.",
+                        alias.LineStart, alias.ColumnStart,
+                        code: DiagnosticCodes.Validation.NamedtupleNotSupported,
+                        span: alias.Span ?? fromImport.Span);
+
+                    // Create error recovery module to suppress cascading errors
+                    var errorRecoveryModule = CreateErrorRecoveryModule(
+                        fromImport.Module, fromImport.LineStart, fromImport.ColumnStart);
+                    foreach (var importAlias in fromImport.Names)
+                    {
+                        var targetName = importAlias.AsName ?? importAlias.Name;
+                        errorRecoveryModule.Exports[targetName] = CreateErrorRecoverySymbol(
+                            targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart);
+                        _diagnostics.MarkAsRootCause(targetName);
+                    }
+                    return new ModuleInfo
+                    {
+                        Path = $"<error-recovery:{fromImport.Module}>",
+                        Module = null!,
+                        ExportedSymbols = errorRecoveryModule.Exports,
+                        IsNetModule = false
+                    };
+                }
+            }
+        }
+
         // First, try to resolve as .NET assembly module
         var moduleInfo = TryResolveNetModule(fromImport.Module, fromImport.LineStart, fromImport.ColumnStart);
 
