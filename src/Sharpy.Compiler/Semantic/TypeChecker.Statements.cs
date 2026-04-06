@@ -96,6 +96,10 @@ internal partial class TypeChecker
                 return;
             }
 
+            // Detect namedtuple pattern: X = namedtuple("X", ["a", "b"])
+            if (TryCheckNamedTupleDefinition(assignment, targetId))
+                return;
+
             // In Sharpy, simple assignments (x = value) create new variable versions
             // This enables Python-like behavior where variables can be reassigned to different types
             // Set expected type for constructor inference if the variable was previously declared
@@ -1910,8 +1914,32 @@ internal partial class TypeChecker
         }
         else if (valueType is TupleType tupleType)
         {
-            // For tuples, use a common element type (first element's type for simplicity)
-            elementType = tupleType.ElementTypes.Count > 0 ? tupleType.ElementTypes[0] : SemanticType.Unknown;
+            // For tuples, compute the starred variable's element type from the rest elements
+            int starIdx = targetTuple.Elements.ToList().FindIndex(e => e is StarExpression);
+            int nBefore = starIdx;
+            int nAfter = targetTuple.Elements.Length - starIdx - 1;
+            int tupleArity = tupleType.ElementTypes.Count;
+
+            // Collect the types of elements that go into the rest variable
+            var restTypes = new List<SemanticType>();
+            for (int ri = nBefore; ri < tupleArity - nAfter; ri++)
+            {
+                if (ri >= 0 && ri < tupleArity)
+                    restTypes.Add(tupleType.ElementTypes[ri]);
+            }
+
+            if (restTypes.Count == 0)
+            {
+                elementType = tupleType.ElementTypes.Count > 0 ? tupleType.ElementTypes[0] : SemanticType.Unknown;
+            }
+            else if (restTypes.All(t => t.Equals(restTypes[0])))
+            {
+                elementType = restTypes[0];
+            }
+            else
+            {
+                elementType = BuiltinType.Object;
+            }
         }
         else
         {
@@ -1966,6 +1994,154 @@ internal partial class TypeChecker
                 _semanticInfo.SetExpressionType(id, elementType);
             }
         }
+    }
+
+    /// <summary>
+    /// Detect and handle the namedtuple pattern: X = namedtuple("X", ["a", "b"]).
+    /// When matched, creates a synthetic TypeSymbol with fields and constructor,
+    /// registers it in the symbol table, and marks the assignment in SemanticInfo.
+    /// Returns true if the pattern was matched (caller should return early).
+    /// </summary>
+    private bool TryCheckNamedTupleDefinition(Assignment assignment, Identifier targetId)
+    {
+        // Pattern: value must be a FunctionCall to an identifier named "namedtuple"
+        if (assignment.Value is not FunctionCall { Function: Identifier { Name: "namedtuple" } funcId } call)
+            return false;
+
+        // Verify the identifier resolves to a FunctionSymbol from the collections module
+        var symbol = _symbolTable.Lookup("namedtuple");
+        if (symbol is not FunctionSymbol funcSymbol)
+            return false;
+
+        // Verify the namedtuple function comes from the collections module.
+        // FunctionSymbols from cached module discovery don't have ClrMethod set,
+        // so we also check OriginalModule which is set by ImportResolver.CreateReExportSymbol
+        // when processing "from collections import namedtuple".
+        var isCollectionsNamedtuple = funcSymbol.ClrMethod?.DeclaringType?.FullName == "Sharpy.Collections"
+            || funcSymbol.OriginalModule == "collections";
+        if (!isCollectionsNamedtuple)
+            return false;
+
+        // Extract type name from first positional argument (must be a string literal)
+        if (call.Arguments.Length < 2)
+        {
+            AddError("namedtuple() requires at least 2 arguments: name and fields",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                span: call.Span);
+            return true;
+        }
+
+        if (call.Arguments[0] is not StringLiteral typeName)
+        {
+            AddError("namedtuple() first argument must be a string literal",
+                call.Arguments[0].LineStart, call.Arguments[0].ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: call.Arguments[0].Span);
+            return true;
+        }
+
+        // Validate type name matches assignment target
+        if (typeName.Value != targetId.Name)
+        {
+            AddError($"namedtuple type name '{typeName.Value}' must match the variable name '{targetId.Name}'",
+                typeName.LineStart, typeName.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: typeName.Span);
+            return true;
+        }
+
+        // Extract field names from second argument (must be a list of string literals)
+        if (call.Arguments[1] is not ListLiteral fieldList)
+        {
+            AddError("namedtuple() second argument must be a list of string literals",
+                call.Arguments[1].LineStart, call.Arguments[1].ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: call.Arguments[1].Span);
+            return true;
+        }
+
+        var fieldNames = new List<string>();
+        foreach (var element in fieldList.Elements)
+        {
+            if (element is not StringLiteral fieldName)
+            {
+                AddError("namedtuple() field names must be string literals",
+                    element.LineStart, element.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: element.Span);
+                return true;
+            }
+            fieldNames.Add(fieldName.Value);
+        }
+
+        // Create synthetic TypeSymbol for the namedtuple
+        var typeSymbol = new TypeSymbol
+        {
+            Name = targetId.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            DeclarationLine = assignment.LineStart,
+            DeclarationColumn = assignment.ColumnStart,
+            DeclarationSpan = assignment.Span,
+        };
+
+        // Add fields (default to object type — codegen will generate typed properties)
+        foreach (var fieldName in fieldNames)
+        {
+            typeSymbol.Fields.Add(new VariableSymbol
+            {
+                Name = fieldName,
+                Kind = SymbolKind.Variable,
+                Type = SemanticType.Object,
+                AccessLevel = AccessLevel.Public,
+            });
+        }
+
+        // Create UserDefinedType early so it can be used as the self parameter type
+        var userType = new UserDefinedType { Name = targetId.Name, Symbol = typeSymbol };
+
+        // Create constructor with parameters matching fields.
+        // __init__ must include 'self' as the first parameter since the constructor
+        // call resolution in TypeChecker applies a self-offset of 1 when matching
+        // call arguments to __init__ parameters.
+        var ctorParams = new List<ParameterSymbol>
+        {
+            new ParameterSymbol { Name = "self", Type = userType }
+        };
+        foreach (var fieldName in fieldNames)
+        {
+            ctorParams.Add(new ParameterSymbol
+            {
+                Name = fieldName,
+                Type = SemanticType.Object,
+            });
+        }
+        var ctorSymbol = new FunctionSymbol
+        {
+            Name = DunderNames.Init,
+            Kind = SymbolKind.Function,
+            ReturnType = SemanticType.Void,
+            Parameters = ctorParams,
+            DeclarationLine = assignment.LineStart,
+            DeclarationColumn = assignment.ColumnStart,
+        };
+        typeSymbol.Constructors.Add(ctorSymbol);
+        typeSymbol.Methods.Add(ctorSymbol);
+
+        // Register the type in the symbol table
+        _symbolTable.Define(typeSymbol);
+
+        // Set semantic info on the target identifier
+        _semanticInfo.SetIdentifierSymbol(targetId, typeSymbol);
+        _semanticInfo.SetExpressionType(targetId, userType);
+
+        // Set semantic info on the function call
+        _semanticInfo.SetExpressionType(call, userType);
+        _semanticInfo.SetIdentifierSymbol(funcId, funcSymbol);
+
+        // Mark this assignment as a namedtuple definition for codegen
+        _semanticInfo.MarkAsNamedTupleDefinition(assignment, typeSymbol);
+
+        return true;
     }
 
     /// <summary>

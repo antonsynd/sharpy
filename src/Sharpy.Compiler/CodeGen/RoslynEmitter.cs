@@ -255,6 +255,34 @@ internal partial class RoslynEmitter
             _isNullableNarrowing.Clear();
             _isInstanceNarrowed.Clear();
         }
+
+        /// <summary>
+        /// Captures a snapshot of narrowing state for save/restore around local functions.
+        /// </summary>
+        public (Dictionary<string, int> Optionals, HashSet<string> Nullables, Dictionary<string, Stack<string>> Instance) Snapshot()
+        {
+            var optionals = new Dictionary<string, int>(_narrowedOptionals);
+            var nullables = new HashSet<string>(_isNullableNarrowing);
+            var instance = new Dictionary<string, Stack<string>>();
+            foreach (var (k, v) in _isInstanceNarrowed)
+                instance[k] = new Stack<string>(v.Reverse());
+            return (optionals, nullables, instance);
+        }
+
+        /// <summary>
+        /// Restores narrowing state from a snapshot.
+        /// </summary>
+        public void Restore((Dictionary<string, int> Optionals, HashSet<string> Nullables, Dictionary<string, Stack<string>> Instance) snapshot)
+        {
+            _narrowedOptionals.Clear();
+            foreach (var (k, v) in snapshot.Optionals)
+                _narrowedOptionals[k] = v;
+            _isNullableNarrowing.Clear();
+            _isNullableNarrowing.UnionWith(snapshot.Nullables);
+            _isInstanceNarrowed.Clear();
+            foreach (var (k, v) in snapshot.Instance)
+                _isInstanceNarrowed[k] = v;
+        }
     }
 
     private readonly NarrowingState _narrowing = new();

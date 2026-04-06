@@ -1,0 +1,8 @@
+from collections import namedtuple
+
+Point = namedtuple("Point", ["x", "y"])
+
+def main():
+    p = Point(1, 2)
+    print(p.x)
+    print(p.y)

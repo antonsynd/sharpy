@@ -63,6 +63,10 @@ public class SemanticInfo : ISemanticQuery
     // Track member access expressions that resolve to events (for codegen to emit +=/-= correctly)
     private readonly ConcurrentDictionary<Expression, byte> _eventAccessNodes = new(ReferenceEqualityComparer.Instance);
 
+    // Track assignments that are namedtuple definitions (e.g., Point = namedtuple("Point", ["x", "y"]))
+    // Maps the Assignment node to the synthesized TypeSymbol for codegen to emit a record class
+    private readonly ConcurrentDictionary<Assignment, TypeSymbol> _namedTupleDefinitions = new(ReferenceEqualityComparer.Instance);
+
     // Map patterns to their resolved union case type symbols
     // Used when a PositionalPattern or MemberAccessPattern matches a union case
     private readonly ConcurrentDictionary<Pattern, TypeSymbol> _patternUnionCases =
@@ -267,6 +271,18 @@ public class SemanticInfo : ISemanticQuery
     /// Returns true if the expression has been marked as an event access.
     /// </summary>
     public bool IsEventAccess(Expression expr) => _eventAccessNodes.ContainsKey(expr);
+
+    /// <summary>
+    /// Marks an assignment as a namedtuple definition and associates the synthesized TypeSymbol.
+    /// </summary>
+    public void MarkAsNamedTupleDefinition(Assignment assignment, TypeSymbol typeSymbol) =>
+        _namedTupleDefinitions.TryAdd(assignment, typeSymbol);
+
+    /// <summary>
+    /// Returns the synthesized TypeSymbol if this assignment is a namedtuple definition, null otherwise.
+    /// </summary>
+    public TypeSymbol? GetNamedTupleDefinition(Assignment assignment) =>
+        _namedTupleDefinitions.TryGetValue(assignment, out var typeSymbol) ? typeSymbol : null;
 
     /// <summary>
     /// Returns true if any expression type in the semantic info is UnknownType.

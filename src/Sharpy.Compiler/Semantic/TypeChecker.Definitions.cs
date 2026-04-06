@@ -79,6 +79,42 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking function: {functionDef.Name}");
 
+        // Nested function: if we're inside a function (not at module level) and not inside a class,
+        // register the nested function symbol in the enclosing scope so it can be called by name.
+        // NameResolver only handles module-level declarations, so nested functions need registration here.
+        if (_currentFunctionReturnType != null && _currentClass == null)
+        {
+            var existingSymbol = _symbolTable.Lookup(functionDef.Name, searchParents: false);
+            if (existingSymbol == null)
+            {
+                var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
+                {
+                    Name = p.Name,
+                    Type = SemanticType.Unknown,
+                    HasDefault = p.DefaultValue != null,
+                    DefaultValue = p.DefaultValue,
+                    IsVariadic = p.IsVariadic,
+                    IsPositionalOnly = p.Kind == ParameterKind.PositionalOnly,
+                    IsKeywordOnly = p.Kind == ParameterKind.KeywordOnly
+                }).ToList();
+
+                var nestedFuncSymbol = new FunctionSymbol
+                {
+                    Name = functionDef.Name,
+                    Kind = SymbolKind.Function,
+                    AccessLevel = AccessLevel.Private,
+                    Parameters = parameters,
+                    TypeParameters = functionDef.TypeParameters.ToList(),
+                    DeclarationSpan = functionDef.Span,
+                    DeclarationLine = functionDef.LineStart,
+                    DeclarationColumn = functionDef.ColumnStart,
+                    Documentation = functionDef.DocString
+                };
+
+                _symbolTable.Define(nestedFuncSymbol);
+            }
+        }
+
         // Look up the function symbol to update its types
         var functionSymbol = LookupFunctionSymbol(functionDef);
 

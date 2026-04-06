@@ -72,4 +72,10 @@ public interface ISemanticQuery
     /// Returns null if no symbol was recorded (e.g., no <c>as</c> clause).
     /// </summary>
     VariableSymbol? GetWithItemSymbol(WithItem item);
+
+    /// <summary>
+    /// Gets the synthesized TypeSymbol if this assignment is a namedtuple definition.
+    /// Returns null if this is a normal assignment.
+    /// </summary>
+    TypeSymbol? GetNamedTupleDefinition(Assignment assignment);
 }

@@ -70,6 +70,7 @@ internal partial class RoslynEmitter
             TryStatement tryStmt => GenerateTry(tryStmt),
             WithStatement withStmt => GenerateWith(withStmt),
             MatchStatement matchStmt => GenerateMatch(matchStmt),
+            FunctionDef funcDef => GenerateLocalFunction(funcDef),
             _ => null
         };
 
@@ -109,6 +110,114 @@ internal partial class RoslynEmitter
             _hoistedStatements.AddRange(savedWalrus);
 
         return output;
+    }
+
+    /// <summary>
+    /// Generates a C# local function statement from a nested FunctionDef.
+    /// Saves and restores the enclosing method's scope state so that the nested
+    /// function's variable tracking does not clobber the outer scope.
+    /// </summary>
+    private LocalFunctionStatementSyntax GenerateLocalFunction(FunctionDef func)
+    {
+        // Save all enclosing scope state
+        var savedDeclaredVars = new HashSet<string>(_declaredVariables);
+        var savedVersions = new Dictionary<string, int>(_variableVersions);
+        var savedConsts = new HashSet<string>(_constVariables);
+        var savedSourceNames = new HashSet<string>(_sourceVariableNames);
+        var savedNarrowing = _narrowing.Snapshot();
+
+        // Clear scope for the local function
+        _declaredVariables.Clear();
+        _variableVersions.Clear();
+        _constVariables.Clear();
+        _sourceVariableNames.Clear();
+        _narrowing.Reset();
+
+        // Pre-scan the local function body for source variable names
+        CollectSourceVariableNames(func.Body);
+
+        // Set generator and async scope (disposable — auto-restores)
+        using var _ = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
+        using var _async = SetAsyncScope(func.IsAsync);
+
+        // Mangle name: snake_case → PascalCase
+        var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
+
+        // Determine return type
+        TypeSyntax returnType = func.ReturnType != null
+            ? _typeMapper.MapType(func.ReturnType)
+            : PredefinedType(Token(SyntaxKind.VoidKeyword));
+
+        // Wrap return type for generators and async functions
+        bool isAsync = func.IsAsync;
+        if (_isCurrentMethodGenerator)
+        {
+            returnType = isAsync ? WrapInIAsyncEnumerable(returnType) : WrapInIEnumerable(returnType);
+        }
+        else if (isAsync)
+        {
+            if (func.ReturnType != null)
+            {
+                returnType = WrapInTask(returnType);
+            }
+            else
+            {
+                returnType = TaskType();
+            }
+        }
+
+        // Reorder and generate parameters
+        var orderedParams = ReorderParametersForCSharp(func.Parameters);
+        var parameters = orderedParams
+            .Select(GenerateParameter)
+            .ToArray();
+
+        // Track parameters as declared variables in the local function scope
+        foreach (var param in func.Parameters)
+        {
+            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            _declaredVariables.Add(paramName);
+            var baseName = NameMangler.ToCamelCase(param.Name);
+            _variableVersions[baseName] = 0;
+        }
+
+        // Generate body (recursive — supports nested-nested functions)
+        var body = Block(func.Body.SelectMany(GenerateBodyStatements));
+
+        var localFunc = LocalFunctionStatement(returnType, Identifier(mangledName))
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithBody(body);
+
+        // Add type parameters if generic
+        if (func.TypeParameters.Length > 0)
+        {
+            var typeParams = func.TypeParameters
+                .Select(GenerateTypeParameterSyntax)
+                .ToArray();
+            localFunc = localFunc
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(func.TypeParameters));
+        }
+
+        // Add async modifier if needed
+        if (isAsync)
+        {
+            localFunc = localFunc.AddModifiers(Token(SyntaxKind.AsyncKeyword));
+        }
+
+        // Restore enclosing scope state
+        _declaredVariables.Clear();
+        _declaredVariables.UnionWith(savedDeclaredVars);
+        _variableVersions.Clear();
+        foreach (var (k, v) in savedVersions)
+            _variableVersions[k] = v;
+        _constVariables.Clear();
+        _constVariables.UnionWith(savedConsts);
+        _sourceVariableNames.Clear();
+        _sourceVariableNames.UnionWith(savedSourceNames);
+        _narrowing.Restore(savedNarrowing);
+
+        return localFunc;
     }
 
     /// <summary>
@@ -1959,23 +2068,54 @@ internal partial class RoslynEmitter
         int numBefore = starIndex;
         int numAfter = elements.Length - starIndex - 1;
 
+        // Check if source is a tuple (ValueTuple) — needs .ItemN access instead of indexing
+        var isTupleSource = valueType is Semantic.TupleType;
+        var tupleArity = isTupleSource ? ((Semantic.TupleType)valueType!).ElementTypes.Count : 0;
+
         // Determine element type for the Sharpy.List<T> wrapper
         TypeSyntax elementTypeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         if (valueType is GenericType { Name: BuiltinNames.List } listType && listType.TypeArguments.Count > 0)
         {
             elementTypeSyntax = _typeMapper.MapSemanticType(listType.TypeArguments[0]);
         }
+        else if (valueType is Semantic.TupleType tupleType)
+        {
+            // Collect the rest element types (those that go into the star variable)
+            var restTypes = new List<SemanticType>();
+            for (int ri = numBefore; ri < tupleArity - numAfter; ri++)
+            {
+                if (ri >= 0 && ri < tupleType.ElementTypes.Count)
+                    restTypes.Add(tupleType.ElementTypes[ri]);
+            }
 
-        // Elements before star: name = __t[i] (update) or var name = __t[i] (declare)
+            if (restTypes.Count > 0 && restTypes.All(t => t.Equals(restTypes[0])))
+            {
+                elementTypeSyntax = _typeMapper.MapSemanticType(restTypes[0]);
+            }
+        }
+
+        // Elements before star: name = __t[i] or __t.ItemN (for tuples)
         for (int i = 0; i < numBefore; i++)
         {
             if (elements[i] is Identifier id)
             {
-                var indexExpr = ElementAccessExpression(IdentifierName(sourceVar))
-                    .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
-                        Argument(LiteralExpression(
-                            SyntaxKind.NumericLiteralExpression,
-                            Literal(i))))));
+                ExpressionSyntax indexExpr;
+                if (isTupleSource)
+                {
+                    // ValueTuple uses 1-based .ItemN properties
+                    indexExpr = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(sourceVar),
+                        IdentifierName($"Item{i + 1}"));
+                }
+                else
+                {
+                    indexExpr = ElementAccessExpression(IdentifierName(sourceVar))
+                        .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
+                            Argument(LiteralExpression(
+                                SyntaxKind.NumericLiteralExpression,
+                                Literal(i))))));
+                }
 
                 var baseName = NameMangler.ToCamelCase(id.Name);
                 var sym = _context.LookupSymbol(id.Name);
@@ -2005,7 +2145,7 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Star element: rest = __t.GetSlice(...) (update) or var rest = __t.GetSlice(...) (declare)
+        // Star element: rest = __t.GetSlice(...) or new Sharpy.List<T> { __t.ItemN, ... } (for tuples)
         if (elements[starIndex] is StarExpression starExpr && starExpr.Operand is Identifier starId)
         {
             var starBaseName = NameMangler.ToCamelCase(starId.Name);
@@ -2014,33 +2154,57 @@ internal partial class RoslynEmitter
             var starExistsAsLocal = _variableVersions.ContainsKey(starBaseName);
             var starIsExisting = starExistsAsModuleLevel || starExistsAsLocal;
 
-            // Build Slice constructor args: new Sharpy.Slice((int?)start, (int?)end)
-            var startArg = numBefore > 0
-                ? (ExpressionSyntax)CastExpression(
-                    NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numBefore)))
-                : LiteralExpression(SyntaxKind.NullLiteralExpression);
-
-            var endArg = numAfter > 0
-                ? (ExpressionSyntax)CastExpression(
-                    NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                    PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression,
-                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numAfter))))
-                : LiteralExpression(SyntaxKind.NullLiteralExpression);
-
-            // __t.GetSlice(new global::Sharpy.Slice(start, end))
-            var newSlice = ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "Slice"))
-                .WithArgumentList(ArgumentList(SeparatedList(new[]
+            ExpressionSyntax starValueExpr;
+            if (isTupleSource)
+            {
+                // Build: new Sharpy.List<T> { __t.ItemN, __t.ItemM, ... }
+                var listTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(
+                    CSharpTypeNames.SharpyList, elementTypeSyntax);
+                var restItems = new List<ExpressionSyntax>();
+                for (int ri = numBefore; ri < tupleArity - numAfter; ri++)
                 {
-                    Argument(startArg),
-                    Argument(endArg)
-                })));
+                    restItems.Add(MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(sourceVar),
+                        IdentifierName($"Item{ri + 1}")));
+                }
 
-            var sliceCall = InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(sourceVar),
-                    IdentifierName("GetSlice")))
-                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(newSlice))));
+                starValueExpr = ObjectCreationExpression(listTypeSyntax)
+                    .WithArgumentList(ArgumentList())
+                    .WithInitializer(InitializerExpression(
+                        SyntaxKind.CollectionInitializerExpression,
+                        SeparatedList(restItems)));
+            }
+            else
+            {
+                // Build Slice constructor args: new Sharpy.Slice((int?)start, (int?)end)
+                var startArg = numBefore > 0
+                    ? (ExpressionSyntax)CastExpression(
+                        NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numBefore)))
+                    : LiteralExpression(SyntaxKind.NullLiteralExpression);
+
+                var endArg = numAfter > 0
+                    ? (ExpressionSyntax)CastExpression(
+                        NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                        PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression,
+                            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numAfter))))
+                    : LiteralExpression(SyntaxKind.NullLiteralExpression);
+
+                // __t.GetSlice(new global::Sharpy.Slice(start, end))
+                var newSlice = ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "Slice"))
+                    .WithArgumentList(ArgumentList(SeparatedList(new[]
+                    {
+                        Argument(startArg),
+                        Argument(endArg)
+                    })));
+
+                starValueExpr = InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(sourceVar),
+                        IdentifierName("GetSlice")))
+                    .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(newSlice))));
+            }
 
             if (starIsExisting)
             {
@@ -2050,7 +2214,7 @@ internal partial class RoslynEmitter
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         IdentifierName(currentStarName),
-                        sliceCall)));
+                        starValueExpr)));
             }
             else
             {
@@ -2060,25 +2224,38 @@ internal partial class RoslynEmitter
                     VariableDeclaration(IdentifierName("var"))
                         .WithVariables(SingletonSeparatedList(
                             VariableDeclarator(Identifier(starVarName))
-                                .WithInitializer(EqualsValueClause(sliceCall))))));
+                                .WithInitializer(EqualsValueClause(starValueExpr))))));
             }
         }
 
-        // Elements after star: name = __t[-n] (update) or var name = __t[-n] (declare)
+        // Elements after star: name = __t[-n] or __t.ItemN (for tuples)
         for (int i = 0; i < numAfter; i++)
         {
             int elemIndex = starIndex + 1 + i;
-            int negIndex = numAfter - i; // distance from end: numAfter, ..., 1
 
             if (elements[elemIndex] is Identifier id)
             {
-                var negIndexExpr = ElementAccessExpression(IdentifierName(sourceVar))
-                    .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
-                        Argument(PrefixUnaryExpression(
-                            SyntaxKind.UnaryMinusExpression,
-                            LiteralExpression(
-                                SyntaxKind.NumericLiteralExpression,
-                                Literal(negIndex)))))));
+                ExpressionSyntax afterExpr;
+                if (isTupleSource)
+                {
+                    // Compute 1-based index: tupleArity - numAfter + i + 1
+                    int itemIndex = tupleArity - numAfter + i + 1;
+                    afterExpr = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(sourceVar),
+                        IdentifierName($"Item{itemIndex}"));
+                }
+                else
+                {
+                    int negIndex = numAfter - i; // distance from end: numAfter, ..., 1
+                    afterExpr = ElementAccessExpression(IdentifierName(sourceVar))
+                        .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
+                            Argument(PrefixUnaryExpression(
+                                SyntaxKind.UnaryMinusExpression,
+                                LiteralExpression(
+                                    SyntaxKind.NumericLiteralExpression,
+                                    Literal(negIndex)))))));
+                }
 
                 var baseName = NameMangler.ToCamelCase(id.Name);
                 var sym = _context.LookupSymbol(id.Name);
@@ -2093,7 +2270,7 @@ internal partial class RoslynEmitter
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
                             IdentifierName(currentName),
-                            negIndexExpr)));
+                            afterExpr)));
                 }
                 else
                 {
@@ -2103,7 +2280,7 @@ internal partial class RoslynEmitter
                         VariableDeclaration(IdentifierName("var"))
                             .WithVariables(SingletonSeparatedList(
                                 VariableDeclarator(Identifier(varName))
-                                    .WithInitializer(EqualsValueClause(negIndexExpr))))));
+                                    .WithInitializer(EqualsValueClause(afterExpr))))));
                 }
             }
         }
