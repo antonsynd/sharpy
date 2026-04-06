@@ -345,6 +345,7 @@ internal partial class ProjectCompiler
     /// <summary>
     /// Reports a duplicate from-import error if the symbol was previously imported from a different module.
     /// Same-module re-imports (idempotent) are silently skipped.
+    /// Uses shared detection logic from <see cref="ImportResolver.FindDuplicateFromImportSource"/>.
     /// </summary>
     private void ReportDuplicateFromImport(
         string registerName,
@@ -354,8 +355,9 @@ internal partial class ProjectCompiler
         ImportAlias? importAlias,
         string filePath)
     {
-        if (importedSources.TryGetValue(registerName, out var existingModule)
-            && !string.Equals(existingModule, sourceModule, StringComparison.Ordinal))
+        var existingModule = ImportResolver.FindDuplicateFromImportSource(
+            registerName, sourceModule, importedSources);
+        if (existingModule != null)
         {
             var line = importAlias?.LineStart ?? fromImport.LineStart;
             var column = importAlias?.ColumnStart ?? fromImport.ColumnStart;
