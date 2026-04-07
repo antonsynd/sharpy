@@ -192,7 +192,7 @@ def _strip_xml_tags(text: str) -> str:
     text = re.sub(r"<see\s+cref=\"([^\"]+)\"\s*/>", r"`\1`", text)
     text = re.sub(r"<paramref\s+name=\"([^\"]+)\"\s*/>", r"*\1*", text)
     text = re.sub(r"<c>([^<]*)</c>", r"`\1`", text)
-    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"</?[a-zA-Z][^>]*>", "", text)
     return text.strip()
 
 
@@ -382,6 +382,9 @@ def _collect_doc_lines(lines: list[str], decl_index: int) -> list[str]:
         if stripped.startswith("///"):
             doc_lines.insert(0, stripped)
             i -= 1
+        elif stripped.startswith("//"):
+            # Skip regular (non-doc) comments between doc block and declaration
+            i -= 1
         elif stripped.startswith("[") or stripped.startswith("#") or stripped == "":
             # Skip attributes, preprocessor directives, and blank lines
             if doc_lines:
@@ -487,15 +490,57 @@ def parse_cs_file(
     filepath: Path,
     is_extension: bool = False,
     is_builtins: bool = False,
+    line_range: tuple[int, int] | None = None,
 ) -> list[DocMember]:
-    """Parse a C# file and extract documented public members."""
+    """Parse a C# file and extract documented public members.
+
+    If *line_range* is given as ``(start, end)`` (0-based inclusive), only
+    declarations within that line range are considered.
+    """
     text = filepath.read_text(encoding="utf-8")
     lines = text.split("\n")
     members: list[DocMember] = []
+
+    # Pre-scan: find line ranges of internal/private classes to exclude
+    _non_public_ranges: list[tuple[int, int]] = []
+    _brace_depth = 0
+    _in_non_public = False
+    _seen_open_brace = False
+    _non_public_start = -1
+    for _idx, _line in enumerate(lines):
+        _s = _line.strip()
+        if not _in_non_public and re.match(
+            r"(?:internal|private|protected)\s+(?:(?:sealed|abstract|static|partial)\s+)*"
+            r"(?:class|struct)\s",
+            _s,
+        ):
+            _in_non_public = True
+            _non_public_start = _idx
+            _brace_depth = 0
+            _seen_open_brace = False
+        if _in_non_public:
+            _brace_depth += _s.count("{") - _s.count("}")
+            if "{" in _s:
+                _seen_open_brace = True
+            if _seen_open_brace and _brace_depth <= 0 and _non_public_start >= 0:
+                _non_public_ranges.append((_non_public_start, _idx))
+                _in_non_public = False
+                _non_public_start = -1
+
     i = 0
 
     while i < len(lines):
         stripped = lines[i].strip()
+
+        # Skip lines outside the requested range
+        if line_range is not None and not (line_range[0] <= i <= line_range[1]):
+            i += 1
+            continue
+
+        # Skip members inside internal/private classes
+        if any(start <= i <= end for start, end in _non_public_ranges):
+            i += 1
+            continue
 
         # Only process lines starting with 'public'
         if not stripped.startswith("public "):
@@ -526,6 +571,12 @@ def parse_cs_file(
 
         # Skip class/struct/interface/enum declarations
         if re.match(r"public\s+(?:(?:static|sealed|abstract|partial|readonly)\s+)*(?:class|struct|interface|enum)\s", joined):
+            i = end_i + 1
+            continue
+
+        # Skip any operator declaration (implicit, explicit, true, false, +, -, etc.)
+        pre_paren = joined.split("(")[0] if "(" in joined else joined
+        if " operator " in pre_paren:
             i = end_i + 1
             continue
 
@@ -671,19 +722,48 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                 if file_summary:
                     summary = file_summary
 
-            # Check if this is a SharpyModuleType
+            # Check if this file contains SharpyModuleType-annotated classes
             file_text = cs_file.read_text(encoding="utf-8")
-            type_match = re.search(r'\[SharpyModuleType\("([^"]+)"\)\]', file_text)
-            if type_match:
-                type_name = type_match.group(1)
-                type_summary = _get_class_summary(cs_file)
-                type_members = parse_cs_file(cs_file)
-                all_types.append(DocType(
-                    name=type_name,
-                    cs_name=cs_file.stem,
-                    summary=type_summary,
-                    members=type_members,
-                ))
+            type_annotations = list(re.finditer(
+                r'\[SharpyModuleType\("([^"]+)"\)\]', file_text,
+            ))
+            if type_annotations:
+                # Find all annotated class names and their line positions
+                file_lines = file_text.split("\n")
+                annotated_classes: list[tuple[str, int, int]] = []
+                for ta in type_annotations:
+                    after = file_text[ta.end():]
+                    cm = re.search(
+                        r"public\s+(?:sealed\s+|abstract\s+|static\s+|partial\s+)*"
+                        r"class\s+(\w+)",
+                        after,
+                    )
+                    if cm:
+                        class_name = cm.group(1)
+                        class_pos = ta.end() + cm.start()
+                        class_line = file_text[:class_pos].count("\n")
+                        annotated_classes.append((class_name, class_line, 0))
+
+                # Compute end lines (start of next class or EOF)
+                for ci in range(len(annotated_classes)):
+                    name, start, _ = annotated_classes[ci]
+                    end = (annotated_classes[ci + 1][1] - 1
+                           if ci + 1 < len(annotated_classes)
+                           else len(file_lines) - 1)
+                    annotated_classes[ci] = (name, start, end)
+
+                # Parse each class range separately
+                for class_name, start, end in annotated_classes:
+                    type_summary = _get_class_summary(cs_file)
+                    type_members = parse_cs_file(
+                        cs_file, line_range=(start, end),
+                    )
+                    all_types.append(DocType(
+                        name=class_name,
+                        cs_name=cs_file.stem,
+                        summary=type_summary,
+                        members=type_members,
+                    ))
             else:
                 members = parse_cs_file(cs_file)
                 all_members.extend(members)
@@ -750,11 +830,14 @@ def discover_builtins(core_dir: Path) -> DocModule:
             members = parse_cs_file(cs_file, is_builtins=True)
             all_members.extend(members)
 
-    # Builtins/ subdirectory
+    # Builtins/ subdirectory — only files containing partial class Builtins
     builtins_dir = core_dir / "Builtins"
     if builtins_dir.exists():
         for cs_file in sorted(builtins_dir.glob("*.cs")):
             if cs_file.name == "__Init__.cs":
+                continue
+            text = cs_file.read_text(encoding="utf-8")
+            if "partial class Builtins" not in text:
                 continue
             members = parse_cs_file(cs_file, is_builtins=True)
             all_members.extend(members)
@@ -774,6 +857,19 @@ def discover_builtins(core_dir: Path) -> DocModule:
 def _one_line(text: str) -> str:
     """Collapse multi-line text into a single line for table cells."""
     return " ".join(text.split()).strip()
+
+
+def _escape_table_cell(text: str) -> str:
+    """Escape text for use inside a markdown table cell.
+
+    Collapses to a single line, then escapes pipe characters and backticks
+    so they don't break the table structure or inline code formatting.
+    """
+    text = _one_line(text)
+    text = text.replace("\\", "\\\\")
+    text = text.replace("|", "\\|")
+    text = text.replace("`", "\\`")
+    return text
 
 
 def _render_member(member: DocMember, prefix: str = "") -> str:
@@ -837,7 +933,7 @@ def _render_constants_table(constants: list[DocMember]) -> str:
     lines = ["## Constants", "", "| Name | Type | Description |",
              "|------|------|-------------|"]
     for c in constants:
-        lines.append(f"| `{c.name}` | `{c.return_type}` | {c.summary} |")
+        lines.append(f"| `{c.name}` | `{c.return_type}` | {_escape_table_cell(c.summary)} |")
     lines.append("")
     return "\n".join(lines)
 
@@ -861,15 +957,21 @@ def render_module_page(module: DocModule) -> str:
     if constants:
         lines.append(_render_constants_table(constants))
 
-    # Properties
+    # Properties (deduplicated by name — multiple classes may define the same property)
     properties = [m for m in module.members if m.kind == "property"]
     if properties:
+        seen_props: set[str] = set()
+        unique_props: list[DocMember] = []
+        for p in properties:
+            if p.name not in seen_props:
+                seen_props.add(p.name)
+                unique_props.append(p)
         lines.append("## Properties")
         lines.append("")
         lines.append("| Name | Type | Description |")
         lines.append("|------|------|-------------|")
-        for p in properties:
-            lines.append(f"| `{p.name}` | `{p.return_type}` | {p.summary} |")
+        for p in unique_props:
+            lines.append(f"| `{p.name}` | `{p.return_type}` | {_escape_table_cell(p.summary)} |")
         lines.append("")
 
     # Methods/Functions
@@ -936,7 +1038,7 @@ def render_index_page(
     lines.append("|------|-------------|")
     for ct in core_types:
         # Collapse multi-line summaries for table cells
-        desc = _one_line(ct.summary)
+        desc = _escape_table_cell(ct.summary)
         lines.append(f"| [`{ct.name}`]({ct.name}.md) | {desc} |")
     lines.append("")
 
@@ -945,7 +1047,7 @@ def render_index_page(
     lines.append("| Module | Description |")
     lines.append("|--------|-------------|")
     for mod in modules:
-        desc = _one_line(mod.summary)
+        desc = _escape_table_cell(mod.summary)
         lines.append(f"| [`{mod.name}`]({mod.name}.md) | {desc} |")
     lines.append("")
 

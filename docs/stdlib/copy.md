@@ -6,12 +6,6 @@ Shallow and deep copy operations, similar to Python's `copy` module.
 import copy
 ```
 
-## Constants
-
-| Name | Type | Description |
-|------|------|-------------|
-| `instance` | `IdentityEqualityComparer` |  |
-
 ## Functions
 
 ### `copy.copy(x: object) -> object`

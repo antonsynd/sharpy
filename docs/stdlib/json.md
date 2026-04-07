@@ -98,7 +98,3 @@ Deserialize a JSON document read from a file.
 - `fp` (TextFile) -- The file to read from.
 
 **Returns:** The deserialized object.
-
-### `json.parse(json: str) -> object?`
-
-### `json.serialize(obj: object?, indent: int = -1, sort_keys: bool = false, ensure_ascii: bool = true) -> str`

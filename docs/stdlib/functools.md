@@ -66,5 +66,3 @@ for less-than, zero for equal, or a positive number for greater-than.
 comparer = functools.cmp_to_key(lambda a, b: a - b)
 sorted([3, 1, 2], key=comparer)    # [1, 2, 3]
 ```
-
-### `functools.compare(x: T, y: T) -> int`

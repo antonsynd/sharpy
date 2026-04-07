@@ -77,7 +77,7 @@ Log a message with CRITICAL level on the root logger.
 
 - `msg` (str) -- The message to log.
 
-## logging
+## Logger
 
 A named logger that outputs messages at or above a configured level.
 Output format: LEVEL:name:message (written to stderr).

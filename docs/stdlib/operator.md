@@ -146,7 +146,7 @@ Return true if left and right are not the same object (identity check).
 
 ### `operator.le(left: IComparable[T], right: T) -> bool`
 
-Return true if left .
+Return true if left <= right using IComparable.
 
 ### `operator.le(left: IComparable, right: object) -> bool`
 
@@ -158,7 +158,7 @@ Return true if left <= right with automatic dispatch.
 
 ### `operator.lt(left: IComparable[T], right: T) -> bool`
 
-Return true if left .
+Return true if left < right using IComparable.
 
 ### `operator.lt(left: IComparable, right: object) -> bool`
 

@@ -10,6 +10,7 @@ from build_tools.generate_stdlib_docs import (
     DocModule,
     DocParam,
     DocType,
+    _collect_doc_lines,
     _parse_params,
     _parse_xml_doc,
     _split_generic_args,
@@ -527,6 +528,51 @@ class TestRenderModulePage:
         output = render_module_page(mod)
         assert "| `pi` | `float` |" in output
 
+    def test_constants_table_escapes_special_chars(self):
+        mod = DocModule(
+            name="string",
+            kind="module",
+            members=[
+                DocMember(
+                    kind="constant",
+                    name="punctuation",
+                    cs_name="punctuation",
+                    signature="",
+                    summary='Punctuation: !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~',
+                    return_type="str",
+                    is_static=True,
+                ),
+            ],
+        )
+        output = render_module_page(mod)
+        # Pipes and backticks must be escaped in table cells
+        assert "\\|" in output
+        assert "\\`" in output
+        # Must be a single table row (no line breaks in cell)
+        table_lines = [l for l in output.splitlines() if l.startswith("| `punctuation`")]
+        assert len(table_lines) == 1
+
+    def test_constants_table_collapses_multiline_summary(self):
+        mod = DocModule(
+            name="test",
+            kind="module",
+            members=[
+                DocMember(
+                    kind="constant",
+                    name="value",
+                    cs_name="Value",
+                    signature="",
+                    summary="Line one.\nLine two.\nLine three.",
+                    return_type="str",
+                    is_static=True,
+                ),
+            ],
+        )
+        output = render_module_page(mod)
+        table_lines = [l for l in output.splitlines() if l.startswith("| `value`")]
+        assert len(table_lines) == 1
+        assert "Line one. Line two. Line three." in table_lines[0]
+
     def test_methods_section(self):
         mod = DocModule(
             name="math",
@@ -593,3 +639,121 @@ class TestRenderIndexPage:
         assert "## Modules" in output
         assert "[`list`](list.md)" in output
         assert "[`math`](math.md)" in output
+
+
+class TestCollectDocLines:
+    """Tests for _collect_doc_lines edge cases."""
+
+    def test_skips_regular_comment_between_doc_and_declaration(self):
+        lines = [
+            "        /// <summary>",
+            "        /// Description here.",
+            "        /// </summary>",
+            "        // Note: some implementation note",
+            "        public static readonly double Nan = double.NaN;",
+        ]
+        doc_lines = _collect_doc_lines(lines, 4)
+        assert len(doc_lines) == 3
+        assert "/// <summary>" in doc_lines[0]
+        assert "Description here." in doc_lines[1]
+
+    def test_no_doc_lines_returns_empty(self):
+        lines = [
+            "        // regular comment",
+            "        public const int X = 1;",
+        ]
+        doc_lines = _collect_doc_lines(lines, 1)
+        assert doc_lines == []
+
+
+class TestOperatorSkipping:
+    """Tests that operator declarations are skipped in parse_cs_file."""
+
+    def test_operator_true_false_skipped(self, tmp_path):
+        cs = textwrap.dedent("""\
+            namespace Test {
+            public class Foo {
+                /// <summary>Check truthiness.</summary>
+                public static bool operator true(Foo? x) => x != null;
+                /// <summary>Check falsiness.</summary>
+                public static bool operator false(Foo? x) => x == null;
+                /// <summary>A real method.</summary>
+                public void DoStuff() {}
+            }
+            }
+        """)
+        f = tmp_path / "Foo.cs"
+        f.write_text(cs)
+        members = parse_cs_file(f)
+        names = [m.name for m in members]
+        assert "true" not in names
+        assert "false" not in names
+        assert "do_stuff" in names
+
+    def test_implicit_operator_skipped(self, tmp_path):
+        cs = textwrap.dedent("""\
+            namespace Test {
+            public class Bar<T> {
+                /// <summary>Convert array.</summary>
+                public static implicit operator Bar<T>(T[] array) => new Bar<T>();
+                /// <summary>Count items.</summary>
+                public int Count => 0;
+            }
+            }
+        """)
+        f = tmp_path / "Bar.cs"
+        f.write_text(cs)
+        members = parse_cs_file(f)
+        names = [m.name for m in members]
+        # Should not have implicit operator as a member
+        assert all("implicit" not in n and "operator" not in n for n in names)
+        assert "count" in names
+
+
+class TestInternalClassFiltering:
+    """Tests that public members inside internal classes are excluded."""
+
+    def test_internal_class_members_excluded(self, tmp_path):
+        cs = textwrap.dedent("""\
+            namespace Test {
+            public static partial class MyModule {
+                /// <summary>Public function.</summary>
+                public static void PublicFunc() {}
+            }
+            internal sealed class InternalHelper {
+                /// <summary>Should not appear.</summary>
+                public static readonly InternalHelper Instance = new InternalHelper();
+            }
+            }
+        """)
+        f = tmp_path / "MyModule.cs"
+        f.write_text(cs)
+        members = parse_cs_file(f)
+        names = [m.name for m in members]
+        assert "public_func" in names
+        assert "instance" not in names
+
+
+class TestPropertyDeduplication:
+    """Tests that duplicate properties are deduplicated."""
+
+    def test_duplicate_properties_deduplicated(self):
+        mod = DocModule(
+            name="datetime",
+            kind="module",
+            members=[
+                DocMember(kind="property", name="year", cs_name="Year",
+                          signature="", summary="The year component.",
+                          return_type="int"),
+                DocMember(kind="property", name="month", cs_name="Month",
+                          signature="", summary="The month (1-12).",
+                          return_type="int"),
+                DocMember(kind="property", name="year", cs_name="Year",
+                          signature="", summary="The year component.",
+                          return_type="int"),
+            ],
+        )
+        output = render_module_page(mod)
+        # "year" should appear only once in the properties table
+        year_count = output.count("| `year` |")
+        assert year_count == 1

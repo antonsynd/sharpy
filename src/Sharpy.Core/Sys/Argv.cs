@@ -94,7 +94,8 @@ namespace Sharpy
 
         /// <summary>
         /// An integer giving the maximum value a variable of type int can take.
-        /// Equivalent to Python's sys.maxsize.
+        /// Note: Sharpy's int is 32-bit (max 2,147,483,647), unlike Python's sys.maxsize which is 2^63-1 on 64-bit.
+        /// Use long for larger values.
         /// </summary>
         public static int Maxsize => int.MaxValue;
 

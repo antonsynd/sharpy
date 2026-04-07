@@ -85,13 +85,6 @@ Return the string obtained by replacing the leftmost non-overlapping occurrences
 
 Split string by the occurrences of the pattern.
 
-### `re.translate(pattern: str) -> str`
-
-Translate Python-specific regex syntax to .NET-compatible syntax.
-Handles:
-  (?P...) → (?...)
-  (?P=name) → \k
-
 ### `re.compile(pattern: str, flags: int = 0) -> RePattern`
 
 Compile a pattern into a RePattern object.

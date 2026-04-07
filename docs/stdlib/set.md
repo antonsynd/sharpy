@@ -250,14 +250,6 @@ b = {3, 4}
 a.isdisjoint(b)    # True
 ```
 
-### `true(set: set[T]?) -> bool operator`
-
-Returns true if the set is not null and not empty.
-
-### `false(set: set[T]?) -> bool operator`
-
-Returns true if the set is null or empty.
-
 ### `copy_to(array: list[T], array_index: int)`
 
 Copies the elements of the set to an array.

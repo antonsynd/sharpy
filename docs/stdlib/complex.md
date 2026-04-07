@@ -11,10 +11,6 @@ A complex number type, similar to Python's complex.
 
 ## Methods
 
-### `complex(c: System.Numerics.Complex) -> implicit operator`
-
-Implicit conversion from System.Numerics.Complex.
-
 ### `conjugate() -> Complex`
 
 Return the complex conjugate.

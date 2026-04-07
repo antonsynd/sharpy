@@ -59,7 +59,7 @@ Create a SHA-512 hash object, optionally initialized with data.
 
 **Returns:** A new `HashObject` using the SHA-512 algorithm.
 
-## hashlib
+## HashObject
 
 Represents a hash object that accumulates data and computes cryptographic hashes.
 Mirrors Python's hashlib hash object API.

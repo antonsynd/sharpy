@@ -142,7 +142,7 @@ t = time.localtime(86400)
 print(t.tm_mday)    # depends on local timezone
 ```
 
-## time
+## StructTime
 
 Represents a time value as a named tuple of components, similar to Python's
 `time.struct_time`.

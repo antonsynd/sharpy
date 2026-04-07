@@ -7,7 +7,7 @@ Extends TextWriter so it can be used anywhere a TextWriter is expected (e.g., cs
 import io
 ```
 
-## io
+## StringIO
 
 In-memory text stream using a string buffer, similar to Python's io.StringIO.
 Extends TextWriter so it can be used anywhere a TextWriter is expected (e.g., csv module).

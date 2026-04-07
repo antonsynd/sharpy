@@ -2,12 +2,6 @@
 
 Functions available without any import.
 
-## Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `code` | `int` | The exit code. |
-
 ## Functions
 
 ### `abs(x: int) -> int`
@@ -1232,8 +1226,6 @@ list(reversed("abc"))        # ["c", "b", "a"]
 Return a reverse iterator for types that implement `IReverseEnumerable{T}`
 but not `IEnumerable{T}` (i.e., types with __reversed__ but no __iter__).
 
-### `move_next() -> bool`
-
 ### `round(x: float) -> int`
 
 Round a number to the nearest integer.
@@ -1652,7 +1644,7 @@ and center-alignment.
 - `value` (str) -- The string to align
 - `width` (int) -- The total field width
 - `fill` (char) -- The fill character for padding
-- `alignment` (char) -- Alignment mode: '' right, '^' center, '=' numeric sign-aware
+- `alignment` (char) -- Alignment mode: '<' left, '>' right, '^' center, '=' numeric sign-aware
 
 **Returns:** The aligned string, or *value* unchanged if already wider than *width*
 

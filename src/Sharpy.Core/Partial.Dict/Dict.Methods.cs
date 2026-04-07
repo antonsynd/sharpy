@@ -5,6 +5,10 @@ namespace Sharpy
 {
     using static Builtins;
 
+    /// <summary>
+    /// A mutable mapping of keys to values, similar to Python's dict.
+    /// Supports Python-style methods like get(), pop(), items(), keys(), and values().
+    /// </summary>
     public sealed partial class Dict<K, V>
     {
         /// <summary>

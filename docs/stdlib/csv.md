@@ -60,12 +60,12 @@ Create a CSV DictWriter that writes to a TextWriter.
 
 **Returns:** A `CsvDictWriter` for writing CSV rows as dictionaries.
 
-## csv
+## CsvDictReader
 
 Reads CSV data and maps each row to a dictionary keyed by field names,
 similar to Python's `csv.DictReader`.
 
-## csv
+## CsvDictWriter
 
 Writes CSV data from dictionaries keyed by field names,
 similar to Python's `csv.DictWriter`.
@@ -91,12 +91,12 @@ Write multiple rows from dictionaries.
 
 - `rows` (Iterable[dict[str, str]]) -- An enumerable of dictionaries to write.
 
-## csv
+## CsvReader
 
 Reads CSV data from an enumerable of lines, parsing each line into a list of fields.
 Handles quoted fields, escaped quotes, and commas within quoted fields.
 
-## csv
+## CsvWriter
 
 Writes CSV data to a TextWriter.
 

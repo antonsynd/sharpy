@@ -16,7 +16,7 @@ Get a parsed argument value with typed conversion.
 
 Check if a named argument exists.
 
-## argparse
+## ArgumentParser
 
 Python-compatible command-line argument parser.
 

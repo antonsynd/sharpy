@@ -7,7 +7,7 @@ Immutable — all mutation methods return new Path instances.
 import pathlib
 ```
 
-## pathlib
+## Path
 
 Object-oriented filesystem path, similar to Python's pathlib.Path.
 Immutable — all mutation methods return new Path instances.

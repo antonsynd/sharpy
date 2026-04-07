@@ -94,8 +94,6 @@ When the iterable is exhausted, repeat from the saved copy, indefinitely.
 list(itertools.islice(itertools.cycle([1, 2, 3]), 7))    # [1, 2, 3, 1, 2, 3, 1]
 ```
 
-### `itertools.move_next() -> bool`
-
 ### `itertools.dropwhile(predicate: Func[T, bool], iterable: Iterable[T]) -> DropwhileIterator[T]`
 
 Make an iterator that drops elements from the iterable as long as the predicate is true; afterwards, returns every element.
@@ -123,8 +121,6 @@ Make an iterator that returns the element indefinitely.
 ### `itertools.repeat(elem: T, n: uint) -> Iterator[T]`
 
 Make an iterator that returns the element n times.
-
-### `itertools.move_next() -> bool`
 
 ### `itertools.starmap(func: Func[T1, T2, TResult], t2: IEnumerable<(T1,) -> StarmapIterator[T1, T2, TResult]`
 

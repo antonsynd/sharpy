@@ -18,6 +18,7 @@ namespace Sharpy
     /// d.popleft()        # 0
     /// </code>
     /// </example>
+    [SharpyModuleType("collections")]
     public class Deque<T> : IReadOnlyCollection<T>
     {
         private readonly System.Collections.Generic.LinkedList<T> _list;
@@ -135,6 +136,7 @@ namespace Sharpy
     /// c.most_common(2)    # [("a", 3), ("b", 1)]
     /// </code>
     /// </example>
+    [SharpyModuleType("collections")]
     public class Counter<T> where T : notnull
     {
         private readonly System.Collections.Generic.Dictionary<T, int> _counts;

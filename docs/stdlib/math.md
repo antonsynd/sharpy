@@ -15,7 +15,7 @@ import math
 | `e` | `float` | The mathematical constant e = 2.718281..., to available precision. |
 | `tau` | `float` | The mathematical constant τ = 2π = 6.283185..., to available precision. |
 | `inf` | `float` | Positive infinity. |
-| `nan` | `float` |  |
+| `nan` | `float` | A floating-point "not a number" (NaN) value. |
 
 ## Functions
 

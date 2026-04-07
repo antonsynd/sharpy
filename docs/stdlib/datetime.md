@@ -16,16 +16,8 @@ import datetime
 | `hour` | `int` | The hour component (0-23). |
 | `minute` | `int` | The minute component (0-59). |
 | `second` | `int` | The second component (0-59). |
-| `year` | `int` | The year component. |
-| `month` | `int` | The month component (1-12). |
-| `day` | `int` | The day component (1-31). |
-| `hour` | `int` | The hour component (0-23). |
-| `minute` | `int` | The minute component (0-59). |
-| `second` | `int` | The second component (0-59). |
 | `days` | `int` | The days component of the time interval. |
-| `seconds` | `int` | Gets the seconds component (0-59) of the time interval, not the total number of seconds.
-This matches the behavior of Python's `timedelta.seconds` property.
-For the total number of seconds, use `TotalSeconds`. |
+| `seconds` | `int` | Gets the seconds component (0-59) of the time interval, not the total number of seconds. This matches the behavior of Python's \`timedelta.seconds\` property. For the total number of seconds, use \`TotalSeconds\`. |
 | `total_seconds` | `float` | The total number of seconds represented by this timedelta. |
 
 ## Functions

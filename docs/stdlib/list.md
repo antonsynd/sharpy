@@ -11,10 +11,6 @@ Supports negative indexing, slicing, and Python-style methods.
 
 ## Methods
 
-### `list(array: list[T]) -> implicit operator`
-
-Implicitly converts a .NET array to a Sharpy list.
-
 ### `add(item: T)`
 
 !!! note
@@ -261,14 +257,6 @@ Deletes a slice of the list.
 **Raises:**
 
 - `ValueError` -- Thrown if slice step is zero.
-
-### `true(list: list[T]?) -> bool operator`
-
-Returns true if the list is not null and not empty.
-
-### `false(list: list[T]?) -> bool operator`
-
-Returns true if the list is null or empty.
 
 ### `copy_to(array: list[T], array_index: int)`
 
