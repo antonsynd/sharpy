@@ -480,6 +480,18 @@ public partial class Lexer
             (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
             return LogAndReturn(ReadRawString());
 
+        // Native strings: n"..." or n'...' (native .NET string)
+        // Native raw strings: nr"..." or nr'...' (native raw .NET string)
+        if (current == 'n' && (_position + 1 < _source.Length))
+        {
+            var next = _source[_position + 1];
+            if (next == '"' || next == '\'')
+                return LogAndReturn(ReadNativeString());
+            if (next == 'r' && (_position + 2 < _source.Length) &&
+                (_source[_position + 2] == '"' || _source[_position + 2] == '\''))
+                return LogAndReturn(ReadNativeRawString());
+        }
+
         // Backtick-delimited literal names
         if (current == '`')
             return LogAndReturn(ReadLiteralName());

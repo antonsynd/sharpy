@@ -38,6 +38,16 @@ public record StringLiteral : Expression
 }
 
 /// <summary>
+/// Native string literal (n"hello", nr"hello")
+/// Produces a System.String value in generated C# instead of Sharpy.Str.
+/// </summary>
+public record NativeStringLiteral : Expression
+{
+    public string Value { get; init; } = "";
+    public bool IsRaw { get; init; }
+}
+
+/// <summary>
 /// F-string literal (f"Hello {name}")
 /// </summary>
 public record FStringLiteral : Expression

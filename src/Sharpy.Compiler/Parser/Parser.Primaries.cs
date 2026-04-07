@@ -123,6 +123,40 @@ public partial class Parser
                     };
                 }
 
+            case TokenType.NativeString:
+                {
+                    var token = Current;
+                    var value = token.Value;
+                    Advance();
+                    return new NativeStringLiteral
+                    {
+                        Value = value,
+                        IsRaw = false,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(token)
+                    };
+                }
+
+            case TokenType.NativeRawString:
+                {
+                    var token = Current;
+                    var value = token.Value;
+                    Advance();
+                    return new NativeStringLiteral
+                    {
+                        Value = value,
+                        IsRaw = true,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(token)
+                    };
+                }
+
             case TokenType.FStringStart:
                 {
                     var startToken = Current;
