@@ -342,7 +342,8 @@ class TestParseCsFile:
     """Parse actual C# files for public members."""
 
     def test_method_extraction(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             using System;
 
             public partial class MathModule
@@ -357,7 +358,8 @@ class TestParseCsFile:
                     return Math.Sqrt(x);
                 }
             }
-        """)
+        """
+        )
         f = tmp_path / "Math.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
@@ -369,13 +371,15 @@ class TestParseCsFile:
         assert "square root" in m.summary
 
     def test_constant_extraction(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             public partial class MathModule
             {
                 /// <summary>The ratio of a circle's circumference.</summary>
                 public const double Pi = 3.14159265358979;
             }
-        """)
+        """
+        )
         f = tmp_path / "Math.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
@@ -384,13 +388,15 @@ class TestParseCsFile:
         assert members[0].name == "pi"
 
     def test_property_extraction(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             public partial class SysModule
             {
                 /// <summary>The current platform name.</summary>
                 public static string Platform => "sharpy";
             }
-        """)
+        """
+        )
         f = tmp_path / "Sys.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
@@ -399,7 +405,8 @@ class TestParseCsFile:
         assert members[0].name == "platform"
 
     def test_skips_operator(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             public partial class MyList
             {
                 public static MyList operator+(MyList a, MyList b)
@@ -407,45 +414,52 @@ class TestParseCsFile:
                     return a;
                 }
             }
-        """)
+        """
+        )
         f = tmp_path / "List.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
         assert len(members) == 0
 
     def test_skips_inheritdoc(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             public partial class MyList
             {
                 /// <inheritdoc/>
                 public int Count => 0;
             }
-        """)
+        """
+        )
         f = tmp_path / "List.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
         assert len(members) == 0
 
     def test_skips_private(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             public partial class MyClass
             {
                 private void InternalHelper() { }
                 internal int Secret => 42;
             }
-        """)
+        """
+        )
         f = tmp_path / "MyClass.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
         assert len(members) == 0
 
     def test_skips_class_declarations(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             public static partial class MathModule
             {
                 public static int Abs(int x) => x < 0 ? -x : x;
             }
-        """)
+        """
+        )
         f = tmp_path / "Math.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
@@ -454,7 +468,8 @@ class TestParseCsFile:
         assert members[0].name == "abs"
 
     def test_extension_method(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             public static class StringExtensions
             {
                 /// <summary>Returns the uppercased string.</summary>
@@ -463,7 +478,8 @@ class TestParseCsFile:
                     return s.ToUpper();
                 }
             }
-        """)
+        """
+        )
         f = tmp_path / "String.cs"
         f.write_text(cs)
         members = parse_cs_file(f, is_extension=True)
@@ -473,14 +489,16 @@ class TestParseCsFile:
         assert len(members[0].params) == 0
 
     def test_method_with_default_params(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             public partial class ListModule
             {
                 public static void Sort(int key = 0, bool reverse = false)
                 {
                 }
             }
-        """)
+        """
+        )
         f = tmp_path / "List.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
@@ -538,7 +556,7 @@ class TestRenderModulePage:
                     name="punctuation",
                     cs_name="punctuation",
                     signature="",
-                    summary='Punctuation: !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~',
+                    summary="Punctuation: !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
                     return_type="str",
                     is_static=True,
                 ),
@@ -549,7 +567,9 @@ class TestRenderModulePage:
         assert "\\|" in output
         assert "\\`" in output
         # Must be a single table row (no line breaks in cell)
-        table_lines = [l for l in output.splitlines() if l.startswith("| `punctuation`")]
+        table_lines = [
+            l for l in output.splitlines() if l.startswith("| `punctuation`")
+        ]
         assert len(table_lines) == 1
 
     def test_constants_table_collapses_multiline_summary(self):
@@ -670,7 +690,8 @@ class TestOperatorSkipping:
     """Tests that operator declarations are skipped in parse_cs_file."""
 
     def test_operator_true_false_skipped(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             namespace Test {
             public class Foo {
                 /// <summary>Check truthiness.</summary>
@@ -681,7 +702,8 @@ class TestOperatorSkipping:
                 public void DoStuff() {}
             }
             }
-        """)
+        """
+        )
         f = tmp_path / "Foo.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
@@ -691,7 +713,8 @@ class TestOperatorSkipping:
         assert "do_stuff" in names
 
     def test_implicit_operator_skipped(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             namespace Test {
             public class Bar<T> {
                 /// <summary>Convert array.</summary>
@@ -700,7 +723,8 @@ class TestOperatorSkipping:
                 public int Count => 0;
             }
             }
-        """)
+        """
+        )
         f = tmp_path / "Bar.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
@@ -714,7 +738,8 @@ class TestInternalClassFiltering:
     """Tests that public members inside internal classes are excluded."""
 
     def test_internal_class_members_excluded(self, tmp_path):
-        cs = textwrap.dedent("""\
+        cs = textwrap.dedent(
+            """\
             namespace Test {
             public static partial class MyModule {
                 /// <summary>Public function.</summary>
@@ -725,7 +750,8 @@ class TestInternalClassFiltering:
                 public static readonly InternalHelper Instance = new InternalHelper();
             }
             }
-        """)
+        """
+        )
         f = tmp_path / "MyModule.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
@@ -742,15 +768,30 @@ class TestPropertyDeduplication:
             name="datetime",
             kind="module",
             members=[
-                DocMember(kind="property", name="year", cs_name="Year",
-                          signature="", summary="The year component.",
-                          return_type="int"),
-                DocMember(kind="property", name="month", cs_name="Month",
-                          signature="", summary="The month (1-12).",
-                          return_type="int"),
-                DocMember(kind="property", name="year", cs_name="Year",
-                          signature="", summary="The year component.",
-                          return_type="int"),
+                DocMember(
+                    kind="property",
+                    name="year",
+                    cs_name="Year",
+                    signature="",
+                    summary="The year component.",
+                    return_type="int",
+                ),
+                DocMember(
+                    kind="property",
+                    name="month",
+                    cs_name="Month",
+                    signature="",
+                    summary="The month (1-12).",
+                    return_type="int",
+                ),
+                DocMember(
+                    kind="property",
+                    name="year",
+                    cs_name="Year",
+                    signature="",
+                    summary="The year component.",
+                    return_type="int",
+                ),
             ],
         )
         output = render_module_page(mod)

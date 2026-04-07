@@ -184,6 +184,7 @@ def _split_generic_args(s: str) -> list[str]:
 # XML doc comment parsing
 # ---------------------------------------------------------------------------
 
+
 def _strip_xml_tags(text: str) -> str:
     """Convert XML doc content to plain text."""
     if not text:
@@ -218,9 +219,7 @@ def _parse_xml_doc(lines: list[str]) -> dict:
         root = ElementTree.fromstring(wrapped)
     except ElementTree.ParseError:
         # Fallback: extract summary with regex
-        summary_match = re.search(
-            r"<summary>(.*?)</summary>", xml_text, re.DOTALL
-        )
+        summary_match = re.search(r"<summary>(.*?)</summary>", xml_text, re.DOTALL)
         return {
             "summary": _strip_xml_tags(summary_match.group(1)) if summary_match else ""
         }
@@ -293,6 +292,7 @@ def _parse_xml_doc(lines: list[str]) -> dict:
 # Data model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DocParam:
     name: str
@@ -304,6 +304,7 @@ class DocParam:
 @dataclass
 class DocMember:
     """A documented method, property, or constant."""
+
     kind: str  # "method", "property", "constant"
     name: str  # Sharpy name (snake_case)
     cs_name: str  # Original C# name
@@ -321,6 +322,7 @@ class DocMember:
 @dataclass
 class DocType:
     """A documented module type (e.g., ArgumentParser in argparse)."""
+
     name: str
     cs_name: str
     summary: str = ""
@@ -330,6 +332,7 @@ class DocType:
 @dataclass
 class DocModule:
     """A documented module or core type."""
+
     name: str  # Sharpy module name
     kind: str  # "module", "type", "builtins"
     summary: str = ""
@@ -345,16 +348,20 @@ _EXTENSION_THIS_RE = re.compile(r"^this\s+\S+\s+\w+")
 
 # Skip patterns
 _SKIP_NAMES = {
-    "GetEnumerator", "GetReverseEnumerator", "CompareTo",
-    "GetHashCode", "Equals", "ToString", "Dispose",
-    "TryGetValue", "ContainsKey",
+    "GetEnumerator",
+    "GetReverseEnumerator",
+    "CompareTo",
+    "GetHashCode",
+    "Equals",
+    "ToString",
+    "Dispose",
+    "TryGetValue",
+    "ContainsKey",
 }
 
 
 def _is_operator(name: str) -> bool:
-    return name.startswith("operator") and (
-        len(name) <= 8 or not name[8].isalnum()
-    )
+    return name.startswith("operator") and (len(name) <= 8 or not name[8].isalnum())
 
 
 def _is_skippable(name: str, doc_lines: list[str]) -> bool:
@@ -429,11 +436,13 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
         tokens = part.rsplit(None, 1)
         if len(tokens) == 2:
             ptype, pname = tokens
-            params.append(DocParam(
-                name=pascal_to_snake(pname),
-                type=map_type(ptype.strip()),
-                default=default,
-            ))
+            params.append(
+                DocParam(
+                    name=pascal_to_snake(pname),
+                    type=map_type(ptype.strip()),
+                    default=default,
+                )
+            )
         elif len(tokens) == 1:
             params.append(DocParam(name=tokens[0], type=""))
 
@@ -557,20 +566,25 @@ def parse_cs_file(
             doc_lines = _collect_doc_lines(lines, i)
             if not _is_skippable(cname, doc_lines):
                 doc = _parse_xml_doc(doc_lines)
-                members.append(DocMember(
-                    kind="constant",
-                    name=pascal_to_snake(cname),
-                    cs_name=cname,
-                    signature="",
-                    summary=doc.get("summary", ""),
-                    return_type=map_type(ctype.strip()),
-                    is_static=True,
-                ))
+                members.append(
+                    DocMember(
+                        kind="constant",
+                        name=pascal_to_snake(cname),
+                        cs_name=cname,
+                        signature="",
+                        summary=doc.get("summary", ""),
+                        return_type=map_type(ctype.strip()),
+                        is_static=True,
+                    )
+                )
             i = end_i + 1
             continue
 
         # Skip class/struct/interface/enum declarations
-        if re.match(r"public\s+(?:(?:static|sealed|abstract|partial|readonly)\s+)*(?:class|struct|interface|enum)\s", joined):
+        if re.match(
+            r"public\s+(?:(?:static|sealed|abstract|partial|readonly)\s+)*(?:class|struct|interface|enum)\s",
+            joined,
+        ):
             i = end_i + 1
             continue
 
@@ -617,20 +631,22 @@ def parse_cs_file(
             if mapped_ret and mapped_ret != "None":
                 sig += f" -> {mapped_ret}"
 
-            members.append(DocMember(
-                kind="method",
-                name=sharpy_name,
-                cs_name=mname,
-                signature=sig,
-                summary=doc.get("summary", ""),
-                params=params,
-                returns=doc.get("returns", ""),
-                return_type=mapped_ret,
-                example=doc.get("example", ""),
-                remarks=doc.get("remarks", ""),
-                exceptions=doc.get("exceptions", []),
-                is_static=is_static,
-            ))
+            members.append(
+                DocMember(
+                    kind="method",
+                    name=sharpy_name,
+                    cs_name=mname,
+                    signature=sig,
+                    summary=doc.get("summary", ""),
+                    params=params,
+                    returns=doc.get("returns", ""),
+                    return_type=mapped_ret,
+                    example=doc.get("example", ""),
+                    remarks=doc.get("remarks", ""),
+                    exceptions=doc.get("exceptions", []),
+                    is_static=is_static,
+                )
+            )
             i = end_i + 1
             continue
 
@@ -642,15 +658,17 @@ def parse_cs_file(
                 doc_lines = _collect_doc_lines(lines, i)
                 if not _is_skippable(pname, doc_lines):
                     doc = _parse_xml_doc(doc_lines)
-                    members.append(DocMember(
-                        kind="property",
-                        name=pascal_to_snake(pname),
-                        cs_name=pname,
-                        signature="",
-                        summary=doc.get("summary", ""),
-                        return_type=map_type(ptype.strip()),
-                        is_static="static" in modifiers,
-                    ))
+                    members.append(
+                        DocMember(
+                            kind="property",
+                            name=pascal_to_snake(pname),
+                            cs_name=pname,
+                            signature="",
+                            summary=doc.get("summary", ""),
+                            return_type=map_type(ptype.strip()),
+                            is_static="static" in modifiers,
+                        )
+                    )
 
         i = end_i + 1
 
@@ -681,6 +699,7 @@ def _get_class_summary(filepath: Path) -> str:
 # ---------------------------------------------------------------------------
 # Source discovery
 # ---------------------------------------------------------------------------
+
 
 def discover_modules(core_dir: Path) -> list[DocModule]:
     """Discover all stdlib modules from Sharpy.Core source."""
@@ -724,15 +743,18 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
 
             # Check if this file contains SharpyModuleType-annotated classes
             file_text = cs_file.read_text(encoding="utf-8")
-            type_annotations = list(re.finditer(
-                r'\[SharpyModuleType\("([^"]+)"\)\]', file_text,
-            ))
+            type_annotations = list(
+                re.finditer(
+                    r'\[SharpyModuleType\("([^"]+)"\)\]',
+                    file_text,
+                )
+            )
             if type_annotations:
                 # Find all annotated class names and their line positions
                 file_lines = file_text.split("\n")
                 annotated_classes: list[tuple[str, int, int]] = []
                 for ta in type_annotations:
-                    after = file_text[ta.end():]
+                    after = file_text[ta.end() :]
                     cm = re.search(
                         r"public\s+(?:sealed\s+|abstract\s+|static\s+|partial\s+)*"
                         r"class\s+(\w+)",
@@ -747,34 +769,41 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                 # Compute end lines (start of next class or EOF)
                 for ci in range(len(annotated_classes)):
                     name, start, _ = annotated_classes[ci]
-                    end = (annotated_classes[ci + 1][1] - 1
-                           if ci + 1 < len(annotated_classes)
-                           else len(file_lines) - 1)
+                    end = (
+                        annotated_classes[ci + 1][1] - 1
+                        if ci + 1 < len(annotated_classes)
+                        else len(file_lines) - 1
+                    )
                     annotated_classes[ci] = (name, start, end)
 
                 # Parse each class range separately
                 for class_name, start, end in annotated_classes:
                     type_summary = _get_class_summary(cs_file)
                     type_members = parse_cs_file(
-                        cs_file, line_range=(start, end),
+                        cs_file,
+                        line_range=(start, end),
                     )
-                    all_types.append(DocType(
-                        name=class_name,
-                        cs_name=cs_file.stem,
-                        summary=type_summary,
-                        members=type_members,
-                    ))
+                    all_types.append(
+                        DocType(
+                            name=class_name,
+                            cs_name=cs_file.stem,
+                            summary=type_summary,
+                            members=type_members,
+                        )
+                    )
             else:
                 members = parse_cs_file(cs_file)
                 all_members.extend(members)
 
-        modules.append(DocModule(
-            name=mod_name,
-            kind="module",
-            summary=summary,
-            members=all_members,
-            types=all_types,
-        ))
+        modules.append(
+            DocModule(
+                name=mod_name,
+                kind="module",
+                summary=summary,
+                members=all_members,
+                types=all_types,
+            )
+        )
 
     return modules
 
@@ -809,12 +838,14 @@ def discover_core_types(core_dir: Path) -> list[DocModule]:
             members = parse_cs_file(cs_file, is_extension=is_extension)
             all_members.extend(members)
 
-        types.append(DocModule(
-            name=type_name,
-            kind="type",
-            summary=summary,
-            members=all_members,
-        ))
+        types.append(
+            DocModule(
+                name=type_name,
+                kind="type",
+                summary=summary,
+                members=all_members,
+            )
+        )
 
     return types
 
@@ -853,6 +884,7 @@ def discover_builtins(core_dir: Path) -> DocModule:
 # ---------------------------------------------------------------------------
 # Markdown rendering
 # ---------------------------------------------------------------------------
+
 
 def _one_line(text: str) -> str:
     """Collapse multi-line text into a single line for table cells."""
@@ -930,10 +962,16 @@ def _render_constants_table(constants: list[DocMember]) -> str:
     if not constants:
         return ""
 
-    lines = ["## Constants", "", "| Name | Type | Description |",
-             "|------|------|-------------|"]
+    lines = [
+        "## Constants",
+        "",
+        "| Name | Type | Description |",
+        "|------|------|-------------|",
+    ]
     for c in constants:
-        lines.append(f"| `{c.name}` | `{c.return_type}` | {_escape_table_cell(c.summary)} |")
+        lines.append(
+            f"| `{c.name}` | `{c.return_type}` | {_escape_table_cell(c.summary)} |"
+        )
     lines.append("")
     return "\n".join(lines)
 
@@ -971,13 +1009,17 @@ def render_module_page(module: DocModule) -> str:
         lines.append("| Name | Type | Description |")
         lines.append("|------|------|-------------|")
         for p in unique_props:
-            lines.append(f"| `{p.name}` | `{p.return_type}` | {_escape_table_cell(p.summary)} |")
+            lines.append(
+                f"| `{p.name}` | `{p.return_type}` | {_escape_table_cell(p.summary)} |"
+            )
         lines.append("")
 
     # Methods/Functions
     methods = [m for m in module.members if m.kind == "method"]
     if methods:
-        section_title = "Functions" if module.kind in ("module", "builtins") else "Methods"
+        section_title = (
+            "Functions" if module.kind in ("module", "builtins") else "Methods"
+        )
         lines.append(f"## {section_title}")
         lines.append("")
 
@@ -1020,7 +1062,7 @@ def render_index_page(
         "",
         "## Built-in Functions",
         "",
-        f"[Built-in functions](builtins.md) available without any import: "
+        f"[Built-in functions](builtins.md) available without any import: ",
     ]
 
     builtin_names = sorted(set(m.name for m in builtins.members if m.kind == "method"))
@@ -1057,6 +1099,7 @@ def render_index_page(
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def generate(
     source_dir: Path,
