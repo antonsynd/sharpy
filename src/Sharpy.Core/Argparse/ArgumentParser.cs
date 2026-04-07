@@ -124,6 +124,11 @@ namespace Sharpy
         /// </summary>
         public Namespace ParseArgs(string[] args)
         {
+            if (_subparsers != null)
+            {
+                return ParseArgsWithSubparsers(args);
+            }
+
             var ns = new Namespace();
             int positionalIndex = 0;
             var positionalArgs = GetPositionalArgs();
@@ -221,6 +226,8 @@ namespace Sharpy
                     }
                 }
             }
+
+            ValidateMutuallyExclusiveGroups(ns);
 
             return ns;
         }

@@ -5,7 +5,7 @@ using System.Text;
 namespace Sharpy
 {
     /// <summary>
-    /// Split, join, partition methods for Str — ported from StringExtensions.Split.
+    /// Split, join, partition methods for Str.
     /// </summary>
     public readonly partial struct Str
     {

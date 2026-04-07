@@ -4,7 +4,7 @@ using System.Text;
 namespace Sharpy
 {
     /// <summary>
-    /// Case and trim methods for Str — ported from StringExtensions.
+    /// Case and trim methods for Str.
     /// </summary>
     public readonly partial struct Str
     {
@@ -116,7 +116,12 @@ namespace Sharpy
         /// </summary>
         public Str Casefold()
         {
-            return new Str(StringExtensions.Casefold(Value));
+            var sb = new System.Text.StringBuilder(Value.Length);
+            foreach (var c in Value)
+            {
+                sb.Append(CaseFoldChar(c));
+            }
+            return new Str(sb.ToString());
         }
 
         /// <summary>
@@ -260,7 +265,34 @@ namespace Sharpy
         /// </summary>
         public Str Expandtabs(int tabsize = 8)
         {
-            return new Str(StringExtensions.Expandtabs(Value, tabsize));
+            var result = new StringBuilder();
+            int column = 0;
+
+            foreach (char c in Value)
+            {
+                if (c == '\t')
+                {
+                    if (tabsize <= 0)
+                    {
+                        continue;
+                    }
+                    int spaces = tabsize - (column % tabsize);
+                    result.Append(' ', spaces);
+                    column += spaces;
+                }
+                else if (c == '\n' || c == '\r')
+                {
+                    result.Append(c);
+                    column = 0;
+                }
+                else
+                {
+                    result.Append(c);
+                    column++;
+                }
+            }
+
+            return new Str(result.ToString());
         }
 
         /// <summary>
@@ -270,7 +302,22 @@ namespace Sharpy
         /// </summary>
         public Str Replace(Str old, Str new_)
         {
-            return new Str(StringExtensions.Replace(Value, (string)old, (string)new_));
+            string oldStr = (string)old;
+            string newStr = (string)new_;
+            if (oldStr.Length == 0)
+            {
+                var sb = new StringBuilder(newStr.Length * (Value.Length + 1) + Value.Length);
+                sb.Append(newStr);
+                foreach (char c in Value)
+                {
+                    sb.Append(c);
+                    sb.Append(newStr);
+                }
+                return new Str(sb.ToString());
+            }
+#pragma warning disable CA1307 // string.Replace(string, string, StringComparison) not available in netstandard2.0
+            return new Str(Value.Replace(oldStr, newStr));
+#pragma warning restore CA1307
         }
 
         /// <summary>
@@ -280,7 +327,57 @@ namespace Sharpy
         /// </summary>
         public Str Replace(Str old, Str new_, int count)
         {
-            return new Str(StringExtensions.Replace(Value, (string)old, (string)new_, count));
+            if (count < 0)
+            {
+                return Replace(old, new_);
+            }
+            if (count == 0)
+            {
+                return this;
+            }
+
+            string oldStr = (string)old;
+            string newStr = (string)new_;
+
+            if (oldStr.Length == 0)
+            {
+                var sb = new StringBuilder();
+                int replacements = 0;
+                if (replacements < count)
+                {
+                    sb.Append(newStr);
+                    replacements++;
+                }
+                foreach (char c in Value)
+                {
+                    sb.Append(c);
+                    if (replacements < count)
+                    {
+                        sb.Append(newStr);
+                        replacements++;
+                    }
+                }
+                return new Str(sb.ToString());
+            }
+
+            var result = new StringBuilder(Value.Length);
+            int start = 0;
+            int replaced = 0;
+
+            while (start < Value.Length && replaced < count)
+            {
+                int index = Value.IndexOf(oldStr, start, StringComparison.Ordinal);
+                if (index < 0)
+                {
+                    break;
+                }
+                result.Append(Value, start, index - start);
+                result.Append(newStr);
+                start = index + oldStr.Length;
+                replaced++;
+            }
+            result.Append(Value, start, Value.Length - start);
+            return new Str(result.ToString());
         }
     }
 }

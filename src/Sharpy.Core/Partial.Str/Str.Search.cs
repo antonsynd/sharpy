@@ -3,7 +3,7 @@ using System;
 namespace Sharpy
 {
     /// <summary>
-    /// Search and predicate methods for Str — ported from StringExtensions.Search.
+    /// Search and predicate methods for Str.
     /// </summary>
     public readonly partial struct Str
     {
@@ -28,7 +28,23 @@ namespace Sharpy
         /// </summary>
         public int Find(Str sub, int start)
         {
-            return StringExtensions.Find(Value, (string)sub, start);
+            string subStr = (string)sub;
+            if (start < 0)
+            {
+                start = System.Math.Max(0, Value.Length + start);
+            }
+
+            if (start > Value.Length)
+            {
+                return -1;
+            }
+
+            if (start == Value.Length)
+            {
+                return string.IsNullOrEmpty(subStr) ? Value.Length : -1;
+            }
+
+            return Value.IndexOf(subStr, start, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -38,7 +54,20 @@ namespace Sharpy
         /// </summary>
         public int Find(Str sub, int start, int end)
         {
-            return StringExtensions.Find(Value, (string)sub, start, end);
+            string subStr = (string)sub;
+            if (start < 0)
+                start = System.Math.Max(0, Value.Length + start);
+            if (end < 0)
+                end = System.Math.Max(0, Value.Length + end);
+            if (end > Value.Length)
+                end = Value.Length;
+            if (start > end || start > Value.Length)
+                return -1;
+            if (start == end)
+                return string.IsNullOrEmpty(subStr) ? start : -1;
+
+            int count = end - start;
+            return Value.IndexOf(subStr, start, count, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -58,7 +87,25 @@ namespace Sharpy
         /// </summary>
         public int Rfind(Str sub, int start)
         {
-            return StringExtensions.Rfind(Value, (string)sub, start);
+            string subStr = (string)sub;
+            if (start < 0)
+            {
+                start = System.Math.Max(0, Value.Length + start);
+            }
+
+            if (start > Value.Length)
+            {
+                return -1;
+            }
+
+            if (start == Value.Length)
+            {
+                return string.IsNullOrEmpty(subStr) ? Value.Length : -1;
+            }
+
+            var substring = Value.Substring(start);
+            var index = substring.LastIndexOf(subStr, StringComparison.Ordinal);
+            return index >= 0 ? start + index : -1;
         }
 
         /// <summary>
@@ -68,7 +115,21 @@ namespace Sharpy
         /// </summary>
         public int Rfind(Str sub, int start, int end)
         {
-            return StringExtensions.Rfind(Value, (string)sub, start, end);
+            string subStr = (string)sub;
+            if (start < 0)
+                start = System.Math.Max(0, Value.Length + start);
+            if (end < 0)
+                end = System.Math.Max(0, Value.Length + end);
+            if (end > Value.Length)
+                end = Value.Length;
+            if (start > end || start > Value.Length)
+                return -1;
+            if (start == end)
+                return string.IsNullOrEmpty(subStr) ? start : -1;
+
+            var slice = Value.Substring(start, end - start);
+            int index = slice.LastIndexOf(subStr, StringComparison.Ordinal);
+            return index >= 0 ? start + index : -1;
         }
 
         // ----------------------------------------------------------------
@@ -171,7 +232,21 @@ namespace Sharpy
         /// </summary>
         public int Count(Str sub)
         {
-            return StringExtensions.Count(Value, (string)sub);
+            string subStr = (string)sub;
+            if (string.IsNullOrEmpty(subStr))
+            {
+                return Value.Length + 1;
+            }
+
+            int count = 0;
+            int index = 0;
+            while ((index = Value.IndexOf(subStr, index, StringComparison.Ordinal)) >= 0)
+            {
+                count++;
+                index += subStr.Length;
+            }
+
+            return count;
         }
 
         // ----------------------------------------------------------------
@@ -193,7 +268,20 @@ namespace Sharpy
         /// </summary>
         public bool Startswith(Str prefix, int start)
         {
-            return StringExtensions.Startswith(Value, (string)prefix, start);
+            string prefixStr = (string)prefix;
+            if (start < 0)
+            {
+                start = System.Math.Max(0, Value.Length + start);
+            }
+            if (start > Value.Length)
+            {
+                return false;
+            }
+            if (start + prefixStr.Length > Value.Length)
+            {
+                return false;
+            }
+            return string.Compare(Value, start, prefixStr, 0, prefixStr.Length, StringComparison.Ordinal) == 0;
         }
 
         /// <summary>
@@ -202,7 +290,29 @@ namespace Sharpy
         /// </summary>
         public bool Startswith(Str prefix, int start, int end)
         {
-            return StringExtensions.Startswith(Value, (string)prefix, start, end);
+            string prefixStr = (string)prefix;
+            if (start < 0)
+            {
+                start = System.Math.Max(0, Value.Length + start);
+            }
+            if (end < 0)
+            {
+                end = System.Math.Max(0, Value.Length + end);
+            }
+            if (end > Value.Length)
+            {
+                end = Value.Length;
+            }
+            if (start > end)
+            {
+                return false;
+            }
+            int sliceLen = end - start;
+            if (prefixStr.Length > sliceLen)
+            {
+                return false;
+            }
+            return string.Compare(Value, start, prefixStr, 0, prefixStr.Length, StringComparison.Ordinal) == 0;
         }
 
         /// <summary>
@@ -220,7 +330,7 @@ namespace Sharpy
         /// </summary>
         public bool Endswith(Str suffix, int start)
         {
-            return StringExtensions.Endswith(Value, (string)suffix, start);
+            return Endswith(suffix, start, Value.Length);
         }
 
         /// <summary>
@@ -229,7 +339,30 @@ namespace Sharpy
         /// </summary>
         public bool Endswith(Str suffix, int start, int end)
         {
-            return StringExtensions.Endswith(Value, (string)suffix, start, end);
+            string suffixStr = (string)suffix;
+            if (start < 0)
+            {
+                start = System.Math.Max(0, Value.Length + start);
+            }
+            if (end < 0)
+            {
+                end = System.Math.Max(0, Value.Length + end);
+            }
+            if (end > Value.Length)
+            {
+                end = Value.Length;
+            }
+            if (start > end)
+            {
+                return false;
+            }
+            int sliceLen = end - start;
+            if (suffixStr.Length > sliceLen)
+            {
+                return false;
+            }
+            int compareStart = end - suffixStr.Length;
+            return string.Compare(Value, compareStart, suffixStr, 0, suffixStr.Length, StringComparison.Ordinal) == 0;
         }
 
         // ----------------------------------------------------------------
@@ -240,45 +373,122 @@ namespace Sharpy
         /// Return true if all characters are digits and there is at least one character.
         /// Python: <c>str.isdigit()</c>
         /// </summary>
-        public bool Isdigit() => StringExtensions.Isdigit(Value);
+        public bool Isdigit()
+        {
+            if (string.IsNullOrEmpty(Value)) return false;
+            foreach (char c in Value)
+            {
+                if (!char.IsDigit(c)) return false;
+            }
+            return true;
+        }
 
         /// <summary>
         /// Return true if all characters are alphabetic and there is at least one character.
         /// Python: <c>str.isalpha()</c>
         /// </summary>
-        public bool Isalpha() => StringExtensions.Isalpha(Value);
+        public bool Isalpha()
+        {
+            if (string.IsNullOrEmpty(Value)) return false;
+            foreach (char c in Value)
+            {
+                if (!char.IsLetter(c)) return false;
+            }
+            return true;
+        }
 
         /// <summary>
         /// Return true if all characters are alphanumeric and there is at least one character.
         /// Python: <c>str.isalnum()</c>
         /// </summary>
-        public bool Isalnum() => StringExtensions.Isalnum(Value);
+        public bool Isalnum()
+        {
+            if (string.IsNullOrEmpty(Value)) return false;
+            foreach (char c in Value)
+            {
+                if (!char.IsLetterOrDigit(c)) return false;
+            }
+            return true;
+        }
 
         /// <summary>
         /// Return true if all characters are whitespace and there is at least one character.
         /// Python: <c>str.isspace()</c>
         /// </summary>
-        public bool Isspace() => StringExtensions.Isspace(Value);
+        public bool Isspace()
+        {
+            if (string.IsNullOrEmpty(Value)) return false;
+            foreach (char c in Value)
+            {
+                if (!char.IsWhiteSpace(c)) return false;
+            }
+            return true;
+        }
 
         /// <summary>
         /// Return true if all cased characters are uppercase and there is at least
         /// one cased character.
         /// Python: <c>str.isupper()</c>
         /// </summary>
-        public bool Isupper() => StringExtensions.Isupper(Value);
+        public bool Isupper()
+        {
+            if (string.IsNullOrEmpty(Value)) return false;
+            bool hasCased = false;
+            foreach (char c in Value)
+            {
+                if (char.IsLower(c)) return false;
+                if (char.IsUpper(c)) hasCased = true;
+            }
+            return hasCased;
+        }
 
         /// <summary>
         /// Return true if all cased characters are lowercase and there is at least
         /// one cased character.
         /// Python: <c>str.islower()</c>
         /// </summary>
-        public bool Islower() => StringExtensions.Islower(Value);
+        public bool Islower()
+        {
+            if (string.IsNullOrEmpty(Value)) return false;
+            bool hasCased = false;
+            foreach (char c in Value)
+            {
+                if (char.IsUpper(c)) return false;
+                if (char.IsLower(c)) hasCased = true;
+            }
+            return hasCased;
+        }
 
         /// <summary>
         /// Return true if the string is titlecased and there is at least one character.
         /// Python: <c>str.istitle()</c>
         /// </summary>
-        public bool Istitle() => StringExtensions.Istitle(Value);
+        public bool Istitle()
+        {
+            if (string.IsNullOrEmpty(Value)) return false;
+            bool hasCased = false;
+            bool previousWasCased = false;
+            foreach (char c in Value)
+            {
+                if (char.IsUpper(c))
+                {
+                    if (previousWasCased) return false;
+                    hasCased = true;
+                    previousWasCased = true;
+                }
+                else if (char.IsLower(c))
+                {
+                    if (!previousWasCased) return false;
+                    hasCased = true;
+                    previousWasCased = true;
+                }
+                else
+                {
+                    previousWasCased = false;
+                }
+            }
+            return hasCased;
+        }
 
         /// <summary>
         /// Return true if all characters are numeric and there is at least one character.
@@ -286,20 +496,12 @@ namespace Sharpy
         /// </summary>
         public bool Isnumeric()
         {
-            if (string.IsNullOrEmpty(Value))
-            {
-                return false;
-            }
-
+            if (string.IsNullOrEmpty(Value)) return false;
             foreach (char c in Value)
             {
-                // Python's isnumeric() includes digits, numeric chars (e.g., fractions, superscripts)
                 if (!char.IsDigit(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.OtherNumber)
-                {
                     return false;
-                }
             }
-
             return true;
         }
 
@@ -309,20 +511,12 @@ namespace Sharpy
         /// </summary>
         public bool Isdecimal()
         {
-            if (string.IsNullOrEmpty(Value))
-            {
-                return false;
-            }
-
+            if (string.IsNullOrEmpty(Value)) return false;
             foreach (char c in Value)
             {
-                // Python's isdecimal() is stricter than isdigit() — only Nd category
                 if (char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.DecimalDigitNumber)
-                {
                     return false;
-                }
             }
-
             return true;
         }
 
@@ -332,26 +526,14 @@ namespace Sharpy
         /// </summary>
         public bool Isidentifier()
         {
-            if (string.IsNullOrEmpty(Value))
-            {
-                return false;
-            }
-
+            if (string.IsNullOrEmpty(Value)) return false;
             char first = Value[0];
-            if (!char.IsLetter(first) && first != '_')
-            {
-                return false;
-            }
-
+            if (!char.IsLetter(first) && first != '_') return false;
             for (int i = 1; i < Value.Length; i++)
             {
                 char c = Value[i];
-                if (!char.IsLetterOrDigit(c) && c != '_')
-                {
-                    return false;
-                }
+                if (!char.IsLetterOrDigit(c) && c != '_') return false;
             }
-
             return true;
         }
 
@@ -361,12 +543,7 @@ namespace Sharpy
         /// </summary>
         public bool Isprintable()
         {
-            // Python: empty string is printable
-            if (Value.Length == 0)
-            {
-                return true;
-            }
-
+            if (Value.Length == 0) return true;
             foreach (char c in Value)
             {
                 var category = char.GetUnicodeCategory(c);
@@ -381,7 +558,6 @@ namespace Sharpy
                     return false;
                 }
             }
-
             return true;
         }
 
@@ -393,12 +569,8 @@ namespace Sharpy
         {
             foreach (char c in Value)
             {
-                if (c > '\u007F')
-                {
-                    return false;
-                }
+                if (c > '\u007F') return false;
             }
-
             return true;
         }
     }

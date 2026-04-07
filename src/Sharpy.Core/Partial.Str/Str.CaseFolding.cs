@@ -3,34 +3,10 @@ using System.Collections.Generic;
 namespace Sharpy
 {
     /// <summary>
-    /// Case folding support for StringExtensions.
+    /// Unicode case folding support for Str.
     /// </summary>
-    public static partial class StringExtensions
+    public readonly partial struct Str
     {
-        /// <summary>
-        /// Return a casefolded copy of the string. Casefolded strings may be
-        /// used for caseless matching.
-        /// Python: <c>str.casefold()</c>
-        /// </summary>
-        /// <remarks>
-        /// Performs full Unicode case folding matching Python behavior
-        /// (e.g., ß → ss, ﬁ → fi).
-        /// </remarks>
-        /// <example>
-        /// <code>
-        /// "Straße".casefold()    # "strasse"
-        /// </code>
-        /// </example>
-        public static string Casefold(this string s)
-        {
-            var sb = new System.Text.StringBuilder(s.Length);
-            foreach (var c in s)
-            {
-                sb.Append(CaseFoldChar(c));
-            }
-            return sb.ToString();
-        }
-
         // Unicode full case folding table (status "F" and "C" entries from CaseFolding.txt)
         // where the result differs from ToLowerInvariant(). Cherokee ranges are handled
         // by range checks in CaseFoldChar() to keep this table compact.
