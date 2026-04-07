@@ -30,3 +30,4 @@ Precedence: **Axiom 1 (.NET Runtime Compatibility) > Axiom 3 (Type Safety) > Axi
 | SRP-0003 | [Events with function type syntax](SRP-0003-events-function-type-syntax.md) | Rejected | Axiom 1: function types → `Action<T>`, not `EventHandler` |
 | SRP-0004 | [Events with nested accessor syntax](SRP-0004-events-nested-accessor-syntax.md) | Rejected | Consistency: inconsistent with property accessor pattern |
 | SRP-0005 | [`as` casting operator](SRP-0005-as-casting-operator.md) | Rejected | Anti-pattern: multiple ways to do same thing |
+| SRP-0006 | [`collections.namedtuple`](SRP-0006-namedtuple.md) | Rejected | Axiom 3: type safety; Anti-pattern: redundant with existing features |
