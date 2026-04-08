@@ -48,14 +48,14 @@ namespace Sharpy
 
             if (nStart >= nEnd)
             {
-                return new Bytes(Array.Empty<byte>(), true);
+                return Bytes.Wrap(Array.Empty<byte>());
             }
 
             if (s.step == 1)
             {
                 var result = new byte[nEnd - nStart];
                 Array.Copy(_data, nStart, result, 0, result.Length);
-                return new Bytes(result, true);
+                return Bytes.Wrap(result);
             }
 
             int count = 0;
@@ -71,7 +71,7 @@ namespace Sharpy
                 data[idx++] = _data[i];
             }
 
-            return new Bytes(data, true);
+            return Bytes.Wrap(data);
         }
 
         private Bytes SliceNegativeStep(Slice s)
@@ -95,7 +95,7 @@ namespace Sharpy
 
             if (nStart <= nEnd)
             {
-                return new Bytes(Array.Empty<byte>(), true);
+                return Bytes.Wrap(Array.Empty<byte>());
             }
 
             int count = 0;
@@ -111,7 +111,7 @@ namespace Sharpy
                 data[idx++] = _data[i];
             }
 
-            return new Bytes(data, true);
+            return Bytes.Wrap(data);
         }
     }
 }

@@ -21,8 +21,16 @@ namespace Sharpy
                 : System.Array.Empty<byte>();
         }
 
-        /// <summary>Create a Bytes instance wrapping an existing array without copying (internal use).</summary>
-        internal Bytes(byte[] data, bool noCopy)
+        /// <summary>
+        /// Wrap an already-owned byte array without copying (internal use only).
+        /// Callers must not retain or mutate <paramref name="ownedData"/> after calling this.
+        /// </summary>
+        internal static Bytes Wrap(byte[] ownedData)
+        {
+            return new Bytes(ownedData, wrap: true);
+        }
+
+        private Bytes(byte[] data, bool wrap)
         {
             _data = data ?? System.Array.Empty<byte>();
         }
@@ -176,7 +184,7 @@ namespace Sharpy
                 }
             }
 
-            return new Bytes(data, true);
+            return Bytes.Wrap(data);
         }
 
         #region ISized

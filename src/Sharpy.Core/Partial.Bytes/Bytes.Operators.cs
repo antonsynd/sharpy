@@ -77,7 +77,7 @@ namespace Sharpy
             var result = new byte[left._data.Length + right._data.Length];
             Array.Copy(left._data, 0, result, 0, left._data.Length);
             Array.Copy(right._data, 0, result, left._data.Length, right._data.Length);
-            return new Bytes(result, true);
+            return Bytes.Wrap(result);
         }
 
         #endregion
@@ -91,7 +91,7 @@ namespace Sharpy
         {
             if (count <= 0 || left._data.Length == 0)
             {
-                return new Bytes(Array.Empty<byte>(), true);
+                return Bytes.Wrap(Array.Empty<byte>());
             }
 
             var result = new byte[left._data.Length * count];
@@ -100,7 +100,7 @@ namespace Sharpy
                 Array.Copy(left._data, 0, result, i * left._data.Length, left._data.Length);
             }
 
-            return new Bytes(result, true);
+            return Bytes.Wrap(result);
         }
 
         /// <summary>

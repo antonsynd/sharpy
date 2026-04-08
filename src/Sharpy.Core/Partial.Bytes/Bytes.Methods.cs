@@ -66,7 +66,7 @@ namespace Sharpy
                 }
             }
 
-            return new Bytes(result.ToArray(), true);
+            return Bytes.Wrap(result.ToArray());
         }
 
         private Bytes ReplaceEmpty(Bytes new_, int count)
@@ -91,7 +91,7 @@ namespace Sharpy
                 }
             }
 
-            return new Bytes(result.ToArray(), true);
+            return Bytes.Wrap(result.ToArray());
         }
 
         /// <summary>Return True if the bytes starts with the specified prefix.</summary>
@@ -156,12 +156,12 @@ namespace Sharpy
                 {
                     var remaining = new byte[_data.Length - start];
                     Array.Copy(_data, start, remaining, 0, remaining.Length);
-                    result.Add(new Bytes(remaining, true));
+                    result.Add(Bytes.Wrap(remaining));
                     break;
                 }
                 var segment = new byte[found - start];
                 Array.Copy(_data, start, segment, 0, segment.Length);
-                result.Add(new Bytes(segment, true));
+                result.Add(Bytes.Wrap(segment));
                 start = found + sep._data.Length;
             }
             return result;
@@ -181,7 +181,7 @@ namespace Sharpy
                     i++;
                 var segment = new byte[i - start];
                 Array.Copy(_data, start, segment, 0, segment.Length);
-                result.Add(new Bytes(segment, true));
+                result.Add(Bytes.Wrap(segment));
             }
         }
 
@@ -203,7 +203,7 @@ namespace Sharpy
                 for (int i = 0; i < item._data.Length; i++)
                     result.Add(item._data[i]);
             }
-            return new Bytes(result.ToArray(), true);
+            return Bytes.Wrap(result.ToArray());
         }
 
         /// <summary>Return bytes with leading and trailing whitespace removed.</summary>
@@ -219,7 +219,7 @@ namespace Sharpy
                 return this;
             var result = new byte[end - start];
             Array.Copy(_data, start, result, 0, result.Length);
-            return new Bytes(result, true);
+            return Bytes.Wrap(result);
         }
 
         /// <summary>Return bytes with leading whitespace removed.</summary>
@@ -232,7 +232,7 @@ namespace Sharpy
                 return this;
             var result = new byte[_data.Length - start];
             Array.Copy(_data, start, result, 0, result.Length);
-            return new Bytes(result, true);
+            return Bytes.Wrap(result);
         }
 
         /// <summary>Return bytes with trailing whitespace removed.</summary>
@@ -245,7 +245,7 @@ namespace Sharpy
                 return this;
             var result = new byte[end];
             Array.Copy(_data, 0, result, 0, end);
-            return new Bytes(result, true);
+            return Bytes.Wrap(result);
         }
 
         /// <summary>Return a copy with ASCII lowercase converted to uppercase.</summary>
@@ -257,7 +257,7 @@ namespace Sharpy
                 byte b = _data[i];
                 result[i] = (b >= (byte)'a' && b <= (byte)'z') ? (byte)(b - 32) : b;
             }
-            return new Bytes(result, true);
+            return Bytes.Wrap(result);
         }
 
         /// <summary>Return a copy with ASCII uppercase converted to lowercase.</summary>
@@ -269,7 +269,7 @@ namespace Sharpy
                 byte b = _data[i];
                 result[i] = (b >= (byte)'A' && b <= (byte)'Z') ? (byte)(b + 32) : b;
             }
-            return new Bytes(result, true);
+            return Bytes.Wrap(result);
         }
 
         #region Private Helpers

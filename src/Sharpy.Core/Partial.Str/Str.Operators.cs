@@ -62,6 +62,8 @@ namespace Sharpy
         /// </summary>
         public static Str operator *(Str left, long count)
         {
+            if (count > int.MaxValue || count < int.MinValue)
+                throw new OverflowError("repeated string is too long");
             return left * (int)count;
         }
 
@@ -71,6 +73,8 @@ namespace Sharpy
         /// </summary>
         public static Str operator *(long count, Str right)
         {
+            if (count > int.MaxValue || count < int.MinValue)
+                throw new OverflowError("repeated string is too long");
             return right * (int)count;
         }
 
