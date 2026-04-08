@@ -1,0 +1,38 @@
+# Test datetime arithmetic operators
+from datetime import datetime, date, timedelta
+
+def main():
+    # DateTime + Timedelta
+    dt: datetime = datetime(2024, 1, 1) + timedelta(days=1)
+    print(dt.day)
+
+    # DateTime - Timedelta
+    dt2: datetime = datetime(2024, 1, 5) - timedelta(days=3)
+    print(dt2.day)
+
+    # DateTime - DateTime
+    diff: timedelta = datetime(2024, 1, 5) - datetime(2024, 1, 1)
+    print(diff.days)
+
+    # Date + Timedelta
+    d: date = date(2024, 1, 1) + timedelta(days=10)
+    print(d.day)
+
+    # Date - Date
+    dd: timedelta = date(2024, 1, 15) - date(2024, 1, 1)
+    print(dd.days)
+
+    # Timedelta arithmetic
+    td: timedelta = timedelta(days=1) + timedelta(hours=12)
+    print(td.days)
+
+    td2: timedelta = timedelta(days=1) * 3
+    print(td2.days)
+
+    td3: timedelta = -timedelta(days=1)
+    print(td3.days)
+
+    # Comparisons
+    print(datetime(2024, 1, 1) < datetime(2024, 1, 2))
+    print(date(2024, 1, 1) == date(2024, 1, 1))
+    print(timedelta(days=1) > timedelta(hours=12))

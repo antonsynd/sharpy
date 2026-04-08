@@ -1,0 +1,13 @@
+# Test datetime timezone support
+from datetime import datetime, timedelta, timezone
+
+def main():
+    utc: timezone = timezone.utc
+    print(utc.tzname())
+
+    est: timezone = timezone(timedelta(hours=-5), "EST")
+    print(est.tzname())
+
+    dt_utc: datetime = datetime(2024, 1, 15, 12, 0, 0, tzinfo=utc)
+    dt_est: datetime = dt_utc.astimezone(est)
+    print(dt_est.hour)

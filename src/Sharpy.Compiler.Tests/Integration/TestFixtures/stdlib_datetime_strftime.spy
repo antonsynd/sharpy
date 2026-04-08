@@ -1,0 +1,13 @@
+# Test datetime strftime/strptime
+from datetime import datetime
+
+def main():
+    dt: datetime = datetime(2024, 1, 15, 14, 30, 45)
+    print(dt.strftime("%Y-%m-%d"))
+    print(dt.strftime("%A"))
+    print(dt.strftime("100%%"))
+
+    dt2: datetime = datetime.strptime("2024-01-15", "%Y-%m-%d")
+    print(dt2.year)
+    print(dt2.month)
+    print(dt2.day)

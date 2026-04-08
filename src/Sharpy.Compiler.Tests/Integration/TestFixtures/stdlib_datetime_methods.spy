@@ -1,0 +1,21 @@
+# Test datetime utility methods
+from datetime import datetime, date
+
+def main():
+    dt: datetime = datetime(2024, 1, 15)
+    print(dt.weekday())
+    print(dt.isoweekday())
+    print(dt.isoformat())
+
+    dt2: datetime = dt.replace(year=2025)
+    print(dt2.year)
+
+    d: date = date(2024, 1, 15)
+    print(d.weekday())
+    print(d.isoformat())
+    print(d.toordinal())
+
+    d2: date = date.fromordinal(738900)
+    print(d2.year)
+    print(d2.month)
+    print(d2.day)
