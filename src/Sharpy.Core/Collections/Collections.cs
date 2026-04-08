@@ -217,6 +217,149 @@ namespace Sharpy
                 _counts[item] = _counts.TryGetValue(item, out int count) ? count + 1 : 1;
             }
         }
+
+        /// <summary>
+        /// Subtract counts. Elements are subtracted from an iterable.
+        /// Counts can go below zero.
+        /// </summary>
+        public void Subtract(IEnumerable<T> iterable)
+        {
+            foreach (var item in iterable)
+            {
+                _counts[item] = _counts.TryGetValue(item, out int count) ? count - 1 : -1;
+            }
+        }
+
+        /// <summary>
+        /// Subtract counts from another Counter.
+        /// Counts can go below zero.
+        /// </summary>
+        public void Subtract(Counter<T> other)
+        {
+            foreach (var kvp in other._counts)
+            {
+                _counts[kvp.Key] = _counts.TryGetValue(kvp.Key, out int count)
+                    ? count - kvp.Value
+                    : -kvp.Value;
+            }
+        }
+
+        /// <summary>
+        /// Return a shallow copy of this counter.
+        /// </summary>
+        public Counter<T> Copy()
+        {
+            var result = new Counter<T>();
+            foreach (var kvp in _counts)
+            {
+                result._counts[kvp.Key] = kvp.Value;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Return the sum of all counts.
+        /// </summary>
+        public int Total()
+        {
+            int sum = 0;
+            foreach (var kvp in _counts)
+            {
+                sum += kvp.Value;
+            }
+            return sum;
+        }
+
+        /// <summary>
+        /// Remove all elements from the counter.
+        /// </summary>
+        public void Clear()
+        {
+            _counts.Clear();
+        }
+
+        /// <summary>The keys of the counter.</summary>
+        public IEnumerable<T> Keys => _counts.Keys;
+
+        /// <summary>Check if the counter contains a key.</summary>
+        public bool ContainsKey(T key) => _counts.ContainsKey(key);
+
+        /// <summary>
+        /// Combine two counters by adding counts.
+        /// </summary>
+        public static Counter<T> operator +(Counter<T> left, Counter<T> right)
+        {
+            var result = left.Copy();
+            foreach (var kvp in right._counts)
+            {
+                result._counts[kvp.Key] = result._counts.TryGetValue(kvp.Key, out int count)
+                    ? count + kvp.Value
+                    : kvp.Value;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Subtract counts, dropping zero and negative results.
+        /// </summary>
+        public static Counter<T> operator -(Counter<T> left, Counter<T> right)
+        {
+            var result = new Counter<T>();
+            foreach (var kvp in left._counts)
+            {
+                int rightCount = right._counts.TryGetValue(kvp.Key, out int rc) ? rc : 0;
+                int diff = kvp.Value - rightCount;
+                if (diff > 0)
+                {
+                    result._counts[kvp.Key] = diff;
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Union: max of corresponding counts.
+        /// </summary>
+        public static Counter<T> operator |(Counter<T> left, Counter<T> right)
+        {
+            var result = new Counter<T>();
+            var allKeys = new System.Collections.Generic.HashSet<T>(left._counts.Keys);
+            foreach (var key in right._counts.Keys)
+            {
+                allKeys.Add(key);
+            }
+            foreach (var key in allKeys)
+            {
+                int leftCount = left._counts.TryGetValue(key, out int lc) ? lc : 0;
+                int rightCount = right._counts.TryGetValue(key, out int rc) ? rc : 0;
+                int max = leftCount > rightCount ? leftCount : rightCount;
+                if (max > 0)
+                {
+                    result._counts[key] = max;
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Intersection: min of corresponding counts, dropping zero and negative.
+        /// </summary>
+        public static Counter<T> operator &(Counter<T> left, Counter<T> right)
+        {
+            var result = new Counter<T>();
+            foreach (var kvp in left._counts)
+            {
+                if (right._counts.TryGetValue(kvp.Key, out int rightCount))
+                {
+                    int min = kvp.Value < rightCount ? kvp.Value : rightCount;
+                    if (min > 0)
+                    {
+                        result._counts[kvp.Key] = min;
+                    }
+                }
+            }
+            return result;
+        }
     }
 
     /// <summary>
@@ -280,6 +423,103 @@ namespace Sharpy
         public IEnumerable<TKey> Keys => _dict.Keys;
         /// <summary>The values of the dictionary.</summary>
         public IEnumerable<TValue> Values => _dict.Values;
+
+        /// <summary>The default factory function used for missing keys.</summary>
+        public Func<TValue> DefaultFactory => _defaultFactory;
+
+        /// <summary>
+        /// Return a shallow copy of this defaultdict, preserving the default factory.
+        /// </summary>
+        public DefaultDict<TKey, TValue> Copy()
+        {
+            var result = new DefaultDict<TKey, TValue>(_defaultFactory);
+            foreach (var kvp in _dict)
+            {
+                result._dict[kvp.Key] = kvp.Value;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Remove all items from the defaultdict.
+        /// </summary>
+        public void Clear()
+        {
+            _dict.Clear();
+        }
+
+        /// <summary>
+        /// Remove the specified key and return its value.
+        /// Raises <see cref="KeyError"/> if the key is not found.
+        /// </summary>
+        public TValue Pop(TKey key)
+        {
+            if (_dict.TryGetValue(key, out TValue? value))
+            {
+                _dict.Remove(key);
+                return value;
+            }
+
+            throw new KeyError(Builtins.Repr(key));
+        }
+
+        /// <summary>
+        /// Remove the specified key and return its value.
+        /// If the key is not found, return <paramref name="defaultValue"/>.
+        /// </summary>
+        public TValue Pop(TKey key, TValue defaultValue)
+        {
+            if (_dict.TryGetValue(key, out TValue? value))
+            {
+                _dict.Remove(key);
+                return value;
+            }
+
+            return defaultValue;
+        }
+
+        /// <summary>
+        /// Return a list of (key, value) tuples.
+        /// </summary>
+        public List<(TKey, TValue)> Items()
+        {
+            var items = new List<(TKey, TValue)>();
+            foreach (var kvp in _dict)
+            {
+                items.Add((kvp.Key, kvp.Value));
+            }
+            return items;
+        }
+
+        /// <summary>
+        /// Update the defaultdict with key-value pairs from another dictionary.
+        /// </summary>
+        public void Update(IDictionary<TKey, TValue> other)
+        {
+            foreach (var kvp in other)
+            {
+                _dict[kvp.Key] = kvp.Value;
+            }
+        }
+
+        /// <summary>
+        /// If <paramref name="key"/> is in the dictionary, return its value.
+        /// If not, insert <paramref name="key"/> with <paramref name="defaultValue"/>
+        /// and return <paramref name="defaultValue"/>.
+        /// </summary>
+        public TValue SetDefault(TKey key, TValue defaultValue)
+        {
+            if (_dict.TryGetValue(key, out TValue? value))
+            {
+                return value;
+            }
+
+            _dict[key] = defaultValue;
+            return defaultValue;
+        }
+
+        /// <summary>The number of items in the defaultdict.</summary>
+        public int Count => _dict.Count;
     }
 
     /// <summary>
