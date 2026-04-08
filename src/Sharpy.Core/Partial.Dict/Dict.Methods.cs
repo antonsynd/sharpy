@@ -12,6 +12,29 @@ namespace Sharpy
     public sealed partial class Dict<K, V>
     {
         /// <summary>
+        /// Create a new dictionary with keys from <paramref name="keys"/> and values set to <paramref name="value"/>.
+        /// </summary>
+        /// <param name="keys">An iterable of keys for the new dictionary.</param>
+        /// <param name="value">The value for all keys. Defaults to <c>default(V)</c>.</param>
+        /// <returns>A new dictionary with the specified keys and value.</returns>
+        /// <example>
+        /// <code>
+        /// d = dict.fromkeys(["a", "b"], 0)    # {"a": 0, "b": 0}
+        /// </code>
+        /// </example>
+        public static Dict<K, V> Fromkeys(IEnumerable<K> keys, V value = default!)
+        {
+            var result = new Dict<K, V>();
+
+            foreach (var key in keys)
+            {
+                result._dict[key] = value;
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Return a shallow copy of the dictionary.
         /// </summary>
         /// <returns>A new dictionary with the same key-value pairs.</returns>
