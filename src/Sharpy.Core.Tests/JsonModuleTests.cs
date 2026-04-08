@@ -754,6 +754,81 @@ namespace Sharpy.Tests
 
         #endregion
 
+        #region Dumps - Dict with Str Keys
+
+        [Fact]
+        public void Dumps_DictStrKey_ReturnsJsonObject()
+        {
+            var d = new Dict<Str, object?>();
+            d[(Str)"a"] = 1;
+            d[(Str)"b"] = 2;
+            string result = Json.Dumps(d);
+            Assert.Equal("{\"a\": 1, \"b\": 2}", result);
+        }
+
+        [Fact]
+        public void Dumps_EmptyDictStrKey_ReturnsEmptyObject()
+        {
+            var d = new Dict<Str, object?>();
+            Assert.Equal("{}", Json.Dumps(d));
+        }
+
+        [Fact]
+        public void Dumps_DictStrKeyInt_ReturnsJsonObject()
+        {
+            var d = new Dict<Str, int>();
+            d[(Str)"x"] = 10;
+            d[(Str)"y"] = 20;
+            string result = Json.Dumps(d);
+            Assert.Equal("{\"x\": 10, \"y\": 20}", result);
+        }
+
+        [Fact]
+        public void Dumps_NestedDictStrKey_ReturnsNestedObject()
+        {
+            var inner = new Dict<Str, int>();
+            inner[(Str)"x"] = 1;
+            var outer = new Dict<Str, object?>();
+            outer[(Str)"inner"] = inner;
+            string result = Json.Dumps(outer);
+            Assert.Equal("{\"inner\": {\"x\": 1}}", result);
+        }
+
+        [Fact]
+        public void Dumps_DictStrKey_WithSortKeys_SortsKeys()
+        {
+            var d = new Dict<Str, object?>();
+            d[(Str)"c"] = 3;
+            d[(Str)"a"] = 1;
+            d[(Str)"b"] = 2;
+            string result = Json.Dumps(d, sortKeys: true);
+            Assert.Equal("{\"a\": 1, \"b\": 2, \"c\": 3}", result);
+        }
+
+        [Fact]
+        public void Dumps_DictStrKey_WithIndent_PrettyPrints()
+        {
+            var d = new Dict<Str, object?>();
+            d[(Str)"a"] = 1;
+            d[(Str)"b"] = 2;
+            string result = Json.Dumps(d, indent: 2);
+            string expected = "{\n  \"a\": 1,\n  \"b\": 2\n}";
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Dumps_DictStrKey_NestedDictStrKeyDict_ReturnsNestedObjects()
+        {
+            var inner = new Dict<Str, Dict<Str, int>>();
+            var leaf = new Dict<Str, int>();
+            leaf[(Str)"val"] = 42;
+            inner[(Str)"mid"] = leaf;
+            string result = Json.Dumps(inner);
+            Assert.Equal("{\"mid\": {\"val\": 42}}", result);
+        }
+
+        #endregion
+
         #region Dumps - Generic Collections with Value Types
 
         [Fact]

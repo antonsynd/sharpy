@@ -1,0 +1,6 @@
+# Test str.format_map() with keyword arguments
+
+def main():
+    mapping: dict[str, object] = {"name": "Alice", "age": 30}
+    result: str = "{name} is {age}".format_map(mapping)
+    print(result)

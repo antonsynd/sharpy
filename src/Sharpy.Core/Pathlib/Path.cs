@@ -393,7 +393,174 @@ namespace Sharpy
             return !(left == right);
         }
 
+        // ===== Static Constructors =====
+
+        /// <summary>Return the current working directory.</summary>
+        public static Path Cwd()
+        {
+            return new Path(Directory.GetCurrentDirectory());
+        }
+
+        /// <summary>Return the user's home directory.</summary>
+        public static Path Home()
+        {
+            return new Path(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        }
+
+        // ===== File Operations =====
+
+        /// <summary>
+        /// Create the file if it doesn't exist, or update its timestamp if it does.
+        /// </summary>
+        /// <param name="existOk">If false, raise FileExistsError when the file already exists.</param>
+        public void Touch(bool existOk = true)
+        {
+            if (File.Exists(_path))
+            {
+                if (!existOk)
+                {
+                    throw new FileExistsError("File exists: '" + _path + "'");
+                }
+                File.SetLastWriteTimeUtc(_path, System.DateTime.UtcNow);
+            }
+            else
+            {
+                // Ensure parent directory exists
+                var dir = System.IO.Path.GetDirectoryName(_path);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    throw new FileNotFoundError("No such file or directory: '" + _path + "'");
+                }
+                File.Create(_path).Dispose();
+            }
+        }
+
+        /// <summary>Return file or directory stats.</summary>
+        public StatResult Stat()
+        {
+            if (File.Exists(_path))
+            {
+                var info = new FileInfo(_path);
+                return new StatResult(
+                    stSize: info.Length,
+                    stMtime: new DateTimeOffset(info.LastWriteTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.LastWriteTimeUtc).Millisecond / 1000.0,
+                    stCtime: new DateTimeOffset(info.CreationTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.CreationTimeUtc).Millisecond / 1000.0,
+                    stAtime: new DateTimeOffset(info.LastAccessTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.LastAccessTimeUtc).Millisecond / 1000.0,
+                    stMode: (int)info.Attributes
+                );
+            }
+            if (Directory.Exists(_path))
+            {
+                var info = new DirectoryInfo(_path);
+                return new StatResult(
+                    stSize: 0,
+                    stMtime: new DateTimeOffset(info.LastWriteTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.LastWriteTimeUtc).Millisecond / 1000.0,
+                    stCtime: new DateTimeOffset(info.CreationTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.CreationTimeUtc).Millisecond / 1000.0,
+                    stAtime: new DateTimeOffset(info.LastAccessTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.LastAccessTimeUtc).Millisecond / 1000.0,
+                    stMode: (int)info.Attributes
+                );
+            }
+            throw new FileNotFoundError("No such file or directory: '" + _path + "'");
+        }
+
+        /// <summary>Whether the path is a symbolic link.</summary>
+        public bool IsSymlink()
+        {
+            try
+            {
+                var attrs = File.GetAttributes(_path);
+                return (attrs & FileAttributes.ReparsePoint) != 0;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        // ===== Recursive Glob =====
+
+        /// <summary>Recursively glob for matching paths relative to this directory.</summary>
+        public IEnumerable<Path> Rglob(string pattern)
+        {
+            if (!Directory.Exists(_path))
+            {
+                throw new FileNotFoundError("No such file or directory: '" + _path + "'");
+            }
+            foreach (var entry in Directory.EnumerateFileSystemEntries(_path, pattern, SearchOption.AllDirectories))
+            {
+                yield return new Path(entry);
+            }
+        }
+
+        // ===== Pattern Matching =====
+
+        /// <summary>Match this path's name against a glob pattern.</summary>
+        public bool Match(string pattern)
+        {
+            // Python's Path.match() matches the entire path component-wise from the right.
+            // For simple patterns (no separator), match against the final component (Name).
+            var name = Name;
+            return GlobMatch(name, pattern);
+        }
+
+        // ===== User Expansion =====
+
+        /// <summary>Expand ~ at the start to the user's home directory.</summary>
+        public Path Expanduser()
+        {
+            if (_path == "~" || _path.StartsWith("~" + System.IO.Path.DirectorySeparatorChar) || _path.StartsWith("~" + System.IO.Path.AltDirectorySeparatorChar))
+            {
+                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                if (string.IsNullOrEmpty(home))
+                {
+                    throw new RuntimeError("Could not determine home directory");
+                }
+                if (_path == "~")
+                {
+                    return new Path(home);
+                }
+                return new Path(System.IO.Path.Combine(home, _path.Substring(2)));
+            }
+            return new Path(_path);
+        }
+
         // ===== Helpers =====
+
+        /// <summary>Simple glob-style pattern matching (supports * and ?).</summary>
+        private static bool GlobMatch(string text, string pattern)
+        {
+            int ti = 0, pi = 0;
+            int starTi = -1, starPi = -1;
+            while (ti < text.Length)
+            {
+                if (pi < pattern.Length && (pattern[pi] == '?' || pattern[pi] == text[ti]))
+                {
+                    ti++;
+                    pi++;
+                }
+                else if (pi < pattern.Length && pattern[pi] == '*')
+                {
+                    starPi = pi;
+                    starTi = ti;
+                    pi++;
+                }
+                else if (starPi >= 0)
+                {
+                    pi = starPi + 1;
+                    starTi++;
+                    ti = starTi;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            while (pi < pattern.Length && pattern[pi] == '*')
+            {
+                pi++;
+            }
+            return pi == pattern.Length;
+        }
 
         private static Encoding GetEncoding(string encoding)
         {

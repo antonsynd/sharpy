@@ -1,0 +1,18 @@
+# Test str.format() with various format specifiers
+
+def main():
+    # Basic positional
+    x: str = "Hello, {}\!"
+    print(x.format("world"))
+
+    # Explicit positional
+    print("{0} + {1} = {2}".format(1, 2, 3))
+
+    # Repeated positional
+    print("{0} {1} {0}".format("a", "b"))
+
+    # Float precision
+    print("{:.2f}".format(3.14159))
+
+    # Literal braces
+    print("{{}}".format())
