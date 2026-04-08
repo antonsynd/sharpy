@@ -348,7 +348,7 @@ public class StrStructTests
         Str s = "abc";
         var items = s.ToList();
         items.Should().HaveCount(3);
-        items[0].Should().BeOfType<Str>();
+        ((object)items[0]).Should().BeOfType<Str>();
         ((string)items[0]).Should().Be("a");
         ((string)items[1]).Should().Be("b");
         ((string)items[2]).Should().Be("c");
