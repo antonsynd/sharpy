@@ -92,11 +92,11 @@ public partial class RoslynEmitterDefinitionTests
                 new Parameter
                 {
                     Name = "name",
-                    Type = new TypeAnnotation { Name = "string" },
+                    Type = new TypeAnnotation { Name = "str" },
                     DefaultValue = new StringLiteral { Value = "World" }
                 }
             }.ToImmutableArray(),
-            ReturnType = new TypeAnnotation { Name = "string" },
+            ReturnType = new TypeAnnotation { Name = "str" },
             Body = new List<Statement>
             {
                 new ReturnStatement { Value = new StringLiteral { Value = "Hello" } }
@@ -109,7 +109,7 @@ public partial class RoslynEmitterDefinitionTests
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
-        Assert.Contains("string Greet(string name = \"World\")", code);
+        Assert.Contains("Sharpy.Str Greet(Sharpy.Str name = default)", code);
     }
 
     [Fact]

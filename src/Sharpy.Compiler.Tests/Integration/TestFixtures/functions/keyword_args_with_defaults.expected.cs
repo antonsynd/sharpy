@@ -11,7 +11,7 @@ public static partial class KeywordArgsWithDefaults
 {
     public class ConfigBuilder
     {
-        public string Host;
+        public Sharpy.Str Host;
         public int Port;
         public int Timeout;
         public int RetryCount;
@@ -27,8 +27,10 @@ public static partial class KeywordArgsWithDefaults
             global::Sharpy.Builtins.Print(this.RetryCount);
         }
 
-        public ConfigBuilder(string host = "localhost", int port = 8080, int timeout = 30, int retryCount = 3)
+        public ConfigBuilder(Sharpy.Str host = default, int port = 8080, int timeout = 30, int retryCount = 3)
         {
+            if (host == default)
+                host = ((Sharpy.Str)"localhost");
 #line 11 "keyword_args_with_defaults.spy"
             this.Host = host;
 #line 12 "keyword_args_with_defaults.spy"
@@ -42,9 +44,9 @@ public static partial class KeywordArgsWithDefaults
 
     public abstract class RequestHandler
     {
-        public string BaseUrl;
-        public abstract int SendRequest(string endpoint, string method, int retries);
-        public RequestHandler(string url)
+        public Sharpy.Str BaseUrl;
+        public abstract int SendRequest(Sharpy.Str endpoint, Sharpy.Str method, int retries);
+        public RequestHandler(Sharpy.Str url)
         {
 #line 27 "keyword_args_with_defaults.spy"
             this.BaseUrl = url;
@@ -54,8 +56,12 @@ public static partial class KeywordArgsWithDefaults
     public class HttpClient : RequestHandler
     {
         public int MaxRetries;
-        public override int SendRequest(string endpoint = "/api", string method = "GET", int retries = 3)
+        public override int SendRequest(Sharpy.Str endpoint = default, Sharpy.Str method = default, int retries = 3)
         {
+            if (endpoint == default)
+                endpoint = ((Sharpy.Str)"/api");
+            if (method == default)
+                method = ((Sharpy.Str)"GET");
 #line 42 "keyword_args_with_defaults.spy"
             global::Sharpy.Builtins.Print(endpoint);
 #line 43 "keyword_args_with_defaults.spy"
@@ -64,7 +70,7 @@ public static partial class KeywordArgsWithDefaults
             return retries;
         }
 
-        public HttpClient(string url, int retries = 5) : base(url)
+        public HttpClient(Sharpy.Str url, int retries = 5) : base(url)
         {
 #line 38 "keyword_args_with_defaults.spy"
             this.MaxRetries = retries;
@@ -83,7 +89,7 @@ public static partial class KeywordArgsWithDefaults
         return result;
     }
 
-    public static int ProcessData(string name, int value = 100, bool enabled = true)
+    public static int ProcessData(Sharpy.Str name, int value = 100, bool enabled = true)
     {
 #line 53 "keyword_args_with_defaults.spy"
         if (enabled)
@@ -105,15 +111,15 @@ public static partial class KeywordArgsWithDefaults
 #line 60 "keyword_args_with_defaults.spy"
         config1.DisplayConfig();
 #line 62 "keyword_args_with_defaults.spy"
-        ConfigBuilder config2 = new ConfigBuilder(host: "example.com", port: 9000);
+        ConfigBuilder config2 = new ConfigBuilder(host: ((Sharpy.Str)"example.com"), port: 9000);
 #line 63 "keyword_args_with_defaults.spy"
         global::Sharpy.Builtins.Print(config2.Host);
 #line 64 "keyword_args_with_defaults.spy"
         global::Sharpy.Builtins.Print(config2.Port);
 #line 66 "keyword_args_with_defaults.spy"
-        HttpClient client = new HttpClient(url: "https://api.example.com", retries: 10);
+        HttpClient client = new HttpClient(url: ((Sharpy.Str)"https://api.example.com"), retries: 10);
 #line 67 "keyword_args_with_defaults.spy"
-        int result = client.SendRequest(endpoint: "/users", method: "POST", retries: 5);
+        int result = client.SendRequest(endpoint: ((Sharpy.Str)"/users"), method: ((Sharpy.Str)"POST"), retries: 5);
 #line 68 "keyword_args_with_defaults.spy"
         global::Sharpy.Builtins.Print(result);
 #line 70 "keyword_args_with_defaults.spy"
@@ -129,7 +135,7 @@ public static partial class KeywordArgsWithDefaults
 #line 77 "keyword_args_with_defaults.spy"
         global::Sharpy.Builtins.Print(score3);
 #line 79 "keyword_args_with_defaults.spy"
-        int val = ProcessData(name: "DataPoint", value: 250);
+        int val = ProcessData(name: ((Sharpy.Str)"DataPoint"), value: 250);
 #line 80 "keyword_args_with_defaults.spy"
         global::Sharpy.Builtins.Print(val);
     }

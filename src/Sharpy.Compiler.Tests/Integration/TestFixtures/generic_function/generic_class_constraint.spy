@@ -1,5 +1,15 @@
+class Box:
+    val: int
+
+    def __init__(self, v: int):
+        self.val = v
+
+    def __str__(self) -> str:
+        return str(self.val)
+
 def foo[T: class](x: T) -> T:
     return x
 
 def main():
-    print(foo("hello"))
+    b = Box(42)
+    print(foo(b))

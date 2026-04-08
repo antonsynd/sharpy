@@ -25,8 +25,12 @@ public static partial class DefaultParams
         return (100 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)System.Math.Floor((double)((double)(finalCents) / 100)));
     }
 
-    public static string Greet(string name, string greeting = "Hello", string punctuation = "!")
+    public static Sharpy.Str Greet(Sharpy.Str name, Sharpy.Str greeting = default, Sharpy.Str punctuation = default)
     {
+        if (greeting == default)
+            greeting = ((Sharpy.Str)"Hello");
+        if (punctuation == default)
+            punctuation = ((Sharpy.Str)"!");
 #line 15 "default_params.spy"
         return greeting;
     }

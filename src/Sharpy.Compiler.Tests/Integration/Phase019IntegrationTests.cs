@@ -369,7 +369,17 @@ def main():
     public void GenericClass_ClassConstraint_CompilesAndRuns()
     {
         // Arrange: Generic class with 'class' constraint (reference type)
+        // Note: str is now a value type (Sharpy.Str), so we use a user-defined class instead
         var source = @"
+class Wrapper:
+    text: str
+
+    def __init__(self, text: str):
+        self.text = text
+
+    def __str__(self) -> str:
+        return self.text
+
 class Container[T: class]:
     value: T
 
@@ -380,7 +390,8 @@ class Container[T: class]:
         return self.value
 
 def main():
-    c = Container[str](""test"")
+    w = Wrapper(""test"")
+    c = Container[Wrapper](w)
     print(c.get())
 ";
 

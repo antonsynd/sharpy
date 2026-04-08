@@ -124,7 +124,8 @@ public class TypeMappingConsistencyTests
             var validCSharpNames = new[]
             {
                 "sbyte", "byte", "short", "ushort", "int", "uint", "long", "ulong",
-                "float", "double", "decimal", "bool", "char", "string", "void", "object"
+                "float", "double", "decimal", "bool", "char", "string", "void", "object",
+                "Sharpy.Str"
             };
 
             validCSharpNames.Should().Contain(info.CSharpName,
@@ -149,7 +150,7 @@ public class TypeMappingConsistencyTests
 
     [Theory]
     [InlineData("int", "int")]
-    [InlineData("str", "string")]
+    [InlineData("str", "Sharpy.Str")]
     [InlineData("None", "void")]
     [InlineData("void", "void")]
     [InlineData("bool", "bool")]
@@ -182,7 +183,7 @@ public class TypeMappingConsistencyTests
             { "float64", "double" },    // Sharpy float64 -> C# double
             { "double", "double" },
             { "bool", "bool" },
-            { "str", "string" },
+            { "str", "Sharpy.Str" },
             { "byte", "byte" },
             { "sbyte", "sbyte" },
             { "short", "short" },

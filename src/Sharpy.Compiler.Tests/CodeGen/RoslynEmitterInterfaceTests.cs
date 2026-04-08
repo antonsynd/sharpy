@@ -202,7 +202,7 @@ public class RoslynEmitterInterfaceTests
 
         // Assert
         Assert.Contains("public interface IEntity", code);
-        Assert.Contains("string Name", code);
+        Assert.Contains("Sharpy.Str Name", code);
         Assert.Contains("get;", code);
         Assert.Contains("set;", code);
     }
