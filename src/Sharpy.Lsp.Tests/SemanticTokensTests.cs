@@ -573,4 +573,29 @@ def main():
     }
 
     #endregion
+
+    #region String literal tokens
+
+    [Fact]
+    public void StringLiteral_GetsTokenTypeString()
+    {
+        var tokens = CollectTokensFrom("def main():\n    x: str = \"hello\"");
+        tokens.Should().Contain(t => t.TokenType == TString, "string literal should get string token type");
+    }
+
+    [Fact]
+    public void NativeStringLiteral_GetsTokenTypeString()
+    {
+        var tokens = CollectTokensFrom("def main():\n    x: str = n\"hello\"");
+        tokens.Should().Contain(t => t.TokenType == TString, "native string literal should get string token type");
+    }
+
+    [Fact]
+    public void NativeStringLiteral_RawVariant_GetsTokenTypeString()
+    {
+        var tokens = CollectTokensFrom("def main():\n    x: str = nr\"C:\\path\"");
+        tokens.Should().Contain(t => t.TokenType == TString, "raw native string literal should get string token type");
+    }
+
+    #endregion
 }
