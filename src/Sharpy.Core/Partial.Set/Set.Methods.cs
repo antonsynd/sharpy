@@ -137,6 +137,86 @@ namespace Sharpy
             return !_set.Overlaps(other._set);
         }
 
+        /// <summary>
+        /// Update the set, adding elements from the other set.
+        /// </summary>
+        /// <param name="other">The set of elements to add.</param>
+        /// <example>
+        /// <code>
+        /// s = {1, 2, 3}
+        /// s.update({3, 4})    # {1, 2, 3, 4}
+        /// </code>
+        /// </example>
+        public void Update(Set<T> other)
+        {
+            if (other is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            _set.UnionWith(other._set);
+        }
+
+        /// <summary>
+        /// Update the set, removing elements found in the other set.
+        /// </summary>
+        /// <param name="other">The set of elements to remove.</param>
+        /// <example>
+        /// <code>
+        /// s = {1, 2, 3}
+        /// s.difference_update({2})    # {1, 3}
+        /// </code>
+        /// </example>
+        public void DifferenceUpdate(Set<T> other)
+        {
+            if (other is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            _set.ExceptWith(other._set);
+        }
+
+        /// <summary>
+        /// Update the set, keeping only elements found in both sets.
+        /// </summary>
+        /// <param name="other">The set to intersect with.</param>
+        /// <example>
+        /// <code>
+        /// s = {1, 2, 3}
+        /// s.intersection_update({2, 3, 4})    # {2, 3}
+        /// </code>
+        /// </example>
+        public void IntersectionUpdate(Set<T> other)
+        {
+            if (other is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            _set.IntersectWith(other._set);
+        }
+
+        /// <summary>
+        /// Update the set, keeping only elements found in either set but not both.
+        /// </summary>
+        /// <param name="other">The set to compute symmetric difference with.</param>
+        /// <example>
+        /// <code>
+        /// s = {1, 2, 3}
+        /// s.symmetric_difference_update({2, 3, 4})    # {1, 4}
+        /// </code>
+        /// </example>
+        public void SymmetricDifferenceUpdate(Set<T> other)
+        {
+            if (other is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            _set.SymmetricExceptWith(other._set);
+        }
+
         #endregion
 
         #region String Representation
