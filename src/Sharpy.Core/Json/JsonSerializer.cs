@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
 namespace Sharpy
@@ -85,6 +86,14 @@ namespace Sharpy
             if (value is IDictionary<string, object> dictNonNull)
             {
                 SerializeDictNonNull(sb, dictNonNull, indent, sortKeys, ensureAscii, currentIndent);
+                return;
+            }
+
+            // Handle Dict<Str, V> — Str keys are not string, so IDictionary<string, ...> won't match.
+            // Use reflection to detect IDictionary<Str, V> for any V.
+            if (TryGetStrKeyDictionary(value, out var strKeyDict))
+            {
+                SerializeStrKeyDict(sb, strKeyDict!, indent, sortKeys, ensureAscii, currentIndent);
                 return;
             }
 
@@ -408,6 +417,106 @@ namespace Sharpy
             }
 
             sb.Append(']');
+        }
+
+        /// <summary>
+        /// Checks whether the value implements IDictionary&lt;Str, V&gt; for some V,
+        /// and if so extracts the keys and values as string/object pairs.
+        /// </summary>
+        private static bool TryGetStrKeyDictionary(object value, out System.Collections.Generic.List<KeyValuePair<string, object?>>? entries)
+        {
+            entries = null;
+
+            var type = value.GetType();
+            foreach (var iface in type.GetInterfaces())
+            {
+                if (iface.IsGenericType
+                    && iface.GetGenericTypeDefinition() == typeof(IDictionary<,>)
+                    && iface.GetGenericArguments()[0] == typeof(Str))
+                {
+                    // Found IDictionary<Str, V> — extract entries via the interface properties
+                    var keysProperty = iface.GetProperty("Keys");
+                    var itemProperty = iface.GetProperty("Item");
+                    if (keysProperty == null || itemProperty == null)
+                    {
+                        continue;
+                    }
+
+                    var keys = (IEnumerable)keysProperty.GetValue(value);
+                    entries = new System.Collections.Generic.List<KeyValuePair<string, object?>>();
+
+                    foreach (object keyObj in keys)
+                    {
+                        string keyStr = ((Str)keyObj).ToString();
+                        object? val = itemProperty.GetValue(value, new[] { keyObj });
+                        entries.Add(new KeyValuePair<string, object?>(keyStr, val));
+                    }
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void SerializeStrKeyDict(
+            StringBuilder sb,
+            System.Collections.Generic.List<KeyValuePair<string, object?>> entries,
+            int indent,
+            bool sortKeys,
+            bool ensureAscii,
+            int currentIndent)
+        {
+            if (sortKeys)
+            {
+                entries.Sort((a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));
+            }
+
+            if (entries.Count == 0)
+            {
+                sb.Append("{}");
+                return;
+            }
+
+            bool pretty = indent >= 0;
+            int nextIndent = currentIndent + (pretty ? indent : 0);
+
+            sb.Append('{');
+
+            bool first = true;
+            foreach (var entry in entries)
+            {
+                if (!first)
+                {
+                    sb.Append(',');
+                    if (!pretty)
+                    {
+                        sb.Append(' ');
+                    }
+                }
+
+                first = false;
+
+                if (pretty)
+                {
+                    sb.Append('\n');
+                    sb.Append(' ', nextIndent);
+                }
+
+                SerializeString(sb, entry.Key, ensureAscii);
+                sb.Append(':');
+                sb.Append(' ');
+
+                SerializeValue(sb, entry.Value, indent, sortKeys, ensureAscii, nextIndent);
+            }
+
+            if (pretty)
+            {
+                sb.Append('\n');
+                sb.Append(' ', currentIndent);
+            }
+
+            sb.Append('}');
         }
     }
 }
