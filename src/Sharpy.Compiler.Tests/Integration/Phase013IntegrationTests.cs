@@ -216,7 +216,7 @@ def main():
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
     }
 
-    [Fact(Skip = "TODO: const str emits const Sharpy.Str which is invalid C#. See issue #526")]
+    [Fact]
     public void Const_StringDeclaration_CompilesAndRuns()
     {
         var source = @"
@@ -242,7 +242,7 @@ def main():
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
     }
 
-    [Fact(Skip = "TODO: const str emits const Sharpy.Str which is invalid C#. See issue #526")]
+    [Fact]
     public void Const_MultipleDeclarations_CompilesAndRuns()
     {
         var source = @"

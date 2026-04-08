@@ -1,0 +1,8 @@
+def main():
+    const GREETING: str = "hello"
+    print(GREETING)
+    const NAME: str = "world"
+    const MESSAGE: str = GREETING + " " + NAME
+    print(MESSAGE)
+    const COUNT: int = 42
+    print(COUNT)
