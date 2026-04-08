@@ -11,9 +11,9 @@ public static partial class SuperInitCall0000
 {
     public class Vehicle
     {
-        public string Brand;
+        public Sharpy.Str Brand;
         public int Year;
-        public Vehicle(string brand, int year)
+        public Vehicle(Sharpy.Str brand, int year)
         {
 #line 8 "super_init_call_0000.spy"
             this.Brand = brand;
@@ -32,7 +32,7 @@ public static partial class SuperInitCall0000
             this.Mileage = this.Mileage + distance;
         }
 
-        public Car(string brand, int year, int doors) : base(brand, year)
+        public Car(Sharpy.Str brand, int year, int doors) : base(brand, year)
         {
 #line 17 "super_init_call_0000.spy"
             this.Doors = doors;
@@ -59,7 +59,7 @@ public static partial class SuperInitCall0000
             global::Sharpy.Builtins.Print(this.ChargeLevel);
         }
 
-        public ElectricCar(string brand, int year, int doors, int battery) : base(brand, year, doors)
+        public ElectricCar(Sharpy.Str brand, int year, int doors, int battery) : base(brand, year, doors)
         {
 #line 29 "super_init_call_0000.spy"
             this.BatteryCapacity = battery;
@@ -71,7 +71,7 @@ public static partial class SuperInitCall0000
     public static void Main()
     {
 #line 40 "super_init_call_0000.spy"
-        var tesla = new ElectricCar("Tesla", 2024, 4, 85);
+        var tesla = new ElectricCar(((Sharpy.Str)"Tesla"), 2024, 4, 85);
 #line 41 "super_init_call_0000.spy"
         tesla.Drive(150);
 #line 42 "super_init_call_0000.spy"

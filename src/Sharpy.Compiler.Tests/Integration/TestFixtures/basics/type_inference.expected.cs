@@ -16,7 +16,7 @@ public static partial class TypeInference
 #line 3 "type_inference.spy"
         var y = 3.14d;
 #line 4 "type_inference.spy"
-        var z = "hello";
+        var z = ((Sharpy.Str)"hello");
 #line 5 "type_inference.spy"
         var flag = true;
 #line 7 "type_inference.spy"

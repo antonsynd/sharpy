@@ -12,7 +12,7 @@ public static partial class ClassBankAccount
     public class BankAccount
     {
         public int Balance;
-        public string AccountHolder;
+        public Sharpy.Str AccountHolder;
         public bool IsActive;
         public void Deposit(int amount)
         {
@@ -51,7 +51,7 @@ public static partial class ClassBankAccount
             return this.Balance;
         }
 
-        public BankAccount(string holder, int initialBalance)
+        public BankAccount(Sharpy.Str holder, int initialBalance)
         {
 #line 9 "class_bank_account.spy"
             this.AccountHolder = holder;
@@ -65,7 +65,7 @@ public static partial class ClassBankAccount
     public static void Main()
     {
 #line 30 "class_bank_account.spy"
-        var account = new BankAccount("Alice", 1000);
+        var account = new BankAccount(((Sharpy.Str)"Alice"), 1000);
 #line 31 "class_bank_account.spy"
         global::Sharpy.Builtins.Print(account.GetBalance());
 #line 33 "class_bank_account.spy"

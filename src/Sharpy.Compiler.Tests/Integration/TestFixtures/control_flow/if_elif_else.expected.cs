@@ -15,17 +15,17 @@ public static partial class IfElifElse
         if (x > 0)
         {
 #line 3 "if_elif_else.spy"
-            global::Sharpy.Builtins.Print("positive");
+            global::Sharpy.Builtins.Print(((Sharpy.Str)"positive"));
         }
         else if (x < 0)
         {
 #line 5 "if_elif_else.spy"
-            global::Sharpy.Builtins.Print("negative");
+            global::Sharpy.Builtins.Print(((Sharpy.Str)"negative"));
         }
         else
         {
 #line 7 "if_elif_else.spy"
-            global::Sharpy.Builtins.Print("zero");
+            global::Sharpy.Builtins.Print(((Sharpy.Str)"zero"));
         }
     }
 

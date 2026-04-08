@@ -13,8 +13,8 @@ public static partial class NullCoalescing0003
     public static int Y = (X).UnwrapOr(42);
     public static Optional<int> A = 100;
     public static int B = (A).UnwrapOr(999);
-    public static Optional<string> Name = Optional<string>.None;
-    public static string DefaultName = (Name).UnwrapOr("Guest");
+    public static Optional<Sharpy.Str> Name = Optional<Sharpy.Str>.None;
+    public static Sharpy.Str DefaultName = (Name).UnwrapOr(((Sharpy.Str)"Guest"));
     public static Optional<int> First = Optional<int>.None;
     public static Optional<int> Second = Optional<int>.None;
     public static int Third = 77;

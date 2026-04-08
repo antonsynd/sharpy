@@ -13,7 +13,7 @@ public static partial class AccessNamingConventionMethods
         public override string ToString()
         {
 #line 10 "access_naming_convention_methods.spy"
-            return "Base";
+            return ((Sharpy.Str)"Base");
         }
 
         private int __PrivateMethod()
@@ -22,10 +22,10 @@ public static partial class AccessNamingConventionMethods
             return 42;
         }
 
-        protected string _ProtectedMethod()
+        protected Sharpy.Str _ProtectedMethod()
         {
 #line 16 "access_naming_convention_methods.spy"
-            return "protected";
+            return ((Sharpy.Str)"protected");
         }
 
         public bool PublicMethod()
@@ -49,7 +49,7 @@ public static partial class AccessNamingConventionMethods
 
     public class Child : Base
     {
-        public string CallProtected()
+        public Sharpy.Str CallProtected()
         {
 #line 29 "access_naming_convention_methods.spy"
             return this._ProtectedMethod();

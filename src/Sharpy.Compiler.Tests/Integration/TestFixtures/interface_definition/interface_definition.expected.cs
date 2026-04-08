@@ -11,17 +11,17 @@ public static partial class InterfaceDefinition
 {
     public interface IDrawable
     {
-        string Draw();
+        Sharpy.Str Draw();
         int Area();
     }
 
     public class Circle : IDrawable
     {
         public int Radius;
-        public virtual string Draw()
+        public virtual Sharpy.Str Draw()
         {
 #line 14 "interface_definition.spy"
-            return "Drawing Circle";
+            return ((Sharpy.Str)"Drawing Circle");
         }
 
         public virtual int Area()
@@ -41,10 +41,10 @@ public static partial class InterfaceDefinition
     {
         public int Width;
         public int Height;
-        public virtual string Draw()
+        public virtual Sharpy.Str Draw()
         {
 #line 28 "interface_definition.spy"
-            return "Drawing Rectangle";
+            return ((Sharpy.Str)"Drawing Rectangle");
         }
 
         public virtual int Area()

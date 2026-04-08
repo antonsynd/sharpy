@@ -32,7 +32,7 @@ public static partial class GenericClass0005
 #line 13 "generic_class_0005.spy"
         global::Sharpy.Builtins.Print(intBox.Get());
 #line 15 "generic_class_0005.spy"
-        var strBox = new Box<string>("hello");
+        var strBox = new Box<Sharpy.Str>(((Sharpy.Str)"hello"));
 #line 16 "generic_class_0005.spy"
         global::Sharpy.Builtins.Print(strBox.Get());
     }

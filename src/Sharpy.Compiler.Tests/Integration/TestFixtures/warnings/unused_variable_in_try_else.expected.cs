@@ -17,13 +17,13 @@ public static partial class UnusedVariableInTryElse
             try
             {
 #line 4 "unused_variable_in_try_else.spy"
-                global::Sharpy.Builtins.Print("trying");
+                global::Sharpy.Builtins.Print(((Sharpy.Str)"trying"));
                 __trySucceeded_0 = true;
             }
             catch (Exception e)
             {
 #line 6 "unused_variable_in_try_else.spy"
-                global::Sharpy.Builtins.Print("caught");
+                global::Sharpy.Builtins.Print(((Sharpy.Str)"caught"));
             }
 
             if (__trySucceeded_0)
@@ -34,6 +34,6 @@ public static partial class UnusedVariableInTryElse
         }
 
 #line 9 "unused_variable_in_try_else.spy"
-        global::Sharpy.Builtins.Print("done");
+        global::Sharpy.Builtins.Print(((Sharpy.Str)"done"));
     }
 }

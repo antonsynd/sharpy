@@ -18,33 +18,33 @@ public static partial class EnumComparisonAndAssignment0000
         Cancelled = 4
     }
 
-    public static string GetStatusDescription(OrderStatus status)
+    public static Sharpy.Str GetStatusDescription(OrderStatus status)
     {
 #line 10 "enum_comparison_and_assignment_0000.spy"
         if (status == OrderStatus.Pending)
         {
 #line 11 "enum_comparison_and_assignment_0000.spy"
-            return "Order is pending";
+            return ((Sharpy.Str)"Order is pending");
         }
         else if (status == OrderStatus.Processing)
         {
 #line 13 "enum_comparison_and_assignment_0000.spy"
-            return "Order is being processed";
+            return ((Sharpy.Str)"Order is being processed");
         }
         else if (status == OrderStatus.Shipped)
         {
 #line 15 "enum_comparison_and_assignment_0000.spy"
-            return "Order has been shipped";
+            return ((Sharpy.Str)"Order has been shipped");
         }
         else if (status == OrderStatus.Delivered)
         {
 #line 17 "enum_comparison_and_assignment_0000.spy"
-            return "Order delivered successfully";
+            return ((Sharpy.Str)"Order delivered successfully");
         }
         else
         {
 #line 19 "enum_comparison_and_assignment_0000.spy"
-            return "Order was cancelled";
+            return ((Sharpy.Str)"Order was cancelled");
         }
     }
 

@@ -11,7 +11,7 @@ public static partial class InheritanceWithOverride
 {
     public class Animal
     {
-        public string Name;
+        public Sharpy.Str Name;
         public virtual int Speak()
         {
 #line 11 "inheritance_with_override.spy"
@@ -26,7 +26,7 @@ public static partial class InheritanceWithOverride
             return 4;
         }
 
-        public Animal(string name)
+        public Animal(Sharpy.Str name)
         {
 #line 7 "inheritance_with_override.spy"
             this.Name = name;
@@ -35,7 +35,7 @@ public static partial class InheritanceWithOverride
 
     public class Dog : Animal
     {
-        public string Breed;
+        public Sharpy.Str Breed;
         public override int Speak()
         {
 #line 26 "inheritance_with_override.spy"
@@ -44,7 +44,7 @@ public static partial class InheritanceWithOverride
             return 1;
         }
 
-        public Dog(string name, string breed) : base(name)
+        public Dog(Sharpy.Str name, Sharpy.Str breed) : base(name)
         {
 #line 22 "inheritance_with_override.spy"
             this.Breed = breed;
@@ -62,7 +62,7 @@ public static partial class InheritanceWithOverride
             return 2;
         }
 
-        public Cat(string name, bool indoor) : base(name)
+        public Cat(Sharpy.Str name, bool indoor) : base(name)
         {
 #line 34 "inheritance_with_override.spy"
             this.Indoor = indoor;
@@ -72,11 +72,11 @@ public static partial class InheritanceWithOverride
     public static void Main()
     {
 #line 44 "inheritance_with_override.spy"
-        var dog = new Dog("Rex", "Shepherd");
+        var dog = new Dog(((Sharpy.Str)"Rex"), ((Sharpy.Str)"Shepherd"));
 #line 45 "inheritance_with_override.spy"
-        var cat = new Cat("Whiskers", true);
+        var cat = new Cat(((Sharpy.Str)"Whiskers"), true);
 #line 46 "inheritance_with_override.spy"
-        var animal = new Animal("Generic");
+        var animal = new Animal(((Sharpy.Str)"Generic"));
 #line 48 "inheritance_with_override.spy"
         animal.Speak();
 #line 49 "inheritance_with_override.spy"

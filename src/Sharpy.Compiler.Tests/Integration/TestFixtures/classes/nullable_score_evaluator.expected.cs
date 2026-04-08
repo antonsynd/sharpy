@@ -12,13 +12,13 @@ public static partial class NullableScoreEvaluator
     public class ScoreEvaluator
     {
         public int PassingGrade;
-        public string Evaluate(Optional<int> score)
+        public Sharpy.Str Evaluate(Optional<int> score)
         {
 #line 11 "nullable_score_evaluator.spy"
             if (score.IsNone)
             {
 #line 12 "nullable_score_evaluator.spy"
-                return "No score recorded";
+                return ((Sharpy.Str)"No score recorded");
             }
             else
             {
@@ -26,12 +26,12 @@ public static partial class NullableScoreEvaluator
                 if (score.Unwrap() >= this.PassingGrade)
                 {
 #line 15 "nullable_score_evaluator.spy"
-                    return "Pass";
+                    return ((Sharpy.Str)"Pass");
                 }
                 else
                 {
 #line 17 "nullable_score_evaluator.spy"
-                    return "Fail";
+                    return ((Sharpy.Str)"Fail");
                 }
             }
         }

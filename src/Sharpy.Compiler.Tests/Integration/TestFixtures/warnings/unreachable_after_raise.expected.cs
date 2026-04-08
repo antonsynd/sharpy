@@ -12,7 +12,7 @@ public static partial class UnreachableAfterRaise
     public static int Foo()
     {
 #line 2 "unreachable_after_raise.spy"
-        throw new Exception("error");
+        throw new Exception(((Sharpy.Str)"error"));
 #line 3 "unreachable_after_raise.spy"
         return 1;
     }
@@ -28,7 +28,7 @@ public static partial class UnreachableAfterRaise
         catch (Exception e)
         {
 #line 9 "unreachable_after_raise.spy"
-            global::Sharpy.Builtins.Print("caught");
+            global::Sharpy.Builtins.Print(((Sharpy.Str)"caught"));
         }
     }
 }

@@ -10,10 +10,10 @@ using global::Sharpy;
 public static partial class DecoratorArgsBasic0001
 {
     [Obsolete("Use new_greet instead")]
-    public static string Greet()
+    public static Sharpy.Str Greet()
     {
 #line 3 "decorator_args_basic_0001.spy"
-        return "hello";
+        return ((Sharpy.Str)"hello");
     }
 
     public static void Main()
