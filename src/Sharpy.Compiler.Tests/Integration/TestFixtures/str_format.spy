@@ -2,7 +2,7 @@
 
 def main():
     # Basic positional
-    x: str = "Hello, {}\!"
+    x: str = "Hello, {}!"
     print(x.format("world"))
 
     # Explicit positional
