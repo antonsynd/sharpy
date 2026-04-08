@@ -221,6 +221,129 @@ public class CollectionsModule_Tests
         counter[42].Should().Be(0);
     }
 
+    [Fact]
+    public void Counter_Subtract_Iterable_SubtractsCounts()
+    {
+        var counter = new Sharpy.Counter<string>(new[] { "a", "a", "b" });
+
+        counter.Subtract(new[] { "a" });
+
+        counter["a"].Should().Be(1);
+        counter["b"].Should().Be(1);
+    }
+
+    [Fact]
+    public void Counter_Subtract_Counter_SubtractsCounts()
+    {
+        var c1 = new Sharpy.Counter<string>(new[] { "a", "a", "b" });
+        var c2 = new Sharpy.Counter<string>(new[] { "a", "b", "b" });
+
+        c1.Subtract(c2);
+
+        c1["a"].Should().Be(1);
+        c1["b"].Should().Be(-1);
+    }
+
+    [Fact]
+    public void Counter_Subtract_MissingKeys_GoesNegative()
+    {
+        var counter = new Sharpy.Counter<string>();
+
+        counter.Subtract(new[] { "a" });
+
+        counter["a"].Should().Be(-1);
+    }
+
+    [Fact]
+    public void Counter_Copy_ReturnsIndependentCopy()
+    {
+        var original = new Sharpy.Counter<string>(new[] { "a", "a", "b" });
+
+        var copy = original.Copy();
+        copy["a"] = 0;
+
+        original["a"].Should().Be(2);
+        copy["a"].Should().Be(0);
+    }
+
+    [Fact]
+    public void Counter_Total_ReturnsSumOfCounts()
+    {
+        var counter = new Sharpy.Counter<string>(new[] { "a", "a", "b" });
+
+        counter.Total().Should().Be(3);
+    }
+
+    [Fact]
+    public void Counter_Total_EmptyCounter_ReturnsZero()
+    {
+        var counter = new Sharpy.Counter<string>();
+
+        counter.Total().Should().Be(0);
+    }
+
+    [Fact]
+    public void Counter_Clear_RemovesAllElements()
+    {
+        var counter = new Sharpy.Counter<string>(new[] { "a", "b" });
+
+        counter.Clear();
+
+        counter["a"].Should().Be(0);
+        counter.Total().Should().Be(0);
+    }
+
+    [Fact]
+    public void Counter_OperatorAdd_CombinesCounts()
+    {
+        var c1 = new Sharpy.Counter<string>(new[] { "a", "a", "b" });
+        var c2 = new Sharpy.Counter<string>(new[] { "b", "c", "c" });
+
+        var result = c1 + c2;
+
+        result["a"].Should().Be(2);
+        result["b"].Should().Be(2);
+        result["c"].Should().Be(2);
+    }
+
+    [Fact]
+    public void Counter_OperatorSubtract_DropsZeroAndNegative()
+    {
+        var c1 = new Sharpy.Counter<string>(new[] { "a", "a", "b" });
+        var c2 = new Sharpy.Counter<string>(new[] { "a", "b" });
+
+        var result = c1 - c2;
+
+        result["a"].Should().Be(1);
+        result.ContainsKey("b").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Counter_OperatorOr_TakesMaxCounts()
+    {
+        var c1 = new Sharpy.Counter<string>(new[] { "a", "a", "b" });
+        var c2 = new Sharpy.Counter<string>(new[] { "b", "c", "c" });
+
+        var result = c1 | c2;
+
+        result["a"].Should().Be(2);
+        result["b"].Should().Be(1);
+        result["c"].Should().Be(2);
+    }
+
+    [Fact]
+    public void Counter_OperatorAnd_TakesMinCounts()
+    {
+        var c1 = new Sharpy.Counter<string>(new[] { "a", "a", "b" });
+        var c2 = new Sharpy.Counter<string>(new[] { "a", "b", "c" });
+
+        var result = c1 & c2;
+
+        result["a"].Should().Be(1);
+        result["b"].Should().Be(1);
+        result.ContainsKey("c").Should().BeFalse();
+    }
+
     // --- DefaultDict ---
 
     [Fact]
@@ -296,6 +419,130 @@ public class CollectionsModule_Tests
         dd["b"] = 2;
 
         dd.Values.Should().BeEquivalentTo(new[] { 1, 2 });
+    }
+
+    [Fact]
+    public void DefaultDict_DefaultFactory_ReturnsFactory()
+    {
+        Func<int> factory = () => 42;
+        var dd = new Sharpy.DefaultDict<string, int>(factory);
+
+        dd.DefaultFactory.Should().BeSameAs(factory);
+    }
+
+    [Fact]
+    public void DefaultDict_Copy_PreservesFactoryAndItems()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["a"] = 1;
+        dd["b"] = 2;
+
+        var copy = dd.Copy();
+
+        copy["a"].Should().Be(1);
+        copy["b"].Should().Be(2);
+        copy["c"].Should().Be(0); // Uses factory
+        dd.ContainsKey("c").Should().BeFalse(); // Original unaffected
+    }
+
+    [Fact]
+    public void DefaultDict_Clear_RemovesAllItems()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["a"] = 1;
+        dd["b"] = 2;
+
+        dd.Clear();
+
+        dd.Count.Should().Be(0);
+        dd.ContainsKey("a").Should().BeFalse();
+    }
+
+    [Fact]
+    public void DefaultDict_Pop_ExistingKey_ReturnsAndRemoves()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["a"] = 1;
+
+        var value = dd.Pop("a");
+
+        value.Should().Be(1);
+        dd.ContainsKey("a").Should().BeFalse();
+    }
+
+    [Fact]
+    public void DefaultDict_Pop_MissingKey_ThrowsKeyError()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+
+        FluentActions.Invoking(() => dd.Pop("missing"))
+            .Should().Throw<Sharpy.KeyError>();
+    }
+
+    [Fact]
+    public void DefaultDict_Pop_WithDefault_ReturnDefault()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+
+        dd.Pop("missing", 99).Should().Be(99);
+    }
+
+    [Fact]
+    public void DefaultDict_Items_ReturnsKeyValueTuples()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["x"] = 10;
+        dd["y"] = 20;
+
+        var items = dd.Items();
+
+        items.Should().HaveCount(2);
+        items.Should().Contain(("x", 10));
+        items.Should().Contain(("y", 20));
+    }
+
+    [Fact]
+    public void DefaultDict_Update_MergesFromDictionary()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["a"] = 1;
+
+        var other = new Dictionary<string, int> { ["a"] = 99, ["b"] = 2 };
+        dd.Update(other);
+
+        dd["a"].Should().Be(99);
+        dd["b"].Should().Be(2);
+    }
+
+    [Fact]
+    public void DefaultDict_SetDefault_ExistingKey_ReturnsExisting()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["a"] = 42;
+
+        dd.SetDefault("a", 99).Should().Be(42);
+        dd["a"].Should().Be(42);
+    }
+
+    [Fact]
+    public void DefaultDict_SetDefault_MissingKey_InsertsAndReturns()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+
+        dd.SetDefault("a", 5).Should().Be(5);
+        dd["a"].Should().Be(5);
+    }
+
+    [Fact]
+    public void DefaultDict_Count_ReflectsSize()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+
+        dd.Count.Should().Be(0);
+
+        dd["a"] = 1;
+        dd["b"] = 2;
+        dd.Count.Should().Be(2);
     }
 
     // --- Module ---
