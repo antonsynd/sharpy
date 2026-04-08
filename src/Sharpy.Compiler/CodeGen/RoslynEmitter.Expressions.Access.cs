@@ -974,17 +974,6 @@ internal partial class RoslynEmitter
         var elementAccess = ElementAccessExpression(objExpr)
             .AddArgumentListArguments(Argument(index));
 
-        // String indexing: C# string[int] returns char, but Sharpy types it as str.
-        // Wrap with .ToString() to bridge the type gap.
-        if (objectType == Semantic.SemanticType.Str)
-        {
-            return InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    elementAccess,
-                    IdentifierName("ToString")));
-        }
-
         return elementAccess;
     }
 

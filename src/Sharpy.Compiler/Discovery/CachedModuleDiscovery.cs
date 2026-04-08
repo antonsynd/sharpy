@@ -261,6 +261,7 @@ internal class CachedModuleDiscovery
         ["list"] = "List",
         ["dict"] = "Dict",
         ["set"] = "Set",
+        ["str"] = "Str",
         ["tuple"] = "ValueTuple",
     };
 

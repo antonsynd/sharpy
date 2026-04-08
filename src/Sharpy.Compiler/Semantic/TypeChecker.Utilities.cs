@@ -553,6 +553,7 @@ internal partial class TypeChecker
             IntegerLiteral => "integer literal",
             FloatLiteral => "float literal",
             StringLiteral => "string literal",
+            NativeStringLiteral => "native string literal",
             BooleanLiteral => "boolean literal",
             NoneLiteral => "'None'",
             ListLiteral => "list literal",

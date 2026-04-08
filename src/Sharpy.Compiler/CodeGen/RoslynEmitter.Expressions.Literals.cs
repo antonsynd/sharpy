@@ -445,13 +445,17 @@ internal partial class RoslynEmitter
         var interpolatedString = InterpolatedStringExpression(Token(SyntaxKind.InterpolatedStringStartToken))
             .WithContents(List(parts));
 
-        return InvocationExpression(
+        // Wrap with ((Sharpy.Str)FormattableString.Invariant($"..."))
+        var invariantCall = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 IdentifierName("FormattableString"),
                 IdentifierName("Invariant")))
             .WithArgumentList(ArgumentList(SingletonSeparatedList(
                 Argument(interpolatedString))));
+
+        return ParenthesizedExpression(
+            CastExpression(ParseTypeName(CSharpTypeNames.SharpyStr), invariantCall));
     }
 
     /// <summary>

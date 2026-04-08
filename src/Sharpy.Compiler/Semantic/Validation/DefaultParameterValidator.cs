@@ -164,6 +164,7 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             IntegerLiteral => true,
             FloatLiteral => true,
             StringLiteral => true,
+            NativeStringLiteral => true,
             BooleanLiteral => true,
             NoneLiteral => true,
 

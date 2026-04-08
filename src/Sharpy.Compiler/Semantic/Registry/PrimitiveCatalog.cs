@@ -91,8 +91,8 @@ public static class PrimitiveCatalog
         // 1.2.4 Non-numeric primitives
         Register(byName, byClr, new PrimitiveInfo("bool", "bool", typeof(bool), NumericKind.None, 8, false));
         Register(byName, byClr, new PrimitiveInfo("char", "char", typeof(char), NumericKind.None, 16, false));
-        Register(byName, byClr, new PrimitiveInfo("str", "string", typeof(string), NumericKind.None, 0, false));
-        Register(byName, byClr, new PrimitiveInfo("string", "string", typeof(string), NumericKind.None, 0, false)); // Alias
+        Register(byName, byClr, new PrimitiveInfo("str", "Sharpy.Str", typeof(string), NumericKind.None, 0, false));
+        Register(byName, byClr, new PrimitiveInfo("string", "Sharpy.Str", typeof(string), NumericKind.None, 0, false)); // Alias
         Register(byName, byClr, new PrimitiveInfo("object", "object", typeof(object), NumericKind.None, 0, false));
 
         // 1.2.5 Void/None - typeof(void) is a valid Type representing System.Void

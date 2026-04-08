@@ -283,8 +283,9 @@ internal class OverloadIndexBuilder
             AddProtocolStub(typeInfo, "__setitem__");
 
         // Contains method -> __contains__
-        var containsMethod = type.GetMethod("Contains", BindingFlags.Public | BindingFlags.Instance);
-        if (containsMethod != null)
+        var containsMethods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Any(m => m.Name == "Contains");
+        if (containsMethods)
             AddProtocolStub(typeInfo, "__contains__");
     }
 

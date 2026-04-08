@@ -1647,17 +1647,7 @@ internal partial class RoslynEmitter
             // Generate the body - assignments to loopVar will be updates, not declarations
             var body = Block(bodyStatements.SelectMany(GenerateBodyStatements));
 
-            // String iteration: C# foreach yields char, but Sharpy types loop var as str.
-            // Wrap with .ToString() to bridge the type gap.
             ExpressionSyntax loopVarValue = IdentifierName(tempLoopVar);
-            if (iteratorType == Semantic.SemanticType.Str)
-            {
-                loopVarValue = InvocationExpression(
-                    MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        loopVarValue,
-                        IdentifierName("ToString")));
-            }
 
             // Create the assignment or declaration at the start of the body
             StatementSyntax loopVarInit;

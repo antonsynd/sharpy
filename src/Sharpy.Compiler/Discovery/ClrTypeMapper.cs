@@ -33,6 +33,12 @@ internal class ClrTypeMapper
             return new TypeParameterType { Name = clrType.Name };
         }
 
+        // Sharpy.Str wraps System.String — map it to SemanticType.Str
+        if (clrType.FullName == "Sharpy.Str")
+        {
+            return SemanticType.Str;
+        }
+
         // Check PrimitiveCatalog first for primitive types
         var primitiveInfo = PrimitiveCatalog.GetByClrType(clrType);
         if (primitiveInfo != null)
