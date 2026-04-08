@@ -1,6 +1,27 @@
 # String Type and UTF-16 Semantics
 
-Sharpy's `str` type maps directly to .NET's `System.String`, which uses UTF-16 encoding internally. This has important implications for string operations.
+Sharpy's `str` type maps to `Sharpy.Str`, an immutable readonly struct that wraps .NET's `System.String`. The `Str` type provides Python-compatible string semantics while maintaining full .NET interoperability through implicit conversion operators.
+
+## Sharpy.Str
+
+`Sharpy.Str` is a value type (readonly struct) that:
+
+- **Wraps `System.String`** — zero-allocation access to the underlying string via implicit conversions
+- **Implicit conversions** — converts to/from `System.String` automatically, enabling seamless .NET interop
+- **Operator overloads** — `+` (concatenation), `*` (repetition), `==`, `!=`, `<`, `>`, `<=`, `>=`, `in` (containment)
+- **Implements interfaces** — `IEquatable<Str>`, `IComparable<Str>`, `IEnumerable<Str>`, `ISized`, `IBoolConvertible`
+- **Pythonic methods** — `upper()`, `lower()`, `strip()`, `split()`, `join()`, `find()`, `replace()`, `format()`, etc.
+
+```python
+s: str = "hello"       # Type is Sharpy.Str
+n: str = n"hello"      # Type is System.String (native string literal)
+```
+
+> **Note:** For .NET interop scenarios where a raw `System.String` is needed, use native string literals (`n"..."`) or the implicit conversion.
+
+## UTF-16 Code Units
+
+`Str` uses UTF-16 encoding internally (inherited from `System.String`). This has important implications for string operations.
 
 ## UTF-16 Code Units
 
@@ -205,4 +226,4 @@ chars = [c for c in "hello"]    # ['h', 'e', 'l', 'l', 'o']
 4. **Most common text works as expected:** ASCII text and most European/Asian scripts (within the BMP) have a 1:1 correspondence between characters and code units.
 
 *Implementation*
-- *✅ Native - Direct use of `System.String` with no additional abstraction.*
+- *✅ `Sharpy.Str` readonly struct wrapping `System.String` with Pythonic API and implicit conversions.*

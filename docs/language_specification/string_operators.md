@@ -8,6 +8,12 @@ Strings support concatenation and repetition operators:
 | `*` | Repetition | `"ab" * 3` | `"ababab"` |
 | `*` | Repetition (reversed) | `3 * "ab"` | `"ababab"` |
 | `in` | Substring test | `"ell" in "Hello"` | `True` |
+| `==` | Equality | `"abc" == "abc"` | `True` |
+| `!=` | Inequality | `"abc" != "xyz"` | `True` |
+| `<` | Less than | `"abc" < "abd"` | `True` |
+| `>` | Greater than | `"abd" > "abc"` | `True` |
+| `<=` | Less than or equal | `"abc" <= "abc"` | `True` |
+| `>=` | Greater than or equal | `"abc" >= "abc"` | `True` |
 
 ```python
 # String concatenation
@@ -44,4 +50,4 @@ f"Count: {42}"           # F-strings handle conversion
 ```
 
 *Implementation*
-- *✅ Native - Maps to C# `+` operator and `string.Concat()`.*
+- *✅ Operators defined on `Sharpy.Str` — `+` maps to `Str.operator+`, `*` to `Str.operator*`, comparisons use ordinal comparison via `IComparable<Str>`, `in` maps to `Contains()`.*
