@@ -319,19 +319,23 @@ namespace Sharpy
                     break;
                 case 'x':
                     result = ToLong(value).ToString("x", CultureInfo.InvariantCulture);
-                    if (altForm) result = "0x" + result;
+                    if (altForm)
+                        result = "0x" + result;
                     break;
                 case 'X':
                     result = ToLong(value).ToString("X", CultureInfo.InvariantCulture);
-                    if (altForm) result = "0X" + result;
+                    if (altForm)
+                        result = "0X" + result;
                     break;
                 case 'o':
                     result = Convert.ToString(ToLong(value), 8);
-                    if (altForm) result = "0o" + result;
+                    if (altForm)
+                        result = "0o" + result;
                     break;
                 case 'b':
                     result = Convert.ToString(ToLong(value), 2);
-                    if (altForm) result = "0b" + result;
+                    if (altForm)
+                        result = "0b" + result;
                     break;
                 case '%':
                     int pctPrec = precision >= 0 ? precision : 6;
@@ -401,14 +405,17 @@ namespace Sharpy
         {
             // .NET may produce 3-digit exponents (e+000), Python uses 2-digit minimum (e+00)
             int ePos = s.IndexOf('e');
-            if (ePos < 0) ePos = s.IndexOf('E');
-            if (ePos < 0) return s;
+            if (ePos < 0)
+                ePos = s.IndexOf('E');
+            if (ePos < 0)
+                return s;
 
             string mantissa = s.Substring(0, ePos + 2); // includes e/E and sign
             string exponent = s.Substring(ePos + 2);
             // Remove leading zeros but keep at least 2 digits
             string trimmed = exponent.TrimStart('0');
-            if (trimmed.Length < 2) trimmed = exponent.Length >= 2 ? exponent.Substring(exponent.Length - 2) : exponent.PadLeft(2, '0');
+            if (trimmed.Length < 2)
+                trimmed = exponent.Length >= 2 ? exponent.Substring(exponent.Length - 2) : exponent.PadLeft(2, '0');
             return mantissa + trimmed;
         }
 
