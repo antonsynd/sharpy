@@ -510,4 +510,62 @@ public class Dict_Tests
         (dict == null).Should().BeFalse();
         (dict != null).Should().BeTrue();
     }
+
+    [Fact]
+    public void Fromkeys_CreatesWithDefaultValue()
+    {
+        // Act
+        var dict = Dict<string, int>.Fromkeys(new[] { "a", "b", "c" }, 0);
+
+        // Assert
+        dict.Count.Should().Be(3);
+        dict["a"].Should().Be(0);
+        dict["b"].Should().Be(0);
+        dict["c"].Should().Be(0);
+    }
+
+    [Fact]
+    public void Fromkeys_WithoutValue_UsesTypeDefault()
+    {
+        // Act
+        var dict = Dict<string, int>.Fromkeys(new[] { "a", "b" });
+
+        // Assert
+        dict.Count.Should().Be(2);
+        dict["a"].Should().Be(0);
+        dict["b"].Should().Be(0);
+    }
+
+    [Fact]
+    public void Fromkeys_WithDuplicateKeys_LastWins()
+    {
+        // Act
+        var dict = Dict<string, int>.Fromkeys(new[] { "a", "b", "a" }, 5);
+
+        // Assert
+        dict.Count.Should().Be(2);
+        dict["a"].Should().Be(5);
+    }
+
+    [Fact]
+    public void Fromkeys_EmptyKeys_ReturnsEmptyDict()
+    {
+        // Act
+        var dict = Dict<string, int>.Fromkeys(Array.Empty<string>(), 0);
+
+        // Assert
+        dict.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public void Fromkeys_WithNullableValue_SetsNull()
+    {
+        // Act
+        var dict = Dict<string, string?>.Fromkeys(new[] { "a", "b" });
+
+        // Assert
+        dict.Count.Should().Be(2);
+        dict["a"].Should().BeNull();
+        dict["b"].Should().BeNull();
+    }
 }
