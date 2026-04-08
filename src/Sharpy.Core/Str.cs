@@ -5,12 +5,12 @@ namespace Sharpy
     public static partial class Builtins
     {
         /// <summary>
-        /// Convert an arbitrary object to <see cref="string"/>.
+        /// Convert an arbitrary object to Str.
         /// Returns <c>"None"</c> for null, Python-style <c>"True"</c>/<c>"False"</c>
         /// for booleans, and <see cref="object.ToString"/> for everything else.
         /// </summary>
         /// <param name="x">The object to convert</param>
-        /// <returns>The string representation</returns>
+        /// <returns>The Str representation</returns>
         /// <example>
         /// <code>
         /// str(42)        # "42"
@@ -19,84 +19,92 @@ namespace Sharpy
         /// str(None)      # "None"
         /// </code>
         /// </example>
-        public static string Str(object x)
+        public static Str Str(object x)
         {
             if (x is null)
             {
-                return "None";
+                return (Str)"None";
             }
 
             if (Optional.TryFormat(x, out var optStr))
             {
-                return optStr;
+                return (Str)optStr;
             }
 
             if (x is bool b)
             {
-                return b ? "True" : "False";
+                return (Str)(b ? "True" : "False");
             }
 
             if (x is double d)
             {
-                return FormatFloat(d);
+                return (Str)FormatFloat(d);
             }
 
             if (x is float f)
             {
-                return FormatFloat(f);
+                return (Str)FormatFloat(f);
             }
 
-            return x.ToString() ?? "";
+            return (Str)(x.ToString() ?? "");
         }
 
         /// <summary>
-        /// Return the C# <see cref="string"/> unchanged.
+        /// Return the C# <see cref="string"/> as Str.
         /// </summary>
-        public static string Str(string s)
+        public static Str Str(string s)
+        {
+            return (Str)s;
+        }
+
+        /// <summary>
+        /// Return the Str unchanged.
+        /// </summary>
+        public static Str Str(Str s)
         {
             return s;
         }
 
         /// <summary>
-        /// Convert a <see cref="char"/> to <see cref="string"/> without boxing.
+        /// Convert a <see cref="char"/> to Str without boxing.
         /// </summary>
-        public static string Str(char c)
+        public static Str Str(char c)
         {
-            return c.ToString();
+            return (Str)c.ToString();
         }
 
         /// <summary>
-        /// Convert an <see cref="int"/> to <see cref="string"/> without boxing.
+        /// Convert an <see cref="int"/> to Str without boxing.
         /// </summary>
-        public static string Str(int i)
+        public static Str Str(int i)
         {
-            return i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return (Str)i.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
         /// <summary>
-        /// Convert a <see cref="long"/> to <see cref="string"/> without boxing.
+        /// Convert a <see cref="long"/> to Str without boxing.
         /// </summary>
-        public static string Str(long l)
+        public static Str Str(long l)
         {
-            return l.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return (Str)l.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
         /// <summary>
-        /// Convert a <see cref="double"/> to <see cref="string"/> without boxing.
+        /// Convert a <see cref="double"/> to Str without boxing.
         /// Formats with Python-compatible trailing <c>.0</c> for whole numbers.
         /// </summary>
-        public static string Str(double d)
+        public static Str Str(double d)
         {
-            return FormatFloat(d);
+            return (Str)FormatFloat(d);
         }
 
         /// <summary>
-        /// Convert a <see cref="float"/> to <see cref="string"/> without boxing.
+        /// Convert a <see cref="float"/> to Str without boxing.
         /// Formats with Python-compatible trailing <c>.0</c> for whole numbers.
         /// </summary>
-        public static string Str(float f)
+        public static Str Str(float f)
         {
-            return FormatFloat(f);
+            return (Str)FormatFloat(f);
         }
 
         /// <summary>
@@ -169,12 +177,12 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Convert a <see cref="bool"/> to <see cref="string"/>.
+        /// Convert a <see cref="bool"/> to Str.
         /// Returns Python-style <c>"True"</c> or <c>"False"</c>.
         /// </summary>
-        public static string Str(bool b)
+        public static Str Str(bool b)
         {
-            return b ? "True" : "False";
+            return (Str)(b ? "True" : "False");
         }
     }
 }

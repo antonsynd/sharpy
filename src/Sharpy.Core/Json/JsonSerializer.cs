@@ -45,6 +45,12 @@ namespace Sharpy
                 return;
             }
 
+            if (value is Str str)
+            {
+                SerializeString(sb, (string)str, ensureAscii);
+                return;
+            }
+
             if (value is int i)
             {
                 sb.Append(i.ToString(CultureInfo.InvariantCulture));

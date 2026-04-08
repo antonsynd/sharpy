@@ -635,12 +635,14 @@ internal partial class RoslynEmitter
                     obj);
             }
 
-            // enum_instance.name -> enum_instance.ToString()
-            return InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    obj,
-                    IdentifierName("ToString")));
+            // enum_instance.name -> (Sharpy.Str)enum_instance.ToString()
+            return CastExpression(
+                ParseTypeName("Sharpy.Str"),
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        obj,
+                        IdentifierName("ToString"))));
         }
 
         // Named tuple element access: keep element names as-is (no PascalCase)
@@ -1095,8 +1097,19 @@ internal partial class RoslynEmitter
             // Handle default value
             if (param.DefaultValue != null)
             {
-                paramSyntax = paramSyntax.WithDefault(
-                    EqualsValueClause(GenerateExpression(param.DefaultValue)));
+                // Sharpy.Str default: use 'default' sentinel (see GenerateParameter)
+                if (IsStrTypedParameter(param) && param.DefaultValue is StringLiteral)
+                {
+                    var actualDefault = GenerateExpression(param.DefaultValue);
+                    _pendingStrDefaults.Add((paramName, actualDefault));
+                    paramSyntax = paramSyntax.WithDefault(
+                        EqualsValueClause(LiteralExpression(SyntaxKind.DefaultLiteralExpression)));
+                }
+                else
+                {
+                    paramSyntax = paramSyntax.WithDefault(
+                        EqualsValueClause(GenerateExpression(param.DefaultValue)));
+                }
             }
 
             parameters.Add(paramSyntax);
@@ -1116,10 +1129,24 @@ internal partial class RoslynEmitter
         // Generate body expression
         var body = GenerateExpression(lambda.Body);
 
-        return LocalFunctionStatement(returnType, Identifier(functionName))
-            .WithParameterList(ParameterList(SeparatedList(parameters)))
-            .WithExpressionBody(ArrowExpressionClause(body))
-            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        var localFunc = LocalFunctionStatement(returnType, Identifier(functionName))
+            .WithParameterList(ParameterList(SeparatedList(parameters)));
+
+        // If Str defaults need preamble statements, use block body instead of expression body
+        var strDefaults = DrainPendingStrDefaults();
+        if (strDefaults.Count > 0)
+        {
+            strDefaults.Add(ReturnStatement(body));
+            localFunc = localFunc.WithBody(Block(strDefaults));
+        }
+        else
+        {
+            localFunc = localFunc
+                .WithExpressionBody(ArrowExpressionClause(body))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+
+        return localFunc;
     }
 
     /// <summary>

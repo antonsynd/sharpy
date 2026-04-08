@@ -11,56 +11,56 @@ public class StrTests
     public void Str_OptionalSomeInt_ReturnsInnerValue()
     {
         object boxed = Optional<int>.Some(42);
-        Builtins.Str(boxed).Should().Be("42");
+        ((string)Builtins.Str(boxed)).Should().Be("42");
     }
 
     [Fact]
     public void Str_OptionalSomeBool_ReturnsPythonBool()
     {
         object boxed = Optional<bool>.Some(true);
-        Builtins.Str(boxed).Should().Be("True");
+        ((string)Builtins.Str(boxed)).Should().Be("True");
     }
 
     [Fact]
     public void Str_OptionalSomeBoolFalse_ReturnsPythonFalse()
     {
         object boxed = Optional<bool>.Some(false);
-        Builtins.Str(boxed).Should().Be("False");
+        ((string)Builtins.Str(boxed)).Should().Be("False");
     }
 
     [Fact]
     public void Str_OptionalNoneInt_ReturnsNone()
     {
         object boxed = Optional<int>.None;
-        Builtins.Str(boxed).Should().Be("None");
+        ((string)Builtins.Str(boxed)).Should().Be("None");
     }
 
     [Fact]
     public void Str_OptionalNoneString_ReturnsNone()
     {
         object boxed = Optional<string>.None;
-        Builtins.Str(boxed).Should().Be("None");
+        ((string)Builtins.Str(boxed)).Should().Be("None");
     }
 
     [Fact]
     public void Str_OptionalSomeString_ReturnsInnerString()
     {
         object boxed = Optional<string>.Some("hello");
-        Builtins.Str(boxed).Should().Be("hello");
+        ((string)Builtins.Str(boxed)).Should().Be("hello");
     }
 
     [Fact]
     public void Str_OptionalSomeDouble_FormatsLikePython()
     {
         object boxed = Optional<double>.Some(3.14);
-        Builtins.Str(boxed).Should().Be("3.14");
+        ((string)Builtins.Str(boxed)).Should().Be("3.14");
     }
 
     [Fact]
     public void Str_OptionalSomeWholeDouble_HasTrailingDotZero()
     {
         object boxed = Optional<double>.Some(5.0);
-        Builtins.Str(boxed).Should().Be("5.0");
+        ((string)Builtins.Str(boxed)).Should().Be("5.0");
     }
 
     [Fact]
@@ -69,26 +69,26 @@ public class StrTests
         // Optional<Optional<int>> with Some(Some(42))
         object boxed = Optional<Optional<int>>.Some(Optional<int>.Some(42));
         // The inner Optional<int> is itself formatted via TryFormat -> "42"
-        Builtins.Str(boxed).Should().Be("42");
+        ((string)Builtins.Str(boxed)).Should().Be("42");
     }
 
     [Fact]
     public void Str_NestedOptionalInnerNone_ReturnsNone()
     {
         object boxed = Optional<Optional<int>>.Some(Optional<int>.None);
-        Builtins.Str(boxed).Should().Be("None");
+        ((string)Builtins.Str(boxed)).Should().Be("None");
     }
 
     [Fact]
     public void Str_Char_ReturnsCharAsString()
     {
-        Builtins.Str('h').Should().Be("h");
+        ((string)Builtins.Str('h')).Should().Be("h");
     }
 
     [Fact]
     public void Str_Char_DoesNotReturnAsciiCode()
     {
-        Builtins.Str('h').Should().NotBe("104");
+        ((string)Builtins.Str('h')).Should().NotBe("104");
     }
 
     [Theory]
@@ -102,7 +102,7 @@ public class StrTests
     [InlineData(double.NegativeInfinity, "-inf")]
     public void Str_Double_FormatsLikePython(double value, string expected)
     {
-        Builtins.Str(value).Should().Be(expected);
+        ((string)Builtins.Str(value)).Should().Be(expected);
     }
 
     [Theory]
@@ -114,21 +114,21 @@ public class StrTests
     [InlineData(float.NegativeInfinity, "-inf")]
     public void Str_Float_FormatsLikePython(float value, string expected)
     {
-        Builtins.Str(value).Should().Be(expected);
+        ((string)Builtins.Str(value)).Should().Be(expected);
     }
 
     [Fact]
     public void Str_BoxedDouble_FormatsLikePython()
     {
         object boxed = 5.0;
-        Builtins.Str(boxed).Should().Be("5.0");
+        ((string)Builtins.Str(boxed)).Should().Be("5.0");
     }
 
     [Fact]
     public void Str_BoxedFloat_FormatsLikePython()
     {
         object boxed = 5.0f;
-        Builtins.Str(boxed).Should().Be("5.0");
+        ((string)Builtins.Str(boxed)).Should().Be("5.0");
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class StrTests
         var result = Builtins.Str(-0.0);
         // .NET does not distinguish -0.0 in ToString("R"), so we get "0.0"
         // Python produces "-0.0". This is a known Axiom 1 (.NET) > Axiom 2 (Python) trade-off.
-        result.Should().BeOneOf("-0.0", "0.0");
+        ((string)result).Should().BeOneOf("-0.0", "0.0");
     }
 
     [Theory]
@@ -156,7 +156,7 @@ public class StrTests
         // .NET "R" keeps fixed notation longer (1e16 -> "10000000000000000"),
         // FormatFloat appends ".0" when no decimal/exponent present.
         // FormatFloat now normalizes to lowercase 'e' to match Python (1e+20).
-        Builtins.Str(value).Should().Be(expected);
+        ((string)Builtins.Str(value)).Should().Be(expected);
     }
 
     [Theory]
@@ -169,7 +169,7 @@ public class StrTests
     {
         // Very small floats that may trigger scientific notation.
         // FormatFloat now normalizes to lowercase 'e' to match Python.
-        Builtins.Str(value).Should().Be(expected);
+        ((string)Builtins.Str(value)).Should().Be(expected);
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public class StrTests
     {
         // 5e-324 is the smallest positive subnormal double
         var result = Builtins.Str(5e-324);
-        result.Should().Be("5e-324");
+        ((string)result).Should().Be("5e-324");
     }
 
     [Fact]
@@ -185,6 +185,6 @@ public class StrTests
     {
         var result = Builtins.Str(double.MaxValue);
         // double.MaxValue = 1.7976931348623157E+308
-        result.Should().Contain("e+308");
+        ((string)result).Should().Contain("e+308");
     }
 }

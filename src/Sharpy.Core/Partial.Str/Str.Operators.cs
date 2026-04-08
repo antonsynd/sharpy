@@ -56,6 +56,24 @@ namespace Sharpy
             return right * count;
         }
 
+        /// <summary>
+        /// Repeats a string a specified number of times (long count).
+        /// Python: <c>"ab" * n  # when n is long</c>
+        /// </summary>
+        public static Str operator *(Str left, long count)
+        {
+            return left * (int)count;
+        }
+
+        /// <summary>
+        /// Repeats a string a specified number of times (long on left).
+        /// Python: <c>n * "ab"  # when n is long</c>
+        /// </summary>
+        public static Str operator *(long count, Str right)
+        {
+            return right * (int)count;
+        }
+
         #endregion
 
         #region Equality

@@ -26,14 +26,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Overload accepting <c>IEnumerable&lt;string&gt;</c> for .NET interop.
-        /// </summary>
-        public Str Join(IEnumerable<string> iterable)
-        {
-            return new Str(string.Join(Value, iterable));
-        }
-
-        /// <summary>
         /// Split on whitespace. Consecutive whitespace is collapsed,
         /// leading/trailing whitespace is stripped.
         /// Python: <c>str.split()</c>

@@ -141,6 +141,12 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Convert Str to bool (delegates to string overload).
+        /// Enables <c>Func&lt;Str, bool&gt;</c> method group conversion.
+        /// </summary>
+        public static bool Bool(Str s) => Bool((string)s);
+
+        /// <summary>
         /// Convert an arbitrary object to bool using Python's truth testing protocol.
         /// Checks __bool__ (IBoolConvertible), then __len__ (ISized), then collection emptiness.
         /// Non-null objects without these protocols are truthy.

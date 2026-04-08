@@ -12,7 +12,7 @@ public partial class List_Tests
         var l = new List<int>();
 
         // When/then
-        Str(l).Should().Be("[]");
+        ((string)Str(l)).Should().Be("[]");
     }
 
     [Fact]
@@ -22,6 +22,6 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 7];
 
         // When/then
-        Str(l).Should().Be("[1, 3, 5, 7]");
+        ((string)Str(l)).Should().Be("[1, 3, 5, 7]");
     }
 }

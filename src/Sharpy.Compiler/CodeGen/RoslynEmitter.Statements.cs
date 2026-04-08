@@ -182,7 +182,8 @@ internal partial class RoslynEmitter
         }
 
         // Generate body (recursive — supports nested-nested functions)
-        var body = Block(func.Body.SelectMany(GenerateBodyStatements));
+        var strDefaults = DrainPendingStrDefaults();
+        var body = Block(strDefaults.Concat(func.Body.SelectMany(GenerateBodyStatements)));
 
         var localFunc = LocalFunctionStatement(returnType, Identifier(mangledName))
             .WithParameterList(ParameterList(SeparatedList(parameters)))

@@ -115,6 +115,12 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Parse Str to int (delegates to string overload).
+        /// Enables <c>Func&lt;Str, int&gt;</c> method group conversion.
+        /// </summary>
+        public static int Int(Str s) => Int((string)s);
+
+        /// <summary>
         /// Convert byte to int
         /// </summary>
         public static int Int(byte b)

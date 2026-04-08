@@ -84,5 +84,11 @@ namespace Sharpy
         {
             return Double(s);
         }
+
+        /// <summary>
+        /// Parse Str to float (delegates to string overload).
+        /// Enables <c>Func&lt;Str, double&gt;</c> method group conversion.
+        /// </summary>
+        public static double Float(Str s) => Float((string)s);
     }
 }

@@ -83,6 +83,16 @@ internal partial class RoslynEmitter
     // CodeGenInfo.IsStringEnum (for string enums). This information is populated
     // during semantic analysis.
 
+    /// <summary>
+    /// Tracks parameters whose type is Sharpy.Str with string literal defaults.
+    /// C# requires default parameter values to be compile-time constants, but Sharpy.Str
+    /// is a value type so string literals can't serve as defaults. We emit <c>default</c>
+    /// as the C# default and prepend a conditional assignment in the method body.
+    /// Each entry is (C# parameter name, actual default expression).
+    /// Populated during GenerateParameter, consumed during method body generation.
+    /// </summary>
+    private readonly List<(string ParamName, ExpressionSyntax ActualDefault)> _pendingStrDefaults = new();
+
     private readonly DunderCodeGenRegistry _dunderRegistry;
     private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new(); // Track interface definitions for abstract class stub generation
     private int _tempVarCounter = 0;
@@ -319,6 +329,7 @@ internal partial class RoslynEmitter
         _constVariables.Clear();
         _sourceVariableNames.Clear();
         _narrowing.Reset();
+        _pendingStrDefaults.Clear();
     }
 
     /// <summary>

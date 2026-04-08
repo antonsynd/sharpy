@@ -84,7 +84,8 @@ internal partial class RoslynEmitter
         }
 
         // Generate method body
-        var body = Block(func.Body.SelectMany(GenerateBodyStatements));
+        var strDefaults = DrainPendingStrDefaults();
+        var body = Block(strDefaults.Concat(func.Body.SelectMany(GenerateBodyStatements)));
 
         var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)
@@ -159,6 +160,15 @@ internal partial class RoslynEmitter
             {
                 defaultExpr = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
             }
+            // Sharpy.Str parameters with string literal defaults: C# requires compile-time
+            // constants for default values, but Sharpy.Str is a value type so (Sharpy.Str)"..."
+            // is not constant. Emit 'default' and prepend a conditional assignment in the body.
+            else if (IsStrTypedParameter(param) && param.DefaultValue is StringLiteral)
+            {
+                var actualDefault = GenerateExpression(param.DefaultValue);
+                _pendingStrDefaults.Add((paramName, actualDefault));
+                defaultExpr = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+            }
             else
             {
                 defaultExpr = GenerateExpression(param.DefaultValue);
@@ -167,6 +177,49 @@ internal partial class RoslynEmitter
         }
 
         return parameter;
+    }
+
+    /// <summary>
+    /// Checks if a parameter's type annotation resolves to str/string (i.e. Sharpy.Str).
+    /// </summary>
+    private static bool IsStrTypedParameter(Parameter param)
+    {
+        if (param.Type == null)
+            return false;
+        return param.Type.Name is "str" or "string"
+            && !param.Type.IsOptional
+            && !param.Type.IsCSharpNullable
+            && param.Type.TypeArguments.IsDefaultOrEmpty;
+    }
+
+    /// <summary>
+    /// Generates conditional assignments for Sharpy.Str parameters that used <c>default</c>
+    /// as their C# default value. Call this before generating the method body and prepend
+    /// the returned statements.
+    /// Produces: <c>if (param == default) param = (Sharpy.Str)"actualValue";</c>
+    /// </summary>
+    private List<StatementSyntax> DrainPendingStrDefaults()
+    {
+        if (_pendingStrDefaults.Count == 0)
+            return new List<StatementSyntax>();
+
+        var stmts = new List<StatementSyntax>(_pendingStrDefaults.Count);
+        foreach (var (paramName, actualDefault) in _pendingStrDefaults)
+        {
+            // if (paramName == default) paramName = actualDefault;
+            stmts.Add(IfStatement(
+                BinaryExpression(
+                    SyntaxKind.EqualsExpression,
+                    IdentifierName(paramName),
+                    LiteralExpression(SyntaxKind.DefaultLiteralExpression)),
+                ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(paramName),
+                        actualDefault))));
+        }
+        _pendingStrDefaults.Clear();
+        return stmts;
     }
 
     private SyntaxTokenList GenerateModifiersFromDecorators(IReadOnlyList<Decorator> decorators)

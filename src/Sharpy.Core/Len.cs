@@ -47,8 +47,10 @@ namespace Sharpy
             return sized.Count;
         }
 
-        // Len(string) removed — Sharpy.Str implements ISized, so len() dispatches
-        // through the ISized overload. The string overload would cause C# overload
-        // ambiguity since Str has implicit conversion to string.
+        /// <summary>
+        /// Return the length of a Str.
+        /// Enables <c>Func&lt;Str, int&gt;</c> method group conversion (avoids boxing).
+        /// </summary>
+        public static int Len(Str s) => ((ISized)s).Count;
     }
 }

@@ -893,10 +893,10 @@ public class StrStructTests
     }
 
     [Fact]
-    public void Join_StringIterable()
+    public void Join_StrArray()
     {
         Str sep = ", ";
-        var items = new string[] { "a", "b", "c" };
+        var items = new Str[] { (Str)"a", (Str)"b", (Str)"c" };
         ((string)sep.Join(items)).Should().Be("a, b, c");
     }
 

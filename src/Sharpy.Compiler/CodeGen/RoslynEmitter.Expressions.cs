@@ -25,7 +25,7 @@ internal partial class RoslynEmitter
             StringLiteral strLit => GenerateStringLiteral(strLit),
             NativeStringLiteral nativeLit => GenerateNativeStringLiteral(nativeLit),
             BooleanLiteral boolLit => LiteralExpression(boolLit.Value ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
-            NoneLiteral => LiteralExpression(SyntaxKind.NullLiteralExpression),
+            NoneLiteral => LiteralExpression(SyntaxKind.DefaultLiteralExpression),
             EllipsisLiteral => GenerateEllipsisLiteral(),
 
             // Collections
