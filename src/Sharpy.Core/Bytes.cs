@@ -16,7 +16,7 @@ namespace Sharpy
         /// <summary>Create a Bytes instance from a byte array (copies the array).</summary>
         public Bytes(byte[] data)
         {
-            _data = data \!= null && data.Length > 0
+            _data = data != null && data.Length > 0
                 ? (byte[])data.Clone()
                 : System.Array.Empty<byte>();
         }
@@ -63,7 +63,7 @@ namespace Sharpy
             var sb = new StringBuilder("b'");
             foreach (byte b in _data)
             {
-                if (b >= 32 && b < 127 && b \!= (byte)'\\' && b \!= (byte)'\'')
+                if (b >= 32 && b < 127 && b != (byte)'\\' && b != (byte)'\'')
                 {
                     sb.Append((char)b);
                 }
@@ -157,7 +157,7 @@ namespace Sharpy
             var clean = hexString.Replace(" ", "");
 #pragma warning restore CA1307
 
-            if (clean.Length % 2 \!= 0)
+            if (clean.Length % 2 != 0)
             {
                 throw new ValueError("non-hexadecimal number found in fromhex() arg at position " + clean.Length);
             }

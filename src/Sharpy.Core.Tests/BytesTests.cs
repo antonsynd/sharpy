@@ -205,7 +205,7 @@ public class BytesTests
         var a = new Bytes(new byte[] { 1, 2, 3 });
         var b = new Bytes(new byte[] { 1, 2, 4 });
         (a == b).Should().BeFalse();
-        (a \!= b).Should().BeTrue();
+        (a != b).Should().BeTrue();
     }
 
     [Fact]

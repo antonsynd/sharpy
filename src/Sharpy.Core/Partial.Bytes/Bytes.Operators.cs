@@ -15,14 +15,14 @@ namespace Sharpy
         /// </summary>
         public bool Equals(Bytes other)
         {
-            if (_data.Length \!= other._data.Length)
+            if (_data.Length != other._data.Length)
             {
                 return false;
             }
 
             for (int i = 0; i < _data.Length; i++)
             {
-                if (_data[i] \!= other._data[i])
+                if (_data[i] != other._data[i])
                 {
                     return false;
                 }
@@ -63,7 +63,7 @@ namespace Sharpy
         /// <summary>
         /// Determines whether two Bytes instances are not equal.
         /// </summary>
-        public static bool operator \!=(Bytes left, Bytes right) => \!left.Equals(right);
+        public static bool operator !=(Bytes left, Bytes right) => !left.Equals(right);
 
         #endregion
 

@@ -47,14 +47,8 @@ namespace Sharpy
             return sized.Count;
         }
 
-        /// <summary>
-        /// Return the length of a string.
-        /// </summary>
-        /// <param name="s">The string to measure</param>
-        /// <returns>The number of characters (UTF-16 code units)</returns>
-        public static int Len(string s)
-        {
-            return s.Length;
-        }
+        // Len(string) removed — Sharpy.Str implements ISized, so len() dispatches
+        // through the ISized overload. The string overload would cause C# overload
+        // ambiguity since Str has implicit conversion to string.
     }
 }

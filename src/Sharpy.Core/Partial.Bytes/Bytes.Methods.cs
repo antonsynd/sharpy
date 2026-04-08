@@ -50,7 +50,7 @@ namespace Sharpy
                 }
 
                 int matchPos = FindSubsequence(_data, old_._data, i, _data.Length);
-                if (matchPos < 0 || matchPos \!= i)
+                if (matchPos < 0 || matchPos != i)
                 {
                     result.Add(_data[i]);
                     i++;
@@ -100,7 +100,7 @@ namespace Sharpy
             if (prefix._data.Length > _data.Length) return false;
             for (int i = 0; i < prefix._data.Length; i++)
             {
-                if (_data[i] \!= prefix._data[i]) return false;
+                if (_data[i] != prefix._data[i]) return false;
             }
             return true;
         }
@@ -112,7 +112,7 @@ namespace Sharpy
             int offset = _data.Length - suffix._data.Length;
             for (int i = 0; i < suffix._data.Length; i++)
             {
-                if (_data[offset + i] \!= suffix._data[i]) return false;
+                if (_data[offset + i] != suffix._data[i]) return false;
             }
             return true;
         }
@@ -169,7 +169,7 @@ namespace Sharpy
                 while (i < _data.Length && IsWhitespace(_data[i])) i++;
                 if (i >= _data.Length) break;
                 int start = i;
-                while (i < _data.Length && \!IsWhitespace(_data[i])) i++;
+                while (i < _data.Length && !IsWhitespace(_data[i])) i++;
                 var segment = new byte[i - start];
                 Array.Copy(_data, start, segment, 0, segment.Length);
                 result.Add(new Bytes(segment, true));
@@ -184,7 +184,7 @@ namespace Sharpy
             bool first = true;
             foreach (var item in iterable)
             {
-                if (\!first)
+                if (!first)
                 {
                     for (int i = 0; i < _data.Length; i++) result.Add(_data[i]);
                 }
@@ -269,7 +269,7 @@ namespace Sharpy
                 bool match = true;
                 for (int j = 0; j < needle.Length; j++)
                 {
-                    if (haystack[i + j] \!= needle[j]) { match = false; break; }
+                    if (haystack[i + j] != needle[j]) { match = false; break; }
                 }
                 if (match) return i;
             }
@@ -285,7 +285,7 @@ namespace Sharpy
                 bool match = true;
                 for (int j = 0; j < needle.Length; j++)
                 {
-                    if (haystack[i + j] \!= needle[j]) { match = false; break; }
+                    if (haystack[i + j] != needle[j]) { match = false; break; }
                 }
                 if (match) return i;
             }
