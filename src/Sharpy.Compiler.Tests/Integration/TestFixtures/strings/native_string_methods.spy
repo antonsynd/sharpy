@@ -1,0 +1,6 @@
+def main():
+    # Native string assigned to str variable gets implicit conversion
+    s: str = n"hello world"
+    print(s.upper())
+    print(s.find("world"))
+    print(len(s))

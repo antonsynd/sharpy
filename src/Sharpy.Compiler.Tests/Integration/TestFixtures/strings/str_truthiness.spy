@@ -1,0 +1,9 @@
+def main():
+    print(bool(""))
+    print(bool("x"))
+    s: str = "hello"
+    if bool(s):
+        print("truthy")
+    empty: str = ""
+    if not bool(empty):
+        print("falsy")

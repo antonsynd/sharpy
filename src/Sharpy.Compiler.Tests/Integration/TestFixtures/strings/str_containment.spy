@@ -1,0 +1,6 @@
+def main():
+    s: str = "hello world"
+    print("hello" in s)
+    print("xyz" in s)
+    print("xyz" not in s)
+    print("ello" in s)
