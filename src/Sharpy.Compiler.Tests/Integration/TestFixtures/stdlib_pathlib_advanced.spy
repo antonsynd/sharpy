@@ -1,0 +1,25 @@
+# Test pathlib advanced methods: expanduser, match, is_absolute, resolve
+from pathlib import Path
+
+def main():
+    # Test Expanduser
+    p: Path = Path("~/docs")
+    expanded: Path = p.expanduser()
+    # Expanded path should not start with ~
+    print(str(expanded).startswith("~"))
+
+    # Test Match
+    p2: Path = Path("/foo/bar.txt")
+    print(p2.match("*.txt"))
+    print(p2.match("*.py"))
+    print(p2.match("bar.*"))
+
+    # Test IsAbsolute
+    print(Path("/usr/bin").is_absolute)
+    print(Path("relative/path").is_absolute)
+
+    # Test static Cwd and Home
+    cwd: Path = Path.cwd()
+    home: Path = Path.home()
+    print(cwd.is_absolute)
+    print(home.is_absolute)

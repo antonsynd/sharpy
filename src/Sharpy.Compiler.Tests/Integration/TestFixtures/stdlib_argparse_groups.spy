@@ -1,0 +1,12 @@
+# Test argparse argument groups and mutually exclusive groups
+from argparse import ArgumentParser
+
+def main():
+    # Argument group
+    parser: ArgumentParser = ArgumentParser(description="test groups")
+    group = parser.add_argument_group("auth options")
+    group.add_optional_argument("--user", help="username")
+    group.add_optional_argument("--password", help="password")
+    result = parser.parse_args(["--user", "admin", "--password", "secret"])
+    print(result["user"])
+    print(result["password"])

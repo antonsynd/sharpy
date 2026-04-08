@@ -1,0 +1,17 @@
+# Test argparse subparsers
+from argparse import ArgumentParser
+
+def main():
+    parser: ArgumentParser = ArgumentParser(description="main program")
+    sp = parser.add_subparsers(dest="cmd")
+    run_parser: ArgumentParser = sp.add_parser("run", help="run a command")
+    run_parser.add_optional_argument("--flag", defaultValue="none")
+
+    # Parse with subcommand
+    result = parser.parse_args(["run", "--flag", "hello"])
+    print(result["cmd"])
+    print(result["flag"])
+
+    # Parse without subcommand
+    result2 = parser.parse_args([])
+    print(result2["cmd"])
