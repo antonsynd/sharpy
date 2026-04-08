@@ -63,6 +63,15 @@ namespace Sharpy
             return _values.ContainsKey(name);
         }
 
+        /// <summary>Merge all values from another namespace into this one.</summary>
+        internal void Merge(Namespace other)
+        {
+            foreach (string key in other._values.Keys())
+            {
+                _values[key] = other._values[key];
+            }
+        }
+
         /// <summary>Returns a string representation of the namespace.</summary>
         public override string ToString()
         {

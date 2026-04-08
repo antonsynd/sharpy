@@ -11,9 +11,11 @@ namespace Sharpy
     public sealed class ArgumentParser
     {
         private readonly string _description;
-        private readonly System.Collections.Generic.List<ArgumentDef> _arguments = new System.Collections.Generic.List<ArgumentDef>();
+        internal readonly System.Collections.Generic.List<ArgumentDef> _arguments = new System.Collections.Generic.List<ArgumentDef>();
         private readonly bool _addHelp;
         private TextWriter _output;
+        private SubparsersAction? _subparsers;
+        private readonly System.Collections.Generic.List<MutuallyExclusiveGroup> _mutuallyExclusiveGroups = new System.Collections.Generic.List<MutuallyExclusiveGroup>();
 
         /// <summary>Program name for help text.</summary>
         public string Prog { get; set; }
@@ -120,6 +122,39 @@ namespace Sharpy
             });
         }
         /// <summary>
+        /// Add subparsers to this parser, allowing subcommand dispatch.
+        /// </summary>
+        public SubparsersAction AddSubparsers(string title = "", string dest = "")
+        {
+            if (_subparsers != null)
+            {
+                throw new ArgumentError("cannot have multiple subparser arguments");
+            }
+            _subparsers = new SubparsersAction(title, dest);
+            return _subparsers;
+        }
+
+        /// <summary>
+        /// Add a named argument group for organizational purposes.
+        /// Arguments in the group are still parsed by this parser.
+        /// </summary>
+        public ArgumentGroup AddArgumentGroup(string title)
+        {
+            return new ArgumentGroup(this, title);
+        }
+
+        /// <summary>
+        /// Add a mutually exclusive group of optional arguments.
+        /// At most one option in the group may be provided.
+        /// </summary>
+        public MutuallyExclusiveGroup AddMutuallyExclusiveGroup(bool required = false)
+        {
+            var group = new MutuallyExclusiveGroup(this, required);
+            _mutuallyExclusiveGroups.Add(group);
+            return group;
+        }
+
+        /// <summary>
         /// Parse command-line arguments from the given string array.
         /// </summary>
         public Namespace ParseArgs(string[] args)
@@ -136,6 +171,12 @@ namespace Sharpy
                 {
                     ns.Set(argDef.Dest, argDef.Default);
                 }
+            }
+
+            // If we have subparsers, set default dest to null
+            if (_subparsers != null && !string.IsNullOrEmpty(_subparsers.Dest))
+            {
+                ns.Set(_subparsers.Dest, null);
             }
 
             int i = 0;
@@ -163,6 +204,22 @@ namespace Sharpy
                 }
                 else
                 {
+                    // Check if this is a subparser command
+                    if (_subparsers != null && _subparsers.HasParser(arg))
+                    {
+                        if (!string.IsNullOrEmpty(_subparsers.Dest))
+                        {
+                            ns.Set(_subparsers.Dest, arg);
+                        }
+                        // Delegate remaining args to the sub-parser
+                        var subParser = _subparsers.GetParser(arg);
+                        var remaining = new string[args.Length - i - 1];
+                        Array.Copy(args, i + 1, remaining, 0, remaining.Length);
+                        var subNs = subParser.ParseArgs(remaining);
+                        ns.Merge(subNs);
+                        return ns;
+                    }
+
                     // Positional argument
                     if (positionalIndex >= positionalArgs.Count)
                     {
@@ -220,6 +277,12 @@ namespace Sharpy
                             "the following arguments are required: " + argDef.LongName);
                     }
                 }
+            }
+
+            // Check mutually exclusive groups
+            foreach (var group in _mutuallyExclusiveGroups)
+            {
+                group.Validate(seen);
             }
 
             return ns;
@@ -568,7 +631,7 @@ namespace Sharpy
             }
         }
 
-        private sealed class ArgumentDef
+        internal sealed class ArgumentDef
         {
             public string? ShortName { get; set; }
             public string LongName { get; set; } = "";
