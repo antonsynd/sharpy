@@ -375,10 +375,12 @@ namespace Sharpy
         /// </summary>
         public bool Isdigit()
         {
-            if (string.IsNullOrEmpty(Value)) return false;
+            if (string.IsNullOrEmpty(Value))
+                return false;
             foreach (char c in Value)
             {
-                if (!char.IsDigit(c)) return false;
+                if (!char.IsDigit(c))
+                    return false;
             }
             return true;
         }
@@ -389,10 +391,12 @@ namespace Sharpy
         /// </summary>
         public bool Isalpha()
         {
-            if (string.IsNullOrEmpty(Value)) return false;
+            if (string.IsNullOrEmpty(Value))
+                return false;
             foreach (char c in Value)
             {
-                if (!char.IsLetter(c)) return false;
+                if (!char.IsLetter(c))
+                    return false;
             }
             return true;
         }
@@ -403,10 +407,12 @@ namespace Sharpy
         /// </summary>
         public bool Isalnum()
         {
-            if (string.IsNullOrEmpty(Value)) return false;
+            if (string.IsNullOrEmpty(Value))
+                return false;
             foreach (char c in Value)
             {
-                if (!char.IsLetterOrDigit(c)) return false;
+                if (!char.IsLetterOrDigit(c))
+                    return false;
             }
             return true;
         }
@@ -417,10 +423,12 @@ namespace Sharpy
         /// </summary>
         public bool Isspace()
         {
-            if (string.IsNullOrEmpty(Value)) return false;
+            if (string.IsNullOrEmpty(Value))
+                return false;
             foreach (char c in Value)
             {
-                if (!char.IsWhiteSpace(c)) return false;
+                if (!char.IsWhiteSpace(c))
+                    return false;
             }
             return true;
         }
@@ -432,12 +440,15 @@ namespace Sharpy
         /// </summary>
         public bool Isupper()
         {
-            if (string.IsNullOrEmpty(Value)) return false;
+            if (string.IsNullOrEmpty(Value))
+                return false;
             bool hasCased = false;
             foreach (char c in Value)
             {
-                if (char.IsLower(c)) return false;
-                if (char.IsUpper(c)) hasCased = true;
+                if (char.IsLower(c))
+                    return false;
+                if (char.IsUpper(c))
+                    hasCased = true;
             }
             return hasCased;
         }
@@ -449,12 +460,15 @@ namespace Sharpy
         /// </summary>
         public bool Islower()
         {
-            if (string.IsNullOrEmpty(Value)) return false;
+            if (string.IsNullOrEmpty(Value))
+                return false;
             bool hasCased = false;
             foreach (char c in Value)
             {
-                if (char.IsUpper(c)) return false;
-                if (char.IsLower(c)) hasCased = true;
+                if (char.IsUpper(c))
+                    return false;
+                if (char.IsLower(c))
+                    hasCased = true;
             }
             return hasCased;
         }
@@ -465,20 +479,23 @@ namespace Sharpy
         /// </summary>
         public bool Istitle()
         {
-            if (string.IsNullOrEmpty(Value)) return false;
+            if (string.IsNullOrEmpty(Value))
+                return false;
             bool hasCased = false;
             bool previousWasCased = false;
             foreach (char c in Value)
             {
                 if (char.IsUpper(c))
                 {
-                    if (previousWasCased) return false;
+                    if (previousWasCased)
+                        return false;
                     hasCased = true;
                     previousWasCased = true;
                 }
                 else if (char.IsLower(c))
                 {
-                    if (!previousWasCased) return false;
+                    if (!previousWasCased)
+                        return false;
                     hasCased = true;
                     previousWasCased = true;
                 }
@@ -496,7 +513,8 @@ namespace Sharpy
         /// </summary>
         public bool Isnumeric()
         {
-            if (string.IsNullOrEmpty(Value)) return false;
+            if (string.IsNullOrEmpty(Value))
+                return false;
             foreach (char c in Value)
             {
                 if (!char.IsDigit(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.OtherNumber)
@@ -511,7 +529,8 @@ namespace Sharpy
         /// </summary>
         public bool Isdecimal()
         {
-            if (string.IsNullOrEmpty(Value)) return false;
+            if (string.IsNullOrEmpty(Value))
+                return false;
             foreach (char c in Value)
             {
                 if (char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.DecimalDigitNumber)
@@ -526,13 +545,16 @@ namespace Sharpy
         /// </summary>
         public bool Isidentifier()
         {
-            if (string.IsNullOrEmpty(Value)) return false;
+            if (string.IsNullOrEmpty(Value))
+                return false;
             char first = Value[0];
-            if (!char.IsLetter(first) && first != '_') return false;
+            if (!char.IsLetter(first) && first != '_')
+                return false;
             for (int i = 1; i < Value.Length; i++)
             {
                 char c = Value[i];
-                if (!char.IsLetterOrDigit(c) && c != '_') return false;
+                if (!char.IsLetterOrDigit(c) && c != '_')
+                    return false;
             }
             return true;
         }
@@ -543,7 +565,8 @@ namespace Sharpy
         /// </summary>
         public bool Isprintable()
         {
-            if (Value.Length == 0) return true;
+            if (Value.Length == 0)
+                return true;
             foreach (char c in Value)
             {
                 var category = char.GetUnicodeCategory(c);
@@ -569,7 +592,8 @@ namespace Sharpy
         {
             foreach (char c in Value)
             {
-                if (c > '\u007F') return false;
+                if (c > '\u007F')
+                    return false;
             }
             return true;
         }
