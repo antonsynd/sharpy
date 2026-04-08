@@ -1,0 +1,13 @@
+# Test dict.fromkeys() static method
+def main():
+    # Basic usage
+    d: dict[str, int] = dict.fromkeys(["a", "b", "c"], 0)
+    print(d)
+
+    # Default value (None)
+    d2: dict[str, object] = dict.fromkeys(["x", "y"])
+    print(d2)
+
+    # Empty keys
+    d3: dict[str, int] = dict.fromkeys([], 1)
+    print(d3)

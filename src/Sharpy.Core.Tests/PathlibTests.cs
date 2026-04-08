@@ -416,5 +416,156 @@ namespace Sharpy.Core.Tests
         {
             Assert.Equal(new Path("/a/b").GetHashCode(), new Path("/a/b").GetHashCode());
         }
+
+        // ===== Cwd / Home =====
+
+        [Fact]
+        public void Cwd_ReturnsCurrentDirectory()
+        {
+            var cwd = Path.Cwd();
+            Assert.True(cwd.IsAbsolute);
+            Assert.True(cwd.IsDir());
+        }
+
+        [Fact]
+        public void Home_ReturnsHomeDirectory()
+        {
+            var home = Path.Home();
+            Assert.True(home.IsAbsolute);
+            Assert.True(home.IsDir());
+        }
+
+        // ===== Touch =====
+
+        [Fact]
+        public void Touch_CreatesNewFile()
+        {
+            var path = Sub("touched.txt");
+            new Path(path).Touch();
+            Assert.True(System.IO.File.Exists(path));
+        }
+
+        [Fact]
+        public void Touch_ExistingFile_UpdatesTimestamp()
+        {
+            var path = Sub("touch_existing.txt");
+            System.IO.File.WriteAllText(path, "data");
+            var before = System.IO.File.GetLastWriteTimeUtc(path);
+            System.Threading.Thread.Sleep(50);
+            new Path(path).Touch();
+            var after = System.IO.File.GetLastWriteTimeUtc(path);
+            Assert.True(after >= before);
+        }
+
+        [Fact]
+        public void Touch_ExistOkFalse_ThrowsOnExisting()
+        {
+            var path = Sub("touch_exists.txt");
+            System.IO.File.WriteAllText(path, "data");
+            Assert.Throws<FileExistsError>(() => new Path(path).Touch(existOk: false));
+        }
+
+        // ===== Stat =====
+
+        [Fact]
+        public void Stat_ReturnsFileInfo()
+        {
+            var path = Sub("stat_file.txt");
+            System.IO.File.WriteAllText(path, "hello");
+            var stat = new Path(path).Stat();
+            Assert.Equal(5, stat.StSize);
+            Assert.True(stat.StMtime > 0);
+        }
+
+        [Fact]
+        public void Stat_ReturnsDirectoryInfo()
+        {
+            var stat = new Path(_tempDir).Stat();
+            Assert.Equal(0, stat.StSize);
+            Assert.True(stat.StMtime > 0);
+        }
+
+        [Fact]
+        public void Stat_ThrowsOnNonexistent()
+        {
+            Assert.Throws<FileNotFoundError>(() => new Path(Sub("nonexistent")).Stat());
+        }
+
+        // ===== IsSymlink =====
+
+        [Fact]
+        public void IsSymlink_FalseForRegularFile()
+        {
+            var path = Sub("regular.txt");
+            System.IO.File.WriteAllText(path, "data");
+            Assert.False(new Path(path).IsSymlink());
+        }
+
+        [Fact]
+        public void IsSymlink_FalseForNonexistent()
+        {
+            Assert.False(new Path(Sub("nope")).IsSymlink());
+        }
+
+        // ===== Rglob =====
+
+        [Fact]
+        public void Rglob_FindsFilesRecursively()
+        {
+            var subDir = Sub("rglob_sub");
+            System.IO.Directory.CreateDirectory(subDir);
+            System.IO.File.WriteAllText(Sub("top.txt"), "");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(subDir, "nested.txt"), "");
+
+            var matches = new System.Collections.Generic.List<string>();
+            foreach (var p in new Path(_tempDir).Rglob("*.txt"))
+            {
+                matches.Add(p.Name);
+            }
+            Assert.Contains("top.txt", matches);
+            Assert.Contains("nested.txt", matches);
+        }
+
+        // ===== Match =====
+
+        [Fact]
+        public void Match_MatchesName()
+        {
+            Assert.True(new Path("/some/path/file.txt").Match("*.txt"));
+            Assert.False(new Path("/some/path/file.txt").Match("*.md"));
+        }
+
+        [Fact]
+        public void Match_ExactName()
+        {
+            Assert.True(new Path("/some/path/file.txt").Match("file.txt"));
+            Assert.False(new Path("/some/path/file.txt").Match("other.txt"));
+        }
+
+        // ===== Expanduser =====
+
+        [Fact]
+        public void Expanduser_ExpandsTilde()
+        {
+            var expanded = new Path("~").Expanduser();
+            Assert.True(expanded.IsAbsolute);
+            Assert.Equal(Path.Home().ToString(), expanded.ToString());
+        }
+
+        [Fact]
+        public void Expanduser_ExpandsTildeSlash()
+        {
+            var expanded = new Path("~/docs").Expanduser();
+            Assert.True(expanded.IsAbsolute);
+            Assert.Contains("docs", expanded.ToString(), StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void Expanduser_NoTilde_ReturnsOriginal()
+        {
+            var p = new Path("/absolute/path");
+            var result = p.Expanduser();
+            Assert.Equal("/absolute/path", result.ToString());
+        }
     }
 }

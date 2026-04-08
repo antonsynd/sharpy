@@ -1,0 +1,19 @@
+# Test bytes slicing operations
+def main():
+    b: bytes = b"hello world"
+
+    # Basic slicing
+    print(b[0:5])
+    print(b[6:11])
+
+    # Slice with step
+    print(b[::2])
+
+    # Negative indices
+    print(b[-5:])
+
+    # Slice to end
+    print(b[6:])
+
+    # Slice from start
+    print(b[:5])

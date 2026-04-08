@@ -377,5 +377,116 @@ namespace Sharpy.Tests
         }
 
         #endregion
+
+        #region Subparsers
+
+        [Fact]
+        public void AddSubparsers_AddParser_ParsesSubcommand()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var subparsers = parser.AddSubparsers(dest: "command");
+            var sub = subparsers.AddParser("run", help: "Run a program");
+            sub.AddArgument("filename");
+
+            var ns = parser.ParseArgs(new[] { "run", "test.spy" });
+            Assert.Equal("run", ns["command"]);
+            Assert.Equal("test.spy", ns["filename"]);
+        }
+
+        [Fact]
+        public void AddSubparsers_MultipleSubcommands()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var subparsers = parser.AddSubparsers(dest: "cmd");
+            var buildParser = subparsers.AddParser("build");
+            buildParser.AddOptionalArgument("--release", action: "store_true");
+            var testParser = subparsers.AddParser("test");
+            testParser.AddOptionalArgument("--filter");
+
+            var ns1 = parser.ParseArgs(new[] { "build", "--release" });
+            Assert.Equal("build", ns1["cmd"]);
+            Assert.Equal(true, ns1["release"]);
+
+            var ns2 = parser.ParseArgs(new[] { "test", "--filter", "Lexer" });
+            Assert.Equal("test", ns2["cmd"]);
+            Assert.Equal("Lexer", ns2["filter"]);
+        }
+
+        [Fact]
+        public void AddSubparsers_Duplicate_ThrowsError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            parser.AddSubparsers();
+            Assert.Throws<ArgumentError>(() => parser.AddSubparsers());
+        }
+
+        #endregion
+
+        #region Argument Groups
+
+        [Fact]
+        public void AddArgumentGroup_ArgumentsParsedNormally()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var group = parser.AddArgumentGroup("Network options");
+            group.AddOptionalArgument("--host", defaultValue: "localhost");
+            group.AddOptionalArgument("--port", type: "int", defaultValue: 8080);
+
+            var ns = parser.ParseArgs(new[] { "--host", "example.com", "--port", "9090" });
+            Assert.Equal("example.com", ns["host"]);
+            Assert.Equal(9090, ns["port"]);
+        }
+
+        [Fact]
+        public void AddArgumentGroup_DefaultsWork()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var group = parser.AddArgumentGroup("Options");
+            group.AddOptionalArgument("--name", defaultValue: "default");
+
+            var ns = parser.ParseArgs(new string[0]);
+            Assert.Equal("default", ns["name"]);
+        }
+
+        #endregion
+
+        #region Mutually Exclusive Groups
+
+        [Fact]
+        public void MutuallyExclusiveGroup_SingleOption_Accepted()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var group = parser.AddMutuallyExclusiveGroup();
+            group.AddOptionalArgument("--verbose", action: "store_true");
+            group.AddOptionalArgument("--quiet", action: "store_true");
+
+            var ns = parser.ParseArgs(new[] { "--verbose" });
+            Assert.Equal(true, ns["verbose"]);
+            Assert.Equal(false, ns["quiet"]);
+        }
+
+        [Fact]
+        public void MutuallyExclusiveGroup_BothOptions_ThrowsError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var group = parser.AddMutuallyExclusiveGroup();
+            group.AddOptionalArgument("--verbose", action: "store_true");
+            group.AddOptionalArgument("--quiet", action: "store_true");
+
+            Assert.Throws<ArgumentError>(() => parser.ParseArgs(new[] { "--verbose", "--quiet" }));
+        }
+
+        [Fact]
+        public void MutuallyExclusiveGroup_Required_NoneProvided_ThrowsError()
+        {
+            var parser = new ArgumentParser(addHelp: false);
+            var group = parser.AddMutuallyExclusiveGroup(required: true);
+            group.AddOptionalArgument("--verbose", action: "store_true");
+            group.AddOptionalArgument("--quiet", action: "store_true");
+
+            Assert.Throws<ArgumentError>(() => parser.ParseArgs(new string[0]));
+        }
+
+        #endregion
     }
 }

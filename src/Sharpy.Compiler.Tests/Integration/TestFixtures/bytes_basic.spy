@@ -1,0 +1,21 @@
+# Test bytes basic operations: construction, hex, fromhex, indexing, len
+def main():
+    # Construction
+    b: bytes = b"hello"
+    print(len(b))
+    print(b[0])
+    print(b[4])
+
+    # Hex encoding
+    print(b.hex())
+
+    # Fromhex
+    b2: bytes = bytes.fromhex("68656c6c6f")
+    print(b2 == b)
+
+    # Negative indexing
+    print(b[-1])
+
+    # Boolean context
+    print(bool(b))
+    print(bool(b""))

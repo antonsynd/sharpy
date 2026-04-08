@@ -1,0 +1,18 @@
+# Test bytes operators: +, *, ==, !=, in, boolean
+def main():
+    # Concatenation
+    b: bytes = b"hello" + b" " + b"world"
+    print(b)
+
+    # Repetition
+    b2: bytes = b"ab" * 3
+    print(b2)
+
+    # Equality
+    print(b"abc" == b"abc")
+    print(b"abc" != b"def")
+    print(b"abc" == b"def")
+
+    # Contains
+    print(b"ll" in b"hello")
+    print(b"xyz" in b"hello")

@@ -1,0 +1,21 @@
+# Test set in-place mutation methods
+def main():
+    # Update (in-place union)
+    s: set[int] = {1, 2, 3}
+    s.update({3, 4, 5})
+    print(sorted(list(s)))
+
+    # Difference update (in-place difference)
+    s2: set[int] = {1, 2, 3, 4, 5}
+    s2.difference_update({3, 4})
+    print(sorted(list(s2)))
+
+    # Intersection update (in-place intersection)
+    s3: set[int] = {1, 2, 3, 4, 5}
+    s3.intersection_update({2, 4, 6})
+    print(sorted(list(s3)))
+
+    # Symmetric difference update (in-place symmetric difference)
+    s4: set[int] = {1, 2, 3}
+    s4.symmetric_difference_update({2, 3, 4})
+    print(sorted(list(s4)))

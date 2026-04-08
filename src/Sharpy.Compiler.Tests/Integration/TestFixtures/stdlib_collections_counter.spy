@@ -1,0 +1,36 @@
+# Test collections.Counter
+from collections import Counter
+
+def main():
+    # Construction from list
+    c: Counter[str] = Counter(["a", "b", "a", "c", "a", "b"])
+    print(c["a"])
+    print(c["b"])
+    print(c["c"])
+
+    # Missing key returns 0
+    print(c["z"])
+
+    # Most common
+    print(c.most_common(2))
+
+    # Total
+    print(c.total())
+
+    # Subtract
+    c.subtract(["a", "a"])
+    print(c["a"])
+
+    # Copy
+    c2: Counter[str] = c.copy()
+    print(c2["a"])
+
+    # Operators
+    c3: Counter[str] = Counter(["a", "b"]) + Counter(["b", "c"])
+    print(c3["a"])
+    print(c3["b"])
+    print(c3["c"])
+
+    # Clear
+    c.clear()
+    print(c.total())

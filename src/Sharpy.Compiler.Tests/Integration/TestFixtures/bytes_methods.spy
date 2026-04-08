@@ -1,0 +1,35 @@
+# Test bytes string-like methods
+def main():
+    b: bytes = b"hello world"
+
+    # Find/Rfind
+    print(b.find(b"world"))
+    print(b.find(b"xyz"))
+    print(b.rfind(b"l"))
+
+    # Startswith/Endswith
+    print(b.startswith(b"hello"))
+    print(b.endswith(b"world"))
+
+    # Count
+    print(b.count(b"l"))
+
+    # Replace
+    b2: bytes = b.replace(b"world", b"python")
+    print(b2)
+
+    # Split
+    parts: list[bytes] = b.split(b" ")
+    print(len(parts))
+
+    # Upper/Lower
+    print(b"hello".upper())
+    print(b"HELLO".lower())
+
+    # Strip
+    print(b"  hello  ".strip())
+    print(b"  hello  ".lstrip())
+    print(b"  hello  ".rstrip())
+
+    # Join
+    print(b" ".join([b"hello", b"world"]))
