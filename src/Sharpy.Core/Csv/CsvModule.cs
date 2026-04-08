@@ -27,7 +27,7 @@ namespace Sharpy
         /// </summary>
         /// <param name="lines">An enumerable of CSV lines to parse.</param>
         /// <returns>A <see cref="CsvReader"/> that iterates over parsed rows.</returns>
-        public static CsvReader Reader(IEnumerable<string> lines)
+        public static CsvReader Reader(IEnumerable<Str> lines)
         {
             return new CsvReader(lines);
         }
@@ -48,7 +48,7 @@ namespace Sharpy
         /// <param name="lines">An enumerable of CSV lines to parse.</param>
         /// <param name="fieldnames">Optional field names. If null, the first row is used as field names.</param>
         /// <returns>A <see cref="CsvDictReader"/> that iterates over parsed rows as dictionaries.</returns>
-        public static CsvDictReader DictReader(IEnumerable<string> lines, Sharpy.List<string>? fieldnames = null)
+        public static CsvDictReader DictReader(IEnumerable<Str> lines, Sharpy.List<Str>? fieldnames = null)
         {
             return new CsvDictReader(lines, fieldnames);
         }
@@ -59,7 +59,7 @@ namespace Sharpy
         /// <param name="output">The output writer to write CSV data to.</param>
         /// <param name="fieldnames">The field names determining column order.</param>
         /// <returns>A <see cref="CsvDictWriter"/> for writing CSV rows as dictionaries.</returns>
-        public static CsvDictWriter DictWriter(System.IO.TextWriter output, Sharpy.List<string> fieldnames)
+        public static CsvDictWriter DictWriter(System.IO.TextWriter output, Sharpy.List<Str> fieldnames)
         {
             return new CsvDictWriter(output, fieldnames);
         }
