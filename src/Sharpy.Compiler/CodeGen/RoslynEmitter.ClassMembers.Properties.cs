@@ -84,9 +84,15 @@ internal partial class RoslynEmitter
 
         var modifiers = TokenList(accessToken);
 
-        if (varDecl.IsConst)
+        if (varDecl.IsConst && IsConstEligibleType(fieldType))
         {
             modifiers = modifiers.Add(Token(SyntaxKind.ConstKeyword));
+        }
+        else if (varDecl.IsConst)
+        {
+            // Non-const-eligible types (e.g., Sharpy.Str) use static readonly
+            modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
+            modifiers = modifiers.Add(Token(SyntaxKind.ReadOnlyKeyword));
         }
         else if (varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static))
         {

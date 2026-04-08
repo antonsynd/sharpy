@@ -1008,7 +1008,9 @@ internal partial class RoslynEmitter
         var declaration = VariableDeclaration(typeSyntax)
             .WithVariables(SingletonSeparatedList(declarator));
 
-        var modifiers = varDecl.IsConst
+        // C# const only works with predefined types (int, string, bool, etc.)
+        // For non-const-eligible types like Sharpy.Str, omit the const modifier
+        var modifiers = varDecl.IsConst && IsConstEligibleType(typeSyntax)
             ? TokenList(Token(SyntaxKind.ConstKeyword))
             : TokenList();
 
@@ -1116,12 +1118,13 @@ internal partial class RoslynEmitter
 
         // Module-level fields must be static
         // For const variables, try to use C# const if the initializer is a compile-time literal
+        // AND the type is const-eligible (C# predefined types only, not Sharpy.Str etc.)
         // Otherwise fall back to public static readonly
         // Regular variables become "public static"
         SyntaxTokenList modifiers;
-        if (varDecl.IsConst && IsCompileTimeLiteral(varDecl.InitialValue))
+        if (varDecl.IsConst && IsCompileTimeLiteral(varDecl.InitialValue) && IsConstEligibleType(typeSyntax))
         {
-            // Use const for compile-time literals
+            // Use const for compile-time literals with const-eligible types
             modifiers = TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.ConstKeyword));
@@ -1158,6 +1161,17 @@ internal partial class RoslynEmitter
             NoneLiteral => true,
             _ => false
         };
+    }
+
+    /// <summary>
+    /// Checks if the resolved C# type is eligible for the 'const' modifier.
+    /// C# only allows const for built-in primitive types (int, long, double, float, bool,
+    /// string, etc.) which are all represented as PredefinedTypeSyntax in Roslyn.
+    /// Non-primitive types like Sharpy.Str must use 'static readonly' instead.
+    /// </summary>
+    private static bool IsConstEligibleType(TypeSyntax typeSyntax)
+    {
+        return typeSyntax is PredefinedTypeSyntax;
     }
 
     private StatementSyntax GenerateAssert(AssertStatement assert)
