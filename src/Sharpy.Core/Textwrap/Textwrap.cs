@@ -17,20 +17,21 @@ namespace Sharpy
         /// <param name="text">The text to wrap.</param>
         /// <param name="width">The maximum line width (default 70).</param>
         /// <returns>A list of wrapped lines without trailing newlines.</returns>
-        public static Sharpy.List<string> Wrap(string text, int width = 70)
+        public static Sharpy.List<Str> Wrap(Str text, int width = 70)
         {
-            if (text == null)
+            string textStr = (string)text;
+            if (textStr == null)
             {
                 throw new TypeError("argument must be str, not NoneType");
             }
 
-            var result = new System.Collections.Generic.List<string>();
+            var result = new System.Collections.Generic.List<Str>();
 
             // Collapse whitespace (including newlines) and trim
-            var collapsed = CollapseWhitespace(text);
+            var collapsed = CollapseWhitespace(textStr);
             if (collapsed.Length == 0)
             {
-                return new Sharpy.List<string>(result);
+                return new Sharpy.List<Str>(result);
             }
 
             string[] words = collapsed.Split(' ');
@@ -48,7 +49,7 @@ namespace Sharpy
                     // If there's content on the current line, flush it first
                     if (currentLine.Length > 0)
                     {
-                        result.Add(currentLine.ToString());
+                        result.Add((Str)currentLine.ToString());
                         currentLine.Clear();
                     }
 
@@ -57,7 +58,7 @@ namespace Sharpy
                     while (offset < word.Length)
                     {
                         int chunkSize = System.Math.Min(width, word.Length - offset);
-                        result.Add(word.Substring(offset, chunkSize));
+                        result.Add((Str)word.Substring(offset, chunkSize));
                         offset += chunkSize;
                     }
                 }
@@ -72,7 +73,7 @@ namespace Sharpy
                 }
                 else
                 {
-                    result.Add(currentLine.ToString());
+                    result.Add((Str)currentLine.ToString());
                     currentLine.Clear();
                     currentLine.Append(word);
                 }
@@ -80,10 +81,10 @@ namespace Sharpy
 
             if (currentLine.Length > 0)
             {
-                result.Add(currentLine.ToString());
+                result.Add((Str)currentLine.ToString());
             }
 
-            return new Sharpy.List<string>(result);
+            return new Sharpy.List<Str>(result);
         }
 
         /// <summary>
@@ -94,10 +95,10 @@ namespace Sharpy
         /// <param name="text">The text to fill.</param>
         /// <param name="width">The maximum line width (default 70).</param>
         /// <returns>A single string with line breaks inserted.</returns>
-        public static string Fill(string text, int width = 70)
+        public static Str Fill(Str text, int width = 70)
         {
             var lines = Wrap(text, width);
-            return string.Join("\n", (System.Collections.Generic.IEnumerable<string>)lines);
+            return (Str)string.Join("\n", (System.Collections.Generic.IEnumerable<Str>)lines);
         }
 
         /// <summary>
@@ -108,14 +109,15 @@ namespace Sharpy
         /// </summary>
         /// <param name="text">The text to dedent.</param>
         /// <returns>The dedented text.</returns>
-        public static string Dedent(string text)
+        public static Str Dedent(Str text)
         {
-            if (text == null)
+            string textStr = (string)text;
+            if (textStr == null)
             {
                 throw new TypeError("argument must be str, not NoneType");
             }
 
-            string[] lines = text.Split('\n');
+            string[] lines = textStr.Split('\n');
 
             // Find common leading whitespace among non-empty lines
             string? commonPrefix = null;
@@ -171,7 +173,7 @@ namespace Sharpy
                 }
             }
 
-            return sb.ToString();
+            return (Str)sb.ToString();
         }
 
         /// <summary>
@@ -182,32 +184,34 @@ namespace Sharpy
         /// <param name="text">The text to indent.</param>
         /// <param name="prefix">The prefix to add.</param>
         /// <returns>The indented text.</returns>
-        public static string Indent(string text, string prefix)
+        public static Str Indent(Str text, Str prefix)
         {
-            if (text == null)
+            string textStr = (string)text;
+            string prefixStr = (string)prefix;
+            if (textStr == null)
             {
                 throw new TypeError("argument must be str, not NoneType");
             }
 
-            if (prefix == null)
+            if (prefixStr == null)
             {
                 throw new TypeError("prefix must be str, not NoneType");
             }
 
             var sb = new StringBuilder();
-            string[] lines = SplitKeepEnds(text);
+            string[] lines = SplitKeepEnds(textStr);
 
             foreach (string line in lines)
             {
                 if (!IsWhitespaceOnly(line))
                 {
-                    sb.Append(prefix);
+                    sb.Append(prefixStr);
                 }
 
                 sb.Append(line);
             }
 
-            return sb.ToString();
+            return (Str)sb.ToString();
         }
 
         /// <summary>
@@ -219,19 +223,20 @@ namespace Sharpy
         /// <param name="width">The maximum width.</param>
         /// <returns>The shortened text.</returns>
         /// <exception cref="ValueError">Thrown if the placeholder is too large for the width.</exception>
-        public static string Shorten(string text, int width)
+        public static Str Shorten(Str text, int width)
         {
-            if (text == null)
+            string textStr = (string)text;
+            if (textStr == null)
             {
                 throw new TypeError("argument must be str, not NoneType");
             }
 
             const string placeholder = " [...]";
-            string collapsed = CollapseWhitespace(text);
+            string collapsed = CollapseWhitespace(textStr);
 
             if (collapsed.Length <= width)
             {
-                return collapsed;
+                return (Str)collapsed;
             }
 
             if (width < placeholder.TrimStart().Length)
@@ -243,7 +248,7 @@ namespace Sharpy
             int maxContent = width - placeholder.Length;
             if (maxContent <= 0)
             {
-                return placeholder.TrimStart().Substring(0, width);
+                return (Str)placeholder.TrimStart().Substring(0, width);
             }
 
             // Find last space at or before maxContent
@@ -251,10 +256,10 @@ namespace Sharpy
             if (breakAt <= 0)
             {
                 // No word boundary found, just truncate
-                return collapsed.Substring(0, maxContent) + placeholder;
+                return (Str)(collapsed.Substring(0, maxContent) + placeholder);
             }
 
-            return collapsed.Substring(0, breakAt) + placeholder;
+            return (Str)(collapsed.Substring(0, breakAt) + placeholder);
         }
 
         private static string CollapseWhitespace(string text)

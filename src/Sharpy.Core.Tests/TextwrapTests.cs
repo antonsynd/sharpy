@@ -12,8 +12,8 @@ public class Textwrap_Tests
     {
         var result = Sharpy.Textwrap.Wrap("Hello World", 5);
         result.Should().HaveCount(2);
-        result[0].Should().Be("Hello");
-        result[1].Should().Be("World");
+        ((string)result[0]).Should().Be("Hello");
+        ((string)result[1]).Should().Be("World");
     }
 
     [Fact]
@@ -35,8 +35,8 @@ public class Textwrap_Tests
     {
         var result = Sharpy.Textwrap.Wrap("abcdefgh", 5);
         result.Should().HaveCount(2);
-        result[0].Should().Be("abcde");
-        result[1].Should().Be("fgh");
+        ((string)result[0]).Should().Be("abcde");
+        ((string)result[1]).Should().Be("fgh");
     }
 
     [Fact]
@@ -44,10 +44,10 @@ public class Textwrap_Tests
     {
         var result = Sharpy.Textwrap.Wrap("abcdefghijklmnop", 5);
         result.Should().HaveCount(4);
-        result[0].Should().Be("abcde");
-        result[1].Should().Be("fghij");
-        result[2].Should().Be("klmno");
-        result[3].Should().Be("p");
+        ((string)result[0]).Should().Be("abcde");
+        ((string)result[1]).Should().Be("fghij");
+        ((string)result[2]).Should().Be("klmno");
+        ((string)result[3]).Should().Be("p");
     }
 
     [Fact]
@@ -56,8 +56,8 @@ public class Textwrap_Tests
         var text = new string('a', 100);
         var result = Sharpy.Textwrap.Wrap(text);
         result.Should().HaveCount(2);
-        result[0].Length.Should().Be(70);
-        result[1].Length.Should().Be(30);
+        ((string)result[0]).Length.Should().Be(70);
+        ((string)result[1]).Length.Should().Be(30);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class Textwrap_Tests
     {
         var result = Sharpy.Textwrap.Wrap("hello   world", 70);
         result.Should().HaveCount(1);
-        result[0].Should().Be("hello world");
+        ((string)result[0]).Should().Be("hello world");
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class Textwrap_Tests
     {
         var result = Sharpy.Textwrap.Wrap("hello\nworld", 70);
         result.Should().HaveCount(1);
-        result[0].Should().Be("hello world");
+        ((string)result[0]).Should().Be("hello world");
     }
 
     // --- fill ---
@@ -82,14 +82,14 @@ public class Textwrap_Tests
     public void Fill_JoinsWithNewlines()
     {
         var result = Sharpy.Textwrap.Fill("Hello World", 5);
-        result.Should().Be("Hello\nWorld");
+        ((string)result).Should().Be("Hello\nWorld");
     }
 
     [Fact]
     public void Fill_EmptyString_ReturnsEmpty()
     {
         var result = Sharpy.Textwrap.Fill("", 5);
-        result.Should().Be("");
+        ((string)result).Should().Be("");
     }
 
     // --- dedent ---
@@ -98,42 +98,42 @@ public class Textwrap_Tests
     public void Dedent_RemovesCommonIndentation()
     {
         var result = Sharpy.Textwrap.Dedent("  hello\n  world");
-        result.Should().Be("hello\nworld");
+        ((string)result).Should().Be("hello\nworld");
     }
 
     [Fact]
     public void Dedent_PartialCommonIndentation()
     {
         var result = Sharpy.Textwrap.Dedent("  hello\n    world");
-        result.Should().Be("hello\n  world");
+        ((string)result).Should().Be("hello\n  world");
     }
 
     [Fact]
     public void Dedent_EmptyLinesIgnored()
     {
         var result = Sharpy.Textwrap.Dedent("  hello\n\n  world");
-        result.Should().Be("hello\n\nworld");
+        ((string)result).Should().Be("hello\n\nworld");
     }
 
     [Fact]
     public void Dedent_NoCommonIndentation()
     {
         var result = Sharpy.Textwrap.Dedent("hello\nworld");
-        result.Should().Be("hello\nworld");
+        ((string)result).Should().Be("hello\nworld");
     }
 
     [Fact]
     public void Dedent_TabIndentation()
     {
         var result = Sharpy.Textwrap.Dedent("\thello\n\tworld");
-        result.Should().Be("hello\nworld");
+        ((string)result).Should().Be("hello\nworld");
     }
 
     [Fact]
     public void Dedent_EmptyString()
     {
         var result = Sharpy.Textwrap.Dedent("");
-        result.Should().Be("");
+        ((string)result).Should().Be("");
     }
 
     // --- indent ---
@@ -142,35 +142,35 @@ public class Textwrap_Tests
     public void Indent_AddsPrefix()
     {
         var result = Sharpy.Textwrap.Indent("hello\nworld", "  ");
-        result.Should().Be("  hello\n  world");
+        ((string)result).Should().Be("  hello\n  world");
     }
 
     [Fact]
     public void Indent_SkipsEmptyLines()
     {
         var result = Sharpy.Textwrap.Indent("hello\n\nworld", "> ");
-        result.Should().Be("> hello\n\n> world");
+        ((string)result).Should().Be("> hello\n\n> world");
     }
 
     [Fact]
     public void Indent_SkipsWhitespaceOnlyLines()
     {
         var result = Sharpy.Textwrap.Indent("hello\n  \nworld", "> ");
-        result.Should().Be("> hello\n  \n> world");
+        ((string)result).Should().Be("> hello\n  \n> world");
     }
 
     [Fact]
     public void Indent_PreservesTrailingNewline()
     {
         var result = Sharpy.Textwrap.Indent("hello\n\nworld\n", "> ");
-        result.Should().Be("> hello\n\n> world\n");
+        ((string)result).Should().Be("> hello\n\n> world\n");
     }
 
     [Fact]
     public void Indent_EmptyString()
     {
         var result = Sharpy.Textwrap.Indent("", "  ");
-        result.Should().Be("");
+        ((string)result).Should().Be("");
     }
 
     // --- shorten ---
@@ -179,7 +179,7 @@ public class Textwrap_Tests
     public void Shorten_FitsWithinWidth()
     {
         var result = Sharpy.Textwrap.Shorten("Hello", 5);
-        result.Should().Be("Hello");
+        ((string)result).Should().Be("Hello");
     }
 
     [Fact]
@@ -187,15 +187,15 @@ public class Textwrap_Tests
     {
         // "Hello World" is 11 chars, width=10 requires truncation
         var result = Sharpy.Textwrap.Shorten("Hello World", 10);
-        result.Length.Should().BeLessThanOrEqualTo(10);
-        result.Should().Contain("[...]");
+        ((string)result).Length.Should().BeLessThanOrEqualTo(10);
+        ((string)result).Should().Contain("[...]");
     }
 
     [Fact]
     public void Shorten_CollapsesWhitespace()
     {
         var result = Sharpy.Textwrap.Shorten("Hello  World", 11);
-        result.Should().Be("Hello World");
+        ((string)result).Should().Be("Hello World");
     }
 
     [Fact]
@@ -209,14 +209,14 @@ public class Textwrap_Tests
     public void Shorten_CollapsedTextFitsExactly()
     {
         var result = Sharpy.Textwrap.Shorten("Hello  World", 12);
-        result.Should().Be("Hello World");
+        ((string)result).Should().Be("Hello World");
     }
 
     [Fact]
     public void Shorten_SingleLongWord()
     {
         var result = Sharpy.Textwrap.Shorten("Supercalifragilistic", 10);
-        result.Should().Contain("[...]");
-        result.Length.Should().BeLessThanOrEqualTo(10);
+        ((string)result).Should().Contain("[...]");
+        ((string)result).Length.Should().BeLessThanOrEqualTo(10);
     }
 }
