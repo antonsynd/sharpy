@@ -21,7 +21,7 @@ namespace Sharpy
         /// <summary>
         /// Write a single row of fields to the CSV output.
         /// </summary>
-        public void Writerow(IEnumerable<Str> row)
+        public void Writerow(IEnumerable<string> row)
         {
             if (row == null)
             {
@@ -30,7 +30,7 @@ namespace Sharpy
 
             var sb = new StringBuilder();
             bool first = true;
-            foreach (Str field in row)
+            foreach (string field in row)
             {
                 if (!first)
                 {
@@ -38,7 +38,7 @@ namespace Sharpy
                 }
 
                 first = false;
-                sb.Append(QuoteField((string)field));
+                sb.Append(QuoteField(field));
             }
 
             _output.WriteLine(sb.ToString());
@@ -47,7 +47,7 @@ namespace Sharpy
         /// <summary>
         /// Write multiple rows of fields to the CSV output.
         /// </summary>
-        public void Writerows(IEnumerable<IEnumerable<Str>> rows)
+        public void Writerows(IEnumerable<IEnumerable<string>> rows)
         {
             if (rows == null)
             {

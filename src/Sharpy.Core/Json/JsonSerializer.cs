@@ -46,12 +46,6 @@ namespace Sharpy
                 return;
             }
 
-            if (value is Str str)
-            {
-                SerializeString(sb, (string)str, ensureAscii);
-                return;
-            }
-
             if (value is int i)
             {
                 sb.Append(i.ToString(CultureInfo.InvariantCulture));
@@ -89,8 +83,7 @@ namespace Sharpy
                 return;
             }
 
-            // Handle Dict<Str, V> — Str keys are not string, so IDictionary<string, ...> won't match.
-            // Use reflection to detect IDictionary<Str, V> for any V.
+            // Handle Dict<K, V> where K is not string — use reflection to detect.
             if (TryGetStrKeyDictionary(value, out var strKeyDict))
             {
                 SerializeStrKeyDict(sb, strKeyDict!, indent, sortKeys, ensureAscii, currentIndent);
@@ -420,8 +413,8 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Checks whether the value implements IDictionary&lt;Str, V&gt; for some V,
-        /// and if so extracts the keys and values as string/object pairs.
+        /// Checks whether the value implements IDictionary&lt;K, V&gt; for some K with
+        /// a string-convertible key, and if so extracts the keys and values as string/object pairs.
         /// </summary>
         private static bool TryGetStrKeyDictionary(object value, out System.Collections.Generic.List<KeyValuePair<string, object?>>? entries)
         {
@@ -432,9 +425,9 @@ namespace Sharpy
             {
                 if (iface.IsGenericType
                     && iface.GetGenericTypeDefinition() == typeof(IDictionary<,>)
-                    && iface.GetGenericArguments()[0] == typeof(Str))
+                    && iface.GetGenericArguments()[0] == typeof(string))
                 {
-                    // Found IDictionary<Str, V> — extract entries via the interface properties
+                    // Found IDictionary<string, V> — extract entries via the interface properties
                     var keysProperty = iface.GetProperty("Keys");
                     var itemProperty = iface.GetProperty("Item");
                     if (keysProperty == null || itemProperty == null)
@@ -447,7 +440,7 @@ namespace Sharpy
 
                     foreach (object keyObj in keys)
                     {
-                        string keyStr = ((Str)keyObj).ToString();
+                        string keyStr = keyObj.ToString();
                         object? val = itemProperty.GetValue(value, new[] { keyObj });
                         entries.Add(new KeyValuePair<string, object?>(keyStr, val));
                     }

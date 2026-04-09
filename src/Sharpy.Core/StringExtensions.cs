@@ -4,57 +4,57 @@ using System.Text;
 namespace Sharpy
 {
     /// <summary>
-    /// Case and trim methods for Str.
+    /// Python-compatible string methods as extension methods on string.
     /// </summary>
-    public readonly partial struct Str
+    public static partial class StringExtensions
     {
         /// <summary>
         /// Return a copy of the string converted to uppercase.
         /// Python: <c>str.upper()</c>
         /// </summary>
-        public Str Upper() => new Str(Value.ToUpperInvariant());
+        public static string Upper(this string s) => s.ToUpperInvariant();
 
         /// <summary>
         /// Return a copy of the string converted to lowercase.
         /// Python: <c>str.lower()</c>
         /// </summary>
-        public Str Lower() => new Str(Value.ToLowerInvariant());
+        public static string Lower(this string s) => s.ToLowerInvariant();
 
         /// <summary>
         /// Return a copy of the string with its first character capitalized
         /// and the rest lowercased.
         /// Python: <c>str.capitalize()</c>
         /// </summary>
-        public Str Capitalize()
+        public static string Capitalize(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
             {
-                return this;
+                return s;
             }
 
-            if (Value.Length == 1)
+            if (s.Length == 1)
             {
-                return new Str(Value.ToUpperInvariant());
+                return s.ToUpperInvariant();
             }
 
-            return new Str(char.ToUpperInvariant(Value[0]) + Value.Substring(1).ToLowerInvariant());
+            return char.ToUpperInvariant(s[0]) + s.Substring(1).ToLowerInvariant();
         }
 
         /// <summary>
         /// Return a titlecased version of the string.
         /// Python: <c>str.title()</c>
         /// </summary>
-        public Str Title()
+        public static string Title(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
             {
-                return this;
+                return s;
             }
 
-            var result = new StringBuilder(Value.Length);
+            var result = new StringBuilder(s.Length);
             bool previousWasLetter = false;
 
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (char.IsLetter(c))
                 {
@@ -75,7 +75,7 @@ namespace Sharpy
                 }
             }
 
-            return new Str(result.ToString());
+            return result.ToString();
         }
 
         /// <summary>
@@ -83,15 +83,15 @@ namespace Sharpy
         /// lowercase and vice versa.
         /// Python: <c>str.swapcase()</c>
         /// </summary>
-        public Str Swapcase()
+        public static string Swapcase(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
             {
-                return this;
+                return s;
             }
 
-            var result = new StringBuilder(Value.Length);
-            foreach (char c in Value)
+            var result = new StringBuilder(s.Length);
+            foreach (char c in s)
             {
                 if (char.IsUpper(c))
                 {
@@ -107,104 +107,104 @@ namespace Sharpy
                 }
             }
 
-            return new Str(result.ToString());
+            return result.ToString();
         }
 
         /// <summary>
         /// Return a casefolded copy of the string.
         /// Python: <c>str.casefold()</c>
         /// </summary>
-        public Str Casefold()
+        public static string Casefold(this string s)
         {
-            var sb = new System.Text.StringBuilder(Value.Length);
-            foreach (var c in Value)
+            var sb = new System.Text.StringBuilder(s.Length);
+            foreach (var c in s)
             {
                 sb.Append(CaseFoldChar(c));
             }
-            return new Str(sb.ToString());
+            return sb.ToString();
         }
 
         /// <summary>
         /// Return a copy with leading and trailing whitespace removed.
         /// Python: <c>str.strip()</c>
         /// </summary>
-        public Str Strip() => new Str(Value.Trim());
+        public static string Strip(this string s) => s.Trim();
 
         /// <summary>
         /// Return a copy with leading and trailing characters in
         /// <paramref name="chars"/> removed.
         /// Python: <c>str.strip(chars)</c>
         /// </summary>
-        public Str Strip(Str chars) => new Str(Value.Trim(((string)chars).ToCharArray()));
+        public static string Strip(this string s, string chars) => s.Trim(chars.ToCharArray());
 
         /// <summary>
         /// Return a copy with leading whitespace removed.
         /// Python: <c>str.lstrip()</c>
         /// </summary>
-        public Str Lstrip() => new Str(Value.TrimStart());
+        public static string Lstrip(this string s) => s.TrimStart();
 
         /// <summary>
         /// Return a copy with leading characters in <paramref name="chars"/> removed.
         /// Python: <c>str.lstrip(chars)</c>
         /// </summary>
-        public Str Lstrip(Str chars) => new Str(Value.TrimStart(((string)chars).ToCharArray()));
+        public static string Lstrip(this string s, string chars) => s.TrimStart(chars.ToCharArray());
 
         /// <summary>
         /// Return a copy with trailing whitespace removed.
         /// Python: <c>str.rstrip()</c>
         /// </summary>
-        public Str Rstrip() => new Str(Value.TrimEnd());
+        public static string Rstrip(this string s) => s.TrimEnd();
 
         /// <summary>
         /// Return a copy with trailing characters in <paramref name="chars"/> removed.
         /// Python: <c>str.rstrip(chars)</c>
         /// </summary>
-        public Str Rstrip(Str chars) => new Str(Value.TrimEnd(((string)chars).ToCharArray()));
+        public static string Rstrip(this string s, string chars) => s.TrimEnd(chars.ToCharArray());
 
         /// <summary>
         /// Return centered in a string of length <paramref name="width"/>.
         /// Python: <c>str.center(width, fillchar)</c>
         /// </summary>
-        public Str Center(int width, char fillchar = ' ')
+        public static string Center(this string s, int width, char fillchar = ' ')
         {
-            if (Value.Length >= width)
+            if (s.Length >= width)
             {
-                return this;
+                return s;
             }
 
-            int totalPadding = width - Value.Length;
+            int totalPadding = width - s.Length;
             int leftPadding = totalPadding / 2;
             int rightPadding = totalPadding - leftPadding;
 
-            return new Str(new string(fillchar, leftPadding) + Value + new string(fillchar, rightPadding));
+            return new string(fillchar, leftPadding) + s + new string(fillchar, rightPadding);
         }
 
         /// <summary>
         /// Return left-justified in a string of length <paramref name="width"/>.
         /// Python: <c>str.ljust(width, fillchar)</c>
         /// </summary>
-        public Str Ljust(int width, char fillchar = ' ')
+        public static string Ljust(this string s, int width, char fillchar = ' ')
         {
-            if (Value.Length >= width)
+            if (s.Length >= width)
             {
-                return this;
+                return s;
             }
 
-            return new Str(Value.PadRight(width, fillchar));
+            return s.PadRight(width, fillchar);
         }
 
         /// <summary>
         /// Return right-justified in a string of length <paramref name="width"/>.
         /// Python: <c>str.rjust(width, fillchar)</c>
         /// </summary>
-        public Str Rjust(int width, char fillchar = ' ')
+        public static string Rjust(this string s, int width, char fillchar = ' ')
         {
-            if (Value.Length >= width)
+            if (s.Length >= width)
             {
-                return this;
+                return s;
             }
 
-            return new Str(Value.PadLeft(width, fillchar));
+            return s.PadLeft(width, fillchar);
         }
 
         /// <summary>
@@ -212,21 +212,21 @@ namespace Sharpy
         /// <paramref name="width"/>. A leading sign prefix is handled.
         /// Python: <c>str.zfill(width)</c>
         /// </summary>
-        public Str Zfill(int width)
+        public static string Zfill(this string s, int width)
         {
-            if (Value.Length >= width)
+            if (s.Length >= width)
             {
-                return this;
+                return s;
             }
 
-            int fillCount = width - Value.Length;
+            int fillCount = width - s.Length;
 
-            if (Value.Length > 0 && (Value[0] == '+' || Value[0] == '-'))
+            if (s.Length > 0 && (s[0] == '+' || s[0] == '-'))
             {
-                return new Str(Value[0] + new string('0', fillCount) + Value.Substring(1));
+                return s[0] + new string('0', fillCount) + s.Substring(1);
             }
 
-            return new Str(new string('0', fillCount) + Value);
+            return new string('0', fillCount) + s;
         }
 
         /// <summary>
@@ -234,14 +234,14 @@ namespace Sharpy
         /// string with the prefix removed. Otherwise, return a copy.
         /// Python: <c>str.removeprefix(prefix)</c>
         /// </summary>
-        public Str Removeprefix(Str prefix)
+        public static string Removeprefix(this string s, string prefix)
         {
-            if (Value.StartsWith((string)prefix, StringComparison.Ordinal))
+            if (s.StartsWith(prefix, StringComparison.Ordinal))
             {
-                return new Str(Value.Substring(((string)prefix).Length));
+                return s.Substring(prefix.Length);
             }
 
-            return this;
+            return s;
         }
 
         /// <summary>
@@ -249,26 +249,26 @@ namespace Sharpy
         /// string with the suffix removed. Otherwise, return a copy.
         /// Python: <c>str.removesuffix(suffix)</c>
         /// </summary>
-        public Str Removesuffix(Str suffix)
+        public static string Removesuffix(this string s, string suffix)
         {
-            if (Value.EndsWith((string)suffix, StringComparison.Ordinal))
+            if (s.EndsWith(suffix, StringComparison.Ordinal))
             {
-                return new Str(Value.Substring(0, Value.Length - ((string)suffix).Length));
+                return s.Substring(0, s.Length - suffix.Length);
             }
 
-            return this;
+            return s;
         }
 
         /// <summary>
         /// Return a copy where all tab characters are expanded using spaces.
         /// Python: <c>str.expandtabs(tabsize=8)</c>
         /// </summary>
-        public Str Expandtabs(int tabsize = 8)
+        public static string Expandtabs(this string s, int tabsize = 8)
         {
             var result = new StringBuilder();
             int column = 0;
 
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (c == '\t')
                 {
@@ -292,7 +292,7 @@ namespace Sharpy
                 }
             }
 
-            return new Str(result.ToString());
+            return result.ToString();
         }
 
         /// <summary>
@@ -300,23 +300,21 @@ namespace Sharpy
         /// by <paramref name="new_"/>.
         /// Python: <c>str.replace(old, new)</c>
         /// </summary>
-        public Str Replace(Str old, Str new_)
+        public static string Replace(this string s, string old, string new_)
         {
-            string oldStr = (string)old;
-            string newStr = (string)new_;
-            if (oldStr.Length == 0)
+            if (old.Length == 0)
             {
-                var sb = new StringBuilder(newStr.Length * (Value.Length + 1) + Value.Length);
-                sb.Append(newStr);
-                foreach (char c in Value)
+                var sb = new StringBuilder(new_.Length * (s.Length + 1) + s.Length);
+                sb.Append(new_);
+                foreach (char c in s)
                 {
                     sb.Append(c);
-                    sb.Append(newStr);
+                    sb.Append(new_);
                 }
-                return new Str(sb.ToString());
+                return sb.ToString();
             }
 #pragma warning disable CA1307 // string.Replace(string, string, StringComparison) not available in netstandard2.0
-            return new Str(Value.Replace(oldStr, newStr));
+            return s.Replace(old, new_);
 #pragma warning restore CA1307
         }
 
@@ -325,59 +323,56 @@ namespace Sharpy
         /// <paramref name="old"/> replaced by <paramref name="new_"/>.
         /// Python: <c>str.replace(old, new, count)</c>
         /// </summary>
-        public Str Replace(Str old, Str new_, int count)
+        public static string Replace(this string s, string old, string new_, int count)
         {
             if (count < 0)
             {
-                return Replace(old, new_);
+                return Replace(s, old, new_);
             }
             if (count == 0)
             {
-                return this;
+                return s;
             }
 
-            string oldStr = (string)old;
-            string newStr = (string)new_;
-
-            if (oldStr.Length == 0)
+            if (old.Length == 0)
             {
                 var sb = new StringBuilder();
                 int replacements = 0;
                 if (replacements < count)
                 {
-                    sb.Append(newStr);
+                    sb.Append(new_);
                     replacements++;
                 }
-                foreach (char c in Value)
+                foreach (char c in s)
                 {
                     sb.Append(c);
                     if (replacements < count)
                     {
-                        sb.Append(newStr);
+                        sb.Append(new_);
                         replacements++;
                     }
                 }
-                return new Str(sb.ToString());
+                return sb.ToString();
             }
 
-            var result = new StringBuilder(Value.Length);
+            var result = new StringBuilder(s.Length);
             int start = 0;
             int replaced = 0;
 
-            while (start < Value.Length && replaced < count)
+            while (start < s.Length && replaced < count)
             {
-                int index = Value.IndexOf(oldStr, start, StringComparison.Ordinal);
+                int index = s.IndexOf(old, start, StringComparison.Ordinal);
                 if (index < 0)
                 {
                     break;
                 }
-                result.Append(Value, start, index - start);
-                result.Append(newStr);
-                start = index + oldStr.Length;
+                result.Append(s, start, index - start);
+                result.Append(new_);
+                start = index + old.Length;
                 replaced++;
             }
-            result.Append(Value, start, Value.Length - start);
-            return new Str(result.ToString());
+            result.Append(s, start, s.Length - start);
+            return result.ToString();
         }
     }
 }

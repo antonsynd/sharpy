@@ -57,7 +57,7 @@ namespace Sharpy
         }
 
         /// <summary>Return the ISO 8601 formatted string.</summary>
-        public Str Isoformat()
+        public string Isoformat()
         {
             return _date.ToString("yyyy-MM-dd");
         }
@@ -81,14 +81,14 @@ namespace Sharpy
         }
 
         /// <summary>Parse a date from ISO 8601 format string.</summary>
-        public static Date Fromisoformat(Str date_string)
+        public static Date Fromisoformat(string date_string)
         {
-            var dt = System.DateTime.ParseExact((string)date_string, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var dt = System.DateTime.ParseExact(date_string, "yyyy-MM-dd", CultureInfo.InvariantCulture);
             return new Date(dt);
         }
 
         /// <summary>Format the date using Python strftime format codes.</summary>
-        public Str Strftime(Str format)
+        public string Strftime(string format)
         {
             return DatetimeFormatHelper.Strftime(_date, format);
         }
@@ -205,7 +205,7 @@ namespace Sharpy
         }
 
         /// <summary>Return the ISO 8601 formatted string.</summary>
-        public Str Isoformat()
+        public string Isoformat()
         {
             if (Microsecond != 0)
                 return $"{Hour:D2}:{Minute:D2}:{Second:D2}.{Microsecond:D6}";
@@ -213,7 +213,7 @@ namespace Sharpy
         }
 
         /// <summary>Format the time using Python strftime format codes.</summary>
-        public Str Strftime(Str format)
+        public string Strftime(string format)
         {
             var dt = new System.DateTime(1900, 1, 1, Hour, Minute, Second).AddTicks(Microsecond * 10L);
             return DatetimeFormatHelper.Strftime(dt, format);
@@ -370,9 +370,9 @@ namespace Sharpy
         }
 
         /// <summary>Return the ISO 8601 formatted string.</summary>
-        public Str Isoformat(Str? sep = null)
+        public string Isoformat(string sep = null)
         {
-            string s = sep == null ? "T" : (string)sep.Value;
+            string s = sep ?? "T";
             var result = _dateTime.ToString("yyyy-MM-dd") + s + _dateTime.ToString("HH:mm:ss");
             if (Microsecond != 0)
             {
@@ -414,23 +414,23 @@ namespace Sharpy
         }
 
         /// <summary>Parse a datetime from ISO 8601 format string.</summary>
-        public static DateTime Fromisoformat(Str date_string)
+        public static DateTime Fromisoformat(string date_string)
         {
-            var dt = System.DateTime.Parse((string)date_string, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            var dt = System.DateTime.Parse(date_string, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
             return new DateTime(dt);
         }
 
         /// <summary>Format the datetime using Python strftime format codes.</summary>
-        public Str Strftime(Str format)
+        public string Strftime(string format)
         {
             return DatetimeFormatHelper.Strftime(_dateTime, format);
         }
 
         /// <summary>Parse a datetime from a string using Python strftime format codes.</summary>
-        public static DateTime Strptime(Str date_string, Str format)
+        public static DateTime Strptime(string date_string, string format)
         {
             var dotnetFormat = DatetimeFormatHelper.TranslateFormat(format);
-            var dt = System.DateTime.ParseExact((string)date_string, dotnetFormat, CultureInfo.InvariantCulture);
+            var dt = System.DateTime.ParseExact(date_string, dotnetFormat, CultureInfo.InvariantCulture);
             return new DateTime(dt);
         }
 
@@ -680,16 +680,16 @@ namespace Sharpy
     public class Timezone
     {
         private readonly Timedelta _offset;
-        private readonly Str _name;
+        private readonly string _name;
 
         /// <summary>The UTC timezone.</summary>
         public static readonly Timezone Utc = new Timezone(new Timedelta(), "UTC");
 
         /// <summary>Create a timezone with the given UTC offset and optional name.</summary>
-        public Timezone(Timedelta offset, Str? name = null)
+        public Timezone(Timedelta offset, string name = null)
         {
             _offset = offset;
-            _name = name ?? (Str)"";
+            _name = name ?? "";
         }
 
         /// <summary>Return the UTC offset.</summary>
@@ -699,7 +699,7 @@ namespace Sharpy
         }
 
         /// <summary>Return the timezone name.</summary>
-        public Str Tzname()
+        public string Tzname()
         {
             return _name;
         }
@@ -707,8 +707,8 @@ namespace Sharpy
         /// <summary>Return the string representation.</summary>
         public override string ToString()
         {
-            if ((string)_name != "")
-                return (string)_name;
+            if (_name != "")
+                return _name;
             var sign = _offset.InternalTimeSpan.Ticks >= 0 ? "+" : "-";
             var abs = _offset.InternalTimeSpan.Duration();
             return $"UTC{sign}{abs.Hours:D2}:{abs.Minutes:D2}";

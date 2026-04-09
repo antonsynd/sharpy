@@ -78,12 +78,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Parse Str to double (delegates to string overload).
-        /// Enables <c>Func&lt;Str, double&gt;</c> method group conversion.
-        /// </summary>
-        public static double Double(Str s) => Double((string)s);
-
-        /// <summary>
         /// Convert byte to double
         /// </summary>
         public static double Double(byte b)

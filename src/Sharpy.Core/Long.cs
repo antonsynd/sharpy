@@ -101,12 +101,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Parse Str to long (delegates to string overload).
-        /// Enables <c>Func&lt;Str, long&gt;</c> method group conversion.
-        /// </summary>
-        public static long Long(Str s) => Long((string)s);
-
-        /// <summary>
         /// Convert byte to long
         /// </summary>
         public static long Long(byte b)

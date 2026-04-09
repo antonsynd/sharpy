@@ -5,9 +5,9 @@ using System.Text;
 namespace Sharpy
 {
     /// <summary>
-    /// Split, join, partition methods for Str.
+    /// Split, join, partition extension methods for string.
     /// </summary>
-    public readonly partial struct Str
+    public static partial class StringExtensions
     {
         /// <summary>
         /// Return a string which is the concatenation of the strings in
@@ -15,14 +15,14 @@ namespace Sharpy
         /// string.
         /// Python: <c>str.join(iterable)</c> — called as <c>separator.join(list)</c>.
         /// </summary>
-        public Str Join(IEnumerable<Str> iterable)
+        public static string Join(this string s, IEnumerable<string> iterable)
         {
             var parts = new System.Collections.Generic.List<string>();
             foreach (var item in iterable)
             {
-                parts.Add(item.Value);
+                parts.Add(item);
             }
-            return new Str(string.Join(Value, parts));
+            return string.Join(s, parts);
         }
 
         /// <summary>
@@ -30,26 +30,26 @@ namespace Sharpy
         /// leading/trailing whitespace is stripped.
         /// Python: <c>str.split()</c>
         /// </summary>
-        public List<Str> Split()
+        public static List<string> Split(this string s)
         {
-            var result = new List<Str>();
+            var result = new List<string>();
             int i = 0;
-            while (i < Value.Length)
+            while (i < s.Length)
             {
-                while (i < Value.Length && char.IsWhiteSpace(Value[i]))
+                while (i < s.Length && char.IsWhiteSpace(s[i]))
                 {
                     i++;
                 }
-                if (i >= Value.Length)
+                if (i >= s.Length)
                 {
                     break;
                 }
                 int start = i;
-                while (i < Value.Length && !char.IsWhiteSpace(Value[i]))
+                while (i < s.Length && !char.IsWhiteSpace(s[i]))
                 {
                     i++;
                 }
-                result.Add(new Str(Value.Substring(start, i - start)));
+                result.Add(s.Substring(start, i - start));
             }
             return result;
         }
@@ -58,9 +58,9 @@ namespace Sharpy
         /// Split on a separator string.
         /// Python: <c>str.split(sep)</c>
         /// </summary>
-        public List<Str> Split(Str sep)
+        public static List<string> Split(this string s, string sep)
         {
-            return Split(sep, -1);
+            return Split(s, sep, -1);
         }
 
         /// <summary>
@@ -68,38 +68,37 @@ namespace Sharpy
         /// <paramref name="maxsplit"/> splits (from the left).
         /// Python: <c>str.split(sep, maxsplit)</c>
         /// </summary>
-        public List<Str> Split(Str sep, int maxsplit)
+        public static List<string> Split(this string s, string sep, int maxsplit)
         {
-            string sepStr = (string)sep;
-            if (sepStr == null)
+            if (sep == null)
             {
                 throw TypeError.ArgNone("split", "sep");
             }
-            if (sepStr.Length == 0)
+            if (sep.Length == 0)
             {
                 throw new ValueError("empty separator");
             }
 
-            var result = new List<Str>();
+            var result = new List<string>();
             int start = 0;
             int splits = 0;
 
-            while (start <= Value.Length)
+            while (start <= s.Length)
             {
                 if (maxsplit >= 0 && splits >= maxsplit)
                 {
                     break;
                 }
-                int index = Value.IndexOf(sepStr, start, StringComparison.Ordinal);
+                int index = s.IndexOf(sep, start, StringComparison.Ordinal);
                 if (index < 0)
                 {
                     break;
                 }
-                result.Add(new Str(Value.Substring(start, index - start)));
-                start = index + sepStr.Length;
+                result.Add(s.Substring(start, index - start));
+                start = index + sep.Length;
                 splits++;
             }
-            result.Add(new Str(Value.Substring(start)));
+            result.Add(s.Substring(start));
             return result;
         }
 
@@ -107,18 +106,18 @@ namespace Sharpy
         /// Split on whitespace from the right.
         /// Python: <c>str.rsplit()</c>
         /// </summary>
-        public List<Str> Rsplit()
+        public static List<string> Rsplit(this string s)
         {
-            return Split();
+            return Split(s);
         }
 
         /// <summary>
         /// Split on a separator string from the right.
         /// Python: <c>str.rsplit(sep)</c>
         /// </summary>
-        public List<Str> Rsplit(Str sep)
+        public static List<string> Rsplit(this string s, string sep)
         {
-            return Rsplit(sep, -1);
+            return Rsplit(s, sep, -1);
         }
 
         /// <summary>
@@ -126,72 +125,71 @@ namespace Sharpy
         /// <paramref name="maxsplit"/> splits.
         /// Python: <c>str.rsplit(sep, maxsplit)</c>
         /// </summary>
-        public List<Str> Rsplit(Str sep, int maxsplit)
+        public static List<string> Rsplit(this string s, string sep, int maxsplit)
         {
-            string sepStr = (string)sep;
-            if (sepStr == null)
+            if (sep == null)
             {
                 throw TypeError.ArgNone("rsplit", "sep");
             }
-            if (sepStr.Length == 0)
+            if (sep.Length == 0)
             {
                 throw new ValueError("empty separator");
             }
 
             if (maxsplit < 0)
             {
-                return Split(sep, -1);
+                return Split(s, sep, -1);
             }
 
-            var parts = new System.Collections.Generic.List<Str>();
-            int end = Value.Length;
+            var parts = new System.Collections.Generic.List<string>();
+            int end = s.Length;
             int splits = 0;
 
             while (end > 0 && splits < maxsplit)
             {
-                int index = Value.LastIndexOf(sepStr, end - 1, StringComparison.Ordinal);
+                int index = s.LastIndexOf(sep, end - 1, StringComparison.Ordinal);
                 if (index < 0)
                 {
                     break;
                 }
-                parts.Add(new Str(Value.Substring(index + sepStr.Length, end - index - sepStr.Length)));
+                parts.Add(s.Substring(index + sep.Length, end - index - sep.Length));
                 end = index;
                 splits++;
             }
-            parts.Add(new Str(Value.Substring(0, end)));
+            parts.Add(s.Substring(0, end));
             parts.Reverse();
-            return new List<Str>(parts);
+            return new List<string>(parts);
         }
 
         /// <summary>
         /// Return a list of the lines in the string, breaking at line boundaries.
         /// Python: <c>str.splitlines()</c>
         /// </summary>
-        public List<Str> Splitlines()
+        public static List<string> Splitlines(this string s)
         {
-            return Splitlines(false);
+            return Splitlines(s, false);
         }
 
         /// <summary>
         /// Return a list of lines, optionally keeping line break characters.
         /// Python: <c>str.splitlines(keepends)</c>
         /// </summary>
-        public List<Str> Splitlines(bool keepends)
+        public static List<string> Splitlines(this string s, bool keepends)
         {
-            var result = new List<Str>();
-            if (string.IsNullOrEmpty(Value))
+            var result = new List<string>();
+            if (string.IsNullOrEmpty(s))
             {
                 return result;
             }
 
             var currentLine = new StringBuilder();
-            for (int i = 0; i < Value.Length; i++)
+            for (int i = 0; i < s.Length; i++)
             {
-                char c = Value[i];
+                char c = s[i];
 
                 if (c == '\r')
                 {
-                    if (i + 1 < Value.Length && Value[i + 1] == '\n')
+                    if (i + 1 < s.Length && s[i + 1] == '\n')
                     {
                         if (keepends)
                         {
@@ -206,7 +204,7 @@ namespace Sharpy
                             currentLine.Append(c);
                         }
                     }
-                    result.Add(new Str(currentLine.ToString()));
+                    result.Add(currentLine.ToString());
                     currentLine.Clear();
                 }
                 else if (c == '\n' || c == '\x0B' || c == '\x0C'
@@ -217,7 +215,7 @@ namespace Sharpy
                     {
                         currentLine.Append(c);
                     }
-                    result.Add(new Str(currentLine.ToString()));
+                    result.Add(currentLine.ToString());
                     currentLine.Clear();
                 }
                 else
@@ -228,7 +226,7 @@ namespace Sharpy
 
             if (currentLine.Length > 0)
             {
-                result.Add(new Str(currentLine.ToString()));
+                result.Add(currentLine.ToString());
             }
 
             return result;
@@ -239,26 +237,25 @@ namespace Sharpy
         /// 3-tuple.
         /// Python: <c>str.partition(sep)</c>
         /// </summary>
-        public (Str, Str, Str) Partition(Str sep)
+        public static (string, string, string) Partition(this string s, string sep)
         {
-            string sepStr = (string)sep;
-            if (sepStr == null)
+            if (sep == null)
             {
                 throw TypeError.ArgNone("partition", "sep");
             }
-            if (sepStr.Length == 0)
+            if (sep.Length == 0)
             {
                 throw new ValueError("empty separator");
             }
-            int index = Value.IndexOf(sepStr, StringComparison.Ordinal);
+            int index = s.IndexOf(sep, StringComparison.Ordinal);
             if (index < 0)
             {
-                return (this, new Str(""), new Str(""));
+                return (s, "", "");
             }
             return (
-                new Str(Value.Substring(0, index)),
+                s.Substring(0, index),
                 sep,
-                new Str(Value.Substring(index + sepStr.Length))
+                s.Substring(index + sep.Length)
             );
         }
 
@@ -267,26 +264,25 @@ namespace Sharpy
         /// 3-tuple.
         /// Python: <c>str.rpartition(sep)</c>
         /// </summary>
-        public (Str, Str, Str) Rpartition(Str sep)
+        public static (string, string, string) Rpartition(this string s, string sep)
         {
-            string sepStr = (string)sep;
-            if (sepStr == null)
+            if (sep == null)
             {
                 throw TypeError.ArgNone("rpartition", "sep");
             }
-            if (sepStr.Length == 0)
+            if (sep.Length == 0)
             {
                 throw new ValueError("empty separator");
             }
-            int index = Value.LastIndexOf(sepStr, StringComparison.Ordinal);
+            int index = s.LastIndexOf(sep, StringComparison.Ordinal);
             if (index < 0)
             {
-                return (new Str(""), new Str(""), this);
+                return ("", "", s);
             }
             return (
-                new Str(Value.Substring(0, index)),
+                s.Substring(0, index),
                 sep,
-                new Str(Value.Substring(index + sepStr.Length))
+                s.Substring(index + sep.Length)
             );
         }
     }

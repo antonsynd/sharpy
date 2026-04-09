@@ -3,9 +3,9 @@ using System;
 namespace Sharpy
 {
     /// <summary>
-    /// Search and predicate methods for Str.
+    /// Search and predicate extension methods for string.
     /// </summary>
-    public readonly partial struct Str
+    public static partial class StringExtensions
     {
         // ----------------------------------------------------------------
         // Find / Rfind
@@ -16,9 +16,9 @@ namespace Sharpy
         /// Return -1 if not found.
         /// Python: <c>str.find(sub)</c>
         /// </summary>
-        public int Find(Str sub)
+        public static int Find(this string s, string sub)
         {
-            return Value.IndexOf((string)sub, StringComparison.Ordinal);
+            return s.IndexOf(sub, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -26,25 +26,24 @@ namespace Sharpy
         /// starting the search at <paramref name="start"/>.
         /// Python: <c>str.find(sub, start)</c>
         /// </summary>
-        public int Find(Str sub, int start)
+        public static int Find(this string s, string sub, int start)
         {
-            string subStr = (string)sub;
             if (start < 0)
             {
-                start = System.Math.Max(0, Value.Length + start);
+                start = System.Math.Max(0, s.Length + start);
             }
 
-            if (start > Value.Length)
+            if (start > s.Length)
             {
                 return -1;
             }
 
-            if (start == Value.Length)
+            if (start == s.Length)
             {
-                return string.IsNullOrEmpty(subStr) ? Value.Length : -1;
+                return string.IsNullOrEmpty(sub) ? s.Length : -1;
             }
 
-            return Value.IndexOf(subStr, start, StringComparison.Ordinal);
+            return s.IndexOf(sub, start, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -52,22 +51,21 @@ namespace Sharpy
         /// within <c>s[start:end]</c>.
         /// Python: <c>str.find(sub, start, end)</c>
         /// </summary>
-        public int Find(Str sub, int start, int end)
+        public static int Find(this string s, string sub, int start, int end)
         {
-            string subStr = (string)sub;
             if (start < 0)
-                start = System.Math.Max(0, Value.Length + start);
+                start = System.Math.Max(0, s.Length + start);
             if (end < 0)
-                end = System.Math.Max(0, Value.Length + end);
-            if (end > Value.Length)
-                end = Value.Length;
-            if (start > end || start > Value.Length)
+                end = System.Math.Max(0, s.Length + end);
+            if (end > s.Length)
+                end = s.Length;
+            if (start > end || start > s.Length)
                 return -1;
             if (start == end)
-                return string.IsNullOrEmpty(subStr) ? start : -1;
+                return string.IsNullOrEmpty(sub) ? start : -1;
 
             int count = end - start;
-            return Value.IndexOf(subStr, start, count, StringComparison.Ordinal);
+            return s.IndexOf(sub, start, count, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -75,9 +73,9 @@ namespace Sharpy
         /// Return -1 if not found.
         /// Python: <c>str.rfind(sub)</c>
         /// </summary>
-        public int Rfind(Str sub)
+        public static int Rfind(this string s, string sub)
         {
-            return Value.LastIndexOf((string)sub, StringComparison.Ordinal);
+            return s.LastIndexOf(sub, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -85,26 +83,25 @@ namespace Sharpy
         /// searching within <c>s[start:]</c>.
         /// Python: <c>str.rfind(sub, start)</c>
         /// </summary>
-        public int Rfind(Str sub, int start)
+        public static int Rfind(this string s, string sub, int start)
         {
-            string subStr = (string)sub;
             if (start < 0)
             {
-                start = System.Math.Max(0, Value.Length + start);
+                start = System.Math.Max(0, s.Length + start);
             }
 
-            if (start > Value.Length)
+            if (start > s.Length)
             {
                 return -1;
             }
 
-            if (start == Value.Length)
+            if (start == s.Length)
             {
-                return string.IsNullOrEmpty(subStr) ? Value.Length : -1;
+                return string.IsNullOrEmpty(sub) ? s.Length : -1;
             }
 
-            var substring = Value.Substring(start);
-            var index = substring.LastIndexOf(subStr, StringComparison.Ordinal);
+            var substring = s.Substring(start);
+            var index = substring.LastIndexOf(sub, StringComparison.Ordinal);
             return index >= 0 ? start + index : -1;
         }
 
@@ -113,22 +110,21 @@ namespace Sharpy
         /// within <c>s[start:end]</c>.
         /// Python: <c>str.rfind(sub, start, end)</c>
         /// </summary>
-        public int Rfind(Str sub, int start, int end)
+        public static int Rfind(this string s, string sub, int start, int end)
         {
-            string subStr = (string)sub;
             if (start < 0)
-                start = System.Math.Max(0, Value.Length + start);
+                start = System.Math.Max(0, s.Length + start);
             if (end < 0)
-                end = System.Math.Max(0, Value.Length + end);
-            if (end > Value.Length)
-                end = Value.Length;
-            if (start > end || start > Value.Length)
+                end = System.Math.Max(0, s.Length + end);
+            if (end > s.Length)
+                end = s.Length;
+            if (start > end || start > s.Length)
                 return -1;
             if (start == end)
-                return string.IsNullOrEmpty(subStr) ? start : -1;
+                return string.IsNullOrEmpty(sub) ? start : -1;
 
-            var slice = Value.Substring(start, end - start);
-            int index = slice.LastIndexOf(subStr, StringComparison.Ordinal);
+            var slice = s.Substring(start, end - start);
+            int index = slice.LastIndexOf(sub, StringComparison.Ordinal);
             return index >= 0 ? start + index : -1;
         }
 
@@ -137,13 +133,13 @@ namespace Sharpy
         // ----------------------------------------------------------------
 
         /// <summary>
-        /// Like <see cref="Find(Str)"/> but raises <see cref="ValueError"/>
+        /// Like <see cref="Find(string, string)"/> but raises <see cref="ValueError"/>
         /// when the substring is not found.
         /// Python: <c>str.index(sub)</c>
         /// </summary>
-        public int Index(Str sub)
+        public static int Index(this string s, string sub)
         {
-            int result = Find(sub);
+            int result = Find(s, sub);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
@@ -152,12 +148,12 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Like <see cref="Find(Str, int)"/> but raises <see cref="ValueError"/>.
+        /// Like <see cref="Find(string, string, int)"/> but raises <see cref="ValueError"/>.
         /// Python: <c>str.index(sub, start)</c>
         /// </summary>
-        public int Index(Str sub, int start)
+        public static int Index(this string s, string sub, int start)
         {
-            int result = Find(sub, start);
+            int result = Find(s, sub, start);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
@@ -166,12 +162,12 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Like <see cref="Find(Str, int, int)"/> but raises <see cref="ValueError"/>.
+        /// Like <see cref="Find(string, string, int, int)"/> but raises <see cref="ValueError"/>.
         /// Python: <c>str.index(sub, start, end)</c>
         /// </summary>
-        public int Index(Str sub, int start, int end)
+        public static int Index(this string s, string sub, int start, int end)
         {
-            int result = Find(sub, start, end);
+            int result = Find(s, sub, start, end);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
@@ -180,12 +176,12 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Like <see cref="Rfind(Str)"/> but raises <see cref="ValueError"/>.
+        /// Like <see cref="Rfind(string, string)"/> but raises <see cref="ValueError"/>.
         /// Python: <c>str.rindex(sub)</c>
         /// </summary>
-        public int Rindex(Str sub)
+        public static int Rindex(this string s, string sub)
         {
-            int result = Rfind(sub);
+            int result = Rfind(s, sub);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
@@ -194,12 +190,12 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Like <see cref="Rfind(Str, int)"/> but raises <see cref="ValueError"/>.
+        /// Like <see cref="Rfind(string, string, int)"/> but raises <see cref="ValueError"/>.
         /// Python: <c>str.rindex(sub, start)</c>
         /// </summary>
-        public int Rindex(Str sub, int start)
+        public static int Rindex(this string s, string sub, int start)
         {
-            int result = Rfind(sub, start);
+            int result = Rfind(s, sub, start);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
@@ -208,12 +204,12 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Like <see cref="Rfind(Str, int, int)"/> but raises <see cref="ValueError"/>.
+        /// Like <see cref="Rfind(string, string, int, int)"/> but raises <see cref="ValueError"/>.
         /// Python: <c>str.rindex(sub, start, end)</c>
         /// </summary>
-        public int Rindex(Str sub, int start, int end)
+        public static int Rindex(this string s, string sub, int start, int end)
         {
-            int result = Rfind(sub, start, end);
+            int result = Rfind(s, sub, start, end);
             if (result < 0)
             {
                 throw new ValueError("substring not found");
@@ -230,20 +226,19 @@ namespace Sharpy
         /// <paramref name="sub"/>.
         /// Python: <c>str.count(sub)</c>
         /// </summary>
-        public int Count(Str sub)
+        public static int Count(this string s, string sub)
         {
-            string subStr = (string)sub;
-            if (string.IsNullOrEmpty(subStr))
+            if (string.IsNullOrEmpty(sub))
             {
-                return Value.Length + 1;
+                return s.Length + 1;
             }
 
             int count = 0;
             int index = 0;
-            while ((index = Value.IndexOf(subStr, index, StringComparison.Ordinal)) >= 0)
+            while ((index = s.IndexOf(sub, index, StringComparison.Ordinal)) >= 0)
             {
                 count++;
-                index += subStr.Length;
+                index += sub.Length;
             }
 
             return count;
@@ -257,112 +252,109 @@ namespace Sharpy
         /// Return true if the string starts with the <paramref name="prefix"/>.
         /// Python: <c>str.startswith(prefix)</c>
         /// </summary>
-        public bool Startswith(Str prefix)
+        public static bool Startswith(this string s, string prefix)
         {
-            return Value.StartsWith((string)prefix, StringComparison.Ordinal);
+            return s.StartsWith(prefix, StringComparison.Ordinal);
         }
 
         /// <summary>
         /// Return true if <c>s[start:]</c> starts with the <paramref name="prefix"/>.
         /// Python: <c>str.startswith(prefix, start)</c>
         /// </summary>
-        public bool Startswith(Str prefix, int start)
+        public static bool Startswith(this string s, string prefix, int start)
         {
-            string prefixStr = (string)prefix;
             if (start < 0)
             {
-                start = System.Math.Max(0, Value.Length + start);
+                start = System.Math.Max(0, s.Length + start);
             }
-            if (start > Value.Length)
+            if (start > s.Length)
             {
                 return false;
             }
-            if (start + prefixStr.Length > Value.Length)
+            if (start + prefix.Length > s.Length)
             {
                 return false;
             }
-            return string.Compare(Value, start, prefixStr, 0, prefixStr.Length, StringComparison.Ordinal) == 0;
+            return string.Compare(s, start, prefix, 0, prefix.Length, StringComparison.Ordinal) == 0;
         }
 
         /// <summary>
         /// Return true if <c>s[start:end]</c> starts with the <paramref name="prefix"/>.
         /// Python: <c>str.startswith(prefix, start, end)</c>
         /// </summary>
-        public bool Startswith(Str prefix, int start, int end)
+        public static bool Startswith(this string s, string prefix, int start, int end)
         {
-            string prefixStr = (string)prefix;
             if (start < 0)
             {
-                start = System.Math.Max(0, Value.Length + start);
+                start = System.Math.Max(0, s.Length + start);
             }
             if (end < 0)
             {
-                end = System.Math.Max(0, Value.Length + end);
+                end = System.Math.Max(0, s.Length + end);
             }
-            if (end > Value.Length)
+            if (end > s.Length)
             {
-                end = Value.Length;
+                end = s.Length;
             }
             if (start > end)
             {
                 return false;
             }
             int sliceLen = end - start;
-            if (prefixStr.Length > sliceLen)
+            if (prefix.Length > sliceLen)
             {
                 return false;
             }
-            return string.Compare(Value, start, prefixStr, 0, prefixStr.Length, StringComparison.Ordinal) == 0;
+            return string.Compare(s, start, prefix, 0, prefix.Length, StringComparison.Ordinal) == 0;
         }
 
         /// <summary>
         /// Return true if the string ends with the <paramref name="suffix"/>.
         /// Python: <c>str.endswith(suffix)</c>
         /// </summary>
-        public bool Endswith(Str suffix)
+        public static bool Endswith(this string s, string suffix)
         {
-            return Value.EndsWith((string)suffix, StringComparison.Ordinal);
+            return s.EndsWith(suffix, StringComparison.Ordinal);
         }
 
         /// <summary>
         /// Return true if <c>s[start:]</c> ends with the <paramref name="suffix"/>.
         /// Python: <c>str.endswith(suffix, start)</c>
         /// </summary>
-        public bool Endswith(Str suffix, int start)
+        public static bool Endswith(this string s, string suffix, int start)
         {
-            return Endswith(suffix, start, Value.Length);
+            return Endswith(s, suffix, start, s.Length);
         }
 
         /// <summary>
         /// Return true if <c>s[start:end]</c> ends with the <paramref name="suffix"/>.
         /// Python: <c>str.endswith(suffix, start, end)</c>
         /// </summary>
-        public bool Endswith(Str suffix, int start, int end)
+        public static bool Endswith(this string s, string suffix, int start, int end)
         {
-            string suffixStr = (string)suffix;
             if (start < 0)
             {
-                start = System.Math.Max(0, Value.Length + start);
+                start = System.Math.Max(0, s.Length + start);
             }
             if (end < 0)
             {
-                end = System.Math.Max(0, Value.Length + end);
+                end = System.Math.Max(0, s.Length + end);
             }
-            if (end > Value.Length)
+            if (end > s.Length)
             {
-                end = Value.Length;
+                end = s.Length;
             }
             if (start > end)
             {
                 return false;
             }
             int sliceLen = end - start;
-            if (suffixStr.Length > sliceLen)
+            if (suffix.Length > sliceLen)
             {
                 return false;
             }
-            int compareStart = end - suffixStr.Length;
-            return string.Compare(Value, compareStart, suffixStr, 0, suffixStr.Length, StringComparison.Ordinal) == 0;
+            int compareStart = end - suffix.Length;
+            return string.Compare(s, compareStart, suffix, 0, suffix.Length, StringComparison.Ordinal) == 0;
         }
 
         // ----------------------------------------------------------------
@@ -373,11 +365,11 @@ namespace Sharpy
         /// Return true if all characters are digits and there is at least one character.
         /// Python: <c>str.isdigit()</c>
         /// </summary>
-        public bool Isdigit()
+        public static bool Isdigit(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
                 return false;
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (!char.IsDigit(c))
                     return false;
@@ -389,11 +381,11 @@ namespace Sharpy
         /// Return true if all characters are alphabetic and there is at least one character.
         /// Python: <c>str.isalpha()</c>
         /// </summary>
-        public bool Isalpha()
+        public static bool Isalpha(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
                 return false;
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (!char.IsLetter(c))
                     return false;
@@ -405,11 +397,11 @@ namespace Sharpy
         /// Return true if all characters are alphanumeric and there is at least one character.
         /// Python: <c>str.isalnum()</c>
         /// </summary>
-        public bool Isalnum()
+        public static bool Isalnum(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
                 return false;
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (!char.IsLetterOrDigit(c))
                     return false;
@@ -421,11 +413,11 @@ namespace Sharpy
         /// Return true if all characters are whitespace and there is at least one character.
         /// Python: <c>str.isspace()</c>
         /// </summary>
-        public bool Isspace()
+        public static bool Isspace(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
                 return false;
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (!char.IsWhiteSpace(c))
                     return false;
@@ -438,12 +430,12 @@ namespace Sharpy
         /// one cased character.
         /// Python: <c>str.isupper()</c>
         /// </summary>
-        public bool Isupper()
+        public static bool Isupper(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
                 return false;
             bool hasCased = false;
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (char.IsLower(c))
                     return false;
@@ -458,12 +450,12 @@ namespace Sharpy
         /// one cased character.
         /// Python: <c>str.islower()</c>
         /// </summary>
-        public bool Islower()
+        public static bool Islower(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
                 return false;
             bool hasCased = false;
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (char.IsUpper(c))
                     return false;
@@ -477,13 +469,13 @@ namespace Sharpy
         /// Return true if the string is titlecased and there is at least one character.
         /// Python: <c>str.istitle()</c>
         /// </summary>
-        public bool Istitle()
+        public static bool Istitle(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
                 return false;
             bool hasCased = false;
             bool previousWasCased = false;
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (char.IsUpper(c))
                 {
@@ -511,11 +503,11 @@ namespace Sharpy
         /// Return true if all characters are numeric and there is at least one character.
         /// Python: <c>str.isnumeric()</c>
         /// </summary>
-        public bool Isnumeric()
+        public static bool Isnumeric(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
                 return false;
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (!char.IsDigit(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.OtherNumber)
                     return false;
@@ -527,11 +519,11 @@ namespace Sharpy
         /// Return true if all characters are decimal characters and there is at least one character.
         /// Python: <c>str.isdecimal()</c>
         /// </summary>
-        public bool Isdecimal()
+        public static bool Isdecimal(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
                 return false;
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.DecimalDigitNumber)
                     return false;
@@ -543,16 +535,16 @@ namespace Sharpy
         /// Return true if the string is a valid Python identifier.
         /// Python: <c>str.isidentifier()</c>
         /// </summary>
-        public bool Isidentifier()
+        public static bool Isidentifier(this string s)
         {
-            if (string.IsNullOrEmpty(Value))
+            if (string.IsNullOrEmpty(s))
                 return false;
-            char first = Value[0];
+            char first = s[0];
             if (!char.IsLetter(first) && first != '_')
                 return false;
-            for (int i = 1; i < Value.Length; i++)
+            for (int i = 1; i < s.Length; i++)
             {
-                char c = Value[i];
+                char c = s[i];
                 if (!char.IsLetterOrDigit(c) && c != '_')
                     return false;
             }
@@ -563,11 +555,11 @@ namespace Sharpy
         /// Return true if all characters are printable or the string is empty.
         /// Python: <c>str.isprintable()</c>
         /// </summary>
-        public bool Isprintable()
+        public static bool Isprintable(this string s)
         {
-            if (Value.Length == 0)
+            if (s.Length == 0)
                 return true;
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 var category = char.GetUnicodeCategory(c);
                 if (category == System.Globalization.UnicodeCategory.Control
@@ -588,9 +580,9 @@ namespace Sharpy
         /// Return true if all characters are ASCII (U+0000 to U+007F) or the string is empty.
         /// Python: <c>str.isascii()</c>
         /// </summary>
-        public bool Isascii()
+        public static bool Isascii(this string s)
         {
-            foreach (char c in Value)
+            foreach (char c in s)
             {
                 if (c > '\u007F')
                     return false;

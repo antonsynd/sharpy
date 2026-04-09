@@ -48,9 +48,16 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return the length of a Str.
-        /// Enables <c>Func&lt;Str, int&gt;</c> method group conversion (avoids boxing).
+        /// Return the length of a string.
         /// </summary>
-        public static int Len(Str s) => ((ISized)s).Count;
+        public static int Len(string s)
+        {
+            if (s is null)
+            {
+                throw TypeError.ArgNone("len", "sized");
+            }
+
+            return s.Length;
+        }
     }
 }

@@ -10,9 +10,9 @@ namespace Sharpy
     /// Handles quoted fields, escaped quotes, and commas within quoted fields.
     /// </summary>
     [SharpyModuleType("csv")]
-    public sealed class CsvReader : IEnumerable<Sharpy.List<Str>>
+    public sealed class CsvReader : IEnumerable<Sharpy.List<string>>
     {
-        private readonly IEnumerable<Str> _lines;
+        private readonly IEnumerable<string> _lines;
         private int _lineNum;
 
         /// <summary>
@@ -29,7 +29,7 @@ namespace Sharpy
         /// Create a new CsvReader from an enumerable of lines.
         /// </summary>
         /// <param name="lines">The lines to parse as CSV.</param>
-        internal CsvReader(IEnumerable<Str> lines)
+        internal CsvReader(IEnumerable<string> lines)
         {
             _lines = lines ?? throw new TypeError("'NoneType' is not iterable");
         }
@@ -37,12 +37,12 @@ namespace Sharpy
         /// <summary>
         /// Returns an enumerator that parses each line into a list of string fields.
         /// </summary>
-        public IEnumerator<Sharpy.List<Str>> GetEnumerator()
+        public IEnumerator<Sharpy.List<string>> GetEnumerator()
         {
-            foreach (Str line in _lines)
+            foreach (string line in _lines)
             {
                 _lineNum++;
-                yield return ParseLine((string)line);
+                yield return ParseLine(line);
             }
         }
 
@@ -51,9 +51,9 @@ namespace Sharpy
             return GetEnumerator();
         }
 
-        internal static Sharpy.List<Str> ParseLine(string line)
+        internal static Sharpy.List<string> ParseLine(string line)
         {
-            var fields = new System.Collections.Generic.List<Str>();
+            var fields = new System.Collections.Generic.List<string>();
             var field = new StringBuilder();
             bool inQuotes = false;
             int i = 0;
@@ -94,7 +94,7 @@ namespace Sharpy
                     }
                     else if (c == ',')
                     {
-                        fields.Add((Str)field.ToString());
+                        fields.Add(field.ToString());
                         field.Clear();
                         i++;
                     }
@@ -107,9 +107,9 @@ namespace Sharpy
             }
 
             // Add last field
-            fields.Add((Str)field.ToString());
+            fields.Add(field.ToString());
 
-            return new Sharpy.List<Str>(fields);
+            return new Sharpy.List<string>(fields);
         }
     }
 }
