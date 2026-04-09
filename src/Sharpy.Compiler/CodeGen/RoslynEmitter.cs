@@ -83,6 +83,12 @@ internal partial class RoslynEmitter
     // CodeGenInfo.IsStringEnum (for string enums). This information is populated
     // during semantic analysis.
 
+    /// <summary>
+    /// Tracks the Sharpy names of variadic parameters (*args) in the current function scope.
+    /// Used to avoid wrapping variadic string[] params with StringHelpers.Iterate() in for-loops.
+    /// </summary>
+    private readonly HashSet<string> _currentVariadicParams = new();
+
     private readonly DunderCodeGenRegistry _dunderRegistry;
     private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new(); // Track interface definitions for abstract class stub generation
     private int _tempVarCounter = 0;
@@ -312,13 +318,25 @@ internal partial class RoslynEmitter
     /// Clears all local scope tracking fields for a new method/function scope.
     /// Call at the start of each method, function, property accessor, or operator body.
     /// </summary>
-    private void ResetMethodScope()
+    private void ResetMethodScope(FunctionDef? funcDef = null)
     {
         _declaredVariables.Clear();
         _variableVersions.Clear();
         _constVariables.Clear();
         _sourceVariableNames.Clear();
+        _currentVariadicParams.Clear();
         _narrowing.Reset();
+
+        // Track variadic parameter names so codegen can distinguish
+        // `for x in str_var:` (needs Iterate) from `for x in variadic_params:` (already T[])
+        if (funcDef != null)
+        {
+            foreach (var p in funcDef.Parameters)
+            {
+                if (p.IsVariadic)
+                    _currentVariadicParams.Add(p.Name);
+            }
+        }
     }
 
     /// <summary>

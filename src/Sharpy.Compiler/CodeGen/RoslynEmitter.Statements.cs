@@ -1147,6 +1147,16 @@ internal partial class RoslynEmitter
             .WithModifiers(modifiers);
     }
 
+    /// <summary>
+    /// Checks if the expression is a reference to a variadic parameter (*args).
+    /// Variadic parameters have semantic type T but are params T[] at C# level,
+    /// so they should not be wrapped with StringHelpers.Iterate().
+    /// </summary>
+    private bool IsVariadicParameterReference(Expression expr)
+    {
+        return expr is Identifier ident && _currentVariadicParams.Contains(ident.Name);
+    }
+
     private static bool IsCompileTimeLiteral(Expression? expr)
     {
         // Check if the expression is a compile-time literal that can be used with C# const
@@ -1571,8 +1581,10 @@ internal partial class RoslynEmitter
         var iterator = GenerateExpression(forStmt.Iterator);
 
         // String iteration: `for c in s:` → `foreach (var c in StringHelpers.Iterate(s))`
-        // Yields string elements (single-character strings), not char
-        if (iteratorType == SemanticType.Str)
+        // Yields string elements (single-character strings), not char.
+        // Skip for variadic parameters (*args: str) — those are string[] at C# level,
+        // and iterating over string[] already yields string elements.
+        if (iteratorType == SemanticType.Str && !IsVariadicParameterReference(forStmt.Iterator))
         {
             iterator = InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,

@@ -1072,18 +1072,20 @@ def foo(x: int):
     [Fact]
     public void ChecksElifConditionType()
     {
+        // String literals are truth-testable (Python semantics: `if "nonempty":` is valid).
+        // Use a non-truth-testable type (tuple literal) to test elif condition type checking.
         var source = @"
 def foo():
     x: int = 1
     if x > 10:
         print(""high"")
-    elif ""not a bool"":  # elif condition must be boolean
+    elif (1, 2):  # elif condition must be boolean — tuples are not truth-testable
         print(""medium"")
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        // Elif condition type checking
+        // Elif condition type checking — tuple is not truth-testable
         typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("boolean"));
     }
 

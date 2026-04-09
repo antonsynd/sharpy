@@ -20,7 +20,7 @@ internal partial class RoslynEmitter
     private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
     {
         // Clear declared variables and version tracking for new method scope
-        ResetMethodScope();
+        ResetMethodScope(func);
 
         // Check if this method is a generator and/or async
         using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
