@@ -12,7 +12,7 @@ public partial class Set_Tests
         var s = new Set<int>();
 
         // When/then
-        ((string)Str(s)).Should().Be("{}");
+        Str(s).Should().Be("{}");
     }
 
     [Fact]
@@ -22,6 +22,6 @@ public partial class Set_Tests
         Set<int> s = [1, 3, 5, 7];
 
         // When/then
-        ((string)Str(s)).Should().Be("{1, 3, 5, 7}");
+        Str(s).Should().Be("{1, 3, 5, 7}");
     }
 }

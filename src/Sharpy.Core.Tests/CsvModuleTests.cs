@@ -10,55 +10,55 @@ public class CsvModuleTests
     [Fact]
     public void Reader_SimpleLine()
     {
-        var lines = new Str[] { (Str)"a,b,c" };
+        var lines = new string[] { "a,b,c" };
         var reader = Sharpy.Csv.Reader(lines);
-        var rows = new System.Collections.Generic.List<Sharpy.List<Str>>();
+        var rows = new System.Collections.Generic.List<Sharpy.List<string>>();
         foreach (var row in reader)
         {
             rows.Add(row);
         }
 
         rows.Should().HaveCount(1);
-        ((string)rows[0][0]).Should().Be("a");
-        ((string)rows[0][1]).Should().Be("b");
-        ((string)rows[0][2]).Should().Be("c");
+        rows[0][0].Should().Be("a");
+        rows[0][1].Should().Be("b");
+        rows[0][2].Should().Be("c");
     }
 
     [Fact]
     public void Reader_QuotedFieldWithComma()
     {
-        var lines = new Str[] { (Str)"a,\"hello, world\",c" };
+        var lines = new string[] { "a,\"hello, world\",c" };
         var reader = Sharpy.Csv.Reader(lines);
-        var rows = new System.Collections.Generic.List<Sharpy.List<Str>>();
+        var rows = new System.Collections.Generic.List<Sharpy.List<string>>();
         foreach (var row in reader)
         {
             rows.Add(row);
         }
 
-        ((string)rows[0][0]).Should().Be("a");
-        ((string)rows[0][1]).Should().Be("hello, world");
-        ((string)rows[0][2]).Should().Be("c");
+        rows[0][0].Should().Be("a");
+        rows[0][1].Should().Be("hello, world");
+        rows[0][2].Should().Be("c");
     }
 
     [Fact]
     public void Reader_EscapedQuote()
     {
         // CSV: a,"say ""hello""",c => fields: a | say "hello" | c
-        var lines = new Str[] { (Str)"a,\"say \"\"hello\"\"\",c" };
+        var lines = new string[] { "a,\"say \"\"hello\"\"\",c" };
         var reader = Sharpy.Csv.Reader(lines);
-        var rows = new System.Collections.Generic.List<Sharpy.List<Str>>();
+        var rows = new System.Collections.Generic.List<Sharpy.List<string>>();
         foreach (var row in reader)
         {
             rows.Add(row);
         }
 
-        ((string)rows[0][1]).Should().Be("say \"hello\"");
+        rows[0][1].Should().Be("say \"hello\"");
     }
 
     [Fact]
     public void Reader_MultipleRows()
     {
-        var lines = new Str[] { (Str)"a,b", (Str)"c,d", (Str)"e,f" };
+        var lines = new string[] { "a,b", "c,d", "e,f" };
         var reader = Sharpy.Csv.Reader(lines);
         int count = 0;
         foreach (var row in reader)
@@ -74,7 +74,7 @@ public class CsvModuleTests
     {
         var sw = new StringWriter();
         var writer = Sharpy.Csv.Writer(sw);
-        writer.Writerow(new Str[] { (Str)"a", (Str)"b", (Str)"c" });
+        writer.Writerow(new string[] { "a", "b", "c" });
         sw.ToString().Should().Be("a,b,c" + System.Environment.NewLine);
     }
 
@@ -83,7 +83,7 @@ public class CsvModuleTests
     {
         var sw = new StringWriter();
         var writer = Sharpy.Csv.Writer(sw);
-        writer.Writerow(new Str[] { (Str)"hello, world", (Str)"test" });
+        writer.Writerow(new string[] { "hello, world", "test" });
         // Should contain quoted field
         sw.ToString().Should().Contain("\"hello, world\"");
     }
@@ -93,10 +93,10 @@ public class CsvModuleTests
     {
         var sw = new StringWriter();
         var writer = Sharpy.Csv.Writer(sw);
-        var rows = new System.Collections.Generic.List<Str[]>
+        var rows = new System.Collections.Generic.List<string[]>
         {
-            new Str[] { (Str)"a", (Str)"b" },
-            new Str[] { (Str)"c", (Str)"d" }
+            new string[] { "a", "b" },
+            new string[] { "c", "d" }
         };
         writer.Writerows(rows);
 
@@ -116,7 +116,7 @@ public class CsvModuleTests
     [Fact]
     public void Reader_LineNum_TracksLinesRead()
     {
-        var lines = new Str[] { (Str)"a,b", (Str)"c,d", (Str)"e,f" };
+        var lines = new string[] { "a,b", "c,d", "e,f" };
         var reader = Sharpy.Csv.Reader(lines);
         reader.LineNum.Should().Be(0);
 

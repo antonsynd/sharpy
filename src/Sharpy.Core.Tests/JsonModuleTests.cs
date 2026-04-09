@@ -754,75 +754,68 @@ namespace Sharpy.Tests
 
         #endregion
 
-        #region Dumps - Dict with Str Keys
+        #region Dumps - Dict with String Keys (additional patterns)
 
         [Fact]
-        public void Dumps_DictStrKey_ReturnsJsonObject()
+        public void Dumps_DictStringKey_ReturnsJsonObject()
         {
-            var d = new Dict<Str, object?>();
-            d[(Str)"a"] = 1;
-            d[(Str)"b"] = 2;
+            var d = new Dict<string, object?>();
+            d["a"] = 1;
+            d["b"] = 2;
             string result = Json.Dumps(d);
             Assert.Equal("{\"a\": 1, \"b\": 2}", result);
         }
 
         [Fact]
-        public void Dumps_EmptyDictStrKey_ReturnsEmptyObject()
+        public void Dumps_DictStringKeyInt_ReturnsJsonObject()
         {
-            var d = new Dict<Str, object?>();
-            Assert.Equal("{}", Json.Dumps(d));
-        }
-
-        [Fact]
-        public void Dumps_DictStrKeyInt_ReturnsJsonObject()
-        {
-            var d = new Dict<Str, int>();
-            d[(Str)"x"] = 10;
-            d[(Str)"y"] = 20;
+            var d = new Dict<string, int>();
+            d["x"] = 10;
+            d["y"] = 20;
             string result = Json.Dumps(d);
             Assert.Equal("{\"x\": 10, \"y\": 20}", result);
         }
 
         [Fact]
-        public void Dumps_NestedDictStrKey_ReturnsNestedObject()
+        public void Dumps_NestedDictStringKey_ReturnsNestedObject()
         {
-            var inner = new Dict<Str, int>();
-            inner[(Str)"x"] = 1;
-            var outer = new Dict<Str, object?>();
-            outer[(Str)"inner"] = inner;
+            var inner = new Dict<string, int>();
+            inner["x"] = 1;
+            var outer = new Dict<string, object?>();
+            outer["inner"] = inner;
             string result = Json.Dumps(outer);
             Assert.Equal("{\"inner\": {\"x\": 1}}", result);
         }
 
         [Fact]
-        public void Dumps_DictStrKey_WithSortKeys_SortsKeys()
+        public void Dumps_DictStringKey_WithSortKeys_SortsKeys()
         {
-            var d = new Dict<Str, object?>();
-            d[(Str)"c"] = 3;
-            d[(Str)"a"] = 1;
-            d[(Str)"b"] = 2;
+            var d = new Dict<string, object?>();
+            d["c"] = 3;
+            d["a"] = 1;
+            d["b"] = 2;
             string result = Json.Dumps(d, sortKeys: true);
             Assert.Equal("{\"a\": 1, \"b\": 2, \"c\": 3}", result);
         }
 
         [Fact]
-        public void Dumps_DictStrKey_WithIndent_PrettyPrints()
+        public void Dumps_DictStringKey_WithIndent_PrettyPrints()
         {
-            var d = new Dict<Str, object?>();
-            d[(Str)"a"] = 1;
-            d[(Str)"b"] = 2;
+            var d = new Dict<string, object?>();
+            d["a"] = 1;
+            d["b"] = 2;
             string result = Json.Dumps(d, indent: 2);
             string expected = "{\n  \"a\": 1,\n  \"b\": 2\n}";
             Assert.Equal(expected, result);
         }
 
         [Fact]
-        public void Dumps_DictStrKey_NestedDictStrKeyDict_ReturnsNestedObjects()
+        public void Dumps_DictStringKey_NestedDictStringKeyDict_ReturnsNestedObjects()
         {
-            var inner = new Dict<Str, Dict<Str, int>>();
-            var leaf = new Dict<Str, int>();
-            leaf[(Str)"val"] = 42;
-            inner[(Str)"mid"] = leaf;
+            var inner = new Dict<string, Dict<string, int>>();
+            var leaf = new Dict<string, int>();
+            leaf["val"] = 42;
+            inner["mid"] = leaf;
             string result = Json.Dumps(inner);
             Assert.Equal("{\"mid\": {\"val\": 42}}", result);
         }
