@@ -635,14 +635,12 @@ internal partial class RoslynEmitter
                     obj);
             }
 
-            // enum_instance.name -> (Sharpy.Str)enum_instance.ToString()
-            return CastExpression(
-                ParseTypeName("Sharpy.Str"),
-                InvocationExpression(
-                    MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        obj,
-                        IdentifierName("ToString"))));
+            // enum_instance.name -> enum_instance.ToString()
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    obj,
+                    IdentifierName("ToString")));
         }
 
         // Named tuple element access: keep element names as-is (no PascalCase)
@@ -1097,7 +1095,7 @@ internal partial class RoslynEmitter
             // Handle default value
             if (param.DefaultValue != null)
             {
-                // Sharpy.Str default: use 'default' sentinel (see GenerateParameter)
+                // str default: use 'default' sentinel (see GenerateParameter)
                 if (IsStrTypedParameter(param) && param.DefaultValue is StringLiteral)
                 {
                     var actualDefault = GenerateExpression(param.DefaultValue);

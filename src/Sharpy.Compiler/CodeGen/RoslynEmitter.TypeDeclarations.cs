@@ -160,9 +160,9 @@ internal partial class RoslynEmitter
             {
                 defaultExpr = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
             }
-            // Sharpy.Str parameters with string literal defaults: C# requires compile-time
-            // constants for default values, but Sharpy.Str is a value type so (Sharpy.Str)"..."
-            // is not constant. Emit 'default' and prepend a conditional assignment in the body.
+            // str parameters with string literal defaults: legacy handling from when str mapped
+            // to Sharpy.Str (a value type). Now that str is System.String, this may be unnecessary
+            // but is kept for compatibility until the _pendingStrDefaults mechanism is removed.
             else if (IsStrTypedParameter(param) && param.DefaultValue is StringLiteral)
             {
                 var actualDefault = GenerateExpression(param.DefaultValue);
@@ -180,7 +180,7 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Checks if a parameter's type annotation resolves to str/string (i.e. Sharpy.Str).
+    /// Checks if a parameter's type annotation resolves to str/string.
     /// </summary>
     private static bool IsStrTypedParameter(Parameter param)
     {
@@ -193,10 +193,9 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates conditional assignments for Sharpy.Str parameters that used <c>default</c>
-    /// as their C# default value. Call this before generating the method body and prepend
-    /// the returned statements.
-    /// Produces: <c>if (param == default) param = (Sharpy.Str)"actualValue";</c>
+    /// Generates conditional assignments for str parameters that used <c>default</c>
+    /// as their C# default value. Legacy mechanism from Sharpy.Str era.
+    /// Produces: <c>if (param == default) param = "actualValue";</c>
     /// </summary>
     private List<StatementSyntax> DrainPendingStrDefaults()
     {

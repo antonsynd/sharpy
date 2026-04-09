@@ -885,7 +885,7 @@ internal class TypeInferenceService
             return SemanticType.Decimal;
         if (clrType == typeof(bool))
             return SemanticType.Bool;
-        if (clrType == typeof(string) || clrType.FullName == "Sharpy.Str")
+        if (clrType == typeof(string))
             return SemanticType.Str;
         return SemanticType.Object;
     }

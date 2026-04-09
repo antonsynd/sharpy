@@ -1,5 +1,8 @@
 extern alias SharpyRT;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Discovery;
+using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
@@ -210,6 +213,12 @@ internal class BuiltinRegistry
     /// be discovered from Sharpy.Core via CLR reflection. Each case here is permanent by design:
     /// <list type="bullet">
     /// <item><description>
+    /// <b>str</b>: Maps to <c>System.String</c>. Python-compatible string methods live as
+    /// extension methods in <c>Sharpy.StringExtensions</c>, not on <c>System.String</c> itself.
+    /// Discovery cannot find extension methods on the target type, so they are reflected here
+    /// and registered as instance methods.
+    /// </description></item>
+    /// <item><description>
     /// <b>tuple</b>: Maps to <c>System.ValueTuple</c>, whose operators (<c>==</c>, <c>+</c>, <c>*</c>)
     /// are compiler-synthesized by Roslyn/CLR, not present as discoverable CLR methods.
     /// Protocols (<c>__len__</c>, <c>__iter__</c>, <c>__getitem__</c>) similarly have no CLR surface.
@@ -227,7 +236,7 @@ internal class BuiltinRegistry
     /// </description></item>
     /// </list>
     /// </summary>
-    private static void ApplyNonDiscoverableDefinitions(
+    private void ApplyNonDiscoverableDefinitions(
         string typeName,
         ref List<FunctionSymbol> methods,
         ref Dictionary<string, List<FunctionSymbol>> operatorMethods,
@@ -235,6 +244,12 @@ internal class BuiltinRegistry
     {
         switch (typeName)
         {
+            case BuiltinNames.Str:
+                DiscoverStringExtensionMethods(ref methods);
+                operatorMethods = MakeDunderDict(DunderNames.Add, DunderNames.Mul, DunderNames.Eq, DunderNames.Ne);
+                protocolMethods = MakeDunderDict(DunderNames.Len, DunderNames.Iter, DunderNames.GetItem, DunderNames.Contains);
+                break;
+
             case BuiltinNames.Tuple:
                 operatorMethods = MakeDunderDict(DunderNames.Add, DunderNames.Mul, DunderNames.Eq, DunderNames.Ne);
                 protocolMethods = MakeDunderDict(DunderNames.Len, DunderNames.Iter, DunderNames.GetItem);
@@ -258,6 +273,142 @@ internal class BuiltinRegistry
                     methods.Add(MakeParseMethod(SemanticType.Float));
                 break;
         }
+    }
+
+    /// <summary>
+    /// Discovers extension methods on <c>System.String</c> from <c>Sharpy.StringExtensions</c>
+    /// and adds them as instance method FunctionSymbols. The <c>this string</c> first parameter
+    /// is stripped since the TypeChecker sees these as instance methods on <c>str</c>.
+    /// </summary>
+    private void DiscoverStringExtensionMethods(ref List<FunctionSymbol> methods)
+    {
+        var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
+        var extensionType = sharpyCoreAssembly.GetType("Sharpy.StringExtensions");
+        if (extensionType == null)
+            return;
+
+        var extensionMethods = extensionType
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Where(m => m.IsDefined(typeof(ExtensionAttribute), false))
+            .Where(m =>
+            {
+                var parameters = m.GetParameters();
+                return parameters.Length > 0 && parameters[0].ParameterType == typeof(string);
+            })
+            .ToList();
+
+        if (methods.Count == 0)
+            methods = new List<FunctionSymbol>();
+
+        foreach (var method in extensionMethods)
+        {
+            try
+            {
+                // Build a FunctionSignature via the discovery infrastructure, then strip
+                // the first parameter (the `this string` extension target).
+                var signature = BuildExtensionMethodSignature(method);
+                var expanded = OverloadExpander.Expand(signature, "StringExtensions");
+                foreach (var overloadSig in expanded)
+                {
+                    methods.Add(_discovery.ConvertToFunctionSymbol(overloadSig, "str", sharedTypeParams: null));
+                }
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
+            {
+                // Skip methods that can't be mapped (same pattern as OverloadIndexBuilder)
+            }
+        }
+    }
+
+    /// <summary>
+    /// Builds a <see cref="FunctionSignature"/> from a CLR extension method, stripping the
+    /// <c>this</c> parameter so it appears as an instance method.
+    /// </summary>
+    private static FunctionSignature BuildExtensionMethodSignature(MethodInfo method)
+    {
+        var typeMapper = new ClrTypeMapper();
+        var parameters = method.GetParameters();
+
+        var signature = new FunctionSignature
+        {
+            Name = ReverseNameMangler.ToSharpyName(method.Name, ReverseNameContext.Method),
+            ReturnType = CreateTypeSignatureFromClr(method.ReturnType, typeMapper),
+        };
+
+        // Skip the first parameter (the `this string` extension target)
+        for (int i = 1; i < parameters.Length; i++)
+        {
+            var param = parameters[i];
+            signature.Parameters.Add(new ParameterSignature
+            {
+                Name = param.Name ?? "arg",
+                Type = CreateTypeSignatureFromClr(param.ParameterType, typeMapper),
+                HasDefault = param.HasDefaultValue,
+                DefaultValue = param.HasDefaultValue ? ConvertDefaultValue(param.DefaultValue) : null,
+                IsVariadic = param.GetCustomAttribute<ParamArrayAttribute>() != null,
+            });
+        }
+
+        return signature;
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TypeSignature"/> from a CLR type for extension method discovery.
+    /// Handles primitives, generic types, and generic parameters.
+    /// </summary>
+    private static TypeSignature CreateTypeSignatureFromClr(Type clrType, ClrTypeMapper typeMapper)
+    {
+        if (clrType.IsGenericParameter)
+        {
+            return new TypeSignature
+            {
+                Name = clrType.Name,
+                IsGenericParameter = true,
+                GenericParameterPosition = clrType.GenericParameterPosition,
+                IsMethodLevelTypeParam = clrType.DeclaringMethod != null,
+                ClrTypeName = string.Empty
+            };
+        }
+
+        var semanticType = typeMapper.MapClrTypeToSemanticType(clrType);
+
+        var signature = new TypeSignature
+        {
+            Name = semanticType.GetDisplayName(),
+            ClrTypeName = clrType.AssemblyQualifiedName ?? clrType.FullName ?? clrType.Name
+        };
+
+        if (clrType.IsGenericType)
+        {
+            var clrTypeArgs = clrType.GetGenericArguments();
+
+            if (semanticType is GenericType)
+            {
+                signature.IsGeneric = true;
+                signature.TypeArguments = clrTypeArgs
+                    .Select(t => CreateTypeSignatureFromClr(t, typeMapper))
+                    .ToList();
+            }
+        }
+
+        return signature;
+    }
+
+    private static string? ConvertDefaultValue(object? value)
+    {
+        if (value == null || value == DBNull.Value)
+            return null;
+
+        return value switch
+        {
+            string s => $"\"{s}\"",
+            char c => $"'{c}'",
+            bool b => b.ToString().ToLowerInvariant(),
+            int or long or short or byte or sbyte or uint or ulong or ushort => value.ToString(),
+            float f => f.ToString("G9", System.Globalization.CultureInfo.InvariantCulture),
+            double d => d.ToString("G17", System.Globalization.CultureInfo.InvariantCulture),
+            _ => null
+        };
     }
 
     private static readonly UserDefinedType ValueErrorType = new() { Name = "ValueError" };

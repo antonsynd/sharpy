@@ -84,10 +84,9 @@ internal partial class RoslynEmitter
     // during semantic analysis.
 
     /// <summary>
-    /// Tracks parameters whose type is Sharpy.Str with string literal defaults.
-    /// C# requires default parameter values to be compile-time constants, but Sharpy.Str
-    /// is a value type so string literals can't serve as defaults. We emit <c>default</c>
-    /// as the C# default and prepend a conditional assignment in the method body.
+    /// Tracks parameters whose type is str with string literal defaults.
+    /// Legacy mechanism from when str mapped to Sharpy.Str (a value type).
+    /// Now that str maps to System.String, this mechanism may be unnecessary.
     /// Each entry is (C# parameter name, actual default expression).
     /// Populated during GenerateParameter, consumed during method body generation.
     /// </summary>

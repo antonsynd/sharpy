@@ -56,7 +56,7 @@ internal class TypeSyntaxMapper
             BuiltinType builtin when type == SemanticType.Int => PredefinedType(Token(SyntaxKind.IntKeyword)),
             BuiltinType builtin when type == SemanticType.Long => PredefinedType(Token(SyntaxKind.LongKeyword)),
             BuiltinType builtin when type == SemanticType.Bool => PredefinedType(Token(SyntaxKind.BoolKeyword)),
-            BuiltinType builtin when type == SemanticType.Str => ParseTypeName(CSharpTypeNames.SharpyStr),
+            BuiltinType builtin when type == SemanticType.Str => PredefinedType(Token(SyntaxKind.StringKeyword)),
             BuiltinType builtin when type == SemanticType.Float => PredefinedType(Token(SyntaxKind.DoubleKeyword)), // Sharpy float = C# double
             BuiltinType builtin when type == SemanticType.Double => PredefinedType(Token(SyntaxKind.DoubleKeyword)),
             BuiltinType builtin when type == SemanticType.Float32 => PredefinedType(Token(SyntaxKind.FloatKeyword)),
@@ -772,7 +772,7 @@ internal class TypeSyntaxMapper
                 "m" => "decimal",
                 _ => BuiltinNames.Double
             },
-            StringLiteral or NativeStringLiteral => "string",
+            StringLiteral => "string",
             BooleanLiteral => BuiltinNames.Bool,
             NoneLiteral => BuiltinNames.Object,
             ListLiteral => BuiltinNames.List,
@@ -803,7 +803,7 @@ internal class TypeSyntaxMapper
             "float" => PredefinedType(Token(SyntaxKind.FloatKeyword)),
             BuiltinNames.Double => PredefinedType(Token(SyntaxKind.DoubleKeyword)),
             "decimal" => PredefinedType(Token(SyntaxKind.DecimalKeyword)),
-            "string" => ParseTypeName(CSharpTypeNames.SharpyStr),
+            "string" => PredefinedType(Token(SyntaxKind.StringKeyword)),
             BuiltinNames.Bool => PredefinedType(Token(SyntaxKind.BoolKeyword)),
             BuiltinNames.Object => PredefinedType(Token(SyntaxKind.ObjectKeyword)),
             _ => ParseTypeName(GetMappedTypeName(typeName))

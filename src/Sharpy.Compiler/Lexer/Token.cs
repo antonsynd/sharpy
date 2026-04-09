@@ -12,8 +12,6 @@ public enum TokenType
     Float,
     String,
     RawString,      // r-string (raw string)
-    NativeString,   // n-string (native .NET string literal)
-    NativeRawString, // nr-string (native raw string literal)
     FStringStart,   // f" or f' - start of f-string
     FStringText,    // literal text segment in f-string
     FStringExprStart, // { - start of interpolated expression in f-string

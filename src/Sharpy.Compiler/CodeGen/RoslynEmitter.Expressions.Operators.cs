@@ -180,7 +180,7 @@ internal partial class RoslynEmitter
             case BinaryOperator.Multiply:
                 {
                     // String repetition: str * int or int * str
-                    // Sharpy.Str has native operator* — just emit the multiply directly.
+                    // String extension provides operator* via StringExtensions.
                     // Not string repetition — fall through to standard multiply
                     break;
                 }

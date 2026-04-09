@@ -22,14 +22,6 @@ internal partial class RoslynEmitter
         var scrutineeExpr = GenerateExpression(matchStmt.Scrutinee);
         var scrutineeType = _context.SemanticInfo?.GetExpressionType(matchStmt.Scrutinee);
 
-        // Sharpy.Str is a value type — C# constant patterns require matching types.
-        // Cast to string so string literal patterns work as constants.
-        if (scrutineeType == SemanticType.Str)
-        {
-            scrutineeExpr = CastExpression(
-                PredefinedType(Token(SyntaxKind.StringKeyword)),
-                scrutineeExpr);
-        }
         var sections = new List<SwitchSectionSyntax>();
 
         foreach (var matchCase in matchStmt.Cases)
@@ -598,14 +590,6 @@ internal partial class RoslynEmitter
         var scrutineeExpr = GenerateExpression(matchExpr.Scrutinee);
         var scrutineeType = _context.SemanticInfo?.GetExpressionType(matchExpr.Scrutinee);
 
-        // Sharpy.Str is a value type — C# constant patterns require matching types.
-        // Cast to string so string literal patterns work as constants.
-        if (scrutineeType == SemanticType.Str)
-        {
-            scrutineeExpr = CastExpression(
-                PredefinedType(Token(SyntaxKind.StringKeyword)),
-                scrutineeExpr);
-        }
 
         var arms = new List<SwitchExpressionArmSyntax>();
 

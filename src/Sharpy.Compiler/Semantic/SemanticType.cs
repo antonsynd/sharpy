@@ -183,9 +183,7 @@ public sealed record BuiltinType : SemanticType
 
     public override string GetDisplayName() => Name;
 
-    // Sharpy.Str is a value type (readonly struct) but its ClrType is typeof(string) because
-    // the compiler can't reference Sharpy.Str directly (extern alias issues). Special-case it.
-    public override bool IsValueType => Name == "str" || (ClrType?.IsValueType ?? false);
+    public override bool IsValueType => ClrType?.IsValueType ?? false;
 
     public override bool IsAssignableTo(SemanticType other)
     {

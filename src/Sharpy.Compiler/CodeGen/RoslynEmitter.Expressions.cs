@@ -23,7 +23,6 @@ internal partial class RoslynEmitter
             IntegerLiteral intLit => GenerateIntegerLiteral(intLit),
             FloatLiteral floatLit => GenerateFloatLiteral(floatLit),
             StringLiteral strLit => GenerateStringLiteral(strLit),
-            NativeStringLiteral nativeLit => GenerateNativeStringLiteral(nativeLit),
             BooleanLiteral boolLit => LiteralExpression(boolLit.Value ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
             NoneLiteral => LiteralExpression(SyntaxKind.DefaultLiteralExpression),
             EllipsisLiteral => GenerateEllipsisLiteral(),
@@ -247,16 +246,6 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateStringLiteral(StringLiteral literal)
     {
-        // Wrap string literal with cast: ((Sharpy.Str)"value")
-        // Parenthesized to prevent precedence issues with member access (e.g., ((Sharpy.Str)"abc").Upper())
-        var stringExpr = LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(literal.Value));
-        return ParenthesizedExpression(
-            CastExpression(ParseTypeName(CSharpTypeNames.SharpyStr), stringExpr));
-    }
-
-    private ExpressionSyntax GenerateNativeStringLiteral(NativeStringLiteral literal)
-    {
-        // Native string literals produce raw System.String without Sharpy.Str wrapping
         return LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(literal.Value));
     }
 

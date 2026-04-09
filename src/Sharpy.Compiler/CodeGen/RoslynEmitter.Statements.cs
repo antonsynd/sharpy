@@ -1009,7 +1009,6 @@ internal partial class RoslynEmitter
             .WithVariables(SingletonSeparatedList(declarator));
 
         // C# const only works with predefined types (int, string, bool, etc.)
-        // For non-const-eligible types like Sharpy.Str, omit the const modifier
         var modifiers = varDecl.IsConst && IsConstEligibleType(typeSyntax)
             ? TokenList(Token(SyntaxKind.ConstKeyword))
             : TokenList();
@@ -1118,7 +1117,7 @@ internal partial class RoslynEmitter
 
         // Module-level fields must be static
         // For const variables, try to use C# const if the initializer is a compile-time literal
-        // AND the type is const-eligible (C# predefined types only, not Sharpy.Str etc.)
+        // AND the type is const-eligible (C# predefined types only)
         // Otherwise fall back to public static readonly
         // Regular variables become "public static"
         SyntaxTokenList modifiers;
@@ -1167,7 +1166,7 @@ internal partial class RoslynEmitter
     /// Checks if the resolved C# type is eligible for the 'const' modifier.
     /// C# only allows const for built-in primitive types (int, long, double, float, bool,
     /// string, etc.) which are all represented as PredefinedTypeSyntax in Roslyn.
-    /// Non-primitive types like Sharpy.Str must use 'static readonly' instead.
+    /// Non-primitive types must use 'static readonly' instead.
     /// </summary>
     private static bool IsConstEligibleType(TypeSyntax typeSyntax)
     {

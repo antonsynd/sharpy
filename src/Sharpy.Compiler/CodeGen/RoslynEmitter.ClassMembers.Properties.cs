@@ -90,7 +90,7 @@ internal partial class RoslynEmitter
         }
         else if (varDecl.IsConst)
         {
-            // Non-const-eligible types (e.g., Sharpy.Str) use static readonly
+            // Non-const-eligible types use static readonly
             modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
             modifiers = modifiers.Add(Token(SyntaxKind.ReadOnlyKeyword));
         }

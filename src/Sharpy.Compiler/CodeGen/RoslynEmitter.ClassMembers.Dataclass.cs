@@ -150,7 +150,7 @@ internal partial class RoslynEmitter
                     .FirstOrDefault(v => v.Name == field.Name);
                 if (fieldDecl?.InitialValue != null)
                 {
-                    // Sharpy.Str default: use 'default' sentinel (see GenerateParameter)
+                    // str default: use 'default' sentinel (see GenerateParameter)
                     if (fieldDecl.InitialValue is StringLiteral
                         && GetVariableType(field) == SemanticType.Str)
                     {

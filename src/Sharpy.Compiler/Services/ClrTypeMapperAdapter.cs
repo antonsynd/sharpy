@@ -45,7 +45,7 @@ internal class ClrTypeMapperAdapter : IClrTypeMapper
             return SemanticType.Double;
         if (clrType == typeof(bool))
             return SemanticType.Bool;
-        if (clrType == typeof(string) || clrType.FullName == "Sharpy.Str")
+        if (clrType == typeof(string))
             return SemanticType.Str;
         if (clrType == typeof(void))
             return SemanticType.Void;

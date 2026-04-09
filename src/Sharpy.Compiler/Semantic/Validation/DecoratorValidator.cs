@@ -313,7 +313,6 @@ internal class DecoratorValidator : ValidatingAstWalker
         return expr switch
         {
             StringLiteral => true,
-            NativeStringLiteral => true,
             IntegerLiteral => true,
             FloatLiteral => true,
             BooleanLiteral => true,
