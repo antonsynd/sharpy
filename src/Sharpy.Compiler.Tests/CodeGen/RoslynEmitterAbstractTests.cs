@@ -134,8 +134,8 @@ class Shape:
 
         code.Should().Contain("public abstract class Shape");
         code.Should().Contain("public abstract double Area();");
-        code.Should().Contain("public Sharpy.Str Describe()");
-        code.Should().Contain("return ((Sharpy.Str)\"shape\")");
+        code.Should().Contain("public string Describe()");
+        code.Should().Contain("return \"shape\"");
     }
 
     [Fact]
@@ -219,7 +219,7 @@ class Shape(IDrawable, ISerializable):
         code.Should().Contain("public abstract class Shape : IDrawable, ISerializable");
         // Should generate stubs for both interface methods
         code.Should().Contain("public abstract void Draw();");
-        code.Should().Contain("public abstract Sharpy.Str Serialize();");
+        code.Should().Contain("public abstract string Serialize();");
     }
 
     [Fact]
@@ -241,9 +241,9 @@ class Shape(IJsonSerializable):
 
         code.Should().Contain("public abstract class Shape : IJsonSerializable");
         // Should generate stub for the method from IJsonSerializable
-        code.Should().Contain("public abstract Sharpy.Str ToJson();");
+        code.Should().Contain("public abstract string ToJson();");
         // Should generate stub for inherited method from ISerializable
-        code.Should().Contain("public abstract Sharpy.Str Serialize();");
+        code.Should().Contain("public abstract string Serialize();");
     }
 
     [Fact]

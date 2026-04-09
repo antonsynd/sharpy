@@ -15,12 +15,12 @@ public static partial class UnusedExceptVariable
         try
         {
 #line 4 "unused_except_variable.spy"
-            global::Sharpy.Builtins.Print(((Sharpy.Str)"trying"));
+            global::Sharpy.Builtins.Print("trying");
         }
         catch (Exception e)
         {
 #line 6 "unused_except_variable.spy"
-            global::Sharpy.Builtins.Print(((Sharpy.Str)"caught"));
+            global::Sharpy.Builtins.Print("caught");
         }
     }
 }

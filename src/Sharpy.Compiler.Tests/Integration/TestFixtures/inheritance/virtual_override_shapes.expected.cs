@@ -11,7 +11,7 @@ public static partial class VirtualOverrideShapes
 {
     public abstract class Shape
     {
-        public Sharpy.Str Name;
+        public string Name;
         public virtual double Area()
         {
 #line 12 "virtual_override_shapes.spy"
@@ -34,7 +34,7 @@ public static partial class VirtualOverrideShapes
             global::Sharpy.Builtins.Print(this.Perimeter());
         }
 
-        public Shape(Sharpy.Str name)
+        public Shape(string name)
         {
 #line 8 "virtual_override_shapes.spy"
             this.Name = name;
@@ -57,7 +57,7 @@ public static partial class VirtualOverrideShapes
             return 2.0d * (this.Width + this.Height);
         }
 
-        public Rectangle(double width, double height) : base(((Sharpy.Str)"Rectangle"))
+        public Rectangle(double width, double height) : base("Rectangle")
         {
 #line 29 "virtual_override_shapes.spy"
             this.Width = width;
@@ -81,7 +81,7 @@ public static partial class VirtualOverrideShapes
             return 2.0d * 3.14d * this.Radius;
         }
 
-        public Circle(double radius) : base(((Sharpy.Str)"Circle"))
+        public Circle(double radius) : base("Circle")
         {
 #line 45 "virtual_override_shapes.spy"
             this.Radius = radius;

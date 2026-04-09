@@ -89,7 +89,7 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Equal("System.Diagnostics.Debug.Assert(true, ((Sharpy.Str)\"condition failed\"));", result);
+        Assert.Equal("System.Diagnostics.Debug.Assert(true, \"condition failed\");", result);
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Equal("throw new Exception(((Sharpy.Str)\"error\"));", result);
+        Assert.Equal("throw new Exception(\"error\");", result);
     }
 
     [Fact]
@@ -233,8 +233,8 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Contains("Sharpy.Dict<Sharpy.Str, int>", result);
-        Assert.Contains("new Sharpy.Dict<Sharpy.Str, int>", result);
+        Assert.Contains("Sharpy.Dict<string, int>", result);
+        Assert.Contains("new Sharpy.Dict<string, int>", result);
         Assert.DoesNotContain("Dict<object", result);
     }
 

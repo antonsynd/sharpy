@@ -11,10 +11,10 @@ public static partial class AccessDecoratorOverridesConvention
     public class Config
     {
         public int __ShouldBePublic;
-        public Sharpy.Str _ShouldBePublic()
+        public string _ShouldBePublic()
         {
 #line 10 "access_decorator_overrides_convention.spy"
-            return ((Sharpy.Str)"overridden");
+            return "overridden";
         }
 
         public Config()

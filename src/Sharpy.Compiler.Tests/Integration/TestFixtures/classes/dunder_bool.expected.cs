@@ -47,19 +47,19 @@ public static partial class DunderBool
         if (t)
         {
 #line 15 "dunder_bool.spy"
-            global::Sharpy.Builtins.Print(((Sharpy.Str)"truthy"));
+            global::Sharpy.Builtins.Print("truthy");
         }
 
 #line 16 "dunder_bool.spy"
         if (f)
         {
 #line 17 "dunder_bool.spy"
-            global::Sharpy.Builtins.Print(((Sharpy.Str)"should not print"));
+            global::Sharpy.Builtins.Print("should not print");
         }
         else
         {
 #line 19 "dunder_bool.spy"
-            global::Sharpy.Builtins.Print(((Sharpy.Str)"falsy"));
+            global::Sharpy.Builtins.Print("falsy");
         }
     }
 }

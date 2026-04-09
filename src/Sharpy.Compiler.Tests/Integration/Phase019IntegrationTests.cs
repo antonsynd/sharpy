@@ -369,7 +369,7 @@ def main():
     public void GenericClass_ClassConstraint_CompilesAndRuns()
     {
         // Arrange: Generic class with 'class' constraint (reference type)
-        // Note: str is now a value type (Sharpy.Str), so we use a user-defined class instead
+        // str is System.String (reference type), but we use a user-defined class for testing
         var source = @"
 class Wrapper:
     text: str

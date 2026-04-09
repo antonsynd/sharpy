@@ -162,10 +162,10 @@ public class RoslynEmitterVariableRedefinitionTests
 
         // Should generate:
         // var x = 1;
-        // var x_1 = ((Sharpy.Str)"hello");
+        // var x_1 = "hello";
         // return x_1;
         Assert.Contains("var x = 1;", result);
-        Assert.Contains("var x_1 = ((Sharpy.Str)\"hello\");", result);
+        Assert.Contains("var x_1 = \"hello\";", result);
         Assert.Contains("return x_1;", result);
     }
 
@@ -206,7 +206,7 @@ public class RoslynEmitterVariableRedefinitionTests
         // string x_1 = "hello";
         // return x_1;
         Assert.Contains("int x = 1;", result);
-        Assert.Contains("Sharpy.Str x_1 = ((Sharpy.Str)\"hello\");", result);
+        Assert.Contains("string x_1 = \"hello\";", result);
         Assert.Contains("return x_1;", result);
     }
 
@@ -421,13 +421,13 @@ public class RoslynEmitterVariableRedefinitionTests
         // Sharpy.Builtins.Print(x);       // Uses x
         // var x_1 = 2;
         // Sharpy.Builtins.Print(x_1);     // Uses x_1
-        // var x_2 = ((Sharpy.Str)"hello");
+        // var x_2 = "hello";
         // Sharpy.Builtins.Print(x_2);     // Uses x_2
         Assert.Contains("var x = 1;", result);
         Assert.Contains("Sharpy.Builtins.Print(x);", result);
         Assert.Contains("var x_1 = 2;", result);
         Assert.Contains("Sharpy.Builtins.Print(x_1);", result);
-        Assert.Contains("var x_2 = ((Sharpy.Str)\"hello\");", result);
+        Assert.Contains("var x_2 = \"hello\";", result);
         Assert.Contains("Sharpy.Builtins.Print(x_2);", result);
     }
 
@@ -563,7 +563,7 @@ public class RoslynEmitterVariableRedefinitionTests
 
         // x_1 (user's) is mangled to x1, x_1 (generated) stays as x_1 - no collision
         Assert.Contains("var x = 1;", result);
-        Assert.Contains("var x1 = ((Sharpy.Str)\"user\");", result);  // x_1 mangled to x1
+        Assert.Contains("var x1 = \"user\";", result);  // x_1 mangled to x1
         Assert.Contains("var x_1 = 2;", result);        // Generated version name
         Assert.Contains("Sharpy.Builtins.Print(x_1);", result);
         Assert.Contains("Sharpy.Builtins.Print(x1);", result);
@@ -620,7 +620,7 @@ public class RoslynEmitterVariableRedefinitionTests
 
         // x1 (user's) stays as x1, x_1 (generated) has underscore - no collision
         Assert.Contains("var x = 1;", result);
-        Assert.Contains("var x1 = ((Sharpy.Str)\"user\");", result);  // stays as x1
+        Assert.Contains("var x1 = \"user\";", result);  // stays as x1
         Assert.Contains("var x_1 = 2;", result);        // Generated version has underscore
         Assert.Contains("return x_1 + 10;", result);
     }

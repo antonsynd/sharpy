@@ -49,8 +49,8 @@ public class TypeSyntaxMapperTests
     }
 
     [Theory]
-    [InlineData("str", "Sharpy.Str")]
-    [InlineData("string", "Sharpy.Str")]
+    [InlineData("str", "string")]
+    [InlineData("string", "string")]
     public void MapType_StringTypes_MapsCorrectly(string sharpyType, string expectedCSharpType)
     {
         // Arrange
@@ -108,7 +108,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Optional<Sharpy.Str>");
+        result.ToString().Should().Be("Optional<string>");
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public class TypeSyntaxMapperTests
 
         var result = _typeMapper.MapType(typeAnnotation);
 
-        result.ToString().Should().Be("Result<int,Sharpy.Str>");
+        result.ToString().Should().Be("Result<int,string>");
     }
 
     #endregion
@@ -183,7 +183,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Dict<Sharpy.Str,int>");
+        result.ToString().Should().Be("Sharpy.Dict<string,int>");
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Set<Sharpy.Str>");
+        result.ToString().Should().Be("Sharpy.Set<string>");
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapFunctionType(funcType);
 
         // Assert
-        result.ToString().Should().Be("System.Func<int,Sharpy.Str>");
+        result.ToString().Should().Be("System.Func<int,string>");
     }
 
     [Fact]
@@ -286,7 +286,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapFunctionType(funcType);
 
         // Assert
-        result.ToString().Should().Be("System.Action<int,Sharpy.Str>");
+        result.ToString().Should().Be("System.Action<int,string>");
     }
 
     [Fact]
@@ -436,7 +436,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapTupleType(tupleType);
 
         // Assert
-        result.ToString().Should().Be("System.ValueTuple<int,Sharpy.Str>");
+        result.ToString().Should().Be("System.ValueTuple<int,string>");
     }
 
     [Fact]

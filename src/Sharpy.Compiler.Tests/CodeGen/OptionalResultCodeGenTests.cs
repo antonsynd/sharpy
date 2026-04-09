@@ -77,7 +77,7 @@ x: int? = None()
 x: int !str = Ok(42)
 ";
         var csharp = CompileToCSharp(code);
-        csharp.Should().Contain("Result<int, Sharpy.Str>");
+        csharp.Should().Contain("Result<int, string>");
     }
 
     #endregion
@@ -116,7 +116,7 @@ x: int? = None()
 x: int !str = Ok(42)
 ";
         var csharp = CompileToCSharp(code);
-        csharp.Should().Contain("Result<int, Sharpy.Str>.Ok(42)");
+        csharp.Should().Contain("Result<int, string>.Ok(42)");
     }
 
     [Fact]
@@ -126,7 +126,7 @@ x: int !str = Ok(42)
 x: int !str = Err(""error"")
 ";
         var csharp = CompileToCSharp(code);
-        csharp.Should().Contain("Result<int, Sharpy.Str>.Err(");
+        csharp.Should().Contain("Result<int, string>.Err(");
     }
 
     #endregion
@@ -153,7 +153,7 @@ def parse(s: str) -> int !str:
     return Ok(42)
 ";
         var csharp = CompileToCSharp(code);
-        csharp.Should().Contain("Result<int, Sharpy.Str>");
+        csharp.Should().Contain("Result<int, string>");
         csharp.Should().Contain("Parse(");
     }
 
@@ -181,8 +181,8 @@ def parse(s: str) -> int !str:
     return Ok(42)
 ";
         var csharp = CompileToCSharp(code);
-        csharp.Should().Contain("Result<int, Sharpy.Str>.Ok(42)");
-        csharp.Should().Contain("Result<int, Sharpy.Str>.Err(");
+        csharp.Should().Contain("Result<int, string>.Ok(42)");
+        csharp.Should().Contain("Result<int, string>.Err(");
     }
 
     #endregion
@@ -555,9 +555,9 @@ def test(obj: object) -> str?:
     return obj to str?
 ";
         var csharp = CompileToCSharp(code);
-        csharp.Should().Contain("Optional<Sharpy.Str>.Some(");
+        csharp.Should().Contain("Optional<string>.Some(");
         csharp.Should().Contain("default");
-        csharp.Should().NotContain("as Sharpy.Str");
+        csharp.Should().NotContain("as string");
     }
 
     #endregion

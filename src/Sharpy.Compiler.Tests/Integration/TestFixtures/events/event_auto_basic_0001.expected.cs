@@ -9,10 +9,10 @@ using global::Sharpy;
 
 public static partial class EventAutoBasic0001
 {
-    public delegate void MsgHandler(Sharpy.Str msg);
+    public delegate void MsgHandler(string msg);
     public class Publisher
     {
-        public void Notify(Sharpy.Str msg)
+        public void Notify(string msg)
         {
 #line 8 "event_auto_basic_0001.spy"
             this.OnMsg?.Invoke(msg);
@@ -21,7 +21,7 @@ public static partial class EventAutoBasic0001
         public event MsgHandler? OnMsg;
     }
 
-    public static void Handler(Sharpy.Str msg)
+    public static void Handler(string msg)
     {
 #line 11 "event_auto_basic_0001.spy"
         global::Sharpy.Builtins.Print(msg);
@@ -34,12 +34,12 @@ public static partial class EventAutoBasic0001
 #line 15 "event_auto_basic_0001.spy"
         p.OnMsg += Handler;
 #line 16 "event_auto_basic_0001.spy"
-        p.Notify(((Sharpy.Str)"hello"));
+        p.Notify("hello");
 #line 17 "event_auto_basic_0001.spy"
         p.OnMsg -= Handler;
 #line 18 "event_auto_basic_0001.spy"
-        p.Notify(((Sharpy.Str)"should not print"));
+        p.Notify("should not print");
 #line 19 "event_auto_basic_0001.spy"
-        global::Sharpy.Builtins.Print(((Sharpy.Str)"done"));
+        global::Sharpy.Builtins.Print("done");
     }
 }

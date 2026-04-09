@@ -67,7 +67,7 @@ public partial class RoslynEmitterDefinitionTests
         // Debug: Print the generated code
 
         // Assert
-        Assert.Contains("public Sharpy.Str Name;", code);
+        Assert.Contains("public string Name;", code);
         Assert.Contains("public int Age;", code);
     }
 
@@ -102,7 +102,7 @@ public partial class RoslynEmitterDefinitionTests
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
-        Assert.Contains("public Sharpy.Str Greet()", code);
+        Assert.Contains("public string Greet()", code);
         Assert.DoesNotContain("self", code); // self parameter should be skipped
     }
 
@@ -288,7 +288,7 @@ public partial class RoslynEmitterDefinitionTests
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
-        Assert.Contains("public Person(Sharpy.Str name, int age)", code);
+        Assert.Contains("public Person(string name, int age)", code);
         Assert.Contains("Name = name", code);
         Assert.Contains("Age = age", code);
     }
@@ -420,8 +420,8 @@ public partial class RoslynEmitterDefinitionTests
 
         // Assert - all three constructors are generated
         Assert.Contains("public Person()", code);
-        Assert.Contains("public Person(Sharpy.Str name)", code);
-        Assert.Contains("public Person(Sharpy.Str name, int age)", code);
+        Assert.Contains("public Person(string name)", code);
+        Assert.Contains("public Person(string name, int age)", code);
     }
 
     [Fact]
@@ -521,7 +521,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Assert - both constructors with different parameter types
         Assert.Contains("public Value(int value)", code);
-        Assert.Contains("public Value(Sharpy.Str value)", code);
+        Assert.Contains("public Value(string value)", code);
     }
 
     [Fact]
@@ -632,7 +632,7 @@ public partial class RoslynEmitterDefinitionTests
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert - verify name mangling (snake_case -> PascalCase)
-        Assert.Contains("public Sharpy.Str UserName;", code);
+        Assert.Contains("public string UserName;", code);
 
         // Assert - verify field with initializer
         Assert.Contains("public int UserCount = 0;", code);
@@ -779,7 +779,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Assert - C# requires base class first, then interfaces
         Assert.Contains("public class ColoredShape : Shape, IColorable", code);
-        Assert.Contains("public void SetColor(Sharpy.Str color)", code);
+        Assert.Contains("public void SetColor(string color)", code);
     }
 
     [Fact]
@@ -856,7 +856,7 @@ public partial class RoslynEmitterDefinitionTests
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
-        Assert.Contains("public class StringList : IList<Sharpy.Str>", code);
+        Assert.Contains("public class StringList : IList<string>", code);
     }
 
     [Fact]
@@ -895,7 +895,7 @@ public partial class RoslynEmitterDefinitionTests
         // Assert
         Assert.Contains("public class Entity : IEntity", code);
         Assert.Contains("public int Id = 0;", code);
-        Assert.Contains("public Sharpy.Str Name = ((Sharpy.Str)\"Unknown\");", code);
+        Assert.Contains("public string Name = \"Unknown\";", code);
     }
 
     [Fact]

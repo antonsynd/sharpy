@@ -752,8 +752,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - should generate Optional<Sharpy.Str> return type
-        Assert.Contains("Optional<Sharpy.Str>", code);
+        // Assert - should generate Optional<string> return type
+        Assert.Contains("Optional<string>", code);
     }
 
     [Fact]

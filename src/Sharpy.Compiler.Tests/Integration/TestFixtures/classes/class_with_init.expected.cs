@@ -12,7 +12,7 @@ public static partial class ClassWithInit
     public class TemperatureConverter
     {
         public double Celsius;
-        public Sharpy.Str Name;
+        public string Name;
         public double ToFahrenheit()
         {
 #line 13 "class_with_init.spy"
@@ -37,7 +37,7 @@ public static partial class ClassWithInit
             return this.Celsius;
         }
 
-        public TemperatureConverter(double initialCelsius, Sharpy.Str scaleName)
+        public TemperatureConverter(double initialCelsius, string scaleName)
         {
 #line 8 "class_with_init.spy"
             this.Celsius = initialCelsius;
@@ -51,7 +51,7 @@ public static partial class ClassWithInit
     public static void Main()
     {
 #line 26 "class_with_init.spy"
-        var converter = new TemperatureConverter(0.0d, ((Sharpy.Str)"Water freezing point"));
+        var converter = new TemperatureConverter(0.0d, "Water freezing point");
 #line 27 "class_with_init.spy"
         global::Sharpy.Builtins.Print(converter.GetCelsius());
 #line 28 "class_with_init.spy"
@@ -65,7 +65,7 @@ public static partial class ClassWithInit
 #line 33 "class_with_init.spy"
         global::Sharpy.Builtins.Print(converter.ToFahrenheit());
 #line 35 "class_with_init.spy"
-        var second = new TemperatureConverter(25.0d, ((Sharpy.Str)"Room temperature"));
+        var second = new TemperatureConverter(25.0d, "Room temperature");
 #line 36 "class_with_init.spy"
         global::Sharpy.Builtins.Print(second.GetCelsius());
 #line 37 "class_with_init.spy"

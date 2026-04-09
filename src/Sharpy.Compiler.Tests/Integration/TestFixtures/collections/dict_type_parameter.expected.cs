@@ -12,20 +12,20 @@ public static partial class DictTypeParameter
     public static void Main()
     {
 #line 4 "dict_type_parameter.spy"
-        Sharpy.Dict<Sharpy.Str, int> scores = new Sharpy.Dict<Sharpy.Str, int>()
+        Sharpy.Dict<string, int> scores = new Sharpy.Dict<string, int>()
         {
             {
-                ((Sharpy.Str)"alice"),
+                "alice",
                 100
             },
             {
-                ((Sharpy.Str)"bob"),
+                "bob",
                 85
             }
         };
 #line 5 "dict_type_parameter.spy"
-        global::Sharpy.Builtins.Print(scores[((Sharpy.Str)"alice")]);
+        global::Sharpy.Builtins.Print(scores["alice"]);
 #line 6 "dict_type_parameter.spy"
-        global::Sharpy.Builtins.Print(scores[((Sharpy.Str)"bob")]);
+        global::Sharpy.Builtins.Print(scores["bob"]);
     }
 }

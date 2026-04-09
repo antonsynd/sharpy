@@ -16,7 +16,7 @@ public static partial class DunderStrAdd
         public override string ToString()
         {
 #line 13 "dunder_str_add.spy"
-            return ((Sharpy.Str)FormattableString.Invariant($"Vector({(this.X)}, {(this.Y)})"));
+            return FormattableString.Invariant($"Vector({(this.X)}, {(this.Y)})");
         }
 
         public static Vector operator +(Vector left, Vector right)

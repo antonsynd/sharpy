@@ -12,6 +12,6 @@ public static partial class HelloWorld
     public static void Main()
     {
 #line 2 "hello_world.spy"
-        global::Sharpy.Builtins.Print(((Sharpy.Str)"Hello, World!"));
+        global::Sharpy.Builtins.Print("Hello, World!");
     }
 }

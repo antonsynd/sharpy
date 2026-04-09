@@ -83,8 +83,8 @@ public class RoslynEmitterExpressionTests
     }
 
     [Theory]
-    [InlineData("hello", "((Sharpy.Str)\"hello\")")]
-    [InlineData("world", "((Sharpy.Str)\"world\")")]
+    [InlineData("hello", "\"hello\"")]
+    [InlineData("world", "\"world\"")]
     public void GenerateExpression_StringLiteral_GeneratesCorrectSyntax(string value, string expected)
     {
         // Arrange
@@ -1096,7 +1096,7 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_TypeCoercion_NullableReferenceType_GeneratesIsPattern()
     {
-        // Arrange: value to str? → value is Sharpy.Str _temp ? Optional<Sharpy.Str>.Some(_temp) : default
+        // Arrange: value to str? → value is string _temp ? Optional<string>.Some(_temp) : default
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "obj" },
@@ -1109,8 +1109,8 @@ public class RoslynEmitterExpressionTests
         // Assert
         var code = result.ToString();
         code.Should().Contain("is");
-        code.Should().Contain("Sharpy.Str");
-        code.Should().Contain("Optional<Sharpy.Str>.Some(");
+        code.Should().Contain("string");
+        code.Should().Contain("Optional<string>.Some(");
         code.Should().Contain("default");
     }
 
@@ -1152,7 +1152,7 @@ public class RoslynEmitterExpressionTests
         var code = result.ToString();
         code.Should().Contain("obj");
         code.Should().Contain("is");
-        code.Should().Contain("Sharpy.Str");
+        code.Should().Contain("string");
     }
 
     #endregion
@@ -1612,7 +1612,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert: The generated code should use string from SemanticInfo
         var code = result.ToString();
-        code.Should().Contain("Sharpy.Set<Sharpy.Str>");
+        code.Should().Contain("Sharpy.Set<string>");
     }
 
     [Fact]
@@ -1645,7 +1645,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert: The generated code should use string,int from SemanticInfo
         var code = result.ToString();
-        code.Should().Contain("Dict<Sharpy.Str,int>");
+        code.Should().Contain("Dict<string,int>");
     }
 
     [Fact]

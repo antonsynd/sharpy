@@ -374,7 +374,7 @@ public partial class RoslynEmitterDefinitionTests
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
-        Assert.Contains("public virtual Sharpy.Str OverridableMethod()", code);
+        Assert.Contains("public virtual string OverridableMethod()", code);
     }
 
     [Fact]
@@ -412,7 +412,7 @@ public partial class RoslynEmitterDefinitionTests
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
-        Assert.Contains("public override Sharpy.Str OverriddenMethod()", code);
+        Assert.Contains("public override string OverriddenMethod()", code);
     }
 
     [Fact]

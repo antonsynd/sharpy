@@ -17,15 +17,15 @@ public static partial class MatchLiteral0001
         {
             case 1:
 #line 5 "match_literal_0001.spy"
-                global::Sharpy.Builtins.Print(((Sharpy.Str)"one"));
+                global::Sharpy.Builtins.Print("one");
                 break;
             case 42:
 #line 7 "match_literal_0001.spy"
-                global::Sharpy.Builtins.Print(((Sharpy.Str)"forty-two"));
+                global::Sharpy.Builtins.Print("forty-two");
                 break;
             default:
 #line 9 "match_literal_0001.spy"
-                global::Sharpy.Builtins.Print(((Sharpy.Str)"other"));
+                global::Sharpy.Builtins.Print("other");
                 break;
         }
     }

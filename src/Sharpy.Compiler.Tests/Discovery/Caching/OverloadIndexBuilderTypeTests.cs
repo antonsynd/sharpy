@@ -70,20 +70,6 @@ public class OverloadIndexBuilderTypeTests
     }
 
     [Fact]
-    public void DiscoverPublicTypes_IncludesStr()
-    {
-        // Arrange - Str is now a public readonly struct wrapping System.String
-        var assembly = SharpyCoreReference.Assembly;
-
-        // Act
-        var index = _builder.BuildFromAssembly(assembly);
-
-        // Assert
-        var allTypes = index.Modules.Values.SelectMany(m => m.Types).ToList();
-        Assert.Contains(allTypes, t => t.Name == "Str");
-    }
-
-    [Fact]
     public void DiscoverPublicTypes_HasCorrectNamespace()
     {
         // Arrange

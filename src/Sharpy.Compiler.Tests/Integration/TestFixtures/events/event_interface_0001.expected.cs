@@ -29,7 +29,7 @@ public static partial class EventInterface0001
     public static void Handler()
     {
 #line 14 "event_interface_0001.spy"
-        global::Sharpy.Builtins.Print(((Sharpy.Str)"notified via interface"));
+        global::Sharpy.Builtins.Print("notified via interface");
     }
 
     public static void Main()

@@ -1,7 +1,0 @@
-def main():
-    s = n"""hello
-world"""
-    print(s)
-    t = n'''line1
-line2'''
-    print(t)

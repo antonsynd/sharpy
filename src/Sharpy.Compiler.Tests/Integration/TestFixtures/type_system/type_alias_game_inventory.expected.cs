@@ -12,8 +12,8 @@ public static partial class TypeAliasGameInventory
     public abstract class Item
     {
         public int Id;
-        public Sharpy.Str Name;
-        public Optional<Sharpy.Str> Description;
+        public string Name;
+        public Optional<string> Description;
         public virtual void DisplayInfo()
         {
 #line 23 "type_alias_game_inventory.spy"
@@ -21,12 +21,12 @@ public static partial class TypeAliasGameInventory
 #line 24 "type_alias_game_inventory.spy"
             global::Sharpy.Builtins.Print(this.Name);
 #line 25 "type_alias_game_inventory.spy"
-            Sharpy.Str desc = (this.Description).UnwrapOr(((Sharpy.Str)"No description"));
+            string desc = (this.Description).UnwrapOr("No description");
 #line 26 "type_alias_game_inventory.spy"
             global::Sharpy.Builtins.Print(desc);
         }
 
-        public Item(int id, Sharpy.Str name, Optional<Sharpy.Str> description)
+        public Item(int id, string name, Optional<string> description)
         {
 #line 17 "type_alias_game_inventory.spy"
             this.Id = id;
@@ -51,7 +51,7 @@ public static partial class TypeAliasGameInventory
             global::Sharpy.Builtins.Print(this.Durability);
         }
 
-        public Weapon(int id, Sharpy.Str name, int damage, double durability) : base(id, name, Optional<Sharpy.Str>.None)
+        public Weapon(int id, string name, int damage, double durability) : base(id, name, Optional<string>.None)
         {
 #line 34 "type_alias_game_inventory.spy"
             this.Damage = damage;
@@ -99,11 +99,11 @@ public static partial class TypeAliasGameInventory
 #line 61 "type_alias_game_inventory.spy"
         Inventory inventory = new Inventory();
 #line 63 "type_alias_game_inventory.spy"
-        Weapon sword = new Weapon(1, ((Sharpy.Str)"Iron Sword"), 50, 100.0d);
+        Weapon sword = new Weapon(1, "Iron Sword", 50, 100.0d);
 #line 64 "type_alias_game_inventory.spy"
-        Weapon axe = new Weapon(2, ((Sharpy.Str)"Battle Axe"), 70, 85.5d);
+        Weapon axe = new Weapon(2, "Battle Axe", 70, 85.5d);
 #line 65 "type_alias_game_inventory.spy"
-        Weapon dagger = new Weapon(3, ((Sharpy.Str)"Steel Dagger"), 30, 95.0d);
+        Weapon dagger = new Weapon(3, "Steel Dagger", 30, 95.0d);
 #line 67 "type_alias_game_inventory.spy"
         inventory.AddWeapon(sword);
 #line 68 "type_alias_game_inventory.spy"

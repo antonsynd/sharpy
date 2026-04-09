@@ -11,15 +11,15 @@ public static partial class AbstractClass0000
 {
     public abstract class Shape
     {
-        public Sharpy.Str Name;
+        public string Name;
         public abstract double Area();
-        public virtual Sharpy.Str Describe()
+        public virtual string Describe()
         {
 #line 15 "abstract_class_0000.spy"
             return this.Name;
         }
 
-        public Shape(Sharpy.Str name)
+        public Shape(string name)
         {
 #line 7 "abstract_class_0000.spy"
             this.Name = name;
@@ -36,7 +36,7 @@ public static partial class AbstractClass0000
             return this.Width * this.Height;
         }
 
-        public Rectangle(double w, double h) : base(((Sharpy.Str)"Rectangle"))
+        public Rectangle(double w, double h) : base("Rectangle")
         {
 #line 23 "abstract_class_0000.spy"
             this.Width = w;
@@ -54,13 +54,13 @@ public static partial class AbstractClass0000
             return 3.14159d * this.Radius * this.Radius;
         }
 
-        public override Sharpy.Str Describe()
+        public override string Describe()
         {
 #line 43 "abstract_class_0000.spy"
-            return ((Sharpy.Str)"Round Circle");
+            return "Round Circle";
         }
 
-        public Circle(double r) : base(((Sharpy.Str)"Circle"))
+        public Circle(double r) : base("Circle")
         {
 #line 35 "abstract_class_0000.spy"
             this.Radius = r;

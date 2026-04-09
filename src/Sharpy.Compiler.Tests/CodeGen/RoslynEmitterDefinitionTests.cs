@@ -109,7 +109,7 @@ public partial class RoslynEmitterDefinitionTests
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
-        Assert.Contains("Sharpy.Str Greet(Sharpy.Str name = default)", code);
+        Assert.Contains("string Greet(string name = \"World\")", code);
     }
 
     [Fact]

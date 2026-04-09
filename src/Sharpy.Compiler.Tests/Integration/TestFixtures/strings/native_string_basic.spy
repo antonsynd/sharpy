@@ -1,7 +1,0 @@
-def main():
-    s = n"hello"
-    print(s)
-    t = n'world'
-    print(t)
-    u: str = n"assigned"
-    print(u)
