@@ -66,6 +66,11 @@ namespace Sharpy
         /// Python iterates strings yielding single-char strings, not chars.
         /// Used for <c>for c in s:</c> codegen.
         /// </summary>
+        /// <remarks>
+        /// Iterates by UTF-16 code unit, not Unicode code point. Surrogate pairs
+        /// (e.g., emoji) yield two separate single-char strings. This follows
+        /// Axiom 1 (.NET UTF-16 semantics take precedence over Python code-point iteration).
+        /// </remarks>
         public static IEnumerable<string> Iterate(string s)
         {
             for (int i = 0; i < s.Length; i++)
@@ -78,6 +83,10 @@ namespace Sharpy
         /// Yields single-character strings in reverse order.
         /// Used for <c>reversed(s)</c> codegen.
         /// </summary>
+        /// <remarks>
+        /// Iterates by UTF-16 code unit, not Unicode code point. See
+        /// <see cref="Iterate"/> remarks for Axiom 1 rationale.
+        /// </remarks>
         public static IEnumerable<string> Reversed(string s)
         {
             for (int i = s.Length - 1; i >= 0; i--)

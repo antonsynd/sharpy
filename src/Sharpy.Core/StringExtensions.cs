@@ -116,7 +116,7 @@ namespace Sharpy
         /// </summary>
         public static string Casefold(this string s)
         {
-            var sb = new System.Text.StringBuilder(s.Length);
+            var sb = new StringBuilder(s.Length);
             foreach (var c in s)
             {
                 sb.Append(CaseFoldChar(c));
@@ -265,7 +265,7 @@ namespace Sharpy
         /// </summary>
         public static string Expandtabs(this string s, int tabsize = 8)
         {
-            var result = new StringBuilder();
+            var result = new StringBuilder(s.Length);
             int column = 0;
 
             foreach (char c in s)
@@ -300,6 +300,16 @@ namespace Sharpy
         /// by <paramref name="new_"/>.
         /// Python: <c>str.replace(old, new)</c>
         /// </summary>
+        /// <remarks>
+        /// This extension shadows <see cref="string.Replace(string, string)"/> by design.
+        /// C# instance methods take precedence over extensions, so generated code calling
+        /// <c>s.Replace(old, new_)</c> always invokes the BCL method at runtime. This
+        /// overload exists for two reasons: (1) BuiltinRegistry discovers it via reflection
+        /// to register <c>str.replace</c> for type-checking, and (2) the 3-arg overload
+        /// calls it directly (as a static call) when <c>count &lt; 0</c> to get Python
+        /// empty-string replacement semantics (BCL throws on empty <paramref name="old"/>
+        /// in netstandard2.0).
+        /// </remarks>
         public static string Replace(this string s, string old, string new_)
         {
             if (old.Length == 0)
@@ -336,7 +346,8 @@ namespace Sharpy
 
             if (old.Length == 0)
             {
-                var sb = new StringBuilder();
+                int insertions = count < s.Length + 1 ? count : s.Length + 1;
+                var sb = new StringBuilder(new_.Length * insertions + s.Length);
                 int replacements = 0;
                 if (replacements < count)
                 {
