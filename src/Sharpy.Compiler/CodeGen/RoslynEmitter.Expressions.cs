@@ -258,6 +258,26 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Wraps an expression used in a boolean context with truthiness conversion if needed.
+    /// For strings: emits <c>s.Length > 0</c> (empty string is falsy).
+    /// Other types pass through unchanged (bool is already valid, UDTs use operator true).
+    /// </summary>
+    private ExpressionSyntax WrapTruthinessIfNeeded(ExpressionSyntax expr, Parser.Ast.Expression astExpr)
+    {
+        var type = GetExpressionSemanticType(astExpr);
+        if (type == SemanticType.Str)
+        {
+            // s.Length > 0
+            return BinaryExpression(SyntaxKind.GreaterThanExpression,
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    expr,
+                    IdentifierName("Length")),
+                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
+        }
+        return expr;
+    }
+
+    /// <summary>
     /// Checks if a function call is a tagged union constructor (Some, Ok, Err)
     /// by checking the expression's semantic type from SemanticInfo.
     /// </summary>

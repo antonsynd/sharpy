@@ -115,9 +115,6 @@ internal partial class RoslynEmitter
         // In C#, these become this.Name = name in the constructor body
         var bodyStatements = new List<StatementSyntax>();
 
-        // Prepend Str default parameter assignments (see DrainPendingStrDefaults)
-        bodyStatements.AddRange(DrainPendingStrDefaults());
-
         for (int i = bodyStartIndex; i < func.Body.Length; i++)
         {
             // Skip the initializer call — it was already converted to : base(...) or : this(...)

@@ -22,6 +22,10 @@ internal partial class TypeChecker
         if (type == SemanticType.Bool || type is UnknownType)
             return true;
 
+        // Strings are truth-testable: empty string is falsy, non-empty is truthy
+        if (type == SemanticType.Str)
+            return true;
+
         // User-defined types with __bool__ can be used in boolean contexts
         if (type is UserDefinedType udt && udt.Symbol != null)
         {

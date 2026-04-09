@@ -182,8 +182,7 @@ internal partial class RoslynEmitter
         }
 
         // Generate body (recursive — supports nested-nested functions)
-        var strDefaults = DrainPendingStrDefaults();
-        var body = Block(strDefaults.Concat(func.Body.SelectMany(GenerateBodyStatements)));
+        var body = Block(func.Body.SelectMany(GenerateBodyStatements));
 
         var localFunc = LocalFunctionStatement(returnType, Identifier(mangledName))
             .WithParameterList(ParameterList(SeparatedList(parameters)))
@@ -1176,7 +1175,7 @@ internal partial class RoslynEmitter
     private StatementSyntax GenerateAssert(AssertStatement assert)
     {
         // assert condition, message → Debug.Assert(condition, message)
-        var condition = GenerateExpression(assert.Test);
+        var condition = WrapTruthinessIfNeeded(GenerateExpression(assert.Test), assert.Test);
 
         InvocationExpressionSyntax invocation;
         if (assert.Message != null)
@@ -1222,7 +1221,7 @@ internal partial class RoslynEmitter
         var narrowingInfo = GetOptionalNarrowingsFromDecision(ifStmt.Test, narrowInThen: true);
         var isInstanceNarrowingInfo = GetIsInstanceNarrowingsFromDecision(ifStmt.Test, narrowInThen: true);
 
-        var condition = GenerateExpression(ifStmt.Test);
+        var condition = WrapTruthinessIfNeeded(GenerateExpression(ifStmt.Test), ifStmt.Test);
 
         // Save scope before the if statement so each branch (then/elif/else)
         // gets an independent copy. This prevents variable declarations in one
@@ -1327,7 +1326,7 @@ internal partial class RoslynEmitter
                 RestoreScope(preIfScope);
 
                 var elif = ifStmt.ElifClauses[i];
-                var elifCondition = GenerateExpression(elif.Test);
+                var elifCondition = WrapTruthinessIfNeeded(GenerateExpression(elif.Test), elif.Test);
 
                 // Read narrowing decisions for this elif's condition from SemanticInfo
                 var elifNarrowing = GetOptionalNarrowingsFromDecision(elif.Test, narrowInThen: true);
@@ -1458,7 +1457,7 @@ internal partial class RoslynEmitter
             _walrusPreDeclarations.Clear();
         }
 
-        var condition = GenerateExpression(whileStmt.Test);
+        var condition = WrapTruthinessIfNeeded(GenerateExpression(whileStmt.Test), whileStmt.Test);
 
         if (hasWalrus)
             _walrusInlineMode = false;
@@ -1570,6 +1569,17 @@ internal partial class RoslynEmitter
         // For-in loop: for item in items: → foreach (var item in items)
         var iteratorType = GetExpressionSemanticType(forStmt.Iterator);
         var iterator = GenerateExpression(forStmt.Iterator);
+
+        // String iteration: `for c in s:` → `foreach (var c in StringHelpers.Iterate(s))`
+        // Yields string elements (single-character strings), not char
+        if (iteratorType == SemanticType.Str)
+        {
+            iterator = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                    IdentifierName("Iterate")))
+                .AddArgumentListArguments(Argument(iterator));
+        }
 
         // Enum iteration: `for c in Color:` → `foreach (var c in Enum.GetValues<Color>())`
         if (iteratorType is Semantic.UserDefinedType { Symbol.TypeKind: Semantic.TypeKind.Enum } enumUdt)

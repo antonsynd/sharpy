@@ -200,8 +200,7 @@ internal partial class RoslynEmitter
         else
         {
             // Generate method body for concrete methods
-            var strDefaults = DrainPendingStrDefaults();
-            var userStatements = strDefaults.Concat(func.Body.SelectMany(GenerateBodyStatements));
+            var userStatements = func.Body.SelectMany(GenerateBodyStatements);
 
             // For __eq__ implementing IEquatable<T> on classes, prepend null guard:
             //   if (other is null) return false;
@@ -560,14 +559,11 @@ internal partial class RoslynEmitter
         if (isAbstract)
         {
             // Abstract interface method: no body, just semicolon
-            _pendingStrDefaults.Clear();
             method = method.WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
         else
         {
             // Default interface method: emit the full body
-            // Save pending Str defaults before ResetMethodScope clears them
-            var savedStrDefaults = DrainPendingStrDefaults();
             ResetMethodScope();
             CollectSourceVariableNames(func.Body);
 
@@ -582,8 +578,7 @@ internal partial class RoslynEmitter
                 _variableVersions[baseName] = 0;
             }
 
-            var bodyStatements = savedStrDefaults.Concat(func.Body
-                .SelectMany(GenerateBodyStatements));
+            var bodyStatements = func.Body.SelectMany(GenerateBodyStatements);
             method = method.WithBody(Block(bodyStatements));
         }
 

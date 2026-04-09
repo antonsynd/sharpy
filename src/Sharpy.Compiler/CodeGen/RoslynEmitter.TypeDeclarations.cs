@@ -84,8 +84,7 @@ internal partial class RoslynEmitter
         }
 
         // Generate method body
-        var strDefaults = DrainPendingStrDefaults();
-        var body = Block(strDefaults.Concat(func.Body.SelectMany(GenerateBodyStatements)));
+        var body = Block(func.Body.SelectMany(GenerateBodyStatements));
 
         var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)
@@ -160,15 +159,6 @@ internal partial class RoslynEmitter
             {
                 defaultExpr = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
             }
-            // str parameters with string literal defaults: legacy handling from when str mapped
-            // to Sharpy.Str (a value type). Now that str is System.String, this may be unnecessary
-            // but is kept for compatibility until the _pendingStrDefaults mechanism is removed.
-            else if (IsStrTypedParameter(param) && param.DefaultValue is StringLiteral)
-            {
-                var actualDefault = GenerateExpression(param.DefaultValue);
-                _pendingStrDefaults.Add((paramName, actualDefault));
-                defaultExpr = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-            }
             else
             {
                 defaultExpr = GenerateExpression(param.DefaultValue);
@@ -177,48 +167,6 @@ internal partial class RoslynEmitter
         }
 
         return parameter;
-    }
-
-    /// <summary>
-    /// Checks if a parameter's type annotation resolves to str/string.
-    /// </summary>
-    private static bool IsStrTypedParameter(Parameter param)
-    {
-        if (param.Type == null)
-            return false;
-        return param.Type.Name is "str" or "string"
-            && !param.Type.IsOptional
-            && !param.Type.IsCSharpNullable
-            && param.Type.TypeArguments.IsDefaultOrEmpty;
-    }
-
-    /// <summary>
-    /// Generates conditional assignments for str parameters that used <c>default</c>
-    /// as their C# default value. Legacy mechanism from Sharpy.Str era.
-    /// Produces: <c>if (param == default) param = "actualValue";</c>
-    /// </summary>
-    private List<StatementSyntax> DrainPendingStrDefaults()
-    {
-        if (_pendingStrDefaults.Count == 0)
-            return new List<StatementSyntax>();
-
-        var stmts = new List<StatementSyntax>(_pendingStrDefaults.Count);
-        foreach (var (paramName, actualDefault) in _pendingStrDefaults)
-        {
-            // if (paramName == default) paramName = actualDefault;
-            stmts.Add(IfStatement(
-                BinaryExpression(
-                    SyntaxKind.EqualsExpression,
-                    IdentifierName(paramName),
-                    LiteralExpression(SyntaxKind.DefaultLiteralExpression)),
-                ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        IdentifierName(paramName),
-                        actualDefault))));
-        }
-        _pendingStrDefaults.Clear();
-        return stmts;
     }
 
     private SyntaxTokenList GenerateModifiersFromDecorators(IReadOnlyList<Decorator> decorators)

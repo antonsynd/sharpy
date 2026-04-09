@@ -179,8 +179,22 @@ internal partial class RoslynEmitter
 
             case BinaryOperator.Multiply:
                 {
-                    // String repetition: str * int or int * str
-                    // String extension provides operator* via StringExtensions.
+                    // String repetition: str * int, int * str, str * long
+                    var leftMulType = GetExpressionSemanticType(binOp.Left);
+                    var rightMulType = GetExpressionSemanticType(binOp.Right);
+                    if (leftMulType == SemanticType.Str || rightMulType == SemanticType.Str)
+                    {
+                        // Ensure string is always the first argument
+                        var strArg = leftMulType == SemanticType.Str ? left : right;
+                        var countArg = leftMulType == SemanticType.Str ? right : left;
+                        return InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                                IdentifierName("Repeat")))
+                            .AddArgumentListArguments(
+                                Argument(strArg),
+                                Argument(countArg));
+                    }
                     // Not string repetition — fall through to standard multiply
                     break;
                 }
@@ -254,6 +268,35 @@ internal partial class RoslynEmitter
                 return kind == SyntaxKind.NotEqualsExpression
                     ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(equalsCall))
                     : (ExpressionSyntax)equalsCall;
+            }
+        }
+
+        // For <, >, <=, >= on strings, emit string.Compare(left, right, StringComparison.Ordinal) <op> 0
+        // because System.String does not define relational operators
+        if (kind is SyntaxKind.LessThanExpression or SyntaxKind.GreaterThanExpression
+            or SyntaxKind.LessThanOrEqualExpression or SyntaxKind.GreaterThanOrEqualExpression)
+        {
+            var leftCmpType = GetExpressionSemanticType(binOp.Left);
+            var rightCmpType = GetExpressionSemanticType(binOp.Right);
+            if (leftCmpType == SemanticType.Str && rightCmpType == SemanticType.Str)
+            {
+                // string.Compare(left, right, System.StringComparison.Ordinal)
+                var compareCall = InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        PredefinedType(Token(SyntaxKind.StringKeyword)),
+                        IdentifierName("Compare")))
+                    .AddArgumentListArguments(
+                        Argument(left),
+                        Argument(right),
+                        Argument(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    IdentifierName("System"),
+                                    IdentifierName("StringComparison")),
+                                IdentifierName("Ordinal"))));
+                return BinaryExpression(kind,
+                    compareCall,
+                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
             }
         }
 
@@ -518,7 +561,7 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateConditionalExpression(ConditionalExpression cond)
     {
         // value if test else other → test ? value : other
-        var test = GenerateExpression(cond.Test);
+        var test = WrapTruthinessIfNeeded(GenerateExpression(cond.Test), cond.Test);
         var whenTrue = GenerateExpression(cond.ThenValue);
         var whenFalse = GenerateExpression(cond.ElseValue);
 

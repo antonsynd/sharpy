@@ -85,6 +85,15 @@ internal partial class RoslynEmitter
                     return GenerateGenericBuiltinCall(funcName.Name, call, allArgs);
                 }
 
+                // len(s) on strings → s.Length (string doesn't implement ISized)
+                if (funcName.Name == "len" && call.Arguments.Length == 1
+                    && GetExpressionSemanticType(call.Arguments[0]) == SemanticType.Str)
+                {
+                    return MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        allArgs[0].Expression,
+                        IdentifierName("Length"));
+                }
+
                 // Use explicit AliasQualifiedName to handle all expression contexts (f-strings, etc.)
                 var builtinName = MakeGlobalQualifiedName("Sharpy", "Builtins", NameMangler.ToPascalCase(funcName.Name));
                 return InvocationExpression(builtinName)
@@ -519,6 +528,17 @@ internal partial class RoslynEmitter
 
             if (elemType != null)
                 typeArg = _typeMapper.MapSemanticType(elemType);
+        }
+
+        // For reversed(s) on strings, emit StringHelpers.Reversed(s) to yield single-char strings
+        if (name == BuiltinNames.Reversed && call.Arguments.Length > 0
+            && GetExpressionSemanticType(call.Arguments[0]) == SemanticType.Str)
+        {
+            return InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                    IdentifierName("Reversed")))
+                .AddArgumentListArguments(Argument(allArgs[0].Expression));
         }
 
         // For reversed(): if the argument type has __reversed__, cast to IReverseEnumerable<T>
@@ -971,6 +991,19 @@ internal partial class RoslynEmitter
 
         var objectType = GetExpressionSemanticType(indexAccess.Object);
 
+        // String indexing: s[i] -> StringHelpers.GetItem(s, i) to return string, not char,
+        // and to support negative indexing
+        if (objectType == SemanticType.Str)
+        {
+            return InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                    IdentifierName("GetItem")))
+                .AddArgumentListArguments(
+                    Argument(objExpr),
+                    Argument(index));
+        }
+
         var elementAccess = ElementAccessExpression(objExpr)
             .AddArgumentListArguments(Argument(index));
 
@@ -1095,19 +1128,8 @@ internal partial class RoslynEmitter
             // Handle default value
             if (param.DefaultValue != null)
             {
-                // str default: use 'default' sentinel (see GenerateParameter)
-                if (IsStrTypedParameter(param) && param.DefaultValue is StringLiteral)
-                {
-                    var actualDefault = GenerateExpression(param.DefaultValue);
-                    _pendingStrDefaults.Add((paramName, actualDefault));
-                    paramSyntax = paramSyntax.WithDefault(
-                        EqualsValueClause(LiteralExpression(SyntaxKind.DefaultLiteralExpression)));
-                }
-                else
-                {
-                    paramSyntax = paramSyntax.WithDefault(
-                        EqualsValueClause(GenerateExpression(param.DefaultValue)));
-                }
+                paramSyntax = paramSyntax.WithDefault(
+                    EqualsValueClause(GenerateExpression(param.DefaultValue)));
             }
 
             parameters.Add(paramSyntax);
@@ -1128,21 +1150,9 @@ internal partial class RoslynEmitter
         var body = GenerateExpression(lambda.Body);
 
         var localFunc = LocalFunctionStatement(returnType, Identifier(functionName))
-            .WithParameterList(ParameterList(SeparatedList(parameters)));
-
-        // If Str defaults need preamble statements, use block body instead of expression body
-        var strDefaults = DrainPendingStrDefaults();
-        if (strDefaults.Count > 0)
-        {
-            strDefaults.Add(ReturnStatement(body));
-            localFunc = localFunc.WithBody(Block(strDefaults));
-        }
-        else
-        {
-            localFunc = localFunc
-                .WithExpressionBody(ArrowExpressionClause(body))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
-        }
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithExpressionBody(ArrowExpressionClause(body))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
         return localFunc;
     }

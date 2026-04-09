@@ -150,20 +150,8 @@ internal partial class RoslynEmitter
                     .FirstOrDefault(v => v.Name == field.Name);
                 if (fieldDecl?.InitialValue != null)
                 {
-                    // str default: use 'default' sentinel (see GenerateParameter)
-                    if (fieldDecl.InitialValue is StringLiteral
-                        && GetVariableType(field) == SemanticType.Str)
-                    {
-                        var actualDefault = GenerateExpression(fieldDecl.InitialValue);
-                        _pendingStrDefaults.Add((paramName, actualDefault));
-                        param = param.WithDefault(
-                            EqualsValueClause(LiteralExpression(SyntaxKind.DefaultLiteralExpression)));
-                    }
-                    else
-                    {
-                        var defaultExpr = GenerateExpression(fieldDecl.InitialValue);
-                        param = param.WithDefault(EqualsValueClause(defaultExpr));
-                    }
+                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue);
+                    param = param.WithDefault(EqualsValueClause(defaultExpr));
                 }
             }
 
@@ -172,9 +160,6 @@ internal partial class RoslynEmitter
 
         // Build constructor body: assignments for own fields
         var statements = new List<StatementSyntax>();
-
-        // Prepend Str default parameter assignments (see DrainPendingStrDefaults)
-        statements.AddRange(DrainPendingStrDefaults());
 
         foreach (var field in ownFields)
         {
