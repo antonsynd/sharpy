@@ -31,3 +31,4 @@ Precedence: **Axiom 1 (.NET Runtime Compatibility) > Axiom 3 (Type Safety) > Axi
 | SRP-0004 | [Events with nested accessor syntax](SRP-0004-events-nested-accessor-syntax.md) | Rejected | Consistency: inconsistent with property accessor pattern |
 | SRP-0005 | [`as` casting operator](SRP-0005-as-casting-operator.md) | Rejected | Anti-pattern: multiple ways to do same thing |
 | SRP-0006 | [`collections.namedtuple`](SRP-0006-namedtuple.md) | Rejected | Axiom 3: type safety; Anti-pattern: redundant with existing features |
+| SRP-0007 | [`Sharpy.Str` wrapper type](SRP-0007-str-wrapper-type.md) | Rejected (removing) | Axiom 1: .NET interop friction; Anti-pattern: wrapper type for Pythonic API |
