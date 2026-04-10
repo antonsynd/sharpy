@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 
 namespace Sharpy
@@ -83,10 +82,11 @@ namespace Sharpy
                 return;
             }
 
-            // Handle Dict<K, V> where K is not string — use reflection to detect.
-            if (TryGetStrKeyDictionary(value, out var strKeyDict))
+            // Handle Dict<string, V> for value-type V via the IStrKeyDictionary
+            // interface (compile-time dispatch; no reflection).
+            if (value is IStrKeyDictionary strKeyDict)
             {
-                SerializeStrKeyDict(sb, strKeyDict!, indent, sortKeys, ensureAscii, currentIndent);
+                SerializeStrKeyDict(sb, strKeyDict, indent, sortKeys, ensureAscii, currentIndent);
                 return;
             }
 
@@ -412,54 +412,17 @@ namespace Sharpy
             sb.Append(']');
         }
 
-        /// <summary>
-        /// Checks whether the value implements IDictionary&lt;K, V&gt; for some K with
-        /// a string-convertible key, and if so extracts the keys and values as string/object pairs.
-        /// </summary>
-        private static bool TryGetStrKeyDictionary(object value, out System.Collections.Generic.List<KeyValuePair<string, object?>>? entries)
-        {
-            entries = null;
-
-            var type = value.GetType();
-            foreach (var iface in type.GetInterfaces())
-            {
-                if (iface.IsGenericType
-                    && iface.GetGenericTypeDefinition() == typeof(IDictionary<,>)
-                    && iface.GetGenericArguments()[0] == typeof(string))
-                {
-                    // Found IDictionary<string, V> — extract entries via the interface properties
-                    var keysProperty = iface.GetProperty("Keys");
-                    var itemProperty = iface.GetProperty("Item");
-                    if (keysProperty == null || itemProperty == null)
-                    {
-                        continue;
-                    }
-
-                    var keys = (IEnumerable)keysProperty.GetValue(value);
-                    entries = new System.Collections.Generic.List<KeyValuePair<string, object?>>();
-
-                    foreach (object keyObj in keys)
-                    {
-                        string keyStr = keyObj.ToString();
-                        object? val = itemProperty.GetValue(value, new[] { keyObj });
-                        entries.Add(new KeyValuePair<string, object?>(keyStr, val));
-                    }
-
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         private static void SerializeStrKeyDict(
             StringBuilder sb,
-            System.Collections.Generic.List<KeyValuePair<string, object?>> entries,
+            IStrKeyDictionary strKeyDict,
             int indent,
             bool sortKeys,
             bool ensureAscii,
             int currentIndent)
         {
+            var entries = new System.Collections.Generic.List<KeyValuePair<string, object?>>(
+                strKeyDict.GetStringKeyEntries());
+
             if (sortKeys)
             {
                 entries.Sort((a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));

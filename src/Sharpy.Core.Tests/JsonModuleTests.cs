@@ -131,6 +131,16 @@ namespace Sharpy.Tests
         }
 
         [Fact]
+        public void Dumps_DictStringInt_UsesInterfaceDispatch()
+        {
+            var d = new Dict<string, int>();
+            d["a"] = 1;
+            d["b"] = 2;
+            string result = Json.Dumps(d, sortKeys: true);
+            Assert.Equal("{\"a\": 1, \"b\": 2}", result);
+        }
+
+        [Fact]
         public void Dumps_EmptyList_ReturnsEmptyArray()
         {
             Assert.Equal("[]", Json.Dumps(new List<object?>()));
