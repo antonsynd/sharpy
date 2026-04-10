@@ -300,7 +300,7 @@ internal class FileCompilationPipeline
         if (codeGenContext.HasErrors)
         {
             diagnostics.Merge(codeGenContext.Diagnostics);
-            return new CodeGenResult(csharpCode, new Dictionary<string, string>(), diagnostics, true);
+            return new CodeGenResult(csharpCode, new Dictionary<string, string>(), diagnostics);
         }
 
         // Generate C# for all imported .spy modules
@@ -324,7 +324,7 @@ internal class FileCompilationPipeline
             // Errors are silently skipped — matching ProjectCompiler behavior.
         }
 
-        return new CodeGenResult(csharpCode, allGeneratedFiles, diagnostics, false);
+        return new CodeGenResult(csharpCode, allGeneratedFiles, diagnostics);
     }
 
     /// <summary>
@@ -450,19 +450,17 @@ internal readonly struct CodeGenResult
     public CodeGenResult(
         string csharpCode,
         Dictionary<string, string> allGeneratedFiles,
-        DiagnosticBag diagnostics,
-        bool hasErrors)
+        DiagnosticBag diagnostics)
     {
         CSharpCode = csharpCode;
         AllGeneratedFiles = allGeneratedFiles;
         Diagnostics = diagnostics;
-        HasErrors = hasErrors;
     }
 
     public string CSharpCode { get; }
     public Dictionary<string, string> AllGeneratedFiles { get; }
     public DiagnosticBag Diagnostics { get; }
-    public bool HasErrors { get; }
+    public bool HasErrors => Diagnostics.HasErrors;
 }
 
 /// <summary>

@@ -250,8 +250,7 @@ internal class ImportResolver
     {
         if (currentModulePath != null)
             UpdateCurrentModule(currentModulePath);
-        if (cancellationToken != default)
-            _cancellationToken = cancellationToken;
+        _cancellationToken = cancellationToken;
         _logger.LogDebug($"Resolving import: {string.Join(", ", importStmt.Names.Select(n => n.Name))}");
 
         var result = new List<ModuleInfo?>();
@@ -320,8 +319,7 @@ internal class ImportResolver
     {
         if (currentModulePath != null)
             UpdateCurrentModule(currentModulePath);
-        if (cancellationToken != default)
-            _cancellationToken = cancellationToken;
+        _cancellationToken = cancellationToken;
         var importedNames = fromImport.ImportAll ? "*" : string.Join(", ", fromImport.Names.Select(n => n.AsName != null ? $"{n.Name} as {n.AsName}" : n.Name));
         _logger.LogDebug($"[ImportResolver] Resolving from-import: from {fromImport.Module} import {importedNames}");
         if (_currentModulePath != null)

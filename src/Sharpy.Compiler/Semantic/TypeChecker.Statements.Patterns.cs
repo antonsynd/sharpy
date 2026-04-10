@@ -7,7 +7,7 @@ using Sharpy.Compiler.Shared;
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// TypeChecker partial class: Pattern matching, tuple unpacking, and related helpers
+/// TypeChecker partial class: Pattern matching and related helpers
 /// </summary>
 internal partial class TypeChecker
 {
