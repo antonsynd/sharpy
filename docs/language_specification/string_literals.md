@@ -35,7 +35,7 @@ multi-line string
 | `\UHHHHHHHH` | Unicode 32-bit |
 
 *Implementation*
-- *✅ Native - Single quotes become double quotes; escape sequences map directly.*
+- *✅ Single quotes become double quotes; escape sequences map directly to C# string literals.*
 
 ## Raw Strings
 
@@ -48,45 +48,14 @@ regex = r"\d+\.\d+"
 *Implementation*
 - *✅ Native - Maps to C# verbatim strings `@"..."`.*
 
-## Native String Literals
+## String Type
 
-Native string literals produce a `System.String` value instead of `Sharpy.Str`. Use them when interfacing with .NET APIs that expect `System.String`, or when you need to avoid the `Sharpy.Str` wrapper overhead.
-
-```python
-# Single-quoted native strings
-path = n'hello'
-message = n"Hello, World!"
-
-# Triple-quoted native strings
-text = n"""
-Multi-line native string
-"""
-alt = n'''
-Also a native string
-'''
-
-# Raw native strings (no escape processing)
-regex = nr"\d+\.\d+"
-win_path = nr"C:\Users\Alice\Documents"
-```
-
-### When to Use Native Strings
-
-| Scenario | Use |
-|----------|-----|
-| Normal Sharpy code | `"hello"` (regular string → `Sharpy.Str`) |
-| .NET interop requiring `System.String` | `n"hello"` (native string → `System.String`) |
-| Regex patterns for .NET Regex API | `nr"\d+"` (raw native string) |
-| Performance-critical code avoiding Str wrapper | `n"hello"` |
-
-### Type Relationship
+All string literals (regular, raw, multi-line) produce `System.String` values (Sharpy's `str` type):
 
 ```python
-s: str = "hello"           # Sharpy.Str
-ns: str = n"hello"         # System.String
-# Implicit conversion allows assignment:
-mixed: str = n"native"     # System.String implicitly converts to Str
+s: str = "hello"           # System.String
+r: str = r"C:\path"        # System.String (verbatim)
+m: str = """multi"""       # System.String
 ```
 
-*Implementation*
-- *✅ Native - `n"..."` emits a C# `string` literal directly; `nr"..."` emits `@"..."`.*
+> **Historical note:** Sharpy previously supported native string literals (`n"..."`) to produce `System.String` instead of `Sharpy.Str`. Since `str` now maps directly to `System.String`, native string literals are no longer needed and have been removed. See [SRP-0007](../rejected_proposals/SRP-0007-str-wrapper-type.md).

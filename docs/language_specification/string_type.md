@@ -1,27 +1,18 @@
 # String Type and UTF-16 Semantics
 
-Sharpy's `str` type maps to `Sharpy.Str`, an immutable readonly struct that wraps .NET's `System.String`. The `Str` type provides Python-compatible string semantics while maintaining full .NET interoperability through implicit conversion operators.
-
-## Sharpy.Str
-
-`Sharpy.Str` is a value type (readonly struct) that:
-
-- **Wraps `System.String`** — zero-allocation access to the underlying string via implicit conversions
-- **Implicit conversions** — converts to/from `System.String` automatically, enabling seamless .NET interop
-- **Operator overloads** — `+` (concatenation), `*` (repetition), `==`, `!=`, `<`, `>`, `<=`, `>=`, `in` (containment)
-- **Implements interfaces** — `IEquatable<Str>`, `IComparable<Str>`, `IEnumerable<Str>`, `ISized`, `IBoolConvertible`
-- **Pythonic methods** — `upper()`, `lower()`, `strip()`, `split()`, `join()`, `find()`, `replace()`, `format()`, etc.
+Sharpy's `str` type maps directly to `System.String` (C# `string`). Python-compatible string methods (`upper()`, `find()`, `split()`, etc.) are provided as extension methods on `string` via `Sharpy.StringExtensions`. Operations that `System.String` doesn't natively support (repetition, negative indexing, iteration as single-character strings) use static helper methods in `Sharpy.StringHelpers`.
 
 ```python
-s: str = "hello"       # Type is Sharpy.Str
-n: str = n"hello"      # Type is System.String (native string literal)
+s: str = "hello"       # Type is System.String (C# string)
 ```
 
-> **Note:** For .NET interop scenarios where a raw `System.String` is needed, use native string literals (`n"..."`) or the implicit conversion.
+This design follows the Kotlin model — Kotlin's `String` is `java.lang.String` with extension functions — and aligns with all three Sharpy axioms:
 
-## UTF-16 Code Units
+- **Axiom 1 (.NET):** `string` is the native .NET type. Zero interop friction.
+- **Axiom 2 (Python):** Extension methods provide `s.upper()`, `s.find()`, etc. — same surface as Python.
+- **Axiom 3 (Type Safety):** No implicit conversions, no boxing, no overload ambiguity.
 
-`Str` uses UTF-16 encoding internally (inherited from `System.String`). This has important implications for string operations.
+> **Historical note:** Sharpy originally used a `Sharpy.Str` readonly struct wrapper. This was removed — see [SRP-0007](../rejected_proposals/SRP-0007-str-wrapper-type.md) for rationale.
 
 ## UTF-16 Code Units
 
@@ -83,7 +74,7 @@ s[0:3]             # "A😀" - correct
 
 ## Iterating Over Strings
 
-Iterating over a string yields individual `char` values (UTF-16 code units):
+Iterating over a string yields single-character `str` values (one UTF-16 code unit each), via `StringHelpers.Iterate()`:
 
 ```python
 for c in "Hi😀":
@@ -94,6 +85,8 @@ for c in "Hi😀":
 # � (high surrogate)
 # � (low surrogate)
 ```
+
+Each iteration variable `c` is a `str` (not a `char`), matching Python's behavior where iterating a string yields single-character strings.
 
 ## Working with Unicode Correctly
 
@@ -130,57 +123,52 @@ escape_str = "\u0048\u0065\u006C\u006C\u006F"  # "Hello"
 
 ## String Method Availability
 
-Sharpy provides **both** Pythonic method names and .NET method names for string operations. The Pythonic names are aliases that compile to the corresponding .NET methods.
+Sharpy provides Python-compatible string methods as **extension methods** on `string` in `Sharpy.StringExtensions`. The compiler's `NameMangler` converts snake_case method names to PascalCase (e.g., `upper` → `Upper`), and generated code includes `using global::Sharpy;` to bring these extensions into scope.
 
-### Pythonic String Methods (Aliases)
+### Pythonic String Methods (Extension Methods)
 
-| Sharpy Method | .NET Method | Notes |
-|---------------|-------------|-------|
-| `s.upper()` | `s.ToUpper()` | Uppercase |
-| `s.lower()` | `s.ToLower()` | Lowercase |
-| `s.strip()` | `s.Trim()` | Remove leading/trailing whitespace |
-| `s.lstrip()` | `s.TrimStart()` | Remove leading whitespace |
-| `s.rstrip()` | `s.TrimEnd()` | Remove trailing whitespace |
-| `s.startswith(prefix)` | `s.StartsWith(prefix)` | Check prefix |
-| `s.endswith(suffix)` | `s.EndsWith(suffix)` | Check suffix |
-| `s.find(sub)` | `s.IndexOf(sub)` | Find substring (returns -1 if not found) |
-| `s.rfind(sub)` | `s.LastIndexOf(sub)` | Find last occurrence |
+| Sharpy Method | Extension Method | Notes |
+|---------------|-----------------|-------|
+| `s.upper()` | `s.Upper()` | Uppercase (invariant culture) |
+| `s.lower()` | `s.Lower()` | Lowercase (invariant culture) |
+| `s.strip()` | `s.Strip()` | Remove leading/trailing whitespace |
+| `s.lstrip()` | `s.Lstrip()` | Remove leading whitespace |
+| `s.rstrip()` | `s.Rstrip()` | Remove trailing whitespace |
+| `s.startswith(prefix)` | `s.Startswith(prefix)` | Check prefix |
+| `s.endswith(suffix)` | `s.Endswith(suffix)` | Check suffix |
+| `s.find(sub)` | `s.Find(sub)` | Find substring (returns -1 if not found) |
+| `s.rfind(sub)` | `s.Rfind(sub)` | Find last occurrence |
 | `s.replace(old, new)` | `s.Replace(old, new)` | Replace all occurrences |
 | `s.split()` | `s.Split()` | Split on whitespace |
 | `s.split(sep)` | `s.Split(sep)` | Split on separator |
-| `s.join(items)` | `string.Join(s, items)` | Join with separator |
-| `s.count(sub)` | Custom extension | Count occurrences |
-| `s.isdigit()` | Custom extension | Check if all digits |
-| `s.isalpha()` | Custom extension | Check if all alphabetic |
-| `s.isalnum()` | Custom extension | Check if alphanumeric |
-| `s.isspace()` | Custom extension | Check if all whitespace |
+| `s.join(items)` | `s.Join(items)` | Join with separator |
+| `s.count(sub)` | `s.Count(sub)` | Count occurrences |
+| `s.isdigit()` | `s.Isdigit()` | Check if all digits |
+| `s.isalpha()` | `s.Isalpha()` | Check if all alphabetic |
+| `s.isalnum()` | `s.Isalnum()` | Check if alphanumeric |
+| `s.isspace()` | `s.Isspace()` | Check if all whitespace |
+| `s.casefold()` | `s.Casefold()` | Full Unicode case folding |
 
 ### .NET Methods (Direct Access)
 
-All `System.String` methods are directly available:
+Since `str` is `System.String`, all .NET string methods are directly available:
 
 ```python
 s = "Hello, World!"
 
 # .NET methods work directly
-s.ToUpper()                    # "HELLO, WORLD!"
 s.Contains("World")            # True
 s.Substring(0, 5)              # "Hello"
 s.PadLeft(20)                  # "       Hello, World!"
 s.Insert(7, "Beautiful ")      # "Hello, Beautiful World!"
-
-# Static methods via str class
-str.IsNullOrEmpty(s)           # False
-str.Join(", ", ["a", "b"])     # "a, b"
 ```
 
 ### Method Resolution
 
-When both a Pythonic alias and a .NET method could apply, the Pythonic alias takes precedence:
+When both a Sharpy extension method and a .NET method could apply, the Sharpy extension method takes precedence via the compiler's name mangling:
 
 ```python
-s.upper()    # Calls ToUpper() - Pythonic preferred
-s.ToUpper()  # Also works - explicit .NET name
+s.upper()    # Mangled to s.Upper() — calls Sharpy extension method
 ```
 
 ### Differences from Python
@@ -191,21 +179,9 @@ Some Python string methods have slightly different behavior due to .NET semantic
 |-----------|--------|-------------|
 | `"ab" * 3` | `"ababab"` | `"ababab"` (✅ same) |
 | `s.split()` | Splits on any whitespace | Splits on whitespace (✅ same) |
-| `s.split("")` | `ValueError` | Returns array with original string (see below) |
+| `s.split("")` | `ValueError` | `ValueError` (✅ same) |
 | `s.count(sub)` | Count non-overlapping | Count non-overlapping (✅ same) |
 | `s[::2]` | Every other char | Slice syntax supported |
-
-**`s.split("")` behavior:**
-
-In Python, `"hello".split("")` raises `ValueError: empty separator`. In Sharpy/.NET, this returns a single-element array containing the original string:
-
-```python
-# Python
-"hello".split("")    # ValueError: empty separator
-
-# Sharpy
-"hello".split("")    # ["hello"] - no splitting occurs
-```
 
 To split a string into individual characters in Sharpy, use:
 
@@ -226,4 +202,4 @@ chars = [c for c in "hello"]    # ['h', 'e', 'l', 'l', 'o']
 4. **Most common text works as expected:** ASCII text and most European/Asian scripts (within the BMP) have a 1:1 correspondence between characters and code units.
 
 *Implementation*
-- *✅ `Sharpy.Str` readonly struct wrapping `System.String` with Pythonic API and implicit conversions.*
+- *✅ `str` maps to `System.String`; Python methods via `Sharpy.StringExtensions`; operators/indexing/iteration via `Sharpy.StringHelpers`.*

@@ -50,4 +50,4 @@ f"Count: {42}"           # F-strings handle conversion
 ```
 
 *Implementation*
-- *✅ Operators defined on `Sharpy.Str` — `+` maps to `Str.operator+`, `*` to `Str.operator*`, comparisons use ordinal comparison via `IComparable<Str>`, `in` maps to `Contains()`.*
+- *✅ `+` uses native C# string concatenation, `*` maps to `Sharpy.StringHelpers.Repeat()`, comparisons use native `System.String` ordinal comparison, `in` maps to `string.Contains()`.*
