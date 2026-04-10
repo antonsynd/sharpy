@@ -660,7 +660,7 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endLine,
-            ColumnEnd = endColumn,
+            ColumnEnd = endColumn + endToken.Length,
             Span = GetSpanFromTokens(startToken, endToken)
         };
     }

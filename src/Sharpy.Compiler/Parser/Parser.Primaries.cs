@@ -101,7 +101,7 @@ public partial class Parser
                         LineStart = startLine,
                         ColumnStart = startColumn,
                         LineEnd = Previous.Line,
-                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        ColumnEnd = Previous.Column + Previous.Length,
                         Span = GetSpanFromToken(token)
                     };
                 }
@@ -118,7 +118,7 @@ public partial class Parser
                         LineStart = startLine,
                         ColumnStart = startColumn,
                         LineEnd = Previous.Line,
-                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        ColumnEnd = Previous.Column + Previous.Length,
                         Span = GetSpanFromToken(token)
                     };
                 }
