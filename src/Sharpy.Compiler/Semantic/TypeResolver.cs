@@ -468,41 +468,9 @@ internal class TypeResolver
     /// <summary>
     /// Recursively substitutes TypeParameterType references in a SemanticType with concrete types.
     /// </summary>
-    private SemanticType SubstituteTypeParameters(SemanticType type, Dictionary<string, SemanticType> substitution)
+    private static SemanticType SubstituteTypeParameters(SemanticType type, Dictionary<string, SemanticType> substitution)
     {
-        return type switch
-        {
-            TypeParameterType tpt when substitution.TryGetValue(tpt.Name, out var concrete) => concrete,
-            GenericType gt => new GenericType
-            {
-                Name = gt.Name,
-                TypeArguments = gt.TypeArguments.Select(ta => SubstituteTypeParameters(ta, substitution)).ToList(),
-                GenericDefinition = gt.GenericDefinition
-            },
-            Semantic.FunctionType ft => new Semantic.FunctionType
-            {
-                ParameterTypes = ft.ParameterTypes.Select(pt => SubstituteTypeParameters(pt, substitution)).ToList(),
-                ReturnType = SubstituteTypeParameters(ft.ReturnType, substitution)
-            },
-            Semantic.TupleType tt => new Semantic.TupleType
-            {
-                ElementTypes = tt.ElementTypes.Select(et => SubstituteTypeParameters(et, substitution)).ToList()
-            },
-            OptionalType ot => new OptionalType
-            {
-                UnderlyingType = SubstituteTypeParameters(ot.UnderlyingType, substitution)
-            },
-            NullableType nt => new NullableType
-            {
-                UnderlyingType = SubstituteTypeParameters(nt.UnderlyingType, substitution)
-            },
-            ResultType rt => new ResultType
-            {
-                OkType = SubstituteTypeParameters(rt.OkType, substitution),
-                ErrorType = SubstituteTypeParameters(rt.ErrorType, substitution)
-            },
-            _ => type  // BuiltinType, UserDefinedType, VoidType, UnknownType — no substitution needed
-        };
+        return TypeSubstitution.Apply(type, substitution);
     }
 
     private Semantic.FunctionType ResolveFunctionType(Parser.Ast.FunctionType functionType)
