@@ -207,7 +207,8 @@ internal partial class TypeChecker
             FunctionSymbol funcSymbol => new FunctionType
             {
                 ParameterTypes = funcSymbol.Parameters.Select(p => p.Type).ToList(),
-                ReturnType = funcSymbol.ReturnType
+                ReturnType = funcSymbol.ReturnType,
+                VariadicParameterIndex = GetVariadicIndex(funcSymbol.Parameters)
             },
             ModuleSymbol moduleSymbol => new ModuleType { Symbol = moduleSymbol },
             // Primitive type names (int, str, bool, float, etc.) used as function references

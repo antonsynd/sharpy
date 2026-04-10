@@ -40,7 +40,9 @@ internal static class TypeSubstitution
             FunctionType ft => new FunctionType
             {
                 ParameterTypes = ft.ParameterTypes.Select(t => Apply(t, substitutions)).ToList(),
-                ReturnType = Apply(ft.ReturnType, substitutions)
+                ReturnType = Apply(ft.ReturnType, substitutions),
+                OptionalParameterCount = ft.OptionalParameterCount,
+                VariadicParameterIndex = ft.VariadicParameterIndex
             },
             TupleType tt => new TupleType
             {

@@ -95,7 +95,8 @@ internal partial class TypeChecker
                     FunctionSymbol funcSymbol => new FunctionType
                     {
                         ParameterTypes = funcSymbol.Parameters.Select(p => p.Type).ToList(),
-                        ReturnType = funcSymbol.ReturnType
+                        ReturnType = funcSymbol.ReturnType,
+                        VariadicParameterIndex = GetVariadicIndex(funcSymbol.Parameters)
                     },
                     TypeSymbol typeSymbol => new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol },
                     ModuleSymbol nestedModule => new ModuleType { Symbol = nestedModule },
@@ -136,14 +137,17 @@ internal partial class TypeChecker
                 var clrMethod = udt.Symbol.Methods.FirstOrDefault(m => m.Name == clrMemberName);
                 if (clrMethod != null)
                 {
-                    var paramTypes = clrMethod.Parameters
+                    var clrParameters = clrMethod.Parameters
                         .Where(p => p.Name != "self")
+                        .ToList();
+                    var paramTypes = clrParameters
                         .Select(p => p.Type ?? SemanticType.Unknown)
                         .ToList();
                     return new FunctionType
                     {
                         ParameterTypes = paramTypes,
-                        ReturnType = clrMethod.ReturnType ?? SemanticType.Unknown
+                        ReturnType = clrMethod.ReturnType ?? SemanticType.Unknown,
+                        VariadicParameterIndex = GetVariadicIndex(clrParameters)
                     };
                 }
 
@@ -270,7 +274,8 @@ internal partial class TypeChecker
                     return new FunctionType
                     {
                         ParameterTypes = paramTypes,
-                        ReturnType = invokeMethod.ReturnType
+                        ReturnType = invokeMethod.ReturnType,
+                        VariadicParameterIndex = GetVariadicIndex(invokeMethod.Parameters)
                     };
                 }
             }
@@ -283,12 +288,14 @@ internal partial class TypeChecker
 
                 // When accessing a method via member access (obj.method), the object is implicitly
                 // bound as the first parameter (self), so we skip it when creating the FunctionType
-                var paramTypes = method.Parameters.Skip(1).Select(p => p.Type).ToList();
+                var methodParameters = method.Parameters.Skip(1).ToList();
+                var paramTypes = methodParameters.Select(p => p.Type).ToList();
 
                 var methodFunctionType = new FunctionType
                 {
                     ParameterTypes = paramTypes,
-                    ReturnType = method.ReturnType
+                    ReturnType = method.ReturnType,
+                    VariadicParameterIndex = GetVariadicIndex(methodParameters)
                 };
 
                 // For null conditional method access, we don't wrap the FunctionType itself,
@@ -338,7 +345,8 @@ internal partial class TypeChecker
                 return new FunctionType
                 {
                     ParameterTypes = paramTypes,
-                    ReturnType = invokeMethod.ReturnType
+                    ReturnType = invokeMethod.ReturnType,
+                    VariadicParameterIndex = GetVariadicIndex(invokeMethod.Parameters)
                 };
             }
         }
@@ -387,7 +395,8 @@ internal partial class TypeChecker
                         return new FunctionType
                         {
                             ParameterTypes = resolvedParams,
-                            ReturnType = resolvedReturnType
+                            ReturnType = resolvedReturnType,
+                            VariadicParameterIndex = GetVariadicIndex(methodSymbol.Parameters)
                         };
                     }
                 }
@@ -519,7 +528,8 @@ internal partial class TypeChecker
                 var funcType = new FunctionType
                 {
                     ParameterTypes = paramTypes,
-                    ReturnType = method.ReturnType
+                    ReturnType = method.ReturnType,
+                    VariadicParameterIndex = GetVariadicIndex(method.Parameters)
                 };
                 _semanticInfo.SetExpressionType(memberAccess, funcType);
                 return funcType;

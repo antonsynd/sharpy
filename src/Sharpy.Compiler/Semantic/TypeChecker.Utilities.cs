@@ -14,6 +14,23 @@ namespace Sharpy.Compiler.Semantic;
 internal partial class TypeChecker
 {
     /// <summary>
+    /// Returns the index of the first variadic parameter in the sequence, or null if none.
+    /// Used when materializing <see cref="FunctionType"/> from a parameter list so callers
+    /// see `params T` semantics.
+    /// </summary>
+    internal static int? GetVariadicIndex(IEnumerable<ParameterSymbol> parameters)
+    {
+        int i = 0;
+        foreach (var p in parameters)
+        {
+            if (p.IsVariadic)
+                return i;
+            i++;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Returns true if the type can be used in a boolean context (if, while conditions).
     /// A type is truth-testable if it is bool, UnknownType, or a user-defined type with __bool__.
     /// </summary>
@@ -608,11 +625,13 @@ internal partial class TypeChecker
                 var parentCtor = currentType.Constructors.FirstOrDefault();
                 if (parentCtor != null)
                 {
-                    var paramTypes = parentCtor.Parameters.Skip(1).Select(p => p.Type).ToList();
+                    var ctorParameters = parentCtor.Parameters.Skip(1).ToList();
+                    var paramTypes = ctorParameters.Select(p => p.Type).ToList();
                     return new FunctionType
                     {
                         ParameterTypes = paramTypes,
-                        ReturnType = SemanticType.Void
+                        ReturnType = SemanticType.Void,
+                        VariadicParameterIndex = GetVariadicIndex(ctorParameters)
                     };
                 }
                 currentType = GetBaseType(currentType);
@@ -621,11 +640,13 @@ internal partial class TypeChecker
 
         if (parentMethod != null)
         {
-            var paramTypes = parentMethod.Parameters.Skip(1).Select(p => p.Type).ToList();
+            var methodParameters = parentMethod.Parameters.Skip(1).ToList();
+            var paramTypes = methodParameters.Select(p => p.Type).ToList();
             return new FunctionType
             {
                 ParameterTypes = paramTypes,
-                ReturnType = parentMethod.ReturnType
+                ReturnType = parentMethod.ReturnType,
+                VariadicParameterIndex = GetVariadicIndex(methodParameters)
             };
         }
 
