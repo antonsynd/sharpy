@@ -423,9 +423,9 @@ public class HoverTests : IDisposable
     }
 
     [Fact]
-    public async Task Hover_StringLiteral_ReturnsNull()
+    public async Task Hover_StringLiteral_ReturnsStringType()
     {
-        // Hovering on a string literal should return null (self-evident type)
+        // Hovering on a string literal should show its type (string)
         var source = "def main():\n    x = \"hello\"";
         _workspace.OpenDocument("file:///test_string_hover.spy", source, 1);
 
@@ -436,12 +436,17 @@ public class HoverTests : IDisposable
         var node = _api.FindNodeAtPosition(analysis!.Ast!, 2, 9);
         node.Should().NotBeNull();
         node.Should().BeOfType<StringLiteral>();
+
+        var service = new HoverService(_api);
+        var hover = service.GetHoverMarkdown(analysis!, 2, 9);
+        hover.Should().NotBeNull();
+        hover.Should().Contain("str");
     }
 
     [Fact]
-    public async Task Hover_FStringLiteral_ReturnsNull()
+    public async Task Hover_FStringLiteral_ReturnsStringType()
     {
-        // Hovering on an f-string should return null (self-evident type)
+        // Hovering on an f-string should show its type (string)
         var source = "def main():\n    name = \"world\"\n    x = f\"hello {name}\"";
         _workspace.OpenDocument("file:///test_fstring_hover.spy", source, 1);
 
@@ -451,10 +456,12 @@ public class HoverTests : IDisposable
         // Line 3: "    x = f\"hello {name}\"" — f-string starts at col 9
         var node = _api.FindNodeAtPosition(analysis!.Ast!, 3, 9);
         node.Should().NotBeNull();
-        // The node should be an FStringLiteral (or contained expression)
         if (node is FStringLiteral)
         {
-            // Hover should suppress for f-strings
+            var service = new HoverService(_api);
+            var hover = service.GetHoverMarkdown(analysis!, 3, 9);
+            hover.Should().NotBeNull();
+            hover.Should().Contain("str");
         }
     }
 

@@ -28,18 +28,23 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
             return null;
 
         var (line, col) = PositionConverter.ToCompiler(request.Position);
-        var hoverMarkdown = _hoverService.GetHoverMarkdown(analysis, line, col);
-        if (hoverMarkdown == null)
+        var result = _hoverService.GetHoverResult(analysis, line, col);
+        if (result == null)
             return null;
 
+        var node = result.Node;
         return new Hover
         {
             Contents = new MarkedStringsOrMarkupContent(
                 new MarkupContent
                 {
                     Kind = MarkupKind.Markdown,
-                    Value = hoverMarkdown
+                    Value = result.Markdown
                 }
+            ),
+            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                PositionConverter.ToLsp(node.LineStart, node.ColumnStart),
+                PositionConverter.ToLsp(node.LineEnd, node.ColumnEnd)
             )
         };
     }

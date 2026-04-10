@@ -20,11 +20,28 @@ public sealed class HoverService
     }
 
     /// <summary>
+    /// Result of a hover resolution, containing the markdown content and the AST node
+    /// whose range should be highlighted.
+    /// </summary>
+    public sealed record HoverResult(string Markdown, Node Node);
+
+    /// <summary>
     /// Returns hover markdown for the given position in the analysis result,
     /// or null if no hover information is available.
     /// Line and column are 1-based (compiler convention).
     /// </summary>
     public string? GetHoverMarkdown(SemanticResult analysis, int line, int col)
+    {
+        return GetHoverResult(analysis, line, col)?.Markdown;
+    }
+
+    /// <summary>
+    /// Returns hover markdown and the resolved AST node for the given position,
+    /// or null if no hover information is available.
+    /// The node's LineStart/ColumnStart/LineEnd/ColumnEnd can be used to set the hover range.
+    /// Line and column are 1-based (compiler convention).
+    /// </summary>
+    public HoverResult? GetHoverResult(SemanticResult analysis, int line, int col)
     {
         if (analysis.Ast == null || analysis.SemanticQuery == null)
             return null;
@@ -33,7 +50,11 @@ public sealed class HoverService
         if (node == null)
             return null;
 
-        return GetHoverMarkdownForNode(node, analysis, line, col);
+        var markdown = GetHoverMarkdownForNode(node, analysis, line, col);
+        if (markdown == null)
+            return null;
+
+        return new HoverResult(markdown, node);
     }
 
     internal string? GetHoverMarkdownForNode(Node node, SemanticResult analysis, int line, int col)
@@ -387,11 +408,6 @@ public sealed class HoverService
                         return SymbolFormatter.FormatSymbolWithDocs(modSymbol);
                     return $"```sharpy\n(module) {fromImport.Module}\n```";
                 }
-
-            // String literals: suppress hover (self-evident type)
-            case StringLiteral:
-            case FStringLiteral:
-                return null;
 
             case Expression expr:
                 {
