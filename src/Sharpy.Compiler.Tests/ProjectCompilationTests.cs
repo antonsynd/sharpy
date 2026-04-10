@@ -324,7 +324,6 @@ def package_func() -> str:
 ");
 
             var resolver = new ImportResolver(_logger);
-            resolver.SetCurrentModule(tempDir);
 
             // Act - try to import the package
             var mainContent = @"
@@ -342,9 +341,9 @@ def main():
             var parser = new Sharpy.Compiler.Parser.Parser(tokens, _logger);
             var module = parser.ParseModule();
 
-            resolver.SetCurrentModule(mainPath);
             var fromImport = module.Body.OfType<Sharpy.Compiler.Parser.Ast.FromImportStatement>().First();
-            var moduleInfo = resolver.ResolveFromImport(fromImport, tempDir);
+            var moduleInfo = resolver.ResolveFromImport(fromImport, tempDir,
+                currentModulePath: mainPath);
 
             // Assert
             Assert.NotNull(moduleInfo);

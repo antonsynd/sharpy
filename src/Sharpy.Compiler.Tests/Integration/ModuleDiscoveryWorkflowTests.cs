@@ -294,8 +294,8 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
         var symbolTable = new SymbolTable(builtinRegistry);
         var semanticBinding = new SemanticBinding();
 
-        var importResolver = new ImportResolver(logger, moduleRegistry: registry);
-        importResolver.SetSemanticBinding(semanticBinding);
+        var importResolver = new ImportResolver(logger, moduleRegistry: registry,
+            semanticBinding: semanticBinding);
 
         // Act - Resolve os.path via import statement
         var source = "import os.path\n\ndef main():\n    pass\n";

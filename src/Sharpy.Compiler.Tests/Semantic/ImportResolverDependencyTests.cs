@@ -90,9 +90,7 @@ import utils
 ");
 
         var builder = new DependencyGraphBuilder();
-        var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyRecorder(builder);
-        resolver.SetCurrentModule(mainPath);
+        var resolver = new ImportResolver(_logger, dependencyRecorder: builder);
 
         var importStmt = new ImportStatement
         {
@@ -104,7 +102,7 @@ import utils
             ColumnStart = 1
         };
 
-        resolver.ResolveImport(importStmt, _testDir);
+        resolver.ResolveImport(importStmt, _testDir, currentModulePath: mainPath);
 
         var graph = builder.Build();
         var deps = graph.GetDirectDependencies(mainPath);
@@ -122,9 +120,7 @@ import utils
         var mainPath = CreateModuleFile("main", "import utils, models");
 
         var builder = new DependencyGraphBuilder();
-        var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyRecorder(builder);
-        resolver.SetCurrentModule(mainPath);
+        var resolver = new ImportResolver(_logger, dependencyRecorder: builder);
 
         var importStmt = new ImportStatement
         {
@@ -137,7 +133,7 @@ import utils
             ColumnStart = 1
         };
 
-        resolver.ResolveImport(importStmt, _testDir);
+        resolver.ResolveImport(importStmt, _testDir, currentModulePath: mainPath);
 
         var graph = builder.Build();
         var deps = graph.GetDirectDependencies(mainPath);
@@ -155,9 +151,7 @@ import utils
         var mainPath = CreateModuleFile("main", "import nonexistent, models");
 
         var builder = new DependencyGraphBuilder();
-        var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyRecorder(builder);
-        resolver.SetCurrentModule(mainPath);
+        var resolver = new ImportResolver(_logger, dependencyRecorder: builder);
 
         var importStmt = new ImportStatement
         {
@@ -170,7 +164,7 @@ import utils
             ColumnStart = 1
         };
 
-        var result = resolver.ResolveImport(importStmt, _testDir);
+        var result = resolver.ResolveImport(importStmt, _testDir, currentModulePath: mainPath);
 
         // Result should maintain positional alignment with Names
         Assert.Equal(2, result.Count);
@@ -212,9 +206,7 @@ from utils import helper
 ");
 
         var builder = new DependencyGraphBuilder();
-        var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyRecorder(builder);
-        resolver.SetCurrentModule(mainPath);
+        var resolver = new ImportResolver(_logger, dependencyRecorder: builder);
 
         var fromImport = new FromImportStatement
         {
@@ -228,7 +220,7 @@ from utils import helper
             ColumnStart = 1
         };
 
-        resolver.ResolveFromImport(fromImport, _testDir);
+        resolver.ResolveFromImport(fromImport, _testDir, currentModulePath: mainPath);
 
         var graph = builder.Build();
         var deps = graph.GetDirectDependencies(mainPath);
@@ -247,9 +239,7 @@ def func2(): pass
         var mainPath = CreateModuleFile("main", "from utils import *");
 
         var builder = new DependencyGraphBuilder();
-        var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyRecorder(builder);
-        resolver.SetCurrentModule(mainPath);
+        var resolver = new ImportResolver(_logger, dependencyRecorder: builder);
 
         var fromImport = new FromImportStatement
         {
@@ -260,7 +250,7 @@ def func2(): pass
             ColumnStart = 1
         };
 
-        resolver.ResolveFromImport(fromImport, _testDir);
+        resolver.ResolveFromImport(fromImport, _testDir, currentModulePath: mainPath);
 
         var graph = builder.Build();
         var deps = graph.GetDirectDependencies(mainPath);
@@ -289,11 +279,9 @@ def b_func(): pass
         var aPath = CreateModuleFile("a", "import b");
 
         var builder = new DependencyGraphBuilder();
-        var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyRecorder(builder);
+        var resolver = new ImportResolver(_logger, dependencyRecorder: builder);
 
         // Resolve imports from a.spy
-        resolver.SetCurrentModule(aPath);
         var importStmt = new ImportStatement
         {
             Names = new List<ImportAlias>
@@ -303,7 +291,7 @@ def b_func(): pass
             LineStart = 1,
             ColumnStart = 1
         };
-        resolver.ResolveImport(importStmt, _testDir);
+        resolver.ResolveImport(importStmt, _testDir, currentModulePath: aPath);
 
         var graph = builder.Build();
 
@@ -357,9 +345,8 @@ def b_func(): pass
         // no dependency is added to the graph.
 
         var builder = new DependencyGraphBuilder();
-        var resolver = new ImportResolver(_logger, moduleRegistry);
-        resolver.SetDependencyRecorder(builder);
-        resolver.SetCurrentModule(mainPath);
+        var resolver = new ImportResolver(_logger, moduleRegistry,
+            dependencyRecorder: builder);
 
         // Try to import a non-existent .NET module (will fall through to .spy lookup)
         var importStmt = new ImportStatement
@@ -374,7 +361,7 @@ def b_func(): pass
 
         // This will fail to resolve (no .spy file exists), but importantly
         // we verify the graph builder behavior
-        resolver.ResolveImport(importStmt, _testDir);
+        resolver.ResolveImport(importStmt, _testDir, currentModulePath: mainPath);
 
         var graph = builder.Build();
 
@@ -396,7 +383,6 @@ def b_func(): pass
 
         // Don't set a builder
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(mainPath);
 
         var importStmt = new ImportStatement
         {
@@ -409,7 +395,7 @@ def b_func(): pass
         };
 
         // Should not throw even without a dependency graph builder
-        var exception = Record.Exception(() => resolver.ResolveImport(importStmt, _testDir));
+        var exception = Record.Exception(() => resolver.ResolveImport(importStmt, _testDir, currentModulePath: mainPath));
         Assert.Null(exception);
     }
 
@@ -427,11 +413,9 @@ def b_func(): pass
         var mainPath = CreateModuleFile("main", "import utils\nimport models");
 
         var builder = new DependencyGraphBuilder();
-        var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyRecorder(builder);
+        var resolver = new ImportResolver(_logger, dependencyRecorder: builder);
 
         // Resolve main's imports (which triggers resolution of utils and models)
-        resolver.SetCurrentModule(mainPath);
         resolver.ResolveImport(new ImportStatement
         {
             Names = new List<ImportAlias>
@@ -441,7 +425,7 @@ def b_func(): pass
             }.ToImmutableArray(),
             LineStart = 1,
             ColumnStart = 1
-        }, _testDir);
+        }, _testDir, currentModulePath: mainPath);
 
         var graph = builder.Build();
 
@@ -464,10 +448,8 @@ def b_func(): pass
         var mainPath = CreateModuleFile("main", "import utils");
 
         var builder = new DependencyGraphBuilder();
-        var resolver = new ImportResolver(_logger);
-        resolver.SetDependencyRecorder(builder);
+        var resolver = new ImportResolver(_logger, dependencyRecorder: builder);
 
-        resolver.SetCurrentModule(mainPath);
         resolver.ResolveImport(new ImportStatement
         {
             Names = new List<ImportAlias>
@@ -476,7 +458,7 @@ def b_func(): pass
             }.ToImmutableArray(),
             LineStart = 1,
             ColumnStart = 1
-        }, _testDir);
+        }, _testDir, currentModulePath: mainPath);
 
         var graph = builder.Build();
         var groups = graph.GetParallelizableGroups();

@@ -50,7 +50,6 @@ class ClassB:
     pass
 ");
 
-        _resolver.SetCurrentModule(fileA);
 
         // Parse and try to resolve imports in file A
         var importStmt = new FromImportStatement
@@ -62,7 +61,8 @@ class ClassB:
             ColumnStart = 1
         };
 
-        var result = _resolver.ResolveFromImport(importStmt, _tempDir);
+        var result = _resolver.ResolveFromImport(importStmt, _tempDir,
+            currentModulePath: fileA);
 
         // Should detect circular import
         Assert.True(_resolver.Diagnostics.HasErrors);
@@ -98,7 +98,6 @@ class ClassC:
     pass
 ");
 
-        _resolver.SetCurrentModule(fileA);
 
         var importStmt = new FromImportStatement
         {
@@ -109,7 +108,8 @@ class ClassC:
             ColumnStart = 1
         };
 
-        var result = _resolver.ResolveFromImport(importStmt, _tempDir);
+        var result = _resolver.ResolveFromImport(importStmt, _tempDir,
+            currentModulePath: fileA);
 
         // Should detect transitive circular import
         Assert.True(_resolver.Diagnostics.HasErrors);
@@ -129,7 +129,6 @@ class ClassA:
     pass
 ");
 
-        _resolver.SetCurrentModule(fileA);
 
         var importStmt = new FromImportStatement
         {
@@ -140,7 +139,8 @@ class ClassA:
             ColumnStart = 1
         };
 
-        var result = _resolver.ResolveFromImport(importStmt, _tempDir);
+        var result = _resolver.ResolveFromImport(importStmt, _tempDir,
+            currentModulePath: fileA);
 
         // Should detect self-import
         Assert.True(_resolver.Diagnostics.HasErrors);
@@ -176,7 +176,6 @@ class ClassC:
     pass
 ");
 
-        _resolver.SetCurrentModule(fileA);
 
         var importStmt = new FromImportStatement
         {
@@ -187,7 +186,8 @@ class ClassC:
             ColumnStart = 1
         };
 
-        var result = _resolver.ResolveFromImport(importStmt, _tempDir);
+        var result = _resolver.ResolveFromImport(importStmt, _tempDir,
+            currentModulePath: fileA);
 
         // Error message should contain the full chain
         Assert.True(_resolver.Diagnostics.HasErrors);
@@ -235,7 +235,6 @@ class ClassD:
     pass
 ");
 
-        _resolver.SetCurrentModule(fileA);
 
         // Import B
         var importB = new FromImportStatement
@@ -247,7 +246,8 @@ class ClassD:
             ColumnStart = 1
         };
 
-        var resultB = _resolver.ResolveFromImport(importB, _tempDir);
+        var resultB = _resolver.ResolveFromImport(importB, _tempDir,
+            currentModulePath: fileA);
 
         // Import C
         var importC = new FromImportStatement
@@ -259,7 +259,8 @@ class ClassD:
             ColumnStart = 1
         };
 
-        var resultC = _resolver.ResolveFromImport(importC, _tempDir);
+        var resultC = _resolver.ResolveFromImport(importC, _tempDir,
+            currentModulePath: fileA);
 
         // Should succeed - no circular import
         var circularErrors = _resolver.Diagnostics.GetErrors().Where(e => e.Message.Contains("Circular import")).ToList();
@@ -285,7 +286,6 @@ class ClassB:
     pass
 ");
 
-        _resolver.SetCurrentModule(fileA);
 
         // Import B first time
         var import1 = new FromImportStatement
@@ -297,7 +297,7 @@ class ClassB:
             ColumnStart = 1
         };
 
-        var result1 = _resolver.ResolveFromImport(import1, _tempDir);
+        var result1 = _resolver.ResolveFromImport(import1, _tempDir, currentModulePath: fileA);
 
         // Import B second time (should use cache)
         var import2 = new FromImportStatement
@@ -309,7 +309,7 @@ class ClassB:
             ColumnStart = 1
         };
 
-        var result2 = _resolver.ResolveFromImport(import2, _tempDir);
+        var result2 = _resolver.ResolveFromImport(import2, _tempDir, currentModulePath: fileA);
 
         // Should not report circular import
         var circularErrors = _resolver.Diagnostics.GetErrors().Where(e => e.Message.Contains("Circular import")).ToList();
@@ -337,7 +337,6 @@ class ClassB:
     pass
 ");
 
-        _resolver.SetCurrentModule(fileA);
 
         var importStmt = new ImportStatement
         {
@@ -346,7 +345,7 @@ class ClassB:
             ColumnStart = 1
         };
 
-        var result = _resolver.ResolveImport(importStmt, _tempDir);
+        var result = _resolver.ResolveImport(importStmt, _tempDir, currentModulePath: fileA);
 
         // Should detect circular import
         Assert.True(_resolver.Diagnostics.HasErrors);
@@ -390,7 +389,6 @@ class ClassD:
     pass
 ");
 
-        _resolver.SetCurrentModule(fileA);
 
         var importStmt = new FromImportStatement
         {
@@ -401,7 +399,8 @@ class ClassD:
             ColumnStart = 1
         };
 
-        var result = _resolver.ResolveFromImport(importStmt, _tempDir);
+        var result = _resolver.ResolveFromImport(importStmt, _tempDir,
+            currentModulePath: fileA);
 
         // Error should show the full chain
         Assert.True(_resolver.Diagnostics.HasErrors);
@@ -449,7 +448,6 @@ class ClassD:
     pass
 ");
 
-        _resolver.SetCurrentModule(fileA);
 
         var importStmt = new FromImportStatement
         {
@@ -460,7 +458,8 @@ class ClassD:
             ColumnStart = 1
         };
 
-        var result = _resolver.ResolveFromImport(importStmt, _tempDir);
+        var result = _resolver.ResolveFromImport(importStmt, _tempDir,
+            currentModulePath: fileA);
 
         // Should succeed - no circular import
         var circularErrors = _resolver.Diagnostics.GetErrors().Where(e => e.Message.Contains("Circular import")).ToList();

@@ -53,7 +53,6 @@ def public_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -84,7 +83,6 @@ class PublicClass:
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -119,7 +117,6 @@ def _protected_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -153,7 +150,6 @@ def _protected_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -195,7 +191,6 @@ def __private_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -228,7 +223,6 @@ def __private_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -286,7 +280,6 @@ const __PRIVATE_CONSTANT: int = 123
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         // Test direct import of public symbol
         var publicImport = new FromImportStatement
@@ -317,7 +310,6 @@ const __PRIVATE_CONSTANT: int = 123
             ColumnStart = 1
         };
         var protectedResolver = new ImportResolver(_logger);
-        protectedResolver.SetCurrentModule(_testDir);
         var protectedResult = protectedResolver.ResolveFromImport(protectedImport, _testDir);
         Assert.NotNull(protectedResult);
         Assert.False(protectedResolver.Diagnostics.HasErrors);
@@ -335,7 +327,6 @@ const __PRIVATE_CONSTANT: int = 123
             ColumnStart = 1
         };
         var privateResolver = new ImportResolver(_logger);
-        privateResolver.SetCurrentModule(_testDir);
         var privateResult = privateResolver.ResolveFromImport(privateImport, _testDir);
         Assert.NotNull(privateResult);
         Assert.True(privateResolver.Diagnostics.HasErrors);
@@ -365,7 +356,6 @@ class __PrivateClass:
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -418,7 +408,6 @@ def __private_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -456,7 +445,6 @@ def existing_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -490,7 +478,6 @@ struct _ProtectedStruct:
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -521,7 +508,6 @@ interface __PrivateInterface:
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -553,7 +539,6 @@ enum Color:
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -587,7 +572,6 @@ const PI: float = 3.14159
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -617,7 +601,6 @@ const _MAX_SIZE: int = 1000
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -647,7 +630,6 @@ const __SECRET_KEY: str = ""secret""
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -681,7 +663,6 @@ pass
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -710,7 +691,6 @@ def _protected_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -740,7 +720,6 @@ def __private_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var fromImport = new FromImportStatement
         {
@@ -777,7 +756,6 @@ PI: float = 3.14
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var builtinRegistry = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtinRegistry);
@@ -817,7 +795,6 @@ def helper():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var builtinRegistry = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtinRegistry);
@@ -851,7 +828,6 @@ def foo():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var builtinRegistry = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtinRegistry);
@@ -886,7 +862,6 @@ def original_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var builtinRegistry = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtinRegistry);
@@ -926,7 +901,6 @@ def _private_func():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var builtinRegistry = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtinRegistry);
@@ -962,7 +936,6 @@ def _helper():
 ");
 
         var resolver = new ImportResolver(_logger);
-        resolver.SetCurrentModule(_testDir);
 
         var builtinRegistry = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtinRegistry);

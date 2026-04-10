@@ -115,8 +115,6 @@ internal partial class ProjectCompiler
     {
         _logger.LogInfo("Phase 4: Resolving imports and building symbol table");
 
-        ImportResolver.SetCancellationToken(cancellationToken);
-
         // Resolve imports for each module
         foreach (var (_, unit) in _projectModel!.Units)
         {
@@ -124,9 +122,6 @@ internal partial class ProjectCompiler
 
             if (unit.Phase == CompilationPhase.Failed || unit.Ast == null)
                 continue;
-
-            // Use unit.FilePath for original path (Units dictionary keys are normalized)
-            ImportResolver.SetCurrentModule(unit.FilePath);
 
             // Enter per-module scope so imported symbols register in the correct scope
             SymbolTable.EnterModuleScope(unit.ModulePath);
@@ -139,7 +134,8 @@ internal partial class ProjectCompiler
                 {
                     if (statement is ImportStatement import)
                     {
-                        var modules = ImportResolver.ResolveImport(import, config.ProjectDirectory);
+                        var modules = ImportResolver.ResolveImport(import, config.ProjectDirectory,
+                            currentModulePath: unit.FilePath, cancellationToken: cancellationToken);
 
                         // Match each resolved module with its import alias to get the correct name/alias
                         for (int i = 0; i < import.Names.Length && i < modules.Count; i++)
@@ -217,7 +213,8 @@ internal partial class ProjectCompiler
                     }
                     else if (statement is FromImportStatement fromImport)
                     {
-                        var moduleInfo = ImportResolver.ResolveFromImport(fromImport, config.ProjectDirectory);
+                        var moduleInfo = ImportResolver.ResolveFromImport(fromImport, config.ProjectDirectory,
+                            currentModulePath: unit.FilePath, cancellationToken: cancellationToken);
                         if (moduleInfo != null)
                         {
                             // Use ReExportedSymbols which have DefiningModule set for cross-module type references

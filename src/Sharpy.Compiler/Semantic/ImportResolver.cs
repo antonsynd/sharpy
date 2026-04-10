@@ -30,60 +30,39 @@ internal class ImportResolver
 
     private string? _currentModulePath = null;
 
-    public ImportResolver(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null, ModuleResolver? moduleResolver = null)
-        : this(new ModuleLoader(logger), logger, moduleRegistry, moduleResolver)
+    public ImportResolver(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null,
+        ModuleResolver? moduleResolver = null,
+        SemanticBinding? semanticBinding = null, IDependencyRecorder? dependencyRecorder = null)
+        : this(new ModuleLoader(logger), logger, moduleRegistry, moduleResolver,
+            semanticBinding, dependencyRecorder)
     {
     }
 
-    public ImportResolver(ModuleLoader moduleLoader, ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null, ModuleResolver? moduleResolver = null)
+    public ImportResolver(ModuleLoader moduleLoader, ICompilerLogger? logger = null,
+        ModuleRegistry? moduleRegistry = null, ModuleResolver? moduleResolver = null,
+        SemanticBinding? semanticBinding = null, IDependencyRecorder? dependencyRecorder = null)
     {
         _moduleLoader = moduleLoader;
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = moduleRegistry;
         _moduleResolver = moduleResolver ?? new ModuleResolver(logger);
-    }
-
-    /// <summary>
-    /// Sets the semantic binding for storing semantic data separate from AST nodes.
-    /// When set, import resolution data will be stored in SemanticBinding instead of
-    /// directly on AST nodes, enabling immutable AST.
-    /// </summary>
-    public void SetSemanticBinding(SemanticBinding binding)
-    {
-        _semanticBinding = binding;
+        if (semanticBinding != null)
+            _semanticBinding = semanticBinding;
+        _dependencyRecorder = dependencyRecorder;
     }
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
-    /// <summary>
-    /// Set the dependency recorder for tracking file dependencies.
-    /// When set, the resolver will call AddDependency for each import.
-    /// </summary>
-    /// <param name="recorder">The recorder to use for tracking dependencies.</param>
-    public void SetDependencyRecorder(IDependencyRecorder recorder)
-    {
-        _dependencyRecorder = recorder;
-    }
+    private CancellationToken _cancellationToken;
 
     /// <summary>
-    /// Set the current module path for resolving relative imports
+    /// Updates the current module path on all internal components.
     /// </summary>
-    public void SetCurrentModule(string modulePath)
+    private void UpdateCurrentModule(string modulePath)
     {
         _currentModulePath = modulePath;
         _moduleLoader.CurrentModulePath = modulePath;
         _moduleResolver.SetCurrentModulePath(modulePath);
-    }
-
-    private CancellationToken _cancellationToken;
-
-    /// <summary>
-    /// Sets the cancellation token for import resolution.
-    /// Used by ProjectCompiler which calls ResolveImport/ResolveFromImport directly.
-    /// </summary>
-    public void SetCancellationToken(CancellationToken cancellationToken)
-    {
-        _cancellationToken = cancellationToken;
     }
 
     /// <summary>
@@ -91,9 +70,11 @@ internal class ImportResolver
     /// This is the main entry point for import resolution during compilation.
     /// </summary>
     public void ResolveAllImports(Module module, SymbolTable symbolTable, string? currentDir,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, string? currentModulePath = null)
     {
         _cancellationToken = cancellationToken;
+        if (currentModulePath != null)
+            UpdateCurrentModule(currentModulePath);
         _logger.LogInfo("Starting import resolution");
         var importCount = 0;
         // Tracks which module each symbol name was imported from, used only by
@@ -264,8 +245,13 @@ internal class ImportResolver
     /// <summary>
     /// Resolve an import statement
     /// </summary>
-    public List<ModuleInfo?> ResolveImport(ImportStatement importStmt, string? searchPath = null)
+    public List<ModuleInfo?> ResolveImport(ImportStatement importStmt, string? searchPath = null,
+        string? currentModulePath = null, CancellationToken cancellationToken = default)
     {
+        if (currentModulePath != null)
+            UpdateCurrentModule(currentModulePath);
+        if (cancellationToken != default)
+            _cancellationToken = cancellationToken;
         _logger.LogDebug($"Resolving import: {string.Join(", ", importStmt.Names.Select(n => n.Name))}");
 
         var result = new List<ModuleInfo?>();
@@ -329,8 +315,13 @@ internal class ImportResolver
     /// <summary>
     /// Resolve a from-import statement
     /// </summary>
-    public ModuleInfo? ResolveFromImport(FromImportStatement fromImport, string? searchPath = null)
+    public ModuleInfo? ResolveFromImport(FromImportStatement fromImport, string? searchPath = null,
+        string? currentModulePath = null, CancellationToken cancellationToken = default)
     {
+        if (currentModulePath != null)
+            UpdateCurrentModule(currentModulePath);
+        if (cancellationToken != default)
+            _cancellationToken = cancellationToken;
         var importedNames = fromImport.ImportAll ? "*" : string.Join(", ", fromImport.Names.Select(n => n.AsName != null ? $"{n.Name} as {n.AsName}" : n.Name));
         _logger.LogDebug($"[ImportResolver] Resolving from-import: from {fromImport.Module} import {importedNames}");
         if (_currentModulePath != null)
@@ -557,9 +548,7 @@ internal class ImportResolver
     private ModuleInfo? LoadModule(string modulePath, int? lineStart, int? columnStart)
     {
         var previousModulePath = _currentModulePath;
-        _currentModulePath = modulePath;
-        _moduleLoader.CurrentModulePath = modulePath;
-        _moduleResolver.SetCurrentModulePath(modulePath);
+        UpdateCurrentModule(modulePath);
 
         try
         {
@@ -588,11 +577,14 @@ internal class ImportResolver
         }
         finally
         {
-            _currentModulePath = previousModulePath;
-            _moduleLoader.CurrentModulePath = previousModulePath;
             if (previousModulePath != null)
             {
-                _moduleResolver.SetCurrentModulePath(previousModulePath);
+                UpdateCurrentModule(previousModulePath);
+            }
+            else
+            {
+                _currentModulePath = null;
+                _moduleLoader.CurrentModulePath = null;
             }
         }
     }

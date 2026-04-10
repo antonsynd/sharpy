@@ -14,8 +14,6 @@ internal partial class ProjectCompiler
         var builtinRegistry = new BuiltinRegistry(_logger);
         _symbolTableBacking = new SymbolTable(builtinRegistry);
         _semanticInfoBacking = new SemanticInfo();
-        _importResolverBacking = new ImportResolver(_logger, _moduleRegistry);
-
         // Create SemanticBinding for storing semantic data separate from AST
         var semanticBinding = new SemanticBinding();
 
@@ -24,12 +22,12 @@ internal partial class ProjectCompiler
         _projectModel.SemanticInfo = SemanticInfo;
         _projectModel.SemanticBinding = semanticBinding;
 
-        // Initialize dependency graph builder and connect to import resolver
+        // Initialize dependency graph builder
         _graphBuilderBacking = new DependencyGraphBuilder();
-        ImportResolver.SetDependencyRecorder(GraphBuilder);
 
-        // Connect SemanticBinding to import resolver for storing import data
-        ImportResolver.SetSemanticBinding(semanticBinding);
+        // Create import resolver with all dependencies injected via constructor
+        _importResolverBacking = new ImportResolver(_logger, _moduleRegistry,
+            semanticBinding: semanticBinding, dependencyRecorder: GraphBuilder);
 
         // Register all parsed files in the dependency graph
         foreach (var sourceFile in _projectModel!.Units.Keys)

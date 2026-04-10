@@ -93,8 +93,6 @@ internal class PackageResolver
         }
 
         // 2. Extract re-exported symbols from import statements
-        _importResolver.SetCurrentModule(initPath);
-
         // For module resolution, we need the parent of the package directory
         // so that sibling packages can be found (e.g., from utils.helpers import ...)
         var packageDir = Path.GetDirectoryName(initPath);
@@ -105,7 +103,7 @@ internal class PackageResolver
             switch (statement)
             {
                 case FromImportStatement fromImport:
-                    ProcessFromImport(fromImport, packageInfo, searchPath);
+                    ProcessFromImport(fromImport, packageInfo, searchPath, initPath);
                     break;
 
                 case ImportStatement import:
@@ -122,9 +120,11 @@ internal class PackageResolver
     /// Process a "from X import Y" statement for re-exports.
     /// Makes imported symbols available at package level.
     /// </summary>
-    private void ProcessFromImport(FromImportStatement fromImport, PackageInfo packageInfo, string? searchPath)
+    private void ProcessFromImport(FromImportStatement fromImport, PackageInfo packageInfo,
+        string? searchPath, string currentModulePath)
     {
-        var importedModule = _importResolver.ResolveFromImport(fromImport, searchPath);
+        var importedModule = _importResolver.ResolveFromImport(fromImport, searchPath,
+            currentModulePath: currentModulePath);
         if (importedModule == null)
             return;
 

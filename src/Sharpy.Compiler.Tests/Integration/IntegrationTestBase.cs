@@ -109,8 +109,8 @@ public abstract class IntegrationTestBase
             nameResolver.ResolveDeclarations(module);
 
             // Phase 3a: Resolve imports to register .NET types before inheritance resolution
-            var importResolver = new ImportResolver(logger, moduleRegistry);
-            importResolver.SetSemanticBinding(semanticBinding);
+            var importResolver = new ImportResolver(logger, moduleRegistry,
+                semanticBinding: semanticBinding);
             importResolver.ResolveAllImports(module, symbolTable, null);
 
             nameResolver.ResolveInheritance(); // Second pass: resolve inheritance relationships

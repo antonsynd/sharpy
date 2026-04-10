@@ -249,16 +249,16 @@ public class Compiler
             var moduleSearchPaths = _moduleRegistry?.GetModulePaths()?.ToArray() ?? Array.Empty<string>();
             _logger.LogDebug($"Module search paths: [{string.Join(", ", moduleSearchPaths)}]");
             var moduleResolver = new ModuleResolver(_logger, moduleSearchPaths);
-            var importResolver = new ImportResolver(_logger, _moduleRegistry, moduleResolver);
+            var importResolver = new ImportResolver(_logger, _moduleRegistry, moduleResolver,
+                semanticBinding: semanticBinding);
             result.ImportResolver = importResolver;
-            importResolver.SetSemanticBinding(semanticBinding);
-            importResolver.SetCurrentModule(filePath);
 
             // Get the directory of the current file as the search path
             var currentDir = Path.GetDirectoryName(Path.GetFullPath(filePath));
             _logger.LogDebug($"Current directory for import resolution: {currentDir}");
 
-            importResolver.ResolveAllImports(module, symbolTable, currentDir, cancellationToken);
+            importResolver.ResolveAllImports(module, symbolTable, currentDir, cancellationToken,
+                currentModulePath: filePath);
 
             // Pass 1b: Resolve inheritance (after imports, so imported base types are available)
             nameResolver.ResolveInheritance(cancellationToken);
