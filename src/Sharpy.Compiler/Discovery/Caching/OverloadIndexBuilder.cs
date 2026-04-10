@@ -60,10 +60,9 @@ internal class OverloadIndexBuilder
                 moduleOverloads.Documentation = doc?.Summary;
             }
 
-            // Register the module if it has functions or public fields (e.g., string module has only const fields).
-            var hasPublicFields = exportType.GetFields(BindingFlags.Public | BindingFlags.Static)
-                .Any(f => !f.Name.StartsWith("<"));
-            if (moduleOverloads.Functions.Count > 0 || hasPublicFields)
+            // Register the module if it has functions, static fields, or static properties
+            // (e.g., string module has only const fields).
+            if (moduleOverloads.Functions.Count > 0 || moduleOverloads.Fields.Count > 0)
             {
                 index.Modules[moduleName] = moduleOverloads;
             }
@@ -452,6 +451,36 @@ internal class OverloadIndexBuilder
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
             {
                 _logger.LogDebug($"Skipping field {exportType.Name}.{field.Name}: {ex.Message}");
+            }
+        }
+
+        // Discover public static properties with a getter (e.g., sys.Stdout => Console.Out).
+        // Treated the same as static fields for consumers: they are accessed with
+        // identical C# syntax, so they feed into moduleOverloads.Fields.
+        var staticProperties = exportType.GetProperties(BindingFlags.Public | BindingFlags.Static)
+            .Where(p => p.GetIndexParameters().Length == 0)
+            .Where(p => p.GetGetMethod() != null)
+            .ToList();
+
+        foreach (var property in staticProperties)
+        {
+            if (moduleOverloads.Fields.ContainsKey(property.Name))
+                continue;
+
+            try
+            {
+                var propertyFieldSignature = new FieldSignature
+                {
+                    Name = property.Name,
+                    FieldType = CreateTypeSignature(property.PropertyType),
+                    IsConst = false
+                };
+
+                moduleOverloads.Fields[property.Name] = propertyFieldSignature;
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
+            {
+                _logger.LogDebug($"Skipping static property {exportType.Name}.{property.Name}: {ex.Message}");
             }
         }
 

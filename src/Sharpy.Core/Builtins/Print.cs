@@ -1,10 +1,9 @@
 using System;
+using System.IO;
 using System.Linq;
 
 namespace Sharpy
 {
-    using static Sharpy.Sys;
-
     public static partial class Builtins
     {
         /// <summary>
@@ -21,7 +20,7 @@ namespace Sharpy
         /// </example>
         public static void Print(params object?[] values)
         {
-            PrintWithOptions(values, sep: " ", end: "\n", file: Stdout, flush: false);
+            PrintWithOptions(values, sep: " ", end: "\n", file: null, flush: false);
         }
 
         /// <summary>
@@ -33,32 +32,27 @@ namespace Sharpy
         /// <param name="end">String appended after the last value (default: newline)</param>
         /// <param name="file">Output stream (default: stdout)</param>
         /// <param name="flush">Whether to flush the stream (default: false)</param>
-        internal static void PrintWithOptions(object?[] values, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
+        internal static void PrintWithOptions(object?[] values, string sep = " ", string end = "\n", TextWriter? file = null, bool flush = false)
         {
-            if (file == Stddev)
-            {
-                return;
-            }
-
-            var textWriter = file == Stdout ? Console.Out : Console.Error;
+            var writer = file ?? Console.Out;
             var output = string.Join(sep, values.Select(FormatValue));
 
             if (end == "\n")
             {
-                textWriter.WriteLine(output);
+                writer.WriteLine(output);
             }
             else
             {
-                textWriter.Write(output);
+                writer.Write(output);
                 if (!string.IsNullOrEmpty(end))
                 {
-                    textWriter.Write(end);
+                    writer.Write(end);
                 }
             }
 
             if (flush)
             {
-                textWriter.Flush();
+                writer.Flush();
             }
         }
 

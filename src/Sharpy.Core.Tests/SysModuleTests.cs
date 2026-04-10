@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using Xunit;
 using FluentAssertions;
 
@@ -5,24 +7,37 @@ namespace Sharpy.Core.Tests;
 
 public class SysModule_Tests
 {
-    // --- Constants ---
+    // --- Streams ---
 
     [Fact]
-    public void Sys_Stdout_IsOne()
+    public void Sys_Stdout_IsConsoleOut()
     {
-        Sharpy.Sys.Stdout.Should().Be(1u);
+        Sharpy.Sys.Stdout.Should().BeSameAs(Console.Out);
     }
 
     [Fact]
-    public void Sys_Stderr_IsTwo()
+    public void Sys_Stderr_IsConsoleError()
     {
-        Sharpy.Sys.Stderr.Should().Be(2u);
+        Sharpy.Sys.Stderr.Should().BeSameAs(Console.Error);
     }
 
     [Fact]
-    public void Sys_Stddev_IsZero()
+    public void Print_WithStderrFile_RoutesToConsoleError()
     {
-        Sharpy.Sys.Stddev.Should().Be(0u);
+        var originalError = Console.Error;
+        try
+        {
+            var writer = new StringWriter();
+            Console.SetError(writer);
+
+            Builtins.PrintWithOptions(["hi"], file: Sharpy.Sys.Stderr);
+
+            writer.ToString().Should().Contain("hi");
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
     }
 
     // --- Argv ---

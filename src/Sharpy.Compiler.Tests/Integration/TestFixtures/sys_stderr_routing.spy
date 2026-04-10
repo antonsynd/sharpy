@@ -1,0 +1,8 @@
+# Verify that sys.stdout and sys.stderr resolve to TextWriter values
+# after the switch from uint fd constants to TextWriter streams.
+import sys
+
+def main():
+    out = sys.stdout
+    err = sys.stderr
+    print("ok")
