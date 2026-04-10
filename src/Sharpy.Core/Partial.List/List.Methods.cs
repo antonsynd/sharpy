@@ -230,6 +230,65 @@ namespace Sharpy
         /// </example>
         public bool Contains(T x) => _list.Contains(x);
 
+        /// <summary>
+        /// Return the element at <paramref name="index"/> wrapped in an
+        /// <see cref="Optional{T}"/>, or <see cref="Optional{T}.None"/> if the
+        /// index is out of range. Supports Python-style negative indexing.
+        /// </summary>
+        /// <param name="index">The index of the element to retrieve.</param>
+        /// <returns>
+        /// <see cref="Optional{T}.Some(T)"/> containing the element at
+        /// <paramref name="index"/>, or <see cref="Optional{T}.None"/> if the
+        /// index is out of range.
+        /// </returns>
+        /// <example>
+        /// <code>
+        /// x = [10, 20, 30]
+        /// x.get(0)     # Some(10)
+        /// x.get(-1)    # Some(30)
+        /// x.get(5)     # None
+        /// </code>
+        /// </example>
+        public Optional<T> Get(int index)
+        {
+            var actual = index < 0 ? _list.Count + index : index;
+            if (actual < 0 || actual >= _list.Count)
+            {
+                return Optional<T>.None;
+            }
+
+            return Optional<T>.Some(_list[actual]);
+        }
+
+        /// <summary>
+        /// Return the element at <paramref name="index"/>, or
+        /// <paramref name="default_"/> if the index is out of range. Supports
+        /// Python-style negative indexing.
+        /// </summary>
+        /// <param name="index">The index of the element to retrieve.</param>
+        /// <param name="default_">The fallback value when the index is out of range.</param>
+        /// <returns>
+        /// The element at <paramref name="index"/>, or <paramref name="default_"/>
+        /// if the index is out of range.
+        /// </returns>
+        /// <example>
+        /// <code>
+        /// x = [10, 20, 30]
+        /// x.get(0, -1)     # 10
+        /// x.get(5, -1)     # -1
+        /// </code>
+        /// </example>
+        public T Get(int index, T default_)
+        {
+            var actual = index < 0 ? _list.Count + index : index;
+            if (actual < 0 || actual >= _list.Count)
+            {
+                return default_;
+            }
+
+            return _list[actual];
+        }
+
         #endregion
 
         #region String Representation
