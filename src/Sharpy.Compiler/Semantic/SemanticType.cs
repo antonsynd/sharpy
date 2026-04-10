@@ -514,9 +514,29 @@ public sealed record FunctionType : SemanticType
     /// </summary>
     public bool SkipArgumentValidation { get; init; } = false;
 
+    /// <summary>
+    /// Index of the variadic parameter (params T[]), if any. Null when the function is not variadic.
+    /// When set, the parameter at this index accepts zero or more trailing arguments, each of which
+    /// must be assignable to the element type of the (array) parameter type.
+    /// </summary>
+    public int? VariadicParameterIndex { get; init; }
+
     public override string GetDisplayName()
     {
-        var params_ = string.Join(", ", ParameterTypes.Select(p => p.GetDisplayName()));
+        var parts = new List<string>(ParameterTypes.Count);
+        for (int i = 0; i < ParameterTypes.Count; i++)
+        {
+            var paramType = ParameterTypes[i];
+            if (VariadicParameterIndex == i)
+            {
+                parts.Add($"params {paramType.GetDisplayName()}");
+            }
+            else
+            {
+                parts.Add(paramType.GetDisplayName());
+            }
+        }
+        var params_ = string.Join(", ", parts);
         return $"({params_}) -> {ReturnType.GetDisplayName()}";
     }
 
@@ -558,7 +578,9 @@ public sealed record FunctionType : SemanticType
         }
 
         return ReturnType.Equals(other.ReturnType)
-            && SkipArgumentValidation == other.SkipArgumentValidation;
+            && SkipArgumentValidation == other.SkipArgumentValidation
+            && OptionalParameterCount == other.OptionalParameterCount
+            && VariadicParameterIndex == other.VariadicParameterIndex;
     }
 
     public override int GetHashCode()
@@ -570,6 +592,8 @@ public sealed record FunctionType : SemanticType
         }
         hash.Add(ReturnType);
         hash.Add(SkipArgumentValidation);
+        hash.Add(OptionalParameterCount);
+        hash.Add(VariadicParameterIndex);
         return hash.ToHashCode();
     }
 

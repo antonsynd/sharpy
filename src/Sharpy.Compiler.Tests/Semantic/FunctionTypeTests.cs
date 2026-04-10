@@ -6,7 +6,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 public class FunctionTypeTests
 {
     [Fact]
-    public void FunctionType_DifferingOptionalParameterCount_AreEqual()
+    public void FunctionType_DifferingOptionalParameterCount_AreNotEqual()
     {
         var ft1 = new FunctionType
         {
@@ -21,26 +21,26 @@ public class FunctionTypeTests
             OptionalParameterCount = 1
         };
 
-        Assert.Equal(ft1, ft2);
+        Assert.NotEqual(ft1, ft2);
     }
 
     [Fact]
-    public void FunctionType_DifferingOptionalParameterCount_HaveEqualHashCodes()
+    public void FunctionType_DifferingVariadicParameterIndex_AreNotEqual()
     {
         var ft1 = new FunctionType
         {
-            ParameterTypes = { SemanticType.Int, SemanticType.Int },
-            ReturnType = SemanticType.Int,
-            OptionalParameterCount = 0
+            ParameterTypes = { SemanticType.Int, SemanticType.Str },
+            ReturnType = SemanticType.Void,
+            VariadicParameterIndex = null
         };
         var ft2 = new FunctionType
         {
-            ParameterTypes = { SemanticType.Int, SemanticType.Int },
-            ReturnType = SemanticType.Int,
-            OptionalParameterCount = 1
+            ParameterTypes = { SemanticType.Int, SemanticType.Str },
+            ReturnType = SemanticType.Void,
+            VariadicParameterIndex = 1
         };
 
-        Assert.Equal(ft1.GetHashCode(), ft2.GetHashCode());
+        Assert.NotEqual(ft1, ft2);
     }
 
     [Fact]
