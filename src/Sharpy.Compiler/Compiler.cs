@@ -1,18 +1,16 @@
 using System.Diagnostics;
-using Sharpy.Compiler.Lexer;
-using Sharpy.Compiler.Parser;
-using Sharpy.Compiler.Semantic;
-using Sharpy.Compiler.Semantic.Registry;
-using Sharpy.Compiler.Semantic.Validation;
-using Sharpy.Compiler.Logging;
-using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Lexer;
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Model;
+using Sharpy.Compiler.Parser;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Text;
-using Microsoft.CodeAnalysis.CSharp;
 
 namespace Sharpy.Compiler;
 
@@ -135,405 +133,175 @@ public class Compiler
         var metrics = new CompilationMetrics(fileName: filePath);
         var diagnostics = new DiagnosticBag(_options.WarningsAsErrors, _options.SuppressedWarnings);
         var result = new CompilationResultBuilder(diagnostics, metrics);
+        var assertionTimer = new Stopwatch();
 
         try
         {
             // Phase 1: Lexical Analysis
-            _logger.LogInfo("Phase 1: Lexical Analysis");
             metrics.StartPhase("Lexical Analysis");
             LogPhaseStart("Lexical Analysis", filePath);
             var sourceText = new SourceText(sourceCode, filePath);
             result.SourceText = sourceText;
-            var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: cancellationToken);
-            if (_options.MaxErrors > 0)
-            {
-                lexer.MaxErrors = _options.MaxErrors;
-            }
-            var tokens = lexer.TokenizeAll();
-            result.Tokens = tokens;
-            LogPhaseEnd(filePath, lexer.Diagnostics.ErrorCount);
+            var lexResult = FileCompilationPipeline.Lex(sourceText, _logger, _options.MaxErrors, cancellationToken);
+            result.Tokens = lexResult.Tokens;
+            metrics.TokenCount = lexResult.Tokens.Count;
+            LogPhaseEnd(filePath, lexResult.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
-            // Capture token count immediately after lexing (available even if later phases fail)
-            metrics.TokenCount = tokens.Count;
-
-            // Assertion: Lexer must produce at least an EOF token
-            Debug.Assert(tokens.Count > 0, "Lexer should produce at least one token (EOF)");
-
-            // Check for lexer errors collected via DiagnosticBag
-            if (lexer.Diagnostics.HasErrors)
-            {
-                diagnostics.Merge(lexer.Diagnostics);
-                metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return result.BuildFailure();
-            }
-
+            if (lexResult.HasErrors)
+                return MergeAndFail(diagnostics, lexResult.Diagnostics, metrics, result);
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 2: Syntax Analysis
-            _logger.LogInfo("Phase 2: Syntax Analysis");
             metrics.StartPhase("Syntax Analysis");
-            LogPhaseStart("Syntax Analysis", filePath, tokens.Count);
+            LogPhaseStart("Syntax Analysis", filePath, lexResult.Tokens.Count);
             var parserMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 25;
-            var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, cancellationToken);
-            var module = parser.ParseModule();
+            var parseResult = FileCompilationPipeline.Parse(lexResult.Tokens, _logger, parserMaxErrors, cancellationToken);
+            var module = parseResult.Module;
             result.Module = module;
-            LogPhaseEnd(filePath, parser.Diagnostics.ErrorCount);
-            metrics.EndPhase();
-
-            // Capture AST node count immediately after parsing (available even if later phases fail)
-            // This must be done before the error check so partial ASTs are counted
             if (module != null)
             {
                 metrics.AstNodeCount = AstValidator.CountNodes(module);
             }
+            LogPhaseEnd(filePath, parseResult.Diagnostics.ErrorCount);
+            metrics.EndPhase();
 
-            // Check if parser collected any errors into DiagnosticBag
-            if (parser.Diagnostics.HasErrors)
-            {
-                diagnostics.Merge(parser.Diagnostics);
-                metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return result.BuildFailure();
-            }
+            if (parseResult.HasErrors)
+                return MergeAndFail(diagnostics, parseResult.Diagnostics, metrics, result);
 
-            // Assertion: Parser must produce a valid module with span info
             Debug.Assert(module != null, "Parser should produce a non-null Module");
             Debug.Assert(module.Body != null, "Module.Body should not be null");
-            var assertionTimer = Stopwatch.StartNew();
-            CompilerInvariants.AssertPostParse(module, diagnostics);
-            assertionTimer.Stop();
-            _logger.LogDebug($"Post-parse assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
-
-            // Validate AST structural invariants (DEBUG-only, elided in Release)
-            AstValidator.ValidateTree(module);
+            RunTimedAssertion(assertionTimer, "Post-parse", () => CompilerInvariants.AssertPostParse(module, diagnostics));
 
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 3: Semantic Analysis
-            _logger.LogInfo("Phase 3: Semantic Analysis");
             var builtinRegistry = new BuiltinRegistry(_logger);
             var symbolTable = new SymbolTable(builtinRegistry);
             var semanticInfo = new SemanticInfo();
             var semanticBinding = new SemanticBinding();
             result.SemanticBinding = semanticBinding;
 
-            // Check for module registry errors
             if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
-            {
-                diagnostics.Merge(_moduleRegistry.Diagnostics);
-                metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return result.BuildFailure();
-            }
+                return MergeAndFail(diagnostics, _moduleRegistry.Diagnostics, metrics, result);
 
-            // Pass 1: Name resolution (declarations only)
-            // NOTE: Inheritance resolution is deferred to after imports are resolved
-            // so that imported base types are available in the symbol table.
-            // This matches the ordering in ProjectCompiler.Phases.cs (Phase 3 → 4 → 4b).
+            var pipeline = new FileCompilationPipeline(symbolTable, semanticInfo, semanticBinding, _logger);
+
+            // Pass 1: Name resolution
             metrics.StartPhase("Name Resolution");
             LogPhaseStart("Name Resolution", filePath, module.Body.Length);
-            var nameResolver = new NameResolver(symbolTable, _logger, semanticBinding);
-            nameResolver.ResolveDeclarations(module, cancellationToken);
-            LogPhaseEnd(filePath, nameResolver.Diagnostics.ErrorCount);
+            var nameResult = pipeline.ResolveNames(module, cancellationToken);
+            LogPhaseEnd(filePath, nameResult.Diagnostics.ErrorCount);
             metrics.EndPhase();
-
-            // Merge declaration errors but don't early-exit yet — imports and
-            // inheritance resolution may resolve symbols that appear missing now.
-            // Early exit is deferred to after inheritance resolution (below).
-            diagnostics.Merge(nameResolver.Diagnostics);
+            diagnostics.Merge(nameResult.Diagnostics);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Pass 1.5: Import resolution (resolves imports and registers symbols)
+            // Pass 1.5 + 1b: Import resolution + inheritance
             metrics.StartPhase("Import Resolution");
             LogPhaseStart("Import Resolution", filePath);
-            var moduleSearchPaths = _moduleRegistry?.GetModulePaths()?.ToArray() ?? Array.Empty<string>();
-            _logger.LogDebug($"Module search paths: [{string.Join(", ", moduleSearchPaths)}]");
-            var moduleResolver = new ModuleResolver(_logger, moduleSearchPaths);
-            var importResolver = new ImportResolver(_logger, _moduleRegistry, moduleResolver,
-                semanticBinding: semanticBinding);
+            var importResult = pipeline.ResolveImports(
+                module, nameResult.NameResolver, filePath, _moduleRegistry, cancellationToken);
+            var importResolver = importResult.ImportResolver;
             result.ImportResolver = importResolver;
 
-            // Get the directory of the current file as the search path
-            var currentDir = Path.GetDirectoryName(Path.GetFullPath(filePath));
-            _logger.LogDebug($"Current directory for import resolution: {currentDir}");
-
-            importResolver.ResolveAllImports(module, symbolTable, currentDir, cancellationToken,
-                currentModulePath: filePath);
-
-            // Pass 1b: Resolve inheritance (after imports, so imported base types are available)
-            nameResolver.ResolveInheritance(cancellationToken);
-
-            // Resolve inheritance for imported types and materialize
-            var compilationPipeline = new FileCompilationPipeline(symbolTable, semanticInfo, semanticBinding, _logger);
-            compilationPipeline.ResolveImportedInheritanceAndMaterialize(importResolver);
-
-            // Assertions: After name resolution + inheritance, verify symbol table integrity
-            assertionTimer.Restart();
-            CompilerInvariants.AssertPostNameResolution(symbolTable, diagnostics);
-            assertionTimer.Stop();
-            _logger.LogDebug($"Post-name-resolution assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
-            assertionTimer.Restart();
-            CompilerInvariants.AssertPostInheritance(symbolTable, diagnostics);
-            assertionTimer.Stop();
-            _logger.LogDebug($"Post-inheritance assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
+            RunTimedAssertion(assertionTimer, "Post-name-resolution", () => CompilerInvariants.AssertPostNameResolution(symbolTable, diagnostics));
+            RunTimedAssertion(assertionTimer, "Post-inheritance", () => CompilerInvariants.AssertPostInheritance(symbolTable, diagnostics));
 
             LogPhaseEnd(filePath, importResolver.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
-            // Always merge import diagnostics (errors + warnings) so they appear
-            // in the final result. Continue to type checking even if imports failed,
-            // so users see the full picture (import errors + type errors).
             if (importResolver.Diagnostics.GetAll().Count > 0)
-            {
                 diagnostics.Merge(importResolver.Diagnostics);
-            }
 
-            // Now that imports and inheritance are resolved, check for name resolution
-            // errors that couldn't be resolved by imports. Abort before type checking
-            // to avoid cascading failures (e.g., Debug.Assert in type checker).
-            if (nameResolver.Diagnostics.HasErrors)
+            if (nameResult.HasErrors)
             {
                 metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
-                metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return result.BuildFailure();
+                return FailWithDiagnostics(diagnostics, metrics, result);
             }
-
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Pass 2: Type resolution and type checking
+            // Pass 2: Type checking
             metrics.StartPhase("Type Checking");
             LogPhaseStart("Type Checking", filePath);
             var isEntryPoint = _options.OutputType.Equals("exe", StringComparison.OrdinalIgnoreCase);
-            var typeCheckResult = compilationPipeline.TypeCheck(
+            var typeCheckResult = pipeline.TypeCheck(
                 module, filePath, isEntryPoint, _options.MaxErrors, diagnostics,
                 computeCodeGenInfo: true, cancellationToken: cancellationToken);
             var typeChecker = typeCheckResult.TypeChecker;
 
             if (typeCheckResult.Aborted)
             {
-                // Preserve all accumulated diagnostics from the type checker
                 LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
                 metrics.EndPhase();
-
-                // Capture artifact counts even on error paths for better observability
                 metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
                 if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> errorValidatorDict)
-                {
                     metrics.SetValidatorTimes(errorValidatorDict);
-                }
                 metrics.DiagnosticCount = diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
-
                 diagnostics.Merge(typeChecker.Diagnostics);
-                // Include SymbolTable and SemanticInfo even on failure so that
-                // LSP consumers can still access partial semantic data (e.g.,
-                // interface resolution for ImplementInterfaceProvider).
-                // NOTE: Only post-type-checking failures include these; earlier
-                // failures (lexer, parser, name resolution) do not — callers
-                // must null-check result.SymbolTable before use.
-                return result
-                    .WithSymbolTable(symbolTable)
-                    .WithSemanticInfo(semanticInfo)
-                    .BuildFailure();
+                return result.WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo).BuildFailure();
             }
             LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
-            // Type-check imported .spy modules so that SemanticInfo is populated for
-            // all their expressions. Without this, GetExpressionSemanticType() returns
-            // null for cross-module AST nodes during codegen (root cause of #167).
-            // NOTE: This intentionally bypasses FileCompilationPipeline because imported
-            // modules need different semantics: errors are suppressed (transitive imports
-            // may be unresolvable), and only warnings are merged into the main diagnostics.
-            foreach (var (modulePath, moduleInfo) in importResolver.LoadedSpyModules)
-            {
-                if (string.Equals(Path.GetFullPath(modulePath), Path.GetFullPath(filePath),
-                    StringComparison.OrdinalIgnoreCase))
-                    continue;
+            // Type-check imported .spy modules for SemanticInfo population
+            pipeline.TypeCheckImportedModules(importResolver, filePath, diagnostics, cancellationToken);
 
-                if (moduleInfo.IsNetModule || moduleInfo.IsErrorRecovery || moduleInfo.Module == null)
-                    continue;
+            RunTimedAssertion(assertionTimer, "Post-type-checking", () => CompilerInvariants.AssertPostTypeChecking(semanticInfo, typeChecker.Diagnostics));
+            AssertExpressionTypesRecorded(module, semanticInfo, diagnostics);
 
-                // Temporarily register the module's own exported symbols so that
-                // same-module references can be resolved during type checking.
-                var addedSymbols = new List<string>();
-                foreach (var (name, sym) in moduleInfo.ExportedSymbols)
-                {
-                    if (symbolTable.Lookup(name, searchParents: false) == null)
-                    {
-                        symbolTable.TryDefine(sym);
-                        addedSymbols.Add(name);
-                    }
-                }
+            RunTimedAssertion(assertionTimer, "Post-materialization", () => pipeline.MaterializeTypeInfo());
 
-                var moduleTypeResolver = new TypeResolver(symbolTable, semanticInfo, _logger, cancellationToken);
-                var modulePipeline = ValidationPipelineFactory.CreateDefault(_logger);
-                var moduleTypeChecker = new TypeChecker(
-                    symbolTable, semanticInfo, moduleTypeResolver, _logger, modulePipeline)
-                {
-                    CurrentFilePath = modulePath,
-                    SemanticBinding = semanticBinding,
-                    ContinueAfterError = true
-                };
-                moduleTypeChecker.CheckModule(
-                    moduleInfo.Module,
-                    computeCodeGenInfo: true,
-                    isEntryPoint: false,
-                    cancellationToken);
-
-                // Clean up temporarily added symbols
-                foreach (var name in addedSymbols)
-                {
-                    symbolTable.Remove(name);
-                }
-
-                // Only merge warnings from imported module type-checking. Errors are
-                // expected when the module has its own imports not in our SymbolTable
-                // (e.g., transitive imports). The primary purpose is to populate
-                // SemanticInfo with expression types for codegen, not to validate.
-                foreach (var diag in moduleTypeChecker.Diagnostics.GetAll())
-                {
-                    if (diag.Severity != CompilerDiagnosticSeverity.Error)
-                    {
-                        diagnostics.Add(diag);
-                    }
-                }
-            }
-
-            // Assertion: After successful type checking, warn if unknown types remain
-            assertionTimer.Restart();
-            CompilerInvariants.AssertPostTypeChecking(semanticInfo, typeChecker.Diagnostics);
-            assertionTimer.Stop();
-            _logger.LogDebug($"Post-type-checking assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
-            // Assertion: Type checking should have processed at least some expressions
-            // (unless the module has errors — failed imports or type errors can prevent expression processing,
-            // or the module contains only declarations with no executable expressions, e.g. interface-only files)
-            var hasOnlyDeclarations = module.Body.All(s =>
-                s is InterfaceDef or ClassDef or StructDef or FunctionDef
-                or ImportStatement or FromImportStatement or TypeAlias);
-            Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0 || diagnostics.HasErrors || hasOnlyDeclarations,
-                "Type checker should record at least one expression type for non-empty error-free modules with executable statements");
-            // Materialize CodeGenInfo and VariableType data onto Symbol properties, then verify and freeze
-            assertionTimer.Restart();
-            compilationPipeline.MaterializeTypeInfo();
-            assertionTimer.Stop();
-            _logger.LogDebug($"Post-materialization assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
-
-            // Capture symbol count and validator times after type checking
-            // (available even if code generation fails)
             metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
             if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> validatorDict)
-            {
                 metrics.SetValidatorTimes(validatorDict);
-            }
-
-            // Always merge type checking/validation diagnostics so warnings are
-            // available in CompilationResult even when compilation succeeds.
             diagnostics.Merge(typeChecker.Diagnostics);
 
             if (diagnostics.HasErrors)
-            {
-                metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                // Include SymbolTable and SemanticInfo even on failure so that
-                // LSP consumers can still access semantic data (e.g., interface
-                // resolution, type info) despite validation errors like SPY0320.
-                return result
-                    .WithSymbolTable(symbolTable)
-                    .WithSemanticInfo(semanticInfo)
-                    .BuildFailure();
-            }
-
+                return FailWithDiagnostics(diagnostics, metrics, result.WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo));
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Analyze-only: return after semantic analysis, skip codegen
             if (analyzeOnly)
             {
                 metrics.DiagnosticCount = diagnostics.GetAll().Count;
                 return result
                     .WithSuccess(!diagnostics.HasErrors)
-                    .WithSymbolTable(symbolTable)
-                    .WithSemanticInfo(semanticInfo)
-                    .WithModuleRegistry(_moduleRegistry)
-                    .Build();
+                    .WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo)
+                    .WithModuleRegistry(_moduleRegistry).Build();
             }
 
-            // Phase 4: Code Generation - Generate C# code from AST using RoslynEmitter
-            _logger.LogInfo("Phase 4: Code Generation");
+            // Phase 4: Code Generation
             metrics.StartPhase("Code Generation");
             LogPhaseStart("Code Generation", filePath);
 
-            var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
+            var codeGenResult = pipeline.GenerateCode(
+                module, filePath, importResolver, builtinRegistry,
+                isEntryPoint, "", _logger, cancellationToken);
+
+            if (codeGenResult.HasErrors)
             {
-                SourceFilePath = filePath,
-                // For single-file compilation, use global namespace (no namespace wrapper).
-                // The file name becomes the module class name.
-                ProjectNamespace = "",
-                IsEntryPoint = isEntryPoint,
-                Logger = _logger,
-                SemanticInfo = semanticInfo,
-                SemanticBinding = semanticBinding
-            };
-            var emitter = new RoslynEmitter(codeGenContext, cancellationToken);
-            var compilationUnit = emitter.GenerateCompilationUnit(module);
-            var csharpCode = compilationUnit.ToFullString();
-
-            // Verify generated C# parses without syntax errors (always-on, not DEBUG-only)
-            CompilerInvariants.AssertPostCodeGen(csharpCode, diagnostics);
-
-            // Check for code generation errors
-            if (codeGenContext.HasErrors)
-            {
-                diagnostics.Merge(codeGenContext.Diagnostics);
-                metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return result.BuildFailure();
-            }
-
-            // Generate C# for all imported .spy modules
-            var allGeneratedFiles = new Dictionary<string, string>();
-
-            // Add entry file
-            allGeneratedFiles[filePath] = csharpCode;
-
-            // Add all imported modules
-            foreach (var (modulePath, moduleInfo) in importResolver.LoadedSpyModules)
-            {
-                // Skip the entry file (already added)
-                if (string.Equals(Path.GetFullPath(modulePath), Path.GetFullPath(filePath),
-                    StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                var moduleCs = GenerateCSharpForModule(
-                    moduleInfo, symbolTable, builtinRegistry,
-                    codeGenContext.ProjectNamespace, diagnostics, semanticInfo, semanticBinding,
-                    cancellationToken);
-
-                if (moduleCs != null)
-                {
-                    allGeneratedFiles[modulePath] = moduleCs;
-                    _logger.LogInfo($"Generated C# for imported module: {Path.GetFileName(modulePath)}");
-                }
+                LogPhaseEnd(filePath, codeGenResult.Diagnostics.ErrorCount);
+                metrics.EndPhase();
+                return MergeAndFail(diagnostics, codeGenResult.Diagnostics, metrics, result);
             }
 
             // Emit CodeGenEvent with the size of generated code
             if (_logger.SupportsStructuredLogging)
             {
-                var totalBytes = allGeneratedFiles.Values.Sum(cs => System.Text.Encoding.UTF8.GetByteCount(cs));
+                var totalBytes = codeGenResult.AllGeneratedFiles.Values.Sum(cs => System.Text.Encoding.UTF8.GetByteCount(cs));
                 _logger.LogEvent(new CodeGenEvent("CSharp", totalBytes) { FilePath = filePath });
             }
 
-            LogPhaseEnd(filePath, codeGenContext.Diagnostics.ErrorCount);
+            LogPhaseEnd(filePath, codeGenResult.Diagnostics.ErrorCount);
             metrics.EndPhase();
-
-            // Update diagnostic count with final value
-            // (TokenCount, AstNodeCount, SymbolCount, ValidatorTimes were set incrementally above)
             metrics.DiagnosticCount = diagnostics.GetAll().Count;
 
             return result
                 .WithSuccess(!diagnostics.HasErrors)
-                .WithSymbolTable(symbolTable)
-                .WithSemanticInfo(semanticInfo)
+                .WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo)
                 .WithModuleRegistry(_moduleRegistry)
-                .WithGeneratedCSharpCode(csharpCode)
-                .WithGeneratedCSharpFiles(allGeneratedFiles)
+                .WithGeneratedCSharpCode(codeGenResult.CSharpCode)
+                .WithGeneratedCSharpFiles(codeGenResult.AllGeneratedFiles)
                 .Build();
         }
         catch (OperationCanceledException)
@@ -544,43 +312,49 @@ public class Compiler
         }
         catch (Exception ex)
         {
-            // Log full exception including stack trace for debugging
             _logger.LogError($"Compilation failed with {ex.GetType().Name}: {ex}", 0, 0);
-
-            // Create a user-facing error message that includes exception type for identification
             var errorMessage = ex is InternalCompilerErrorException ice
                 ? $"Internal compiler error in {ice.Component} ({ex.GetType().Name}): {ex.Message}"
                 : $"Compilation failed ({ex.GetType().Name}): {ex.Message}";
-
             diagnostics.AddError(errorMessage, filePath: filePath, code: DiagnosticCodes.Infrastructure.CompilationFailed);
             return result.BuildFailure();
         }
     }
 
-    /// <summary>
-    /// Create CompilerServices from compilation state.
-    /// </summary>
-    private CompilerServices CreateServices(
-        SymbolTable symbolTable,
-        SemanticInfo semanticInfo,
-        TypeResolver typeResolver,
-        ClrMemberCache? clrCache = null)
+    // ----- Helpers -----
+
+    private static CompilationResult MergeAndFail(
+        DiagnosticBag target, DiagnosticBag source, CompilationMetrics metrics, CompilationResultBuilder result)
     {
-        return new CompilerServicesBuilder()
-            .WithLogger(_logger)
-            .WithSymbolTable(symbolTable)
-            .WithSemanticInfo(semanticInfo)
-            .WithTypeResolver(typeResolver)
-            .WithClrCache(clrCache ?? new ClrMemberCache())
-            .Build();
+        target.Merge(source);
+        metrics.DiagnosticCount = target.GetAll().Count;
+        return result.BuildFailure();
     }
 
-    // ----- Structured Logging Helpers -----
+    private static CompilationResult FailWithDiagnostics(
+        DiagnosticBag diagnostics, CompilationMetrics metrics, CompilationResultBuilder result)
+    {
+        metrics.DiagnosticCount = diagnostics.GetAll().Count;
+        return result.BuildFailure();
+    }
 
-    /// <summary>
-    /// Starts tracking a compilation phase for structured logging.
-    /// Emits a PhaseStartEvent if the logger supports structured logging.
-    /// </summary>
+    private void RunTimedAssertion(Stopwatch timer, string label, Action action)
+    {
+        timer.Restart();
+        action();
+        timer.Stop();
+        _logger.LogDebug($"{label} assertions completed in {timer.ElapsedMilliseconds}ms");
+    }
+
+    private static void AssertExpressionTypesRecorded(Module module, SemanticInfo semanticInfo, DiagnosticBag diagnostics)
+    {
+        var hasOnlyDeclarations = module.Body.All(s =>
+            s is InterfaceDef or ClassDef or StructDef or FunctionDef
+            or ImportStatement or FromImportStatement or TypeAlias);
+        Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0 || diagnostics.HasErrors || hasOnlyDeclarations,
+            "Type checker should record at least one expression type for non-empty error-free modules with executable statements");
+    }
+
     private void LogPhaseStart(string phaseName, string? filePath = null, int nodeCount = 0)
     {
         _currentPhaseName = phaseName;
@@ -592,10 +366,6 @@ public class Compiler
         }
     }
 
-    /// <summary>
-    /// Ends tracking the current compilation phase for structured logging.
-    /// Emits a PhaseEndEvent if the logger supports structured logging.
-    /// </summary>
     private void LogPhaseEnd(string? filePath = null, int errorCount = 0)
     {
         _phaseStopwatch.Stop();
@@ -606,68 +376,6 @@ public class Compiler
         }
 
         _currentPhaseName = null;
-    }
-
-    /// <summary>
-    /// Generate C# code for a single module that has already been parsed and type-checked.
-    /// Used for generating code for imported modules discovered during compilation.
-    /// </summary>
-    private string? GenerateCSharpForModule(
-        ModuleInfo moduleInfo,
-        SymbolTable symbolTable,
-        BuiltinRegistry builtinRegistry,
-        string? projectNamespace,
-        DiagnosticBag diagnostics,
-        SemanticInfo? semanticInfo = null,
-        SemanticBinding? semanticBinding = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (moduleInfo.Module == null || moduleInfo.IsNetModule)
-            return null;
-
-        // Register the module's own exported symbols into the SymbolTable so that
-        // same-module references (e.g., ValidationResult(...) inside validators.spy)
-        // can be resolved during code generation. In the single-file compilation path,
-        // only explicitly imported symbols are in the SymbolTable; the module's own
-        // types are stored in ModuleInfo.ExportedSymbols by ModuleLoader.
-        var addedSymbols = new List<string>();
-        foreach (var (name, sym) in moduleInfo.ExportedSymbols)
-        {
-            if (symbolTable.Lookup(name, searchParents: false) == null)
-            {
-                symbolTable.TryDefine(sym);
-                addedSymbols.Add(name);
-            }
-        }
-
-        var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
-        {
-            SourceFilePath = moduleInfo.Path,
-            ProjectNamespace = projectNamespace,
-            // Imported modules are NOT entry points - no Main method
-            IsEntryPoint = false,
-            Logger = _logger,
-            SemanticInfo = semanticInfo,
-            SemanticBinding = semanticBinding ?? new SemanticBinding()
-        };
-
-        var emitter = new RoslynEmitter(codeGenContext, cancellationToken);
-        var compilationUnit = emitter.GenerateCompilationUnit(moduleInfo.Module);
-
-        // Clean up temporarily added symbols to avoid polluting the shared
-        // SymbolTable for subsequent module code generation.
-        foreach (var name in addedSymbols)
-        {
-            symbolTable.Remove(name);
-        }
-
-        if (codeGenContext.HasErrors)
-        {
-            diagnostics.Merge(codeGenContext.Diagnostics);
-            return null;
-        }
-
-        return compilationUnit.ToFullString();
     }
 }
 
