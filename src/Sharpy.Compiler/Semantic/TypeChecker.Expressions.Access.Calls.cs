@@ -1336,14 +1336,26 @@ internal partial class TypeChecker
         // (C# compiler will handle overload resolution)
         if (!ft.SkipArgumentValidation)
         {
-            // Validate argument count (accounting for optional parameters with defaults)
-            var requiredCount = paramTypes.Count - ft.OptionalParameterCount;
+            var variadicIndex = ft.VariadicParameterIndex;
+            var hasVariadic = variadicIndex.HasValue;
+
+            // Validate argument count (accounting for optional parameters with defaults
+            // and variadic params). The variadic parameter itself is not counted toward
+            // the required minimum (it accepts zero or more), and variadic calls have
+            // no upper bound on positional arguments.
+            var requiredCount = paramTypes.Count - ft.OptionalParameterCount - (hasVariadic ? 1 : 0);
             var tooFew = totalArgCount < requiredCount;
-            var tooMany = totalArgCount > paramTypes.Count;
+            var tooMany = !hasVariadic && totalArgCount > paramTypes.Count;
 
             if (tooFew || tooMany)
             {
-                if (ft.OptionalParameterCount > 0 && requiredCount != paramTypes.Count)
+                if (hasVariadic)
+                {
+                    AddError($"Function expects at least {requiredCount} arguments but got {totalArgCount}",
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: call.Span);
+                }
+                else if (ft.OptionalParameterCount > 0 && requiredCount != paramTypes.Count)
                 {
                     AddError($"Function expects {requiredCount} to {paramTypes.Count} arguments but got {totalArgCount}",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
@@ -1358,12 +1370,28 @@ internal partial class TypeChecker
             }
             else
             {
-                // Validate positional argument types
+                // Validate positional argument types. Arguments at or after the variadic
+                // parameter index all bind to the variadic element type (paramTypes holds
+                // the element type at that slot, not an array).
                 for (int i = 0; i < argTypes.Count; i++)
                 {
-                    if (!IsAssignable(argTypes[i], paramTypes[i]))
+                    SemanticType expected;
+                    if (hasVariadic && i >= variadicIndex!.Value)
                     {
-                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{paramTypes[i].GetDisplayName()}'",
+                        expected = paramTypes[variadicIndex.Value];
+                    }
+                    else if (i < paramTypes.Count)
+                    {
+                        expected = paramTypes[i];
+                    }
+                    else
+                    {
+                        break;
+                    }
+
+                    if (!IsAssignable(argTypes[i], expected))
+                    {
+                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{expected.GetDisplayName()}'",
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
                     }

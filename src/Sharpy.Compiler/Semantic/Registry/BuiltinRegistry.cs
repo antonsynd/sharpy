@@ -390,6 +390,20 @@ internal class BuiltinRegistry
                     .ToList();
             }
         }
+        else if (clrType.IsArray && semanticType is GenericType)
+        {
+            // Arrays map to list[T] — preserve the element type so variadic extraction
+            // (GetVariadicElementType) can recover T for `params T[]` parameters.
+            var elementType = clrType.GetElementType();
+            if (elementType != null)
+            {
+                signature.IsGeneric = true;
+                signature.TypeArguments = new List<TypeSignature>
+                {
+                    CreateTypeSignatureFromClr(elementType, typeMapper)
+                };
+            }
+        }
 
         return signature;
     }
