@@ -8,7 +8,7 @@ namespace Sharpy
     /// A ChainMap groups multiple dictionaries together to create a single, updateable view.
     /// Like Python's collections.ChainMap.
     /// </summary>
-    [SharpyModuleType("collections")]
+    [SharpyModuleType("collections", "ChainMap")]
     public class ChainMap<K, V> where K : notnull
     {
         private readonly System.Collections.Generic.List<Dict<K, V>> _maps;

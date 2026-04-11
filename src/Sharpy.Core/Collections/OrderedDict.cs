@@ -8,7 +8,7 @@ namespace Sharpy
     /// A dictionary that remembers the order in which items were inserted.
     /// Like Python's collections.OrderedDict.
     /// </summary>
-    [SharpyModuleType("collections")]
+    [SharpyModuleType("collections", "OrderedDict")]
     public class OrderedDict<K, V> where K : notnull
     {
         private readonly System.Collections.Generic.List<KeyValuePair<K, V>> _items;
