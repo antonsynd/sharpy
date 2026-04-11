@@ -46,6 +46,10 @@ public sealed class HoverService
         if (analysis.Ast == null || analysis.SemanticQuery == null)
             return null;
 
+        // Suppress hover when the cursor is inside a comment.
+        if (IsInsideComment(analysis.CommentSpans, line, col))
+            return null;
+
         var node = _api.FindNodeAtPosition(analysis.Ast, line, col);
         if (node == null)
             return null;
@@ -55,6 +59,18 @@ public sealed class HoverService
             return null;
 
         return new HoverResult(markdown, node);
+    }
+
+    private static bool IsInsideComment(IReadOnlyList<CommentSpan> spans, int line, int col)
+    {
+        if (spans == null || spans.Count == 0)
+            return false;
+        foreach (var span in spans)
+        {
+            if (span.Line == line && col >= span.StartColumn && col < span.EndColumn)
+                return true;
+        }
+        return false;
     }
 
     internal string? GetHoverMarkdownForNode(Node node, SemanticResult analysis, int line, int col)
@@ -178,6 +194,13 @@ public sealed class HoverService
                             ? query.GetTypeAnnotation(param.Type) : null, className);
                     }
 
+                    // Only resolve to the function symbol when the cursor is on the
+                    // header identifier — not in the body whitespace or elsewhere.
+                    if (line != funcDef.NameLineStart ||
+                        col < funcDef.NameColumnStart ||
+                        col >= funcDef.NameColumnStart + funcDef.Name.Length)
+                        break;
+
                     // Hover on function name — try global scope first, then class scope
                     var funcSymbol = analysis.SymbolTable?.LookupFunction(funcDef.Name);
                     if (funcSymbol != null)
@@ -199,6 +222,9 @@ public sealed class HoverService
                             return baseHover;
                     }
 
+                    if (!IsOnHeaderName(line, col, classDef.NameLineStart, classDef.NameColumnStart, classDef.Name))
+                        break;
+
                     var typeSymbol = analysis.SymbolTable?.LookupType(classDef.Name);
                     if (typeSymbol != null)
                         return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
@@ -207,6 +233,9 @@ public sealed class HoverService
 
             case StructDef structDef:
                 {
+                    if (!IsOnHeaderName(line, col, structDef.NameLineStart, structDef.NameColumnStart, structDef.Name))
+                        break;
+
                     var typeSymbol = analysis.SymbolTable?.LookupType(structDef.Name);
                     if (typeSymbol != null)
                         return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
@@ -215,6 +244,9 @@ public sealed class HoverService
 
             case InterfaceDef interfaceDef:
                 {
+                    if (!IsOnHeaderName(line, col, interfaceDef.NameLineStart, interfaceDef.NameColumnStart, interfaceDef.Name))
+                        break;
+
                     var typeSymbol = analysis.SymbolTable?.LookupType(interfaceDef.Name);
                     if (typeSymbol != null)
                         return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
@@ -223,6 +255,9 @@ public sealed class HoverService
 
             case EnumDef enumDef:
                 {
+                    if (!IsOnHeaderName(line, col, enumDef.NameLineStart, enumDef.NameColumnStart, enumDef.Name))
+                        break;
+
                     var typeSymbol = analysis.SymbolTable?.LookupType(enumDef.Name);
                     if (typeSymbol != null)
                         return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
@@ -550,6 +585,11 @@ public sealed class HoverService
         var paramTypes = string.Join(", ", funcType.ParameterTypes.Select(FormatTypeAnnotationName));
         var returnType = FormatTypeAnnotationName(funcType.ReturnType);
         return $"({paramTypes}) -> {returnType}";
+    }
+
+    private static bool IsOnHeaderName(int line, int col, int nameLine, int nameCol, string name)
+    {
+        return line == nameLine && col >= nameCol && col < nameCol + name.Length;
     }
 
     internal static bool IsPositionInRange(int line, int col, int startLine, int startCol, int endLine, int endCol)

@@ -282,4 +282,110 @@ public class HoverServiceTests
         hover.Should().Contain("LocalAlias");
         hover.Should().Contain("str");
     }
+
+    // --- #540: hover should be suppressed on comments and function body whitespace ---
+
+    [Fact]
+    public void GetHoverMarkdown_InsideSingleLineComment_ReturnsNull()
+    {
+        var source = "# hello world comment\nx: int = 42\n";
+        var result = _api.Analyze(source);
+
+        // Cursor inside the "# hello world comment" on line 1
+        var hover = _hoverService.GetHoverMarkdown(result, 1, 5);
+
+        hover.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_InsideTrailingComment_ReturnsNull()
+    {
+        var source = "x: int = 42  # inline comment\n";
+        var result = _api.Analyze(source);
+
+        // "x: int = 42  # inline comment" — '#' is at col 14
+        var hover = _hoverService.GetHoverMarkdown(result, 1, 18);
+
+        hover.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OverVariableBeforeTrailingComment_StillResolves()
+    {
+        var source = "x: int = 42  # inline comment\n";
+        var result = _api.Analyze(source);
+
+        // Cursor on 'x' at col 1 — not in the comment
+        var hover = _hoverService.GetHoverMarkdown(result, 1, 1);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("int");
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_InsideCommentBlockLines_ReturnsNull()
+    {
+        var source = "# line one\n# line two\n# line three\nx: int = 1\n";
+        var result = _api.Analyze(source);
+
+        var hoverL1 = _hoverService.GetHoverMarkdown(result, 1, 3);
+        var hoverL2 = _hoverService.GetHoverMarkdown(result, 2, 3);
+        var hoverL3 = _hoverService.GetHoverMarkdown(result, 3, 3);
+
+        hoverL1.Should().BeNull();
+        hoverL2.Should().BeNull();
+        hoverL3.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OverDefKeyword_ReturnsFunctionSymbol()
+    {
+        var source = "def greet(name: str) -> str:\n    return name\n";
+        var result = _api.Analyze(source);
+
+        // 'greet' starts at col 5; hover on 'g'
+        var hover = _hoverService.GetHoverMarkdown(result, 1, 5);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("greet");
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OnFunctionBodyBlankLine_ReturnsNull()
+    {
+        // Indented blank line inside a function body should not resolve to the function.
+        var source = "def greet() -> int:\n    \n    return 1\n";
+        var result = _api.Analyze(source);
+
+        // Line 2 is the blank-indented line. Hovering on col 3 (inside indentation)
+        // used to surface the FunctionDef because FindInnermostNode returned it.
+        var hover = _hoverService.GetHoverMarkdown(result, 2, 3);
+
+        hover.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OverClassName_ReturnsClassSymbol()
+    {
+        var source = "class Foo:\n    x: int = 0\n";
+        var result = _api.Analyze(source);
+
+        // 'Foo' starts at col 7
+        var hover = _hoverService.GetHoverMarkdown(result, 1, 7);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("Foo");
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OnClassBodyWhitespace_ReturnsNull()
+    {
+        var source = "class Foo:\n    \n    x: int = 0\n";
+        var result = _api.Analyze(source);
+
+        // Blank indented line 2, col 3 — should not resolve to Foo.
+        var hover = _hoverService.GetHoverMarkdown(result, 2, 3);
+
+        hover.Should().BeNull();
+    }
 }

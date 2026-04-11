@@ -77,4 +77,18 @@ public sealed record SemanticResult
 
     /// <summary>The symbol table from name resolution, or null if name resolution failed.</summary>
     public SymbolTable? SymbolTable { get; init; }
+
+    /// <summary>
+    /// Source spans of comments in the analyzed file (1-based line and column).
+    /// Used by LSP hover to suppress hover inside comments. Empty when no comments
+    /// were collected (e.g., when analysis failed before lexing completed).
+    /// </summary>
+    public IReadOnlyList<CommentSpan> CommentSpans { get; init; } = Array.Empty<CommentSpan>();
 }
+
+/// <summary>
+/// A single-line comment span in 1-based line/column coordinates.
+/// <c>StartColumn</c> points at the <c>#</c> character; <c>EndColumn</c> is exclusive
+/// (one past the last character of the comment).
+/// </summary>
+public readonly record struct CommentSpan(int Line, int StartColumn, int EndColumn);
