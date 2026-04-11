@@ -243,6 +243,7 @@ internal class TypeResolver
             BuiltinNames.Bool => SemanticType.Bool,
             BuiltinNames.Str => SemanticType.Str,
             BuiltinNames.None => SemanticType.Void,
+            BuiltinNames.Object => SemanticType.Object,
             _ => null!
         };
 

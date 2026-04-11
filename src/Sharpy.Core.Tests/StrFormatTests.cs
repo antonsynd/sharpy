@@ -272,34 +272,34 @@ public class StrFormatTests
 
     #endregion
 
-    #region Formatmap
+    #region FormatMap
 
     [Fact]
-    public void Formatmap_BasicKeywords()
+    public void FormatMap_BasicKeywords()
     {
         string s = "{name} is {age}";
         var mapping = new Dict<string, object>();
         mapping["name"] = "Alice";
         mapping["age"] = 30;
-        s.Formatmap(mapping).Should().Be("Alice is 30");
+        s.FormatMap(mapping).Should().Be("Alice is 30");
     }
 
     [Fact]
-    public void Formatmap_WithFormatSpec()
+    public void FormatMap_WithFormatSpec()
     {
         string s = "{name:>10}";
         var mapping = new Dict<string, object>();
         mapping["name"] = "Alice";
-        s.Formatmap(mapping).Should().Be("     Alice");
+        s.FormatMap(mapping).Should().Be("     Alice");
     }
 
     [Fact]
-    public void Formatmap_MissingKey_ThrowsKeyError()
+    public void FormatMap_MissingKey_ThrowsKeyError()
     {
         string s = "{missing}";
         var mapping = new Dict<string, object>();
         mapping["name"] = "Alice";
-        var act = () => s.Formatmap(mapping);
+        var act = () => s.FormatMap(mapping);
         act.Should().Throw<KeyError>();
     }
 

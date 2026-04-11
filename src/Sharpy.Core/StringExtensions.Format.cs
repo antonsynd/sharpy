@@ -23,7 +23,7 @@ namespace Sharpy
         /// Return a formatted version of the string, using a mapping of keyword arguments.
         /// Python: <c>str.format_map(mapping)</c>
         /// </summary>
-        public static string Formatmap(this string s, Dict<string, object> mapping)
+        public static string FormatMap(this string s, Dict<string, object> mapping)
         {
             return FormatInternal(s, null!, true, mapping);
         }
