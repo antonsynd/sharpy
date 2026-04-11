@@ -316,7 +316,7 @@ namespace Sharpy
         /// <summary>The microsecond component (0-999999).</summary>
         public int Microsecond => (int)((_dateTime.Ticks % TimeSpan.TicksPerSecond) / 10);
         /// <summary>The timezone info, or null if naive.</summary>
-        public Timezone Tzinfo => _tzinfo;
+        public Timezone? Tzinfo => _tzinfo;
 
         /// <summary>The date component of this datetime.</summary>
         public Date DateComponent => new Date(_dateTime);
@@ -327,7 +327,7 @@ namespace Sharpy
         public override string ToString()
         {
             var result = _dateTime.ToString("yyyy-MM-dd HH:mm:ss.ffffff");
-            if (_tzinfo != null)
+            if (_tzinfo is not null)
             {
                 var offset = _tzinfo.Utcoffset();
                 var sign = offset.InternalTimeSpan.Ticks >= 0 ? "+" : "-";
@@ -370,7 +370,7 @@ namespace Sharpy
         }
 
         /// <summary>Return the ISO 8601 formatted string.</summary>
-        public string Isoformat(string sep = null)
+        public string Isoformat(string? sep = null)
         {
             string s = sep ?? "T";
             var result = _dateTime.ToString("yyyy-MM-dd") + s + _dateTime.ToString("HH:mm:ss");
@@ -378,7 +378,7 @@ namespace Sharpy
             {
                 result += "." + Microsecond.ToString("D6");
             }
-            if (_tzinfo != null)
+            if (_tzinfo is not null)
             {
                 var offset = _tzinfo.Utcoffset();
                 var sign = offset.InternalTimeSpan.Ticks >= 0 ? "+" : "-";
@@ -402,7 +402,7 @@ namespace Sharpy
         {
             var epoch = new System.DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             System.DateTime utcTime;
-            if (_tzinfo != null)
+            if (_tzinfo is not null)
             {
                 utcTime = _dateTime.AddTicks(-_tzinfo.Utcoffset().InternalTimeSpan.Ticks);
             }
@@ -438,7 +438,7 @@ namespace Sharpy
         public DateTime Astimezone(Timezone tz)
         {
             System.DateTime utcTime;
-            if (_tzinfo != null)
+            if (_tzinfo is not null)
             {
                 utcTime = _dateTime.AddTicks(-_tzinfo.Utcoffset().InternalTimeSpan.Ticks);
             }
@@ -452,16 +452,19 @@ namespace Sharpy
 
         // --- Arithmetic ---
 
+        /// <summary>Add a timedelta to a datetime.</summary>
         public static DateTime operator +(DateTime dt, Timedelta delta)
         {
             return new DateTime(dt._dateTime.AddTicks(delta.InternalTimeSpan.Ticks), dt._tzinfo);
         }
 
+        /// <summary>Subtract a timedelta from a datetime.</summary>
         public static DateTime operator -(DateTime dt, Timedelta delta)
         {
             return new DateTime(dt._dateTime.AddTicks(-delta.InternalTimeSpan.Ticks), dt._tzinfo);
         }
 
+        /// <summary>Return the difference between two datetimes as a timedelta.</summary>
         public static Timedelta operator -(DateTime left, DateTime right)
         {
             return new Timedelta(left._dateTime.Subtract(right._dateTime));
@@ -469,57 +472,67 @@ namespace Sharpy
 
         // --- Comparison ---
 
-        public int CompareTo(DateTime other)
+        /// <summary>Compare this datetime to another.</summary>
+        public int CompareTo(DateTime? other)
         {
-            if (other == null)
+            if (other is null)
                 return 1;
             return _dateTime.CompareTo(other._dateTime);
         }
 
-        public bool Equals(DateTime other)
+        /// <summary>Return whether this datetime equals another.</summary>
+        public bool Equals(DateTime? other)
         {
             if (other is null)
                 return false;
             return _dateTime == other._dateTime;
         }
 
-        public override bool Equals(object obj)
+        /// <summary>Return whether this datetime equals the given object.</summary>
+        public override bool Equals(object? obj)
         {
             return Equals(obj as DateTime);
         }
 
+        /// <summary>Return a hash code for this datetime.</summary>
         public override int GetHashCode()
         {
             return _dateTime.GetHashCode();
         }
 
-        public static bool operator ==(DateTime left, DateTime right)
+        /// <summary>Return whether two datetimes are equal.</summary>
+        public static bool operator ==(DateTime? left, DateTime? right)
         {
             if (left is null)
                 return right is null;
             return left.Equals(right);
         }
 
-        public static bool operator !=(DateTime left, DateTime right)
+        /// <summary>Return whether two datetimes are not equal.</summary>
+        public static bool operator !=(DateTime? left, DateTime? right)
         {
             return !(left == right);
         }
 
+        /// <summary>Return whether <paramref name="left"/> is less than <paramref name="right"/>.</summary>
         public static bool operator <(DateTime left, DateTime right)
         {
             return left.CompareTo(right) < 0;
         }
 
+        /// <summary>Return whether <paramref name="left"/> is greater than <paramref name="right"/>.</summary>
         public static bool operator >(DateTime left, DateTime right)
         {
             return left.CompareTo(right) > 0;
         }
 
+        /// <summary>Return whether <paramref name="left"/> is less than or equal to <paramref name="right"/>.</summary>
         public static bool operator <=(DateTime left, DateTime right)
         {
             return left.CompareTo(right) <= 0;
         }
 
+        /// <summary>Return whether <paramref name="left"/> is greater than or equal to <paramref name="right"/>.</summary>
         public static bool operator >=(DateTime left, DateTime right)
         {
             return left.CompareTo(right) >= 0;
@@ -585,31 +598,37 @@ namespace Sharpy
 
         // --- Arithmetic ---
 
+        /// <summary>Add two timedeltas.</summary>
         public static Timedelta operator +(Timedelta left, Timedelta right)
         {
             return new Timedelta(left._timeSpan + right._timeSpan);
         }
 
+        /// <summary>Subtract one timedelta from another.</summary>
         public static Timedelta operator -(Timedelta left, Timedelta right)
         {
             return new Timedelta(left._timeSpan - right._timeSpan);
         }
 
+        /// <summary>Negate a timedelta.</summary>
         public static Timedelta operator -(Timedelta td)
         {
             return new Timedelta(-td._timeSpan);
         }
 
+        /// <summary>Multiply a timedelta by an integer.</summary>
         public static Timedelta operator *(Timedelta td, int n)
         {
             return new Timedelta(new TimeSpan(td._timeSpan.Ticks * n));
         }
 
+        /// <summary>Multiply an integer by a timedelta.</summary>
         public static Timedelta operator *(int n, Timedelta td)
         {
             return new Timedelta(new TimeSpan(n * td._timeSpan.Ticks));
         }
 
+        /// <summary>Divide a timedelta by an integer.</summary>
         public static Timedelta operator /(Timedelta td, int n)
         {
             return new Timedelta(new TimeSpan(td._timeSpan.Ticks / n));
@@ -617,57 +636,67 @@ namespace Sharpy
 
         // --- Comparison ---
 
-        public int CompareTo(Timedelta other)
+        /// <summary>Compare this timedelta to another.</summary>
+        public int CompareTo(Timedelta? other)
         {
-            if (other == null)
+            if (other is null)
                 return 1;
             return _timeSpan.CompareTo(other._timeSpan);
         }
 
-        public bool Equals(Timedelta other)
+        /// <summary>Return whether this timedelta equals another.</summary>
+        public bool Equals(Timedelta? other)
         {
             if (other is null)
                 return false;
             return _timeSpan == other._timeSpan;
         }
 
-        public override bool Equals(object obj)
+        /// <summary>Return whether this timedelta equals the given object.</summary>
+        public override bool Equals(object? obj)
         {
             return Equals(obj as Timedelta);
         }
 
+        /// <summary>Return a hash code for this timedelta.</summary>
         public override int GetHashCode()
         {
             return _timeSpan.GetHashCode();
         }
 
-        public static bool operator ==(Timedelta left, Timedelta right)
+        /// <summary>Return whether two timedeltas are equal.</summary>
+        public static bool operator ==(Timedelta? left, Timedelta? right)
         {
             if (left is null)
                 return right is null;
             return left.Equals(right);
         }
 
-        public static bool operator !=(Timedelta left, Timedelta right)
+        /// <summary>Return whether two timedeltas are not equal.</summary>
+        public static bool operator !=(Timedelta? left, Timedelta? right)
         {
             return !(left == right);
         }
 
+        /// <summary>Return whether <paramref name="left"/> is less than <paramref name="right"/>.</summary>
         public static bool operator <(Timedelta left, Timedelta right)
         {
             return left.CompareTo(right) < 0;
         }
 
+        /// <summary>Return whether <paramref name="left"/> is greater than <paramref name="right"/>.</summary>
         public static bool operator >(Timedelta left, Timedelta right)
         {
             return left.CompareTo(right) > 0;
         }
 
+        /// <summary>Return whether <paramref name="left"/> is less than or equal to <paramref name="right"/>.</summary>
         public static bool operator <=(Timedelta left, Timedelta right)
         {
             return left.CompareTo(right) <= 0;
         }
 
+        /// <summary>Return whether <paramref name="left"/> is greater than or equal to <paramref name="right"/>.</summary>
         public static bool operator >=(Timedelta left, Timedelta right)
         {
             return left.CompareTo(right) >= 0;
@@ -686,7 +715,7 @@ namespace Sharpy
         public static readonly Timezone Utc = new Timezone(new Timedelta(), "UTC");
 
         /// <summary>Create a timezone with the given UTC offset and optional name.</summary>
-        public Timezone(Timedelta offset, string name = null)
+        public Timezone(Timedelta offset, string? name = null)
         {
             _offset = offset;
             _name = name ?? "";
