@@ -155,9 +155,21 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Parse command-line arguments from the given string array.
+        /// Parse command-line arguments from a Sharpy list of strings.
         /// </summary>
-        public Namespace ParseArgs(string[] args)
+        public Namespace ParseArgs(List<string> args)
+        {
+            var collection = (System.Collections.Generic.ICollection<string>)args;
+            var array = new string[collection.Count];
+            collection.CopyTo(array, 0);
+            return ParseArgs(array);
+        }
+
+        /// <summary>
+        /// Parse command-line arguments from the given string array.
+        /// Internal helper used by public overloads and subparser delegation.
+        /// </summary>
+        private Namespace ParseArgs(string[] args)
         {
             var ns = new Namespace();
             int positionalIndex = 0;

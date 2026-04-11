@@ -76,6 +76,16 @@ internal class CachedModuleDiscovery
         // TypeSymbols must be created here (before GetModuleFunctions) so that
         // ConvertTypeSignature can reuse the same TypeSymbol instances, ensuring
         // reference identity for type assignability checks.
+        //
+        // Three-pass approach required because types may cross-reference each
+        // other (e.g., ArgumentParser.parse_args() returns Namespace):
+        //   Pass 1: Register all fullNames in _moduleTypeNames so
+        //           ConvertTypeSignature recognizes them as UserDefinedType.
+        //   Pass 2: Create skeleton TypeSymbols (identity only) and register in
+        //           _moduleTypeSymbols so cross-references get a stable instance.
+        //   Pass 3: Populate members on each skeleton. Member resolution may
+        //           call ConvertTypeSignature, which now finds the skeleton.
+        var pendingTypeInfos = new List<(string fullName, Caching.DiscoveredTypeInfo typeInfo)>();
         foreach (var moduleOverloads in index.Modules.Values)
         {
             foreach (var typeInfo in moduleOverloads.Types)
@@ -84,15 +94,26 @@ internal class CachedModuleDiscovery
                 {
                     var fullName = typeInfo.Namespace + "." + typeInfo.Name;
                     _moduleTypeNames.TryAdd(fullName, 0);
-
-                    // Pre-create TypeSymbol so it's available for function return types
-                    if (!_moduleTypeSymbols.ContainsKey(fullName))
-                    {
-                        var typeSymbol = ConvertToTypeSymbol(typeInfo);
-                        if (typeSymbol != null)
-                            _moduleTypeSymbols.TryAdd(fullName, typeSymbol);
-                    }
+                    pendingTypeInfos.Add((fullName, typeInfo));
                 }
+            }
+        }
+
+        foreach (var (fullName, typeInfo) in pendingTypeInfos)
+        {
+            if (!_moduleTypeSymbols.ContainsKey(fullName))
+            {
+                var skeleton = CreateSkeletonTypeSymbol(typeInfo);
+                if (skeleton != null)
+                    _moduleTypeSymbols.TryAdd(fullName, skeleton);
+            }
+        }
+
+        foreach (var (fullName, typeInfo) in pendingTypeInfos)
+        {
+            if (_moduleTypeSymbols.TryGetValue(fullName, out var skeleton))
+            {
+                PopulateTypeSymbolMembers(skeleton, typeInfo, sharedTypeParams: null);
             }
         }
     }
@@ -170,7 +191,21 @@ internal class CachedModuleDiscovery
     private TypeSymbol? ConvertToTypeSymbol(
         Caching.DiscoveredTypeInfo typeInfo, TypeParameterType[]? sharedTypeParams)
     {
-        // Resolve CLR type
+        var skeleton = CreateSkeletonTypeSymbol(typeInfo);
+        if (skeleton == null)
+            return null;
+        PopulateTypeSymbolMembers(skeleton, typeInfo, sharedTypeParams);
+        return skeleton;
+    }
+
+    /// <summary>
+    /// Create a TypeSymbol with only identity fields (Name, Kind, ClrType) populated.
+    /// Member lists remain empty so that cross-type references resolved during
+    /// <see cref="PopulateTypeSymbolMembers"/> can find a stable TypeSymbol instance
+    /// via <see cref="_moduleTypeSymbols"/>.
+    /// </summary>
+    private TypeSymbol? CreateSkeletonTypeSymbol(Caching.DiscoveredTypeInfo typeInfo)
+    {
         Type? clrType = Type.GetType(typeInfo.ClrTypeName);
         if (clrType == null)
         {
@@ -187,8 +222,29 @@ internal class CachedModuleDiscovery
             _ => TypeKind.Class
         };
 
+        return new TypeSymbol
+        {
+            Name = typeInfo.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = typeKind,
+            ClrType = clrType,
+            AccessLevel = AccessLevel.Public,
+            IsAbstract = clrType?.IsAbstract == true && !clrType.IsInterface,
+            Documentation = typeInfo.Documentation
+        };
+    }
+
+    /// <summary>
+    /// Populate members (methods, operators, protocols, properties) into an existing
+    /// TypeSymbol. Cross-type references resolved via ConvertTypeSignature will reuse
+    /// TypeSymbol instances that were already registered in <see cref="_moduleTypeSymbols"/>.
+    /// </summary>
+    private void PopulateTypeSymbolMembers(
+        TypeSymbol typeSymbol,
+        Caching.DiscoveredTypeInfo typeInfo,
+        TypeParameterType[]? sharedTypeParams)
+    {
         // Convert methods from discovery, expanding default parameters into separate overloads
-        var methods = new List<FunctionSymbol>();
         if (typeInfo.Methods.Count > 0)
         {
             // Strip generic arity suffix for OverloadExpander type name matching
@@ -202,7 +258,8 @@ internal class CachedModuleDiscovery
                 var expanded = OverloadExpander.Expand(sig, expanderTypeName);
                 foreach (var overloadSig in expanded)
                 {
-                    methods.Add(ConvertToFunctionSymbol(overloadSig, typeInfo.Name, sharedTypeParams));
+                    typeSymbol.Methods.Add(
+                        ConvertToFunctionSymbol(overloadSig, typeInfo.Name, sharedTypeParams));
                 }
             }
         }
@@ -210,45 +267,35 @@ internal class CachedModuleDiscovery
         // Convert operator methods from discovery with full signatures preserved.
         // TypeInferenceService.FindBestOverload needs parameter types and return types
         // to resolve operator overloads (e.g., Path / str -> Path).
-        var operatorMethods = ConvertOperatorMethods(typeInfo.OperatorMethods, sharedTypeParams);
+        foreach (var kvp in ConvertOperatorMethods(typeInfo.OperatorMethods, sharedTypeParams))
+        {
+            typeSymbol.OperatorMethods[kvp.Key] = kvp.Value;
+        }
 
         // Convert protocol methods from discovery as marker-only stubs (same rationale).
-        var protocolMethods = NormalizeToDunderStubs(typeInfo.ProtocolMethods);
+        foreach (var kvp in NormalizeToDunderStubs(typeInfo.ProtocolMethods))
+        {
+            typeSymbol.ProtocolMethods[kvp.Key] = kvp.Value;
+        }
 
         // Convert properties from discovery
-        var properties = typeInfo.Properties
-            .Select(p => new PropertySymbol
+        foreach (var p in typeInfo.Properties)
+        {
+            typeSymbol.Properties.Add(new PropertySymbol
             {
                 Name = ReverseNameMangler.ToSharpyName(p.Name, ReverseNameContext.Property),
                 Type = ConvertTypeSignature(p.PropertyType, sharedTypeParams),
                 HasGetter = p.HasGetter,
                 HasSetter = p.HasSetter,
                 Documentation = p.Documentation
-            })
-            .ToList();
-
-        var typeSymbol = new TypeSymbol
-        {
-            Name = typeInfo.Name,
-            Kind = SymbolKind.Type,
-            TypeKind = typeKind,
-            ClrType = clrType,
-            AccessLevel = AccessLevel.Public,
-            IsAbstract = clrType?.IsAbstract == true && !clrType.IsInterface,
-            Methods = methods,
-            OperatorMethods = operatorMethods,
-            ProtocolMethods = protocolMethods,
-            Properties = properties,
-            Documentation = typeInfo.Documentation
-        };
+            });
+        }
 
         // Populate MethodOverloads using the canonical helper (filters dunders, groups by name).
         foreach (var kvp in TypeSymbol.BuildMethodOverloads(typeSymbol.Methods))
         {
             typeSymbol.MethodOverloads[kvp.Key] = kvp.Value;
         }
-
-        return typeSymbol;
     }
 
     /// <summary>

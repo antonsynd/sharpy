@@ -5,6 +5,7 @@ namespace Sharpy
     /// <summary>
     /// Manages subparser commands for ArgumentParser.
     /// </summary>
+    [SharpyModuleType("argparse")]
     public sealed class SubparsersAction
     {
         private readonly string _title;

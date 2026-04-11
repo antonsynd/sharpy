@@ -6,6 +6,7 @@ namespace Sharpy
     /// A group of mutually exclusive optional arguments.
     /// At most one may be provided. If required, exactly one must be provided.
     /// </summary>
+    [SharpyModuleType("argparse")]
     public sealed class MutuallyExclusiveGroup
     {
         private readonly ArgumentParser _parser;

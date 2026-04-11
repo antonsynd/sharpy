@@ -6,6 +6,7 @@ namespace Sharpy
     /// <summary>
     /// Stores parsed arguments as named values.
     /// </summary>
+    [SharpyModuleType("argparse")]
     public sealed class Namespace
     {
         private readonly Dict<string, object?> _values = new Dict<string, object?>();

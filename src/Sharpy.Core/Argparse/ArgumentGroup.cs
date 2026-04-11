@@ -6,6 +6,7 @@ namespace Sharpy
     /// A named group of arguments for organization in help text.
     /// Arguments still belong to the parent parser; groups are for help formatting.
     /// </summary>
+    [SharpyModuleType("argparse")]
     public sealed class ArgumentGroup
     {
         private readonly ArgumentParser _parser;
