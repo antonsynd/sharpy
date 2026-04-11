@@ -545,6 +545,92 @@ public class CollectionsModule_Tests
         dd.Count.Should().Be(2);
     }
 
+    [Fact]
+    public void DefaultDict_Update_FromTuples_MergesEntries()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["a"] = 1;
+
+        dd.Update(new[] { ("a", 9), ("b", 2) });
+
+        dd["a"].Should().Be(9);
+        dd["b"].Should().Be(2);
+    }
+
+    [Fact]
+    public void DefaultDict_PopItem_FIFO_ReturnsFirstPair()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["a"] = 1;
+        dd["b"] = 2;
+
+        var pair = dd.PopItem();
+
+        pair.Should().Be(("a", 1));
+        dd.Count.Should().Be(1);
+    }
+
+    [Fact]
+    public void DefaultDict_PopItem_LIFO_ReturnsLastPair()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["a"] = 1;
+        dd["b"] = 2;
+
+        var pair = dd.PopItem(last: true);
+
+        pair.Should().Be(("b", 2));
+        dd.Count.Should().Be(1);
+    }
+
+    [Fact]
+    public void DefaultDict_PopItem_Empty_ThrowsKeyError()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+
+        FluentActions.Invoking(() => dd.PopItem())
+            .Should().Throw<Sharpy.KeyError>();
+    }
+
+    [Fact]
+    public void DefaultDict_Remove_ExistingKey_RemovesEntry()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["a"] = 1;
+        dd["b"] = 2;
+
+        dd.Remove("a");
+
+        dd.ContainsKey("a").Should().BeFalse();
+        dd.Count.Should().Be(1);
+    }
+
+    [Fact]
+    public void DefaultDict_Remove_MissingKey_ThrowsKeyError()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+
+        FluentActions.Invoking(() => dd.Remove("missing"))
+            .Should().Throw<Sharpy.KeyError>();
+    }
+
+    [Fact]
+    public void DefaultDict_ToDictionary_ReturnsCopy()
+    {
+        var dd = new Sharpy.DefaultDict<string, int>(() => 0);
+        dd["a"] = 1;
+        dd["b"] = 2;
+
+        var plain = dd.ToDictionary();
+
+        plain.Should().BeOfType<System.Collections.Generic.Dictionary<string, int>>();
+        plain["a"].Should().Be(1);
+        plain["b"].Should().Be(2);
+
+        plain["c"] = 3;
+        dd.ContainsKey("c").Should().BeFalse();
+    }
+
     // --- Module ---
 
     [Fact]

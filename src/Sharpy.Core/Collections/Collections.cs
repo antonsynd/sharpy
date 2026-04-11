@@ -504,6 +504,17 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Update the defaultdict with key-value pairs from an iterable of tuples.
+        /// </summary>
+        public void Update(IEnumerable<(TKey, TValue)> other)
+        {
+            foreach (var (key, value) in other)
+            {
+                _dict[key] = value;
+            }
+        }
+
+        /// <summary>
         /// If <paramref name="key"/> is in the dictionary, return its value.
         /// If not, insert <paramref name="key"/> with <paramref name="defaultValue"/>
         /// and return <paramref name="defaultValue"/>.
@@ -517,6 +528,41 @@ namespace Sharpy
 
             _dict[key] = defaultValue;
             return defaultValue;
+        }
+
+        /// <summary>
+        /// Remove and return a (key, value) pair. If <paramref name="last"/> is true,
+        /// pairs are returned in LIFO order; otherwise in FIFO order.
+        /// </summary>
+        /// <exception cref="KeyError">Thrown if the defaultdict is empty.</exception>
+        public (TKey, TValue) PopItem(bool last = false)
+        {
+            if (_dict.Count == 0)
+            {
+                throw new KeyError("dictionary is empty");
+            }
+
+            var pair = last ? _dict.Last() : _dict.First();
+            _dict.Remove(pair.Key);
+            return (pair.Key, pair.Value);
+        }
+
+        /// <summary>
+        /// Removes the item with the specified key from the defaultdict.
+        /// </summary>
+        /// <exception cref="KeyError">Thrown if the key does not exist.</exception>
+        public void Remove(TKey key)
+        {
+            if (!_dict.Remove(key))
+            {
+                throw new KeyError(Builtins.Repr(key));
+            }
+        }
+
+        /// <summary>Convert to a standard .NET Dictionary.</summary>
+        public Dictionary<TKey, TValue> ToDictionary()
+        {
+            return new Dictionary<TKey, TValue>(_dict);
         }
 
         /// <summary>The number of items in the defaultdict.</summary>
