@@ -333,4 +333,54 @@ namespace Sharpy
             return newDict;
         }
     }
+
+    /// <summary>
+    /// Non-generic helper for <see cref="Dict{K, V}"/> providing static entry points
+    /// (e.g. <c>dict.fromkeys(...)</c>) that dispatch to the generic type.
+    /// </summary>
+    /// <remarks>
+    /// This class exists alongside the generic <see cref="Dict{K, V}"/> class via
+    /// arity-based overloading so that generated C# code like <c>Dict.Fromkeys(...)</c>
+    /// can resolve without naming the type arguments.
+    /// </remarks>
+    public static class Dict
+    {
+        /// <summary>
+        /// Create a new dictionary with keys from <paramref name="keys"/> and values set to <c>null</c>.
+        /// Mirrors Python's <c>dict.fromkeys(iterable)</c>.
+        /// </summary>
+        /// <typeparam name="TKey">The key type.</typeparam>
+        /// <param name="keys">An iterable of keys for the new dictionary.</param>
+        /// <returns>A new dictionary with the specified keys all mapped to <c>null</c>.</returns>
+        /// <example>
+        /// <code>
+        /// d = dict.fromkeys(["a", "b"])    # {"a": None, "b": None}
+        /// </code>
+        /// </example>
+        public static Dict<TKey, object> Fromkeys<TKey>(IEnumerable<TKey> keys)
+            where TKey : notnull
+        {
+            return Dict<TKey, object>.Fromkeys(keys, default!);
+        }
+
+        /// <summary>
+        /// Create a new dictionary with keys from <paramref name="keys"/> and values set to <paramref name="value"/>.
+        /// Mirrors Python's <c>dict.fromkeys(iterable, value)</c>. All keys share the same value reference.
+        /// </summary>
+        /// <typeparam name="TKey">The key type.</typeparam>
+        /// <typeparam name="TValue">The value type.</typeparam>
+        /// <param name="keys">An iterable of keys for the new dictionary.</param>
+        /// <param name="value">The value assigned to every key.</param>
+        /// <returns>A new dictionary with the specified keys all mapped to <paramref name="value"/>.</returns>
+        /// <example>
+        /// <code>
+        /// d = dict.fromkeys(["a", "b"], 0)    # {"a": 0, "b": 0}
+        /// </code>
+        /// </example>
+        public static Dict<TKey, TValue> Fromkeys<TKey, TValue>(IEnumerable<TKey> keys, TValue value)
+            where TKey : notnull
+        {
+            return Dict<TKey, TValue>.Fromkeys(keys, value);
+        }
+    }
 }

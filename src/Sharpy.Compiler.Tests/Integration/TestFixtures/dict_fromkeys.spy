@@ -9,5 +9,6 @@ def main():
     print(d2)
 
     # Empty keys
-    d3: dict[str, int] = dict.fromkeys([], 1)
+    empty: list[str] = []
+    d3: dict[str, int] = dict.fromkeys(empty, 1)
     print(d3)
