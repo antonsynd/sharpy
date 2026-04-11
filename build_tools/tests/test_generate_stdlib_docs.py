@@ -11,6 +11,8 @@ from build_tools.generate_stdlib_docs import (
     DocParam,
     DocType,
     _collect_doc_lines,
+    _count_code_braces,
+    _find_nonpublic_class_ranges,
     _parse_params,
     _parse_xml_doc,
     _split_generic_args,
@@ -798,3 +800,231 @@ class TestPropertyDeduplication:
         # "year" should appear only once in the properties table
         year_count = output.count("| `year` |")
         assert year_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Brace-depth state machine: _count_code_braces / _find_nonpublic_class_ranges
+# ---------------------------------------------------------------------------
+
+
+class TestCountCodeBraces:
+    """Line-level state machine for code-vs-non-code brace counting."""
+
+    def test_plain_code_braces(self):
+        opens, closes, in_block = _count_code_braces("if (x) { foo(); }", False)
+        assert (opens, closes, in_block) == (1, 1, False)
+
+    def test_line_comment_braces_ignored(self):
+        opens, closes, in_block = _count_code_braces("int x = 0; // { } {", False)
+        assert (opens, closes, in_block) == (0, 0, False)
+
+    def test_block_comment_single_line(self):
+        opens, closes, in_block = _count_code_braces("/* { } */ int y = 0;", False)
+        assert (opens, closes, in_block) == (0, 0, False)
+
+    def test_block_comment_open_stays_open(self):
+        opens, closes, in_block = _count_code_braces("foo(); /* { ", False)
+        assert (opens, closes, in_block) == (0, 0, True)
+
+    def test_block_comment_continuation_closes(self):
+        opens, closes, in_block = _count_code_braces(" } */ bar(); {", True)
+        assert (opens, closes, in_block) == (1, 0, False)
+
+    def test_regular_string_braces_ignored(self):
+        opens, closes, in_block = _count_code_braces('var s = "{not a brace}";', False)
+        assert (opens, closes, in_block) == (0, 0, False)
+
+    def test_regular_string_escaped_quote(self):
+        opens, closes, in_block = _count_code_braces('var s = "a\\"b{";', False)
+        assert (opens, closes, in_block) == (0, 0, False)
+
+    def test_verbatim_string_braces_ignored(self):
+        opens, closes, in_block = _count_code_braces('var s = @"path\\{dir}";', False)
+        assert (opens, closes, in_block) == (0, 0, False)
+
+    def test_verbatim_string_escaped_double_quote(self):
+        opens, closes, in_block = _count_code_braces('var s = @"say ""{}""";', False)
+        assert (opens, closes, in_block) == (0, 0, False)
+
+    def test_interpolated_string_escaped_braces(self):
+        # "{{" and "}}" are literal braces inside interpolated strings
+        opens, closes, in_block = _count_code_braces('var s = $"{{literal}}";', False)
+        assert (opens, closes, in_block) == (0, 0, False)
+
+    def test_interpolated_string_hole_is_code(self):
+        # Inside $"...{ expr }..." the hole opens/closes count (they balance)
+        opens, closes, in_block = _count_code_braces('var s = $"hello {name}!";', False)
+        assert (opens, closes, in_block) == (1, 1, False)
+
+    def test_interpolated_verbatim_string(self):
+        opens, closes, in_block = _count_code_braces('var s = $@"line {x} end";', False)
+        assert (opens, closes, in_block) == (1, 1, False)
+
+    def test_char_literal_brace_ignored(self):
+        opens, closes, in_block = _count_code_braces("var c = '{';", False)
+        assert (opens, closes, in_block) == (0, 0, False)
+
+    def test_char_literal_escaped(self):
+        opens, closes, in_block = _count_code_braces("var c = '\\'';", False)
+        assert (opens, closes, in_block) == (0, 0, False)
+
+
+class TestFindNonpublicClassRanges:
+    """Pre-scan finds non-public class bodies while ignoring brace hazards."""
+
+    def test_simple_internal_class(self):
+        src = textwrap.dedent(
+            """\
+            public class Foo
+            {
+                public int A;
+            }
+            internal class Bar
+            {
+                public int B;
+            }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        # Only the internal class should be flagged
+        assert len(ranges) == 1
+        start, end = ranges[0]
+        assert "internal class Bar" in src[start]
+        assert src[end].strip() == "}"
+
+    def test_braces_in_line_comment(self):
+        """Braces in // comments must not confuse depth tracking."""
+        src = textwrap.dedent(
+            """\
+            internal class Bar
+            {
+                public int A; // stray { and }
+                public int B;
+            }
+            public class Foo { }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        assert len(ranges) == 1
+        start, end = ranges[0]
+        assert src[start].startswith("internal class Bar")
+        # Close-brace line for Bar
+        assert src[end].strip() == "}"
+
+    def test_braces_in_block_comment(self):
+        """Braces in /* ... */ comments must not confuse depth tracking."""
+        src = textwrap.dedent(
+            """\
+            internal class Bar
+            {
+                /* { { { */
+                public int A;
+                /* } } } */
+            }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        assert len(ranges) == 1
+        _, end = ranges[0]
+        # Must close on the final '}' line, not midway through the block comment
+        assert src[end].strip() == "}"
+
+    def test_braces_in_string_literal(self):
+        """Braces in "..." strings must not confuse depth tracking."""
+        src = textwrap.dedent(
+            """\
+            internal class Bar
+            {
+                public string S = "}}}";
+                public int A;
+            }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        assert len(ranges) == 1
+
+    def test_braces_in_verbatim_string(self):
+        """Braces in @"..." verbatim strings must not confuse depth tracking."""
+        src = textwrap.dedent(
+            """\
+            internal class Bar
+            {
+                public string S = @"path {with} braces";
+                public int A;
+            }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        assert len(ranges) == 1
+
+    def test_braces_in_interpolated_string(self):
+        """$"...{..}..." holes should net zero even though we count them."""
+        src = textwrap.dedent(
+            """\
+            internal class Bar
+            {
+                public string S = $"name={name}";
+                public int A;
+            }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        assert len(ranges) == 1
+        _, end = ranges[0]
+        assert src[end].strip() == "}"
+
+    def test_interpolated_escaped_braces(self):
+        """{{ and }} are literal braces inside interpolated strings."""
+        src = textwrap.dedent(
+            """\
+            internal class Bar
+            {
+                public string S = $"{{x}}";
+                public int A;
+            }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        assert len(ranges) == 1
+
+    def test_multiple_nonpublic_classes(self):
+        src = textwrap.dedent(
+            """\
+            internal class A
+            {
+                public int X;
+            }
+            public class B { }
+            private class C
+            {
+                public int Y;
+            }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        assert len(ranges) == 2
+
+    def test_public_class_not_flagged(self):
+        src = textwrap.dedent(
+            """\
+            public class Foo
+            {
+                public int A;
+            }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        assert ranges == []
+
+    def test_class_keyword_in_string_not_flagged(self):
+        """A string literal containing "internal class" must not trigger a range."""
+        src = textwrap.dedent(
+            """\
+            public class Foo
+            {
+                public string S = "internal class Bar { }";
+            }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        assert ranges == []

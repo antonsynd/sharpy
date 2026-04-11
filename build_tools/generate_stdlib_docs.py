@@ -495,6 +495,246 @@ _PROPERTY_PATTERN = re.compile(
 )
 
 
+_NON_PUBLIC_CLASS_RE = re.compile(
+    r"(?:internal|private|protected)\s+(?:(?:sealed|abstract|static|partial)\s+)*"
+    r"(?:class|struct)\s"
+)
+
+
+def _find_nonpublic_class_ranges(lines: list[str]) -> list[tuple[int, int]]:
+    """Find line ranges of internal/private/protected classes in a C# file.
+
+    Returns a list of (start, end) tuples (0-based inclusive) covering each
+    non-public class or struct body. Brace counting is performed with a state
+    machine that ignores braces inside line comments, block comments, regular
+    strings, verbatim strings, and interpolated strings — so hazards like
+    ``"{"`` in a string literal or ``/* { */`` in a comment are handled.
+    """
+    ranges: list[tuple[int, int]] = []
+    brace_depth = 0
+    in_non_public = False
+    seen_open_brace = False
+    non_public_start = -1
+
+    # Persistent state across lines: inside a /* ... */ block comment
+    in_block_comment = False
+
+    for idx, line in enumerate(lines):
+        stripped = line.strip()
+        if not in_non_public and not in_block_comment and _NON_PUBLIC_CLASS_RE.match(stripped):
+            in_non_public = True
+            non_public_start = idx
+            brace_depth = 0
+            seen_open_brace = False
+
+        if in_non_public:
+            # Scan the raw line char-by-char with a state machine
+            line_open, line_close, in_block_comment = _count_code_braces(line, in_block_comment)
+            brace_depth += line_open - line_close
+            if line_open > 0:
+                seen_open_brace = True
+            if seen_open_brace and brace_depth <= 0 and non_public_start >= 0:
+                ranges.append((non_public_start, idx))
+                in_non_public = False
+                non_public_start = -1
+        else:
+            # Even outside a non-public class we must track block comments
+            # so that a class declaration inside a comment is not misread.
+            _, _, in_block_comment = _count_code_braces(line, in_block_comment)
+
+    return ranges
+
+
+def _count_code_braces(line: str, in_block_comment: bool) -> tuple[int, int, bool]:
+    """Count ``{`` and ``}`` in a C# source line, ignoring non-code contexts.
+
+    Returns ``(open_count, close_count, in_block_comment_after)`` where the
+    third element reflects whether a ``/* ... */`` comment is still open after
+    processing this line. Handles:
+
+    - ``//`` line comments (rest of line ignored)
+    - ``/* ... */`` block comments (may span multiple lines)
+    - Regular strings ``"..."`` (with ``\\`` escapes)
+    - Verbatim strings ``@"..."`` (``""`` escapes a quote)
+    - Interpolated strings ``$"..."`` — ``{{``/``}}`` are escaped braces, a
+      single ``{`` opens an interpolation hole whose contents are code again
+    - Verbatim interpolated strings ``$@"..."`` / ``@$"..."``
+
+    Nested interpolation holes are tracked via a simple brace-depth counter
+    per string; this is sufficient for our stdlib sources, which do not use
+    nested interpolated strings inside holes.
+    """
+    open_count = 0
+    close_count = 0
+
+    # String state: None when not in a string, otherwise a dict describing it
+    # Fields: verbatim (bool), interpolated (bool), hole_depth (int, 0 when not in a hole)
+    string_state: dict | None = None
+
+    i = 0
+    n = len(line)
+    while i < n:
+        c = line[i]
+        nxt = line[i + 1] if i + 1 < n else ""
+
+        if in_block_comment:
+            if c == "*" and nxt == "/":
+                in_block_comment = False
+                i += 2
+                continue
+            i += 1
+            continue
+
+        if string_state is not None:
+            if string_state["interpolated"] and string_state["hole_depth"] > 0:
+                # Inside an interpolation hole — treat as code, but track braces
+                # so we know when the hole closes. Also look for nested strings.
+                if c == "{":
+                    string_state["hole_depth"] += 1
+                    open_count += 1
+                    i += 1
+                    continue
+                if c == "}":
+                    string_state["hole_depth"] -= 1
+                    close_count += 1
+                    i += 1
+                    continue
+                # Nested string inside a hole — fall through to string-start logic below
+                # by temporarily clearing string_state.
+                saved = string_state
+                string_state = None
+                # Re-dispatch this character as if in code
+                if c == '"':
+                    string_state = {"verbatim": False, "interpolated": False, "hole_depth": 0}
+                    i += 1
+                    # restore outer state by stacking via saved → but we only need
+                    # to remember to return to `saved` when this inner string ends.
+                    # Use a simple approach: process the inner string inline.
+                    while i < n:
+                        cc = line[i]
+                        if cc == "\\" and i + 1 < n:
+                            i += 2
+                            continue
+                        if cc == '"':
+                            i += 1
+                            string_state = saved
+                            break
+                        i += 1
+                    else:
+                        # Unterminated — drop back to saved state
+                        string_state = saved
+                    continue
+                # Not a string, not a brace — restore and advance
+                string_state = saved
+                i += 1
+                continue
+
+            # Inside a string literal (not in a hole)
+            if string_state["verbatim"]:
+                if c == '"':
+                    if nxt == '"':
+                        i += 2  # escaped quote
+                        continue
+                    if string_state["interpolated"]:
+                        # End of verbatim interpolated string
+                        string_state = None
+                        i += 1
+                        continue
+                    string_state = None
+                    i += 1
+                    continue
+                if string_state["interpolated"]:
+                    if c == "{":
+                        if nxt == "{":
+                            i += 2  # escaped brace
+                            continue
+                        string_state["hole_depth"] = 1
+                        open_count += 1
+                        i += 1
+                        continue
+                    if c == "}":
+                        if nxt == "}":
+                            i += 2
+                            continue
+                        # Stray } in verbatim interpolated — treat as literal
+                        i += 1
+                        continue
+                i += 1
+                continue
+            else:
+                if c == "\\" and i + 1 < n:
+                    i += 2
+                    continue
+                if c == '"':
+                    string_state = None
+                    i += 1
+                    continue
+                if string_state["interpolated"]:
+                    if c == "{":
+                        if nxt == "{":
+                            i += 2
+                            continue
+                        string_state["hole_depth"] = 1
+                        open_count += 1
+                        i += 1
+                        continue
+                    if c == "}":
+                        if nxt == "}":
+                            i += 2
+                            continue
+                        i += 1
+                        continue
+                i += 1
+                continue
+
+        # Plain code context
+        if c == "/" and nxt == "/":
+            break  # rest of line is a comment
+        if c == "/" and nxt == "*":
+            in_block_comment = True
+            i += 2
+            continue
+        if c == "'":
+            # Character literal — skip until closing '
+            i += 1
+            while i < n:
+                if line[i] == "\\" and i + 1 < n:
+                    i += 2
+                    continue
+                if line[i] == "'":
+                    i += 1
+                    break
+                i += 1
+            continue
+        if c == '"':
+            string_state = {"verbatim": False, "interpolated": False, "hole_depth": 0}
+            i += 1
+            continue
+        if c == "@" and nxt == '"':
+            string_state = {"verbatim": True, "interpolated": False, "hole_depth": 0}
+            i += 2
+            continue
+        if c == "$" and nxt == '"':
+            string_state = {"verbatim": False, "interpolated": True, "hole_depth": 0}
+            i += 2
+            continue
+        if c == "$" and nxt == "@" and i + 2 < n and line[i + 2] == '"':
+            string_state = {"verbatim": True, "interpolated": True, "hole_depth": 0}
+            i += 3
+            continue
+        if c == "@" and nxt == "$" and i + 2 < n and line[i + 2] == '"':
+            string_state = {"verbatim": True, "interpolated": True, "hole_depth": 0}
+            i += 3
+            continue
+        if c == "{":
+            open_count += 1
+        elif c == "}":
+            close_count += 1
+        i += 1
+
+    return open_count, close_count, in_block_comment
+
+
 def parse_cs_file(
     filepath: Path,
     is_extension: bool = False,
@@ -510,31 +750,7 @@ def parse_cs_file(
     lines = text.split("\n")
     members: list[DocMember] = []
 
-    # Pre-scan: find line ranges of internal/private classes to exclude
-    _non_public_ranges: list[tuple[int, int]] = []
-    _brace_depth = 0
-    _in_non_public = False
-    _seen_open_brace = False
-    _non_public_start = -1
-    for _idx, _line in enumerate(lines):
-        _s = _line.strip()
-        if not _in_non_public and re.match(
-            r"(?:internal|private|protected)\s+(?:(?:sealed|abstract|static|partial)\s+)*"
-            r"(?:class|struct)\s",
-            _s,
-        ):
-            _in_non_public = True
-            _non_public_start = _idx
-            _brace_depth = 0
-            _seen_open_brace = False
-        if _in_non_public:
-            _brace_depth += _s.count("{") - _s.count("}")
-            if "{" in _s:
-                _seen_open_brace = True
-            if _seen_open_brace and _brace_depth <= 0 and _non_public_start >= 0:
-                _non_public_ranges.append((_non_public_start, _idx))
-                _in_non_public = False
-                _non_public_start = -1
+    _non_public_ranges = _find_nonpublic_class_ranges(lines)
 
     i = 0
 
