@@ -304,10 +304,54 @@ internal class OperatorValidator : ValidatingAstWalker
             // Check regular methods
             if (udt.Symbol.Methods.Any(m => m.Name == dunderName))
                 return true;
+
+            // Fall back to CLR operator discovery for discovered stdlib types
+            // (e.g., Sharpy.Timedelta defines op_UnaryNegation which maps to __neg__).
+            if (udt.Symbol.ClrType != null && ClrTypeHasOperator(udt.Symbol.ClrType, dunderName))
+                return true;
         }
 
         return false;
     }
+
+    private static bool ClrTypeHasOperator(Type clrType, string dunderName)
+    {
+        var clrMethodName = DunderToClrOperatorMethod(dunderName);
+        if (clrMethodName == null)
+            return false;
+
+        var methods = clrType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        foreach (var method in methods)
+        {
+            if (method.Name == clrMethodName)
+                return true;
+        }
+        return false;
+    }
+
+    private static string? DunderToClrOperatorMethod(string dunderName) => dunderName switch
+    {
+        DunderNames.Add => "op_Addition",
+        DunderNames.Sub => "op_Subtraction",
+        DunderNames.Mul => "op_Multiply",
+        DunderNames.Div => "op_Division",
+        DunderNames.Mod => "op_Modulus",
+        DunderNames.And => "op_BitwiseAnd",
+        DunderNames.Or => "op_BitwiseOr",
+        DunderNames.Xor => "op_ExclusiveOr",
+        DunderNames.LShift => "op_LeftShift",
+        DunderNames.RShift => "op_RightShift",
+        DunderNames.Eq => "op_Equality",
+        DunderNames.Ne => "op_Inequality",
+        DunderNames.Lt => "op_LessThan",
+        DunderNames.Le => "op_LessThanOrEqual",
+        DunderNames.Gt => "op_GreaterThan",
+        DunderNames.Ge => "op_GreaterThanOrEqual",
+        DunderNames.Neg => "op_UnaryNegation",
+        DunderNames.Pos => "op_UnaryPlus",
+        DunderNames.Invert => "op_OnesComplement",
+        _ => null
+    };
 
     private bool IsPrimitiveType(SemanticType type)
     {

@@ -887,7 +887,12 @@ internal class TypeInferenceService
             return SemanticType.Bool;
         if (clrType == typeof(string))
             return SemanticType.Str;
-        return SemanticType.Object;
+        if (clrType == typeof(void))
+            return SemanticType.Void;
+        // Delegate to ClrTypeMapper for Sharpy-namespace and other CLR types
+        // so that operator return types like Sharpy.DateTime map back to `datetime`
+        // instead of collapsing to `object`.
+        return _clrTypeMapper.Value.MapClrTypeToSemanticType(clrType);
     }
 
     private static string? BinaryOperatorToDunder(BinaryOperator op)

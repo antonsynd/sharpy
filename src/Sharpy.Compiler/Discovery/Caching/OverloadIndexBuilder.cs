@@ -107,8 +107,10 @@ internal class OverloadIndexBuilder
                 continue;
 
             var isException = typeof(Exception).IsAssignableFrom(type);
-            var isModuleType = type.CustomAttributes.Any(
+            var moduleTypeAttr = type.CustomAttributes.FirstOrDefault(
                 a => a.AttributeType.FullName == "Sharpy.SharpyModuleTypeAttribute");
+            var isModuleType = moduleTypeAttr != null;
+            var pythonName = GetPythonNameFromModuleTypeAttr(moduleTypeAttr);
 
             // Look up XML documentation for this type
             string? typeDoc = null;
@@ -121,7 +123,7 @@ internal class OverloadIndexBuilder
 
             var typeInfo = new DiscoveredTypeInfo
             {
-                Name = type.Name,
+                Name = pythonName ?? type.Name,
                 Namespace = type.Namespace ?? string.Empty,
                 ClrTypeName = type.AssemblyQualifiedName ?? type.FullName ?? type.Name,
                 IsException = isException,
@@ -349,6 +351,17 @@ internal class OverloadIndexBuilder
 
         // Fallback to namespace-based derivation
         return DeriveModuleNameFromNamespace(type.Namespace);
+    }
+
+    /// <summary>
+    /// Reads the optional <c>pythonName</c> argument from a SharpyModuleType attribute.
+    /// Returns <c>null</c> if the attribute is absent or used with the single-argument constructor.
+    /// </summary>
+    private static string? GetPythonNameFromModuleTypeAttr(CustomAttributeData? attr)
+    {
+        if (attr == null || attr.ConstructorArguments.Count < 2)
+            return null;
+        return attr.ConstructorArguments[1].Value as string;
     }
 
     private string DeriveModuleNameFromNamespace(string? ns)

@@ -139,6 +139,17 @@ internal partial class RoslynEmitter
                 return MakeGlobalQualifiedName("Sharpy", "Builtins",
                     NameMangler.ToPascalCase(name.Name));
             }
+
+            // Discovered TypeSymbols in the Sharpy namespace (e.g., datetime → Sharpy.DateTime)
+            // must resolve through the CLR type name, not the Sharpy-facing Python alias,
+            // so member access like datetime.strptime(...) becomes Sharpy.DateTime.Strptime(...).
+            if ((resolvedSymbol is TypeSymbol rts && rts.ClrType != null && rts.ClrType.Namespace == "Sharpy")
+                || (symbol is TypeSymbol lts && lts.ClrType != null && lts.ClrType.Namespace == "Sharpy"))
+            {
+                var clrType = (resolvedSymbol as TypeSymbol)?.ClrType
+                              ?? ((TypeSymbol)symbol!).ClrType!;
+                return MakeGlobalQualifiedName("Sharpy", clrType.Name);
+            }
         }
 
         var mangledName = GetMangledVariableName(name.Name, isNewDeclaration: false);
