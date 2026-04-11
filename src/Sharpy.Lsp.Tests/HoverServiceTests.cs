@@ -388,4 +388,53 @@ public class HoverServiceTests
 
         hover.Should().BeNull();
     }
+
+    // --- #540 sub-fix B: keyword hover narrows highlight to the keyword span ---
+
+    [Fact]
+    public void GetHoverResult_OverAwaitKeyword_NarrowsHighlightToKeyword()
+    {
+        var source = "async def foo() -> int:\n    return 1\nasync def main():\n    await foo()\n";
+        var result = _api.Analyze(source);
+
+        // Line 4: "    await foo()" — 'await' starts at col 5
+        var hover = _hoverService.GetHoverResult(result, 4, 5);
+
+        hover.Should().NotBeNull();
+        // Highlight narrowed to just "await" (5 chars)
+        hover!.HighlightLineStart.Should().Be(4);
+        hover.HighlightColumnStart.Should().Be(5);
+        hover.HighlightLineEnd.Should().Be(4);
+        hover.HighlightColumnEnd.Should().Be(10);
+    }
+
+    [Fact]
+    public void GetHoverResult_OverAwaitOperand_NoNarrowing()
+    {
+        var source = "async def foo() -> int:\n    return 1\nasync def main():\n    await foo()\n";
+        var result = _api.Analyze(source);
+
+        // Line 4: "    await foo()" — 'foo' starts at col 11
+        var hover = _hoverService.GetHoverResult(result, 4, 11);
+
+        hover.Should().NotBeNull();
+        // Cursor on operand — no narrowing; highlight overrides should be null
+        hover!.HighlightLineStart.Should().BeNull();
+        hover.HighlightColumnStart.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetHoverResult_OverNotKeyword_NarrowsHighlightToKeyword()
+    {
+        var source = "def main():\n    p: bool = True\n    q = not p\n";
+        var result = _api.Analyze(source);
+
+        // Line 3: "    q = not p" — 'not' starts at col 9
+        var hover = _hoverService.GetHoverResult(result, 3, 9);
+
+        hover.Should().NotBeNull();
+        hover!.HighlightLineStart.Should().Be(3);
+        hover.HighlightColumnStart.Should().Be(9);
+        hover.HighlightColumnEnd.Should().Be(12);
+    }
 }

@@ -33,6 +33,10 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
             return null;
 
         var node = result.Node;
+        var startLine = result.HighlightLineStart ?? node.LineStart;
+        var startCol = result.HighlightColumnStart ?? node.ColumnStart;
+        var endLine = result.HighlightLineEnd ?? node.LineEnd;
+        var endCol = result.HighlightColumnEnd ?? node.ColumnEnd;
         return new Hover
         {
             Contents = new MarkedStringsOrMarkupContent(
@@ -43,8 +47,8 @@ internal sealed class SharpyHoverHandler : HoverHandlerBase
                 }
             ),
             Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
-                PositionConverter.ToLsp(node.LineStart, node.ColumnStart),
-                PositionConverter.ToLsp(node.LineEnd, node.ColumnEnd)
+                PositionConverter.ToLsp(startLine, startCol),
+                PositionConverter.ToLsp(endLine, endCol)
             )
         };
     }

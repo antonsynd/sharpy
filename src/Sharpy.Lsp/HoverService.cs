@@ -21,9 +21,17 @@ public sealed class HoverService
 
     /// <summary>
     /// Result of a hover resolution, containing the markdown content and the AST node
-    /// whose range should be highlighted.
+    /// whose range should be highlighted. Optional Highlight* overrides narrow the
+    /// highlight to a subrange of the node (e.g. the <c>await</c> keyword inside an
+    /// <see cref="AwaitExpression"/>).
     /// </summary>
-    public sealed record HoverResult(string Markdown, Node Node);
+    public sealed record HoverResult(string Markdown, Node Node)
+    {
+        public int? HighlightLineStart { get; init; }
+        public int? HighlightColumnStart { get; init; }
+        public int? HighlightLineEnd { get; init; }
+        public int? HighlightColumnEnd { get; init; }
+    }
 
     /// <summary>
     /// Returns hover markdown for the given position in the analysis result,
@@ -54,11 +62,63 @@ public sealed class HoverService
         if (node == null)
             return null;
 
+        // Keyword/operator nodes delegate to their operand's hover and narrow the
+        // highlight to the keyword token. Attempt this first so that hovering `not p`
+        // still produces hover text even though builtin UnaryOp hover is suppressed.
+        var narrowed = TryNarrowToKeyword(node, analysis);
+        if (narrowed != null)
+            return narrowed;
+
         var markdown = GetHoverMarkdownForNode(node, analysis, line, col);
         if (markdown == null)
             return null;
 
         return new HoverResult(markdown, node);
+    }
+
+    /// <summary>
+    /// For compound expressions whose hover target is a leading keyword/operator token
+    /// (e.g. <c>await foo()</c>, <c>yield x</c>, <c>not p</c>), delegate the hover text
+    /// to the inner operand while narrowing the highlight range to just the keyword
+    /// token span. Returns null when the node is not one of the supported kinds or when
+    /// the inner delegation yields no markdown (in which case callers should keep the
+    /// original result).
+    /// </summary>
+    private HoverResult? TryNarrowToKeyword(Node node, SemanticResult analysis)
+    {
+        Expression? operand;
+        int keywordLength;
+        switch (node)
+        {
+            case AwaitExpression awaitExpr:
+                operand = awaitExpr.Operand;
+                keywordLength = 5; // "await"
+                break;
+            case YieldStatement yieldStmt:
+                if (yieldStmt.Value == null)
+                    return null;
+                operand = yieldStmt.Value;
+                keywordLength = yieldStmt.IsFrom ? 10 : 5; // "yield from" or "yield"
+                break;
+            case UnaryOp { Operator: UnaryOperator.Not } unaryOp:
+                operand = unaryOp.Operand;
+                keywordLength = 3; // "not"
+                break;
+            default:
+                return null;
+        }
+
+        var innerMarkdown = GetHoverMarkdownForNode(operand, analysis, operand.LineStart, operand.ColumnStart);
+        if (innerMarkdown == null)
+            return null;
+
+        return new HoverResult(innerMarkdown, node)
+        {
+            HighlightLineStart = node.LineStart,
+            HighlightColumnStart = node.ColumnStart,
+            HighlightLineEnd = node.LineStart,
+            HighlightColumnEnd = node.ColumnStart + keywordLength,
+        };
     }
 
     private static bool IsInsideComment(IReadOnlyList<CommentSpan> spans, int line, int col)
