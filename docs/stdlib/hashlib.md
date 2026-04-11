@@ -64,6 +64,13 @@ Create a SHA-512 hash object, optionally initialized with data.
 Represents a hash object that accumulates data and computes cryptographic hashes.
 Mirrors Python's hashlib hash object API.
 
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `digest_size` | `int` | The size of the resulting hash in bytes. |
+| `name` | `str` | The canonical name of this hashing algorithm (e.g., "sha256"). |
+
 ### `update(data: str)`
 
 Append data to the hash object. The data is encoded as UTF-8.

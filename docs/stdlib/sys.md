@@ -6,14 +6,6 @@ Provides access to system-specific parameters and functions, similar to Python's
 import sys
 ```
 
-## Constants
-
-| Name | Type | Description |
-|------|------|-------------|
-| `stddev` | `uint` | File descriptor for standard input (0). |
-| `stdout` | `uint` | File descriptor for standard output (1). |
-| `stderr` | `uint` | File descriptor for standard error (2). |
-
 ## Properties
 
 | Name | Type | Description |
@@ -21,6 +13,8 @@ import sys
 | `platform` | `str` | This string contains a platform identifier. |
 | `stdin` | `TextReader` | The standard input stream. |
 | `maxsize` | `int` | An integer giving the maximum value a variable of type int can take. Note: Sharpy's int is 32-bit (max 2,147,483,647), unlike Python's sys.maxsize which is 2^63-1 on 64-bit. Use long for larger values. |
+| `stdout` | `TextWriter` | The standard output stream. |
+| `stderr` | `TextWriter` | The standard error stream. |
 
 ## Functions
 

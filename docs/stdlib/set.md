@@ -250,6 +250,90 @@ b = {3, 4}
 a.isdisjoint(b)    # True
 ```
 
+### `update(other: set[T])`
+
+Update the set, adding elements from the other set.
+
+**Parameters:**
+
+- `other` (set[T]) -- The set of elements to add.
+
+```python
+s = {1, 2, 3}
+s.update({3, 4})    # {1, 2, 3, 4}
+```
+
+### `update(other: Iterable[T])`
+
+Update the set, adding elements from the given iterable.
+
+**Parameters:**
+
+- `other` (Iterable[T]) -- The iterable of elements to add.
+
+### `difference_update(other: set[T])`
+
+Update the set, removing elements found in the other set.
+
+**Parameters:**
+
+- `other` (set[T]) -- The set of elements to remove.
+
+```python
+s = {1, 2, 3}
+s.difference_update({2})    # {1, 3}
+```
+
+### `difference_update(other: Iterable[T])`
+
+Update the set, removing elements found in the given iterable.
+
+**Parameters:**
+
+- `other` (Iterable[T]) -- The iterable of elements to remove.
+
+### `intersection_update(other: set[T])`
+
+Update the set, keeping only elements found in both sets.
+
+**Parameters:**
+
+- `other` (set[T]) -- The set to intersect with.
+
+```python
+s = {1, 2, 3}
+s.intersection_update({2, 3, 4})    # {2, 3}
+```
+
+### `intersection_update(other: Iterable[T])`
+
+Update the set, keeping only elements found in the given iterable.
+
+**Parameters:**
+
+- `other` (Iterable[T]) -- The iterable to intersect with.
+
+### `symmetric_difference_update(other: set[T])`
+
+Update the set, keeping only elements found in either set but not both.
+
+**Parameters:**
+
+- `other` (set[T]) -- The set to compute symmetric difference with.
+
+```python
+s = {1, 2, 3}
+s.symmetric_difference_update({2, 3, 4})    # {1, 4}
+```
+
+### `symmetric_difference_update(other: Iterable[T])`
+
+Update the set, keeping only elements found in either set or the iterable but not both.
+
+**Parameters:**
+
+- `other` (Iterable[T]) -- The iterable to compute symmetric difference with.
+
 ### `copy_to(array: list[T], array_index: int)`
 
 Copies the elements of the set to an array.

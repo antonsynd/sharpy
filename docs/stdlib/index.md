@@ -13,14 +13,13 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`list`](list.md) | A mutable sequence of elements, similar to Python's \`list\`. Supports negative indexing, slicing, and Python-style methods. |
 | [`dict`](dict.md) | A mutable mapping of keys to values, similar to Python's dict. Supports Python-style methods like get(), pop(), items(), keys(), and values(). |
 | [`set`](set.md) | A mutable set of unique elements, similar to Python's \`set\`. Supports set operations: union, intersection, difference, and symmetric difference. |
-| [`str`](str.md) | Extension methods on \`string\` that provide Python string method equivalents under PascalCase names. The emitter's NameMangler converts \`upper\` to \`Upper\`, \`lower\` to \`Lower\`, etc. Generated code includes \`using global::Sharpy;\` which brings these extensions into scope so that \`name.Upper()\` compiles against C# \`string\`. |
 | [`complex`](complex.md) | A complex number type, similar to Python's complex. |
 
 ## Modules
 
 | Module | Description |
 |--------|-------------|
-| [`argparse`](argparse.md) | Python-compatible command-line argument parser. |
+| [`argparse`](argparse.md) | A named group of arguments for organization in help text. Arguments still belong to the parent parser; groups are for help formatting. |
 | [`bisect`](bisect.md) | Array bisection algorithm, similar to Python's bisect module. Provides functions to maintain a list in sorted order without having to sort the list after each insertion. |
 | [`collections`](collections.md) | A ChainMap groups multiple dictionaries together to create a single, updateable view. Like Python's collections.ChainMap. |
 | [`copy`](copy.md) | Shallow and deep copy operations, similar to Python's \`copy\` module. |

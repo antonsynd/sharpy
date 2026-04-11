@@ -16,6 +16,7 @@ from build_tools.generate_stdlib_docs import (
     _parse_params,
     _parse_xml_doc,
     _split_generic_args,
+    discover_modules,
     map_type,
     parse_cs_file,
     pascal_to_snake,
@@ -646,6 +647,158 @@ class TestRenderModulePage:
         )
         output = render_module_page(mod)
         assert "## ArgumentParser" in output
+
+    def test_type_scoped_properties_rendered(self):
+        """Per-type properties should render as a `### Properties` table."""
+        mod = DocModule(
+            name="collections",
+            kind="module",
+            types=[
+                DocType(
+                    name="Counter",
+                    cs_name="Counter",
+                    summary="A counter.",
+                    members=[
+                        DocMember(
+                            kind="property",
+                            name="total",
+                            cs_name="Total",
+                            signature="total",
+                            return_type="int",
+                            summary="Total count.",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        output = render_module_page(mod)
+        assert "## Counter" in output
+        assert "### Properties" in output
+        assert "`total`" in output
+
+    def test_type_scoped_constants_use_h3(self):
+        """Per-type constants must use H3 (not H2) so they stay nested."""
+        mod = DocModule(
+            name="datetime",
+            kind="module",
+            types=[
+                DocType(
+                    name="timezone",
+                    cs_name="Timezone",
+                    summary="Timezone info.",
+                    members=[
+                        DocMember(
+                            kind="constant",
+                            name="UTC",
+                            cs_name="UTC",
+                            signature="UTC",
+                            return_type="Timezone",
+                            summary="UTC timezone.",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        output = render_module_page(mod)
+        assert "## timezone" in output
+        assert "### Constants" in output
+        # No top-level (H2) Constants heading — the constants belong to the type.
+        assert "\n## Constants" not in output
+
+
+class TestDiscoverModulesTypeAnnotations:
+    """Discovery of SharpyModuleType-annotated classes (1-arg and 2-arg forms)."""
+
+    def _write_module(
+        self, tmp_path: Path, mod_dir: str, mod_name: str, filename: str, body: str
+    ) -> Path:
+        subdir = tmp_path / mod_dir
+        subdir.mkdir(parents=True, exist_ok=True)
+        (subdir / "__Init__.cs").write_text(
+            textwrap.dedent(
+                f"""\
+                using Sharpy.Core.Shared;
+                namespace Sharpy.Core.{mod_dir};
+
+                [SharpyModule("{mod_name}")]
+                public static class {mod_dir}Module {{ }}
+                """
+            ),
+            encoding="utf-8",
+        )
+        (subdir / filename).write_text(body, encoding="utf-8")
+        return tmp_path
+
+    def test_two_arg_form_uses_display_name(self, tmp_path: Path):
+        """`[SharpyModuleType("mod", "display")]` should use the second arg."""
+        body = textwrap.dedent(
+            """\
+            using Sharpy.Core.Shared;
+            namespace Sharpy.Core.Collections;
+
+            [SharpyModuleType("collections", "ChainMap")]
+            public sealed class ChainMap<K, V>
+            {
+                /// <summary>Gets value.</summary>
+                public V Get(K key) => default!;
+            }
+            """
+        )
+        self._write_module(tmp_path, "Collections", "collections", "ChainMap.cs", body)
+        modules = discover_modules(tmp_path)
+        assert len(modules) == 1
+        assert modules[0].name == "collections"
+        assert len(modules[0].types) == 1
+        assert modules[0].types[0].name == "ChainMap"
+
+    def test_multiple_two_arg_annotations_in_one_file(self, tmp_path: Path):
+        """A single .cs file with multiple 2-arg annotations yields multiple types."""
+        body = textwrap.dedent(
+            """\
+            using Sharpy.Core.Shared;
+            namespace Sharpy.Core.Datetime;
+
+            [SharpyModuleType("datetime", "date")]
+            public sealed class Date
+            {
+                /// <summary>Today.</summary>
+                public static Date Today() => default!;
+            }
+
+            [SharpyModuleType("datetime", "timedelta")]
+            public sealed class Timedelta
+            {
+                /// <summary>Days.</summary>
+                public int Days => 0;
+            }
+            """
+        )
+        self._write_module(tmp_path, "Datetime", "datetime", "Datetime.cs", body)
+        modules = discover_modules(tmp_path)
+        assert len(modules) == 1
+        assert modules[0].name == "datetime"
+        type_names = sorted(t.name for t in modules[0].types)
+        assert type_names == ["date", "timedelta"]
+
+    def test_one_arg_form_still_works(self, tmp_path: Path):
+        """`[SharpyModuleType("mod")]` should use the C# class name as display name."""
+        body = textwrap.dedent(
+            """\
+            using Sharpy.Core.Shared;
+            namespace Sharpy.Core.Argparse;
+
+            [SharpyModuleType("argparse")]
+            public sealed class ArgumentParser
+            {
+                /// <summary>Parses.</summary>
+                public void ParseArgs() { }
+            }
+            """
+        )
+        self._write_module(tmp_path, "Argparse", "argparse", "ArgumentParser.cs", body)
+        modules = discover_modules(tmp_path)
+        assert len(modules) == 1
+        assert modules[0].types[0].name == "ArgumentParser"
 
 
 class TestRenderIndexPage:

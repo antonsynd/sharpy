@@ -225,6 +225,47 @@ x = [1, 2, 3]
 5 in x    # False
 ```
 
+### `get(index: int) -> Optional[T]`
+
+Return the element at *index* wrapped in an
+`Optional{T}`, or `Optional{T}.None` if the
+index is out of range. Supports Python-style negative indexing.
+
+**Parameters:**
+
+- `index` (int) -- The index of the element to retrieve.
+
+**Returns:** `Optional{T}.Some(T)` containing the element at
+*index*, or `Optional{T}.None` if the
+index is out of range.
+
+```python
+x = [10, 20, 30]
+x.get(0)     # Some(10)
+x.get(-1)    # Some(30)
+x.get(5)     # None
+```
+
+### `get(index: int, default_: T) -> T`
+
+Return the element at *index*, or
+*default_* if the index is out of range. Supports
+Python-style negative indexing.
+
+**Parameters:**
+
+- `index` (int) -- The index of the element to retrieve.
+- `default_` (T) -- The fallback value when the index is out of range.
+
+**Returns:** The element at *index*, or *default_*
+if the index is out of range.
+
+```python
+x = [10, 20, 30]
+x.get(0, -1)     # 10
+x.get(5, -1)     # -1
+```
+
 ### `get_slice(slice: Slice) -> list[T]`
 
 Returns a slice of the list.

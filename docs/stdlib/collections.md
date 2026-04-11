@@ -12,6 +12,12 @@ import collections
 A ChainMap groups multiple dictionaries together to create a single, updateable view.
 Like Python's collections.ChainMap.
 
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `maps` | `System.Collections.Generic.List[dict[K, V]]` | The list of underlying mappings. |
+
 ### `new_child(m: dict[K, V]? = null) -> ChainMap[K, V]`
 
 Return a new ChainMap with a new map followed by all previous maps.
@@ -37,6 +43,12 @@ Clear the first mapping.
 
 A deque (double-ended queue) is a generalization of stacks and queues
 that supports adding and removing elements from either end.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `count` | `int` | Gets the number of elements in the deque. |
 
 ### `append(x: T)`
 
@@ -73,6 +85,12 @@ Extend the left side of the deque by appending elements from the iterable.
 A deque (double-ended queue) is a generalization of stacks and queues
 that supports adding and removing elements from either end.
 
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `keys` | `Iterable[T]` | The keys of the counter. |
+
 ### `elements() -> Iterable[T]`
 
 Elements are returned in arbitrary order. Each element is repeated count times.
@@ -81,14 +99,100 @@ Elements are returned in arbitrary order. Each element is repeated count times.
 
 Update counts from an iterable or another mapping.
 
+### `subtract(iterable: Iterable[T])`
+
+Subtract counts. Elements are subtracted from an iterable.
+Counts can go below zero.
+
+### `subtract(other: Counter[T])`
+
+Subtract counts from another Counter.
+Counts can go below zero.
+
+### `copy() -> Counter[T]`
+
+Return a shallow copy of this counter.
+
+### `total() -> int`
+
+Return the sum of all counts.
+
+### `clear()`
+
+Remove all elements from the counter.
+
+## DefaultDict
+
+A deque (double-ended queue) is a generalization of stacks and queues
+that supports adding and removing elements from either end.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `keys` | `Iterable[TKey]` | The keys of the dictionary. |
+| `values` | `Iterable[TValue]` | The values of the dictionary. |
+| `default_factory` | `Func[TValue]` | The default factory function used for missing keys. |
+| `count` | `int` | The number of items in the defaultdict. |
+
 ### `get(key: TKey, default_value: TValue = default!) -> TValue`
 
 Get the value for a key, or return a default value if the key is not present.
+
+### `copy() -> DefaultDict[TKey, TValue]`
+
+Return a shallow copy of this defaultdict, preserving the default factory.
+
+### `clear()`
+
+Remove all items from the defaultdict.
+
+### `pop(key: TKey) -> TValue`
+
+Remove the specified key and return its value.
+Raises `KeyError` if the key is not found.
+
+### `pop(key: TKey, default_value: TValue) -> TValue`
+
+Remove the specified key and return its value.
+If the key is not found, return *defaultValue*.
+
+### `update(other: IDictionary[TKey, TValue])`
+
+Update the defaultdict with key-value pairs from another dictionary.
+
+### `update(t_value: IEnumerable<(TKey,)`
+
+Update the defaultdict with key-value pairs from an iterable of tuples.
+
+### `set_default(key: TKey, default_value: TValue) -> TValue`
+
+If *key* is in the dictionary, return its value.
+If not, insert *key* with *defaultValue*
+and return *defaultValue*.
+
+### `remove(key: TKey)`
+
+Removes the item with the specified key from the defaultdict.
+
+**Raises:**
+
+- `KeyError` -- Thrown if the key does not exist.
+
+### `to_dictionary() -> Dictionary[TKey, TValue]`
+
+Convert to a standard .NET Dictionary.
 
 ## OrderedDict
 
 A dictionary that remembers the order in which items were inserted.
 Like Python's collections.OrderedDict.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `count` | `int` | Gets the number of key/value pairs. |
 
 ### `pop(key: K) -> V`
 

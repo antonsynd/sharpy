@@ -146,3 +146,17 @@ print(t.tm_mday)    # depends on local timezone
 
 Represents a time value as a named tuple of components, similar to Python's
 `time.struct_time`.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `tm_year` | `int` | Year (e.g. 2024). |
+| `tm_mon` | `int` | Month (1–12). |
+| `tm_mday` | `int` | Day of the month (1–31). |
+| `tm_hour` | `int` | Hour (0–23). |
+| `tm_min` | `int` | Minute (0–59). |
+| `tm_sec` | `int` | Second (0–61; 60 and 61 are for leap seconds). |
+| `tm_wday` | `int` | Day of the week (0 = Monday, 6 = Sunday). Matches Python convention. |
+| `tm_yday` | `int` | Day of the year (1–366). |
+| `tm_isdst` | `int` | Daylight saving time flag: 1 if DST is in effect, 0 if not, -1 if unknown. |

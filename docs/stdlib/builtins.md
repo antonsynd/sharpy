@@ -786,12 +786,6 @@ Return the length of an ISized type (user-defined types with __len__).
 
 Return the length of a string.
 
-**Parameters:**
-
-- `s` (str) -- The string to measure
-
-**Returns:** The number of characters (UTF-16 code units)
-
 ### `list(enumerable: Iterable[T]) -> list[T]`
 
 Convert IEnumerable to list
@@ -1377,7 +1371,7 @@ Return a new sorted list using a key function, optionally in reverse order.
 
 ### `str(x: object) -> str`
 
-Convert an arbitrary object to `string`.
+Convert an arbitrary object to its string representation.
 Returns `"None"` for null, Python-style `"True"`/`"False"`
 for booleans, and `object.ToString` for everything else.
 
@@ -1396,28 +1390,28 @@ str(None)      # "None"
 
 ### `str(s: str) -> str`
 
-Return the C# `string` unchanged.
+Return the string unchanged.
 
 ### `str(c: char) -> str`
 
-Convert a `char` to `string` without boxing.
+Convert a `char` to string without boxing.
 
 ### `str(i: int) -> str`
 
-Convert an `int` to `string` without boxing.
+Convert an `int` to string without boxing.
 
 ### `str(l: long) -> str`
 
-Convert a `long` to `string` without boxing.
+Convert a `long` to string without boxing.
 
 ### `str(d: float) -> str`
 
-Convert a `double` to `string` without boxing.
+Convert a `double` to string without boxing.
 Formats with Python-compatible trailing `.0` for whole numbers.
 
 ### `str(f: float32) -> str`
 
-Convert a `float` to `string` without boxing.
+Convert a `float` to string without boxing.
 Formats with Python-compatible trailing `.0` for whole numbers.
 
 ### `format_float(value: float) -> str`
@@ -1435,7 +1429,7 @@ NOTE: Keep in sync with `FormatFloat(double)` overload.
 
 ### `str(b: bool) -> str`
 
-Convert a `bool` to `string`.
+Convert a `bool` to string.
 Returns Python-style `"True"` or `"False"`.
 
 ### `sum(iterable: Iterable[int]) -> int`

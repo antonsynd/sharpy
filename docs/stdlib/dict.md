@@ -11,6 +11,27 @@ Supports Python-style methods like get(), pop(), items(), keys(), and values().
 
 ## Methods
 
+### `get_string_key_entries() -> Iterable[KeyValuePair[str, object?]]`
+
+Projects this dictionary's entries as string-keyed pairs for
+reflection-free JSON dispatch. Returns an empty sequence when
+ is not `string`.
+
+### `fromkeys(keys: Iterable[K], value: V = default!) -> dict[K, V]`
+
+Create a new dictionary with keys from *keys* and values set to *value*.
+
+**Parameters:**
+
+- `keys` (Iterable[K]) -- An iterable of keys for the new dictionary.
+- `value` (V) -- The value for all keys. Defaults to `default(V)`.
+
+**Returns:** A new dictionary with the specified keys and value.
+
+```python
+d = dict.fromkeys(["a", "b"], 0)    # {"a": 0, "b": 0}
+```
+
 ### `copy() -> dict[K, V]`
 
 Return a shallow copy of the dictionary.
@@ -195,6 +216,37 @@ Convert to a standard .NET Dictionary.
 
 Returns a new dictionary that is the result of merging this dictionary with other.
 Keys from other take precedence.
+
+### `fromkeys(keys: Iterable[TKey]) -> dict[TKey, object]`
+
+Create a new dictionary with keys from *keys* and values set to `null`.
+Mirrors Python's `dict.fromkeys(iterable)`.
+
+**Parameters:**
+
+- `keys` (Iterable[TKey]) -- An iterable of keys for the new dictionary.
+
+**Returns:** A new dictionary with the specified keys all mapped to `null`.
+
+```python
+d = dict.fromkeys(["a", "b"])    # {"a": None, "b": None}
+```
+
+### `fromkeys(keys: Iterable[TKey], value: TValue) -> dict[TKey, TValue]`
+
+Create a new dictionary with keys from *keys* and values set to *value*.
+Mirrors Python's `dict.fromkeys(iterable, value)`. All keys share the same value reference.
+
+**Parameters:**
+
+- `keys` (Iterable[TKey]) -- An iterable of keys for the new dictionary.
+- `value` (TValue) -- The value assigned to every key.
+
+**Returns:** A new dictionary with the specified keys all mapped to *value*.
+
+```python
+d = dict.fromkeys(["a", "b"], 0)    # {"a": 0, "b": 0}
+```
 
 ### `add(key: K, value: V)`
 

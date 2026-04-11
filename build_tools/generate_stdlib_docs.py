@@ -957,19 +957,24 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                 if file_summary:
                     summary = file_summary
 
-            # Check if this file contains SharpyModuleType-annotated classes
+            # Check if this file contains SharpyModuleType-annotated classes.
+            # Supports both 1-arg form `[SharpyModuleType("mod")]` and 2-arg
+            # form `[SharpyModuleType("mod", "DisplayName")]` where the second
+            # argument overrides the rendered type name (e.g. Python-lowercase
+            # names like `date`, `timedelta`).
             file_text = cs_file.read_text(encoding="utf-8")
             type_annotations = list(
                 re.finditer(
-                    r'\[SharpyModuleType\("([^"]+)"\)\]',
+                    r'\[SharpyModuleType\("([^"]+)"(?:\s*,\s*"([^"]+)")?\)\]',
                     file_text,
                 )
             )
             if type_annotations:
                 # Find all annotated class names and their line positions
                 file_lines = file_text.split("\n")
-                annotated_classes: list[tuple[str, int, int]] = []
+                annotated_classes: list[tuple[str, str, int, int]] = []
                 for ta in type_annotations:
+                    display_name_override = ta.group(2)
                     after = file_text[ta.end() :]
                     cm = re.search(
                         r"public\s+(?:sealed\s+|abstract\s+|static\s+|partial\s+)*"
@@ -978,22 +983,25 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                     )
                     if cm:
                         class_name = cm.group(1)
+                        display_name = display_name_override or class_name
                         class_pos = ta.end() + cm.start()
                         class_line = file_text[:class_pos].count("\n")
-                        annotated_classes.append((class_name, class_line, 0))
+                        annotated_classes.append(
+                            (display_name, class_name, class_line, 0)
+                        )
 
                 # Compute end lines (start of next class or EOF)
                 for ci in range(len(annotated_classes)):
-                    name, start, _ = annotated_classes[ci]
+                    display_name, class_name, start, _ = annotated_classes[ci]
                     end = (
-                        annotated_classes[ci + 1][1] - 1
+                        annotated_classes[ci + 1][2] - 1
                         if ci + 1 < len(annotated_classes)
                         else len(file_lines) - 1
                     )
-                    annotated_classes[ci] = (name, start, end)
+                    annotated_classes[ci] = (display_name, class_name, start, end)
 
                 # Parse each class range separately
-                for class_name, start, end in annotated_classes:
+                for display_name, class_name, start, end in annotated_classes:
                     type_summary = _get_class_summary(cs_file)
                     type_members = parse_cs_file(
                         cs_file,
@@ -1001,7 +1009,7 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                     )
                     all_types.append(
                         DocType(
-                            name=class_name,
+                            name=display_name,
                             cs_name=cs_file.stem,
                             summary=type_summary,
                             members=type_members,
@@ -1246,7 +1254,9 @@ def render_module_page(module: DocModule) -> str:
         for m in methods:
             lines.append(_render_member(m, prefix=prefix))
 
-    # Module types (e.g., ArgumentParser in argparse)
+    # Module types (e.g., ArgumentParser in argparse, ChainMap/Deque/Counter
+    # in collections). Each type gets its own H2 section containing its
+    # constants, properties, and methods.
     for doc_type in module.types:
         lines.append(f"## {doc_type.name}")
         lines.append("")
@@ -1256,7 +1266,33 @@ def render_module_page(module: DocModule) -> str:
 
         type_constants = [m for m in doc_type.members if m.kind == "constant"]
         if type_constants:
-            lines.append(_render_constants_table(type_constants))
+            lines.append("### Constants")
+            lines.append("")
+            lines.append("| Name | Type | Description |")
+            lines.append("|------|------|-------------|")
+            for c in type_constants:
+                lines.append(
+                    f"| `{c.name}` | `{c.return_type}` | {_escape_table_cell(c.summary)} |"
+                )
+            lines.append("")
+
+        type_properties = [m for m in doc_type.members if m.kind == "property"]
+        if type_properties:
+            seen_type_props: set[str] = set()
+            unique_type_props: list[DocMember] = []
+            for p in type_properties:
+                if p.name not in seen_type_props:
+                    seen_type_props.add(p.name)
+                    unique_type_props.append(p)
+            lines.append("### Properties")
+            lines.append("")
+            lines.append("| Name | Type | Description |")
+            lines.append("|------|------|-------------|")
+            for p in unique_type_props:
+                lines.append(
+                    f"| `{p.name}` | `{p.return_type}` | {_escape_table_cell(p.summary)} |"
+                )
+            lines.append("")
 
         type_methods = [m for m in doc_type.members if m.kind == "method"]
         for m in type_methods:
