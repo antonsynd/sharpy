@@ -158,6 +158,20 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Update the set, adding elements from the given iterable.
+        /// </summary>
+        /// <param name="other">The iterable of elements to add.</param>
+        public void Update(IEnumerable<T> other)
+        {
+            if (other is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            _set.UnionWith(other);
+        }
+
+        /// <summary>
         /// Update the set, removing elements found in the other set.
         /// </summary>
         /// <param name="other">The set of elements to remove.</param>
@@ -175,6 +189,20 @@ namespace Sharpy
             }
 
             _set.ExceptWith(other._set);
+        }
+
+        /// <summary>
+        /// Update the set, removing elements found in the given iterable.
+        /// </summary>
+        /// <param name="other">The iterable of elements to remove.</param>
+        public void DifferenceUpdate(IEnumerable<T> other)
+        {
+            if (other is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            _set.ExceptWith(other);
         }
 
         /// <summary>
@@ -198,6 +226,20 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Update the set, keeping only elements found in the given iterable.
+        /// </summary>
+        /// <param name="other">The iterable to intersect with.</param>
+        public void IntersectionUpdate(IEnumerable<T> other)
+        {
+            if (other is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            _set.IntersectWith(other);
+        }
+
+        /// <summary>
         /// Update the set, keeping only elements found in either set but not both.
         /// </summary>
         /// <param name="other">The set to compute symmetric difference with.</param>
@@ -215,6 +257,20 @@ namespace Sharpy
             }
 
             _set.SymmetricExceptWith(other._set);
+        }
+
+        /// <summary>
+        /// Update the set, keeping only elements found in either set or the iterable but not both.
+        /// </summary>
+        /// <param name="other">The iterable to compute symmetric difference with.</param>
+        public void SymmetricDifferenceUpdate(IEnumerable<T> other)
+        {
+            if (other is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            _set.SymmetricExceptWith(other);
         }
 
         #endregion
