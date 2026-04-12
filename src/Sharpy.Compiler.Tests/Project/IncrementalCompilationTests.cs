@@ -672,6 +672,111 @@ def main():
         Assert.True(restored.TypeArguments.IsDefaultOrEmpty || restored.TypeArguments.IsEmpty);
     }
 
+    [Fact]
+    public void SymbolSerializer_RoundTrip_FunctionType_NullVariadic_ZeroOptional()
+    {
+        var funcType = new Sharpy.Compiler.Semantic.FunctionType
+        {
+            ParameterTypes = new List<SemanticType> { BuiltinType.Int, BuiltinType.Str },
+            ReturnType = BuiltinType.Bool,
+            VariadicParameterIndex = null,
+            OptionalParameterCount = 0
+        };
+
+        var varSymbol = new VariableSymbol
+        {
+            Name = "callback",
+            Kind = SymbolKind.Variable,
+            Type = funcType
+        };
+
+        var filePath = CreateTempFile("cb.spy", "callback: (int, str) -> bool = ...");
+        var cached = SymbolSerializer.Serialize(varSymbol, filePath);
+
+        // Verify the serialized TypeId contains the metadata markers
+        Assert.Contains("|-|0)", cached.TypeId);
+
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as VariableSymbol;
+
+        Assert.NotNull(restored);
+        var restoredType = Assert.IsType<Sharpy.Compiler.Semantic.FunctionType>(restored!.Type);
+        Assert.Null(restoredType.VariadicParameterIndex);
+        Assert.Equal(0, restoredType.OptionalParameterCount);
+        Assert.Equal(2, restoredType.ParameterTypes.Count);
+        Assert.Equal(BuiltinType.Int, restoredType.ParameterTypes[0]);
+        Assert.Equal(BuiltinType.Str, restoredType.ParameterTypes[1]);
+        Assert.Equal(BuiltinType.Bool, restoredType.ReturnType);
+    }
+
+    [Fact]
+    public void SymbolSerializer_RoundTrip_FunctionType_BothVariadicAndOptional()
+    {
+        var funcType = new Sharpy.Compiler.Semantic.FunctionType
+        {
+            ParameterTypes = new List<SemanticType> { BuiltinType.Int, BuiltinType.Str, BuiltinType.Bool },
+            ReturnType = SemanticType.Void,
+            VariadicParameterIndex = 2,
+            OptionalParameterCount = 1
+        };
+
+        var varSymbol = new VariableSymbol
+        {
+            Name = "handler",
+            Kind = SymbolKind.Variable,
+            Type = funcType
+        };
+
+        var filePath = CreateTempFile("handler.spy", "handler: (int, str, params bool) -> None = ...");
+        var cached = SymbolSerializer.Serialize(varSymbol, filePath);
+
+        Assert.Contains("|2|1)", cached.TypeId);
+
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as VariableSymbol;
+
+        Assert.NotNull(restored);
+        var restoredType = Assert.IsType<Sharpy.Compiler.Semantic.FunctionType>(restored!.Type);
+        Assert.Equal(2, restoredType.VariadicParameterIndex);
+        Assert.Equal(1, restoredType.OptionalParameterCount);
+        Assert.Equal(3, restoredType.ParameterTypes.Count);
+    }
+
+    [Fact]
+    public void SymbolSerializer_RoundTrip_FunctionType_VariadicAtZero()
+    {
+        var funcType = new Sharpy.Compiler.Semantic.FunctionType
+        {
+            ParameterTypes = new List<SemanticType> { BuiltinType.Int },
+            ReturnType = BuiltinType.Str,
+            VariadicParameterIndex = 0,
+            OptionalParameterCount = 0
+        };
+
+        var varSymbol = new VariableSymbol
+        {
+            Name = "variadic_first",
+            Kind = SymbolKind.Variable,
+            Type = funcType
+        };
+
+        var filePath = CreateTempFile("vf.spy", "variadic_first: (params int) -> str = ...");
+        var cached = SymbolSerializer.Serialize(varSymbol, filePath);
+
+        Assert.Contains("|0|0)", cached.TypeId);
+
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as VariableSymbol;
+
+        Assert.NotNull(restored);
+        var restoredType = Assert.IsType<Sharpy.Compiler.Semantic.FunctionType>(restored!.Type);
+        Assert.Equal(0, restoredType.VariadicParameterIndex);
+        Assert.Equal(0, restoredType.OptionalParameterCount);
+        Assert.Single(restoredType.ParameterTypes);
+        Assert.Equal(BuiltinType.Int, restoredType.ParameterTypes[0]);
+        Assert.Equal(BuiltinType.Str, restoredType.ReturnType);
+    }
+
     #endregion
 
     #region File Cache Tests

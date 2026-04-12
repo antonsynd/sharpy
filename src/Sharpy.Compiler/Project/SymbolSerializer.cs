@@ -842,24 +842,62 @@ internal static class SymbolSerializer
                 ot => Serialize(ot.UnderlyingType),
                 value => new OptionalType { UnderlyingType = Deserialize(value) });
 
-            // TODO(#552): FunctionType serialization loses OptionalParameterCount and
-            // VariadicParameterIndex. Incremental builds reconstruct FunctionType from
-            // FunctionSymbol.Parameters (where IsVariadic is cached separately), so the
-            // gap is benign today, but any code that reads a FunctionType straight from
-            // this format will not see params/optional metadata.
+            // FunctionType format: (paramTypes|V|O)->returnType
+            // V = VariadicParameterIndex as integer or "-" for null
+            // O = OptionalParameterCount as integer
             Register<FunctionType>("func",
-                ft => $"({string.Join(",", ft.ParameterTypes.Select(Serialize))})->{Serialize(ft.ReturnType)}",
+                ft =>
+                {
+                    var v = ft.VariadicParameterIndex?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-";
+                    var o = ft.OptionalParameterCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    return $"({string.Join(",", ft.ParameterTypes.Select(Serialize))}|{v}|{o})->{Serialize(ft.ReturnType)}";
+                },
                 value =>
                 {
                     var arrowIndex = value.IndexOf("->", StringComparison.Ordinal);
                     if (arrowIndex < 0)
                         return SemanticType.Unknown;
-                    var paramsStr = value[1..(arrowIndex - 1)];
+                    var innerStr = value[1..(arrowIndex - 1)];
                     var returnStr = value[(arrowIndex + 2)..];
+
+                    int? variadicIndex = null;
+                    var optionalCount = 0;
+                    string paramsStr;
+
+                    var lastPipe = innerStr.LastIndexOf('|');
+                    if (lastPipe >= 0)
+                    {
+                        var oStr = innerStr[(lastPipe + 1)..];
+                        var beforeO = innerStr[..lastPipe];
+                        var secondPipe = beforeO.LastIndexOf('|');
+                        if (secondPipe >= 0)
+                        {
+                            var vStr = beforeO[(secondPipe + 1)..];
+                            paramsStr = beforeO[..secondPipe];
+                            optionalCount = int.Parse(oStr, System.Globalization.CultureInfo.InvariantCulture);
+                            variadicIndex = vStr == "-" ? null : int.Parse(vStr, System.Globalization.CultureInfo.InvariantCulture);
+                        }
+                        else
+                        {
+                            paramsStr = innerStr;
+                        }
+                    }
+                    else
+                    {
+                        // Legacy format without |V|O metadata
+                        paramsStr = innerStr;
+                    }
+
                     var paramTypes = string.IsNullOrEmpty(paramsStr)
                         ? new List<SemanticType>()
                         : ParseTypeArguments(paramsStr);
-                    return new FunctionType { ParameterTypes = paramTypes, ReturnType = Deserialize(returnStr) };
+                    return new FunctionType
+                    {
+                        ParameterTypes = paramTypes,
+                        ReturnType = Deserialize(returnStr),
+                        VariadicParameterIndex = variadicIndex,
+                        OptionalParameterCount = optionalCount
+                    };
                 });
 
             Register<TupleType>("tuple",
