@@ -389,6 +389,14 @@ internal partial class TypeChecker
         return SemanticType.Str;
     }
 
+    private SemanticType CheckBytesLiteral(BytesLiteralExpression bytesLit)
+    {
+        var bytesSymbol = _symbolTable.BuiltinRegistry.GetType(BuiltinNames.Bytes);
+        if (bytesSymbol == null)
+            return SemanticType.Unknown;
+        return new UserDefinedType { Name = bytesSymbol.Name, Symbol = bytesSymbol };
+    }
+
     private SemanticType CheckSliceAccess(SliceAccess sliceAccess)
     {
         var objType = CheckExpression(sliceAccess.Object);
