@@ -33,7 +33,7 @@ public class AstExhaustivenessTests
         var handledTypes = new HashSet<string>
         {
             // Literals
-            "IntegerLiteral", "FloatLiteral", "StringLiteral",
+            "IntegerLiteral", "FloatLiteral", "StringLiteral", "BytesLiteralExpression",
             "BooleanLiteral", "NoneLiteral", "EllipsisLiteral", "FStringLiteral",
             // Collections
             "ListLiteral", "DictLiteral", "SetLiteral", "TupleLiteral",

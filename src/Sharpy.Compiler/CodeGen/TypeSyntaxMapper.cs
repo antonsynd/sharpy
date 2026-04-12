@@ -34,6 +34,7 @@ internal class TypeSyntaxMapper
         _builtinTypeMap[BuiltinNames.List] = CSharpTypeNames.SharpyList;
         _builtinTypeMap[BuiltinNames.Dict] = CSharpTypeNames.SharpyDict;
         _builtinTypeMap[BuiltinNames.Set] = CSharpTypeNames.SharpySet;
+        _builtinTypeMap[BuiltinNames.Bytes] = CSharpTypeNames.SharpyBytes;
         _builtinTypeMap[BuiltinNames.Tuple] = "System.ValueTuple";
     }
 

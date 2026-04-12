@@ -23,6 +23,7 @@ internal partial class RoslynEmitter
             IntegerLiteral intLit => GenerateIntegerLiteral(intLit),
             FloatLiteral floatLit => GenerateFloatLiteral(floatLit),
             StringLiteral strLit => GenerateStringLiteral(strLit),
+            BytesLiteralExpression bytesLit => GenerateBytesLiteral(bytesLit),
             BooleanLiteral boolLit => LiteralExpression(boolLit.Value ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
             NoneLiteral => LiteralExpression(SyntaxKind.DefaultLiteralExpression),
             EllipsisLiteral => GenerateEllipsisLiteral(),
@@ -258,6 +259,26 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateStringLiteral(StringLiteral literal)
     {
         return LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(literal.Value));
+    }
+
+    private ExpressionSyntax GenerateBytesLiteral(BytesLiteralExpression literal)
+    {
+        // Convert each character to a byte literal: b"hello" -> new Sharpy.Bytes(new byte[] { 104, 101, 108, 108, 111 })
+        var byteValues = literal.Value.Select(c =>
+            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((byte)c)));
+
+        var byteArrayInit = ArrayCreationExpression(
+            ArrayType(PredefinedType(Token(SyntaxKind.ByteKeyword)))
+                .WithRankSpecifiers(SingletonList(
+                    ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(
+                        OmittedArraySizeExpression())))))
+            .WithInitializer(
+                InitializerExpression(
+                    SyntaxKind.ArrayInitializerExpression,
+                    SeparatedList<ExpressionSyntax>(byteValues)));
+
+        return ObjectCreationExpression(ParseTypeName(CSharpTypeNames.SharpyBytes))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(byteArrayInit))));
     }
 
     /// <summary>
