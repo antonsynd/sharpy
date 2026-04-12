@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -237,6 +238,12 @@ internal class OperatorValidator : ValidatingAstWalker
         if (type == SemanticType.Str)
         {
             return dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne or DunderNames.Lt or DunderNames.Le or DunderNames.Gt or DunderNames.Ge;
+        }
+
+        // Bytes supports concatenation, repetition, equality, and containment
+        if (type is UserDefinedType { Name: BuiltinNames.Bytes })
+        {
+            return dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne or DunderNames.Contains;
         }
 
         // Builtin numeric types support arithmetic operations
