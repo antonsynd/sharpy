@@ -36,6 +36,7 @@ internal partial class TypeChecker
                 _ => SemanticType.Double,
             },
             StringLiteral => SemanticType.Str,
+            BytesLiteralExpression bytesLit => CheckBytesLiteral(bytesLit),
             BooleanLiteral => SemanticType.Bool,
             NoneLiteral => SemanticType.Void,
             Identifier id => CheckIdentifier(id),
