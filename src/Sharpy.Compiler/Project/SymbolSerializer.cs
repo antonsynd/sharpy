@@ -842,7 +842,7 @@ internal static class SymbolSerializer
                 ot => Serialize(ot.UnderlyingType),
                 value => new OptionalType { UnderlyingType = Deserialize(value) });
 
-            // TODO(#536): FunctionType serialization loses OptionalParameterCount and
+            // TODO(#552): FunctionType serialization loses OptionalParameterCount and
             // VariadicParameterIndex. Incremental builds reconstruct FunctionType from
             // FunctionSymbol.Parameters (where IsVariadic is cached separately), so the
             // gap is benign today, but any code that reads a FunctionType straight from
