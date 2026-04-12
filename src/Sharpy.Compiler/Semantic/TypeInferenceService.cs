@@ -236,7 +236,8 @@ internal class TypeInferenceService
                     BinaryOperator.Equal or BinaryOperator.NotEqual => SemanticType.Bool,
                     _ => (SemanticType?)null
                 };
-                if (result != null) return result;
+                if (result != null)
+                    return result;
             }
             if (op == BinaryOperator.Multiply && TypeUtils.IsInteger(right))
                 return leftBytes;
