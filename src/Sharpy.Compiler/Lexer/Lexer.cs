@@ -480,6 +480,11 @@ public partial class Lexer
             (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
             return LogAndReturn(ReadRawString());
 
+        // Byte strings
+        if (current == 'b' && (_position + 1 < _source.Length) &&
+            (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
+            return LogAndReturn(ReadByteString());
+
         // Backtick-delimited literal names
         if (current == '`')
             return LogAndReturn(ReadLiteralName());

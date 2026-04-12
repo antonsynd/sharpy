@@ -84,7 +84,14 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0026-SPY0099: Reserved for future lexer diagnostics
+        #region Byte string errors (SPY0026-SPY0027)
+
+        public const string UnterminatedByteString = "SPY0026";    // Active
+        public const string UnicodeEscapeInByteString = "SPY0027"; // Active
+
+        #endregion
+
+        // SPY0028-SPY0099: Reserved for future lexer diagnostics
     }
 
     /// <summary>

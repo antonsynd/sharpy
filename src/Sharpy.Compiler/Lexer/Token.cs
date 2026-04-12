@@ -12,6 +12,7 @@ public enum TokenType
     Float,
     String,
     RawString,      // r-string (raw string)
+    ByteString,     // b-string (byte string literal)
     FStringStart,   // f" or f' - start of f-string
     FStringText,    // literal text segment in f-string
     FStringExprStart, // { - start of interpolated expression in f-string

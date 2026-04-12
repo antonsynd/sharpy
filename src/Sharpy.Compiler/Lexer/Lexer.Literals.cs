@@ -205,6 +205,143 @@ public partial class Lexer
         throw ReportError("Unterminated raw string", _line, _column, DiagnosticCodes.Lexer.UnterminatedRawString);
     }
 
+    private Token ReadByteString()
+    {
+        var startLine = _line;
+        var startColumn = _column;
+        var startPosition = _position;
+
+        // Skip 'b'
+        _position++;
+        _column++;
+
+        var quote = _source[_position];
+        _position++;
+        _column++;
+
+        // Check for triple-quoted byte string
+        var isTriple = _position + 1 < _source.Length &&
+                       _source[_position] == quote &&
+                       _source[_position + 1] == quote;
+
+        if (isTriple)
+        {
+            _position += 2;
+            _column += 2;
+            return ReadTripleQuotedByteString(quote, startLine, startColumn, startPosition);
+        }
+
+        // Single-line byte string
+        var sb = new StringBuilder();
+        while (_position < _source.Length)
+        {
+            var c = _source[_position];
+
+            if (c == quote)
+            {
+                _position++;
+                _column++;
+                var sourceLength = _position - startPosition;
+                return CreateToken(TokenType.ByteString, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
+            }
+
+            if (c == '\\')
+            {
+                _position++;
+                _column++;
+                if (_position >= _source.Length)
+                    throw ReportError("Unterminated byte string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedByteString);
+
+                sb.Append(ProcessByteEscapeSequence());
+            }
+            else if (c == '\n' || c == '\r')
+            {
+                throw ReportError("Unterminated byte string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedByteString);
+            }
+            else
+            {
+                sb.Append(c);
+                _position++;
+                _column++;
+            }
+        }
+
+        throw ReportError("Unterminated byte string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedByteString);
+    }
+
+    private Token ReadTripleQuotedByteString(char quote, int startLine, int startColumn, int startPosition)
+    {
+        var sb = new StringBuilder();
+
+        while (_position < _source.Length)
+        {
+            // Check for end triple quote
+            if (_source[_position] == quote &&
+                _position + 2 < _source.Length &&
+                _source[_position + 1] == quote &&
+                _source[_position + 2] == quote)
+            {
+                _position += 3;
+                _column += 3;
+                var sourceLength = _position - startPosition;
+                return CreateToken(TokenType.ByteString, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
+            }
+
+            var c = _source[_position];
+
+            if (c == '\n')
+            {
+                sb.Append(c);
+                _position++;
+                _line++;
+                _column = 1;
+            }
+            else if (c == '\r' && Peek() == '\n')
+            {
+                sb.Append('\n');
+                _position += 2;
+                _line++;
+                _column = 1;
+            }
+            else if (c == '\\')
+            {
+                _position++;
+                _column++;
+                if (_position >= _source.Length)
+                    throw ReportError("Unterminated byte string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedByteString);
+
+                sb.Append(ProcessByteEscapeSequence());
+            }
+            else
+            {
+                sb.Append(c);
+                _position++;
+                _column++;
+            }
+        }
+
+        throw ReportError("Unterminated triple-quoted byte string", _line, _column, DiagnosticCodes.Lexer.UnterminatedByteString);
+    }
+
+    /// <summary>
+    /// Processes escape sequences valid in byte strings.
+    /// Like regular escape sequences but rejects \u and \U unicode escapes
+    /// since bytes are restricted to 0-255 range.
+    /// </summary>
+    private char ProcessByteEscapeSequence()
+    {
+        var escaped = _source[_position];
+
+        if (escaped == 'u' || escaped == 'U')
+        {
+            throw ReportError(
+                "Unicode escape sequences are not allowed in byte strings (bytes are limited to 0-255)",
+                _line, _column, DiagnosticCodes.Lexer.UnicodeEscapeInByteString);
+        }
+
+        return ProcessEscapeSequence();
+    }
+
     private char ProcessEscapeSequence()
     {
         var escaped = _source[_position];
