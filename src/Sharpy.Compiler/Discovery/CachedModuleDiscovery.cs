@@ -23,6 +23,10 @@ internal class CachedModuleDiscovery
     // Cache of TypeSymbol instances keyed by CLR full type name, so ConvertTypeSignature
     // can reuse the same TypeSymbol instance created by ConvertToTypeSymbol.
     private readonly ConcurrentDictionary<string, TypeSymbol> _moduleTypeSymbols = new();
+    // Shared TypeParameterType instances for skeleton TypeSymbols, keyed by CLR full type
+    // name. All methods on a generic type must share these instances so that reference
+    // equality holds during generic substitution.
+    private readonly ConcurrentDictionary<string, TypeParameterType[]> _skeletonTypeParams = new();
 
     /// <summary>
     /// Create a discovery instance using the default cache directory.
@@ -105,7 +109,24 @@ internal class CachedModuleDiscovery
             {
                 var skeleton = CreateSkeletonTypeSymbol(typeInfo);
                 if (skeleton != null)
+                {
                     _moduleTypeSymbols.TryAdd(fullName, skeleton);
+
+                    // Create shared TypeParameterType instances for generic skeletons.
+                    // All methods on this type will reference these same instances,
+                    // ensuring reference equality during generic substitution.
+                    if (skeleton.IsGeneric)
+                    {
+                        var sharedParams = skeleton.TypeParameters
+                            .Select(tp => new TypeParameterType
+                            {
+                                Name = tp.Name,
+                                DeclaringType = skeleton
+                            })
+                            .ToArray();
+                        _skeletonTypeParams.TryAdd(fullName, sharedParams);
+                    }
+                }
             }
         }
 
@@ -113,7 +134,10 @@ internal class CachedModuleDiscovery
         {
             if (_moduleTypeSymbols.TryGetValue(fullName, out var skeleton))
             {
-                PopulateTypeSymbolMembers(skeleton, typeInfo, sharedTypeParams: null);
+                // Use stored shared type params so all methods share the same
+                // TypeParameterType instances for this generic type.
+                _skeletonTypeParams.TryGetValue(fullName, out var storedParams);
+                PopulateTypeSymbolMembers(skeleton, typeInfo, sharedTypeParams: storedParams);
             }
         }
     }
@@ -203,6 +227,8 @@ internal class CachedModuleDiscovery
     /// Member lists remain empty so that cross-type references resolved during
     /// <see cref="PopulateTypeSymbolMembers"/> can find a stable TypeSymbol instance
     /// via <see cref="_moduleTypeSymbols"/>.
+    /// For generic CLR types, TypeParameters are populated so that
+    /// <see cref="TypeSymbol.IsGeneric"/> returns true.
     /// </summary>
     private TypeSymbol? CreateSkeletonTypeSymbol(Caching.DiscoveredTypeInfo typeInfo)
     {
@@ -222,12 +248,24 @@ internal class CachedModuleDiscovery
             _ => TypeKind.Class
         };
 
+        // Extract generic type parameters from the CLR type definition
+        var typeParams = new List<Parser.Ast.TypeParameterDef>();
+        if (clrType is { IsGenericTypeDefinition: true })
+        {
+            var clrArgs = clrType.GetGenericArguments();
+            for (int i = 0; i < clrArgs.Length; i++)
+            {
+                typeParams.Add(new Parser.Ast.TypeParameterDef { Name = $"T{i}" });
+            }
+        }
+
         return new TypeSymbol
         {
             Name = typeInfo.Name,
             Kind = SymbolKind.Type,
             TypeKind = typeKind,
             ClrType = clrType,
+            TypeParameters = typeParams,
             AccessLevel = AccessLevel.Public,
             IsAbstract = clrType?.IsAbstract == true && !clrType.IsInterface,
             Documentation = typeInfo.Documentation
@@ -305,6 +343,7 @@ internal class CachedModuleDiscovery
     /// </summary>
     private static readonly Dictionary<string, string> SharpyToClrNameMap = new()
     {
+        ["bytes"] = "Bytes",
         ["list"] = "List",
         ["dict"] = "Dict",
         ["set"] = "Set",

@@ -68,6 +68,9 @@ internal class BuiltinRegistry
         RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
         RegisterType("set", typeof(SharpyRT::Sharpy.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
 
+        // Bytes (non-generic) - immutable byte sequence
+        RegisterType("bytes", typeof(SharpyRT::Sharpy.Bytes), TypeKind.Struct);
+
         // Tuple: registered for OperatorValidator/ProtocolValidator metadata lookup.
         // typeParamCount=1 is nominal — real tuple arity is tracked by TupleType.ElementTypes,
         // not by this TypeSymbol's TypeParameters. CLR type is System.ValueTuple (non-generic sentinel).
@@ -151,18 +154,27 @@ internal class BuiltinRegistry
 
     private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0)
     {
-        var typeParams = isGeneric
-            ? Enumerable.Range(0, typeParamCount).Select(i => new TypeParameterDef { Name = $"T{i}" }).ToList()
-            : new List<TypeParameterDef>();
-
         // Build shared TypeParameterType instances for generic types so all methods
-        // reference the same objects (required for reference equality in substitution).
+        // reference the same objects (required for consistent name-based substitution).
         var sharedTypeParams = isGeneric
-            ? typeParams.Select(tp => new TypeParameterType { Name = tp.Name }).ToArray()
+            ? Enumerable.Range(0, typeParamCount)
+                .Select(i => new TypeParameterType { Name = $"T{i}" })
+                .ToArray()
             : Array.Empty<TypeParameterType>();
 
         // Discover methods, operators, and protocols from Sharpy.Core via CLR reflection.
         var discovered = _discovery.GetTypeByName(sharpyName, sharedTypeParams);
+
+        // Reuse TypeParameters from the discovered skeleton when available, so the
+        // TypeParameterDef instances on the final TypeSymbol originate from discovery
+        // rather than being created redundantly here.
+        var typeParams = discovered is { IsGeneric: true }
+            ? discovered.TypeParameters
+            : (isGeneric
+                ? Enumerable.Range(0, typeParamCount)
+                    .Select(i => new TypeParameterDef { Name = $"T{i}" })
+                    .ToList()
+                : new List<TypeParameterDef>());
 
         var methods = discovered?.Methods ?? new List<FunctionSymbol>();
         var operatorMethods = discovered?.OperatorMethods ?? new Dictionary<string, List<FunctionSymbol>>();

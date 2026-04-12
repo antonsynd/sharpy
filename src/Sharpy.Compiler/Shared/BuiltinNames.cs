@@ -68,6 +68,7 @@ internal static class BuiltinNames
     public const string Dict = "dict";
     public const string Set = "set";
     public const string Array = "array";
+    public const string Bytes = "bytes";
     public const string Tuple = "tuple";
     public const string None = "None";
     public const string Object = "object";
