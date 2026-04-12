@@ -1,0 +1,20 @@
+def main():
+    # sorted(list(set)) - the original bug: type parameters leaked from outer to inner call
+    s: set[int] = {1, 2, 3}
+    result = sorted(list(s))
+    print(result)
+
+    # sorted(list(list)) - nested generic with same collection type
+    nums: list[int] = [5, 3, 1, 4, 2]
+    result2 = sorted(list(nums))
+    print(result2)
+
+    # list(sorted(set)) - reversed nesting order
+    s2: set[int] = {3, 1, 2}
+    result3 = list(sorted(s2))
+    print(result3)
+
+    # sorted(list(dict.keys())) - nested with method call producing generic
+    d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
+    result4 = sorted(list(d.keys()))
+    print(result4)
