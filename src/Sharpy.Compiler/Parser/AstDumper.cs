@@ -647,6 +647,11 @@ internal class AstDumper : AstVisitor
         _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}StringLiteral: {strPrefix}\"{EscapeString(node.Value)}\" @ L{node.LineStart}:C{node.ColumnStart}");
     }
 
+    public override void VisitBytesLiteral(BytesLiteralExpression node)
+    {
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}BytesLiteral: b\"{EscapeString(node.Value)}\" @ L{node.LineStart}:C{node.ColumnStart}");
+    }
+
     public override void VisitFStringLiteral(FStringLiteral node)
     {
         var (indent, prefix, depth) = CaptureContext();

@@ -409,6 +409,7 @@ public static class AstFingerprint
             (IntegerLiteral ia, IntegerLiteral ib) => ia.Value == ib.Value,
             (FloatLiteral fa, FloatLiteral fb) => fa.Value == fb.Value,
             (StringLiteral sa, StringLiteral sb) => sa.Value == sb.Value,
+            (BytesLiteralExpression bla, BytesLiteralExpression blb) => bla.Value == blb.Value,
             (BooleanLiteral ba, BooleanLiteral bb) => ba.Value == bb.Value,
             (NoneLiteral, NoneLiteral) => true,
             (Identifier ida, Identifier idb) => ida.Name == idb.Name,
