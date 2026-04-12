@@ -167,6 +167,16 @@ public static class DiagnosticExplanations
             "import `System.IO`",
             "Split into separate backtick segments:\n  import `System`.IO");
 
+        Add(dict, DiagnosticCodes.Lexer.UnterminatedByteString, "Unterminated byte string literal", "Lexer",
+            "A byte string literal was opened with b\" or b' but never closed. The lexer reached the end of the line or file without finding a matching closing quote.",
+            "data: bytes = b\"hello",
+            "Add the closing quote:\n  data: bytes = b\"hello\"");
+
+        Add(dict, DiagnosticCodes.Lexer.UnicodeEscapeInByteString, "Unicode escape in byte string", "Lexer",
+            "A byte string literal contains a \\u or \\U unicode escape sequence, which is not allowed. Byte strings can only contain values in the 0-255 range. Use \\x escapes for hex byte values instead.",
+            "data: bytes = b\"\\u0041\"",
+            "Use a hex escape instead:\n  data: bytes = b\"\\x41\"");
+
         // ── Parser errors (SPY0100-SPY0199) ─────────────────────────────
 
         Add(dict, DiagnosticCodes.Parser.UnexpectedToken, "Unexpected token", "Parser",

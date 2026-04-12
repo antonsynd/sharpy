@@ -24,8 +24,8 @@ public static class DiagnosticCodes
 {
     /// <summary>
     /// Lexer diagnostic codes (SPY0001-SPY0099).
-    /// Active: SPY0001-SPY0025 (25 codes)
-    /// Reserved: SPY0026-SPY0099 (74 codes for future lexer diagnostics)
+    /// Active: SPY0001-SPY0027 (27 codes)
+    /// Reserved: SPY0028-SPY0099 (72 codes for future lexer diagnostics)
     /// </summary>
     public static class Lexer
     {
