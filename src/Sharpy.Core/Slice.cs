@@ -150,5 +150,14 @@ namespace Sharpy
                 return sb.ToString();
             }
         }
+
+        /// <summary>
+        /// Slice a Bytes using Python slice semantics.
+        /// Used by generated code for bytes[start:stop:step] expressions.
+        /// </summary>
+        public static Bytes GetSlice(Bytes bytes, int? start, int? end, int? step)
+        {
+            return bytes.Slice(start, end, step);
+        }
     }
 }
