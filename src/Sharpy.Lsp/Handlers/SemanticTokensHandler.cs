@@ -535,6 +535,10 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 EmitStringLiteralToken(tokens, strLit.LineStart, strLit.ColumnStart, strLit.LineEnd, strLit.ColumnEnd);
                 break;
 
+            case BytesLiteralExpression bytesLit:
+                EmitStringLiteralToken(tokens, bytesLit.LineStart, bytesLit.ColumnStart, bytesLit.LineEnd, bytesLit.ColumnEnd);
+                break;
+
         }
     }
 
