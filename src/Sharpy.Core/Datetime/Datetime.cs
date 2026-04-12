@@ -1,6 +1,3 @@
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type
-#pragma warning disable CS8603 // Possible null reference return
-#pragma warning disable CS1591 // Missing XML comment
 using System;
 using System.Globalization;
 namespace Sharpy
@@ -96,16 +93,19 @@ namespace Sharpy
 
         // --- Arithmetic ---
 
+        /// <summary>Add a timedelta to the date.</summary>
         public static Date operator +(Date date, Timedelta delta)
         {
             return new Date(date._date.AddTicks(delta.InternalTimeSpan.Ticks).Date);
         }
 
+        /// <summary>Subtract a timedelta from the date.</summary>
         public static Date operator -(Date date, Timedelta delta)
         {
             return new Date(date._date.AddTicks(-delta.InternalTimeSpan.Ticks).Date);
         }
 
+        /// <summary>Return the timedelta between two dates.</summary>
         public static Timedelta operator -(Date left, Date right)
         {
             return new Timedelta(left._date.Subtract(right._date));
@@ -113,13 +113,15 @@ namespace Sharpy
 
         // --- Comparison ---
 
-        public int CompareTo(Date other)
+        /// <summary>Compare this date to another for ordering.</summary>
+        public int CompareTo(Date? other)
         {
-            if (other == null)
+            if (other is null)
                 return 1;
             return _date.CompareTo(other._date);
         }
 
+        /// <summary>Determine equality with another date.</summary>
         public bool Equals(Date other)
         {
             if (other is null)
@@ -127,16 +129,19 @@ namespace Sharpy
             return _date == other._date;
         }
 
+        /// <summary>Determine equality with another object.</summary>
         public override bool Equals(object obj)
         {
             return Equals(obj as Date);
         }
 
+        /// <summary>Return a hash code for this value.</summary>
         public override int GetHashCode()
         {
             return _date.GetHashCode();
         }
 
+        /// <summary>Determine whether two dates are equal.</summary>
         public static bool operator ==(Date left, Date right)
         {
             if (left is null)
@@ -144,26 +149,31 @@ namespace Sharpy
             return left.Equals(right);
         }
 
+        /// <summary>Determine whether two dates are not equal.</summary>
         public static bool operator !=(Date left, Date right)
         {
             return !(left == right);
         }
 
+        /// <summary>Determine whether the left date is earlier than the right.</summary>
         public static bool operator <(Date left, Date right)
         {
             return left.CompareTo(right) < 0;
         }
 
+        /// <summary>Determine whether the left date is later than the right.</summary>
         public static bool operator >(Date left, Date right)
         {
             return left.CompareTo(right) > 0;
         }
 
+        /// <summary>Determine whether the left date is earlier than or equal to the right.</summary>
         public static bool operator <=(Date left, Date right)
         {
             return left.CompareTo(right) <= 0;
         }
 
+        /// <summary>Determine whether the left date is later than or equal to the right.</summary>
         public static bool operator >=(Date left, Date right)
         {
             return left.CompareTo(right) >= 0;
@@ -223,13 +233,15 @@ namespace Sharpy
 
         // --- Comparison ---
 
-        public int CompareTo(Time other)
+        /// <summary>Compare this time to another for ordering.</summary>
+        public int CompareTo(Time? other)
         {
-            if (other == null)
+            if (other is null)
                 return 1;
             return _time.CompareTo(other._time);
         }
 
+        /// <summary>Determine equality with another time.</summary>
         public bool Equals(Time other)
         {
             if (other is null)
@@ -237,16 +249,19 @@ namespace Sharpy
             return _time == other._time;
         }
 
+        /// <summary>Determine equality with another object.</summary>
         public override bool Equals(object obj)
         {
             return Equals(obj as Time);
         }
 
+        /// <summary>Return a hash code for this value.</summary>
         public override int GetHashCode()
         {
             return _time.GetHashCode();
         }
 
+        /// <summary>Determine whether two times are equal.</summary>
         public static bool operator ==(Time left, Time right)
         {
             if (left is null)
@@ -254,26 +269,31 @@ namespace Sharpy
             return left.Equals(right);
         }
 
+        /// <summary>Determine whether two times are not equal.</summary>
         public static bool operator !=(Time left, Time right)
         {
             return !(left == right);
         }
 
+        /// <summary>Determine whether the left time is earlier than the right.</summary>
         public static bool operator <(Time left, Time right)
         {
             return left.CompareTo(right) < 0;
         }
 
+        /// <summary>Determine whether the left time is later than the right.</summary>
         public static bool operator >(Time left, Time right)
         {
             return left.CompareTo(right) > 0;
         }
 
+        /// <summary>Determine whether the left time is earlier than or equal to the right.</summary>
         public static bool operator <=(Time left, Time right)
         {
             return left.CompareTo(right) <= 0;
         }
 
+        /// <summary>Determine whether the left time is later than or equal to the right.</summary>
         public static bool operator >=(Time left, Time right)
         {
             return left.CompareTo(right) >= 0;
@@ -287,16 +307,16 @@ namespace Sharpy
     public class DateTime : IEquatable<DateTime>, IComparable<DateTime>
     {
         private readonly System.DateTime _dateTime;
-        private readonly Timezone _tzinfo;
+        private readonly Timezone? _tzinfo;
 
         /// <summary>Create a datetime from year, month, day, and optional time components.</summary>
-        public DateTime(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int microsecond = 0, Timezone tzinfo = null)
+        public DateTime(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int microsecond = 0, Timezone? tzinfo = null)
         {
             _dateTime = new System.DateTime(year, month, day, hour, minute, second).AddTicks(microsecond * 10L);
             _tzinfo = tzinfo;
         }
 
-        internal DateTime(System.DateTime dateTime, Timezone tzinfo = null)
+        internal DateTime(System.DateTime dateTime, Timezone? tzinfo = null)
         {
             _dateTime = dateTime;
             _tzinfo = tzinfo;
