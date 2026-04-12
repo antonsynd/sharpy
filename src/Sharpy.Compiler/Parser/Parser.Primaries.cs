@@ -124,6 +124,22 @@ public partial class Parser
                 }
 
 
+            case TokenType.ByteString:
+                {
+                    var token = Current;
+                    var value = token.Value;
+                    Advance();
+                    return new BytesLiteralExpression
+                    {
+                        Value = value,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Length,
+                        Span = GetSpanFromToken(token)
+                    };
+                }
+
             case TokenType.FStringStart:
                 {
                     var startToken = Current;

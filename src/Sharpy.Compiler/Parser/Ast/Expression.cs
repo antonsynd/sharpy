@@ -38,6 +38,14 @@ public record StringLiteral : Expression
 }
 
 /// <summary>
+/// Byte string literal (b"hello", b'\xff')
+/// </summary>
+public record BytesLiteralExpression : Expression
+{
+    public string Value { get; init; } = "";
+}
+
+/// <summary>
 /// F-string literal (f"Hello {name}")
 /// </summary>
 public record FStringLiteral : Expression
