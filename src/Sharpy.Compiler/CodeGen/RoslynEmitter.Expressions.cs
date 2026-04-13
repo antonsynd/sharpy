@@ -149,7 +149,12 @@ internal partial class RoslynEmitter
             {
                 var clrType = (resolvedSymbol as TypeSymbol)?.ClrType
                               ?? ((TypeSymbol)symbol!).ClrType!;
-                return MakeGlobalQualifiedName("Sharpy", clrType.Name);
+                // Strip CLR generic arity suffix (e.g., List`1 → List)
+                var clrName = clrType.Name;
+                var arityIndex = clrName.IndexOf("`", StringComparison.Ordinal);
+                if (arityIndex >= 0)
+                    clrName = clrName[..arityIndex];
+                return MakeGlobalQualifiedName("Sharpy", clrName);
             }
         }
 

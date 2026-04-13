@@ -115,11 +115,22 @@ internal partial class RoslynEmitter
                     && resolvedGeneric.TypeArguments.All(t => t is not UnknownType))
                 {
                     var typeArgsSyntax = resolvedGeneric.TypeArguments
-                        .Select(t => _typeMapper.MapSemanticType(t));
+                        .Select(t => _typeMapper.MapSemanticType(t))
+                        .ToArray();
                     var csharpCollectionName = CSharpTypeNames.FromSharpyName(funcName.Name)
                         ?? NameMangler.ToPascalCase(funcName.Name);
                     var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpCollectionName,
-                            typeArgsSyntax.ToArray());
+                            typeArgsSyntax);
+
+                    // DefaultDict: wrap type-reference arguments in factory lambdas.
+                    // DefaultDict(list) → new DefaultDict<string, List<int>>(() => new List<int>())
+                    if (string.Equals(funcName.Name, BuiltinNames.DefaultDict, StringComparison.OrdinalIgnoreCase)
+                        && typeArgsSyntax.Length >= 2
+                        && call.Arguments.Length >= 1)
+                    {
+                        allArgs = WrapDefaultDictFactoryArgs(call, allArgs, typeArgsSyntax[1]);
+                    }
+
                     return ObjectCreationExpression(genericTypeSyntax)
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                 }
@@ -400,6 +411,16 @@ internal partial class RoslynEmitter
             var genericTypeCallTarget = ResolveConstructorForCall(genericTypeSymbol, call);
             var allArgs = GenerateReorderedCallArguments(call, genericTypeCallTarget);
 
+            // DefaultDict: wrap type-reference arguments in factory lambdas.
+            // defaultdict[str, list[int]](list) → new DefaultDict<string, List<long>>(() => new List<long>())
+            // The DefaultDict constructor takes Func<TValue>, not a type reference.
+            if (string.Equals(genericName.Name, BuiltinNames.DefaultDict, StringComparison.OrdinalIgnoreCase)
+                && call.Arguments.Length >= 1
+                && typeArgsSyntax.Length >= 2)
+            {
+                allArgs = WrapDefaultDictFactoryArgs(call, allArgs, typeArgsSyntax[1]);
+            }
+
             return ObjectCreationExpression(genericTypeSyntax)
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
@@ -427,6 +448,56 @@ internal partial class RoslynEmitter
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// For DefaultDict construction, wraps type-reference arguments in factory lambdas.
+    /// <c>defaultdict[str, list[int]](list)</c> becomes
+    /// <c>new DefaultDict&lt;string, List&lt;long&gt;&gt;(() =&gt; new List&lt;long&gt;())</c>
+    /// because the DefaultDict constructor takes <c>Func&lt;TValue&gt;</c>, not a type reference.
+    /// </summary>
+    private ArgumentSyntax[] WrapDefaultDictFactoryArgs(
+        FunctionCall call, ArgumentSyntax[] allArgs, TypeSyntax valueTypeSyntax)
+    {
+        if (allArgs.Length == 0 || call.Arguments.Length == 0)
+            return allArgs;
+
+        // Check if the first argument is a type reference used as a callable factory.
+        // In Python, defaultdict(list) passes the type `list` as a factory callable.
+        // We need to detect this and wrap it in a lambda: () => new ValueType()
+        var firstArg = call.Arguments[0];
+        if (firstArg is not Identifier argId)
+            return allArgs;
+
+        // The DefaultDict constructor takes Func<TValue>. When the user writes
+        // defaultdict(list), defaultdict(int), etc., the argument is a type name used
+        // as a factory callable. Detect this by checking if the argument name is a known
+        // type constructor (builtin type or collection type). We check multiple resolution
+        // paths because 'list' can resolve as FunctionSymbol (builtin function), TypeSymbol,
+        // or both depending on context.
+        var argSymbol = _context.LookupSymbol(argId.Name);
+        var resolvedSymbol = _context.SemanticInfo?.GetIdentifierSymbol(argId);
+        var isTypeFactory = argSymbol is TypeSymbol
+            || resolvedSymbol is TypeSymbol
+            || CSharpTypeNames.FromSharpyName(argId.Name) != null
+            || _context.IsBuiltinFunction(argId.Name);
+
+        if (!isTypeFactory)
+            return allArgs;
+
+        // Generate factory lambda: () => new ValueType()
+        var factoryBody = ObjectCreationExpression(valueTypeSyntax)
+            .WithArgumentList(ArgumentList());
+        var factoryLambda = ParenthesizedLambdaExpression(
+            ParameterList(), factoryBody);
+
+        // Replace the first argument with the factory lambda
+        var result = new ArgumentSyntax[allArgs.Length];
+        result[0] = Argument(factoryLambda);
+        for (int i = 1; i < allArgs.Length; i++)
+            result[i] = allArgs[i];
+
+        return result;
     }
 
     /// <summary>
