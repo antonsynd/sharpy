@@ -61,6 +61,8 @@ namespace Sharpy
             return builder.ToString();
         }
 
+        // TODO(#564): Escape non-printable control characters (\a, \b, \f, \v, \x00-\x1f)
+        // using \xNN format to match Python 3's repr() behavior.
         private static string ReprString(string s)
         {
             var builder = new StringBuilder(s.Length + 2);

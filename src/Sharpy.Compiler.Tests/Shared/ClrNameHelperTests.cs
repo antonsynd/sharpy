@@ -38,6 +38,14 @@ public class ClrNameHelperTests
         Assert.Equal(expected, ClrNameHelper.StripArity(input));
     }
 
+    [Theory]
+    [InlineData("Outer+Inner`1", "Outer+Inner")]
+    [InlineData("Namespace.Outer+Inner`2", "Namespace.Outer+Inner")]
+    public void StripArity_StripsArity_ForNestedTypes(string input, string expected)
+    {
+        Assert.Equal(expected, ClrNameHelper.StripArity(input));
+    }
+
     [Fact]
     public void StripArity_ReturnsEmpty_ForEmptyString()
     {
