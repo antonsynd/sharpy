@@ -1,8 +1,10 @@
-using Xunit;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
+using Xunit;
+using Xunit.Abstractions;
 
 namespace Sharpy.Compiler.Tests.Integration;
 
@@ -473,4 +475,60 @@ def foo() -> int:
     }
 
     #endregion
+}
+
+/// <summary>
+/// Verifies that ValidationPipeline diagnostics are surfaced through CompileAndExecute(),
+/// confirming the full integration test harness runs validation. See GitHub issue #557.
+/// </summary>
+public class ValidationPipelineHarnessTests : IntegrationTestBase
+{
+    public ValidationPipelineHarnessTests(ITestOutputHelper output) : base(output) { }
+
+    [Fact]
+    public void CompileAndExecute_MutableDefault_ReportsValidationError()
+    {
+        // SPY0400: Mutable default — detected only by DefaultParameterValidator
+        var result = CompileAndExecute(@"
+def foo(x: list[int] = []):
+    pass
+
+def main():
+    foo()
+");
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors, e => e.Contains("Mutable default value"));
+        Assert.Contains(result.RawDiagnostics, d => d.Code == DiagnosticCodes.Validation.MutableDefault);
+    }
+
+    [Fact]
+    public void CompileAndExecute_UnusedVariable_ReportsValidationWarning()
+    {
+        // SPY0451: Unused variable — detected only by UnusedVariableValidator
+        var result = CompileAndExecute(@"
+def main():
+    unused_var = 42
+    print(""hello"")
+");
+        Assert.True(result.Success, $"Expected success but got errors: {string.Join("; ", result.CompilationErrors)}");
+        Assert.Equal("hello\n", result.StandardOutput);
+        Assert.Contains(result.CompilationWarnings, w => w.Contains("unused_var"));
+    }
+
+    [Fact]
+    public void CompileAndExecute_UnreachableCode_ReportsValidationWarning()
+    {
+        // SPY0450: Unreachable code — detected only by ControlFlowValidator
+        var result = CompileAndExecute(@"
+def foo() -> int:
+    return 1
+    print(""unreachable"")
+
+def main():
+    print(foo())
+");
+        Assert.True(result.Success, $"Expected success but got errors: {string.Join("; ", result.CompilationErrors)}");
+        Assert.Equal("1\n", result.StandardOutput);
+        Assert.Contains(result.CompilationWarnings, w => w.Contains("Unreachable"));
+    }
 }
