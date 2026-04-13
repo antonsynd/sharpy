@@ -1,0 +1,16 @@
+# Test repr() control character escaping
+def main():
+    print(repr("\x00"))
+    print(repr("\x07"))
+    print(repr("\x08"))
+    print(repr("\x0b"))
+    print(repr("\x0c"))
+    print(repr("\x1b"))
+    print(repr("\x1f"))
+    print(repr("\x7f"))
+    print(repr("\t"))
+    print(repr("\n"))
+    print(repr("\r"))
+    print(repr("it's \x07"))
+    print(repr("hello\x00world"))
+    print(repr("\\\x07"))
