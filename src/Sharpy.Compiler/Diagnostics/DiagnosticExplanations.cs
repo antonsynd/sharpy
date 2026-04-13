@@ -177,6 +177,11 @@ public static class DiagnosticExplanations
             "data: bytes = b\"\\u0041\"",
             "Use a hex escape instead:\n  data: bytes = b\"\\x41\"");
 
+        Add(dict, DiagnosticCodes.Lexer.NonAsciiInByteString, "Non-ASCII character in byte string", "Lexer",
+            "A byte string literal contains a non-ASCII character (code point > 127). Byte strings can only contain ASCII literal characters. Use \\x escape sequences for non-ASCII byte values.",
+            "data: bytes = b\"€\"",
+            "Use a hex escape instead:\n  data: bytes = b\"\\xe2\\x82\\xac\"");
+
         // ── Parser errors (SPY0100-SPY0199) ─────────────────────────────
 
         Add(dict, DiagnosticCodes.Parser.UnexpectedToken, "Unexpected token", "Parser",
