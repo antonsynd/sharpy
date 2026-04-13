@@ -29,7 +29,7 @@ namespace Sharpy
                 return "None";
 
             if (obj is string s)
-                return "'" + s + "'";
+                return ReprString(s);
 
             if (obj is bool b)
                 return b ? "True" : "False";
@@ -59,6 +59,43 @@ namespace Sharpy
 
             builder.Append(')');
             return builder.ToString();
+        }
+
+        private static string ReprString(string s)
+        {
+            var builder = new StringBuilder(s.Length + 2);
+            foreach (var c in s)
+            {
+                switch (c)
+                {
+                    case '\\':
+                        builder.Append(@"\\");
+                        break;
+                    case '\n':
+                        builder.Append(@"\n");
+                        break;
+                    case '\r':
+                        builder.Append(@"\r");
+                        break;
+                    case '\t':
+                        builder.Append(@"\t");
+                        break;
+                    default:
+                        builder.Append(c);
+                        break;
+                }
+            }
+
+            var escaped = builder.ToString();
+
+            // Smart quoting: use double quotes if string contains ' but not "
+            if (escaped.IndexOf('\'') >= 0 && escaped.IndexOf('"') < 0)
+            {
+                return "\"" + escaped + "\"";
+            }
+
+            // Default: single quotes, escape any embedded single quotes
+            return "'" + escaped.Replace("'", @"\'") + "'";
         }
     }
 }
