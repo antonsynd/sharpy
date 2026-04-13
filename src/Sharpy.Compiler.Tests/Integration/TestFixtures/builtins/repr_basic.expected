@@ -1,3 +1,10 @@
 'hello'
 42
 True
+"it's"
+'say "hi"'
+'it\'s a "test"'
+'back\\slash'
+'new\nline'
+'tab\there'
+''

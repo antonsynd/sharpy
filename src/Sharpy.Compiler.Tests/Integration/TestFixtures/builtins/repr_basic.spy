@@ -3,3 +3,12 @@ def main():
     print(repr("hello"))
     print(repr(42))
     print(repr(True))
+
+    # Smart quoting and escaping
+    print(repr("it's"))
+    print(repr("say \"hi\""))
+    print(repr("it's a \"test\""))
+    print(repr("back\\slash"))
+    print(repr("new\nline"))
+    print(repr("tab\there"))
+    print(repr(""))
