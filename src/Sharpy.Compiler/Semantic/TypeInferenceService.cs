@@ -225,7 +225,7 @@ internal class TypeInferenceService
                 return SemanticType.Str;
         }
 
-        // Bytes operations: concatenation, repetition, equality
+        // Bytes operations: concatenation, repetition, equality, comparison
         if (left is UserDefinedType { Name: BuiltinNames.Bytes } leftBytes)
         {
             if (right is UserDefinedType { Name: BuiltinNames.Bytes })
@@ -233,7 +233,9 @@ internal class TypeInferenceService
                 var result = op switch
                 {
                     BinaryOperator.Add => leftBytes,
-                    BinaryOperator.Equal or BinaryOperator.NotEqual => SemanticType.Bool,
+                    BinaryOperator.Equal or BinaryOperator.NotEqual
+                        or BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
+                        or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual => SemanticType.Bool,
                     _ => (SemanticType?)null
                 };
                 if (result != null)
