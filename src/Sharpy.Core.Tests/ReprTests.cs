@@ -3,7 +3,7 @@ using FluentAssertions;
 
 namespace Sharpy.Core.Tests;
 
-public class ReprTests
+public class Repr_Tests
 {
     [Theory]
     [InlineData("\0", "'\\x00'")]
@@ -12,6 +12,7 @@ public class ReprTests
     [InlineData("\f", "'\\x0c'")]
     [InlineData("\v", "'\\x0b'")]
     [InlineData("\x1b", "'\\x1b'")]
+    [InlineData("\x1f", "'\\x1f'")]
     [InlineData("\x7f", "'\\x7f'")]
     public void Repr_ControlCharacter_EscapedAsHex(string input, string expected)
     {
