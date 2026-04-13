@@ -170,7 +170,7 @@ namespace Sharpy
         /// Return a list of the n most common elements and their counts.
         /// Elements with equal counts are ordered by their key if T implements IComparable, otherwise in arbitrary order.
         /// </summary>
-        public System.Collections.Generic.List<(T, int)> MostCommon(int? n = null)
+        public Sharpy.List<(T, int)> MostCommon(int? n = null)
         {
             var ordered = _counts.OrderByDescending(kv => kv.Value);
 
@@ -190,7 +190,7 @@ namespace Sharpy
                 sorted = sorted.Take(n.Value);
             }
 
-            return sorted.Select(kv => (kv.Key, kv.Value)).ToList();
+            return new Sharpy.List<(T, int)>(sorted.Select(kv => (kv.Key, kv.Value)));
         }
 
         /// <summary>
