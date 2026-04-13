@@ -79,6 +79,9 @@ namespace Sharpy
             return _index.ContainsKey(key);
         }
 
+        /// <inheritdoc cref="ContainsKey"/>
+        public bool Contains(K key) => ContainsKey(key);
+
         /// <summary>
         /// Remove the specified key and return its value.
         /// </summary>

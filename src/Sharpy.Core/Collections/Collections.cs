@@ -285,6 +285,12 @@ namespace Sharpy
         public bool ContainsKey(T key) => _counts.ContainsKey(key);
 
         /// <summary>
+        /// Check if the counter contains a key (alias for ContainsKey).
+        /// Used by the <c>in</c> operator.
+        /// </summary>
+        public bool Contains(T key) => ContainsKey(key);
+
+        /// <summary>
         /// Combine two counters by adding counts.
         /// </summary>
         public static Counter<T> operator +(Counter<T> left, Counter<T> right)
@@ -419,6 +425,12 @@ namespace Sharpy
         {
             return _dict.ContainsKey(key);
         }
+
+        /// <summary>
+        /// Check if the dictionary contains a key (alias for ContainsKey).
+        /// Used by the <c>in</c> operator: <c>"x" in d</c> → <c>d.Contains("x")</c>.
+        /// </summary>
+        public bool Contains(TKey key) => ContainsKey(key);
 
         /// <summary>The keys of the dictionary.</summary>
         public IEnumerable<TKey> Keys => _dict.Keys;
