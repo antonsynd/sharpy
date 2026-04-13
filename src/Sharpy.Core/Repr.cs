@@ -56,6 +56,7 @@ namespace Sharpy
                     builder.Append(", ");
                 builder.Append(Repr(fields[i].GetValue(tuple)));
             }
+
             builder.Append(')');
             return builder.ToString();
         }
