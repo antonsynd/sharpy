@@ -779,6 +779,12 @@ internal class TypeInferenceService
             return SemanticType.Str;
         }
 
+        // Bytes - integer indexing returns int (b[0] → 104)
+        if (container is UserDefinedType { Name: BuiltinNames.Bytes })
+        {
+            return SemanticType.Int;
+        }
+
         // User-defined types with __getitem__
         TypeSymbol? typeSymbol = container switch
         {
