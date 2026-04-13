@@ -879,4 +879,47 @@ internal partial class RoslynEmitter
             typeExpr,
             IdentifierName(fieldName));
     }
+
+    /// <summary>
+    /// Returns true if <paramref name="memberName"/> (Python name) resolves to a CLR
+    /// property on the receiver's type, AND no method with the same PascalCase name exists.
+    /// Used to emit property access (no parens) instead of method invocation (#555).
+    /// </summary>
+    private bool IsClrPropertyAccess(Expression receiver, string memberName)
+    {
+        var receiverType = GetExpressionSemanticType(receiver);
+        TypeSymbol? typeSymbol = receiverType switch
+        {
+            UserDefinedType udt => udt.Symbol as TypeSymbol,
+            GenericType gt => _context.LookupSymbol(gt.Name) as TypeSymbol
+                              ?? gt.GenericDefinition,
+            _ => null
+        };
+
+        if (typeSymbol == null)
+            return false;
+
+        // Check the type hierarchy for a property with this Sharpy name
+        foreach (var ts in GetTypeAndBases(typeSymbol))
+        {
+            foreach (var prop in ts.Properties)
+            {
+                if (string.Equals(prop.Name, memberName, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Confirm no method with the same name exists (method takes priority)
+                    var (method, _) = TypeHierarchyService.FindMethod(typeSymbol, memberName);
+                    return method == null;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static IEnumerable<TypeSymbol> GetTypeAndBases(TypeSymbol typeSymbol)
+    {
+        yield return typeSymbol;
+        foreach (var baseType in TypeHierarchyService.GetAllBaseTypes(typeSymbol))
+            yield return baseType;
+    }
 }

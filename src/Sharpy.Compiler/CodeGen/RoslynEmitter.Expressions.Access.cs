@@ -152,10 +152,25 @@ internal partial class RoslynEmitter
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                 }
 
-                // For builtin collection types, use the fully-qualified Sharpy.X name
+                // For builtin collection types, use the fully-qualified Sharpy.X name.
+                // If we reached here, the expression type didn't have valid generic args.
+                // Try to infer element type from the constructor argument's semantic type:
+                // list(d.keys()) → new Sharpy.List<string>(d.Keys) when d.keys() is IEnumerable<string>
                 var collectionName = CSharpTypeNames.FromSharpyName(funcName.Name);
                 if (collectionName != null)
                 {
+                    if (call.Arguments.Length == 1)
+                    {
+                        var elementType = TryInferElementTypeFromArg(call.Arguments[0]);
+                        if (elementType != null)
+                        {
+                            var elementTypeSyntax = _typeMapper.MapSemanticType(elementType);
+                            var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(
+                                collectionName, elementTypeSyntax);
+                            return ObjectCreationExpression(genericTypeSyntax)
+                                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+                        }
+                    }
                     return ObjectCreationExpression(ParseName(collectionName))
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                 }
@@ -285,6 +300,17 @@ internal partial class RoslynEmitter
             var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
                 ?? NameMangler.GetListMethodMapping(memberAccess.Member)
                 ?? NameMangler.ToPascalCase(memberAccess.Member);
+
+            // CLR property access: if the member is a property (not a method) on a
+            // discovery-loaded type and the call has no arguments, emit property access
+            // without invocation parens. E.g., Python d.keys() → C# d.Keys (not d.Keys()).
+            if (call.Arguments.Length == 0 && IsClrPropertyAccess(memberAccess.Object, memberAccess.Member))
+            {
+                return MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    obj,
+                    IdentifierName(methodName));
+            }
 
             // Guard: super().__init__() outside constructor context would produce base.Constructor()
             // which is invalid C#. This should have been handled in GenerateConstructor.
@@ -587,18 +613,42 @@ internal partial class RoslynEmitter
 
             // Fallback: for user-defined types (e.g., with __reversed__), extract element type
             // from the call's resolved return type (Iterator<T> -> T).
-            if (elemType == null)
+            if (elemType == null || IsObjectType(elemType))
             {
                 var callType = _context.SemanticInfo?.GetExpressionType(call);
                 if (callType is GenericType callGeneric
-                    && callGeneric.TypeArguments.Count > 0)
+                    && callGeneric.TypeArguments.Count > 0
+                    && callGeneric.TypeArguments[0] is not UnknownType
+                    && !IsObjectType(callGeneric.TypeArguments[0]))
                 {
                     elemType = callGeneric.TypeArguments[0];
                 }
             }
 
-            if (elemType != null)
+            // Fallback: try to infer element type from the argument's AST structure (#555).
+            // Handles sorted(list(d.keys())) where d is a generic dict type.
+            if ((elemType == null || IsObjectType(elemType)) && call.Arguments.Length > 0)
+            {
+                var inferred = TryInferElementTypeFromArg(call.Arguments[0]);
+                if (inferred != null)
+                    elemType = inferred;
+            }
+
+            if (elemType != null && !IsObjectType(elemType))
                 typeArg = _typeMapper.MapSemanticType(elemType);
+        }
+
+        // Final fallback: if typeArg is still null or object, try to extract element type from
+        // the already-generated argument syntax. E.g., new Sharpy.List<string>(...) → string.
+        if (typeArg == null || typeArg.ToString() == "object")
+        {
+            if (allArgs.Length > 0
+                && allArgs[0].Expression is ObjectCreationExpressionSyntax objCreation
+                && objCreation.Type is QualifiedNameSyntax { Right: GenericNameSyntax gns }
+                && gns.TypeArgumentList.Arguments.Count > 0)
+            {
+                typeArg = gns.TypeArgumentList.Arguments[0];
+            }
         }
 
         // For reversed(s) on strings, emit StringHelpers.Reversed(s) to yield single-char strings
