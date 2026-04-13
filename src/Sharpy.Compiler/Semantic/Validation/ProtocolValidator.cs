@@ -181,7 +181,20 @@ internal class ProtocolValidator : ValidatingAstWalker
             var typeSymbol = Context.SymbolTable.BuiltinRegistry.GetType(generic.Name);
             if (typeSymbol != null)
                 return typeSymbol.ProtocolMethods.ContainsKey(dunderName);
-            // Fall through for user-defined generic types not in the registry
+
+            // Fallback: check SymbolTable for discovery-loaded generic types (e.g., Counter)
+            var symTableType = Context.SymbolTable.Lookup(generic.Name) as TypeSymbol;
+            if (symTableType != null)
+            {
+                if (symTableType.ProtocolMethods.ContainsKey(dunderName))
+                    return true;
+
+                if (symTableType.Methods.Any(m => m.Name == dunderName))
+                    return true;
+
+                if (symTableType.ClrType != null && HasClrProtocol(symTableType.ClrType, dunderName))
+                    return true;
+            }
         }
 
         // Enum types support __iter__ (via Enum.GetValues<T>())

@@ -354,7 +354,16 @@ internal class TypeInferenceService
             {
                 var bestOverload = FindBestOverload(methods, right);
                 if (bestOverload != null)
+                {
+                    // Discovery-loaded generic types (e.g., Counter<T>) may have
+                    // operator return types that resolved to 'object' because the
+                    // CLR type mapper couldn't represent the self-referential generic
+                    // type (Counter<T> returns Counter<T>). In that case, use the
+                    // left operand type which is the correctly-instantiated generic.
+                    if (bestOverload.ReturnType == SemanticType.Object && left is GenericType)
+                        return left;
                     return bestOverload.ReturnType;
+                }
             }
 
             // Try equality complement synthesis
