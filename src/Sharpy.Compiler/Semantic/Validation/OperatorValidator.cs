@@ -241,6 +241,7 @@ internal class OperatorValidator : ValidatingAstWalker
         }
 
         // Bytes supports concatenation, repetition, equality, and containment
+        // TODO(#559): bytes comparison operators (<, <=, >, >=) not yet implemented
         if (type is UserDefinedType { Name: BuiltinNames.Bytes })
         {
             return dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne or DunderNames.Contains;

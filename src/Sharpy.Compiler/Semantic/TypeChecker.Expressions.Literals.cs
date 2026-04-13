@@ -391,9 +391,8 @@ internal partial class TypeChecker
 
     private SemanticType CheckBytesLiteral(BytesLiteralExpression bytesLit)
     {
-        var bytesSymbol = _symbolTable.BuiltinRegistry.GetType(BuiltinNames.Bytes);
-        if (bytesSymbol == null)
-            return SemanticType.Unknown;
+        var bytesSymbol = _symbolTable.BuiltinRegistry.GetType(BuiltinNames.Bytes)
+            ?? throw new InvalidOperationException("bytes type must be registered in BuiltinRegistry");
         return new UserDefinedType { Name = bytesSymbol.Name, Symbol = bytesSymbol };
     }
 

@@ -873,9 +873,24 @@ internal static class SymbolSerializer
                         if (secondPipe >= 0)
                         {
                             var vStr = beforeO[(secondPipe + 1)..];
-                            paramsStr = beforeO[..secondPipe];
-                            optionalCount = int.Parse(oStr, System.Globalization.CultureInfo.InvariantCulture);
-                            variadicIndex = vStr == "-" ? null : int.Parse(vStr, System.Globalization.CultureInfo.InvariantCulture);
+                            // Use TryParse for resilience against corrupted cache files —
+                            // fall through to legacy format on failure rather than crashing.
+                            if (int.TryParse(oStr, System.Globalization.NumberStyles.Integer,
+                                    System.Globalization.CultureInfo.InvariantCulture, out var parsedOptional) &&
+                                (vStr == "-" || int.TryParse(vStr, System.Globalization.NumberStyles.Integer,
+                                    System.Globalization.CultureInfo.InvariantCulture, out _)))
+                            {
+                                paramsStr = beforeO[..secondPipe];
+                                optionalCount = parsedOptional;
+                                variadicIndex = vStr == "-"
+                                    ? null
+                                    : int.Parse(vStr, System.Globalization.CultureInfo.InvariantCulture);
+                            }
+                            else
+                            {
+                                // Malformed metadata — treat as legacy format
+                                paramsStr = innerStr;
+                            }
                         }
                         else
                         {
