@@ -465,11 +465,7 @@ internal class TypeSyntaxMapper
                     return builtinTypeSymbol.ClrType.Name;
                 }
                 // Sharpy types need global:: qualification
-                // Strip CLR generic arity suffix (e.g., Counter`1 → Counter)
-                var fullName = builtinTypeSymbol.ClrType.FullName!;
-                var arityIdx = fullName.IndexOf("`", StringComparison.Ordinal);
-                if (arityIdx >= 0)
-                    fullName = fullName[..arityIdx];
+                var fullName = ClrNameHelper.StripArity(builtinTypeSymbol.ClrType.FullName!);
                 return $"global::{fullName}";
             }
             return sharpyTypeName;
@@ -494,10 +490,7 @@ internal class TypeSyntaxMapper
         {
             // Strip CLR generic arity suffix (e.g., DefaultDict`2 → DefaultDict)
             // because type arguments are added separately by the caller via QualifiedGenericName.
-            var fullName = typeSymbol.ClrType.FullName!;
-            var arityIndex = fullName.IndexOf("`", StringComparison.Ordinal);
-            if (arityIndex >= 0)
-                fullName = fullName[..arityIndex];
+            var fullName = ClrNameHelper.StripArity(typeSymbol.ClrType.FullName!);
             return $"global::{fullName}";
         }
 

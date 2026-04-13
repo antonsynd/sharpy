@@ -285,11 +285,7 @@ internal class CachedModuleDiscovery
         // Convert methods from discovery, expanding default parameters into separate overloads
         if (typeInfo.Methods.Count > 0)
         {
-            // Strip generic arity suffix for OverloadExpander type name matching
-            var expanderTypeName = typeInfo.Name;
-            var backtick = expanderTypeName.IndexOf('`', StringComparison.Ordinal);
-            if (backtick >= 0)
-                expanderTypeName = expanderTypeName[..backtick];
+            var expanderTypeName = ClrNameHelper.StripArity(typeInfo.Name);
 
             foreach (var sig in typeInfo.Methods)
             {
@@ -381,11 +377,7 @@ internal class CachedModuleDiscovery
                 // For generic types like List`1, match by stripping the generic arity suffix
                 var typeInfo = moduleOverloads.Types.FirstOrDefault(t =>
                 {
-                    var name = t.Name;
-                    // Strip generic arity suffix (e.g., List`1 -> List)
-                    var backtickIndex = name.IndexOf('`', StringComparison.Ordinal);
-                    if (backtickIndex >= 0)
-                        name = name[..backtickIndex];
+                    var name = ClrNameHelper.StripArity(t.Name);
                     return string.Equals(name, clrName, StringComparison.Ordinal);
                 });
 

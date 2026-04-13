@@ -135,12 +135,8 @@ internal partial class RoslynEmitter
         // not Argparse.ArgumentParser)
         if (typeSymbol.ClrType != null && typeSymbol.ClrType.Namespace == "Sharpy")
         {
-            // Strip CLR generic arity suffix (e.g., DefaultDict`2 → DefaultDict)
-            // because type arguments are added separately by the caller.
-            var fullName = typeSymbol.ClrType.FullName!;
-            var arityIndex = fullName.IndexOf("`", StringComparison.Ordinal);
-            if (arityIndex >= 0)
-                fullName = fullName[..arityIndex];
+            // Type arguments are added separately by the caller.
+            var fullName = ClrNameHelper.StripArity(typeSymbol.ClrType.FullName!);
             return $"global::{fullName}";
         }
 

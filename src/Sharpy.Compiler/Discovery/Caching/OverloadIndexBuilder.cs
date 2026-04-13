@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Discovery.Caching;
 
@@ -724,10 +725,7 @@ internal class OverloadIndexBuilder
         {
             var genericDef = type.GetGenericTypeDefinition();
             var baseName = (genericDef.FullName ?? genericDef.Name).Replace('+', '.');
-            // Strip everything after backtick (including arity and any assembly info)
-            var backtick = baseName.IndexOf('`', StringComparison.Ordinal);
-            if (backtick >= 0)
-                baseName = baseName[..backtick];
+            baseName = ClrNameHelper.StripArity(baseName);
 
             var typeArgs = string.Join(",", type.GetGenericArguments().Select(GetXmlDocTypeName));
             return $"{baseName}{{{typeArgs}}}";

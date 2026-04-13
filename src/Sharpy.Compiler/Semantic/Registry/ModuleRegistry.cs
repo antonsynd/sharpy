@@ -316,16 +316,7 @@ internal class ModuleRegistry
                      : clrType.IsValueType ? TypeKind.Struct
                      : TypeKind.Class;
 
-        // Strip arity suffix from generic type names (e.g., "IEquatable`1" -> "IEquatable")
-        var typeName = clrType.Name;
-        if (clrType.IsGenericType || clrType.IsGenericTypeDefinition)
-        {
-            var backtickIndex = typeName.IndexOf('`', StringComparison.Ordinal);
-            if (backtickIndex >= 0)
-            {
-                typeName = typeName.Substring(0, backtickIndex);
-            }
-        }
+        var typeName = ClrNameHelper.StripArity(clrType.Name);
 
         // Build TypeParameterDefs from CLR generic arguments
         var typeParameters = new List<TypeParameterDef>();
