@@ -34,6 +34,8 @@ internal class TypeSyntaxMapper
         _builtinTypeMap[BuiltinNames.List] = CSharpTypeNames.SharpyList;
         _builtinTypeMap[BuiltinNames.Dict] = CSharpTypeNames.SharpyDict;
         _builtinTypeMap[BuiltinNames.Set] = CSharpTypeNames.SharpySet;
+        _builtinTypeMap[BuiltinNames.DefaultDict] = CSharpTypeNames.SharpyDefaultDict;
+        _builtinTypeMap["DefaultDict"] = CSharpTypeNames.SharpyDefaultDict;
         _builtinTypeMap[BuiltinNames.Bytes] = CSharpTypeNames.SharpyBytes;
         _builtinTypeMap[BuiltinNames.Tuple] = "System.ValueTuple";
     }
@@ -463,7 +465,12 @@ internal class TypeSyntaxMapper
                     return builtinTypeSymbol.ClrType.Name;
                 }
                 // Sharpy types need global:: qualification
-                return $"global::{builtinTypeSymbol.ClrType.FullName}";
+                // Strip CLR generic arity suffix (e.g., Counter`1 → Counter)
+                var fullName = builtinTypeSymbol.ClrType.FullName!;
+                var arityIdx = fullName.IndexOf("`", StringComparison.Ordinal);
+                if (arityIdx >= 0)
+                    fullName = fullName[..arityIdx];
+                return $"global::{fullName}";
             }
             return sharpyTypeName;
         }
@@ -485,7 +492,13 @@ internal class TypeSyntaxMapper
         // not Argparse.ArgumentParser)
         if (typeSymbol.ClrType != null && typeSymbol.ClrType.Namespace == "Sharpy")
         {
-            return $"global::{typeSymbol.ClrType.FullName}";
+            // Strip CLR generic arity suffix (e.g., DefaultDict`2 → DefaultDict)
+            // because type arguments are added separately by the caller via QualifiedGenericName.
+            var fullName = typeSymbol.ClrType.FullName!;
+            var arityIndex = fullName.IndexOf("`", StringComparison.Ordinal);
+            if (arityIndex >= 0)
+                fullName = fullName[..arityIndex];
+            return $"global::{fullName}";
         }
 
         string moduleNamespace;

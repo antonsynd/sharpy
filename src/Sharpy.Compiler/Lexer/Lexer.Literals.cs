@@ -260,6 +260,9 @@ public partial class Lexer
             }
             else
             {
+                if (c > '\x7F')
+                    throw ReportError("bytes can only contain ASCII literal characters", _line, _column, DiagnosticCodes.Lexer.NonAsciiInByteString);
+
                 sb.Append(c);
                 _position++;
                 _column++;
@@ -314,6 +317,9 @@ public partial class Lexer
             }
             else
             {
+                if (c > '\x7F')
+                    throw ReportError("bytes can only contain ASCII literal characters", _line, _column, DiagnosticCodes.Lexer.NonAsciiInByteString);
+
                 sb.Append(c);
                 _position++;
                 _column++;

@@ -178,10 +178,30 @@ internal class ProtocolValidator : ValidatingAstWalker
                     or DunderNames.GetItem or DunderNames.SetItem or DunderNames.Contains;
             }
 
-            var typeSymbol = Context.SymbolTable.BuiltinRegistry.GetType(generic.Name);
+            // For defaultdict, check dict protocols since it inherits from Dict
+            var lookupName = string.Equals(generic.Name, BuiltinNames.DefaultDict, StringComparison.OrdinalIgnoreCase)
+                ? BuiltinNames.Dict : generic.Name;
+            var typeSymbol = Context.SymbolTable.BuiltinRegistry.GetType(lookupName);
             if (typeSymbol != null)
                 return typeSymbol.ProtocolMethods.ContainsKey(dunderName);
-            // Fall through for user-defined generic types not in the registry
+
+            // Fallback: check SymbolTable for discovery-loaded generic types (e.g., Counter, DefaultDict)
+            // Try the original name first, then PascalCase, then case-insensitive match
+            // for Python-style names that don't split cleanly (e.g., "defaultdict" → "DefaultDict")
+            var symTableType = Context.SymbolTable.Lookup(generic.Name) as TypeSymbol
+                ?? Context.SymbolTable.Lookup(NameMangler.ToPascalCase(generic.Name)) as TypeSymbol
+                ?? Context.SymbolTable.LookupCaseInsensitive(generic.Name) as TypeSymbol;
+            if (symTableType != null)
+            {
+                if (symTableType.ProtocolMethods.ContainsKey(dunderName))
+                    return true;
+
+                if (symTableType.Methods.Any(m => m.Name == dunderName))
+                    return true;
+
+                if (symTableType.ClrType != null && HasClrProtocol(symTableType.ClrType, dunderName))
+                    return true;
+            }
         }
 
         // Enum types support __iter__ (via Enum.GetValues<T>())
@@ -257,6 +277,11 @@ internal class ProtocolValidator : ValidatingAstWalker
         if (dunderName is DunderNames.GetItem or DunderNames.SetItem or DunderNames.Contains or DunderNames.Len)
         {
             if (typeof(System.Collections.IDictionary).IsAssignableFrom(clrType))
+                return true;
+
+            // Also check generic IDictionary<,> (Sharpy's Dict<K,V> implements this but not the non-generic)
+            if (clrType.GetInterfaces().Any(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IDictionary<,>)))
                 return true;
         }
 

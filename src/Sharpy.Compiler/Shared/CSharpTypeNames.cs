@@ -9,6 +9,7 @@ internal static class CSharpTypeNames
     internal const string SharpyList = "Sharpy.List";
     internal const string SharpyDict = "Sharpy.Dict";
     internal const string SharpySet = "Sharpy.Set";
+    internal const string SharpyDefaultDict = "Sharpy.DefaultDict";
     internal const string SharpyBytes = "Sharpy.Bytes";
     internal const string SharpyOptional = "Sharpy.Optional";
     internal const string SharpyResult = "Sharpy.Result";
@@ -23,6 +24,7 @@ internal static class CSharpTypeNames
         BuiltinNames.List => SharpyList,
         BuiltinNames.Dict => SharpyDict,
         BuiltinNames.Set => SharpySet,
+        BuiltinNames.DefaultDict or "DefaultDict" => SharpyDefaultDict,
         _ => null
     };
 }

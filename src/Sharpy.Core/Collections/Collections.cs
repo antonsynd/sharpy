@@ -170,7 +170,7 @@ namespace Sharpy
         /// Return a list of the n most common elements and their counts.
         /// Elements with equal counts are ordered by their key if T implements IComparable, otherwise in arbitrary order.
         /// </summary>
-        public System.Collections.Generic.List<(T, int)> MostCommon(int? n = null)
+        public Sharpy.List<(T, int)> MostCommon(int? n = null)
         {
             var ordered = _counts.OrderByDescending(kv => kv.Value);
 
@@ -190,7 +190,7 @@ namespace Sharpy
                 sorted = sorted.Take(n.Value);
             }
 
-            return sorted.Select(kv => (kv.Key, kv.Value)).ToList();
+            return new Sharpy.List<(T, int)>(sorted.Select(kv => (kv.Key, kv.Value)));
         }
 
         /// <summary>
@@ -283,6 +283,12 @@ namespace Sharpy
 
         /// <summary>Check if the counter contains a key.</summary>
         public bool ContainsKey(T key) => _counts.ContainsKey(key);
+
+        /// <summary>
+        /// Check if the counter contains a key (alias for ContainsKey).
+        /// Used by the <c>in</c> operator.
+        /// </summary>
+        public bool Contains(T key) => ContainsKey(key);
 
         /// <summary>
         /// Combine two counters by adding counts.
@@ -419,6 +425,12 @@ namespace Sharpy
         {
             return _dict.ContainsKey(key);
         }
+
+        /// <summary>
+        /// Check if the dictionary contains a key (alias for ContainsKey).
+        /// Used by the <c>in</c> operator: <c>"x" in d</c> → <c>d.Contains("x")</c>.
+        /// </summary>
+        public bool Contains(TKey key) => ContainsKey(key);
 
         /// <summary>The keys of the dictionary.</summary>
         public IEnumerable<TKey> Keys => _dict.Keys;

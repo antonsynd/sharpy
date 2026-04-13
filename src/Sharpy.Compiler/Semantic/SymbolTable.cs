@@ -137,6 +137,20 @@ public class SymbolTable
     }
 
     /// <summary>
+    /// Case-insensitive symbol lookup, used for Python-style names that don't match
+    /// CLR PascalCase conventions (e.g., "defaultdict" → "DefaultDict").
+    /// </summary>
+    public Symbol? LookupCaseInsensitive(string name)
+    {
+        foreach (var symbol in _globalScope.GetAllSymbols())
+        {
+            if (string.Equals(symbol.Name, name, StringComparison.OrdinalIgnoreCase))
+                return symbol;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Updates an existing symbol in the scope chain.
     /// Used to update function symbols with resolved return types during type checking.
     /// </summary>

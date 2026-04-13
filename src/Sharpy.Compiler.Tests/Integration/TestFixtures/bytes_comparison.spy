@@ -1,0 +1,7 @@
+def main():
+    print(b"abc" < b"abd")
+    print(b"" < b"a")
+    print(b"abc" <= b"abc")
+    print(b"z" > b"a")
+    print(b"abc" >= b"abd")
+    print(b"abc" > b"abc")

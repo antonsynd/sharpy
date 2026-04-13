@@ -107,6 +107,9 @@ namespace Sharpy
             return false;
         }
 
+        /// <inheritdoc cref="ContainsKey"/>
+        public bool Contains(K key) => ContainsKey(key);
+
         /// <summary>
         /// Get a value, searching through all maps.
         /// </summary>

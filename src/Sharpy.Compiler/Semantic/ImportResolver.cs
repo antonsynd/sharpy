@@ -488,6 +488,16 @@ internal class ImportResolver
                             symbolName = pascalName;
                     }
 
+                    // Case-insensitive fallback for Python-style names that don't match
+                    // PascalCase splitting rules (e.g., "defaultdict" → "DefaultDict")
+                    if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName))
+                    {
+                        var caseMatch = moduleInfo.ExportedSymbols.Keys
+                            .FirstOrDefault(k => string.Equals(k, symbolName, StringComparison.OrdinalIgnoreCase));
+                        if (caseMatch != null)
+                            symbolName = caseMatch;
+                    }
+
                     // Check if symbol exists in the module's exported symbols
                     if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName))
                     {

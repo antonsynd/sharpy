@@ -149,7 +149,12 @@ internal partial class RoslynEmitter
             {
                 var clrType = (resolvedSymbol as TypeSymbol)?.ClrType
                               ?? ((TypeSymbol)symbol!).ClrType!;
-                return MakeGlobalQualifiedName("Sharpy", clrType.Name);
+                // Strip CLR generic arity suffix (e.g., List`1 → List)
+                var clrName = clrType.Name;
+                var arityIndex = clrName.IndexOf("`", StringComparison.Ordinal);
+                if (arityIndex >= 0)
+                    clrName = clrName[..arityIndex];
+                return MakeGlobalQualifiedName("Sharpy", clrName);
             }
         }
 
@@ -287,6 +292,70 @@ internal partial class RoslynEmitter
     private SemanticType? GetExpressionSemanticType(Sharpy.Compiler.Parser.Ast.Expression expr)
     {
         return _context.SemanticInfo?.GetExpressionType(expr);
+    }
+
+    /// <summary>
+    /// Returns true if the type represents <c>object</c> (System.Object).
+    /// Uses name-based comparison because SemanticType.Object is a UserDefinedType
+    /// and may not be reference-equal to discovery-loaded instances.
+    /// </summary>
+    private static bool IsObjectType(SemanticType? type) =>
+        type != null && type.GetDisplayName() == "object";
+
+    /// <summary>
+    /// Extracts the element type from an iterable semantic type.
+    /// E.g., GenericType("list", [int]) → int; GenericType("IEnumerable", [string]) → string.
+    /// Returns null if the element type cannot be determined.
+    /// </summary>
+    private static SemanticType? ExtractElementType(SemanticType? type)
+    {
+        if (type is GenericType gt && gt.TypeArguments.Count >= 1
+            && gt.TypeArguments[0] is not UnknownType)
+        {
+            return gt.TypeArguments[0];
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Tries to infer the element type for a collection constructor call like <c>list(d.keys())</c>
+    /// by examining the argument's AST structure. When the semantic type of the argument is
+    /// unknown (e.g., property access on discovery-loaded types), this extracts the element type
+    /// from the receiver's generic type arguments (#555).
+    /// </summary>
+    private SemanticType? TryInferElementTypeFromArg(Parser.Ast.Expression arg)
+    {
+        // First try the direct semantic type (skip if it resolved to object — too generic)
+        var directType = ExtractElementType(GetExpressionSemanticType(arg));
+        if (directType != null && !IsObjectType(directType))
+            return directType;
+
+        // For list(inner) / set(inner) wrapping, recurse on the inner argument
+        if (arg is FunctionCall { Function: Identifier wrapperId } wrapperCall
+            && wrapperCall.Arguments.Length == 1
+            && wrapperId.Name is BuiltinNames.List or BuiltinNames.Set)
+        {
+            return TryInferElementTypeFromArg(wrapperCall.Arguments[0]);
+        }
+
+        // For d.keys() / d.values() on a dict-like type, extract from the receiver's generic args
+        if (arg is FunctionCall { Function: MemberAccess ma })
+        {
+            var receiverType = GetExpressionSemanticType(ma.Object);
+            if (receiverType is GenericType receiverGeneric && receiverGeneric.TypeArguments.Count >= 2)
+            {
+                return ma.Member switch
+                {
+                    "keys" => receiverGeneric.TypeArguments[0] is not UnknownType
+                        ? receiverGeneric.TypeArguments[0] : null,
+                    "values" => receiverGeneric.TypeArguments[1] is not UnknownType
+                        ? receiverGeneric.TypeArguments[1] : null,
+                    _ => null
+                };
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

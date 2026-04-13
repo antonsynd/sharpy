@@ -24,8 +24,8 @@ public static class DiagnosticCodes
 {
     /// <summary>
     /// Lexer diagnostic codes (SPY0001-SPY0099).
-    /// Active: SPY0001-SPY0027 (27 codes)
-    /// Reserved: SPY0028-SPY0099 (72 codes for future lexer diagnostics)
+    /// Active: SPY0001-SPY0028 (28 codes)
+    /// Reserved: SPY0029-SPY0099 (71 codes for future lexer diagnostics)
     /// </summary>
     public static class Lexer
     {
@@ -84,14 +84,15 @@ public static class DiagnosticCodes
 
         #endregion
 
-        #region Byte string errors (SPY0026-SPY0027)
+        #region Byte string errors (SPY0026-SPY0028)
 
         public const string UnterminatedByteString = "SPY0026";    // Active
         public const string UnicodeEscapeInByteString = "SPY0027"; // Active
+        public const string NonAsciiInByteString = "SPY0028";      // Active
 
         #endregion
 
-        // SPY0028-SPY0099: Reserved for future lexer diagnostics
+        // SPY0029-SPY0099: Reserved for future lexer diagnostics
     }
 
     /// <summary>

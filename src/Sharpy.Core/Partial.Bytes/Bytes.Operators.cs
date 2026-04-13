@@ -147,6 +147,58 @@ namespace Sharpy
 
         #endregion
 
+        #region Comparison
+
+        /// <summary>
+        /// Compares two Bytes instances lexicographically, byte by byte.
+        /// Matches Python semantics: shorter sequences are less if they are a prefix.
+        /// </summary>
+        public int CompareTo(Bytes other)
+        {
+            int minLen = _data.Length < other._data.Length ? _data.Length : other._data.Length;
+            for (int i = 0; i < minLen; i++)
+            {
+                if (_data[i] != other._data[i])
+                {
+                    return _data[i] < other._data[i] ? -1 : 1;
+                }
+            }
+
+            if (_data.Length < other._data.Length)
+            {
+                return -1;
+            }
+
+            if (_data.Length > other._data.Length)
+            {
+                return 1;
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Determines whether the left Bytes is lexicographically less than the right.
+        /// </summary>
+        public static bool operator <(Bytes left, Bytes right) => left.CompareTo(right) < 0;
+
+        /// <summary>
+        /// Determines whether the left Bytes is lexicographically less than or equal to the right.
+        /// </summary>
+        public static bool operator <=(Bytes left, Bytes right) => left.CompareTo(right) <= 0;
+
+        /// <summary>
+        /// Determines whether the left Bytes is lexicographically greater than the right.
+        /// </summary>
+        public static bool operator >(Bytes left, Bytes right) => left.CompareTo(right) > 0;
+
+        /// <summary>
+        /// Determines whether the left Bytes is lexicographically greater than or equal to the right.
+        /// </summary>
+        public static bool operator >=(Bytes left, Bytes right) => left.CompareTo(right) >= 0;
+
+        #endregion
+
         #region Truthiness
 
         /// <summary>

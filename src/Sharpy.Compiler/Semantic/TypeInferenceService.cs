@@ -225,7 +225,7 @@ internal class TypeInferenceService
                 return SemanticType.Str;
         }
 
-        // Bytes operations: concatenation, repetition, equality
+        // Bytes operations: concatenation, repetition, equality, comparison
         if (left is UserDefinedType { Name: BuiltinNames.Bytes } leftBytes)
         {
             if (right is UserDefinedType { Name: BuiltinNames.Bytes })
@@ -233,7 +233,9 @@ internal class TypeInferenceService
                 var result = op switch
                 {
                     BinaryOperator.Add => leftBytes,
-                    BinaryOperator.Equal or BinaryOperator.NotEqual => SemanticType.Bool,
+                    BinaryOperator.Equal or BinaryOperator.NotEqual
+                        or BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
+                        or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual => SemanticType.Bool,
                     _ => (SemanticType?)null
                 };
                 if (result != null)
@@ -352,7 +354,19 @@ internal class TypeInferenceService
             {
                 var bestOverload = FindBestOverload(methods, right);
                 if (bestOverload != null)
+                {
+                    // Discovery-loaded generic types (e.g., Counter<T>) may have
+                    // operator return types that resolved to 'object' because the
+                    // CLR type mapper couldn't represent the self-referential generic
+                    // type (Counter<T> returns Counter<T>). In that case, use the
+                    // left operand type which is the correctly-instantiated generic.
+                    // Only apply for self-returning operators (arithmetic/bitwise),
+                    // not comparison operators which should return bool.
+                    if (bestOverload.ReturnType == SemanticType.Object && left is GenericType
+                        && !IsComparisonOperator(op))
+                        return left;
                     return bestOverload.ReturnType;
+                }
             }
 
             // Try equality complement synthesis
@@ -363,6 +377,11 @@ internal class TypeInferenceService
 
         return null;
     }
+
+    private static bool IsComparisonOperator(BinaryOperator op) =>
+        op is BinaryOperator.Equal or BinaryOperator.NotEqual
+            or BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
+            or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual;
 
     private SemanticType? TryInferEqualityComplement(BinaryOperator op, TypeSymbol typeSymbol, SemanticType right)
     {

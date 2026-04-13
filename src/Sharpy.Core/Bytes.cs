@@ -9,7 +9,7 @@ namespace Sharpy
     /// Represents an immutable sequence of bytes (similar to Python's bytes type).
     /// Supports negative indexing, slicing, and Python-style methods.
     /// </summary>
-    public readonly partial struct Bytes : IEquatable<Bytes>, ISized, IBoolConvertible, IEnumerable<int>
+    public readonly partial struct Bytes : IEquatable<Bytes>, IComparable<Bytes>, ISized, IBoolConvertible, IEnumerable<int>
     {
         private readonly byte[] _data;
 
