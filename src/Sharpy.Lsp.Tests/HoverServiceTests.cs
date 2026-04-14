@@ -437,4 +437,65 @@ public class HoverServiceTests
         hover.HighlightColumnStart.Should().Be(9);
         hover.HighlightColumnEnd.Should().Be(12);
     }
+
+    // --- Highlight narrowing: definition names ---
+
+    [Fact]
+    public void GetHoverResult_OverFunctionName_NarrowsHighlightToName()
+    {
+        var source = "class AsyncResource:\n    def __init__(self):\n        pass\n\n    async def __aenter__(self) -> AsyncResource:\n        print(\"entering\")\n        return self\n\n    async def __aexit__(self):\n        print(\"exiting\")\n\ndef main():\n    pass";
+        var result = _api.Analyze(source);
+
+        // Line 5: "    async def __aenter__(self) -> AsyncResource:"
+        // Cols:    123456789012345678
+        // '__aenter__' starts at col 15
+        var hover = _hoverService.GetHoverResult(result, 5, 15);
+
+        hover.Should().NotBeNull();
+        hover!.Markdown.Should().Contain("__aenter__");
+        // Highlight should be narrowed to just the function name, not the whole FunctionDef
+        hover.HighlightLineStart.Should().Be(5);
+        hover.HighlightColumnStart.Should().Be(15);
+        hover.HighlightLineEnd.Should().Be(5);
+        hover.HighlightColumnEnd.Should().Be(25); // "__aenter__" = 10 chars
+    }
+
+    [Fact]
+    public void GetHoverResult_OverClassName_NarrowsHighlightToName()
+    {
+        var source = "class Foo:\n    x: int = 0\n    def method(self) -> int:\n        return self.x\ndef main():\n    pass";
+        var result = _api.Analyze(source);
+
+        // Line 1: "class Foo:"
+        // 'Foo' starts at col 7
+        var hover = _hoverService.GetHoverResult(result, 1, 7);
+
+        hover.Should().NotBeNull();
+        hover!.Markdown.Should().Contain("Foo");
+        hover.HighlightLineStart.Should().Be(1);
+        hover.HighlightColumnStart.Should().Be(7);
+        hover.HighlightLineEnd.Should().Be(1);
+        hover.HighlightColumnEnd.Should().Be(10); // "Foo" = 3 chars
+    }
+
+    // --- Highlight narrowing: return keyword ---
+
+    [Fact]
+    public void GetHoverResult_OverReturnKeyword_NarrowsHighlightToKeyword()
+    {
+        var source = "def greet() -> str:\n    return \"hello\"\ndef main():\n    pass";
+        var result = _api.Analyze(source);
+
+        // Line 2: "    return \"hello\"" — 'return' starts at col 5
+        var hover = _hoverService.GetHoverResult(result, 2, 5);
+
+        hover.Should().NotBeNull();
+        hover!.Markdown.Should().Contain("return");
+        hover.Markdown.Should().Contain("str");
+        // Highlight should be narrowed to just the 'return' keyword (6 chars)
+        hover.HighlightLineStart.Should().Be(2);
+        hover.HighlightColumnStart.Should().Be(5);
+        hover.HighlightLineEnd.Should().Be(2);
+        hover.HighlightColumnEnd.Should().Be(11); // "return" = 6 chars
+    }
 }

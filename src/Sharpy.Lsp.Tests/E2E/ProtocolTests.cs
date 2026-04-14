@@ -901,4 +901,89 @@ public class ProtocolTests : IAsyncLifetime
             s!["name"]?.GetValue<string>()?.Contains("animal", StringComparison.OrdinalIgnoreCase) == true);
         hasAnimal.Should().BeTrue("at least one symbol should have a name containing 'animal'");
     }
+
+    [Fact]
+    public async Task Hover_OverMethodName_RangeNarrowedToName()
+    {
+        await _client.InitializeAsync();
+
+        var uri = "file:///test_hover_narrow_method.spy";
+        // Mirrors async_with_basic.spy structure
+        var source = "class AsyncResource:\n    def __init__(self):\n        pass\n\n    async def __aenter__(self) -> AsyncResource:\n        print(\"entering\")\n        return self\n\n    async def __aexit__(self):\n        print(\"exiting\")\n\nasync def main():\n    async with AsyncResource() as r:\n        print(\"inside\")";
+        await _client.DidOpenAsync(uri, source);
+
+        // Wait for diagnostics to ensure analysis is complete
+        await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+
+        // Hover over '__aenter__' on line 4 (0-based), character 14 (0-based)
+        // Source line 5 (1-based): "    async def __aenter__(self) -> AsyncResource:"
+        // 0-based:                  0123456789012345
+        //                                         ^ col 14 = start of "__aenter__"
+        var hover = await _client.HoverAsync(uri, 4, 14);
+
+        hover.Should().NotBeNull("hover over a method name should return information");
+
+        var contents = hover!["contents"];
+        contents.Should().NotBeNull();
+        var hoverText = contents!.ToJsonString();
+        hoverText.Should().Contain("__aenter__");
+
+        // Verify the range is narrowed to just the method name, not the whole function body
+        var range = hover["range"];
+        range.Should().NotBeNull("hover should include a range");
+
+        var startLine = range!["start"]!["line"]!.GetValue<int>();
+        var startChar = range["start"]!["character"]!.GetValue<int>();
+        var endLine = range["end"]!["line"]!.GetValue<int>();
+        var endChar = range["end"]!["character"]!.GetValue<int>();
+
+        startLine.Should().Be(4, "highlight should start on the method name line");
+        endLine.Should().Be(4, "highlight should end on the same line (not span multi-line)");
+        startChar.Should().Be(14, "highlight should start at '__aenter__'");
+        endChar.Should().Be(24, "highlight should end after '__aenter__' (10 chars)");
+    }
+
+    [Fact]
+    public async Task Hover_OverReturnKeyword_RangeNarrowedToKeyword()
+    {
+        await _client.InitializeAsync();
+
+        var uri = "file:///test_hover_narrow_return.spy";
+        var source = "def greet() -> str:\n    return \"hello\"\ndef main():\n    greet()";
+        await _client.DidOpenAsync(uri, source);
+
+        // Wait for diagnostics to ensure analysis is complete
+        await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+
+        // Hover over 'return' on line 1 (0-based), character 4 (0-based)
+        // Source line 2 (1-based): "    return \"hello\""
+        // 0-based:                  01234
+        //                               ^ col 4 = start of "return"
+        var hover = await _client.HoverAsync(uri, 1, 4);
+
+        hover.Should().NotBeNull("hover over return keyword should return information");
+
+        var contents = hover!["contents"];
+        contents.Should().NotBeNull();
+        var hoverText = contents!.ToJsonString();
+        hoverText.Should().Contain("return");
+
+        // Verify the range is narrowed to just the 'return' keyword
+        var range = hover["range"];
+        range.Should().NotBeNull("hover should include a range");
+
+        var startLine = range!["start"]!["line"]!.GetValue<int>();
+        var startChar = range["start"]!["character"]!.GetValue<int>();
+        var endLine = range["end"]!["line"]!.GetValue<int>();
+        var endChar = range["end"]!["character"]!.GetValue<int>();
+
+        startLine.Should().Be(1, "highlight should start on the return line");
+        endLine.Should().Be(1, "highlight should end on the same line");
+        startChar.Should().Be(4, "highlight should start at 'return'");
+        endChar.Should().Be(10, "highlight should end after 'return' (6 chars)");
+    }
 }

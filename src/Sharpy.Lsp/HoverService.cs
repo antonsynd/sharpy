@@ -73,6 +73,18 @@ public sealed class HoverService
         if (markdown == null)
             return null;
 
+        // Narrow highlight to the name span for definition-site hovers,
+        // or to the keyword token for keyword statements like 'return'.
+        var highlight = TryNarrowHighlight(node, line, col);
+        if (highlight != null)
+            return new HoverResult(markdown, node)
+            {
+                HighlightLineStart = highlight.Value.line,
+                HighlightColumnStart = highlight.Value.colStart,
+                HighlightLineEnd = highlight.Value.line,
+                HighlightColumnEnd = highlight.Value.colEnd,
+            };
+
         return new HoverResult(markdown, node);
     }
 
@@ -118,6 +130,31 @@ public sealed class HoverService
             HighlightColumnStart = node.ColumnStart,
             HighlightLineEnd = node.LineStart,
             HighlightColumnEnd = node.ColumnStart + keywordLength,
+        };
+    }
+
+    /// <summary>
+    /// Narrows the hover highlight range for definition nodes (to the name identifier)
+    /// and keyword statements like <c>return</c> (to the keyword token). Returns null
+    /// when no narrowing applies.
+    /// </summary>
+    private static (int line, int colStart, int colEnd)? TryNarrowHighlight(Node node, int cursorLine, int cursorCol)
+    {
+        return node switch
+        {
+            FunctionDef f when IsOnHeaderName(cursorLine, cursorCol, f.NameLineStart, f.NameColumnStart, f.Name)
+                => (f.NameLineStart, f.NameColumnStart, f.NameColumnStart + f.Name.Length),
+            ClassDef c when IsOnHeaderName(cursorLine, cursorCol, c.NameLineStart, c.NameColumnStart, c.Name)
+                => (c.NameLineStart, c.NameColumnStart, c.NameColumnStart + c.Name.Length),
+            StructDef s when IsOnHeaderName(cursorLine, cursorCol, s.NameLineStart, s.NameColumnStart, s.Name)
+                => (s.NameLineStart, s.NameColumnStart, s.NameColumnStart + s.Name.Length),
+            InterfaceDef i when IsOnHeaderName(cursorLine, cursorCol, i.NameLineStart, i.NameColumnStart, i.Name)
+                => (i.NameLineStart, i.NameColumnStart, i.NameColumnStart + i.Name.Length),
+            EnumDef e when IsOnHeaderName(cursorLine, cursorCol, e.NameLineStart, e.NameColumnStart, e.Name)
+                => (e.NameLineStart, e.NameColumnStart, e.NameColumnStart + e.Name.Length),
+            ReturnStatement ret
+                => (ret.LineStart, ret.ColumnStart, ret.ColumnStart + 6), // "return"
+            _ => null
         };
     }
 
