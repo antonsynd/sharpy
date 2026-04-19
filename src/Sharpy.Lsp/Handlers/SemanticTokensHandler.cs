@@ -492,7 +492,16 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case LambdaExpression lambda:
-                CollectExpressionTokens(lambda.Body, tokens, parameterNames);
+                HashSet<string>? lambdaParamNames = null;
+                foreach (var param in lambda.Parameters)
+                {
+                    PushNameToken(tokens, param.LineStart, param.ColumnStart, param.Name.Length, TParameter, ModDeclaration);
+                    lambdaParamNames ??= new HashSet<string>();
+                    lambdaParamNames.Add(param.Name);
+                    if (param.Type != null)
+                        CollectTypeAnnotationTokens(param.Type, tokens);
+                }
+                CollectExpressionTokens(lambda.Body, tokens, lambdaParamNames);
                 break;
 
             case TypeCoercion coercion:
