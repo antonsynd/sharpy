@@ -541,6 +541,30 @@ public sealed class HoverService
                     return $"```sharpy\n(module) {fromImport.Module}\n```";
                 }
 
+            case LambdaExpression lambda:
+                {
+                    var lambdaType = query.GetEffectiveType(lambda);
+                    if (lambdaType is Compiler.Semantic.FunctionType ft)
+                    {
+                        var parts = new System.Collections.Generic.List<string>();
+                        for (int i = 0; i < lambda.Parameters.Length; i++)
+                        {
+                            var paramName = lambda.Parameters[i].Name;
+                            var paramType = i < ft.ParameterTypes.Count
+                                ? SymbolFormatter.FormatTypeInfo(ft.ParameterTypes[i])
+                                : "unknown";
+                            parts.Add($"{paramName}: {paramType}");
+                        }
+                        var paramStr = string.Join(", ", parts);
+                        var returnStr = ft.ReturnType is not (null or VoidType)
+                            ? $" -> {SymbolFormatter.FormatTypeInfo(ft.ReturnType)}"
+                            : " -> None";
+                        return $"```sharpy\n(lambda) ({paramStr}){returnStr}\n```";
+                    }
+                    // Fall through to generic expression handler
+                    break;
+                }
+
             case Expression expr:
                 {
                     var type = query.GetEffectiveType(expr);
