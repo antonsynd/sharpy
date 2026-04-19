@@ -102,6 +102,43 @@ internal partial class TypeChecker
 
     private SemanticType CheckModifiedArgument(ModifiedArgument modArg)
     {
+        // Handle inline out declarations: out value: int, out value: auto
+        if (modArg.InlineName != null)
+        {
+            // Resolve the inline type annotation via TypeResolver
+            // (TypeResolver returns UnknownType for "auto", which maps to C# var)
+            var resolvedType = _typeResolver.ResolveTypeAnnotation(modArg.InlineType);
+
+            // Register the variable in the current scope (follows walrus operator pattern)
+            var existingSymbol = _symbolTable.Lookup(modArg.InlineName, searchParents: false);
+            if (existingSymbol is VariableSymbol existingVar)
+            {
+                // Variable already exists in this scope — update its type
+                SemanticBinding.SetVariableType(existingVar, resolvedType);
+            }
+            else
+            {
+                // New variable — create and register it
+                var newSymbol = new VariableSymbol
+                {
+                    Name = modArg.InlineName,
+                    Kind = SymbolKind.Variable,
+                    Type = resolvedType,
+                    IsConstant = false,
+                    DeclarationLine = modArg.LineStart,
+                    DeclarationColumn = modArg.ColumnStart
+                };
+                _symbolTable.Define(newSymbol);
+                SemanticBinding.SetVariableType(newSymbol, resolvedType);
+            }
+
+            // Record type for the Argument (Identifier) sub-expression so codegen can find it
+            _semanticInfo.SetExpressionType(modArg.Argument, resolvedType);
+
+            // Return the resolved type; CheckExpression caches it on the ModifiedArgument node
+            return resolvedType;
+        }
+
         if (modArg.Modifier is Parser.Ast.ParameterModifier.Ref or Parser.Ast.ParameterModifier.Out)
         {
             if (modArg.Argument is not (Identifier or MemberAccess or IndexAccess))
