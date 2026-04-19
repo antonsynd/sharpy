@@ -135,6 +135,13 @@ internal partial class TypeChecker
             // Record type for the Argument (Identifier) sub-expression so codegen can find it
             _semanticInfo.SetExpressionType(modArg.Argument, resolvedType);
 
+            // For 'auto', TypeResolver returns UnknownType — mark as error recovery
+            // so SPY0907 doesn't fire (C# var handles the inference at compile time)
+            if (resolvedType is UnknownType)
+            {
+                MarkExpressionAsErrorRecovery(modArg.Argument);
+            }
+
             // Return the resolved type; CheckExpression caches it on the ModifiedArgument node
             return resolvedType;
         }
