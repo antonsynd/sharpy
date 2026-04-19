@@ -657,12 +657,14 @@ public record ConditionalExpression : Expression
 }
 
 /// <summary>
-/// Lambda expression (lambda x, y: x + y)
+/// Lambda expression: traditional (lambda x, y: x + y) or arrow ((x: int) -> x + 1)
 /// </summary>
 public record LambdaExpression : Expression
 {
     public ImmutableArray<Parameter> Parameters { get; init; } = ImmutableArray<Parameter>.Empty;
     public Expression Body { get; init; } = null!;
+    public TypeAnnotation? ReturnType { get; init; }
+    public bool IsArrowSyntax { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()

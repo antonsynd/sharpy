@@ -95,6 +95,23 @@ internal partial class TypeChecker
 
         var bodyType = CheckExpression(lambda.Body);
 
+        // Validate explicit return type annotation (arrow lambda syntax)
+        SemanticType returnType = bodyType;
+        if (lambda.ReturnType != null)
+        {
+            var declaredReturnType = _typeResolver.ResolveTypeAnnotation(lambda.ReturnType);
+            if (declaredReturnType is not UnknownType && bodyType is not UnknownType
+                && !IsAssignable(bodyType, declaredReturnType))
+            {
+                AddError(
+                    $"Arrow lambda body type '{bodyType.GetDisplayName()}' is not assignable to declared return type '{declaredReturnType.GetDisplayName()}'",
+                    lambda.Body.LineStart, lambda.Body.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: lambda.Body.Span);
+            }
+            returnType = declaredReturnType;
+        }
+
         _currentFunctionIsAsync = previousIsAsync;
         _symbolTable.ExitScope();
 
@@ -103,7 +120,7 @@ internal partial class TypeChecker
         return new FunctionType
         {
             ParameterTypes = paramTypes,
-            ReturnType = bodyType,
+            ReturnType = returnType,
             OptionalParameterCount = optionalParamCount
         };
     }

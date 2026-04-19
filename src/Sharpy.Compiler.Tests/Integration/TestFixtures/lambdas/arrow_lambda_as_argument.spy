@@ -1,0 +1,6 @@
+def apply(f: (int) -> int, x: int) -> int:
+    return f(x)
+
+def main():
+    result = apply((n: int) -> n * 3, 7)
+    print(result)

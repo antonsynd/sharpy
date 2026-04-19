@@ -261,10 +261,18 @@ public partial class Parser
                     var startToken = Current;
                     Advance();
 
-                    // Empty tuple ()
+                    // Empty parens: () -> expr is arrow lambda, () is empty tuple
                     if (Current.Type == TokenType.RightParen)
                     {
                         Advance();
+
+                        if (Current.Type == TokenType.Arrow)
+                        {
+                            return ParseArrowLambdaBody(
+                                ImmutableArray<Parameter>.Empty,
+                                startLine, startColumn, startToken);
+                        }
+
                         return new TupleLiteral
                         {
                             Elements = ImmutableArray<Expression>.Empty,
@@ -281,6 +289,17 @@ public partial class Parser
                     if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
                     {
                         return ParseNamedTupleLiteral(startLine, startColumn, startToken);
+                    }
+
+                    // Check for arrow lambda: (name: type, ...) -> expr
+                    // identifier ':' uniquely identifies arrow lambda params inside ()
+                    if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Colon)
+                    {
+                        var arrowParams = ParseArrowLambdaParams();
+                        Expect(TokenType.RightParen);
+                        return ParseArrowLambdaBody(
+                            arrowParams.ToImmutableArray(),
+                            startLine, startColumn, startToken);
                     }
 
                     var expr = ParseExpression();
@@ -896,6 +915,200 @@ public partial class Parser
 
             default:
                 return expr;
+        }
+    }
+
+    /// <summary>
+    /// Parses arrow lambda parameter list: name: type, name: type, ...
+    /// Called after '(' when 'identifier :' pattern is detected.
+    /// Caller is responsible for consuming ')' afterward.
+    /// </summary>
+    private List<Parameter> ParseArrowLambdaParams()
+    {
+        var parameters = new List<Parameter>();
+
+        _lastLoopPosition = -1;
+        do
+        {
+            if (!CheckLoopProgress())
+                break;
+
+            var paramToken = Current;
+            var name = ExpectIdentifier();
+
+            Expect(TokenType.Colon);
+            var paramType = ParseTypeAnnotation();
+
+            Expression? defaultValue = null;
+            if (Current.Type == TokenType.Assign)
+            {
+                Advance();
+                defaultValue = ParseExpression();
+            }
+
+            var paramEndToken = Previous;
+            parameters.Add(new Parameter
+            {
+                Name = name,
+                IsNameBacktickEscaped = paramToken.IsBacktickEscaped,
+                Type = paramType,
+                DefaultValue = defaultValue,
+                LineStart = paramToken.Line,
+                ColumnStart = paramToken.Column,
+                LineEnd = paramEndToken.Line,
+                ColumnEnd = paramEndToken.Column + paramEndToken.Value.Length,
+                Span = GetSpanFromTokens(paramToken, paramEndToken)
+            });
+
+            if (Current.Type == TokenType.Comma)
+                Advance();
+            else
+                break;
+        } while (true);
+
+        return parameters;
+    }
+
+    /// <summary>
+    /// Parses arrow lambda body after '->' token.
+    /// Handles optional return type: (x: int) -> int: x + 1
+    /// Without return type: (x: int) -> x + 1
+    /// </summary>
+    private LambdaExpression ParseArrowLambdaBody(
+        ImmutableArray<Parameter> parameters,
+        int startLine, int startColumn, Token startToken)
+    {
+        Expect(TokenType.Arrow);
+
+        TypeAnnotation? returnType = null;
+
+        // Check for return type: -> type : body
+        // Lookahead: if current is an identifier/keyword that forms a type, AND the token
+        // after the type is ':', then we have a return type annotation.
+        if (IsTypeStart() && LookaheadReturnTypeColon())
+        {
+            returnType = ParseTypeAnnotation();
+            Expect(TokenType.Colon);
+        }
+
+        var body = ParseExpression();
+
+        var combinedSpan = startToken != null && body.Span != null
+            ? GetSpanFromToken(startToken)?.Union(body.Span.Value)
+            : (Text.TextSpan?)null;
+
+        return new LambdaExpression
+        {
+            Parameters = parameters,
+            Body = body,
+            ReturnType = returnType,
+            IsArrowSyntax = true,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = body.LineEnd,
+            ColumnEnd = body.ColumnEnd,
+            Span = combinedSpan
+        };
+    }
+
+    /// <summary>
+    /// Returns true if the current token can start a type annotation
+    /// (identifier, None, Auto, or tuple/function type via LeftParen).
+    /// </summary>
+    private bool IsTypeStart()
+    {
+        return Current.Type is TokenType.Identifier
+            or TokenType.None
+            or TokenType.Auto
+            or TokenType.LeftParen;
+    }
+
+    /// <summary>
+    /// Lookahead to determine if, after parsing a type annotation from the current
+    /// position, the next token is ':' (indicating a return type in arrow lambda).
+    /// Uses a saved position to avoid consuming tokens.
+    /// </summary>
+    private bool LookaheadReturnTypeColon()
+    {
+        var savedPos = _position;
+        try
+        {
+            // Speculatively parse a type annotation to find where it ends
+            SkipTypeAnnotation();
+            return Current.Type == TokenType.Colon;
+        }
+        finally
+        {
+            _position = savedPos;
+        }
+    }
+
+    /// <summary>
+    /// Skips over a type annotation without constructing AST nodes.
+    /// Used for lookahead in arrow lambda return type detection.
+    /// Handles: simple types, generic types (T[U, V]), optional (T?),
+    /// nullable (T | None), result types (T!E), tuple/function types ((T, U) -> V).
+    /// </summary>
+    private void SkipTypeAnnotation()
+    {
+        if (Current.Type == TokenType.LeftParen)
+        {
+            // Tuple or function type: (T, U) or (T) -> U
+            Advance(); // consume '('
+            if (Current.Type != TokenType.RightParen)
+            {
+                SkipTypeAnnotation();
+                while (Current.Type == TokenType.Comma)
+                {
+                    Advance();
+                    SkipTypeAnnotation();
+                }
+            }
+            if (Current.Type == TokenType.RightParen)
+                Advance();
+            if (Current.Type == TokenType.Arrow)
+            {
+                Advance();
+                SkipTypeAnnotation();
+            }
+        }
+        else if (Current.Type is TokenType.Identifier or TokenType.None or TokenType.Auto)
+        {
+            Advance();
+            // Generic type arguments: T[U, V]
+            if (Current.Type == TokenType.LeftBracket)
+            {
+                Advance();
+                if (Current.Type != TokenType.RightBracket)
+                {
+                    SkipTypeAnnotation();
+                    while (Current.Type == TokenType.Comma)
+                    {
+                        Advance();
+                        SkipTypeAnnotation();
+                    }
+                }
+                if (Current.Type == TokenType.RightBracket)
+                    Advance();
+            }
+        }
+
+        // Optional: T?
+        if (Current.Type == TokenType.Question)
+            Advance();
+
+        // Nullable: T | None
+        if (Current.Type == TokenType.Pipe && Peek().Type == TokenType.None)
+        {
+            Advance(); // consume '|'
+            Advance(); // consume 'None'
+        }
+
+        // Result type: T!E
+        if (Current.Type == TokenType.Bang)
+        {
+            Advance();
+            SkipTypeAnnotation();
         }
     }
 }

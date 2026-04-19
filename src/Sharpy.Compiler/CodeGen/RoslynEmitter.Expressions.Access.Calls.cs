@@ -29,6 +29,13 @@ internal partial class RoslynEmitter
             return IdentifierName(tempName);
         }
 
+        // Arrow lambdas have explicit type annotations → emit typed parameters
+        // (x: int) -> x + 1 → (int x) => x + 1
+        if (lambda.IsArrowSyntax)
+        {
+            return GenerateTypedLambdaExpression(lambda);
+        }
+
         // lambda x, y: x + y → (x, y) => x + y
         var parameters = lambda.Parameters
             .Select(p => Parameter(Identifier(NameMangler.ToCamelCase(p.Name))))
@@ -52,6 +59,47 @@ internal partial class RoslynEmitter
                 .WithParameterList(ParameterList(SeparatedList(parameters)))
                 .WithExpressionBody(body);
         }
+    }
+
+    private ExpressionSyntax GenerateTypedLambdaExpression(LambdaExpression lambda)
+    {
+        var lambdaType = GetExpressionSemanticType(lambda) as Semantic.FunctionType;
+
+        var parameters = new List<ParameterSyntax>();
+        for (int i = 0; i < lambda.Parameters.Length; i++)
+        {
+            var param = lambda.Parameters[i];
+            var paramName = NameMangler.ToCamelCase(param.Name);
+
+            TypeSyntax paramType;
+            if (lambdaType != null && i < lambdaType.ParameterTypes.Count
+                && lambdaType.ParameterTypes[i] is not Semantic.UnknownType)
+            {
+                paramType = _typeMapper.MapSemanticType(lambdaType.ParameterTypes[i]);
+            }
+            else if (param.Type != null)
+            {
+                paramType = _typeMapper.MapType(param.Type);
+            }
+            else
+            {
+                paramType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+            }
+
+            parameters.Add(Parameter(Identifier(paramName)).WithType(paramType));
+        }
+
+        var body = GenerateExpression(lambda.Body);
+
+        if (parameters.Count == 0)
+        {
+            return ParenthesizedLambdaExpression()
+                .WithExpressionBody(body);
+        }
+
+        return ParenthesizedLambdaExpression()
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithExpressionBody(body);
     }
 
     /// <summary>

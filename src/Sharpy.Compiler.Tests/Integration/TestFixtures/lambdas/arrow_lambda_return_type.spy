@@ -1,0 +1,5 @@
+def main():
+    f = (x: int) -> int: x * 2
+    g = (x: int, y: int) -> int: x + y
+    print(f(5))
+    print(g(3, 4))
