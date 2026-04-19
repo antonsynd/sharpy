@@ -70,21 +70,7 @@ internal partial class RoslynEmitter
         {
             var param = lambda.Parameters[i];
             var paramName = NameMangler.ToCamelCase(param.Name);
-
-            TypeSyntax paramType;
-            if (lambdaType != null && i < lambdaType.ParameterTypes.Count
-                && lambdaType.ParameterTypes[i] is not Semantic.UnknownType)
-            {
-                paramType = _typeMapper.MapSemanticType(lambdaType.ParameterTypes[i]);
-            }
-            else if (param.Type != null)
-            {
-                paramType = _typeMapper.MapType(param.Type);
-            }
-            else
-            {
-                paramType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            }
+            var paramType = ResolveParameterTypeSyntax(lambda, lambdaType, i);
 
             parameters.Add(Parameter(Identifier(paramName)).WithType(paramType));
         }
@@ -100,6 +86,30 @@ internal partial class RoslynEmitter
         return ParenthesizedLambdaExpression()
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithExpressionBody(body);
+    }
+
+    /// <summary>
+    /// Resolves the C# type syntax for a lambda parameter using a three-way fallback:
+    /// (1) semantic FunctionType parameter type if available and not UnknownType,
+    /// (2) AST type annotation on the parameter,
+    /// (3) <c>object</c> as a last resort.
+    /// </summary>
+    private TypeSyntax ResolveParameterTypeSyntax(
+        LambdaExpression lambda, Semantic.FunctionType? lambdaType, int index)
+    {
+        if (lambdaType != null && index < lambdaType.ParameterTypes.Count
+            && lambdaType.ParameterTypes[index] is not UnknownType)
+        {
+            return _typeMapper.MapSemanticType(lambdaType.ParameterTypes[index]);
+        }
+
+        var param = lambda.Parameters[index];
+        if (param.Type != null)
+        {
+            return _typeMapper.MapType(param.Type);
+        }
+
+        return PredefinedType(Token(SyntaxKind.ObjectKeyword));
     }
 
     /// <summary>
@@ -119,22 +129,7 @@ internal partial class RoslynEmitter
         {
             var param = lambda.Parameters[i];
             var paramName = NameMangler.ToCamelCase(param.Name);
-
-            // Resolve type from semantic info first, fall back to annotation
-            TypeSyntax paramType;
-            if (lambdaType != null && i < lambdaType.ParameterTypes.Count
-                && lambdaType.ParameterTypes[i] is not UnknownType)
-            {
-                paramType = _typeMapper.MapSemanticType(lambdaType.ParameterTypes[i]);
-            }
-            else if (param.Type != null)
-            {
-                paramType = _typeMapper.MapType(param.Type);
-            }
-            else
-            {
-                paramType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            }
+            var paramType = ResolveParameterTypeSyntax(lambda, lambdaType, i);
 
             var paramSyntax = Parameter(Identifier(paramName)).WithType(paramType);
 
