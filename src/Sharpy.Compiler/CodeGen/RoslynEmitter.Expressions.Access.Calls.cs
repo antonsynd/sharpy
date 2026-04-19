@@ -863,17 +863,43 @@ internal partial class RoslynEmitter
             }
             else if (arg is Parser.Ast.ModifiedArgument modArg)
             {
-                var refKind = modArg.Modifier switch
+                // Inline out declaration: out name: type → out type name
+                if (modArg.InlineName != null)
                 {
-                    Parser.Ast.ParameterModifier.Ref => SyntaxKind.RefKeyword,
-                    Parser.Ast.ParameterModifier.Out => SyntaxKind.OutKeyword,
-                    Parser.Ast.ParameterModifier.In => SyntaxKind.InKeyword,
-                    _ => SyntaxKind.None
-                };
-                var csArg = Argument(GenerateExpression(modArg.Argument));
-                if (refKind != SyntaxKind.None)
-                    csArg = csArg.WithRefKindKeyword(Token(refKind));
-                yield return csArg;
+                    // Map the type: "auto" → var, otherwise use TypeSyntaxMapper
+                    TypeSyntax typeSyntax;
+                    if (modArg.InlineType?.Name == "auto")
+                    {
+                        typeSyntax = IdentifierName("var");
+                    }
+                    else
+                    {
+                        typeSyntax = _typeMapper.MapType(modArg.InlineType);
+                    }
+
+                    // Register the variable for subsequent references
+                    var mangledName = GetMangledVariableName(modArg.InlineName, isNewDeclaration: true);
+
+                    yield return Argument(
+                        DeclarationExpression(
+                            typeSyntax,
+                            SingleVariableDesignation(Identifier(mangledName))))
+                        .WithRefKindKeyword(Token(SyntaxKind.OutKeyword));
+                }
+                else
+                {
+                    var refKind = modArg.Modifier switch
+                    {
+                        Parser.Ast.ParameterModifier.Ref => SyntaxKind.RefKeyword,
+                        Parser.Ast.ParameterModifier.Out => SyntaxKind.OutKeyword,
+                        Parser.Ast.ParameterModifier.In => SyntaxKind.InKeyword,
+                        _ => SyntaxKind.None
+                    };
+                    var csArg = Argument(GenerateExpression(modArg.Argument));
+                    if (refKind != SyntaxKind.None)
+                        csArg = csArg.WithRefKindKeyword(Token(refKind));
+                    yield return csArg;
+                }
             }
             else
             {
