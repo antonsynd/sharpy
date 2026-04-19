@@ -591,16 +591,40 @@ public partial class Parser
                         : Ast.ParameterModifier.Out;
                     Advance();
                     var argExpr = ParseExpression();
-                    args.Add(new Ast.ModifiedArgument
+
+                    // Check for inline out declaration: out name: type
+                    if (mod == Ast.ParameterModifier.Out
+                        && argExpr is Ast.Identifier inlineId
+                        && Current.Type == TokenType.Colon)
                     {
-                        Modifier = mod,
-                        Argument = argExpr,
-                        LineStart = modToken.Line,
-                        ColumnStart = modToken.Column,
-                        LineEnd = argExpr.LineEnd,
-                        ColumnEnd = argExpr.ColumnEnd,
-                        Span = CombineSpans(GetSpanFromToken(modToken), argExpr.Span)
-                    });
+                        Advance(); // consume the colon
+                        var inlineType = ParseTypeAnnotation();
+                        args.Add(new Ast.ModifiedArgument
+                        {
+                            Modifier = mod,
+                            Argument = argExpr,
+                            InlineName = inlineId.Name,
+                            InlineType = inlineType,
+                            LineStart = modToken.Line,
+                            ColumnStart = modToken.Column,
+                            LineEnd = inlineType.LineEnd,
+                            ColumnEnd = inlineType.ColumnEnd,
+                            Span = CombineSpans(GetSpanFromToken(modToken), inlineType.Span)
+                        });
+                    }
+                    else
+                    {
+                        args.Add(new Ast.ModifiedArgument
+                        {
+                            Modifier = mod,
+                            Argument = argExpr,
+                            LineStart = modToken.Line,
+                            ColumnStart = modToken.Column,
+                            LineEnd = argExpr.LineEnd,
+                            ColumnEnd = argExpr.ColumnEnd,
+                            Span = CombineSpans(GetSpanFromToken(modToken), argExpr.Span)
+                        });
+                    }
                 }
                 // Check for keyword argument
                 else if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
