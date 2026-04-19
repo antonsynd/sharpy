@@ -1,0 +1,5 @@
+def swap(a: ref int, b: ref int):
+    pass
+
+def main():
+    swap(ref x: int, ref y: int)

@@ -1,0 +1,8 @@
+def parse_pair(s: str, a: out int, b: out int) -> bool:
+    a = 10
+    b = 20
+    return True
+
+def main():
+    success = parse_pair("x", out first: int, out second: int)
+    print(success, first, second)
