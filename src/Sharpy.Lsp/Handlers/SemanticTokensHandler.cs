@@ -539,6 +539,18 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 EmitStringLiteralToken(tokens, bytesLit.LineStart, bytesLit.ColumnStart, bytesLit.LineEnd, bytesLit.ColumnEnd);
                 break;
 
+            case ModifiedArgument modArg:
+                // Emit the modifier keyword (ref/out/in) as a keyword token
+                var modLen = modArg.Modifier switch
+                {
+                    ParameterModifier.In => 2,   // "in"
+                    _ => 3                        // "ref" or "out"
+                };
+                PushNameToken(tokens, modArg.LineStart, modArg.ColumnStart, modLen, TKeyword, 0);
+                // Recurse into the argument expression
+                CollectExpressionTokens(modArg.Argument, tokens, parameterNames);
+                break;
+
         }
     }
 
