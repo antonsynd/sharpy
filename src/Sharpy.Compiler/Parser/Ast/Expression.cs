@@ -689,11 +689,24 @@ public record LambdaExpression : Expression
 
 /// <summary>
 /// Call-site argument with ref/out/in modifier: swap(ref x, ref y), parse("42", out result)
+/// When InlineName is set, represents an inline out declaration: parse("42", out value: int)
 /// </summary>
 public record ModifiedArgument : Expression
 {
     public ParameterModifier Modifier { get; init; }
     public Expression Argument { get; init; } = null!;
+
+    /// <summary>
+    /// When set, this argument is an inline out variable declaration (e.g., out value: int).
+    /// The Argument property is set to a synthetic Identifier with this name for downstream compatibility.
+    /// </summary>
+    public string? InlineName { get; init; }
+
+    /// <summary>
+    /// The type annotation for an inline out declaration (e.g., int in out value: int).
+    /// Must be non-null when InlineName is set.
+    /// </summary>
+    public TypeAnnotation? InlineType { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
@@ -701,6 +714,14 @@ public record ModifiedArgument : Expression
         base.ValidateInvariants();
         Debug.Assert(Argument != null, "ModifiedArgument.Argument cannot be null");
         Debug.Assert(Modifier != ParameterModifier.None, "ModifiedArgument.Modifier must not be None");
+
+        if (InlineName != null)
+        {
+            Debug.Assert(Modifier == ParameterModifier.Out,
+                "ModifiedArgument: inline declarations are only valid with Out modifier");
+            Debug.Assert(InlineType != null,
+                "ModifiedArgument: InlineType must be set when InlineName is set");
+        }
     }
 
     /// <inheritdoc/>
