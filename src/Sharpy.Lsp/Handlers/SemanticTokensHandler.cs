@@ -547,11 +547,22 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                     _ => 3                        // "ref" or "out"
                 };
                 PushNameToken(tokens, modArg.LineStart, modArg.ColumnStart, modLen, TKeyword, 0);
+                if (modArg.InlineType != null)
+                    CollectTypeAnnotationTokens(modArg.InlineType, tokens);
                 // Recurse into the argument expression
                 CollectExpressionTokens(modArg.Argument, tokens, parameterNames);
                 break;
 
         }
+    }
+
+    private static void CollectTypeAnnotationTokens(
+        TypeAnnotation type,
+        System.Collections.Generic.List<RawToken> tokens)
+    {
+        PushNameToken(tokens, type.LineStart, type.ColumnStart, type.Name.Length, TType, 0);
+        foreach (var arg in type.TypeArguments)
+            CollectTypeAnnotationTokens(arg, tokens);
     }
 
     private static void CollectComprehensionClauseTokens(
