@@ -584,4 +584,80 @@ def main():
     }
 
     #endregion
+
+    #region ModifiedArgument tokens
+
+    [Fact]
+    public void ModifiedArgument_EmitsKeywordToken()
+    {
+        // Line 1: "def increment(x: ref int):"
+        // Line 2: "    x = x + 1"
+        // Line 3: "def main():"
+        // Line 4: "    a: int = 5"
+        // Line 5: "    increment(ref a)"
+        // The call-site "ref" in "increment(ref a)" should emit a TKeyword token.
+        // Line 5: "    increment(ref a)"
+        //          123456789012345678
+        // "ref" starts at column 15 (1-based) -> LSP (4, 14)
+        var tokens = CollectTokensFrom(
+            "def increment(x: ref int):\n    x = x + 1\ndef main():\n    a: int = 5\n    increment(ref a)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword && t.Line == 4).ToList();
+        keywords.Should().Contain(t => t.Length == 3,
+            "'ref' at the call site should produce a keyword token with length 3");
+    }
+
+    [Fact]
+    public void ModifiedArgument_OutModifier_EmitsKeywordToken()
+    {
+        // Line 1: "def try_parse(s: str, result: out int) -> bool:"
+        // Line 2: "    result = int(s)"
+        // Line 3: "    return True"
+        // Line 4: "def main():"
+        // Line 5: "    value: int = 0"
+        // Line 6: "    try_parse(\"42\", out value)"
+        // The call-site "out" should emit a TKeyword token with length 3.
+        var tokens = CollectTokensFrom(
+            "def try_parse(s: str, result: out int) -> bool:\n" +
+            "    result = int(s)\n" +
+            "    return True\n" +
+            "def main():\n" +
+            "    value: int = 0\n" +
+            "    try_parse(\"42\", out value)");
+        var keywordsOnCallLine = tokens.Where(t => t.TokenType == TKeyword && t.Line == 5).ToList();
+        keywordsOnCallLine.Should().Contain(t => t.Length == 3,
+            "'out' at the call site should produce a keyword token with length 3");
+    }
+
+    #endregion
+
+    #region LambdaExpression tokens
+
+    [Fact]
+    public void LambdaExpression_EmitsParameterAndTypeTokens()
+    {
+        // "def main():" on line 1
+        // "    f = (x: int, y: str) -> x" on line 2
+        // Lambda parameters x, y should produce TParameter tokens.
+        // Type annotations int, str should produce TType tokens.
+        // Line 2: "    f = (x: int, y: str) -> x"
+        //          123456789012345678901234567890
+        // 'x' at col 10 (1-based) -> LSP (1, 9)
+        // 'int' at col 13 (1-based) -> LSP (1, 12)
+        // 'y' at col 18 (1-based) -> LSP (1, 17)
+        // 'str' at col 21 (1-based) -> LSP (1, 20)
+        var tokens = CollectTokensFrom("def main():\n    f = (x: int, y: str) -> x");
+        var paramTokens = tokens.Where(t => t.TokenType == TParameter && t.Line == 1).ToList();
+        paramTokens.Should().Contain(t => t.Length == 1 && t.Col == 9,
+            "'x' lambda parameter should produce a parameter token");
+        paramTokens.Should().Contain(t => t.Length == 1 && t.Col == 17,
+            "'y' lambda parameter should produce a parameter token");
+
+        var typeTokens = tokens.Where(t => t.TokenType == TType && t.Line == 1).ToList();
+        typeTokens.Should().Contain(t => t.Length == 3 && t.Col == 12,
+            "'int' type annotation should produce a type token");
+        typeTokens.Should().Contain(t => t.Length == 3 && t.Col == 20,
+            "'str' type annotation should produce a type token");
+    }
+
+    #endregion
 }

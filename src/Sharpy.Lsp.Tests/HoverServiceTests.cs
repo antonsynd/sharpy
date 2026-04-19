@@ -498,4 +498,24 @@ public class HoverServiceTests
         hover.HighlightLineEnd.Should().Be(2);
         hover.HighlightColumnEnd.Should().Be(11); // "return" = 6 chars
     }
+
+    // --- #566: Lambda expression hover ---
+
+    [Fact]
+    public void GetHoverMarkdown_OverLambdaExpression_ShowsTypedSignature()
+    {
+        // Arrow lambda with typed parameters:
+        // Line 1: "def main():"
+        // Line 2: "    f = (x: int, y: int) -> x + y"
+        // The lambda node spans from '(' at col 9. Hover over '(' or the lambda body.
+        var source = "def main():\n    f = (x: int, y: int) -> x + y\n    print(f(1, 2))";
+        var result = _api.Analyze(source);
+
+        // Hover over the opening paren of the lambda — col 9 on line 2
+        var hover = _hoverService.GetHoverMarkdown(result, 2, 9);
+
+        hover.Should().NotBeNull();
+        hover.Should().Contain("lambda");
+        hover.Should().Contain("int");
+    }
 }
