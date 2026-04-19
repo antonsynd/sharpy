@@ -1,0 +1,7 @@
+def compute(x: in int) -> int:
+    return x * 2
+
+def main():
+    v = 21
+    result = compute(v)
+    print(result)

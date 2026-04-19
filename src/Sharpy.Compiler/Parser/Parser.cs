@@ -572,6 +572,30 @@ public partial class Parser
                         Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
                     });
                 }
+                // Check for ref/out argument modifier at call site
+                else if (Current.Type == TokenType.Identifier
+                         && (Current.Value == "ref" || Current.Value == "out")
+                         && Peek().Type == TokenType.Identifier)
+                {
+                    if (seenKeywordArg)
+                    {
+                        throw ReportError("Positional argument cannot follow keyword argument", Current.Line, Current.Column, DiagnosticCodes.Parser.PositionalAfterKeyword, span: CurrentSpan);
+                    }
+                    var modToken = Current;
+                    var mod = Current.Value == "ref" ? Ast.ParameterModifier.Ref : Ast.ParameterModifier.Out;
+                    Advance();
+                    var argExpr = ParseExpression();
+                    args.Add(new Ast.ModifiedArgument
+                    {
+                        Modifier = mod,
+                        Argument = argExpr,
+                        LineStart = modToken.Line,
+                        ColumnStart = modToken.Column,
+                        LineEnd = argExpr.LineEnd,
+                        ColumnEnd = argExpr.ColumnEnd,
+                        Span = CombineSpans(GetSpanFromToken(modToken), argExpr.Span)
+                    });
+                }
                 // Check for keyword argument
                 else if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
                 {

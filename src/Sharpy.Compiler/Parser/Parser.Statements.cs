@@ -980,10 +980,28 @@ public partial class Parser
             var name = ExpectIdentifier();
             TypeAnnotation? type = null;
             Expression? defaultValue = null;
+            var modifier = ParameterModifier.None;
 
             if (Current.Type == TokenType.Colon)
             {
                 Advance();
+
+                // Check for parameter modifier after ':' (ref, out, in)
+                // Syntax: name: ref type, name: out type, name: in type
+                if (Current.Type == TokenType.Identifier
+                    && (Current.Value == "ref" || Current.Value == "out")
+                    && Peek().Type == TokenType.Identifier)
+                {
+                    modifier = Current.Value == "ref" ? ParameterModifier.Ref : ParameterModifier.Out;
+                    Advance();
+                }
+                else if (Current.Type == TokenType.In
+                         && Peek().Type == TokenType.Identifier)
+                {
+                    modifier = ParameterModifier.In;
+                    Advance();
+                }
+
                 type = ParseTypeAnnotation();
             }
 
@@ -1012,6 +1030,7 @@ public partial class Parser
                 DefaultValue = defaultValue,
                 IsVariadic = isVariadic,
                 Kind = kind,
+                Modifier = modifier,
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = endLine,

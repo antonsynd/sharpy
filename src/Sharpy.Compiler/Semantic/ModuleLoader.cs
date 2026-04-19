@@ -224,7 +224,8 @@ internal class ModuleLoader
                     DefaultValue = p.DefaultValue,
                     IsVariadic = p.IsVariadic,
                     IsPositionalOnly = p.Kind == Parser.Ast.ParameterKind.PositionalOnly,
-                    IsKeywordOnly = p.Kind == Parser.Ast.ParameterKind.KeywordOnly
+                    IsKeywordOnly = p.Kind == Parser.Ast.ParameterKind.KeywordOnly,
+                    Modifier = p.Modifier
                 }).ToList();
 
                 var funcSymbol = new FunctionSymbol
@@ -499,7 +500,8 @@ internal class ModuleLoader
             DefaultValue = p.DefaultValue,
             IsVariadic = p.IsVariadic,
             IsPositionalOnly = p.Kind == Parser.Ast.ParameterKind.PositionalOnly,
-            IsKeywordOnly = p.Kind == Parser.Ast.ParameterKind.KeywordOnly
+            IsKeywordOnly = p.Kind == Parser.Ast.ParameterKind.KeywordOnly,
+            Modifier = p.Modifier
         }).ToList();
 
         return new FunctionSymbol

@@ -1,0 +1,8 @@
+def try_parse(s: str, result: out int) -> bool:
+    result = int(s)
+    return True
+
+def main():
+    value: int = 0
+    success = try_parse("42", out value)
+    print(success, value)

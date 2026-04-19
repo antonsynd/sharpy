@@ -1,0 +1,9 @@
+def increment(x: ref int):
+    x = x + 1
+
+def main():
+    a = 5
+    increment(ref a)
+    increment(ref a)
+    increment(ref a)
+    print(a)

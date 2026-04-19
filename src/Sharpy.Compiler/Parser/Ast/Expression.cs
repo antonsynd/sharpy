@@ -688,6 +688,29 @@ public record LambdaExpression : Expression
 }
 
 /// <summary>
+/// Call-site argument with ref/out/in modifier: swap(ref x, ref y), parse("42", out result)
+/// </summary>
+public record ModifiedArgument : Expression
+{
+    public ParameterModifier Modifier { get; init; }
+    public Expression Argument { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Argument != null, "ModifiedArgument.Argument cannot be null");
+        Debug.Assert(Modifier != ParameterModifier.None, "ModifiedArgument.Modifier must not be None");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Argument;
+    }
+}
+
+/// <summary>
 /// Type coercion (value to Type or value to Type?)
 /// Throws InvalidCastException on failure for non-nullable types
 /// or returns None for nullable types (T?).

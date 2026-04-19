@@ -99,6 +99,10 @@ internal partial class RoslynEmitter
                 DiagnosticCodes.CodeGen.UnsupportedExpressionType,
                 star.LineStart, star.ColumnStart),
 
+            // ModifiedArgument — handled at call-site level in GeneratePositionalArguments.
+            // If reached here (standalone context), just emit the inner expression.
+            ModifiedArgument modArg => GenerateExpression(modArg.Argument),
+
             _ => EmitNotImplementedExpression(
                 $"Unsupported expression type in code generation: '{expr.GetType().Name}'",
                 DiagnosticCodes.CodeGen.UnsupportedExpressionType, expr.LineStart, expr.ColumnStart)

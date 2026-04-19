@@ -1,0 +1,10 @@
+def swap(a: ref int, b: ref int):
+    temp = a
+    a = b
+    b = temp
+
+def main():
+    x = 10
+    y = 20
+    swap(ref x, ref y)
+    print(x, y)

@@ -337,7 +337,8 @@ internal partial class NameResolver
             DefaultValue = p.DefaultValue,
             IsVariadic = p.IsVariadic,
             IsPositionalOnly = p.Kind == ParameterKind.PositionalOnly,
-            IsKeywordOnly = p.Kind == ParameterKind.KeywordOnly
+            IsKeywordOnly = p.Kind == ParameterKind.KeywordOnly,
+            Modifier = p.Modifier
         }).ToList();
 
         var invokeSymbol = new FunctionSymbol

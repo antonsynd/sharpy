@@ -866,6 +866,20 @@ internal partial class RoslynEmitter
                             .WithArgumentList(ArgumentList()));
                 }
             }
+            else if (arg is Parser.Ast.ModifiedArgument modArg)
+            {
+                var refKind = modArg.Modifier switch
+                {
+                    Parser.Ast.ParameterModifier.Ref => SyntaxKind.RefKeyword,
+                    Parser.Ast.ParameterModifier.Out => SyntaxKind.OutKeyword,
+                    Parser.Ast.ParameterModifier.In => SyntaxKind.InKeyword,
+                    _ => SyntaxKind.None
+                };
+                var csArg = Argument(GenerateExpression(modArg.Argument));
+                if (refKind != SyntaxKind.None)
+                    csArg = csArg.WithRefKindKeyword(Token(refKind));
+                yield return csArg;
+            }
             else
             {
                 yield return Argument(GenerateExpression(arg));

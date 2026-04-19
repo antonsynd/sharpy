@@ -95,7 +95,8 @@ internal partial class TypeChecker
                     DefaultValue = p.DefaultValue,
                     IsVariadic = p.IsVariadic,
                     IsPositionalOnly = p.Kind == ParameterKind.PositionalOnly,
-                    IsKeywordOnly = p.Kind == ParameterKind.KeywordOnly
+                    IsKeywordOnly = p.Kind == ParameterKind.KeywordOnly,
+                    Modifier = p.Modifier
                 }).ToList();
 
                 var nestedFuncSymbol = new FunctionSymbol
@@ -934,7 +935,8 @@ internal partial class TypeChecker
                             DefaultValue = param.DefaultValue,
                             IsVariadic = param.IsVariadic,
                             IsPositionalOnly = param.Kind == Parser.Ast.ParameterKind.PositionalOnly,
-                            IsKeywordOnly = param.Kind == Parser.Ast.ParameterKind.KeywordOnly
+                            IsKeywordOnly = param.Kind == Parser.Ast.ParameterKind.KeywordOnly,
+                            Modifier = param.Modifier
                         });
                     }
 
@@ -1132,7 +1134,8 @@ internal partial class TypeChecker
                     DefaultValue = param.DefaultValue,
                     IsVariadic = param.IsVariadic,
                     IsPositionalOnly = param.Kind == Parser.Ast.ParameterKind.PositionalOnly,
-                    IsKeywordOnly = param.Kind == Parser.Ast.ParameterKind.KeywordOnly
+                    IsKeywordOnly = param.Kind == Parser.Ast.ParameterKind.KeywordOnly,
+                    Modifier = param.Modifier
                 });
             }
 

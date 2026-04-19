@@ -349,6 +349,7 @@ public record ParameterSymbol
     public bool IsVariadic { get; init; }
     public bool IsPositionalOnly { get; init; }
     public bool IsKeywordOnly { get; init; }
+    public Parser.Ast.ParameterModifier Modifier { get; init; } = Parser.Ast.ParameterModifier.None;
 }
 
 /// <summary>

@@ -778,6 +778,17 @@ public enum ParameterKind
     KeywordOnly
 }
 
+/// <summary>
+/// Parameter passing modifier — maps to C# ref/out/in keywords.
+/// </summary>
+public enum ParameterModifier
+{
+    None,
+    Ref,
+    Out,
+    In
+}
+
 public record Parameter
 {
     public string Name { get; init; } = "";
@@ -793,6 +804,7 @@ public record Parameter
     /// Set by the parser based on / and * markers in the parameter list.
     /// </summary>
     public ParameterKind Kind { get; init; } = ParameterKind.Normal;
+    public ParameterModifier Modifier { get; init; } = ParameterModifier.None;
 
     // Source location
     public int LineStart { get; init; }

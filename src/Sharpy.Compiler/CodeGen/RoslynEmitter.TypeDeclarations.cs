@@ -142,6 +142,20 @@ internal partial class RoslynEmitter
         var parameter = Parameter(Identifier(paramName))
             .WithType(paramType);
 
+        // Add ref/out/in modifier
+        if (param.Modifier != ParameterModifier.None)
+        {
+            var modKind = param.Modifier switch
+            {
+                ParameterModifier.Ref => SyntaxKind.RefKeyword,
+                ParameterModifier.Out => SyntaxKind.OutKeyword,
+                ParameterModifier.In => SyntaxKind.InKeyword,
+                _ => SyntaxKind.None
+            };
+            if (modKind != SyntaxKind.None)
+                parameter = parameter.WithModifiers(TokenList(Token(modKind)));
+        }
+
         // For variadic parameters, add the 'params' modifier
         if (param.IsVariadic)
         {

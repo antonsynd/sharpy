@@ -68,6 +68,7 @@ internal partial class TypeChecker
             AwaitExpression awaitExpr => CheckAwaitExpression(awaitExpr),
             SpreadElement spread => CheckExpression(spread.Value),
             StarExpression star => CheckExpression(star.Operand),
+            ModifiedArgument modArg => CheckExpression(modArg.Argument),
             MatchExpression matchExpr => CheckMatchExpression(matchExpr),
             _ => HandleUnrecognizedExpression(expr)
         };
