@@ -1044,6 +1044,28 @@ public static class DiagnosticExplanations
             "x = type(None)",
             "Use a type annotation or isinstance() check instead of type(None).");
 
+        // ── Semantic errors: Parameter modifier errors (SPY0387-SPY0391) ─
+
+        Add(dict, DiagnosticCodes.Semantic.ModifierWithDefault, "ref/out/in parameter cannot have a default value", "Semantic",
+            "Parameters with ref, out, or in modifiers require the caller to explicitly pass the argument at the call site. A default value would bypass this requirement, which is semantically invalid.",
+            "def foo(x: ref int = 5): ...",
+            "Remove the default value: def foo(x: ref int): ...");
+
+        Add(dict, DiagnosticCodes.Semantic.ModifierWithVariadic, "variadic parameter cannot have a modifier", "Semantic",
+            "Variadic parameters (*args) collect multiple arguments into a list. ref/out/in modifiers require pass-by-reference semantics which are incompatible with variadic collection.",
+            "def foo(*args: ref int): ...",
+            "Remove the modifier or use individual parameters: def foo(a: ref int, b: ref int): ...");
+
+        Add(dict, DiagnosticCodes.Semantic.ModifierRequiresVariable, "ref/out argument must be a variable", "Semantic",
+            "ref and out arguments must refer to a storage location (variable, field, or indexer) that can be written to. Literals and expression results have no storage location.",
+            "swap(ref 5, ref 10)",
+            "Pass a variable instead: x = 5; swap(ref x, ref y)");
+
+        Add(dict, DiagnosticCodes.Semantic.InParameterReassignment, "cannot reassign 'in' parameter", "Semantic",
+            "Parameters declared with the 'in' modifier are passed by readonly reference. They cannot be reassigned to prevent unintended mutation of the caller's value.",
+            "def foo(x: in int):\n    x = 0  # Error",
+            "Remove the 'in' modifier if reassignment is needed, or use a local copy: local_x = x");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",

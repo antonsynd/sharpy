@@ -501,12 +501,29 @@ internal partial class TypeChecker
                     span: param.Span);
             }
 
+            if (param.Modifier != Parser.Ast.ParameterModifier.None)
+            {
+                if (param.DefaultValue != null)
+                {
+                    AddError($"Parameter '{param.Name}' with '{param.Modifier.ToString().ToLowerInvariant()}' modifier cannot have a default value",
+                        param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.ModifierWithDefault,
+                        span: param.Span);
+                }
+                if (param.IsVariadic)
+                {
+                    AddError($"Variadic parameter '{param.Name}' cannot have a '{param.Modifier.ToString().ToLowerInvariant()}' modifier",
+                        param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.ModifierWithVariadic,
+                        span: param.Span);
+                }
+            }
+
             var paramSymbol = new VariableSymbol
             {
                 Name = param.Name,
                 Kind = SymbolKind.Parameter,
                 Type = paramType,
                 IsParameter = true,
+                ParameterModifier = param.Modifier,
                 DeclarationLine = null,
                 DeclarationColumn = null
             };

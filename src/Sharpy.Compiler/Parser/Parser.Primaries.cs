@@ -978,7 +978,12 @@ public partial class Parser
         ImmutableArray<Parameter> parameters,
         int startLine, int startColumn, Token startToken)
     {
-        Expect(TokenType.Arrow);
+        if (Current.Type != TokenType.Arrow)
+        {
+            throw ReportError("Expected '->' after arrow lambda parameter list",
+                Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedToken, span: CurrentSpan);
+        }
+        Advance();
 
         TypeAnnotation? returnType = null;
 
@@ -1033,9 +1038,7 @@ public partial class Parser
         var savedPos = _position;
         try
         {
-            // Speculatively parse a type annotation to find where it ends
-            SkipTypeAnnotation();
-            return Current.Type == TokenType.Colon;
+            return SkipTypeAnnotation() && Current.Type == TokenType.Colon;
         }
         finally
         {
@@ -1046,51 +1049,86 @@ public partial class Parser
     /// <summary>
     /// Skips over a type annotation without constructing AST nodes.
     /// Used for lookahead in arrow lambda return type detection.
-    /// Handles: simple types, generic types (T[U, V]), optional (T?),
-    /// nullable (T | None), result types (T!E), tuple/function types ((T, U) -> V).
+    /// Returns false if the tokens don't form a valid type annotation.
+    /// WARNING: Must stay in sync with ParseTypeAnnotation/ParseTypeAnnotationCore
+    /// in Parser.Types.cs — any new type form added there must also be handled here.
     /// </summary>
-    private void SkipTypeAnnotation()
+    private bool SkipTypeAnnotation()
     {
         if (Current.Type == TokenType.LeftParen)
         {
-            // Tuple or function type: (T, U) or (T) -> U
-            Advance(); // consume '('
+            Advance();
             if (Current.Type != TokenType.RightParen)
             {
-                SkipTypeAnnotation();
+                if (!SkipTypeAnnotation())
+                    return false;
                 while (Current.Type == TokenType.Comma)
                 {
                     Advance();
-                    SkipTypeAnnotation();
+                    if (!SkipTypeAnnotation())
+                        return false;
                 }
             }
-            if (Current.Type == TokenType.RightParen)
-                Advance();
+            if (Current.Type != TokenType.RightParen)
+                return false;
+            Advance();
             if (Current.Type == TokenType.Arrow)
             {
                 Advance();
-                SkipTypeAnnotation();
+                if (!SkipTypeAnnotation())
+                    return false;
             }
+        }
+        else if (Current.Type == TokenType.LeftBracket)
+        {
+            // List shorthand: [T]
+            Advance();
+            if (!SkipTypeAnnotation())
+                return false;
+            if (Current.Type != TokenType.RightBracket)
+                return false;
+            Advance();
+        }
+        else if (Current.Type == TokenType.LeftBrace)
+        {
+            // Dict shorthand: {K: V}
+            Advance();
+            if (!SkipTypeAnnotation())
+                return false;
+            if (Current.Type != TokenType.Colon)
+                return false;
+            Advance();
+            if (!SkipTypeAnnotation())
+                return false;
+            if (Current.Type != TokenType.RightBrace)
+                return false;
+            Advance();
         }
         else if (Current.Type is TokenType.Identifier or TokenType.None or TokenType.Auto)
         {
             Advance();
-            // Generic type arguments: T[U, V]
             if (Current.Type == TokenType.LeftBracket)
             {
                 Advance();
                 if (Current.Type != TokenType.RightBracket)
                 {
-                    SkipTypeAnnotation();
+                    if (!SkipTypeAnnotation())
+                        return false;
                     while (Current.Type == TokenType.Comma)
                     {
                         Advance();
-                        SkipTypeAnnotation();
+                        if (!SkipTypeAnnotation())
+                            return false;
                     }
                 }
-                if (Current.Type == TokenType.RightBracket)
-                    Advance();
+                if (Current.Type != TokenType.RightBracket)
+                    return false;
+                Advance();
             }
+        }
+        else
+        {
+            return false;
         }
 
         // Optional: T?
@@ -1100,15 +1138,18 @@ public partial class Parser
         // Nullable: T | None
         if (Current.Type == TokenType.Pipe && Peek().Type == TokenType.None)
         {
-            Advance(); // consume '|'
-            Advance(); // consume 'None'
+            Advance();
+            Advance();
         }
 
         // Result type: T!E
         if (Current.Type == TokenType.Bang)
         {
             Advance();
-            SkipTypeAnnotation();
+            if (!SkipTypeAnnotation())
+                return false;
         }
+
+        return true;
     }
 }

@@ -362,8 +362,15 @@ public static class DiagnosticCodes
         public const string SelfOutsideClass = "SPY0384";
         public const string SelfInStaticMethod = "SPY0385";
 
-        // Builtin call errors (SPY0386+)
+        // Builtin call errors (SPY0386)
         public const string UnsupportedTypeNone = "SPY0386";           // Active
+
+        // Parameter modifier errors (SPY0387-SPY0391)
+        public const string ModifierWithDefault = "SPY0387";           // Active
+        public const string ModifierWithVariadic = "SPY0388";          // Active
+        public const string ModifierRequiresVariable = "SPY0389";      // Active
+        public const string InParameterReassignment = "SPY0390";       // Active
+        // SPY0391-SPY0399: Reserved for future parameter modifier diagnostics
 
         #endregion
     }

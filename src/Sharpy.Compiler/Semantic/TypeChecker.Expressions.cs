@@ -68,7 +68,7 @@ internal partial class TypeChecker
             AwaitExpression awaitExpr => CheckAwaitExpression(awaitExpr),
             SpreadElement spread => CheckExpression(spread.Value),
             StarExpression star => CheckExpression(star.Operand),
-            ModifiedArgument modArg => CheckExpression(modArg.Argument),
+            ModifiedArgument modArg => CheckModifiedArgument(modArg),
             MatchExpression matchExpr => CheckMatchExpression(matchExpr),
             _ => HandleUnrecognizedExpression(expr)
         };
@@ -98,6 +98,21 @@ internal partial class TypeChecker
             DiagnosticCodes.Semantic.UnrecognizedExpressionType,
             expr.Span);
         return SemanticType.Unknown;
+    }
+
+    private SemanticType CheckModifiedArgument(ModifiedArgument modArg)
+    {
+        if (modArg.Modifier is Parser.Ast.ParameterModifier.Ref or Parser.Ast.ParameterModifier.Out)
+        {
+            if (modArg.Argument is not (Identifier or MemberAccess or IndexAccess))
+            {
+                AddError($"'{modArg.Modifier.ToString().ToLowerInvariant()}' argument must be a variable",
+                    modArg.Argument.LineStart, modArg.Argument.ColumnStart,
+                    code: DiagnosticCodes.Semantic.ModifierRequiresVariable,
+                    span: modArg.Argument.Span);
+            }
+        }
+        return CheckExpression(modArg.Argument);
     }
 
     private SemanticType CheckAwaitExpression(AwaitExpression awaitExpr)

@@ -572,17 +572,23 @@ public partial class Parser
                         Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
                     });
                 }
-                // Check for ref/out argument modifier at call site
-                else if (Current.Type == TokenType.Identifier
+                // Check for ref/out/in argument modifier at call site.
+                // The peek guard excludes tokens where ref/out would be a plain identifier
+                // (e.g., `ref,` passing ref as value, `ref = ...` keyword arg).
+                else if ((Current.Type == TokenType.Identifier
                          && (Current.Value == "ref" || Current.Value == "out")
-                         && Peek().Type == TokenType.Identifier)
+                         && Peek().Type is not (TokenType.Comma or TokenType.RightParen or TokenType.Assign))
+                         || (Current.Type == TokenType.In
+                         && Peek().Type is not (TokenType.Comma or TokenType.RightParen or TokenType.Assign)))
                 {
                     if (seenKeywordArg)
                     {
                         throw ReportError("Positional argument cannot follow keyword argument", Current.Line, Current.Column, DiagnosticCodes.Parser.PositionalAfterKeyword, span: CurrentSpan);
                     }
                     var modToken = Current;
-                    var mod = Current.Value == "ref" ? Ast.ParameterModifier.Ref : Ast.ParameterModifier.Out;
+                    var mod = Current.Type == TokenType.In ? Ast.ParameterModifier.In
+                        : Current.Value == "ref" ? Ast.ParameterModifier.Ref
+                        : Ast.ParameterModifier.Out;
                     Advance();
                     var argExpr = ParseExpression();
                     args.Add(new Ast.ModifiedArgument

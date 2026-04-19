@@ -109,6 +109,7 @@ public record VariableSymbol : Symbol
     public bool IsConstant { get; init; }
     public bool IsStatic { get; init; }
     public bool HasDefaultValue { get; init; }
+    public Parser.Ast.ParameterModifier ParameterModifier { get; init; } = Parser.Ast.ParameterModifier.None;
 
     public virtual bool Equals(VariableSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);

@@ -33,6 +33,19 @@ internal partial class TypeChecker
             return;
         }
 
+        // Validate that 'in' parameters cannot be reassigned
+        if (assignment.Target is Identifier inParamId)
+        {
+            var sym = _symbolTable.Lookup(inParamId.Name, searchParents: true);
+            if (sym is VariableSymbol vs && vs.IsParameter && vs.ParameterModifier == Parser.Ast.ParameterModifier.In)
+            {
+                AddError($"Cannot reassign 'in' parameter '{inParamId.Name}'",
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InParameterReassignment,
+                    span: assignment.Span);
+                return;
+            }
+        }
+
         // Handle tuple unpacking: x, y = expr  or  first, *rest = items
         if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is TupleLiteral targetTuple)
         {
