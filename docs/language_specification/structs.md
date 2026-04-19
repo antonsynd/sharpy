@@ -161,7 +161,7 @@ This provides excellent cache locality and performance, but can be inefficient f
 
 For large structs or performance-critical code, use parameter modifiers to avoid expensive copies:
 
-#### `in[T]` - Read-Only Reference
+#### `in T` - Read-Only Reference
 
 Pass a struct by reference without allowing modifications:
 
@@ -172,7 +172,7 @@ struct LargeData:
     def process(self) -> int:
         return sum(self.buffer)
 
-def analyze(data: in[LargeData]) -> int:
+def analyze(data: in LargeData) -> int:
     # 'data' is passed by reference (no copy)
     # 'data' cannot be modified (read-only)
     return data.process()
@@ -181,12 +181,12 @@ large = LargeData([1, 2, 3, 4, 5])
 result = analyze(large)  # No copy! Efficient.
 ```
 
-**Use `in[T]` when:**
+**Use `in T` when:**
 - You need to read the struct but not modify it
 - The struct is large (> 16 bytes)
 - Performance is critical
 
-#### `mut[T]` - Mutable Reference
+#### `ref T` — Mutable Reference
 
 Pass a struct by reference and allow modifications:
 
@@ -194,7 +194,7 @@ Pass a struct by reference and allow modifications:
 struct Counter:
     count: int
 
-def increment(c: mut[Counter]) -> None:
+def increment(c: ref Counter) -> None:
     # 'c' is passed by reference
     # Changes to 'c' affect the original struct
     c.count += 1
@@ -204,11 +204,11 @@ increment(counter)
 print(counter.count)  # Prints: 11 (modified!)
 ```
 
-**Use `mut[T]` when:**
+**Use `ref T` when:**
 - You need to modify the caller's struct
 - You want to avoid copies for large structs
 
-#### `out[T]` - Output Parameter
+#### `out T` - Output Parameter
 
 Initialize a struct and return it via parameter:
 
@@ -217,7 +217,7 @@ struct Point:
     x: int
     y: int
 
-def try_parse_point(text: str, result: out[Point]) -> bool:
+def try_parse_point(text: str, result: out Point) -> bool:
     # 'result' must be assigned before returning
     parts = text.split(',')
     if len(parts) != 2:
@@ -232,7 +232,7 @@ if try_parse_point("10,20", point):
     print(f"Parsed: ({point.x}, {point.y})")
 ```
 
-**Use `out[T]` when:**
+**Use `out T` when:**
 - Implementing try-parse patterns
 - Returning multiple values (one via return, others via `out`)
 
@@ -241,7 +241,7 @@ if try_parse_point("10,20", point):
 | Struct Size | Assignment/Parameter Passing | Recommendation |
 |-------------|------------------------------|----------------|
 | ≤ 16 bytes  | Cheap to copy | Pass by value (default) is fine |
-| > 16 bytes  | Expensive to copy | Use `in[T]` for read-only, `mut[T]` for mutation |
+| > 16 bytes  | Expensive to copy | Use `in T` for read-only, `ref T` for mutation |
 | Very large  | Very expensive | Consider using a class instead |
 
 ### Immutability Best Practice
@@ -278,6 +278,6 @@ v4 = v3.scale(2.0)     # Creates new Vector2
 
 *Implementation*
 - *✅ Native - Direct mapping to C# `struct`.*
-- *✅ Native - `in[T]` maps to C# `in T` parameter modifier*
-- *✅ Native - `mut[T]` maps to C# `ref T` parameter modifier*
-- *✅ Native - `out[T]` maps to C# `out T` parameter modifier*
+- *✅ Native - `in T` maps to C# `in T` parameter modifier (space-separated syntax)*
+- *✅ Native - `ref T` maps to C# `ref T` parameter modifier (space-separated syntax)*
+- *✅ Native - `out T` maps to C# `out T` parameter modifier (space-separated syntax)*

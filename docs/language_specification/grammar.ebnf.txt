@@ -780,8 +780,17 @@ comp_if         ::= 'if' or_expr [ comp_if ]
 # -----------------------------------------------------------------------------
 
 lambda_expr     ::= 'lambda' [ lambda_params ] ':' expression
+                  | arrow_lambda
 
 lambda_params   ::= identifier { ',' identifier }
+
+arrow_lambda    ::= '(' [ arrow_lambda_params ] ')' '->' [ type_expr ':' ] expression
+
+arrow_lambda_params
+                ::= arrow_lambda_param { ',' arrow_lambda_param }
+
+arrow_lambda_param
+                ::= identifier ':' type_expr
 
 # -----------------------------------------------------------------------------
 # 3.5 Yield Expression
@@ -878,6 +887,24 @@ named_type_list ::= named_type { ',' named_type } [ ',' ]
 named_type      ::= identifier ':' type_expr
 
 function_type   ::= '(' [ type_list ] ')' '->' type_expr
+
+# -----------------------------------------------------------------------------
+# 4.2 Parameter Modifiers
+# -----------------------------------------------------------------------------
+
+(* Parameter modifiers for pass-by-reference semantics *)
+param_modifier  ::= 'ref' | 'out' | 'in'
+
+modified_type   ::= param_modifier type_expr
+                  (* Used in parameter declarations: ref int, out str, in LargeStruct *)
+
+(* When parameter modifiers are used, the param_no_default rule from §2.9 becomes:
+     param_no_default ::= identifier ':' ( modified_type | type_expr )
+   Modifiers cannot be combined with default values. *)
+
+(* Call-site argument modifiers *)
+modified_arg    ::= ( 'ref' | 'out' | 'in' ) expression
+                  (* Used at call site: swap(ref x, ref y) *)
 
 # =============================================================================
 # 5. F-STRING GRAMMAR (Lexer Mode Switch)

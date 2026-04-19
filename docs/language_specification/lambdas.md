@@ -15,7 +15,53 @@ result = apply(10, lambda x: x ** 2)
 - Parameter types can be explicitly annotated or inferred from context
 - Expression result is automatically returned
 
-## Parameter Type Annotations
+## Arrow Lambda Syntax
+
+Arrow lambdas provide a concise, typed alternative to the `lambda` keyword. Parameters are always typed, and the syntax uses `->` to separate parameters from the body:
+
+```python
+# Basic arrow lambda
+square = (x: int) -> x ** 2
+add = (x: int, y: int) -> x + y
+
+# With explicit return type annotation
+square_typed: (int) -> int = (x: int) -> int: x ** 2
+greet: (str) -> str = (name: str) -> str: f"Hello, {name}!"
+
+# No parameters
+get_zero = () -> 0
+get_answer: () -> int = () -> int: 42
+
+# As function argument
+result = apply(10, (x: int) -> x ** 2)
+items.map((x: int) -> x * 2)
+items.filter((x: int) -> x > 0)
+```
+
+**Syntax forms:**
+
+| Form | Description |
+|------|-------------|
+| `(params) -> expr` | Arrow lambda with inferred return type |
+| `(params) -> ReturnType: expr` | Arrow lambda with explicit return type |
+| `() -> expr` | Arrow lambda with no parameters |
+
+**Arrow lambda rules:**
+- All parameters must have explicit type annotations
+- Single expression only (same as `lambda`)
+- Return type annotation is optional; when present, a colon separates it from the body
+- Expression result is automatically returned
+
+**When to use which syntax:**
+
+| Syntax | Use when |
+|--------|----------|
+| `lambda x: expr` | Parameter types are inferred from context (assignment type, function parameter type, collection method) |
+| `(x: int) -> expr` | Parameter types should be explicit and self-documenting |
+
+The `lambda` keyword remains the preferred form for untyped lambdas where types are inferred from context.
+
+## Parameter Type Annotations (lambda keyword)
 
 Lambda parameters can have explicit type annotations using the syntax `lambda param: type: expr`:
 

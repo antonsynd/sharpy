@@ -42,5 +42,7 @@ return type).
 2) Function type syntax, e.g. `(int, str) -> None`, must always specify the
 return type, even if it returns nothing, due to parsing/syntactic constraints.
 
-As a note, lambda functions never indicate a return type (nor argument types),
-e.g.: `lambda x, y: x + y`.
+As a note, `lambda` keyword lambdas never indicate a return type (nor argument
+types), e.g.: `lambda x, y: x + y`. Arrow lambdas, however, always have typed
+parameters and may optionally include a return type annotation, e.g.:
+`(x: int, y: int) -> x + y` or `(x: int) -> int: x + 1`.

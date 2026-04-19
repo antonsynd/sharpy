@@ -2,12 +2,12 @@
 
 > **Implementation status:** Deferred post-v0.2.x — most Sharpy code won't need pass-by-reference semantics.
 
-Sharpy supports pass-by-reference semantics for function parameters using type wrapper syntax. These modifiers enable direct mutation of caller variables and efficient passing of large value types.
+Sharpy supports pass-by-reference semantics for function parameters using space-separated modifier syntax. These modifiers enable direct mutation of caller variables and efficient passing of large value types.
 
 ## Syntax
 
 ```python
-def function_name(param: ref[T], param: out[T], param: in[T]) -> ReturnType:
+def function_name(param: ref T, param: out T, param: in T) -> ReturnType:
     ...
 ```
 
@@ -15,16 +15,16 @@ def function_name(param: ref[T], param: out[T], param: in[T]) -> ReturnType:
 
 | Modifier | Description | Caller Must Initialize | Callee Can Read | Callee Can Write | Callee Must Assign |
 |----------|-------------|------------------------|-----------------|------------------|---------------------|
-| `ref[T]` | Read/write reference | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No |
-| `out[T]` | Output parameter | ❌ No | ❌ No (until assigned) | ✅ Yes | ✅ Yes |
-| `in[T]` | Readonly reference | ✅ Yes | ✅ Yes | ❌ No | ❌ No |
+| `ref T` | Read/write reference | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No |
+| `out T` | Output parameter | ❌ No | ❌ No (until assigned) | ✅ Yes | ✅ Yes |
+| `in T` | Readonly reference | ✅ Yes | ✅ Yes | ❌ No | ❌ No |
 
-## `ref[T]` — Read/Write Reference
+## `ref T` — Read/Write Reference
 
 The `ref` modifier passes a variable by reference, allowing the callee to both read and modify the caller's variable.
 
 ```python
-def swap(a: ref[int], b: ref[int]):
+def swap(a: ref int, b: ref int):
     """Swap two values in place."""
     temp = a
     a = b
@@ -42,12 +42,12 @@ print(x, y)  # 20 10
 - Caller must prefix the argument with `ref`
 - Variable must be initialized before the call
 
-## `out[T]` — Output Parameter
+## `out T` — Output Parameter
 
 The `out` modifier designates an output-only parameter. The callee must assign a value before returning.
 
 ```python
-def try_parse(s: str, result: out[int]) -> bool:
+def try_parse(s: str, result: out int) -> bool:
     """Try to parse a string as an integer."""
     if s.is_digit():
         result = int(s)
@@ -81,7 +81,7 @@ if try_parse("42", out value: auto):
     print(value)
 ```
 
-## `in[T]` — Readonly Reference
+## `in T` — Readonly Reference
 
 The `in` modifier passes by reference for efficiency but prevents modification. Ideal for large structs.
 
@@ -90,7 +90,7 @@ struct LargeData:
     matrix: list[list[float]]
     metadata: dict[str, object]
 
-def analyze(data: in[LargeData]) -> float:
+def analyze(data: in LargeData) -> float:
     """Analyze data without copying the large struct."""
     # data.matrix = []  # ERROR: Cannot modify `in` parameter
     return compute_result(data.matrix)
@@ -111,7 +111,7 @@ result = analyze(in large)    # OK: explicit in keyword
 Parameter modifiers can be combined with nullable types:
 
 ```python
-def try_get_value(key: str, value: out[int?]) -> bool:
+def try_get_value(key: str, value: out int?) -> bool:
     """Get a value that might be None."""
     if key in _cache:
         value = _cache[key]  # May be None
@@ -129,12 +129,12 @@ def process(value: int) -> int:
     """Process by value."""
     return value * 2
 
-def process(value: ref[int]):
+def process(value: ref int):
     """Process in place."""
     value = value * 2
 ```
 
-**Note:** `ref[T]` and `out[T]` are distinct for overloading purposes. `in[T]` and plain `T` are **not** distinct for overloading.
+**Note:** `ref T` and `out T` are distinct for overloading purposes. `in T` and plain `T` are **not** distinct for overloading.
 
 ## Method Signatures in Types
 
@@ -142,10 +142,10 @@ When declaring function types, parameter modifiers are part of the signature:
 
 ```python
 # Function type with ref parameter
-SwapFunc = (ref[int], ref[int]) -> None
+SwapFunc = (ref int, ref int) -> None
 
 # Function type with out parameter
-TryParseFunc = (str, out[int]) -> bool
+TryParseFunc = (str, out int) -> bool
 ```
 
 ## Restrictions
@@ -157,9 +157,9 @@ TryParseFunc = (str, out[int]) -> bool
 
 ```python
 # ❌ Invalid combinations
-def foo(values: ref[int] = 5): ...       # ERROR: ref with default
-def bar(*args: ref[int]): ...            # ERROR: ref with *args
-func = lambda x: ref[int]: x * 2         # ERROR: ref in lambda
+def foo(values: ref int = 5): ...       # ERROR: ref with default
+def bar(*args: ref int): ...            # ERROR: ref with *args
+func = lambda x: ref int: x * 2         # ERROR: ref in lambda
 ```
 
 ## C# Interop
@@ -179,7 +179,7 @@ if Int32.try_parse("42", out value: int):
 **Sharpy methods callable from C#:**
 
 ```csharp
-// C# calling Sharpy function: def swap(a: ref[int], b: ref[int])
+// C# calling Sharpy function: def swap(a: ref int, b: ref int)
 int x = 10, y = 20;
 SharryModule.Swap(ref x, ref y);
 ```
@@ -188,16 +188,16 @@ SharryModule.Swap(ref x, ref y);
 
 ```python
 # Sharpy
-def swap(a: ref[int], b: ref[int]):
+def swap(a: ref int, b: ref int):
     temp = a
     a = b
     b = temp
 
-def try_parse(s: str, result: out[int]) -> bool:
+def try_parse(s: str, result: out int) -> bool:
     result = 0
     return False
 
-def calculate(data: in[LargeStruct]) -> float:
+def calculate(data: in LargeStruct) -> float:
     return data.value
 ```
 
@@ -239,9 +239,9 @@ Calculate(in largeData);  // or just Calculate(largeData)
 ```
 
 *Implementation: ❌ Deferred post-v0.2.x*
-- *`ref[T]` → `ref T` parameter — not yet parsed*
-- *`out[T]` → `out T` parameter — not yet parsed*
-- *`in[T]` → `in T` parameter — not yet parsed*
+- *`ref T` → `ref T` parameter — not yet parsed*
+- *`out T` → `out T` parameter — not yet parsed*
+- *`in T` → `in T` parameter — not yet parsed*
 - *Call site keywords will map directly to C# `ref`/`out`/`in`*
 - *Inline `out` declaration will map to C# inline out declaration*
 
