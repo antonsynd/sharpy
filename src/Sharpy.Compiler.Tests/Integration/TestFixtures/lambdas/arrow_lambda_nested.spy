@@ -1,0 +1,6 @@
+def apply(f: (int) -> (int) -> int, x: int, y: int) -> int:
+    return f(x)(y)
+
+def main():
+    result = apply((a: int) -> (b: int) -> a + b, 3, 4)
+    print(result)

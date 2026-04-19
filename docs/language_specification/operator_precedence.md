@@ -23,7 +23,7 @@ Operators listed from highest to lowest precedence:
 | 17 | `??` | Null coalescing | Left-to-right |
 | 18 | `try`, `maybe` | Result/Optional wrapping expressions | Right-to-left (prefix) |
 | 19 | `x if c else y` | Conditional expression | Right-to-left |
-| 20 | `lambda` | Lambda expression | Right-to-left |
+| 20 | `lambda`, `(params) ->` | Lambda / Arrow lambda expression | Right-to-left |
 | 21 | `:=` | Walrus (assignment expression) | Right-to-left |
 
 ## Associativity Details

@@ -150,7 +150,7 @@ TryParseFunc = (str, out int) -> bool
 
 ## Restrictions
 
-- Cannot use modifiers with `*args` or `**kwargs`
+- Cannot use modifiers with `*args`
 - Cannot use modifiers with default parameter values
 - `in` parameters cannot be reassigned (even to same value)
 - Lambda parameters cannot have modifiers (use regular functions)
@@ -238,12 +238,12 @@ TryParse("42", out int value);
 Calculate(in largeData);  // or just Calculate(largeData)
 ```
 
-*Implementation: ❌ Deferred post-v0.2.x*
-- *`ref T` → `ref T` parameter — not yet parsed*
-- *`out T` → `out T` parameter — not yet parsed*
-- *`in T` → `in T` parameter — not yet parsed*
-- *Call site keywords will map directly to C# `ref`/`out`/`in`*
-- *Inline `out` declaration will map to C# inline out declaration*
+*Implementation: ✅ Implemented*
+- *`ref T` → `ref T` parameter — parsed, type-checked, emitted*
+- *`out T` → `out T` parameter — parsed, type-checked, emitted*
+- *`in T` → `in T` parameter — parsed, type-checked, emitted*
+- *Call site `ref`/`out`/`in` keywords map directly to C#*
+- *Inline `out` declaration (`out value: int`) — not yet implemented*
 
 ## See Also
 

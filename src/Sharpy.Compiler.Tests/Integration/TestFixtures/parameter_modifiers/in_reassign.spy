@@ -1,0 +1,7 @@
+def process(x: in int) -> int:
+    x = 0
+    return x
+
+def main():
+    v = 42
+    print(process(in v))

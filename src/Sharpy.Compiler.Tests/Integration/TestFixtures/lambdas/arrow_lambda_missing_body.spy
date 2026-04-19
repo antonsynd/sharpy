@@ -1,0 +1,3 @@
+def main():
+    f = (x: int) ->
+    print(f(5))

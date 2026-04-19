@@ -1,0 +1,6 @@
+def foo(x: ref int = 5):
+    pass
+
+def main():
+    y = 10
+    foo(ref y)
