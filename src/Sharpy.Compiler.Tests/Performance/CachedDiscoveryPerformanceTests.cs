@@ -12,6 +12,7 @@ namespace Sharpy.Compiler.Tests.Performance;
 /// <summary>
 /// Performance benchmarks for the cached overload discovery system
 /// </summary>
+[Trait("Category", "Benchmark")]
 public class CachedDiscoveryPerformanceTests : IDisposable
 {
     private readonly ITestOutputHelper _output;

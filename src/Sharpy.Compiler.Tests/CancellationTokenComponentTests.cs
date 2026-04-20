@@ -59,6 +59,7 @@ public class CancellationTokenComponentTests
     }
 
     [Fact]
+    [Trait("Category", "Benchmark")]
     public void Lexer_PreCancelledToken_LargeSource_TerminatesPromptly()
     {
         // Even with a large source, a pre-cancelled token should terminate quickly
@@ -137,6 +138,7 @@ public class CancellationTokenComponentTests
     }
 
     [Fact]
+    [Trait("Category", "Benchmark")]
     public void Parser_PreCancelledToken_LargeTokenList_TerminatesPromptly()
     {
         // Generate a large program and tokenize it
@@ -214,6 +216,7 @@ public class CancellationTokenComponentTests
     }
 
     [Fact]
+    [Trait("Category", "Benchmark")]
     public void Compile_CancelledDuringLargeProgram_TerminatesPromptly()
     {
         // Use a token that cancels after a short delay

@@ -64,6 +64,7 @@ public class CancellationTests
     }
 
     [Fact]
+    [Trait("Category", "Benchmark")]
     public void Compile_WithAlreadyCancelledToken_ReturnsQuickly()
     {
         // Arrange
@@ -85,6 +86,7 @@ public class CancellationTests
     }
 
     [Fact]
+    [Trait("Category", "Benchmark")]
     public void Compile_WithDelayedCancellation_TerminatesPromptly()
     {
         // Arrange - generate a large program that takes nontrivial time to compile
