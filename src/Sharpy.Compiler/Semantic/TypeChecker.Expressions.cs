@@ -125,8 +125,8 @@ internal partial class TypeChecker
                     Kind = SymbolKind.Variable,
                     Type = resolvedType,
                     IsConstant = false,
-                    DeclarationLine = modArg.LineStart,
-                    DeclarationColumn = modArg.ColumnStart
+                    DeclarationLine = modArg.Argument.LineStart,
+                    DeclarationColumn = modArg.Argument.ColumnStart
                 };
                 _symbolTable.Define(newSymbol);
                 SemanticBinding.SetVariableType(newSymbol, resolvedType);

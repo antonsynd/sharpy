@@ -243,7 +243,7 @@ Calculate(in largeData);  // or just Calculate(largeData)
 - *`out T` → `out T` parameter — parsed, type-checked, emitted*
 - *`in T` → `in T` parameter — parsed, type-checked, emitted*
 - *Call site `ref`/`out`/`in` keywords map directly to C#*
-- *Inline `out` declaration (`out value: int`) — not yet implemented*
+- *Inline `out` declaration (`out value: int`, `out value: auto`) — parsed, type-checked, emitted*
 
 ## See Also
 

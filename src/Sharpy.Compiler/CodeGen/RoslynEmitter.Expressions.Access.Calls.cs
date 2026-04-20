@@ -868,7 +868,7 @@ internal partial class RoslynEmitter
                 {
                     // Map the type: "auto" → var, otherwise use TypeSyntaxMapper
                     TypeSyntax typeSyntax;
-                    if (modArg.InlineType?.Name == "auto")
+                    if (modArg.InlineType!.Name == "auto")
                     {
                         typeSyntax = IdentifierName("var");
                     }

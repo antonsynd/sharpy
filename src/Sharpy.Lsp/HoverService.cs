@@ -561,8 +561,10 @@ public sealed class HoverService
                             : " -> None";
                         return $"```sharpy\n(lambda) ({paramStr}){returnStr}\n```";
                     }
-                    // Fall through to generic expression handler
-                    break;
+                    var exprType = query.GetEffectiveType(lambda);
+                    if (exprType != null)
+                        return $"```sharpy\n{SymbolFormatter.FormatTypeInfo(exprType)}\n```";
+                    return null;
                 }
 
             case Expression expr:

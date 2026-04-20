@@ -628,6 +628,33 @@ def main():
             "'out' at the call site should produce a keyword token with length 3");
     }
 
+    [Fact]
+    public void ModifiedArgument_InModifier_EmitsKeywordToken()
+    {
+        var tokens = CollectTokensFrom(
+            "def process(x: in int):\n    print(x)\ndef main():\n    a: int = 5\n    process(in a)");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword && t.Line == 4).ToList();
+        keywords.Should().Contain(t => t.Length == 2,
+            "'in' at the call site should produce a keyword token with length 2");
+    }
+
+    [Fact]
+    public void ModifiedArgument_OutInlineDeclaration_EmitsKeywordAndTypeTokens()
+    {
+        var tokens = CollectTokensFrom(
+            "def try_parse(s: str, result: out int) -> bool:\n" +
+            "    result = int(s)\n" +
+            "    return True\n" +
+            "def main():\n" +
+            "    try_parse(\"42\", out value: int)");
+        var keywordsOnCallLine = tokens.Where(t => t.TokenType == TKeyword && t.Line == 4).ToList();
+        keywordsOnCallLine.Should().Contain(t => t.Length == 3,
+            "'out' at the call site should produce a keyword token with length 3");
+        var typeTokensOnCallLine = tokens.Where(t => t.TokenType == TType && t.Line == 4).ToList();
+        typeTokensOnCallLine.Should().Contain(t => t.Length == 3,
+            "'int' inline type annotation should produce a type token");
+    }
+
     #endregion
 
     #region LambdaExpression tokens
