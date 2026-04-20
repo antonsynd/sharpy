@@ -175,7 +175,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 21 partial classes (~15,256 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
+The `RoslynEmitter` is split into 21 partial classes (~15,620 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -359,7 +359,7 @@ Location: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
 
 **Warning tests**: `.warning` file — empty means expect no warnings, non-empty lines are expected substrings. Can combine with `.expected`.
 
-**C# snapshot tests**: `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Used selectively for ~174 representative fixtures to detect codegen changes that don't affect runtime output. To regenerate: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
+**C# snapshot tests**: `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Used selectively for ~186 representative fixtures to detect codegen changes that don't affect runtime output. To regenerate: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
 
 **Skip**: Add a `.skip` file next to the `.spy` file.
 
@@ -394,7 +394,7 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 
 `.github/workflows/`:
 - `dotnet10.yml` — Active; tests on .NET 10
-- `playground.yml` — Blazor WASM "Try Sharpy Online" playground
+- `docs.yml` — Deploy documentation (mkdocs + playground)
 - `python-build-tools.yml` — Runs pytest for `build_tools/` on Python 3.12
 - `benchmarks.yml` — Performance benchmarks
 - `vscode-extension.yml` — VS Code extension CI
@@ -403,89 +403,33 @@ An `.editorconfig` at the repo root enforces C# formatting and naming convention
 
 ## MCP Servers for Codebase Navigation
 
-Two MCP servers provide deeper codebase understanding than grep/glob. Use them instead of raw search tools for structural queries.
+Three MCP servers provide structural codebase understanding. Prefer them over raw Grep/Glob/Read for structural queries.
+
+> **Availability:** MCP servers are configured in `.mcp.json`. If a server is not connected in the current session, fall back to the next option in the decision guide below.
+
+### Decision Guide
+
+```
+Find a file by name/pattern?              → Glob
+Search text/regex across files?            → Grep
+Search strings/comments/non-symbol text?   → Grep
+Symbol definition, callers, shape?         → Serena (find_symbol, find_referencing_symbols)
+Edit a whole method/function?              → Serena (replace_symbol_body)
+Edit a few lines within a method?          → Edit (or Serena replace_content)
+Code review (risk-scored)?                 → code-review-graph (detect_changes + get_review_context)
+Impact analysis, call chains, dead code?   → code-review-graph (get_impact_radius, query_graph, refactor_tool)
+Architecture overview, communities?        → code-review-graph (get_architecture_overview, list_communities)
+Complexity triage?                         → CodeGraphContext (find_most_complex_functions)
+```
 
 ### Serena (Symbol-Level Navigation & Editing)
 
-Serena provides LSP-powered, symbol-aware operations. **Prefer Serena over Grep/Glob/Read for:**
+LSP-powered, symbol-aware operations: `find_symbol`, `find_referencing_symbols`, `get_symbols_overview`, `replace_symbol_body`, `insert_before_symbol`/`insert_after_symbol`, `rename_symbol`.
 
-| Task | Instead of... | Use Serena... |
-|------|---------------|---------------|
-| Find a method body | `Grep` for method name + `Read` the file | `find_symbol` with `include_body=True` |
-| Find all callers of a function | `Grep` for function name (noisy, misses renames) | `find_referencing_symbols` (precise, cross-file) |
-| Understand a class's shape | `Read` entire file | `get_symbols_overview` or `find_symbol` with `depth=1` |
-| Replace a method body | `Edit` with `old_string`/`new_string` | `replace_symbol_body` (knows exact boundaries) |
-| Add code before/after a symbol | `Edit` with surrounding context | `insert_before_symbol` / `insert_after_symbol` |
-| Rename a symbol across codebase | Multiple `Edit` calls + `Grep` | `rename_symbol` (handles all references) |
+### code-review-graph (Knowledge Graph)
 
-**When to still use Grep/Glob:** Pattern searches across strings/comments, searching for non-symbol text (TODO comments, magic values), file discovery by path pattern.
+Persistent incremental graph (auto-updates via hooks). Key tools: `detect_changes`, `get_review_context`, `get_impact_radius`, `get_affected_flows`, `query_graph` (callers_of/callees_of/imports_of/tests_for), `semantic_search_nodes`, `get_architecture_overview`, `refactor_tool`.
 
 ### CodeGraphContext (Architecture & Relationship Queries)
 
-CodeGraphContext pre-indexes the codebase into a graph database. **Prefer CodeGraphContext for:**
-
-| Task | Instead of... | Use CodeGraphContext... |
-|------|---------------|------------------------|
-| Impact analysis before refactoring | Manual Grep for callers across files | `analyze_code_relationships` with `find_callers` |
-| Find dead code | Guess-and-grep | `find_dead_code` |
-| Complexity triage | Read files manually | `find_most_complex_functions` |
-| "How does system X work?" | Multi-file Read + Grep | `analyze_code_relationships` |
-| Cross-language navigation | Separate Grep passes per file type | `find_code` (semantic search) |
-| Call chain analysis | Recursive Grep + Read | `execute_cypher_query` for graph traversal |
-
-**First-time setup:** Run `add_code_to_graph` on `src/Sharpy.Compiler/` and `src/Sharpy.Core/` to index the codebase. Use `watch_directory` for ongoing updates during active development.
-
-**Destructive tools** (`delete_repository`, `unwatch_directory`) require manual approval.
-
-### Decision Guide: Which Tool When?
-
-```
-Need to find a file by name/pattern?      → Glob
-Need to search text/regex across files?   → Grep
-Need symbol definition, callers, shape?   → Serena (find_symbol, find_referencing_symbols)
-Need to edit a whole method/function?     → Serena (replace_symbol_body)
-Need call chains, impact, dead code?      → CodeGraphContext
-Need architecture-level understanding?    → CodeGraphContext
-Need to edit a few lines within a method? → Edit (or Serena replace_content)
-```
-
-<!-- code-review-graph MCP tools -->
-## MCP Tools: code-review-graph
-
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
-
-> **Note:** The code-review-graph MCP server is configured in `.mcp.json`. If it is not connected in the current session, fall back to Serena and CodeGraphContext for structural queries, or Grep/Glob for text search.
-
-### When to use graph tools FIRST
-
-- **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
-- **Understanding impact**: `get_impact_radius` instead of manually tracing imports
-- **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
-- **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview` + `list_communities`
-
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
-
-### Key Tools
-
-| Tool | Use when |
-|------|----------|
-| `detect_changes` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context` | Need source snippets for review — token-efficient |
-| `get_impact_radius` | Understanding blast radius of a change |
-| `get_affected_flows` | Finding which execution paths are impacted |
-| `query_graph` | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes` | Finding functions/classes by name or keyword |
-| `get_architecture_overview` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
-
-### Workflow
-
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes` for code review.
-3. Use `get_affected_flows` to understand impact.
-4. Use `query_graph` pattern="tests_for" to check coverage.
+Graph database for deep analysis: `analyze_code_relationships`, `find_dead_code`, `find_most_complex_functions`, `find_code`, `execute_cypher_query`. **First-time setup:** Run `add_code_to_graph` on `src/Sharpy.Compiler/` and `src/Sharpy.Core/`.
