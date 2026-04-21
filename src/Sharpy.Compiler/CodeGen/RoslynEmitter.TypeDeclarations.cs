@@ -16,6 +16,17 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
+    /// <summary>
+    /// Specifies whether decorator-to-modifier generation is for a member (function/method)
+    /// or a type (class/struct/interface).
+    /// </summary>
+    private enum ModifierContext
+    {
+        /// <summary>Member-level: supports Virtual, Override, New, Readonly, Extern; adds mandatory static default.</summary>
+        Member,
+        /// <summary>Type-level: supports only Abstract, Final/Sealed, Static; no mandatory static default.</summary>
+        Type
+    }
     private MethodDeclarationSyntax GenerateFunctionDeclaration(FunctionDef func)
     {
         _cancellationToken.ThrowIfCancellationRequested();
@@ -183,11 +194,23 @@ internal partial class RoslynEmitter
         return parameter;
     }
 
+    /// <summary>
+    /// Convenience overload for member-level modifier generation (functions/methods).
+    /// </summary>
     private SyntaxTokenList GenerateModifiersFromDecorators(IReadOnlyList<Decorator> decorators)
+    {
+        return GenerateModifiersFromDecorators(decorators, ModifierContext.Member);
+    }
+
+    /// <summary>
+    /// Generates C# modifier tokens from Sharpy decorators. The <paramref name="context"/> parameter
+    /// controls which non-access modifiers are recognized and whether a mandatory static default is added.
+    /// </summary>
+    private SyntaxTokenList GenerateModifiersFromDecorators(IReadOnlyList<Decorator> decorators, ModifierContext context)
     {
         var tokens = new List<SyntaxToken>();
 
-        // Check for access modifiers
+        // Check for access modifiers (identical for both member and type contexts)
         bool hasAccessModifier = false;
         foreach (var decorator in decorators)
         {
@@ -218,7 +241,7 @@ internal partial class RoslynEmitter
             tokens.Add(Token(SyntaxKind.PublicKeyword));
         }
 
-        // Check for other modifiers
+        // Check for other modifiers (context-dependent)
         foreach (var decorator in decorators)
         {
             switch (decorator.Name)
@@ -229,21 +252,23 @@ internal partial class RoslynEmitter
                 case DecoratorNames.Abstract:
                     tokens.Add(Token(SyntaxKind.AbstractKeyword));
                     break;
-                case DecoratorNames.Virtual:
-                    tokens.Add(Token(SyntaxKind.VirtualKeyword));
-                    break;
-                case DecoratorNames.Override:
-                    tokens.Add(Token(SyntaxKind.OverrideKeyword));
-                    break;
+                case "sealed" when context == ModifierContext.Type:
                 case DecoratorNames.Final:
                     tokens.Add(Token(SyntaxKind.SealedKeyword));
+                    break;
+                case DecoratorNames.Virtual when context == ModifierContext.Member:
+                    tokens.Add(Token(SyntaxKind.VirtualKeyword));
+                    break;
+                case DecoratorNames.Override when context == ModifierContext.Member:
+                    tokens.Add(Token(SyntaxKind.OverrideKeyword));
                     break;
             }
         }
 
-        // For module-level functions, add static modifier if not already present
+        // For module-level functions (Member context), add static modifier if not already present
         // and if it's not a method (we'll handle this differently in classes)
-        if (!tokens.Any(t => t.IsKind(SyntaxKind.StaticKeyword) ||
+        if (context == ModifierContext.Member &&
+            !tokens.Any(t => t.IsKind(SyntaxKind.StaticKeyword) ||
                             t.IsKind(SyntaxKind.AbstractKeyword) ||
                             t.IsKind(SyntaxKind.VirtualKeyword) ||
                             t.IsKind(SyntaxKind.OverrideKeyword)))
@@ -297,7 +322,7 @@ internal partial class RoslynEmitter
         var className = NameMangler.Transform(classDef.Name, NameContext.Type);
 
         // Process decorators to determine modifiers
-        var modifiers = GenerateTypeModifiersFromDecorators(classDef.Decorators);
+        var modifiers = GenerateModifiersFromDecorators(classDef.Decorators, ModifierContext.Type);
 
         // Create class declaration
         var classDecl = ClassDeclaration(className)
@@ -675,7 +700,7 @@ internal partial class RoslynEmitter
         var structName = NameMangler.Transform(structDef.Name, NameContext.Type);
 
         // Process decorators to determine modifiers
-        var modifiers = GenerateTypeModifiersFromDecorators(structDef.Decorators);
+        var modifiers = GenerateModifiersFromDecorators(structDef.Decorators, ModifierContext.Type);
 
         // Create struct declaration
         var structDecl = StructDeclaration(structName)
@@ -734,7 +759,7 @@ internal partial class RoslynEmitter
         var interfaceName = NameMangler.Transform(interfaceDef.Name, NameContext.Interface);
 
         // Process decorators to determine modifiers (access modifiers)
-        var modifiers = GenerateTypeModifiersFromDecorators(interfaceDef.Decorators);
+        var modifiers = GenerateModifiersFromDecorators(interfaceDef.Decorators, ModifierContext.Type);
 
         // Create interface declaration
         var interfaceDecl = InterfaceDeclaration(interfaceName)
@@ -997,62 +1022,6 @@ internal partial class RoslynEmitter
         }
 
         return enumMember;
-    }
-
-    private SyntaxTokenList GenerateTypeModifiersFromDecorators(IReadOnlyList<Decorator> decorators)
-    {
-        var tokens = new List<SyntaxToken>();
-
-        // Check for access modifiers
-        bool hasAccessModifier = false;
-        foreach (var decorator in decorators)
-        {
-            switch (decorator.Name)
-            {
-                case DecoratorNames.Private:
-                    tokens.Add(Token(SyntaxKind.PrivateKeyword));
-                    hasAccessModifier = true;
-                    break;
-                case DecoratorNames.Protected:
-                    tokens.Add(Token(SyntaxKind.ProtectedKeyword));
-                    hasAccessModifier = true;
-                    break;
-                case DecoratorNames.Internal:
-                    tokens.Add(Token(SyntaxKind.InternalKeyword));
-                    hasAccessModifier = true;
-                    break;
-                case DecoratorNames.Public:
-                    tokens.Add(Token(SyntaxKind.PublicKeyword));
-                    hasAccessModifier = true;
-                    break;
-            }
-        }
-
-        // Default to public if no access modifier specified
-        if (!hasAccessModifier)
-        {
-            tokens.Add(Token(SyntaxKind.PublicKeyword));
-        }
-
-        // Check for other modifiers
-        foreach (var decorator in decorators)
-        {
-            switch (decorator.Name)
-            {
-                case DecoratorNames.Abstract:
-                    tokens.Add(Token(SyntaxKind.AbstractKeyword));
-                    break;
-                case "sealed":
-                case DecoratorNames.Final:
-                    tokens.Add(Token(SyntaxKind.SealedKeyword));
-                    break;
-                case DecoratorNames.Static:
-                    tokens.Add(Token(SyntaxKind.StaticKeyword));
-                    break;
-            }
-        }
-
-        return TokenList(tokens);
     }
 
     /// <summary>
