@@ -128,7 +128,7 @@ public class ItertoolsInfinite_Tests
         result.Should().Equal("hello", "hello", "hello");
     }
 
-    [Fact(Skip = "TODO(#578): RepeatIterator off-by-one bug — Repeat(x, 3u) yields 4 elements instead of 3")]
+    [Fact]
     public void Repeat_CountedMode_RepeatsExactNumberOfTimes()
     {
         var result = new List<int>();
@@ -141,7 +141,7 @@ public class ItertoolsInfinite_Tests
         result.Should().Equal(7, 7, 7);
     }
 
-    [Fact(Skip = "TODO(#578): RepeatIterator off-by-one bug — Repeat(x, 0u) yields 1 element instead of 0")]
+    [Fact]
     public void Repeat_CountZero_ProducesNoElements()
     {
         var result = new List<int>();

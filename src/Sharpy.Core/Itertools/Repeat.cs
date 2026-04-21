@@ -57,8 +57,8 @@ namespace Sharpy
                 }
 
                 _active = false;
-                _current = _elem;
-                return true;
+                _current = default;
+                return false;
             }
 
             _current = default;
