@@ -14,27 +14,9 @@ internal partial class TypeChecker
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
         // Handle None() — empty Optional constructor
-        if (call.Function is NoneLiteral && call.Arguments.Length == 0 && call.KeywordArguments.Length == 0)
-        {
-            if (_expectedType is OptionalType)
-            {
-                return _expectedType;
-            }
-            else if (_expectedType != null)
-            {
-                AddError($"'None()' can only construct Optional types, not '{_expectedType.GetDisplayName()}'",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNoneConstructor,
-                    span: call.Span);
-                return SemanticType.Unknown;
-            }
-            else
-            {
-                AddError("Cannot infer type for 'None()' without a type annotation. Add a type annotation like 'x: int? = None()'",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
-                    span: call.Span);
-                return SemanticType.Unknown;
-            }
-        }
+        var noneResult = CheckNoneConstruction(call);
+        if (noneResult != null)
+            return noneResult;
 
         // Check if this is a tagged union constructor shorthand (Some/Ok/Err)
         if (call.Function is Identifier constructorId && call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
@@ -77,153 +59,17 @@ internal partial class TypeChecker
             isOptionalNullConditional = objType is OptionalType;
         }
 
-        // Check event raise restriction: events can only be invoked from within the declaring class
-        if (call.Function is MemberAccess invokeMA && invokeMA.Member == "invoke")
-        {
-            // The object of .invoke() might be an event access (e.g., self.on_click?.invoke(...))
-            if (_semanticInfo.IsEventAccess(invokeMA.Object))
-            {
-                // Determine the event's declaring type
-                if (invokeMA.Object is MemberAccess eventMA)
-                {
-                    var eventOwner = ResolveEventOwner(eventMA);
-                    if (eventOwner != null && (_currentClass == null || !ReferenceEquals(_currentClass, eventOwner)))
-                    {
-                        AddError(
-                            $"Cannot raise event '{eventMA.Member}' from outside the declaring class",
-                            call.LineStart, call.ColumnStart,
-                            DiagnosticCodes.Semantic.RaiseEventOutsideClass,
-                            call.Span);
-                        return SemanticType.Void;
-                    }
-                }
-            }
-        }
+        // Validate event invoke restrictions and __init__() call tracking
+        var initEventResult = ValidateInitAndEventCalls(call);
+        if (initEventResult != null)
+            return initEventResult;
 
-        // Track super().__init__() calls AFTER validation completes
-        // (do this after CheckExpression so the validation doesn't see it as already called)
-        if (call.Function is MemberAccess ma && ma.Object is SuperExpression && ma.Member == DunderNames.Init)
-        {
-            _superInitCalled = true;
-        }
+        // Resolve function symbol early for constructor inference on arguments
+        var (earlyFuncSymbol, earlyParamOffset) = ResolveEarlyFunctionSymbol(call);
 
-        // Validate self.__init__() is only called inside a constructor
-        if (call.Function is MemberAccess selfInitMa &&
-            selfInitMa.Object is Identifier { Name: "self" } &&
-            selfInitMa.Member == DunderNames.Init)
-        {
-            if (_currentMethodName != DunderNames.Init)
-            {
-                AddError("self.__init__() can only be called inside a constructor (__init__)",
-                    call.LineStart, call.ColumnStart,
-                    code: DiagnosticCodes.Semantic.SelfInitOutsideConstructor,
-                    span: call.Span);
-            }
-            else if (_superInitCalled)
-            {
-                AddError("Cannot use both super().__init__() and self.__init__() in the same constructor",
-                    call.LineStart, call.ColumnStart,
-                    code: DiagnosticCodes.Semantic.ConflictingConstructorInitializers,
-                    span: call.Span);
-            }
-        }
-
-        // Try to resolve the function symbol early for constructor inference on arguments.
-        // For simple identifier calls (foo(Some(42))), we can look up the function before
-        // checking arguments, allowing _expectedType to be set per-parameter.
-        FunctionSymbol? earlyFuncSymbol = null;
-        int earlyParamOffset = 0; // offset to skip 'self' parameter for __init__ methods
-        if (call.Function is Identifier earlyId)
-        {
-            var earlySymbol = _symbolTable.Lookup(earlyId.Name);
-            if (earlySymbol is FunctionSymbol fs && !fs.IsGeneric)
-            {
-                // Only use early resolution for non-generic, non-overloaded functions.
-                // Generic functions need argument types first for inference.
-                // Overloaded builtins need argument types for resolution.
-                var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(earlyId.Name);
-                if (overloads == null || overloads.Count <= 1 || !overloads.Contains(fs))
-                {
-                    earlyFuncSymbol = fs;
-                }
-            }
-            else if (earlySymbol is TypeSymbol ts && !ts.IsGeneric)
-            {
-                // Constructor call: Person(Some(42)) — look up __init__ for parameter types.
-                // __init__ includes 'self' at index 0, but call arguments don't, so offset by 1.
-                var initMethod = ts.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
-                if (initMethod != null && !initMethod.IsGeneric)
-                {
-                    earlyFuncSymbol = initMethod;
-                    earlyParamOffset = 1; // skip 'self' parameter
-                }
-            }
-        }
-
-        // Check arguments and collect their types
-        // When we have an early function symbol or callee FunctionType, set _expectedType per-parameter
-        // to enable constructor inference (Some/None()/Ok/Err) in function arguments.
+        // Check arguments and keyword arguments, collecting their types
         var calleeFunctionType = calleeType as FunctionType;
-        var argTypes = new List<SemanticType>();
-        for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
-        {
-            var previousExpectedType = _expectedType;
-
-            // Handle spread arguments: *expr
-            if (call.Arguments[argIdx] is SpreadElement spreadArg)
-            {
-                var spreadValueType = CheckExpression(spreadArg.Value);
-
-                if (spreadValueType is TupleType tupleSpread)
-                {
-                    // Tuple spread: expand element types as individual arguments
-                    argTypes.AddRange(tupleSpread.ElementTypes);
-                }
-                else
-                {
-                    // Iterable spread: extract element type for variadic param matching
-                    var elemType = _typeInference.InferIterableElementType(spreadValueType);
-                    if (elemType != null)
-                        argTypes.Add(elemType);
-                    else
-                        argTypes.Add(SemanticType.Unknown);
-                }
-                _expectedType = previousExpectedType;
-                continue;
-            }
-
-            if (earlyFuncSymbol != null && argIdx + earlyParamOffset < earlyFuncSymbol.Parameters.Count)
-            {
-                var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
-                _expectedType = paramType is UnknownType ? null : paramType;
-            }
-            else if (calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)
-            {
-                var paramType = calleeFunctionType.ParameterTypes[argIdx];
-                _expectedType = paramType is UnknownType ? null : paramType;
-            }
-            argTypes.Add(CheckExpression(call.Arguments[argIdx]));
-            _expectedType = previousExpectedType;
-        }
-
-        // Check keyword arguments and collect their types
-        var kwargTypes = new Dictionary<string, SemanticType>();
-        foreach (var kwarg in call.KeywordArguments)
-        {
-            var previousExpectedType = _expectedType;
-            if (earlyFuncSymbol != null)
-            {
-                var param = earlyFuncSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
-                if (param != null)
-                {
-                    _expectedType = param.Type is UnknownType ? null : param.Type;
-                }
-            }
-            kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
-            _expectedType = previousExpectedType;
-        }
-
-        // Total argument count includes both positional and keyword arguments
+        var (argTypes, kwargTypes) = CheckCallArguments(call, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
         var totalArgCount = argTypes.Count + kwargTypes.Count;
 
         // Try to get the function symbol directly for better validation
@@ -258,131 +104,7 @@ internal partial class TypeChecker
                 }
                 else
                 {
-                    // Validate constructor arguments against __init__ parameters (skip 'self').
-                    // Only validate when there's a single __init__ (no overloads) — overloaded
-                    // constructors have complex resolution that the C# compiler handles.
-                    var initMethods = typeSymbol.Methods.Where(m => m.Name == DunderNames.Init).ToList();
-                    if (initMethods.Count == 1)
-                    {
-                        var initParams = initMethods[0].Parameters.Skip(1).ToList(); // skip 'self'
-
-                        // SPY0357: Check for iterable spread into non-variadic constructor
-                        if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
-                            return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
-
-                        // Validate argument count and positional-only/keyword-only constraints.
-                        // Skip type checking — the C# compiler handles type validation, and there
-                        // are edge cases (None to nullable, enum conversions) it handles correctly.
-                        ValidateCallArgumentsCountAndKinds(call, initParams, argTypes, kwargTypes, totalArgCount);
-                    }
-                    else if (initMethods.Count > 1)
-                    {
-                        // Multiple __init__ overloads — only check spread into non-variadic
-                        var firstInit = initMethods[0];
-                        var initParams = firstInit.Parameters.Skip(1).ToList();
-                        if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
-                            return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
-                    }
-
-                    // Cannot instantiate abstract classes
-                    if (typeSymbol.IsAbstract)
-                    {
-                        AddError($"Cannot instantiate abstract class '{typeSymbol.Name}'",
-                            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AbstractInstantiation,
-                            span: call.Span);
-                        return SemanticType.Unknown;
-                    }
-
-                    // For generic types called without type arguments (e.g., set()),
-                    // infer type arguments from the expected type annotation if available,
-                    // otherwise emit a diagnostic for empty constructors or fall back to
-                    // UnknownType args for wildcard matching.
-                    if (typeSymbol.IsGeneric)
-                    {
-                        List<SemanticType>? typeArgs = null;
-                        if (_expectedType is GenericType expectedGeneric
-                            && expectedGeneric.Name == typeSymbol.Name
-                            && expectedGeneric.TypeArguments.Count == typeSymbol.TypeParameters.Count
-                            && !expectedGeneric.TypeArguments.Any(ContainsTypeParameter))
-                        {
-                            typeArgs = expectedGeneric.TypeArguments;
-                        }
-                        else if (call.Arguments.Length == 0 && call.KeywordArguments.Length == 0)
-                        {
-                            // Empty generic constructor with no type annotation — cannot infer type args
-                            AddError($"Cannot infer type of empty {typeSymbol.Name} constructor; add a type annotation (e.g., x: {typeSymbol.Name}[...] = {typeSymbol.Name}())",
-                                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
-                                span: call.Span);
-                            return SemanticType.Unknown;
-                        }
-                        else if (call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
-                        {
-                            // Single-argument constructor: try to infer type args from iterable argument type
-                            var argType = argTypes.Count > 0 ? argTypes[0] : null;
-                            if (argType != null && argType != SemanticType.Unknown)
-                            {
-                                var elementType = _typeInference.InferIterableElementType(argType);
-                                if (elementType != null && elementType != SemanticType.Unknown)
-                                {
-                                    if (typeSymbol.Name is BuiltinNames.List or BuiltinNames.Set
-                                        && typeSymbol.TypeParameters.Count == 1)
-                                    {
-                                        typeArgs = new List<SemanticType> { elementType };
-                                    }
-                                    else if (typeSymbol.Name == BuiltinNames.Dict
-                                             && typeSymbol.TypeParameters.Count == 2
-                                             && elementType is TupleType tt && tt.ElementTypes.Count == 2)
-                                    {
-                                        typeArgs = new List<SemanticType> { tt.ElementTypes[0], tt.ElementTypes[1] };
-                                    }
-                                }
-                            }
-
-                            // Fallback: try __init__-based inference for user-defined generic constructors
-                            if (typeArgs == null)
-                            {
-                                typeArgs = TryInferConstructorTypeArgs(typeSymbol, call, argTypes);
-                            }
-                        }
-                        else
-                        {
-                            // Multiple arguments or keyword arguments: infer type args from __init__ parameters
-                            typeArgs = TryInferConstructorTypeArgs(typeSymbol, call, argTypes);
-                        }
-
-                        // If inference failed, fall back to UnknownType args for builtin
-                        // collections (lets C# compiler report the real error) or emit
-                        // a diagnostic for user-defined generic types.
-                        if (typeArgs == null)
-                        {
-                            if (typeSymbol.Name is BuiltinNames.List or BuiltinNames.Set or BuiltinNames.Dict)
-                            {
-                                typeArgs = Enumerable.Range(0, typeSymbol.TypeParameters.Count)
-                                    .Select(_ => (SemanticType)SemanticType.Unknown)
-                                    .ToList();
-                            }
-                            else
-                            {
-                                AddError(
-                                    $"Cannot infer type arguments for '{typeSymbol.Name}'; " +
-                                    $"use explicit syntax: {typeSymbol.Name}[{string.Join(", ", typeSymbol.TypeParameters.Select(tp => tp.Name))}](...)",
-                                    call.LineStart, call.ColumnStart,
-                                    code: DiagnosticCodes.Semantic.CannotInferGenericType,
-                                    span: call.Span);
-                                return SemanticType.Unknown;
-                            }
-                        }
-
-                        return new GenericType
-                        {
-                            Name = typeSymbol.Name,
-                            TypeArguments = typeArgs,
-                            GenericDefinition = typeSymbol
-                        };
-                    }
-
-                    // Constructor call returns an instance of the type
-                    return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                    return CheckConstructorCall(call, typeSymbol, argTypes, kwargTypes, totalArgCount);
                 }
             }
 
@@ -428,65 +150,11 @@ internal partial class TypeChecker
             }
         }
         // Handle union case construction: Shape.Circle(5.0) → new Shape.Circle(5.0)
-        // The calleeType is a UserDefinedType for the case class whose BaseType is the union.
         else if (call.Function is MemberAccess unionCaseAccess
             && calleeType is UserDefinedType caseUdt
             && caseUdt.Symbol?.BaseType is { TypeKind: TypeKind.Union } unionBaseSymbol)
         {
-            var caseFields = caseUdt.Symbol.Fields;
-
-            // For generic unions, substitute type parameters using the expected type
-            var typeParams = unionBaseSymbol.TypeParameters;
-            List<SemanticType>? typeArgs = null;
-            if (typeParams.Count > 0 && _expectedType is GenericType expectedGenericType
-                && expectedGenericType.Name == unionBaseSymbol.Name
-                && expectedGenericType.TypeArguments.Count == typeParams.Count)
-            {
-                typeArgs = expectedGenericType.TypeArguments;
-            }
-
-            // Validate argument count
-            if (argTypes.Count != caseFields.Count)
-            {
-                AddError($"Union case '{unionBaseSymbol.Name}.{caseUdt.Name}' expects {caseFields.Count} argument(s) but got {argTypes.Count}",
-                    call.LineStart, call.ColumnStart,
-                    code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                    span: call.Span);
-            }
-            else
-            {
-                // Validate argument types (with type parameter substitution for generics)
-                for (int i = 0; i < caseFields.Count; i++)
-                {
-                    var expectedFieldType = caseFields[i].Type;
-                    if (typeArgs != null)
-                    {
-                        expectedFieldType = SubstituteTypeParameters(expectedFieldType, typeParams, typeArgs);
-                    }
-
-                    if (!IsAssignable(argTypes[i], expectedFieldType))
-                    {
-                        AddError($"Argument {i + 1} has type '{argTypes[i].GetDisplayName()}' but field '{caseFields[i].Name}' expects '{expectedFieldType.GetDisplayName()}'",
-                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
-                            code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: call.Arguments[i].Span);
-                    }
-                }
-            }
-
-            // For generic unions, return a GenericType matching the expected type
-            if (typeArgs != null)
-            {
-                return new GenericType
-                {
-                    Name = unionBaseSymbol.Name,
-                    TypeArguments = typeArgs,
-                    GenericDefinition = unionBaseSymbol
-                };
-            }
-
-            // For non-generic unions, return the union base type
-            return new UserDefinedType { Name = unionBaseSymbol.Name, Symbol = unionBaseSymbol };
+            return CheckUnionCaseConstruction(call, caseUdt, unionBaseSymbol, argTypes);
         }
         // Handle member access function calls (e.g., module.function() or obj.method())
         // Skip super() calls - they're already validated by ValidateSuperMemberAccess
@@ -1666,6 +1334,404 @@ internal partial class TypeChecker
     /// FunctionSymbol from the class's __init__ method and using GenericTypeInferenceService.
     /// Returns null if inference fails (caller should fall back to error or UnknownType).
     /// </summary>
+    /// <summary>
+    /// Handles union case construction: validates arguments against case fields
+    /// and performs type parameter substitution for generic unions.
+    /// </summary>
+    private SemanticType CheckUnionCaseConstruction(
+        FunctionCall call, UserDefinedType caseUdt, TypeSymbol unionBaseSymbol,
+        List<SemanticType> argTypes)
+    {
+        var caseFields = caseUdt.Symbol!.Fields;
+
+        // For generic unions, substitute type parameters using the expected type
+        var typeParams = unionBaseSymbol.TypeParameters;
+        List<SemanticType>? typeArgs = null;
+        if (typeParams.Count > 0 && _expectedType is GenericType expectedGenericType
+            && expectedGenericType.Name == unionBaseSymbol.Name
+            && expectedGenericType.TypeArguments.Count == typeParams.Count)
+        {
+            typeArgs = expectedGenericType.TypeArguments;
+        }
+
+        // Validate argument count
+        if (argTypes.Count != caseFields.Count)
+        {
+            AddError($"Union case '{unionBaseSymbol.Name}.{caseUdt.Name}' expects {caseFields.Count} argument(s) but got {argTypes.Count}",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                span: call.Span);
+        }
+        else
+        {
+            // Validate argument types (with type parameter substitution for generics)
+            for (int i = 0; i < caseFields.Count; i++)
+            {
+                var expectedFieldType = caseFields[i].Type;
+                if (typeArgs != null)
+                {
+                    expectedFieldType = SubstituteTypeParameters(expectedFieldType, typeParams, typeArgs);
+                }
+
+                if (!IsAssignable(argTypes[i], expectedFieldType))
+                {
+                    AddError($"Argument {i + 1} has type '{argTypes[i].GetDisplayName()}' but field '{caseFields[i].Name}' expects '{expectedFieldType.GetDisplayName()}'",
+                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: call.Arguments[i].Span);
+                }
+            }
+        }
+
+        // For generic unions, return a GenericType matching the expected type
+        if (typeArgs != null)
+        {
+            return new GenericType
+            {
+                Name = unionBaseSymbol.Name,
+                TypeArguments = typeArgs,
+                GenericDefinition = unionBaseSymbol
+            };
+        }
+
+        // For non-generic unions, return the union base type
+        return new UserDefinedType { Name = unionBaseSymbol.Name, Symbol = unionBaseSymbol };
+    }
+
+    /// <summary>
+    /// Handles constructor calls: validates arguments against __init__ parameters,
+    /// checks for abstract instantiation, and infers generic type arguments.
+    /// </summary>
+    private SemanticType CheckConstructorCall(
+        FunctionCall call, TypeSymbol typeSymbol, List<SemanticType> argTypes,
+        Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
+    {
+        // Validate constructor arguments against __init__ parameters (skip 'self').
+        // Only validate when there's a single __init__ (no overloads) — overloaded
+        // constructors have complex resolution that the C# compiler handles.
+        var initMethods = typeSymbol.Methods.Where(m => m.Name == DunderNames.Init).ToList();
+        if (initMethods.Count == 1)
+        {
+            var initParams = initMethods[0].Parameters.Skip(1).ToList(); // skip 'self'
+
+            // SPY0357: Check for iterable spread into non-variadic constructor
+            if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
+                return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+
+            // Validate argument count and positional-only/keyword-only constraints.
+            // Skip type checking — the C# compiler handles type validation, and there
+            // are edge cases (None to nullable, enum conversions) it handles correctly.
+            ValidateCallArgumentsCountAndKinds(call, initParams, argTypes, kwargTypes, totalArgCount);
+        }
+        else if (initMethods.Count > 1)
+        {
+            // Multiple __init__ overloads — only check spread into non-variadic
+            var firstInit = initMethods[0];
+            var initParams = firstInit.Parameters.Skip(1).ToList();
+            if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
+                return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+        }
+
+        // Cannot instantiate abstract classes
+        if (typeSymbol.IsAbstract)
+        {
+            AddError($"Cannot instantiate abstract class '{typeSymbol.Name}'",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AbstractInstantiation,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+
+        // For generic types called without type arguments (e.g., set()),
+        // infer type arguments from the expected type annotation if available,
+        // otherwise emit a diagnostic for empty constructors or fall back to
+        // UnknownType args for wildcard matching.
+        if (typeSymbol.IsGeneric)
+        {
+            List<SemanticType>? typeArgs = null;
+            if (_expectedType is GenericType expectedGeneric
+                && expectedGeneric.Name == typeSymbol.Name
+                && expectedGeneric.TypeArguments.Count == typeSymbol.TypeParameters.Count
+                && !expectedGeneric.TypeArguments.Any(ContainsTypeParameter))
+            {
+                typeArgs = expectedGeneric.TypeArguments;
+            }
+            else if (call.Arguments.Length == 0 && call.KeywordArguments.Length == 0)
+            {
+                // Empty generic constructor with no type annotation — cannot infer type args
+                AddError($"Cannot infer type of empty {typeSymbol.Name} constructor; add a type annotation (e.g., x: {typeSymbol.Name}[...] = {typeSymbol.Name}())",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+                    span: call.Span);
+                return SemanticType.Unknown;
+            }
+            else if (call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
+            {
+                // Single-argument constructor: try to infer type args from iterable argument type
+                var argType = argTypes.Count > 0 ? argTypes[0] : null;
+                if (argType != null && argType != SemanticType.Unknown)
+                {
+                    var elementType = _typeInference.InferIterableElementType(argType);
+                    if (elementType != null && elementType != SemanticType.Unknown)
+                    {
+                        if (typeSymbol.Name is BuiltinNames.List or BuiltinNames.Set
+                            && typeSymbol.TypeParameters.Count == 1)
+                        {
+                            typeArgs = new List<SemanticType> { elementType };
+                        }
+                        else if (typeSymbol.Name == BuiltinNames.Dict
+                                 && typeSymbol.TypeParameters.Count == 2
+                                 && elementType is TupleType tt && tt.ElementTypes.Count == 2)
+                        {
+                            typeArgs = new List<SemanticType> { tt.ElementTypes[0], tt.ElementTypes[1] };
+                        }
+                    }
+                }
+
+                // Fallback: try __init__-based inference for user-defined generic constructors
+                if (typeArgs == null)
+                {
+                    typeArgs = TryInferConstructorTypeArgs(typeSymbol, call, argTypes);
+                }
+            }
+            else
+            {
+                // Multiple arguments or keyword arguments: infer type args from __init__ parameters
+                typeArgs = TryInferConstructorTypeArgs(typeSymbol, call, argTypes);
+            }
+
+            // If inference failed, fall back to UnknownType args for builtin
+            // collections (lets C# compiler report the real error) or emit
+            // a diagnostic for user-defined generic types.
+            if (typeArgs == null)
+            {
+                if (typeSymbol.Name is BuiltinNames.List or BuiltinNames.Set or BuiltinNames.Dict)
+                {
+                    typeArgs = Enumerable.Range(0, typeSymbol.TypeParameters.Count)
+                        .Select(_ => (SemanticType)SemanticType.Unknown)
+                        .ToList();
+                }
+                else
+                {
+                    AddError(
+                        $"Cannot infer type arguments for '{typeSymbol.Name}'; " +
+                        $"use explicit syntax: {typeSymbol.Name}[{string.Join(", ", typeSymbol.TypeParameters.Select(tp => tp.Name))}](...)",
+                        call.LineStart, call.ColumnStart,
+                        code: DiagnosticCodes.Semantic.CannotInferGenericType,
+                        span: call.Span);
+                    return SemanticType.Unknown;
+                }
+            }
+
+            return new GenericType
+            {
+                Name = typeSymbol.Name,
+                TypeArguments = typeArgs,
+                GenericDefinition = typeSymbol
+            };
+        }
+
+        // Constructor call returns an instance of the type
+        return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+    }
+
+    /// <summary>
+    /// Checks call arguments and keyword arguments, collecting their types.
+    /// Sets _expectedType per-parameter when an early function symbol or callee FunctionType
+    /// is available, enabling constructor inference (Some/None()/Ok/Err) in function arguments.
+    /// </summary>
+    private (List<SemanticType> ArgTypes, Dictionary<string, SemanticType> KwargTypes) CheckCallArguments(
+        FunctionCall call, FunctionSymbol? earlyFuncSymbol, int earlyParamOffset, FunctionType? calleeFunctionType)
+    {
+        var argTypes = new List<SemanticType>();
+        for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
+        {
+            var previousExpectedType = _expectedType;
+
+            // Handle spread arguments: *expr
+            if (call.Arguments[argIdx] is SpreadElement spreadArg)
+            {
+                var spreadValueType = CheckExpression(spreadArg.Value);
+
+                if (spreadValueType is TupleType tupleSpread)
+                {
+                    // Tuple spread: expand element types as individual arguments
+                    argTypes.AddRange(tupleSpread.ElementTypes);
+                }
+                else
+                {
+                    // Iterable spread: extract element type for variadic param matching
+                    var elemType = _typeInference.InferIterableElementType(spreadValueType);
+                    if (elemType != null)
+                        argTypes.Add(elemType);
+                    else
+                        argTypes.Add(SemanticType.Unknown);
+                }
+                _expectedType = previousExpectedType;
+                continue;
+            }
+
+            if (earlyFuncSymbol != null && argIdx + earlyParamOffset < earlyFuncSymbol.Parameters.Count)
+            {
+                var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
+                _expectedType = paramType is UnknownType ? null : paramType;
+            }
+            else if (calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)
+            {
+                var paramType = calleeFunctionType.ParameterTypes[argIdx];
+                _expectedType = paramType is UnknownType ? null : paramType;
+            }
+            argTypes.Add(CheckExpression(call.Arguments[argIdx]));
+            _expectedType = previousExpectedType;
+        }
+
+        // Check keyword arguments and collect their types
+        var kwargTypes = new Dictionary<string, SemanticType>();
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            var previousExpectedType = _expectedType;
+            if (earlyFuncSymbol != null)
+            {
+                var param = earlyFuncSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
+                if (param != null)
+                {
+                    _expectedType = param.Type is UnknownType ? null : param.Type;
+                }
+            }
+            kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
+            _expectedType = previousExpectedType;
+        }
+
+        return (argTypes, kwargTypes);
+    }
+
+    /// <summary>
+    /// Resolves the function symbol early for constructor inference on arguments.
+    /// For simple identifier calls (foo(Some(42))), looks up the function before
+    /// checking arguments, allowing _expectedType to be set per-parameter.
+    /// </summary>
+    /// <returns>The early-resolved function symbol and parameter offset (0 for functions, 1 for constructors skipping 'self').</returns>
+    private (FunctionSymbol? Symbol, int ParamOffset) ResolveEarlyFunctionSymbol(FunctionCall call)
+    {
+        if (call.Function is not Identifier earlyId)
+            return (null, 0);
+
+        var earlySymbol = _symbolTable.Lookup(earlyId.Name);
+        if (earlySymbol is FunctionSymbol fs && !fs.IsGeneric)
+        {
+            // Only use early resolution for non-generic, non-overloaded functions.
+            // Generic functions need argument types first for inference.
+            // Overloaded builtins need argument types for resolution.
+            var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(earlyId.Name);
+            if (overloads == null || overloads.Count <= 1 || !overloads.Contains(fs))
+            {
+                return (fs, 0);
+            }
+        }
+        else if (earlySymbol is TypeSymbol ts && !ts.IsGeneric)
+        {
+            // Constructor call: Person(Some(42)) — look up __init__ for parameter types.
+            // __init__ includes 'self' at index 0, but call arguments don't, so offset by 1.
+            var initMethod = ts.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
+            if (initMethod != null && !initMethod.IsGeneric)
+            {
+                return (initMethod, 1); // skip 'self' parameter
+            }
+        }
+
+        return (null, 0);
+    }
+
+    /// <summary>
+    /// Validates event invoke restrictions and __init__() call tracking.
+    /// Checks that events are only raised from within the declaring class,
+    /// tracks super().__init__() calls, and validates self.__init__() usage.
+    /// Returns a type if an early return is needed (e.g., event invoke violation),
+    /// or null if the dispatcher should continue.
+    /// </summary>
+    private SemanticType? ValidateInitAndEventCalls(FunctionCall call)
+    {
+        // Check event raise restriction: events can only be invoked from within the declaring class
+        if (call.Function is MemberAccess invokeMA && invokeMA.Member == "invoke")
+        {
+            // The object of .invoke() might be an event access (e.g., self.on_click?.invoke(...))
+            if (_semanticInfo.IsEventAccess(invokeMA.Object))
+            {
+                // Determine the event's declaring type
+                if (invokeMA.Object is MemberAccess eventMA)
+                {
+                    var eventOwner = ResolveEventOwner(eventMA);
+                    if (eventOwner != null && (_currentClass == null || !ReferenceEquals(_currentClass, eventOwner)))
+                    {
+                        AddError(
+                            $"Cannot raise event '{eventMA.Member}' from outside the declaring class",
+                            call.LineStart, call.ColumnStart,
+                            DiagnosticCodes.Semantic.RaiseEventOutsideClass,
+                            call.Span);
+                        return SemanticType.Void;
+                    }
+                }
+            }
+        }
+
+        // Track super().__init__() calls AFTER validation completes
+        // (do this after CheckExpression so the validation doesn't see it as already called)
+        if (call.Function is MemberAccess ma && ma.Object is SuperExpression && ma.Member == DunderNames.Init)
+        {
+            _superInitCalled = true;
+        }
+
+        // Validate self.__init__() is only called inside a constructor
+        if (call.Function is MemberAccess selfInitMa &&
+            selfInitMa.Object is Identifier { Name: "self" } &&
+            selfInitMa.Member == DunderNames.Init)
+        {
+            if (_currentMethodName != DunderNames.Init)
+            {
+                AddError("self.__init__() can only be called inside a constructor (__init__)",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.SelfInitOutsideConstructor,
+                    span: call.Span);
+            }
+            else if (_superInitCalled)
+            {
+                AddError("Cannot use both super().__init__() and self.__init__() in the same constructor",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.ConflictingConstructorInitializers,
+                    span: call.Span);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Handles None() — empty Optional constructor.
+    /// Returns the result type if this is a None() call, or null if the dispatcher should continue.
+    /// </summary>
+    private SemanticType? CheckNoneConstruction(FunctionCall call)
+    {
+        if (call.Function is not NoneLiteral || call.Arguments.Length != 0 || call.KeywordArguments.Length != 0)
+            return null;
+
+        if (_expectedType is OptionalType)
+        {
+            return _expectedType;
+        }
+        else if (_expectedType != null)
+        {
+            AddError($"'None()' can only construct Optional types, not '{_expectedType.GetDisplayName()}'",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNoneConstructor,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+        else
+        {
+            AddError("Cannot infer type for 'None()' without a type annotation. Add a type annotation like 'x: int? = None()'",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+    }
+
     private List<SemanticType>? TryInferConstructorTypeArgs(
         TypeSymbol typeSymbol, FunctionCall call, List<SemanticType> argTypes)
     {
