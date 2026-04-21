@@ -1,0 +1,6 @@
+def main():
+    s: str = dr"""
+        \d+
+        \s+
+        """
+    print(s)

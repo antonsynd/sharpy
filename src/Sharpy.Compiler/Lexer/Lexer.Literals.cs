@@ -124,6 +124,273 @@ public partial class Lexer
     }
 
 
+    /// <summary>
+    /// Read a dedented string (d"""...""" or d"..."), per PEP 822.
+    /// For triple-quoted d-strings, strips common indentation based on the
+    /// indentation of the closing """ line. Single-line d"..." is a pass-through.
+    /// </summary>
+    private Token ReadDedentedString()
+    {
+        var startLine = _line;
+        var startColumn = _column;
+        var startPosition = _position;
+
+        // Skip 'd'
+        _position++;
+        _column++;
+
+        var quote = _source[_position];
+        _position++;
+        _column++;
+
+        // Check for triple-quoted
+        var isTriple = _position + 1 < _source.Length &&
+                       _source[_position] == quote &&
+                       _source[_position + 1] == quote;
+
+        if (isTriple)
+        {
+            _position += 2;
+            _column += 2;
+            // Reuse the normal triple-quote reader to collect raw content (with escape processing)
+            var innerToken = ReadTripleQuotedString(quote, startLine, startColumn, startPosition);
+            var dedented = ApplyDedentation(innerToken.Value, startLine, startColumn);
+            return innerToken with { Value = dedented };
+        }
+
+        // Single-line d"..." — read as a normal string (pass-through, no dedent)
+        var sb = new StringBuilder();
+        while (_position < _source.Length)
+        {
+            var c = _source[_position];
+
+            if (c == quote)
+            {
+                _position++;
+                _column++;
+                var sourceLength = _position - startPosition;
+                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
+            }
+
+            if (c == '\\')
+            {
+                _position++;
+                _column++;
+                if (_position >= _source.Length)
+                    throw ReportError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
+
+                sb.Append(ProcessEscapeSequence());
+            }
+            else if (c == '\n' || c == '\r')
+            {
+                throw ReportError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
+            }
+            else
+            {
+                sb.Append(c);
+                _position++;
+                _column++;
+            }
+        }
+
+        throw ReportError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
+    }
+
+    /// <summary>
+    /// Read a dedented raw string (dr"""...""" or dr"...").
+    /// Like ReadDedentedString, but the content is treated as a raw string (no escape processing).
+    /// </summary>
+    private Token ReadDedentedRawString()
+    {
+        var startLine = _line;
+        var startColumn = _column;
+        var startPosition = _position;
+
+        // Skip 'd'
+        _position++;
+        _column++;
+        // Skip 'r'
+        _position++;
+        _column++;
+
+        var quote = _source[_position];
+        _position++;
+        _column++;
+
+        // Check for triple-quoted raw string
+        var isTriple = _position + 1 < _source.Length &&
+                       _source[_position] == quote &&
+                       _source[_position + 1] == quote;
+
+        if (isTriple)
+        {
+            _position += 2;
+            _column += 2;
+
+            var sb = new StringBuilder();
+            while (_position < _source.Length)
+            {
+                if (_source[_position] == quote &&
+                    _position + 2 < _source.Length &&
+                    _source[_position + 1] == quote &&
+                    _source[_position + 2] == quote)
+                {
+                    _position += 3;
+                    _column += 3;
+                    var sourceLength = _position - startPosition;
+                    var dedented = ApplyDedentation(sb.ToString(), startLine, startColumn);
+                    return CreateToken(TokenType.RawString, dedented, startLine, startColumn, startPosition, sourceLength);
+                }
+
+                var c = _source[_position];
+                if (c == '\n')
+                {
+                    sb.Append(c);
+                    _position++;
+                    _line++;
+                    _column = 1;
+                }
+                else if (c == '\r' && Peek() == '\n')
+                {
+                    sb.Append('\n');
+                    _position += 2;
+                    _line++;
+                    _column = 1;
+                }
+                else
+                {
+                    sb.Append(c);
+                    _position++;
+                    _column++;
+                }
+            }
+            throw ReportError("Unterminated raw string", _line, _column, DiagnosticCodes.Lexer.UnterminatedRawString);
+        }
+
+        // Single-line dr"..." — pass-through (no dedent, no escapes)
+        var sb2 = new StringBuilder();
+        while (_position < _source.Length)
+        {
+            var c = _source[_position];
+
+            if (c == quote)
+            {
+                _position++;
+                _column++;
+                var sourceLength = _position - startPosition;
+                return CreateToken(TokenType.RawString, sb2.ToString(), startLine, startColumn, startPosition, sourceLength);
+            }
+
+            if (c == '\n' || c == '\r')
+                throw ReportError("Unterminated raw string", _line, _column, DiagnosticCodes.Lexer.UnterminatedRawString);
+
+            sb2.Append(c);
+            _position++;
+            _column++;
+        }
+
+        throw ReportError("Unterminated raw string", _line, _column, DiagnosticCodes.Lexer.UnterminatedRawString);
+    }
+
+    /// <summary>
+    /// Apply PEP 822 dedentation to triple-quoted d-string content.
+    /// The indent of the closing delimiter's line determines how many characters
+    /// are stripped from each content line. Emits SPY0029 if a content line does
+    /// not start with that many whitespace chars.
+    /// </summary>
+    private string ApplyDedentation(string content, int diagLine, int diagColumn)
+    {
+        // Single-line content (no newlines) — nothing to dedent.
+        if (!content.Contains('\n', StringComparison.Ordinal))
+            return content;
+
+        var lines = content.Split('\n');
+        // The last line corresponds to the indentation immediately before the closing """.
+        // It must consist only of whitespace.
+        var lastLine = lines[lines.Length - 1];
+        if (!IsAllWhitespace(lastLine))
+        {
+            _diagnostics.AddError(
+                "Closing \"\"\" of a dedented string must appear on its own line",
+                null, diagLine, diagColumn,
+                code: DiagnosticCodes.Lexer.DedentedStringIndentationError,
+                phase: CompilerPhase.Lexer);
+            return content;
+        }
+
+        var stripAmount = lastLine.Length;
+
+        // Build result from all lines except the trailing indentation line.
+        // If there was a leading newline right after the opening """, lines[0] is empty
+        // (or whitespace-only) and we drop it.
+        var startIndex = 0;
+        if (lines.Length >= 1 && IsAllWhitespace(lines[0]))
+            startIndex = 1;
+
+        var endIndexExclusive = lines.Length - 1; // drop trailing indent line
+
+        var sb = new StringBuilder();
+        for (int i = startIndex; i < endIndexExclusive; i++)
+        {
+            var line = lines[i];
+            if (IsAllWhitespace(line))
+            {
+                // Blank or whitespace-only line: strip up to stripAmount leading whitespace
+                // (matches textwrap.dedent-style behaviour for blank lines, no error).
+                if (line.Length <= stripAmount)
+                {
+                    // Drop entirely (was only indentation, becomes empty line)
+                    sb.Append(string.Empty);
+                }
+                else
+                {
+                    sb.Append(line.Substring(stripAmount));
+                }
+            }
+            else if (!LineStartsWithNWhitespace(line, stripAmount))
+            {
+                _diagnostics.AddError(
+                    $"Line in dedented string is less-indented than the closing delimiter (expected at least {stripAmount} leading whitespace characters)",
+                    span: null, diagLine, diagColumn,
+                    code: DiagnosticCodes.Lexer.DedentedStringIndentationError,
+                    phase: CompilerPhase.Lexer);
+                sb.Append(line);
+            }
+            else
+            {
+                sb.Append(line.Substring(stripAmount));
+            }
+
+            if (i < endIndexExclusive - 1)
+                sb.Append('\n');
+        }
+
+        return sb.ToString();
+    }
+
+    private static bool IsAllWhitespace(string s)
+    {
+        for (int i = 0; i < s.Length; i++)
+        {
+            var c = s[i];
+            if (c != ' ' && c != '\t')
+                return false;
+        }
+        return true;
+    }
+
+    private static bool LineStartsWithNWhitespace(string line, int n)
+    {
+        if (line.Length < n) return false;
+        for (int i = 0; i < n; i++)
+        {
+            var c = line[i];
+            if (c != ' ' && c != '\t')
+                return false;
+        }
+        return true;
+    }
+
     private Token ReadRawString()
     {
         var startLine = _line;

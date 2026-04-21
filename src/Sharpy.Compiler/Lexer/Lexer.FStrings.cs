@@ -11,6 +11,7 @@ public partial class Lexer
         public bool IsTriple { get; set; }
         public int BraceDepth { get; set; }
         public bool InFormatSpec { get; set; }  // Tracks if we're processing format specification after ':'
+        public int DedentAmount { get; set; }   // PEP 822: number of whitespace chars to strip after each \n (0 = no dedent)
     }
 
     /// <summary>
@@ -50,6 +51,222 @@ public partial class Lexer
         });
 
         return CreateToken(TokenType.FStringStart, isTriple ? $"f{quote}{quote}{quote}" : $"f{quote}", startLine, startColumn, startPosition);
+    }
+
+    /// <summary>
+    /// Read the start of a dedented f-string (df"..."), per PEP 822.
+    /// For triple-quoted df-strings, determines the dedent amount from the closing """ line
+    /// via a pre-scan, and stores it on the f-string context so NextFStringToken strips
+    /// matching whitespace from each subsequent line's FStringText.
+    /// For single-quoted df"...", this is equivalent to a regular f-string (no dedent).
+    /// </summary>
+    private Token ReadDedentedFStringStart()
+    {
+        var startLine = _line;
+        var startColumn = _column;
+        var startPosition = _position;
+
+        // Skip 'd'
+        _position++;
+        _column++;
+        // Skip 'f'
+        _position++;
+        _column++;
+
+        var quote = _source[_position];
+        _position++;
+        _column++;
+
+        // Check for triple-quoted df-string
+        var isTriple = _position + 1 < _source.Length &&
+                       _source[_position] == quote &&
+                       _source[_position + 1] == quote;
+
+        int dedentAmount = 0;
+        if (isTriple)
+        {
+            _position += 2;
+            _column += 2;
+
+            dedentAmount = PrescanDedentedTripleFString(quote);
+
+            // Skip a leading newline immediately after the opening """ (and the
+            // dedent whitespace that follows on the next line). This matches the
+            // plain d-string behaviour where the first empty/whitespace-only line
+            // is removed.
+            if (dedentAmount > 0 && _position < _source.Length)
+            {
+                if (_source[_position] == '\r' && _position + 1 < _source.Length && _source[_position + 1] == '\n')
+                {
+                    _position += 2;
+                    _line++;
+                    _column = 1;
+                    SkipDedentWhitespace(dedentAmount);
+                }
+                else if (_source[_position] == '\n')
+                {
+                    _position++;
+                    _line++;
+                    _column = 1;
+                    SkipDedentWhitespace(dedentAmount);
+                }
+            }
+        }
+
+        // Push f-string context onto stack
+        _fstringStack.Push(new FStringContext
+        {
+            QuoteChar = quote,
+            IsTriple = isTriple,
+            BraceDepth = 0,
+            DedentAmount = dedentAmount
+        });
+
+        return CreateToken(TokenType.FStringStart, isTriple ? $"df{quote}{quote}{quote}" : $"df{quote}", startLine, startColumn, startPosition);
+    }
+
+    /// <summary>
+    /// Scan forward from the current position to find the closing """ of a triple-quoted
+    /// f-string, and return the number of whitespace characters on its line (the dedent amount).
+    /// Tracks brace depth so that """ sequences inside interpolated expressions are ignored.
+    /// Returns 0 if no valid whitespace-only line before the close could be determined.
+    /// Does not mutate lexer state.
+    /// </summary>
+    private int PrescanDedentedTripleFString(char quote)
+    {
+        int i = _position;
+        int lastLineStart = i;
+        int braceDepth = 0;
+        while (i < _source.Length)
+        {
+            char c = _source[i];
+
+            // Skip backslash escapes (only meaningful outside expressions, but harmless inside)
+            if (c == '\\' && i + 1 < _source.Length)
+            {
+                i += 2;
+                continue;
+            }
+
+            if (braceDepth == 0)
+            {
+                // Check for closing triple quote
+                if (c == quote && i + 2 < _source.Length &&
+                    _source[i + 1] == quote && _source[i + 2] == quote)
+                {
+                    int count = 0;
+                    for (int j = lastLineStart; j < i; j++)
+                    {
+                        if (_source[j] == ' ' || _source[j] == '\t')
+                            count++;
+                        else
+                            return 0;
+                    }
+                    return count;
+                }
+
+                // Handle escaped braces {{ and }}
+                if (c == '{' && i + 1 < _source.Length && _source[i + 1] == '{')
+                {
+                    i += 2;
+                    continue;
+                }
+                if (c == '}' && i + 1 < _source.Length && _source[i + 1] == '}')
+                {
+                    i += 2;
+                    continue;
+                }
+
+                if (c == '{')
+                {
+                    braceDepth++;
+                    i++;
+                    continue;
+                }
+            }
+            else
+            {
+                if (c == '{')
+                {
+                    braceDepth++;
+                    i++;
+                    continue;
+                }
+                if (c == '}')
+                {
+                    braceDepth--;
+                    i++;
+                    continue;
+                }
+            }
+
+            if (c == '\n')
+                lastLineStart = i + 1;
+
+            i++;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Returns true if the current position is at a newline that is immediately
+    /// followed by DedentAmount whitespace chars (or fewer, if the close is less indented)
+    /// and then the closing triple quote. Used to drop the pre-close newline in df-strings.
+    /// Does not mutate lexer state.
+    /// </summary>
+    private bool IsPreCloseNewline(FStringContext context)
+    {
+        int i = _position;
+        // Advance past the newline (\r\n or \n)
+        if (i < _source.Length && _source[i] == '\r')
+            i++;
+        if (i < _source.Length && _source[i] == '\n')
+            i++;
+
+        // Skip up to DedentAmount whitespace chars
+        int remaining = context.DedentAmount;
+        while (remaining > 0 && i < _source.Length)
+        {
+            var c = _source[i];
+            if (c == ' ' || c == '\t')
+            {
+                i++;
+                remaining--;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        // Check for closing triple quote
+        return i + 2 < _source.Length &&
+               _source[i] == context.QuoteChar &&
+               _source[i + 1] == context.QuoteChar &&
+               _source[i + 2] == context.QuoteChar;
+    }
+
+    /// <summary>
+    /// Skip up to DedentAmount leading whitespace characters from the current position,
+    /// advancing _position and _column. Stops if a non-whitespace char is encountered.
+    /// </summary>
+    private void SkipDedentWhitespace(int dedentAmount)
+    {
+        int remaining = dedentAmount;
+        while (remaining > 0 && _position < _source.Length)
+        {
+            var c = _source[_position];
+            if (c == ' ' || c == '\t')
+            {
+                _position++;
+                _column++;
+                remaining--;
+            }
+            else
+            {
+                break;
+            }
+        }
     }
 
     /// <summary>
@@ -339,10 +556,27 @@ public partial class Lexer
                 {
                     throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
                 }
+
+                // PEP 822: For dedented f-strings, if the newline is followed by
+                // DedentAmount whitespace chars and then the closing """, that newline
+                // is part of the closing delimiter and should not be emitted.
+                if (context.DedentAmount > 0 && IsPreCloseNewline(context))
+                {
+                    // Consume the \n and the dedent whitespace; leave position at """.
+                    _position++;
+                    _line++;
+                    _column = 1;
+                    SkipDedentWhitespace(context.DedentAmount);
+                    continue;
+                }
+
                 sb.Append(c);
                 _position++;
                 _line++;
                 _column = 1;
+
+                if (context.DedentAmount > 0)
+                    SkipDedentWhitespace(context.DedentAmount);
             }
             else if (c == '\r')
             {
@@ -350,6 +584,19 @@ public partial class Lexer
                 {
                     throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
                 }
+
+                if (context.DedentAmount > 0 && IsPreCloseNewline(context))
+                {
+                    if (_position + 1 < _source.Length && _source[_position + 1] == '\n')
+                        _position += 2;
+                    else
+                        _position++;
+                    _line++;
+                    _column = 1;
+                    SkipDedentWhitespace(context.DedentAmount);
+                    continue;
+                }
+
                 if (_position + 1 < _source.Length && _source[_position + 1] == '\n')
                 {
                     sb.Append('\n');
@@ -362,6 +609,9 @@ public partial class Lexer
                 }
                 _line++;
                 _column = 1;
+
+                if (context.DedentAmount > 0)
+                    SkipDedentWhitespace(context.DedentAmount);
             }
             // Regular character
             else

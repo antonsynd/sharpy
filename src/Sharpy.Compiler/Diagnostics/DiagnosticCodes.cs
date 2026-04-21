@@ -24,8 +24,8 @@ public static class DiagnosticCodes
 {
     /// <summary>
     /// Lexer diagnostic codes (SPY0001-SPY0099).
-    /// Active: SPY0001-SPY0028 (28 codes)
-    /// Reserved: SPY0029-SPY0099 (71 codes for future lexer diagnostics)
+    /// Active: SPY0001-SPY0029 (29 codes)
+    /// Reserved: SPY0030-SPY0099 (70 codes for future lexer diagnostics)
     /// </summary>
     public static class Lexer
     {
@@ -92,7 +92,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0029-SPY0099: Reserved for future lexer diagnostics
+        #region D-string (dedented) errors (SPY0029)
+
+        public const string DedentedStringIndentationError = "SPY0029"; // Active
+
+        #endregion
+
+        // SPY0030-SPY0099: Reserved for future lexer diagnostics
     }
 
     /// <summary>

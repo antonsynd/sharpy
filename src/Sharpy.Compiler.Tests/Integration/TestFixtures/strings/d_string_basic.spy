@@ -1,0 +1,17 @@
+def main():
+    a: str = d"""
+        hello
+        world
+        """
+    print(a)
+
+    b: str = d"""
+        line1
+
+        line3
+        """
+    print(b)
+
+    # Single-line d"..." is pass-through
+    c: str = d"plain"
+    print(c)

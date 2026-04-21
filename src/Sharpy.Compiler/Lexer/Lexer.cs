@@ -485,6 +485,21 @@ public partial class Lexer
             (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
             return LogAndReturn(ReadByteString());
 
+        // Dedented raw strings (dr"""...""") — check before plain d to disambiguate
+        if (current == 'd' && _position + 1 < _source.Length && _source[_position + 1] == 'r' &&
+            _position + 2 < _source.Length && (_source[_position + 2] == '"' || _source[_position + 2] == '\''))
+            return LogAndReturn(ReadDedentedRawString());
+
+        // Dedented f-strings (df"""...""") — check before plain d to disambiguate
+        if (current == 'd' && _position + 1 < _source.Length && _source[_position + 1] == 'f' &&
+            _position + 2 < _source.Length && (_source[_position + 2] == '"' || _source[_position + 2] == '\''))
+            return LogAndReturn(ReadDedentedFStringStart());
+
+        // D-strings (dedented multiline, PEP 822)
+        if (current == 'd' && _position + 1 < _source.Length &&
+            (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
+            return LogAndReturn(ReadDedentedString());
+
         // Backtick-delimited literal names
         if (current == '`')
             return LogAndReturn(ReadLiteralName());

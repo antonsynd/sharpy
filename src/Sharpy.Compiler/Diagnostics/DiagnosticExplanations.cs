@@ -182,6 +182,11 @@ public static class DiagnosticExplanations
             "data: bytes = b\"€\"",
             "Use a hex escape instead:\n  data: bytes = b\"\\xe2\\x82\\xac\"");
 
+        Add(dict, DiagnosticCodes.Lexer.DedentedStringIndentationError, "Dedented string indentation error", "Lexer",
+            "A dedented (d/dr/df-prefixed) triple-quoted string has inconsistent indentation. The amount of leading whitespace to strip is determined by the indentation of the closing triple-quote line; every non-blank content line must begin with at least that many whitespace characters, and the closing delimiter's line must contain only whitespace before the closing \"\"\".",
+            "msg: str = d\"\"\"\n    hello\n  world\n    \"\"\"",
+            "Align every content line (and the closing \"\"\" delimiter) to a consistent indentation:\n  msg: str = d\"\"\"\n      hello\n      world\n      \"\"\"");
+
         // ── Parser errors (SPY0100-SPY0199) ─────────────────────────────
 
         Add(dict, DiagnosticCodes.Parser.UnexpectedToken, "Unexpected token", "Parser",
