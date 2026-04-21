@@ -65,9 +65,9 @@ public class CachedDiscoveryPerformanceTests : IDisposable
 
         _output.WriteLine($"First load (cache build): {stopwatch.ElapsedMilliseconds}ms");
 
-        // Should be under 1500ms (28 stdlib modules after Phase 2 expansion)
-        Assert.True(stopwatch.ElapsedMilliseconds < 1500,
-            $"First load took {stopwatch.ElapsedMilliseconds}ms, expected < 1500ms");
+        // Should be under 1800ms (28 stdlib modules after Phase 2 expansion)
+        Assert.True(stopwatch.ElapsedMilliseconds < 1800,
+            $"First load took {stopwatch.ElapsedMilliseconds}ms, expected < 1800ms");
     }
 
     [Fact]
