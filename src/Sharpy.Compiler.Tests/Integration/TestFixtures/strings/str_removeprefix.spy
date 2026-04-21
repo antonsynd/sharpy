@@ -1,0 +1,19 @@
+# Test str.removeprefix() (PEP 616)
+def main():
+    # Basic removal
+    print("hello world".removeprefix("hello "))
+    # Prefix not found - return unchanged
+    print("hello world".removeprefix("world"))
+    # Empty prefix - return unchanged
+    print("hello world".removeprefix(""))
+    # Empty string
+    print("".removeprefix("abc"))
+    # Prefix equals string
+    print("abc".removeprefix("abc"))
+    # Repeated prefix - only remove once
+    print("abcabc".removeprefix("abc"))
+    # Called on variable
+    s: str = "foo_bar"
+    print(s.removeprefix("foo_"))
+    # Case-sensitive
+    print("Hello".removeprefix("hello"))

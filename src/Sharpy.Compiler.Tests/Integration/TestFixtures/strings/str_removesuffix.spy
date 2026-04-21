@@ -1,0 +1,19 @@
+# Test str.removesuffix() (PEP 616)
+def main():
+    # Basic removal
+    print("hello world".removesuffix(" world"))
+    # Suffix not found - return unchanged
+    print("hello world".removesuffix("hello"))
+    # Empty suffix - return unchanged
+    print("hello world".removesuffix(""))
+    # Empty string
+    print("".removesuffix("abc"))
+    # Suffix equals string
+    print("abc".removesuffix("abc"))
+    # Repeated suffix - only remove once
+    print("abcabc".removesuffix("abc"))
+    # Called on variable
+    s: str = "report.txt"
+    print(s.removesuffix(".txt"))
+    # Case-sensitive
+    print("Hello".removesuffix("LLO"))

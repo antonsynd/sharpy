@@ -1,0 +1,15 @@
+# Test chaining of str.removeprefix() and str.removesuffix()
+def main():
+    # Chain removeprefix + removesuffix on literal
+    print("prefix_middle_suffix".removeprefix("prefix_").removesuffix("_suffix"))
+    # Chain removesuffix + removeprefix on literal
+    print("[content]".removeprefix("[").removesuffix("]"))
+    # Strip file extension chain
+    print("test.txt.bak".removesuffix(".bak").removesuffix(".txt"))
+    # Chain where prefix is not present
+    print("hello_world".removeprefix("hi_").removesuffix("_world"))
+    # Multiple chains on variable
+    path: str = "/home/user/file.txt"
+    print(path.removeprefix("/home/").removesuffix(".txt"))
+    # Method on literal passed to print directly
+    print("  test  ".strip().removeprefix("te"))
