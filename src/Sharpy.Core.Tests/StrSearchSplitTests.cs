@@ -152,14 +152,6 @@ public class StrSearchSplitTests
     #region Count — edge cases (only basic overload exists)
 
     [Fact]
-    public void Count_EmptySubstring_ReturnsLengthPlusOne()
-    {
-        // Python: "hello".count("") == 6 (len + 1)
-        // Already covered in StringExtensionTests — retest for completeness
-        "hello".Count("").Should().Be(6);
-    }
-
-    [Fact]
     public void Count_NotFound_ReturnsZero()
     {
         "hello".Count("xyz").Should().Be(0);

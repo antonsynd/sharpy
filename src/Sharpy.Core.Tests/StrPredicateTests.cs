@@ -69,13 +69,12 @@ public class StrPredicateTests
         "".Isdigit().Should().BeFalse();
     }
 
-    [Fact]
-    public void Isdigit_SuperscriptDigit_ReturnsFalse_DotNetBehavior()
+    [Fact(Skip = "TODO(#576): Isdigit() uses .NET char.IsDigit() which rejects Unicode 'No' category chars — Python '²'.isdigit() returns True but char.IsDigit('²') returns False")]
+    public void Isdigit_SuperscriptDigit_ReturnsTrue()
     {
         // Python: "²".isdigit() == True (superscript 2, Unicode category 'No', is a digit in Python)
-        // .NET: char.IsDigit('²') == False (.NET only accepts 'Nd' DecimalDigitNumber)
-        // Axiom 1 (.NET) over Axiom 2 (Python) — the implementation uses char.IsDigit()
-        "²".Isdigit().Should().BeFalse();
+        // .NET: char.IsDigit('²') == False — implementation bug tracked in #576
+        "²".Isdigit().Should().BeTrue();
     }
 
     #endregion
