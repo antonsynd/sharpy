@@ -830,10 +830,27 @@ internal partial class RoslynEmitter
 
     private List<CatchClauseSyntax> GenerateCatchClauses(ImmutableArray<ExceptHandler> handlers)
     {
-        return handlers.Select(handler =>
+        var result = new List<CatchClauseSyntax>();
+
+        foreach (var handler in handlers)
         {
             if (handler.ExceptionType != null)
             {
+                // Tuple exception type: except (T1, T2): or except T1, T2:
+                // Expand into one catch clause per type (no 'as' binding allowed without parens per PEP 758).
+                if (handler.ExceptionType.Name == BuiltinNames.Tuple
+                    && handler.ExceptionType.TypeArguments.Length > 0
+                    && handler.Name == null)
+                {
+                    foreach (var typeArg in handler.ExceptionType.TypeArguments)
+                    {
+                        var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
+                        var declaration = CatchDeclaration(_typeMapper.MapType(typeArg));
+                        result.Add(CatchClause(declaration, null, catchBlock));
+                    }
+                    continue;
+                }
+
                 var exceptionType = _typeMapper.MapType(handler.ExceptionType);
 
                 if (handler.Name != null)
@@ -871,22 +888,23 @@ internal partial class RoslynEmitter
                         _variableVersions.Remove(baseName);
                     }
 
-                    return CatchClause(declaration, null, catchBlock);
+                    result.Add(CatchClause(declaration, null, catchBlock));
                 }
                 else
                 {
                     var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
                     var declaration = CatchDeclaration(exceptionType);
-                    return CatchClause(declaration, null, catchBlock);
+                    result.Add(CatchClause(declaration, null, catchBlock));
                 }
             }
             else
             {
                 var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
-                return CatchClause()
-                    .WithBlock(catchBlock);
+                result.Add(CatchClause().WithBlock(catchBlock));
             }
-        }).ToList();
+        }
+
+        return result;
     }
 
     private FinallyClauseSyntax? GenerateFinallyClause(ImmutableArray<Statement> finallyBody)

@@ -103,8 +103,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Parser diagnostic codes (SPY0100-SPY0199).
-    /// Active: SPY0100-SPY0136 (37 codes)
-    /// Reserved: SPY0137, SPY0138-SPY0199 (63 codes)
+    /// Active: SPY0100-SPY0137 (38 codes)
+    /// Reserved: SPY0138-SPY0199 (62 codes)
     /// </summary>
     public static class Parser
     {
@@ -180,7 +180,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0137-SPY0199: Reserved for future parser diagnostics
+        #region Exception handler syntax (SPY0137)
+
+        public const string ExceptWithAsRequiresParens = "SPY0137"; // Active
+
+        #endregion
+
+        // SPY0138-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>

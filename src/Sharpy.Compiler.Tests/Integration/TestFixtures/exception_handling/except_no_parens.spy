@@ -1,0 +1,17 @@
+def main():
+    try:
+        raise ValueError("oops")
+    except ValueError, TypeError:
+        print("caught value or type error")
+
+    try:
+        raise TypeError("bad type")
+    except ValueError, TypeError:
+        print("caught value or type error")
+
+    try:
+        raise RuntimeError("other")
+    except ValueError, TypeError:
+        print("should not reach")
+    except RuntimeError:
+        print("caught runtime error")

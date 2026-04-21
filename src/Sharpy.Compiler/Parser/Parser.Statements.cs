@@ -4,6 +4,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Parser;
 
@@ -411,11 +412,51 @@ public partial class Parser
             string? name = null;
 
             // except ExceptionType as name:
+            // PEP 758: also allow comma-separated types without parentheses
             if (Current.Type != TokenType.Colon)
             {
+                var firstTypeStart = Current;
                 exceptionType = ParseTypeAnnotation();
 
-                if (Current.Type == TokenType.As)
+                // Unparenthesized multiple exception types: except ValueError, TypeError:
+                if (Current.Type == TokenType.Comma)
+                {
+                    var typeList = new List<TypeAnnotation> { exceptionType };
+                    _lastLoopPosition = -1;
+                    while (Current.Type == TokenType.Comma)
+                    {
+                        if (!CheckLoopProgress())
+                            break;
+                        Advance(); // consume ','
+                        typeList.Add(ParseTypeAnnotation());
+                    }
+
+                    // 'as' requires parentheses when multiple types are listed without parens
+                    if (Current.Type == TokenType.As)
+                    {
+                        throw ReportError(
+                            "Use parentheses when combining multiple exception types with 'as': except (Type1, Type2) as e:",
+                            Current.Line,
+                            Current.Column,
+                            DiagnosticCodes.Parser.ExceptWithAsRequiresParens,
+                            span: CurrentSpan
+                        );
+                    }
+
+                    var lastType = typeList[typeList.Count - 1];
+                    exceptionType = new TypeAnnotation
+                    {
+                        Name = BuiltinNames.Tuple,
+                        TypeArguments = typeList.ToImmutableArray(),
+                        IsOptional = false,
+                        LineStart = firstTypeStart.Line,
+                        ColumnStart = firstTypeStart.Column,
+                        LineEnd = lastType.LineEnd,
+                        ColumnEnd = lastType.ColumnEnd,
+                        Span = GetSpanFromTokens(firstTypeStart, Previous)
+                    };
+                }
+                else if (Current.Type == TokenType.As)
                 {
                     Advance();
                     name = ExpectIdentifier();

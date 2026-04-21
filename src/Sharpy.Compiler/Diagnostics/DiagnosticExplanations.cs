@@ -374,6 +374,11 @@ public static class DiagnosticExplanations
             "event on_click(self, handler: EventHandler):\n    ...",
             "Add 'add' or 'remove' keyword:\n  event add on_click(self, handler: EventHandler):\n      ...\n  event remove on_click(self, handler: EventHandler):\n      ...");
 
+        Add(dict, DiagnosticCodes.Parser.ExceptWithAsRequiresParens, "Multiple exception types with 'as' require parentheses", "Parser",
+            "When catching multiple exception types and binding the exception to a name with 'as', the exception types must be enclosed in parentheses. Without parentheses, the 'as' clause is ambiguous.",
+            "except ValueError, TypeError as e:\n    print(e)",
+            "Wrap the exception types in parentheses:\n  except (ValueError, TypeError) as e:\n      print(e)");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",
