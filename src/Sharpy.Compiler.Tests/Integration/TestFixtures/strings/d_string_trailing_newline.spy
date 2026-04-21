@@ -1,0 +1,7 @@
+def main():
+    # A blank line before the closing """ becomes a trailing newline
+    msg: str = d"""
+        hello
+
+        """
+    print(repr(msg))

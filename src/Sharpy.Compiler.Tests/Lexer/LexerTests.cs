@@ -302,6 +302,138 @@ public class LexerTests
 
     #endregion
 
+    #region Dedented Strings (d-strings, PEP 822)
+
+    [Fact]
+    public void DString_TripleQuoted_StripsFourSpaces()
+    {
+        // Closing """ indented 4 spaces; content indented 4 spaces.
+        // Expected: 4 leading spaces stripped from each content line.
+        var input = "d\"\"\"\n    hello\n    world\n    \"\"\"";
+        var token = SingleToken(input);
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("hello\nworld");
+    }
+
+    [Fact]
+    public void DString_ClosingQuoteIndent_DeterminesStripAmount()
+    {
+        // Closing """ at 4 spaces, but content indented 8 spaces.
+        // Strip amount is determined by the closing delimiter, so 4 chars are
+        // stripped and 4 extra spaces remain on each content line.
+        var input = "d\"\"\"\n        hello\n        world\n    \"\"\"";
+        var token = SingleToken(input);
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("    hello\n    world");
+    }
+
+    [Fact]
+    public void DString_BlankLinesPreserved()
+    {
+        // A blank line inside the content becomes an empty line in the output.
+        var input = "d\"\"\"\n    line1\n\n    line3\n    \"\"\"";
+        var token = SingleToken(input);
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("line1\n\nline3");
+    }
+
+    [Fact]
+    public void DString_SingleLine_PassThrough()
+    {
+        // Single-line d"..." has no dedentation — same value as a regular string.
+        var token = SingleToken("d\"hello\"");
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("hello");
+    }
+
+    [Fact]
+    public void DString_SingleLine_ProcessesEscapes()
+    {
+        // Single-line d"..." still processes escape sequences like a normal string.
+        var token = SingleToken("d\"line1\\nline2\"");
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("line1\nline2");
+    }
+
+    [Fact]
+    public void DRawString_TripleQuoted_StripsDedentAndPreservesEscapes()
+    {
+        // dr"""...""" applies dedentation but preserves backslash escapes as literals.
+        var input = "dr\"\"\"\n    \\d+\n    \\s+\n    \"\"\"";
+        var token = SingleToken(input);
+        token.Type.Should().Be(TokenType.RawString);
+        token.Value.Should().Be("\\d+\n\\s+");
+    }
+
+    [Fact]
+    public void DRawString_SingleLine_PassThroughNoEscapes()
+    {
+        // Single-line dr"..." is a raw string with no dedentation.
+        var token = SingleToken("dr\"C:\\path\\to\\file\"");
+        token.Type.Should().Be(TokenType.RawString);
+        token.Value.Should().Be("C:\\path\\to\\file");
+    }
+
+    [Fact]
+    public void DString_InsufficientIndent_EmitsSpy0029()
+    {
+        // Content line "bad" has only 2 spaces of indent; closing """ has 4.
+        var source = "d\"\"\"\n    hello\n  bad\n    \"\"\"";
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+        lexer.Diagnostics.HasErrors.Should().BeTrue();
+        lexer.Diagnostics.GetErrors()
+            .Should().Contain(d => d.Code == "SPY0029");
+    }
+
+    [Fact]
+    public void DString_ClosingNotOnOwnLine_EmitsSpy0029()
+    {
+        // Closing """ must appear on its own (whitespace-only) line.
+        var source = "d\"\"\"\n    hello\n    world\"\"\"";
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+        lexer.Diagnostics.HasErrors.Should().BeTrue();
+        lexer.Diagnostics.GetErrors()
+            .Should().Contain(d => d.Code == "SPY0029");
+    }
+
+    [Fact]
+    public void DString_ProducesStringToken_NotNewTokenType()
+    {
+        // A triple-quoted d-string yields a plain String token (no new token type).
+        var input = "d\"\"\"\n    hello\n    \"\"\"";
+        var token = SingleToken(input);
+        token.Type.Should().Be(TokenType.String);
+    }
+
+    [Fact]
+    public void DString_TrailingBlankLine_ProducesTrailingNewline()
+    {
+        // A blank line before the closing """ yields a trailing newline in the result.
+        var input = "d\"\"\"\n    hello\n\n    \"\"\"";
+        var token = SingleToken(input);
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("hello\n");
+    }
+
+    [Fact]
+    public void DFString_TripleQuoted_ProducesFStringTokens()
+    {
+        // df"""...""" emits the normal f-string token stream; the lexer strips the
+        // dedent prefix from each FStringText segment.
+        var input = "df\"\"\"\n    Hello, {name}\n    \"\"\"";
+        var tokens = Tokenize(input);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value.Contains("Hello, "));
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "name");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
+    }
+
+    #endregion
+
     #region Operators
 
     [Theory]
