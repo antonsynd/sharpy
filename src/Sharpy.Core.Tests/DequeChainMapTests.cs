@@ -90,10 +90,12 @@ public class DequeAdditional_Tests
         var deque = new Sharpy.Deque<int>(new[] { 10, 20, 30 });
 
         var first = new List<int>();
-        foreach (var x in deque) first.Add(x);
+        foreach (var x in deque)
+            first.Add(x);
 
         var second = new List<int>();
-        foreach (var x in deque) second.Add(x);
+        foreach (var x in deque)
+            second.Add(x);
 
         first.Should().Equal(second);
         first.Should().Equal(10, 20, 30);

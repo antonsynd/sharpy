@@ -23,7 +23,8 @@ public class PathlibAdditionalTests : IDisposable
 
     public void Dispose()
     {
-        try { Directory.Delete(_tempDir, true); }
+        try
+        { Directory.Delete(_tempDir, true); }
         catch { /* best effort */ }
     }
 
@@ -234,7 +235,8 @@ public class PathlibAdditionalTests : IDisposable
         var p = new Sharpy.Path(Sub("no_such_dir"));
         Action act = () =>
         {
-            foreach (var _ in p.Iterdir()) { }
+            foreach (var _ in p.Iterdir())
+            { }
         };
         act.Should().Throw<Sharpy.FileNotFoundError>();
     }
@@ -274,7 +276,8 @@ public class PathlibAdditionalTests : IDisposable
         var p = new Sharpy.Path(Sub("no_such_glob_dir"));
         Action act = () =>
         {
-            foreach (var _ in p.Glob("*")) { }
+            foreach (var _ in p.Glob("*"))
+            { }
         };
         act.Should().Throw<Sharpy.FileNotFoundError>();
     }

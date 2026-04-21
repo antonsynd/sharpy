@@ -22,7 +22,8 @@ public class ShutilAdditionalTests : IDisposable
 
     public void Dispose()
     {
-        try { Directory.Delete(_tempDir, true); }
+        try
+        { Directory.Delete(_tempDir, true); }
         catch { /* best effort */ }
     }
 

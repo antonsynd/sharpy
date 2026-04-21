@@ -117,7 +117,9 @@ public class BuiltinIteration_Tests
         List<int> list = [1, 2, 3];
         var it = Reversed(list);
         // Consume iterator
-        it.Next(); it.Next(); it.Next();
+        it.Next();
+        it.Next();
+        it.Next();
         // Original should be untouched
         list.Should().ContainInOrder(1, 2, 3);
     }
