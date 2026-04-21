@@ -85,12 +85,23 @@ public class StrTransformTests
         "".Rstrip("x").Should().Be("");
     }
 
-    [Fact(Skip = "TODO(#577): Strip(\"\") delegates to .NET Trim(char[]) with empty array, which trims whitespace. Python: '  hello  '.strip('') == '  hello  '. Fix: check for empty chars before delegating.")]
+    [Fact]
     public void Strip_EmptyCharsArg_RemovesNothing()
     {
         // Python: "  hello  ".strip("") == "  hello  " (empty chars = nothing stripped)
-        // .NET: string.Trim(new char[0]) trims whitespace — implementation bug tracked in #577
         "  hello  ".Strip("").Should().Be("  hello  ");
+    }
+
+    [Fact]
+    public void Lstrip_EmptyCharsArg_RemovesNothing()
+    {
+        "  hello  ".Lstrip("").Should().Be("  hello  ");
+    }
+
+    [Fact]
+    public void Rstrip_EmptyCharsArg_RemovesNothing()
+    {
+        "  hello  ".Rstrip("").Should().Be("  hello  ");
     }
 
     #endregion

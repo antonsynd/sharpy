@@ -135,7 +135,12 @@ namespace Sharpy
         /// <paramref name="chars"/> removed.
         /// Python: <c>str.strip(chars)</c>
         /// </summary>
-        public static string Strip(this string s, string chars) => s.Trim(chars.ToCharArray());
+        public static string Strip(this string s, string chars)
+        {
+            if (chars.Length == 0)
+                return s;
+            return s.Trim(chars.ToCharArray());
+        }
 
         /// <summary>
         /// Return a copy with leading whitespace removed.
@@ -147,7 +152,12 @@ namespace Sharpy
         /// Return a copy with leading characters in <paramref name="chars"/> removed.
         /// Python: <c>str.lstrip(chars)</c>
         /// </summary>
-        public static string Lstrip(this string s, string chars) => s.TrimStart(chars.ToCharArray());
+        public static string Lstrip(this string s, string chars)
+        {
+            if (chars.Length == 0)
+                return s;
+            return s.TrimStart(chars.ToCharArray());
+        }
 
         /// <summary>
         /// Return a copy with trailing whitespace removed.
@@ -159,7 +169,12 @@ namespace Sharpy
         /// Return a copy with trailing characters in <paramref name="chars"/> removed.
         /// Python: <c>str.rstrip(chars)</c>
         /// </summary>
-        public static string Rstrip(this string s, string chars) => s.TrimEnd(chars.ToCharArray());
+        public static string Rstrip(this string s, string chars)
+        {
+            if (chars.Length == 0)
+                return s;
+            return s.TrimEnd(chars.ToCharArray());
+        }
 
         /// <summary>
         /// Return centered in a string of length <paramref name="width"/>.
