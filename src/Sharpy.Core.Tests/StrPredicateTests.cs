@@ -77,6 +77,12 @@ public class StrPredicateTests
         "²".Isdigit().Should().BeTrue();
     }
 
+    [Fact]
+    public void Isdigit_Fraction_ReturnsFalse()
+    {
+        "½".Isdigit().Should().BeFalse();
+    }
+
     #endregion
 
     #region Isdecimal edge cases
