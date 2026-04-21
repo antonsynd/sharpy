@@ -371,7 +371,7 @@ namespace Sharpy
                 return false;
             foreach (char c in s)
             {
-                if (!char.IsDigit(c))
+                if (!char.IsDigit(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.OtherNumber)
                     return false;
             }
             return true;

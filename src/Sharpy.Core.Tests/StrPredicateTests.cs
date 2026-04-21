@@ -69,7 +69,7 @@ public class StrPredicateTests
         "".Isdigit().Should().BeFalse();
     }
 
-    [Fact(Skip = "TODO(#576): Isdigit() uses .NET char.IsDigit() which rejects Unicode 'No' category chars — Python '²'.isdigit() returns True but char.IsDigit('²') returns False")]
+    [Fact]
     public void Isdigit_SuperscriptDigit_ReturnsTrue()
     {
         // Python: "²".isdigit() == True (superscript 2, Unicode category 'No', is a digit in Python)
