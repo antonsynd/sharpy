@@ -67,6 +67,7 @@ internal class BuiltinRegistry
         RegisterType("list", typeof(SharpyRT::Sharpy.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
         RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
         RegisterType("set", typeof(SharpyRT::Sharpy.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        RegisterType(BuiltinNames.FrozenDict, typeof(SharpyRT::Sharpy.FrozenDict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
 
         // Bytes (non-generic) - immutable byte sequence
         RegisterType("bytes", typeof(SharpyRT::Sharpy.Bytes), TypeKind.Struct);
@@ -265,6 +266,11 @@ internal class BuiltinRegistry
             case BuiltinNames.Tuple:
                 operatorMethods = MakeDunderDict(DunderNames.Add, DunderNames.Mul, DunderNames.Eq, DunderNames.Ne);
                 protocolMethods = MakeDunderDict(DunderNames.Len, DunderNames.Iter, DunderNames.GetItem);
+                break;
+
+            case BuiltinNames.FrozenDict:
+                // Read-only mapping: supports __len__, __iter__, __getitem__, __contains__ but NOT __setitem__
+                protocolMethods = MakeDunderDict(DunderNames.Len, DunderNames.Iter, DunderNames.GetItem, DunderNames.Contains);
                 break;
 
             case BuiltinNames.Iterator or BuiltinNames.IEnumerable or BuiltinNames.IEnumerator:

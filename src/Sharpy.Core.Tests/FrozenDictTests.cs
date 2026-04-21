@@ -141,7 +141,7 @@ public class FrozenDictTests
             new KeyValuePair<string, int>("b", 2),
         });
 
-        fd.Keys.Should().BeEquivalentTo(new[] { "a", "b" });
+        fd.Keys().Should().BeEquivalentTo(new[] { "a", "b" });
     }
 
     [Fact]
@@ -153,7 +153,7 @@ public class FrozenDictTests
             new KeyValuePair<string, int>("b", 2),
         });
 
-        fd.Values.Should().BeEquivalentTo(new[] { 1, 2 });
+        fd.Values().Should().BeEquivalentTo(new[] { 1, 2 });
     }
 
     [Fact]

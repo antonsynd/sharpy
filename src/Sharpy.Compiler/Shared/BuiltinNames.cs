@@ -70,6 +70,7 @@ internal static class BuiltinNames
     public const string Array = "array";
     public const string Bytes = "bytes";
     public const string DefaultDict = "defaultdict";
+    public const string FrozenDict = "frozendict";
     public const string Tuple = "tuple";
     public const string None = "None";
     public const string Object = "object";

@@ -285,6 +285,14 @@ internal class ProtocolValidator : ValidatingAstWalker
                 return true;
         }
 
+        // IReadOnlyDictionary<,> -> __getitem__, __contains__, __len__ (read-only mapping; no __setitem__)
+        if (dunderName is DunderNames.GetItem or DunderNames.Contains or DunderNames.Len)
+        {
+            if (clrType.GetInterfaces().Any(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IReadOnlyDictionary<,>)))
+                return true;
+        }
+
         return false;
     }
 }

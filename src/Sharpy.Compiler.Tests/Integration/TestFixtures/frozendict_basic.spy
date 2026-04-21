@@ -1,0 +1,23 @@
+def main():
+    d: frozendict[str, int] = frozendict[str, int]({"a": 1, "b": 2, "c": 3})
+
+    # Length
+    print(len(d))
+
+    # Item access
+    print(d["a"])
+    print(d["c"])
+
+    # Membership test
+    print("a" in d)
+    print("z" in d)
+
+    # get() with default
+    print(d.get("b", 0))
+    print(d.get("z", 99))
+
+    # Iteration (sorted for stable output)
+    keys: list[str] = list(d.keys())
+    keys.sort()
+    for k in keys:
+        print(k)

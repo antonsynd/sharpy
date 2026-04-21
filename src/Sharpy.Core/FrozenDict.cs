@@ -119,11 +119,16 @@ namespace Sharpy
             return @default;
         }
 
-        /// <summary>Gets an enumerable containing the keys in the frozendict.</summary>
-        public IEnumerable<TKey> Keys => _dict.Keys;
+        // Explicit interface implementations satisfy IReadOnlyDictionary<TKey, TValue>
+        // while keeping the Sharpy-style method API (Keys() / Values()) public.
+        IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => _dict.Keys;
+        IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => _dict.Values;
 
-        /// <summary>Gets an enumerable containing the values in the frozendict.</summary>
-        public IEnumerable<TValue> Values => _dict.Values;
+        /// <summary>Returns an iterable of the frozendict's keys. Python: <c>d.keys()</c>.</summary>
+        public IEnumerable<TKey> Keys() => _dict.Keys;
+
+        /// <summary>Returns an iterable of the frozendict's values. Python: <c>d.values()</c>.</summary>
+        public IEnumerable<TValue> Values() => _dict.Values;
 
         /// <summary>Returns the key-value pairs as an iterable of tuples.</summary>
         public IEnumerable<(TKey, TValue)> Items()
