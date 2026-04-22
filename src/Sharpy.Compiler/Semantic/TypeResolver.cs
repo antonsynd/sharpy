@@ -344,13 +344,42 @@ internal class TypeResolver
             .Select(ResolveTypeAnnotation)
             .ToList();
 
-        // Validate type argument count
+        // Validate type argument count (PEP 696: allow fewer if remaining have defaults)
         if (typeSymbol.IsGeneric && typeArgs.Count != typeSymbol.TypeParameters.Count)
         {
-            AddError($"Type '{annotation.Name}' expects {typeSymbol.TypeParameters.Count} type arguments but got {typeArgs.Count}",
-                annotation.LineStart, annotation.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                span: annotation.Span);
-            return SemanticType.Unknown;
+            if (typeArgs.Count < typeSymbol.TypeParameters.Count)
+            {
+                // Fill in defaults for missing type arguments
+                bool allDefaulted = true;
+                for (int i = typeArgs.Count; i < typeSymbol.TypeParameters.Count; i++)
+                {
+                    var tp = typeSymbol.TypeParameters[i];
+                    if (tp.DefaultType != null)
+                    {
+                        typeArgs.Add(ResolveTypeAnnotation(tp.DefaultType));
+                    }
+                    else
+                    {
+                        allDefaulted = false;
+                        break;
+                    }
+                }
+
+                if (!allDefaulted)
+                {
+                    AddError($"Type '{annotation.Name}' expects {typeSymbol.TypeParameters.Count} type arguments but got {typeArgs.Count}",
+                        annotation.LineStart, annotation.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: annotation.Span);
+                    return SemanticType.Unknown;
+                }
+            }
+            else
+            {
+                AddError($"Type '{annotation.Name}' expects {typeSymbol.TypeParameters.Count} type arguments but got {typeArgs.Count}",
+                    annotation.LineStart, annotation.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: annotation.Span);
+                return SemanticType.Unknown;
+            }
         }
 
         return new GenericType

@@ -1,0 +1,14 @@
+class Pair[T, U = str]:
+    first: T
+    second: U
+
+    def __init__(self, first: T, second: U):
+        self.first = first
+        self.second = second
+
+def show(p: Pair[int]) -> str:
+    return f"{p.first}, {p.second}"
+
+def main():
+    p = Pair[int, str](1, "hello")
+    print(show(p))

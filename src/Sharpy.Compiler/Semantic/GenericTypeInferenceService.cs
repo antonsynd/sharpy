@@ -94,6 +94,7 @@ internal class GenericTypeInferenceService
         => type is TypeParameterType tp && tp.Name.StartsWith(SyntheticTypeParameterPrefix, StringComparison.Ordinal);
 
     private readonly SymbolTable _symbolTable;
+    private TypeResolver? _typeResolver;
 
     /// <summary>
     /// Optional SemanticBinding for reading inheritance data.
@@ -101,9 +102,10 @@ internal class GenericTypeInferenceService
     /// </summary>
     public SemanticBinding SemanticBinding { get; set; } = new();
 
-    public GenericTypeInferenceService(SymbolTable symbolTable)
+    public GenericTypeInferenceService(SymbolTable symbolTable, TypeResolver? typeResolver = null)
     {
         _symbolTable = symbolTable;
+        _typeResolver = typeResolver;
     }
 
     /// <summary>
@@ -146,16 +148,25 @@ internal class GenericTypeInferenceService
             argIndex++;
         }
 
-        // Check that all type parameters were inferred
+        // Check that all type parameters were inferred (or have defaults)
         var inferredTypes = new List<SemanticType>();
         foreach (var typeParam in typeParams)
         {
             if (!substitutions.TryGetValue(typeParam.Name, out var inferredType))
             {
-                return InferenceResult.Failed(
-                    InferenceErrorKind.NoArgumentsForTypeParameter,
-                    $"Type parameter '{typeParam.Name}' cannot be inferred; no arguments provide type information. " +
-                    $"Use explicit syntax: {genericFunc.Name}[{string.Join(", ", typeParams.Select(tp => tp.Name))}](...)");
+                // PEP 696: try using the type parameter default
+                if (typeParam.DefaultType != null && _typeResolver != null)
+                {
+                    inferredType = _typeResolver.ResolveTypeAnnotation(typeParam.DefaultType);
+                    substitutions[typeParam.Name] = inferredType;
+                }
+                else
+                {
+                    return InferenceResult.Failed(
+                        InferenceErrorKind.NoArgumentsForTypeParameter,
+                        $"Type parameter '{typeParam.Name}' cannot be inferred; no arguments provide type information. " +
+                        $"Use explicit syntax: {genericFunc.Name}[{string.Join(", ", typeParams.Select(tp => tp.Name))}](...)");
+                }
             }
             inferredTypes.Add(inferredType);
         }

@@ -111,7 +111,7 @@ internal partial class TypeChecker
         _typeInference = new TypeInferenceService(_symbolTable, sharedClrCache);
 
         // Initialize generic type argument inference service
-        _genericInference = new GenericTypeInferenceService(_symbolTable);
+        _genericInference = new GenericTypeInferenceService(_symbolTable, typeResolver);
     }
 
     /// <summary>

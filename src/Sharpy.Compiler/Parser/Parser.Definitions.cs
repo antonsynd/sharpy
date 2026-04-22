@@ -700,6 +700,14 @@ public partial class Parser
                 constraints = ParseConstraints();
             }
 
+            // Check for default type: T = int (PEP 696)
+            TypeAnnotation? defaultType = null;
+            if (Current.Type == TokenType.Assign)
+            {
+                Advance(); // consume '='
+                defaultType = ParseTypeAnnotation();
+            }
+
             var paramEndToken = Previous;
 
             typeParams.Add(new TypeParameterDef
@@ -707,6 +715,7 @@ public partial class Parser
                 Name = paramName,
                 Constraints = constraints.ToImmutableArray(),
                 Variance = variance,
+                DefaultType = defaultType,
                 LineStart = paramStartLine,
                 ColumnStart = paramStartColumn,
                 LineEnd = paramEndToken.Line,

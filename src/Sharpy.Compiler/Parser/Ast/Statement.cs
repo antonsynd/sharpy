@@ -679,6 +679,7 @@ public record TypeParameterDef
     public string Name { get; init; } = "";
     public ImmutableArray<ConstraintClause> Constraints { get; init; } = ImmutableArray<ConstraintClause>.Empty;
     public TypeParameterVariance Variance { get; init; } = TypeParameterVariance.None;
+    public TypeAnnotation? DefaultType { get; init; }
 
     // Source location
     public int LineStart { get; init; }

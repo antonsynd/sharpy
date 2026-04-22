@@ -438,6 +438,12 @@ public record TypeParameterSymbol : Symbol
     /// </summary>
     public TypeParameterVariance Variance { get; init; } = TypeParameterVariance.None;
 
+    /// <summary>
+    /// Default type for this type parameter (PEP 696).
+    /// When provided, callers can omit this type argument and the default is used.
+    /// </summary>
+    public SemanticType? DefaultType { get; init; }
+
     public virtual bool Equals(TypeParameterSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
