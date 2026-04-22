@@ -638,15 +638,19 @@ internal partial class RoslynEmitter
         }
 
         // Build accessor list based on accessor type
+        bool isReadonly = propDef.Decorators.Any(d => d.Name == DecoratorNames.Readonly);
         var accessors = new List<AccessorDeclarationSyntax>();
         switch (propDef.Accessor)
         {
             case PropertyAccessor.None:
-                // { get; set; }
                 accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                     .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
-                accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                if (!isReadonly)
+                {
+                    // { get; set; } — default; @readonly omits the setter → { get; }
+                    accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                }
                 break;
 
             case PropertyAccessor.Get:

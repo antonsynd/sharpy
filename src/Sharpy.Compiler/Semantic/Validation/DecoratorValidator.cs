@@ -56,6 +56,7 @@ internal class DecoratorValidator : ValidatingAstWalker
             : node.Name;
         ValidateDecorators(node.Decorators, definitionName);
         ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
+        ValidateReadonlyNotOnNonProperty(node.Decorators, definitionName, "function");
 
         if (_containingType != null)
         {
@@ -78,6 +79,7 @@ internal class DecoratorValidator : ValidatingAstWalker
     {
         ValidateDecorators(node.Decorators, node.Name);
         ValidateDataclassArguments(node.Decorators, node.Name);
+        ValidateReadonlyNotOnNonProperty(node.Decorators, node.Name, "class");
 
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Class);
@@ -115,6 +117,7 @@ internal class DecoratorValidator : ValidatingAstWalker
             : node.Name;
         ValidateDecorators(node.Decorators, definitionName);
         ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
+        ValidateReadonlyOnProperty(node, definitionName);
         base.VisitPropertyDef(node);
     }
 
@@ -545,6 +548,38 @@ internal class DecoratorValidator : ValidatingAstWalker
                     code: DiagnosticCodes.Semantic.DataclassInvalidOption,
                     span: kwArg.Value.Span);
             }
+        }
+    }
+
+    private void ValidateReadonlyOnProperty(PropertyDef propDef, string definitionName)
+    {
+        var readonlyDecorator = propDef.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.Readonly);
+        if (readonlyDecorator == null) return;
+
+        if (propDef.Accessor == PropertyAccessor.Set)
+        {
+            AddError(
+                $"'@readonly' cannot be combined with 'property set' on '{definitionName}'. " +
+                "A write-only property cannot be readonly.",
+                readonlyDecorator.LineStart,
+                readonlyDecorator.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                span: readonlyDecorator.Span);
+        }
+    }
+
+    private void ValidateReadonlyNotOnNonProperty(IEnumerable<Decorator> decorators, string definitionName, string kind)
+    {
+        var readonlyDecorator = decorators.FirstOrDefault(d => d.Name == DecoratorNames.Readonly);
+        if (readonlyDecorator != null)
+        {
+            AddError(
+                $"'@readonly' cannot be applied to {kind} '{definitionName}'. " +
+                "Use @readonly on property declarations only.",
+                readonlyDecorator.LineStart,
+                readonlyDecorator.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                span: readonlyDecorator.Span);
         }
     }
 

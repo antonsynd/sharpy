@@ -1,0 +1,10 @@
+class Person:
+    @readonly
+    property name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+def main():
+    p = Person("Alice")
+    print(p.name)

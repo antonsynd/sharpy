@@ -1,0 +1,6 @@
+@readonly
+def foo() -> str:
+    return "foo"
+
+def main():
+    print(foo())

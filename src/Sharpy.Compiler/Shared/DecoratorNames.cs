@@ -39,6 +39,7 @@ internal static class DecoratorNames
         Protected,
         Private,
         Internal,
+        Readonly,
     }.ToImmutableHashSet();
 
     /// <summary>

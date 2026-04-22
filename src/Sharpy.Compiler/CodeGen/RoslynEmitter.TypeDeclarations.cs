@@ -1118,10 +1118,6 @@ internal partial class RoslynEmitter
             if (decorator.Name == DecoratorNames.Dataclass)
                 continue;
 
-            // Skip @readonly — it's a property modifier handled in property codegen
-            if (decorator.Name == DecoratorNames.Readonly)
-                continue;
-
             // Build the attribute name
             NameSyntax attributeName;
             if (decorator.Name == DecoratorNames.Deprecated)
