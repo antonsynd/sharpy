@@ -1153,9 +1153,18 @@ internal partial class TypeChecker
 
                 if (!IsAssignable(argTypes[i], param.Type))
                 {
-                    AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{param.Type.GetDisplayName()}'",
-                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: call.Arguments[i].Span);
+                    // PEP 675: string literals are assignable to LiteralString parameters
+                    if (param.Type is LiteralStringType && i < call.Arguments.Length
+                        && call.Arguments[i] is StringLiteral)
+                    {
+                        // Allow — literal string expression satisfies LiteralString
+                    }
+                    else
+                    {
+                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{param.Type.GetDisplayName()}'",
+                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: call.Arguments[i].Span);
+                    }
                 }
             }
 

@@ -881,3 +881,24 @@ public sealed record TaskType : SemanticType
             ? typeof(System.Threading.Tasks.Task)
             : null; // Generic Task<T> needs runtime resolution
 }
+
+/// <summary>
+/// Compile-time LiteralString type (PEP 675).
+/// A subtype of str that represents string literals known at compile time.
+/// Emits as string in C# with no runtime distinction.
+/// </summary>
+public sealed record LiteralStringType : SemanticType
+{
+    public static readonly LiteralStringType Instance = new();
+
+    public override string GetDisplayName() => "LiteralString";
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        if (other is LiteralStringType)
+            return true;
+        if (other is BuiltinType { Name: "str" })
+            return true;
+        return base.IsAssignableTo(other);
+    }
+}

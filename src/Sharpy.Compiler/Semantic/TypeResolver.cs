@@ -97,6 +97,14 @@ internal class TypeResolver
             return result;
         }
 
+        // Handle LiteralString compile-time type (PEP 675)
+        if (annotation.Name == "LiteralString")
+        {
+            result = LiteralStringType.Instance;
+            _semanticInfo.SetTypeAnnotation(annotation, result);
+            return result;
+        }
+
         // Try builtin types first
         if (TryResolveBuiltinType(annotation.Name, out var builtinType))
         {

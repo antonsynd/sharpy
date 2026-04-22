@@ -94,6 +94,9 @@ internal class TypeSyntaxMapper
             // Handle type parameters (e.g., T in class Box[T])
             TypeParameterType typeParam => IdentifierName(typeParam.Name),
 
+            // LiteralString emits as string (compile-time only distinction)
+            LiteralStringType => PredefinedType(Token(SyntaxKind.StringKeyword)),
+
             // Handle Self type — emit as the concrete declaring class type
             SelfType selfType when selfType.DeclaringType != null =>
                 MapSelfType(selfType),

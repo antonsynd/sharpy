@@ -1,0 +1,6 @@
+def safe_query(query: LiteralString) -> str:
+    return f"executing: {query}"
+
+def main():
+    result = safe_query("SELECT * FROM users")
+    print(result)

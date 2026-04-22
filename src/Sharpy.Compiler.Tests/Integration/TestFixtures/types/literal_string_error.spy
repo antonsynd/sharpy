@@ -1,0 +1,7 @@
+def safe_query(query: LiteralString) -> str:
+    return f"executing: {query}"
+
+def main():
+    user_input: str = "DROP TABLE users"
+    result = safe_query(user_input)
+    print(result)
