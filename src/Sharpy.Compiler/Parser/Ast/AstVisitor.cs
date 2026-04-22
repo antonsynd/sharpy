@@ -70,6 +70,9 @@ public abstract class AstVisitor
             case DictComprehension n:
                 VisitDictComprehension(n);
                 break;
+            case DictSpreadComprehension n:
+                VisitDictSpreadComprehension(n);
+                break;
 
             // ComprehensionClauses
             case ForClause n:
@@ -370,6 +373,7 @@ public abstract class AstVisitor
     public virtual void VisitListComprehension(ListComprehension node) => VisitExpression(node);
     public virtual void VisitSetComprehension(SetComprehension node) => VisitExpression(node);
     public virtual void VisitDictComprehension(DictComprehension node) => VisitExpression(node);
+    public virtual void VisitDictSpreadComprehension(DictSpreadComprehension node) => VisitExpression(node);
 
     #endregion
 
@@ -536,6 +540,7 @@ public abstract class AstVisitor<T>
             ListComprehension n => VisitListComprehension(n),
             SetComprehension n => VisitSetComprehension(n),
             DictComprehension n => VisitDictComprehension(n),
+            DictSpreadComprehension n => VisitDictSpreadComprehension(n),
 
             // ComprehensionClauses
             ForClause n => VisitForClause(n),
@@ -699,6 +704,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitListComprehension(ListComprehension node) => VisitExpression(node);
     public virtual T VisitSetComprehension(SetComprehension node) => VisitExpression(node);
     public virtual T VisitDictComprehension(DictComprehension node) => VisitExpression(node);
+    public virtual T VisitDictSpreadComprehension(DictSpreadComprehension node) => VisitExpression(node);
 
     #endregion
 

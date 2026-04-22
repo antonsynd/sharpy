@@ -54,6 +54,7 @@ internal partial class TypeChecker
             ListComprehension listComp => CheckListComprehension(listComp),
             SetComprehension setComp => CheckSetComprehension(setComp),
             DictComprehension dictComp => CheckDictComprehension(dictComp),
+            DictSpreadComprehension dictSpreadComp => CheckDictSpreadComprehension(dictSpreadComp),
             ConditionalExpression cond => CheckConditionalExpression(cond),
             LambdaExpression lambda => CheckLambda(lambda),
             TypeCoercion coercion => CheckTypeCoercion(coercion),

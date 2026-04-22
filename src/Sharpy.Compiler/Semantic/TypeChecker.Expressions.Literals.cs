@@ -205,14 +205,20 @@ internal partial class TypeChecker
 
     private SemanticType CheckListComprehension(ListComprehension listComp)
     {
-        // Enter comprehension scope (variables don't leak)
         _symbolTable.EnterScope("list-comprehension");
-
-        // Process clauses (for and if)
         CheckComprehensionClauses(listComp.Clauses);
 
-        // Check element expression
-        var elementType = CheckExpression(listComp.Element);
+        SemanticType elementType;
+        if (listComp.Element is SpreadElement spread)
+        {
+            // [*it for it in its] — result type is the inner element type of the spread value
+            var spreadType = CheckExpression(spread);  // caches type for spread node
+            elementType = _typeInference.InferIterableElementType(spreadType) ?? SemanticType.Unknown;
+        }
+        else
+        {
+            elementType = CheckExpression(listComp.Element);
+        }
 
         _symbolTable.ExitScope();
 
@@ -225,14 +231,20 @@ internal partial class TypeChecker
 
     private SemanticType CheckSetComprehension(SetComprehension setComp)
     {
-        // Enter comprehension scope (variables don't leak)
         _symbolTable.EnterScope("set-comprehension");
-
-        // Process clauses (for and if)
         CheckComprehensionClauses(setComp.Clauses);
 
-        // Check element expression
-        var elementType = CheckExpression(setComp.Element);
+        SemanticType elementType;
+        if (setComp.Element is SpreadElement spread)
+        {
+            // {*it for it in its} — result type is the inner element type of the spread value
+            var spreadType = CheckExpression(spread);  // caches type for spread node
+            elementType = _typeInference.InferIterableElementType(spreadType) ?? SemanticType.Unknown;
+        }
+        else
+        {
+            elementType = CheckExpression(setComp.Element);
+        }
 
         _symbolTable.ExitScope();
 
@@ -245,13 +257,9 @@ internal partial class TypeChecker
 
     private SemanticType CheckDictComprehension(DictComprehension dictComp)
     {
-        // Enter comprehension scope (variables don't leak)
         _symbolTable.EnterScope("dict-comprehension");
-
-        // Process clauses (for and if)
         CheckComprehensionClauses(dictComp.Clauses);
 
-        // Check key and value expressions
         var keyType = CheckExpression(dictComp.Key);
         var valueType = CheckExpression(dictComp.Value);
 
@@ -261,6 +269,32 @@ internal partial class TypeChecker
         {
             Name = BuiltinNames.Dict,
             TypeArguments = new List<SemanticType> { keyType, valueType }
+        };
+    }
+
+    private SemanticType CheckDictSpreadComprehension(DictSpreadComprehension dictSpreadComp)
+    {
+        // {**d for d in dicts} — result type is dict[K, V] from the spread value type
+        _symbolTable.EnterScope("dict-spread-comprehension");
+        CheckComprehensionClauses(dictSpreadComp.Clauses);
+
+        var spreadType = CheckExpression(dictSpreadComp.Spread);
+
+        _symbolTable.ExitScope();
+
+        if (spreadType is GenericType { Name: "dict" } gType && gType.TypeArguments.Count >= 2)
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.Dict,
+                TypeArguments = new List<SemanticType> { gType.TypeArguments[0], gType.TypeArguments[1] }
+            };
+        }
+
+        return new GenericType
+        {
+            Name = BuiltinNames.Dict,
+            TypeArguments = new List<SemanticType> { SemanticType.Unknown, SemanticType.Unknown }
         };
     }
 

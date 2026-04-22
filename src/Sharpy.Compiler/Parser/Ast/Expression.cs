@@ -280,6 +280,32 @@ public record DictComprehension : Expression
 }
 
 /// <summary>
+/// Dict spread comprehension {**d for d in dicts}
+/// </summary>
+public record DictSpreadComprehension : Expression
+{
+    public Expression Spread { get; init; } = null!;
+    public ImmutableArray<ComprehensionClause> Clauses { get; init; } = ImmutableArray<ComprehensionClause>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Spread != null, "DictSpreadComprehension.Spread cannot be null");
+        Debug.Assert(Clauses != null, "DictSpreadComprehension.Clauses cannot be null");
+        Debug.Assert(Clauses.Length > 0, "DictSpreadComprehension.Clauses must have at least one clause");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Spread;
+        foreach (var clause in Clauses)
+            yield return clause;
+    }
+}
+
+/// <summary>
 /// Base class for comprehension clauses (for/if)
 /// </summary>
 public abstract record ComprehensionClause : Node;

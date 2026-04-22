@@ -1,0 +1,6 @@
+def main():
+    dicts: list[dict[str, int]] = [{"a": 1, "b": 2}, {"c": 3}]
+    result: dict[str, int] = {**d for d in dicts}
+    keys: list[str] = sorted(result.keys())
+    for k in keys:
+        print(k, result[k])

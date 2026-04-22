@@ -1105,6 +1105,16 @@ internal partial class RoslynEmitter
                         CollectReferencedIdentifiers(ic.Condition, identifiers);
                 }
                 break;
+            case DictSpreadComprehension spreadComp:
+                CollectReferencedIdentifiers(spreadComp.Spread, identifiers);
+                foreach (var clause in spreadComp.Clauses)
+                {
+                    if (clause is ForClause fc)
+                        CollectReferencedIdentifiers(fc.Iterator, identifiers);
+                    else if (clause is IfClause ic)
+                        CollectReferencedIdentifiers(ic.Condition, identifiers);
+                }
+                break;
             // Literals and other expressions with no identifier references
             case IntegerLiteral:
             case FloatLiteral:

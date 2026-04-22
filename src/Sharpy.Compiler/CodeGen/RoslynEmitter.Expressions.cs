@@ -38,6 +38,7 @@ internal partial class RoslynEmitter
             ListComprehension listComp => GenerateListComprehension(listComp),
             SetComprehension setComp => GenerateSetComprehension(setComp),
             DictComprehension dictComp => GenerateDictComprehension(dictComp),
+            DictSpreadComprehension dictSpreadComp => GenerateDictSpreadComprehension(dictSpreadComp),
 
             // Primary expressions
             // Handle 'self' -> 'this' conversion for instance methods

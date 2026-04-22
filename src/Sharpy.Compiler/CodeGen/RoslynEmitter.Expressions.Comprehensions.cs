@@ -17,9 +17,11 @@ internal partial class RoslynEmitter
 {
     private ExpressionSyntax GenerateListComprehension(ListComprehension listComp)
     {
+        bool elementIsSpread = listComp.Element is SpreadElement;
+
         // Multi-for comprehensions use imperative codegen (nested foreach loops)
         if (listComp.Clauses.Count(c => c is ForClause) > 1)
-            return GenerateImperativeComprehension(listComp.Clauses, listComp.Element, null, null, BuiltinNames.List);
+            return GenerateImperativeComprehension(listComp.Clauses, listComp.Element, null, null, BuiltinNames.List, elementIsSpread);
 
         // Single-for: LINQ method chain
         var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
@@ -28,19 +30,30 @@ internal partial class RoslynEmitter
         if (errorExpr != null)
             return errorExpr;
 
-        // Apply .Select(x => element_expression)
-        var elementExpr = GenerateExpression(listComp.Element);
-        var selectLambda = MakeComprehensionLambda(param, tupleTarget, elementExpr);
+        SemanticType? elementSemanticType;
+        if (elementIsSpread && listComp.Element is SpreadElement spreadEl)
+        {
+            // PEP 798: [*it for it in its] — use SelectMany to flatten one level
+            var spreadInnerExpr = GenerateExpression(spreadEl.Value);
+            var selectManyLambda = MakeComprehensionLambda(param, tupleTarget, spreadInnerExpr);
+            chain = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, chain, IdentifierName("SelectMany")))
+                .AddArgumentListArguments(Argument(selectManyLambda));
 
-        chain = InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                chain,
-                IdentifierName("Select")))
-            .AddArgumentListArguments(Argument(selectLambda));
-
-        // Wrap in new Sharpy.List<T>(chain) using semantic type info for T
-        var elementSemanticType = GetExpressionSemanticType(listComp.Element);
+            // Element type T from the spread value type (list[T] → T)
+            var spreadSemType = GetExpressionSemanticType(spreadEl);
+            elementSemanticType = spreadSemType is GenericType gst && gst.TypeArguments.Count > 0
+                ? gst.TypeArguments[0] : null;
+        }
+        else
+        {
+            var elementExpr = GenerateExpression(listComp.Element);
+            var selectLambda = MakeComprehensionLambda(param, tupleTarget, elementExpr);
+            chain = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, chain, IdentifierName("Select")))
+                .AddArgumentListArguments(Argument(selectLambda));
+            elementSemanticType = GetExpressionSemanticType(listComp.Element);
+        }
 
         var elementTypeSyntax = elementSemanticType != null
             ? _typeMapper.MapSemanticType(elementSemanticType)
@@ -54,9 +67,11 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateSetComprehension(SetComprehension setComp)
     {
+        bool elementIsSpread = setComp.Element is SpreadElement;
+
         // Multi-for comprehensions use imperative codegen (nested foreach loops)
         if (setComp.Clauses.Count(c => c is ForClause) > 1)
-            return GenerateImperativeComprehension(setComp.Clauses, setComp.Element, null, null, BuiltinNames.Set);
+            return GenerateImperativeComprehension(setComp.Clauses, setComp.Element, null, null, BuiltinNames.Set, elementIsSpread);
 
         // Single-for: LINQ method chain
         var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
@@ -65,19 +80,30 @@ internal partial class RoslynEmitter
         if (errorExpr != null)
             return errorExpr;
 
-        // Apply .Select(x => element_expression)
-        var elementExpr = GenerateExpression(setComp.Element);
-        var selectLambda = MakeComprehensionLambda(param, tupleTarget, elementExpr);
+        SemanticType? elementSemanticType;
+        if (elementIsSpread && setComp.Element is SpreadElement spreadEl)
+        {
+            // PEP 798: {*it for it in its} — use SelectMany to flatten one level
+            var spreadInnerExpr = GenerateExpression(spreadEl.Value);
+            var selectManyLambda = MakeComprehensionLambda(param, tupleTarget, spreadInnerExpr);
+            chain = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, chain, IdentifierName("SelectMany")))
+                .AddArgumentListArguments(Argument(selectManyLambda));
 
-        chain = InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                chain,
-                IdentifierName("Select")))
-            .AddArgumentListArguments(Argument(selectLambda));
-
-        // Wrap in new Sharpy.Set<T>(chain) using semantic type info for T
-        var elementSemanticType = GetExpressionSemanticType(setComp.Element);
+            // Element type T from the spread value type (set[T] → T, list[T] → T, etc.)
+            var spreadSemType = GetExpressionSemanticType(spreadEl);
+            elementSemanticType = spreadSemType is GenericType gst && gst.TypeArguments.Count > 0
+                ? gst.TypeArguments[0] : null;
+        }
+        else
+        {
+            var elementExpr = GenerateExpression(setComp.Element);
+            var selectLambda = MakeComprehensionLambda(param, tupleTarget, elementExpr);
+            chain = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, chain, IdentifierName("Select")))
+                .AddArgumentListArguments(Argument(selectLambda));
+            elementSemanticType = GetExpressionSemanticType(setComp.Element);
+        }
 
         var elementTypeSyntax = elementSemanticType != null
             ? _typeMapper.MapSemanticType(elementSemanticType)
@@ -137,6 +163,130 @@ internal partial class RoslynEmitter
         return toDictInvocation;
     }
 
+    private ExpressionSyntax GenerateDictSpreadComprehension(DictSpreadComprehension dictSpreadComp)
+    {
+        var tempName = GenerateTempVarName("comp");
+
+        // Determine K, V from the semantic type of the spread value (dict[K,V])
+        var spreadSemanticType = GetExpressionSemanticType(dictSpreadComp.Spread);
+        TypeSyntax kTypeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        TypeSyntax vTypeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+        if (spreadSemanticType is GenericType gDictType
+            && gDictType.Name == BuiltinNames.Dict
+            && gDictType.TypeArguments.Count >= 2)
+        {
+            kTypeSyntax = _typeMapper.MapSemanticType(gDictType.TypeArguments[0]);
+            vTypeSyntax = _typeMapper.MapSemanticType(gDictType.TypeArguments[1]);
+        }
+
+        var dictType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, kTypeSyntax, vTypeSyntax);
+
+        // var __comp_N = new Dict<K,V>();
+        var tempDecl = LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(tempName))
+                        .WithInitializer(EqualsValueClause(
+                            ObjectCreationExpression(dictType)
+                                .WithArgumentList(ArgumentList()))))));
+
+        // Inner statement: __comp_N.Update(spread)
+        var spreadExpr = GenerateExpression(dictSpreadComp.Spread);
+        StatementSyntax innerStmt = ExpressionStatement(
+            InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(tempName),
+                    IdentifierName("Update")))
+            .AddArgumentListArguments(Argument(spreadExpr)));
+
+        var currentBody = new List<StatementSyntax> { innerStmt };
+
+        // Build nested loop structure from clauses in reverse order
+        for (int i = dictSpreadComp.Clauses.Length - 1; i >= 0; i--)
+        {
+            switch (dictSpreadComp.Clauses[i])
+            {
+                case IfClause ifClause:
+                    var condition = GenerateExpression(ifClause.Condition);
+                    currentBody = new List<StatementSyntax> { IfStatement(condition, Block(currentBody)) };
+                    break;
+
+                case ForClause forClause:
+                    var iterExpr = GenerateExpression(forClause.Iterator);
+
+                    if (forClause.Target is Identifier id)
+                    {
+                        var loopVar = NameMangler.ToCamelCase(id.Name);
+                        var tempLoopVar = GenerateTempVarName("loopVar");
+
+                        _declaredVariables.Add(loopVar);
+                        _variableVersions[loopVar] = 0;
+
+                        var varInit = LocalDeclarationStatement(
+                            VariableDeclaration(IdentifierName("var"))
+                                .WithVariables(SingletonSeparatedList(
+                                    VariableDeclarator(Identifier(loopVar))
+                                        .WithInitializer(EqualsValueClause(IdentifierName(tempLoopVar))))));
+
+                        var foreachBody = new List<StatementSyntax> { varInit };
+                        foreachBody.AddRange(currentBody);
+
+                        currentBody = new List<StatementSyntax>
+                        {
+                            ForEachStatement(
+                                IdentifierName("var"),
+                                Identifier(tempLoopVar),
+                                iterExpr,
+                                Block(foreachBody))
+                        };
+                    }
+                    else if (forClause.Target is TupleLiteral tuple && tuple.Elements.All(e => e is Identifier))
+                    {
+                        var tempLoopVar = GenerateTempVarName("loopVar");
+                        var tupleVars = tuple.Elements.Cast<Identifier>()
+                            .Select(e => NameMangler.ToCamelCase(e.Name)).ToList();
+
+                        foreach (var tv in tupleVars)
+                        {
+                            _declaredVariables.Add(tv);
+                            _variableVersions[tv] = 0;
+                        }
+
+                        var designations = tupleVars
+                            .Select(name => (VariableDesignationSyntax)SingleVariableDesignation(Identifier(name)))
+                            .ToList();
+                        var deconstructStmt = ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                DeclarationExpression(
+                                    IdentifierName("var"),
+                                    ParenthesizedVariableDesignation(SeparatedList(designations))),
+                                IdentifierName(tempLoopVar)));
+
+                        var foreachBody = new List<StatementSyntax> { deconstructStmt };
+                        foreachBody.AddRange(currentBody);
+
+                        currentBody = new List<StatementSyntax>
+                        {
+                            ForEachStatement(
+                                IdentifierName("var"),
+                                Identifier(tempLoopVar),
+                                iterExpr,
+                                Block(foreachBody))
+                        };
+                    }
+                    break;
+            }
+        }
+
+        _hoistedStatements.Add(tempDecl);
+        _hoistedStatements.AddRange(currentBody);
+
+        return IdentifierName(tempName);
+    }
+
     /// <summary>
     /// Generates imperative codegen for multi-for comprehensions.
     /// Produces a temp collection, nested foreach loops with .Add() calls,
@@ -147,12 +297,14 @@ internal partial class RoslynEmitter
     /// <param name="keyExpr">Key expression for dict comprehensions (null for list/set)</param>
     /// <param name="valueExpr">Value expression for dict comprehensions (null for list/set)</param>
     /// <param name="collectionKind">BuiltinNames.List, BuiltinNames.Set, or BuiltinNames.Dict</param>
+    /// <param name="elementIsSpread">When true, use SpreadMethodName (Extend/UnionWith) instead of AddMethodName</param>
     private ExpressionSyntax GenerateImperativeComprehension(
         ImmutableArray<ComprehensionClause> clauses,
         Expression? element,
         Expression? keyExpr,
         Expression? valueExpr,
-        string collectionKind)
+        string collectionKind,
+        bool elementIsSpread = false)
     {
         var tempName = GenerateTempVarName("comp");
 
@@ -191,7 +343,7 @@ internal partial class RoslynEmitter
                             ObjectCreationExpression(collectionType)
                                 .WithArgumentList(ArgumentList()))))));
 
-        // Build the innermost statement: __comp_N.Add(element) or __comp_N[key] = value
+        // Build the innermost statement: __comp_N.Add(element), __comp_N.Extend(it), or __comp_N[key] = value
         StatementSyntax innerStmt;
         if (collectionKind == BuiltinNames.Dict)
         {
@@ -203,6 +355,17 @@ internal partial class RoslynEmitter
                         .WithArgumentList(BracketedArgumentList(
                             SingletonSeparatedList(Argument(GenerateExpression(keyExpr!))))),
                     GenerateExpression(valueExpr!)));
+        }
+        else if (elementIsSpread && element is SpreadElement spreadElem)
+        {
+            // PEP 798: __comp_N.Extend(it) / __comp_N.UnionWith(it) for spread elements
+            innerStmt = ExpressionStatement(
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(tempName),
+                        IdentifierName(collInfo!.SpreadMethodName)))
+                    .AddArgumentListArguments(Argument(GenerateExpression(spreadElem.Value))));
         }
         else
         {

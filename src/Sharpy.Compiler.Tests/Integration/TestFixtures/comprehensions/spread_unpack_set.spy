@@ -1,0 +1,4 @@
+def main():
+    its: list[set[int]] = [{1, 2}, {2, 3}]
+    result: set[int] = {*it for it in its}
+    print(sorted(result))

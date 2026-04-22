@@ -371,8 +371,8 @@ public partial class Parser
                     var firstExpr = ParseListElement();
 
                     // Check for list comprehension: [expr for x in iterable]
-                    // (only if first element is not a spread)
-                    if (firstExpr is not SpreadElement && Current.Type == TokenType.For)
+                    // PEP 798: spread elements are allowed as comprehension elements: [*it for it in its]
+                    if (Current.Type == TokenType.For)
                     {
                         var clauses = ParseComprehensionClauses();
                         Expect(TokenType.RightBracket);
@@ -448,10 +448,31 @@ public partial class Parser
                         };
                     }
 
-                    // Dict spread: {**d1, ...} — first token is **
+                    // Dict spread: {**d1, ...} or dict spread comprehension {**d for d in dicts}
                     if (Current.Type == TokenType.DoubleStar)
                     {
-                        var entries = new List<DictEntry> { ParseDictEntry() };
+                        Advance(); // consume **
+                        var spreadValue = ParseExpression();
+
+                        // PEP 798: {**d for d in dicts} — dict spread comprehension
+                        if (Current.Type == TokenType.For)
+                        {
+                            var clauses = ParseComprehensionClauses();
+                            Expect(TokenType.RightBrace);
+                            return new DictSpreadComprehension
+                            {
+                                Spread = spreadValue,
+                                Clauses = clauses.ToImmutableArray(),
+                                LineStart = startLine,
+                                ColumnStart = startColumn,
+                                LineEnd = Previous.Line,
+                                ColumnEnd = Previous.Column + Previous.Value.Length,
+                                Span = GetSpanFromTokens(startToken, Previous)
+                            };
+                        }
+
+                        // Regular dict spread literal: {**d1, **d2, ...}
+                        var entries = new List<DictEntry> { new DictEntry { Key = null, Value = spreadValue } };
                         while (Current.Type == TokenType.Comma)
                         {
                             Advance();
@@ -526,7 +547,8 @@ public partial class Parser
                     else
                     {
                         // Check for set comprehension: {expr for x in iterable}
-                        if (firstExpr is not SpreadElement && Current.Type == TokenType.For)
+                        // PEP 798: spread elements allowed: {*it for it in its}
+                        if (Current.Type == TokenType.For)
                         {
                             var clauses = ParseComprehensionClauses();
                             Expect(TokenType.RightBrace);

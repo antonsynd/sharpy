@@ -311,6 +311,16 @@ internal class ExecutionOrderAnalyzer
                         CollectReferencedIdentifiers(ifClause.Condition, identifiers);
                 }
                 break;
+            case DictSpreadComprehension dictSpreadComp:
+                CollectReferencedIdentifiers(dictSpreadComp.Spread, identifiers);
+                foreach (var clause in dictSpreadComp.Clauses)
+                {
+                    if (clause is ForClause forClause)
+                        CollectReferencedIdentifiers(forClause.Iterator, identifiers);
+                    else if (clause is IfClause ifClause)
+                        CollectReferencedIdentifiers(ifClause.Condition, identifiers);
+                }
+                break;
             case ComparisonChain chain:
                 foreach (var operand in chain.Operands)
                     CollectReferencedIdentifiers(operand, identifiers);

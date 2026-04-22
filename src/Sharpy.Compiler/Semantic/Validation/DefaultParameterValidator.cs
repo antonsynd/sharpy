@@ -217,6 +217,7 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             ListComprehension => false,
             SetComprehension => false,
             DictComprehension => false,
+            DictSpreadComprehension => false,
 
             // Lambda expressions are NOT compile-time constants
             LambdaExpression => false,
