@@ -297,6 +297,15 @@ internal partial class RoslynEmitter
                     return result;
                 }
 
+            case GuardPattern guardPattern:
+                {
+                    var innerPattern = GenerateMatchPattern(
+                        guardPattern.Inner, memberGuards, ref matchVarCounter, scrutineeType);
+                    var guardExpr = GenerateExpression(guardPattern.Guard);
+                    memberGuards.Add(guardExpr);
+                    return innerPattern;
+                }
+
             case MemberAccessPattern memberAccess:
                 {
                     // Check if this is a union case pattern (e.g., Option.None)

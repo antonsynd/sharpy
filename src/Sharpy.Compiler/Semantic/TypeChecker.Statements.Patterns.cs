@@ -202,26 +202,43 @@ internal partial class TypeChecker
                     bool hasMemberAccess = orPattern.Alternatives.Any(a => a is MemberAccessPattern);
                     foreach (var alt in orPattern.Alternatives)
                     {
-                        if (alt is BindingPattern)
+                        // GuardPattern wraps an inner pattern — check the inner pattern normally
+                        var effectiveAlt = alt is GuardPattern gp ? gp.Inner : alt;
+                        if (effectiveAlt is BindingPattern)
                         {
                             AddError(
                                 "Binding patterns are not allowed inside or-patterns",
-                                alt.LineStart, alt.ColumnStart,
+                                effectiveAlt.LineStart, effectiveAlt.ColumnStart,
                                 code: DiagnosticCodes.Semantic.BindingInOrPattern,
-                                span: alt.Span);
+                                span: effectiveAlt.Span);
                         }
-                        else if (hasMemberAccess && alt is not MemberAccessPattern && alt is not LiteralPattern && alt is not WildcardPattern)
+                        else if (hasMemberAccess && effectiveAlt is not MemberAccessPattern && effectiveAlt is not LiteralPattern && effectiveAlt is not WildcardPattern)
                         {
                             AddError(
                                 "Only literal, member access, and wildcard patterns can be combined with member access patterns in or-patterns",
-                                alt.LineStart, alt.ColumnStart,
+                                effectiveAlt.LineStart, effectiveAlt.ColumnStart,
                                 code: DiagnosticCodes.Semantic.UnsupportedPatternInMemberAccessOr,
-                                span: alt.Span);
+                                span: effectiveAlt.Span);
                         }
                         else
                         {
                             CheckPattern(alt, scrutineeType);
                         }
+                    }
+                    break;
+                }
+
+            case GuardPattern guardPattern:
+                {
+                    CheckPattern(guardPattern.Inner, scrutineeType);
+                    var guardType = CheckExpression(guardPattern.Guard);
+                    if (guardType != SemanticType.Bool && guardType != SemanticType.Unknown)
+                    {
+                        AddError(
+                            $"Guard expression must be bool, got '{guardType.GetDisplayName()}'",
+                            guardPattern.Guard.LineStart, guardPattern.Guard.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: guardPattern.Guard.Span);
                     }
                     break;
                 }

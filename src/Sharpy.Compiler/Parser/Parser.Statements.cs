@@ -1666,7 +1666,7 @@ public partial class Parser
         };
     }
 
-    private TuplePattern ParseTuplePattern()
+    private Pattern ParseTuplePattern()
     {
         var startToken = Current;
         Expect(TokenType.LeftParen);
@@ -1684,7 +1684,27 @@ public partial class Parser
             }
         }
 
-        var endToken = Current;
+        // RFC 3637: Single-element parenthesized pattern with guard → GuardPattern
+        // Syntax: (pattern if guard)
+        if (elements.Count == 1 && Current.Type == TokenType.If)
+        {
+            Advance(); // consume 'if'
+            var guard = ParseExpression();
+            var endToken = Current;
+            Expect(TokenType.RightParen);
+            return new GuardPattern
+            {
+                Inner = elements[0],
+                Guard = guard,
+                LineStart = startToken.Line,
+                ColumnStart = startToken.Column,
+                LineEnd = endToken.Line,
+                ColumnEnd = endToken.Column + endToken.Value.Length,
+                Span = GetSpanFromTokens(startToken, endToken)
+            };
+        }
+
+        var tupleEndToken = Current;
         Expect(TokenType.RightParen);
 
         return new TuplePattern
@@ -1692,9 +1712,9 @@ public partial class Parser
             Elements = elements.ToImmutableArray(),
             LineStart = startToken.Line,
             ColumnStart = startToken.Column,
-            LineEnd = endToken.Line,
-            ColumnEnd = endToken.Column + endToken.Value.Length,
-            Span = GetSpanFromTokens(startToken, endToken)
+            LineEnd = tupleEndToken.Line,
+            ColumnEnd = tupleEndToken.Column + tupleEndToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, tupleEndToken)
         };
     }
 

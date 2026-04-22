@@ -1,0 +1,14 @@
+def classify(x: int?) -> str:
+    match x:
+        case (Some(v) if v > 0):
+            return f"positive: {v}"
+        case Some(v):
+            return f"non-positive: {v}"
+        case None():
+            return "none"
+
+def main():
+    print(classify(Some(5)))
+    print(classify(Some(-1)))
+    print(classify(Some(0)))
+    print(classify(None()))
