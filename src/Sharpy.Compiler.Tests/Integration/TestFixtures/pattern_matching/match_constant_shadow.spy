@@ -1,0 +1,12 @@
+const MAX = 100
+
+def check(x: int) -> str:
+    match x:
+        case MAX:
+            return "is max"
+        case _:
+            return "other"
+
+def main():
+    print(check(100))
+    print(check(42))

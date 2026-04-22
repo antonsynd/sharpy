@@ -75,6 +75,11 @@ internal partial class TypeChecker
                     var existingSymbol = _symbolTable.Lookup(binding.Name.Name, searchParents: true) as VariableSymbol;
                     if (existingSymbol is { IsConstant: true })
                     {
+                        _diagnostics.AddWarning(
+                            $"Pattern '{binding.Name.Name}' matches constant value, not a capture binding; use a different name to capture",
+                            binding,
+                            code: DiagnosticCodes.Validation.ConstantPatternShadow);
+
                         _semanticInfo.SetPatternConstantSymbol(binding, existingSymbol);
                         _semanticInfo.SetIdentifierSymbol(binding.Name, existingSymbol);
 
