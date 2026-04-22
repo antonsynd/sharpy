@@ -390,7 +390,10 @@ public static class DiagnosticCodes
         public const string BreakInExceptStar = "SPY0392";              // Active
         public const string ContinueInExceptStar = "SPY0393";           // Active
         public const string ReturnInExceptStar = "SPY0394";             // Active
-        // SPY0395-SPY0399: Reserved for future parameter modifier diagnostics
+        // Generic type parameter default errors (SPY0395-SPY0396)
+        public const string TypeParameterDefaultOrdering = "SPY0395"; // Active
+        public const string TypeParameterDefaultViolatesConstraint = "SPY0396"; // Active
+        // SPY0397-SPY0399: Reserved for future semantic errors
 
         #endregion
     }

@@ -128,6 +128,8 @@ internal partial class TypeChecker
         // This is control-flow narrowing isolation, not lexical scoping.
         using var _ = _narrowingContext.EnterIsolatedScope();
 
+        ValidateTypeParameterDefaultOrdering(functionDef.TypeParameters);
+
         // Register type parameters for generic functions so they can be resolved in parameter/return types
         foreach (var typeParam in functionDef.TypeParameters)
         {
@@ -712,6 +714,8 @@ internal partial class TypeChecker
         // Enter class scope
         _symbolTable.EnterScope($"class:{classDef.Name}");
 
+        ValidateTypeParameterDefaultOrdering(classDef.TypeParameters);
+
         // Register type parameters in the scope so they can be resolved in field/method types
         foreach (var typeParam in classDef.TypeParameters)
         {
@@ -803,6 +807,8 @@ internal partial class TypeChecker
         // Enter struct scope
         _symbolTable.EnterScope($"struct:{structDef.Name}");
 
+        ValidateTypeParameterDefaultOrdering(structDef.TypeParameters);
+
         // Register type parameters in the scope so they can be resolved in field/method types
         foreach (var typeParam in structDef.TypeParameters)
         {
@@ -888,6 +894,8 @@ internal partial class TypeChecker
 
         // Enter interface scope to resolve type parameters
         _symbolTable.EnterScope($"interface:{interfaceDef.Name}");
+
+        ValidateTypeParameterDefaultOrdering(interfaceDef.TypeParameters);
 
         // Register type parameters in the scope so they can be resolved in method signatures
         foreach (var typeParam in interfaceDef.TypeParameters)
@@ -1664,6 +1672,29 @@ internal partial class TypeChecker
 
             classSymbol.ProtocolMethods[DunderNames.Repr] = new List<FunctionSymbol> { reprSymbol };
             classSymbol.Methods.Add(reprSymbol);
+        }
+    }
+
+    private void ValidateTypeParameterDefaultOrdering(System.Collections.Immutable.ImmutableArray<TypeParameterDef> typeParams)
+    {
+        bool seenDefault = false;
+        string? firstDefaultName = null;
+
+        foreach (var tp in typeParams)
+        {
+            if (tp.DefaultType != null)
+            {
+                seenDefault = true;
+                firstDefaultName ??= tp.Name;
+            }
+            else if (seenDefault)
+            {
+                AddError(
+                    $"Type parameter '{tp.Name}' without a default follows type parameter '{firstDefaultName}' which has a default",
+                    tp.LineStart, tp.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeParameterDefaultOrdering,
+                    span: tp.Span);
+            }
         }
     }
 

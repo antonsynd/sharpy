@@ -1,0 +1,5 @@
+class Foo[T = int, U]:
+    pass
+
+def main():
+    pass
