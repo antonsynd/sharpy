@@ -1107,6 +1107,22 @@ public static class DiagnosticExplanations
             "def foo():\n    try:\n        ...\n    except* ValueError as eg:\n        return  # Error",
             "Handle the return condition outside the except* handler, for example by setting a flag variable.");
 
+        // ── Semantic errors: Generic type parameter defaults (SPY0395-SPY0396) ─
+
+        Add(dict, DiagnosticCodes.Semantic.TypeParameterDefaultOrdering,
+            "Type parameter without default follows one with default",
+            "Semantic",
+            "In a type parameter list, once one type parameter has a default, all subsequent type parameters must also have defaults (PEP 696).",
+            "class Foo[T = int, U]:  # Error: U has no default but T does",
+            "Either add a default to all trailing type parameters or reorder them:\nclass Foo[U, T = int]: ...");
+
+        Add(dict, DiagnosticCodes.Semantic.TypeParameterDefaultViolatesConstraint,
+            "Type parameter default violates constraint",
+            "Semantic",
+            "A type parameter's default type does not satisfy its declared constraints. The default type must conform to all constraints (class, struct, or interface/base type).",
+            "class Foo[T: class = int]:  # Error: int is a value type, not a class",
+            "Use a default type that satisfies the constraint:\nclass Foo[T: class = str]: ...");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",
