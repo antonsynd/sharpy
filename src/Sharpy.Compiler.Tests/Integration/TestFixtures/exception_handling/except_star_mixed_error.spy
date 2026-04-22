@@ -1,0 +1,7 @@
+def main():
+    try:
+        raise ExceptionGroup("errors", [ValueError("bad value")])
+    except ValueError as e:
+        print("regular except")
+    except* TypeError as eg:
+        print("except star")

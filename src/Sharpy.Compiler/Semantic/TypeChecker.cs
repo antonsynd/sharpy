@@ -43,6 +43,9 @@ internal partial class TypeChecker
     // Track whether we're inside an except block (for bare raise validation)
     private bool _inExceptBlock = false;
 
+    // Track whether we're inside an except* block (PEP 654 — restricts break/continue/return)
+    private bool _inExceptStarBlock = false;
+
     // Track current method context for super() validation
     private string? _currentMethodName = null;
     private bool _currentMethodIsOverride = false;
@@ -384,9 +387,27 @@ internal partial class TypeChecker
                 break;
 
             case PassStatement:
-            case BreakStatement:
-            case ContinueStatement:
                 // No type checking needed
+                break;
+
+            case BreakStatement breakStmt:
+                if (_inExceptStarBlock)
+                {
+                    AddError("'break' is not allowed inside 'except*' handler",
+                        breakStmt.LineStart, breakStmt.ColumnStart,
+                        code: DiagnosticCodes.Semantic.BreakInExceptStar,
+                        span: breakStmt.Span);
+                }
+                break;
+
+            case ContinueStatement continueStmt:
+                if (_inExceptStarBlock)
+                {
+                    AddError("'continue' is not allowed inside 'except*' handler",
+                        continueStmt.LineStart, continueStmt.ColumnStart,
+                        code: DiagnosticCodes.Semantic.ContinueInExceptStar,
+                        span: continueStmt.Span);
+                }
                 break;
 
             case ImportStatement:

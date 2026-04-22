@@ -1,0 +1,8 @@
+def main():
+    errors: list[Exception] = [ValueError("bad value"), TypeError("bad type")]
+    try:
+        raise ExceptionGroup("errors", errors)
+    except* ValueError as eg:
+        print("caught ValueError group")
+    except* TypeError as eg:
+        print("caught TypeError group")

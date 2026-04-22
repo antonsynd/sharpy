@@ -411,6 +411,15 @@ internal partial class TypeChecker
 
     private void CheckReturn(ReturnStatement returnStmt)
     {
+        if (_inExceptStarBlock)
+        {
+            AddError("'return' is not allowed inside 'except*' handler",
+                returnStmt.LineStart, returnStmt.ColumnStart,
+                code: DiagnosticCodes.Semantic.ReturnInExceptStar,
+                span: returnStmt.Span);
+            return;
+        }
+
         if (_currentFunctionReturnType == null)
         {
             AddError("Return statement outside of function",
@@ -769,13 +778,42 @@ internal partial class TypeChecker
             _controlFlowDepth++;
             _inExceptBlock = true;
 
+            if (handler.IsExceptStar)
+            {
+                _inExceptStarBlock = true;
+
+                // Validate: except* cannot catch ExceptionGroup itself (PEP 654)
+                if (handler.ExceptionType != null && handler.ExceptionType.Name == "ExceptionGroup")
+                {
+                    AddError("'except*' cannot catch 'ExceptionGroup' directly; use 'except' instead",
+                        handler.ExceptionType.LineStart, handler.ExceptionType.ColumnStart,
+                        code: DiagnosticCodes.Semantic.ExceptStarCatchesExceptionGroup,
+                        span: handler.ExceptionType.Span);
+                }
+            }
+
             // Register the 'as' variable binding (e.g., except ValueError as e:)
             if (handler.Name != null)
             {
-                var exceptionType = handler.ExceptionType != null
-                    ? _typeResolver.ResolveTypeAnnotation(handler.ExceptionType)
-                    : _typeResolver.ResolveTypeAnnotation(
-                        new TypeAnnotation { Name = "Exception", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart });
+                SemanticType exceptionType;
+                if (handler.IsExceptStar)
+                {
+                    // In except* handlers, the 'as' variable is an ExceptionGroup
+                    // wrapping the matched exception type, not the raw type itself
+                    var exceptionGroupSymbol = _symbolTable.Lookup("ExceptionGroup") as TypeSymbol
+                        ?? _symbolTable.BuiltinRegistry.TryResolveClrType("ExceptionGroup");
+                    exceptionType = exceptionGroupSymbol != null
+                        ? new UserDefinedType { Name = "ExceptionGroup", Symbol = exceptionGroupSymbol }
+                        : _typeResolver.ResolveTypeAnnotation(
+                            new TypeAnnotation { Name = "ExceptionGroup", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart });
+                }
+                else
+                {
+                    exceptionType = handler.ExceptionType != null
+                        ? _typeResolver.ResolveTypeAnnotation(handler.ExceptionType)
+                        : _typeResolver.ResolveTypeAnnotation(
+                            new TypeAnnotation { Name = "Exception", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart });
+                }
 
                 var varSymbol = new VariableSymbol
                 {
@@ -794,6 +832,7 @@ internal partial class TypeChecker
             foreach (var stmt in handler.Body)
                 CheckStatement(stmt);
             _inExceptBlock = false;
+            _inExceptStarBlock = false;
             _controlFlowDepth--;
             _symbolTable.ExitScope();
         }

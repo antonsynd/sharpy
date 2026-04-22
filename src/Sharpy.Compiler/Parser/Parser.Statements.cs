@@ -408,8 +408,28 @@ public partial class Parser
             var handlerStartToken = Current;
             Advance();
 
+            // Check for except* (PEP 654)
+            var isExceptStar = false;
+            if (Current.Type == TokenType.Star)
+            {
+                isExceptStar = true;
+                Advance(); // consume '*'
+            }
+
             TypeAnnotation? exceptionType = null;
             string? name = null;
+
+            // except* requires a type — bare `except*:` is invalid
+            if (isExceptStar && Current.Type == TokenType.Colon)
+            {
+                throw ReportError(
+                    "'except*' requires an exception type",
+                    handlerStartLine,
+                    handlerStartColumn,
+                    DiagnosticCodes.Parser.ExceptStarRequiresType,
+                    span: CurrentSpan
+                );
+            }
 
             // except ExceptionType as name:
             // PEP 758: also allow comma-separated types without parentheses
@@ -476,6 +496,7 @@ public partial class Parser
             {
                 ExceptionType = exceptionType,
                 Name = name,
+                IsExceptStar = isExceptStar,
                 Body = handlerBody.ToImmutableArray(),
                 LineStart = handlerStartLine,
                 ColumnStart = handlerStartColumn,
@@ -483,6 +504,24 @@ public partial class Parser
                 ColumnEnd = handlerEndColumn,
                 Span = GetSpanFromTokens(handlerStartToken, Previous)
             });
+        }
+
+        // Validate: cannot mix except and except* in the same try block
+        if (handlers.Count > 0)
+        {
+            var hasExceptStar = handlers.Any(h => h.IsExceptStar);
+            var hasRegularExcept = handlers.Any(h => !h.IsExceptStar);
+            if (hasExceptStar && hasRegularExcept)
+            {
+                var firstMixed = handlers.First(h => !h.IsExceptStar);
+                throw ReportError(
+                    "Cannot mix 'except' and 'except*' handlers in the same try block",
+                    firstMixed.LineStart,
+                    firstMixed.ColumnStart,
+                    DiagnosticCodes.Parser.MixedExceptAndExceptStar,
+                    span: firstMixed.Span
+                );
+            }
         }
 
         // else clause (runs if no exception raised in try block)

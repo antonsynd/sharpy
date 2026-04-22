@@ -270,7 +270,8 @@ internal class AstDumper : AstVisitor
                 var handler = node.Handlers[i];
                 var handlerIndent = new string(' ', (depth + 2) * IndentUnit.Length);
                 var handlerPrefix = i == node.Handlers.Length - 1 && node.ElseBody.Length == 0 && node.FinallyBody.Length == 0 ? "└─ " : "├─ ";
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}{handlerPrefix}ExceptHandler @ L{handler.LineStart}:C{handler.ColumnStart}");
+                var exceptLabel = handler.IsExceptStar ? "ExceptStarHandler" : "ExceptHandler";
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}{handlerPrefix}{exceptLabel} @ L{handler.LineStart}:C{handler.ColumnStart}");
                 if (handler.ExceptionType != null)
                 {
                     _output.AppendLine(CultureInfo.InvariantCulture, $"{handlerIndent}   ExceptionType:");

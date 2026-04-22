@@ -830,6 +830,12 @@ internal partial class RoslynEmitter
 
     private List<CatchClauseSyntax> GenerateCatchClauses(ImmutableArray<ExceptHandler> handlers)
     {
+        // Check if any handlers are except* (PEP 654)
+        if (handlers.Length > 0 && handlers[0].IsExceptStar)
+        {
+            return GenerateExceptStarCatchClauses(handlers);
+        }
+
         var result = new List<CatchClauseSyntax>();
 
         foreach (var handler in handlers)
@@ -903,6 +909,219 @@ internal partial class RoslynEmitter
                 result.Add(CatchClause().WithBlock(catchBlock));
             }
         }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Generate catch clauses for except* handlers (PEP 654).
+    /// All except* handlers are combined into a single catch(AggregateException) block
+    /// that filters inner exceptions by type, dispatches to matching handler bodies,
+    /// and re-throws unmatched exceptions.
+    /// </summary>
+    private List<CatchClauseSyntax> GenerateExceptStarCatchClauses(ImmutableArray<ExceptHandler> handlers)
+    {
+        var result = new List<CatchClauseSyntax>();
+
+        var egVar = GenerateTempVarName("eg");
+        var allMatchedVar = GenerateTempVarName("allMatched");
+
+        var catchBodyStatements = new List<StatementSyntax>();
+
+        // var __allMatched_N = new System.Collections.Generic.List<System.Exception>();
+        catchBodyStatements.Add(LocalDeclarationStatement(
+            VariableDeclaration(
+                GenericName(Identifier("System.Collections.Generic.List"))
+                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
+                        ParseTypeName("System.Exception")))))
+            .WithVariables(SingletonSeparatedList(
+                VariableDeclarator(Identifier(allMatchedVar))
+                    .WithInitializer(EqualsValueClause(
+                        ObjectCreationExpression(
+                            GenericName(Identifier("System.Collections.Generic.List"))
+                                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
+                                    ParseTypeName("System.Exception")))))
+                        .WithArgumentList(ArgumentList())))))));
+
+        foreach (var handler in handlers)
+        {
+            if (handler.ExceptionType == null)
+                continue;
+
+            var exceptionType = _typeMapper.MapType(handler.ExceptionType);
+            var matchedVar = GenerateTempVarName("matched");
+
+            // var __matched_N = __eg_N.InnerExceptions.OfType<ExType>().ToList();
+            var ofTypeCall = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(egVar),
+                        IdentifierName("InnerExceptions")),
+                    GenericName(Identifier("OfType"))
+                        .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(exceptionType)))));
+
+            var toListCall = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ofTypeCall,
+                    IdentifierName("ToList")));
+
+            catchBodyStatements.Add(LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(matchedVar))
+                            .WithInitializer(EqualsValueClause(toListCall))))));
+
+            // if (__matched_N.Count > 0) { ... handler body ... }
+            var ifCondition = BinaryExpression(
+                SyntaxKind.GreaterThanExpression,
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(matchedVar),
+                    IdentifierName("Count")),
+                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
+
+            var handlerBodyStatements = new List<StatementSyntax>();
+
+            // __allMatched_N.AddRange(__matched_N);
+            handlerBodyStatements.Add(ExpressionStatement(
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(allMatchedVar),
+                        IdentifierName("AddRange")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(IdentifierName(matchedVar)))))));
+
+            // If there's an 'as' variable, create the ExceptionGroup wrapper
+            if (handler.Name != null)
+            {
+                var baseName = NameMangler.ToCamelCase(handler.Name);
+
+                var hadPrevious = _variableVersions.TryGetValue(baseName, out var previousVersion);
+                if (hadPrevious)
+                {
+                    _variableVersions[baseName] = previousVersion + 1;
+                }
+                else
+                {
+                    _variableVersions[baseName] = 0;
+                }
+
+                var asVar = hadPrevious
+                    ? $"{baseName}_{_variableVersions[baseName]}"
+                    : baseName;
+
+                // var eg = new Sharpy.ExceptionGroup("", __matched_N.Cast<System.Exception>().ToList());
+                var castCall = InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                IdentifierName(matchedVar),
+                                GenericName(Identifier("Cast"))
+                                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
+                                        ParseTypeName("System.Exception")))))),
+                        IdentifierName("ToList")));
+
+                var egCreation = ObjectCreationExpression(ParseTypeName("Sharpy.ExceptionGroup"))
+                    .WithArgumentList(ArgumentList(SeparatedList(new[]
+                    {
+                        Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(""))),
+                        Argument(castCall)
+                    })));
+
+                handlerBodyStatements.Add(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(asVar))
+                                .WithInitializer(EqualsValueClause(egCreation))))));
+
+                // Generate handler body statements
+                handlerBodyStatements.AddRange(handler.Body.SelectMany(GenerateBodyStatements));
+
+                // Restore version state
+                if (hadPrevious)
+                {
+                    _variableVersions[baseName] = previousVersion;
+                }
+                else
+                {
+                    _variableVersions.Remove(baseName);
+                }
+            }
+            else
+            {
+                // No 'as' variable — just emit the handler body
+                handlerBodyStatements.AddRange(handler.Body.SelectMany(GenerateBodyStatements));
+            }
+
+            catchBodyStatements.Add(IfStatement(ifCondition, Block(handlerBodyStatements)));
+        }
+
+        // Re-throw unmatched exceptions:
+        // var __unmatched = __eg_N.InnerExceptions
+        //     .Where(e => !__allMatched_N.Contains(e)).ToList();
+        var unmatchedVar = GenerateTempVarName("unmatched");
+        var whereParam = GenerateTempVarName("ex");
+
+        var whereCall = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(egVar),
+                            IdentifierName("InnerExceptions")),
+                        IdentifierName("Where")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(
+                        SimpleLambdaExpression(
+                            Parameter(Identifier(whereParam)),
+                            PrefixUnaryExpression(
+                                SyntaxKind.LogicalNotExpression,
+                                InvocationExpression(
+                                    MemberAccessExpression(
+                                        SyntaxKind.SimpleMemberAccessExpression,
+                                        IdentifierName(allMatchedVar),
+                                        IdentifierName("Contains")))
+                                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                                    Argument(IdentifierName(whereParam))))))))))),
+                IdentifierName("ToList")));
+
+        catchBodyStatements.Add(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(unmatchedVar))
+                        .WithInitializer(EqualsValueClause(whereCall))))));
+
+        // if (__unmatched.Count > 0) throw new System.AggregateException(__unmatched);
+        var unmatchedCondition = BinaryExpression(
+            SyntaxKind.GreaterThanExpression,
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(unmatchedVar),
+                IdentifierName("Count")),
+            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
+
+        var rethrowStmt = ThrowStatement(
+            ObjectCreationExpression(ParseTypeName("System.AggregateException"))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(IdentifierName(unmatchedVar))))));
+
+        catchBodyStatements.Add(IfStatement(unmatchedCondition, rethrowStmt));
+
+        // Build the single catch clause: catch (System.AggregateException __eg_N) { ... }
+        var catchDeclaration = CatchDeclaration(
+            ParseTypeName("System.AggregateException"),
+            Identifier(egVar));
+
+        result.Add(CatchClause(catchDeclaration, null, Block(catchBodyStatements)));
 
         return result;
     }

@@ -372,6 +372,11 @@ public record ExceptHandler
     public string? Name { get; init; }  // except Exception as e:
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
 
+    /// <summary>
+    /// Whether this is an except* handler (PEP 654 ExceptionGroup handling).
+    /// </summary>
+    public bool IsExceptStar { get; init; }
+
     // Source location
     public int LineStart { get; init; }
     public int ColumnStart { get; init; }

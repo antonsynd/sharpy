@@ -379,6 +379,16 @@ public static class DiagnosticExplanations
             "except ValueError, TypeError as e:\n    print(e)",
             "Wrap the exception types in parentheses:\n  except (ValueError, TypeError) as e:\n      print(e)");
 
+        Add(dict, DiagnosticCodes.Parser.ExceptStarRequiresType, "'except*' requires an exception type", "Parser",
+            "An 'except*' handler (PEP 654) must specify an exception type. Unlike regular 'except', bare 'except*:' without a type is not allowed because each except* handler matches a specific type within an ExceptionGroup.",
+            "try:\n    ...\nexcept*:\n    print(\"error\")",
+            "Specify the exception type:\n  except* ValueError as eg:\n      print(eg)");
+
+        Add(dict, DiagnosticCodes.Parser.MixedExceptAndExceptStar, "Cannot mix 'except' and 'except*' handlers", "Parser",
+            "A try block cannot have both regular 'except' and 'except*' handlers. The 'except*' syntax (PEP 654) is used exclusively with ExceptionGroup handling and cannot be mixed with traditional exception handling.",
+            "try:\n    ...\nexcept ValueError:\n    ...\nexcept* TypeError as eg:\n    ...",
+            "Use either all 'except' or all 'except*' handlers:\n  try:\n      ...\n  except* ValueError as eg:\n      ...\n  except* TypeError as eg:\n      ...");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",
@@ -1075,6 +1085,27 @@ public static class DiagnosticExplanations
             "Parameters declared with the 'in' modifier are passed by readonly reference. They cannot be reassigned to prevent unintended mutation of the caller's value.",
             "def foo(x: in int):\n    x = 0  # Error",
             "Remove the 'in' modifier if reassignment is needed, or use a local copy: local_x = x");
+
+        // ── Semantic errors: except* (SPY0391-SPY0394) ─────────────────
+        Add(dict, DiagnosticCodes.Semantic.ExceptStarCatchesExceptionGroup, "'except*' cannot catch ExceptionGroup", "Semantic",
+            "An 'except*' handler cannot catch ExceptionGroup directly. The except* syntax is designed to match individual exception types within an ExceptionGroup, not the group itself. Use a regular 'except' handler to catch ExceptionGroup.",
+            "try:\n    ...\nexcept* ExceptionGroup as eg:\n    ...",
+            "Use 'except' instead of 'except*':\n  except ExceptionGroup as eg:\n      ...");
+
+        Add(dict, DiagnosticCodes.Semantic.BreakInExceptStar, "'break' not allowed in except* handler", "Semantic",
+            "'break' statements are not allowed inside 'except*' handlers (PEP 654). This restriction exists because except* handlers may execute for only a subset of exceptions in an ExceptionGroup, and control flow statements would interfere with the exception splitting logic.",
+            "for i in range(10):\n    try:\n        ...\n    except* ValueError as eg:\n        break  # Error",
+            "Handle the break condition outside the except* handler, for example by setting a flag variable.");
+
+        Add(dict, DiagnosticCodes.Semantic.ContinueInExceptStar, "'continue' not allowed in except* handler", "Semantic",
+            "'continue' statements are not allowed inside 'except*' handlers (PEP 654). This restriction exists because except* handlers may execute for only a subset of exceptions in an ExceptionGroup, and control flow statements would interfere with the exception splitting logic.",
+            "for i in range(10):\n    try:\n        ...\n    except* ValueError as eg:\n        continue  # Error",
+            "Handle the continue condition outside the except* handler, for example by setting a flag variable.");
+
+        Add(dict, DiagnosticCodes.Semantic.ReturnInExceptStar, "'return' not allowed in except* handler", "Semantic",
+            "'return' statements are not allowed inside 'except*' handlers (PEP 654). This restriction exists because except* handlers may execute for only a subset of exceptions in an ExceptionGroup, and control flow statements would interfere with the exception splitting logic.",
+            "def foo():\n    try:\n        ...\n    except* ValueError as eg:\n        return  # Error",
+            "Handle the return condition outside the except* handler, for example by setting a flag variable.");
 
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 

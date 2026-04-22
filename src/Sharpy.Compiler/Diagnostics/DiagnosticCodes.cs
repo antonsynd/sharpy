@@ -180,13 +180,15 @@ public static class DiagnosticCodes
 
         #endregion
 
-        #region Exception handler syntax (SPY0137)
+        #region Exception handler syntax (SPY0137-SPY0139)
 
         public const string ExceptWithAsRequiresParens = "SPY0137"; // Active
+        public const string ExceptStarRequiresType = "SPY0138";     // Active
+        public const string MixedExceptAndExceptStar = "SPY0139";   // Active
 
         #endregion
 
-        // SPY0138-SPY0199: Reserved for future parser diagnostics
+        // SPY0140-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>
@@ -382,7 +384,13 @@ public static class DiagnosticCodes
         public const string ModifierWithVariadic = "SPY0388";          // Active
         public const string ModifierRequiresVariable = "SPY0389";      // Active
         public const string InParameterReassignment = "SPY0390";       // Active
-        // SPY0391-SPY0399: Reserved for future parameter modifier diagnostics
+
+        // except* errors (SPY0391-SPY0394)
+        public const string ExceptStarCatchesExceptionGroup = "SPY0391"; // Active
+        public const string BreakInExceptStar = "SPY0392";              // Active
+        public const string ContinueInExceptStar = "SPY0393";           // Active
+        public const string ReturnInExceptStar = "SPY0394";             // Active
+        // SPY0395-SPY0399: Reserved for future parameter modifier diagnostics
 
         #endregion
     }

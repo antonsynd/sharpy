@@ -1,0 +1,5 @@
+def main():
+    try:
+        raise ExceptionGroup("errors", [ValueError("bad value")])
+    except*:
+        print("bare except star")
