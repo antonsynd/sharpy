@@ -81,6 +81,9 @@ internal static class BuiltinNames
     public const string Result = "Result";
     public const string Function = "function";
 
+    // ---- Template type (PEP 750) ----
+    public const string Template = "Template";
+
     // ---- Async types ----
     public const string Task = "Task";
 

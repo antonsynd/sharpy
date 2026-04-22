@@ -94,6 +94,9 @@ internal class BuiltinRegistry
         RegisterType("Result", typeof(SharpyRT::Sharpy.Result<,>), TypeKind.Struct, isGeneric: true, typeParamCount: 2);
         RegisterType("Optional", typeof(SharpyRT::Sharpy.Optional<>), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
 
+        // Template (PEP 750) — t"..." literal type
+        RegisterType(BuiltinNames.Template, typeof(SharpyRT::Sharpy.Template), TypeKind.Class);
+
         // Special
         RegisterType("object", typeof(object), TypeKind.Class);
         RegisterType("None", typeof(void), TypeKind.Struct); // void for return type

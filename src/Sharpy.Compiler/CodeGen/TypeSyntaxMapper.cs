@@ -39,6 +39,7 @@ internal class TypeSyntaxMapper
         _builtinTypeMap[BuiltinNames.FrozenDict] = CSharpTypeNames.SharpyFrozenDict;
         _builtinTypeMap["FrozenDict"] = CSharpTypeNames.SharpyFrozenDict;
         _builtinTypeMap[BuiltinNames.Bytes] = CSharpTypeNames.SharpyBytes;
+        _builtinTypeMap[BuiltinNames.Template] = CSharpTypeNames.SharpyTemplate;
         _builtinTypeMap[BuiltinNames.Tuple] = "System.ValueTuple";
     }
 
@@ -93,6 +94,9 @@ internal class TypeSyntaxMapper
 
             // Handle type parameters (e.g., T in class Box[T])
             TypeParameterType typeParam => IdentifierName(typeParam.Name),
+
+            // Template emits as Sharpy.Template
+            TemplateType => ParseTypeName("global::" + CSharpTypeNames.SharpyTemplate),
 
             // LiteralString emits as string (compile-time only distinction)
             LiteralStringType => PredefinedType(Token(SyntaxKind.StringKeyword)),

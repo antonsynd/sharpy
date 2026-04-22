@@ -883,6 +883,17 @@ public sealed record TaskType : SemanticType
 }
 
 /// <summary>
+/// Template string type (PEP 750).
+/// Produced by t"..." literals. Maps to Sharpy.Template at runtime.
+/// </summary>
+public sealed record TemplateType : SemanticType
+{
+    public static readonly TemplateType Instance = new();
+
+    public override string GetDisplayName() => "Template";
+}
+
+/// <summary>
 /// Compile-time LiteralString type (PEP 675).
 /// A subtype of str that represents string literals known at compile time.
 /// Emits as string in C# with no runtime distinction.

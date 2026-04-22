@@ -12,6 +12,8 @@ internal static class CSharpTypeNames
     internal const string SharpyDefaultDict = "Sharpy.DefaultDict";
     internal const string SharpyFrozenDict = "Sharpy.FrozenDict";
     internal const string SharpyBytes = "Sharpy.Bytes";
+    internal const string SharpyTemplate = "Sharpy.Template";
+    internal const string SharpyInterpolation = "Sharpy.Interpolation";
     internal const string SharpyOptional = "Sharpy.Optional";
     internal const string SharpyResult = "Sharpy.Result";
     internal const string IEnumerable = "IEnumerable";

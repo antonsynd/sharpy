@@ -987,6 +987,11 @@ internal static class SymbolSerializer
                 value => string.IsNullOrEmpty(value)
                     ? new TaskType { ResultType = null }
                     : new TaskType { ResultType = Deserialize(value) });
+
+            // TemplateType: PEP 750 template strings
+            Register<TemplateType>("template",
+                _ => "",
+                _ => TemplateType.Instance);
         }
 
         public static string Serialize(SemanticType type)

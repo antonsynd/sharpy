@@ -689,6 +689,150 @@ internal partial class RoslynEmitter
     }
 
     // ============================================================
+    // Template string (t"...") emission
+    // ============================================================
+
+    /// <summary>
+    /// Generates code for a template string literal (PEP 750).
+    /// t"Hello {name}" generates:
+    /// new global::Sharpy.Template(
+    ///     new string[] { "Hello ", "" },
+    ///     new global::Sharpy.Interpolation[] { new global::Sharpy.Interpolation(name, "name", "") }
+    /// )
+    /// </summary>
+    private ExpressionSyntax GenerateTString(TStringLiteral tstring)
+    {
+        // Build the strings array and interpolations array from parts.
+        // For N interpolation expressions, we need N+1 string segments.
+        var stringElements = new List<ExpressionSyntax>();
+        var interpolationElements = new List<ExpressionSyntax>();
+
+        // Track current text accumulator (for merging adjacent text parts)
+        var currentText = string.Empty;
+
+        foreach (var part in tstring.Parts)
+        {
+            if (part.Text != null)
+            {
+                // Accumulate text segments
+                currentText += part.Text;
+            }
+            else if (part.Expression != null)
+            {
+                // Flush accumulated text as a string element
+                stringElements.Add(MakeStringLiteral(currentText));
+                currentText = string.Empty;
+
+                // Generate the interpolation expression value
+                var valueExpr = GenerateExpression(part.Expression);
+
+                // Box value types to object for the Interpolation constructor
+                var exprType = GetExpressionSemanticType(part.Expression);
+                if (exprType is BuiltinType { IsValueType: true })
+                {
+                    valueExpr = CastExpression(
+                        PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                        valueExpr);
+                }
+
+                // Derive expression text from the AST node
+                var exprText = DeriveExpressionText(part.Expression);
+
+                // Format spec (empty string if none)
+                var formatSpec = part.FormatSpec ?? string.Empty;
+
+                // new global::Sharpy.Interpolation(value, "exprText", "formatSpec")
+                var interpolationExpr = ObjectCreationExpression(
+                    QualifiedName(
+                        AliasQualifiedName(
+                            IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                            IdentifierName("Sharpy")),
+                        IdentifierName("Interpolation")))
+                    .WithArgumentList(ArgumentList(SeparatedList(new[]
+                    {
+                        Argument(valueExpr),
+                        Argument(MakeStringLiteral(exprText)),
+                        Argument(MakeStringLiteral(formatSpec))
+                    })));
+
+                interpolationElements.Add(interpolationExpr);
+            }
+        }
+
+        // Flush any remaining text (the trailing string after the last interpolation)
+        stringElements.Add(MakeStringLiteral(currentText));
+
+        // Build: new string[] { "s0", "s1", ... }
+        var stringsArray = ArrayCreationExpression(
+            ArrayType(PredefinedType(Token(SyntaxKind.StringKeyword)))
+                .WithRankSpecifiers(SingletonList(
+                    ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(
+                        OmittedArraySizeExpression())))))
+            .WithInitializer(InitializerExpression(
+                SyntaxKind.ArrayInitializerExpression,
+                SeparatedList(stringElements)));
+
+        // Build: new global::Sharpy.Interpolation[] { ... }
+        var interpolationsArray = ArrayCreationExpression(
+            ArrayType(
+                QualifiedName(
+                    AliasQualifiedName(
+                        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                        IdentifierName("Sharpy")),
+                    IdentifierName("Interpolation")))
+                .WithRankSpecifiers(SingletonList(
+                    ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(
+                        OmittedArraySizeExpression())))))
+            .WithInitializer(InitializerExpression(
+                SyntaxKind.ArrayInitializerExpression,
+                SeparatedList(interpolationElements)));
+
+        // Build: new global::Sharpy.Template(stringsArray, interpolationsArray)
+        return ObjectCreationExpression(
+            QualifiedName(
+                AliasQualifiedName(
+                    IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                    IdentifierName("Sharpy")),
+                IdentifierName("Template")))
+            .WithArgumentList(ArgumentList(SeparatedList(new[]
+            {
+                Argument(stringsArray),
+                Argument(interpolationsArray)
+            })));
+    }
+
+    /// <summary>
+    /// Derives a human-readable expression text from an AST expression node.
+    /// Used for the Interpolation.Expression field in template strings.
+    /// </summary>
+    private static string DeriveExpressionText(Expression expr)
+    {
+        return expr switch
+        {
+            Identifier id => id.Name,
+            MemberAccess ma => $"{DeriveExpressionText(ma.Object)}.{ma.Member}",
+            FunctionCall call => $"{DeriveExpressionText(call.Function)}()",
+            BinaryOp bin => $"{DeriveExpressionText(bin.Left)} {bin.Operator} {DeriveExpressionText(bin.Right)}",
+            UnaryOp unary => $"{unary.Operator}{DeriveExpressionText(unary.Operand)}",
+            IntegerLiteral intLit => intLit.Value,
+            FloatLiteral floatLit => floatLit.Value,
+            StringLiteral strLit => $"\"{strLit.Value}\"",
+            BooleanLiteral boolLit => boolLit.Value ? "True" : "False",
+            IndexAccess idx => $"{DeriveExpressionText(idx.Object)}[{DeriveExpressionText(idx.Index)}]",
+            _ => "<expr>"
+        };
+    }
+
+    /// <summary>
+    /// Creates a string literal expression from a string value.
+    /// </summary>
+    private static ExpressionSyntax MakeStringLiteral(string value)
+    {
+        return LiteralExpression(
+            SyntaxKind.StringLiteralExpression,
+            Literal(value));
+    }
+
     // Walrus operator (:=) emission
     // ============================================================
 

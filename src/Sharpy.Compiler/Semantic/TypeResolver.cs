@@ -105,6 +105,14 @@ internal class TypeResolver
             return result;
         }
 
+        // Handle Template type annotation (PEP 750)
+        if (annotation.Name == BuiltinNames.Template)
+        {
+            result = TemplateType.Instance;
+            _semanticInfo.SetTypeAnnotation(annotation, result);
+            return result;
+        }
+
         // Try builtin types first
         if (TryResolveBuiltinType(annotation.Name, out var builtinType))
         {

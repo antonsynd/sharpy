@@ -240,6 +240,12 @@ internal class OperatorValidator : ValidatingAstWalker
             return dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne or DunderNames.Lt or DunderNames.Le or DunderNames.Gt or DunderNames.Ge;
         }
 
+        // Template supports concatenation (PEP 750)
+        if (type is TemplateType)
+        {
+            return dunderName is DunderNames.Add;
+        }
+
         // Bytes supports concatenation, repetition, equality, comparison, and containment
         if (type is UserDefinedType { Name: BuiltinNames.Bytes })
         {

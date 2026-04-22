@@ -1,0 +1,4 @@
+def main():
+    name: str = "Alice"
+    greeting: Template = t"Hi {name}"
+    print(greeting)

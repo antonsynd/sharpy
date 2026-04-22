@@ -423,8 +423,6 @@ internal partial class TypeChecker
         return SemanticType.Str;
     }
 
-    // Stub: t-strings type-check expressions like f-strings but return str for now.
-    // Task 6.2 will add a proper TemplateType.
     private SemanticType CheckTStringLiteral(TStringLiteral tstr)
     {
         foreach (var part in tstr.Parts)
@@ -434,7 +432,7 @@ internal partial class TypeChecker
                 CheckExpression(part.Expression);
             }
         }
-        return SemanticType.Str;
+        return TemplateType.Instance;
     }
 
     private SemanticType CheckBytesLiteral(BytesLiteralExpression bytesLit)
