@@ -1,0 +1,8 @@
+@deprecated("Use NewGreeter instead")
+class OldGreeter:
+    def greet(self) -> str:
+        return "hello"
+
+def main():
+    g = OldGreeter()
+    print(g.greet())

@@ -900,6 +900,8 @@ internal partial class TypeChecker
         // Record the resolved call target for codegen
         _semanticInfo.SetCallTarget(call, funcSymbol);
 
+        CheckDeprecatedUsage(funcSymbol, call);
+
         // Check for iterable spread into non-variadic function (SPY0357)
         // Must run before generic inference — generic functions without *args must also reject
         // iterable spread. Tuple spread is excluded because tuple size is statically known.
@@ -1406,6 +1408,8 @@ internal partial class TypeChecker
         FunctionCall call, TypeSymbol typeSymbol, List<SemanticType> argTypes,
         Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
     {
+        CheckDeprecatedUsage(typeSymbol, call);
+
         // Validate constructor arguments against __init__ parameters (skip 'self').
         // Only validate when there's a single __init__ (no overloads) — overloaded
         // constructors have complex resolution that the C# compiler handles.
@@ -1761,6 +1765,18 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    private void CheckDeprecatedUsage(Symbol symbol, Expression callSite)
+    {
+        if (symbol.DeprecationMessage != null)
+        {
+            _diagnostics.AddWarning(
+                $"'{symbol.Name}' is deprecated: {symbol.DeprecationMessage}",
+                callSite.LineStart, callSite.ColumnStart, _currentFilePath,
+                code: DiagnosticCodes.Validation.DeprecatedUsage,
+                phase: CompilerPhase.TypeChecking);
+        }
     }
 
 }

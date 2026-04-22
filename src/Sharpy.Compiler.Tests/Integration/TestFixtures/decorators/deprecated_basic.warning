@@ -1,0 +1,2 @@
+'foo' is deprecated: Use bar() instead
+'OldGreeter' is deprecated: Use NewGreeter instead

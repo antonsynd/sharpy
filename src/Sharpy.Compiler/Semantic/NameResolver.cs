@@ -497,4 +497,12 @@ internal partial class NameResolver
             .Select(p => p.Type?.GetDisplayName() ?? "unknown");
         return $"{method.Name}({string.Join(",", paramTypes)})";
     }
+
+    internal static string? GetDeprecationMessage(IEnumerable<Decorator> decorators)
+    {
+        var deprecated = decorators.FirstOrDefault(d => d.Name == DecoratorNames.Deprecated);
+        if (deprecated != null && deprecated.Arguments.Length > 0 && deprecated.Arguments[0] is StringLiteral msg)
+            return msg.Value;
+        return null;
+    }
 }

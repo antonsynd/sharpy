@@ -56,7 +56,8 @@ internal partial class NameResolver
             DeclarationSpan = functionDef.Span,
             DeclarationLine = functionDef.LineStart,
             DeclarationColumn = functionDef.ColumnStart,
-            Documentation = functionDef.DocString
+            Documentation = functionDef.DocString,
+            DeprecationMessage = GetDeprecationMessage(functionDef.Decorators)
         };
 
         _symbolTable.Define(funcSymbol);
@@ -129,7 +130,8 @@ internal partial class NameResolver
             DeclarationLine = method.LineStart,
             DeclarationColumn = method.ColumnStart,
             SignatureKey = GetMethodSignatureKey(method),
-            Documentation = method.DocString
+            Documentation = method.DocString,
+            DeprecationMessage = GetDeprecationMessage(method.Decorators)
         };
 
         owningType.Methods.Add(funcSymbol);

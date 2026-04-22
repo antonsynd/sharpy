@@ -59,6 +59,12 @@ public abstract record Symbol
     public AccessLevel? ExplicitAccessLevel { get; init; }
 
     /// <summary>
+    /// If non-null, this symbol is deprecated and this is the deprecation message.
+    /// Populated from @deprecated("msg") decorator during name resolution.
+    /// </summary>
+    public string? DeprecationMessage { get; init; }
+
+    /// <summary>
     /// Documentation string for this symbol (from source docstrings or XML docs).
     /// Null until documentation is populated during name resolution or assembly discovery.
     /// </summary>
