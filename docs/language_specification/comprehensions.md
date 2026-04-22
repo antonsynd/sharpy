@@ -199,6 +199,55 @@ filtered = [x for x in range(20) if x % 2 == 0 if x % 3 == 0]
 # [0, 6, 12, 18]
 ```
 
+## Spread Unpacking in Comprehensions (PEP 798)
+
+Comprehensions support `*` and `**` unpacking to flatten iterables or merge dicts in a single expression.
+
+### List/Set Spread (`*`)
+
+Use `*` as the element expression to flatten one level of nesting:
+
+```python
+its: list[list[int]] = [[1, 2], [3, 4], [5]]
+flat: list[int] = [*it for it in its]
+# [1, 2, 3, 4, 5]
+
+# With filter
+filtered: list[int] = [*it for it in its if len(it) > 1]
+# [1, 2, 3, 4]
+
+# Set spread
+unique: set[int] = {*it for it in [{1, 2}, {2, 3}]}
+# {1, 2, 3}
+```
+
+The result type is `list[T]` / `set[T]` where `T` is the element type of the spread value (one level of nesting is removed).
+
+*Implementation*
+- *🔄 Lowered - single-for: `iter.SelectMany(it => it)` wrapped in `new List<T>(...)`*
+- *🔄 Lowered - multi-for: imperative loop with `.Extend(it)` / `.UnionWith(it)`*
+
+### Dict Spread (`**`)
+
+Use `**` as the spread expression to merge dicts from an iterable:
+
+```python
+dicts: list[dict[str, int]] = [{"a": 1}, {"b": 2, "c": 3}]
+merged: dict[str, int] = {**d for d in dicts}
+# {"a": 1, "b": 2, "c": 3}
+
+# With filter
+filtered: dict[str, int] = {**d for d in dicts if len(d) > 1}
+# {"b": 2, "c": 3}
+```
+
+The result type is `dict[K, V]` inferred from the spread value type.
+
+Later dicts overwrite earlier keys (same as `dict.update()` semantics).
+
+*Implementation*
+- *🔄 Lowered - imperative loop: `new Dict<K,V>()` + `.Update(d)` for each iteration*
+
 ## Async Comprehensions
 
 Async comprehensions (`async for` inside comprehensions and `await` inside comprehensions) are **intentionally not supported** in Sharpy. This is a deliberate design decision — see [async_programming.md](async_programming.md#async-comprehensions--deliberate-non-feature) for rationale and workarounds.
