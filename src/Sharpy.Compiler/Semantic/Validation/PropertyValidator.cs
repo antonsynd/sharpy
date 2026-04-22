@@ -108,6 +108,9 @@ internal class PropertyValidator : SemanticValidatorBase
 
         // Check that init properties without defaults are assigned in constructors
         ValidateInitPropertyAssignment(typeName, body, propertyDefs);
+
+        // Check that @readonly properties are not assigned outside __init__
+        ValidateReadonlyPropertyAssignment(typeName, body, propertyDefs);
     }
 
     /// <summary>
@@ -480,7 +483,75 @@ internal class PropertyValidator : SemanticValidatorBase
         return mustAssignOut[cfg.Exit];
     }
 
-    /// <summary>
-    /// Walks the base class hierarchy to find a property with the given name.
-    /// </summary>
+    private void ValidateReadonlyPropertyAssignment(string typeName, IReadOnlyList<Statement> body, List<PropertyDef> propertyDefs)
+    {
+        var readonlyProps = new HashSet<string>(
+            propertyDefs
+                .Where(p => p.Decorators.Any(d => d.Name == DecoratorNames.Readonly))
+                .Select(p => p.Name));
+
+        if (readonlyProps.Count == 0)
+            return;
+
+        foreach (var member in body)
+        {
+            if (member is not FunctionDef method || method.Name == DunderNames.Init)
+                continue;
+
+            WalkForReadonlyAssignments(typeName, method.Body, readonlyProps);
+        }
+    }
+
+    private void WalkForReadonlyAssignments(string typeName, IReadOnlyList<Statement> statements, HashSet<string> readonlyProps)
+    {
+        foreach (var stmt in statements)
+        {
+            if (stmt is Assignment { Target: MemberAccess { Object: Identifier { Name: "self" }, Member: var member } } assign
+                && readonlyProps.Contains(member))
+            {
+                AddError(_context,
+                    $"Cannot assign to @readonly property '{member}' outside of __init__",
+                    assign.LineStart, assign.ColumnStart,
+                    code: DiagnosticCodes.Validation.ReadonlyPropertyAssignment,
+                    span: assign.Span);
+            }
+
+            foreach (var child in GetChildStatements(stmt))
+            {
+                WalkForReadonlyAssignments(typeName, child, readonlyProps);
+            }
+        }
+    }
+
+    private static IEnumerable<IReadOnlyList<Statement>> GetChildStatements(Statement stmt)
+    {
+        switch (stmt)
+        {
+            case IfStatement ifStmt:
+                yield return ifStmt.ThenBody;
+                foreach (var elif in ifStmt.ElifClauses)
+                    yield return elif.Body;
+                if (ifStmt.ElseBody.Length > 0)
+                    yield return ifStmt.ElseBody;
+                break;
+            case ForStatement forStmt:
+                yield return forStmt.Body;
+                break;
+            case WhileStatement whileStmt:
+                yield return whileStmt.Body;
+                break;
+            case TryStatement tryStmt:
+                yield return tryStmt.Body;
+                foreach (var handler in tryStmt.Handlers)
+                    yield return handler.Body;
+                if (tryStmt.FinallyBody.Length > 0)
+                    yield return tryStmt.FinallyBody;
+                if (tryStmt.ElseBody.Length > 0)
+                    yield return tryStmt.ElseBody;
+                break;
+            case WithStatement withStmt:
+                yield return withStmt.Body;
+                break;
+        }
+    }
 }
