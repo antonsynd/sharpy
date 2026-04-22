@@ -1153,9 +1153,9 @@ internal partial class TypeChecker
 
                 if (!IsAssignable(argTypes[i], param.Type))
                 {
-                    // PEP 675: string literals are assignable to LiteralString parameters
+                    // PEP 675: string literals (and concatenations thereof) satisfy LiteralString
                     if (param.Type is LiteralStringType && i < call.Arguments.Length
-                        && call.Arguments[i] is StringLiteral)
+                        && IsLiteralStringExpression(call.Arguments[i]))
                     {
                         // Allow — literal string expression satisfies LiteralString
                     }
@@ -1786,6 +1786,17 @@ internal partial class TypeChecker
                 code: DiagnosticCodes.Validation.DeprecatedUsage,
                 phase: CompilerPhase.TypeChecking);
         }
+    }
+
+    private static bool IsLiteralStringExpression(Expression expr)
+    {
+        return expr switch
+        {
+            StringLiteral => true,
+            BinaryOp { Operator: BinaryOperator.Add, Left: var left, Right: var right }
+                => IsLiteralStringExpression(left) && IsLiteralStringExpression(right),
+            _ => false
+        };
     }
 
 }
