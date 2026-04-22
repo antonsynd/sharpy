@@ -63,6 +63,7 @@ internal partial class TypeChecker
             TryExpression tryExpr => CheckTryExpression(tryExpr),
             Parenthesized paren => CheckExpression(paren.Expression),
             FStringLiteral fstr => CheckFStringLiteral(fstr),
+            TStringLiteral tstr => CheckTStringLiteral(tstr),
             EllipsisLiteral => SemanticType.Void,
             SliceAccess sliceAccess => CheckSliceAccess(sliceAccess),
             WalrusExpression walrus => CheckWalrusExpression(walrus),

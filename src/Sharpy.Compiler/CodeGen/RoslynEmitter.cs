@@ -788,6 +788,14 @@ internal partial class RoslynEmitter
                         CollectVariableNamesFromExpression(part.Expression);
                 }
                 break;
+
+            case TStringLiteral tstring:
+                foreach (var part in tstring.Parts)
+                {
+                    if (part.Expression != null)
+                        CollectVariableNamesFromExpression(part.Expression);
+                }
+                break;
         }
     }
 

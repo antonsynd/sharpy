@@ -664,4 +664,18 @@ public partial class Parser
             Span = GetSpanFromTokens(startToken, endToken)
         };
     }
+
+    private TStringLiteral ParseSegmentedTString(int startLine, int startColumn, Token startToken)
+    {
+        var fstring = ParseSegmentedFString(startLine, startColumn, startToken);
+        return new TStringLiteral
+        {
+            Parts = fstring.Parts,
+            LineStart = fstring.LineStart,
+            ColumnStart = fstring.ColumnStart,
+            LineEnd = fstring.LineEnd,
+            ColumnEnd = fstring.ColumnEnd,
+            Span = fstring.Span
+        };
+    }
 }

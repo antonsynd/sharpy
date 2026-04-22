@@ -1,0 +1,4 @@
+def main():
+    x: int = 42
+    result = t"""value is {x}"""
+    print(result)

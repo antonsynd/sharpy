@@ -1078,6 +1078,10 @@ internal partial class RoslynEmitter
                 foreach (var part in fstr.Parts)
                     CollectReferencedIdentifiers(part.Expression, identifiers);
                 break;
+            case TStringLiteral tstr:
+                foreach (var part in tstr.Parts)
+                    CollectReferencedIdentifiers(part.Expression, identifiers);
+                break;
             case ListComprehension comp:
                 CollectReferencedIdentifiers(comp.Element, identifiers);
                 foreach (var clause in comp.Clauses)

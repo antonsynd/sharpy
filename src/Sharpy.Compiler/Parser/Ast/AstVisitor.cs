@@ -36,6 +36,9 @@ public abstract class AstVisitor
             case FStringLiteral n:
                 VisitFStringLiteral(n);
                 break;
+            case TStringLiteral n:
+                VisitTStringLiteral(n);
+                break;
             case BooleanLiteral n:
                 VisitBooleanLiteral(n);
                 break;
@@ -353,6 +356,7 @@ public abstract class AstVisitor
     public virtual void VisitStringLiteral(StringLiteral node) => VisitExpression(node);
     public virtual void VisitBytesLiteral(BytesLiteralExpression node) => VisitExpression(node);
     public virtual void VisitFStringLiteral(FStringLiteral node) => VisitExpression(node);
+    public virtual void VisitTStringLiteral(TStringLiteral node) => VisitExpression(node);
     public virtual void VisitBooleanLiteral(BooleanLiteral node) => VisitExpression(node);
     public virtual void VisitNoneLiteral(NoneLiteral node) => VisitExpression(node);
     public virtual void VisitEllipsisLiteral(EllipsisLiteral node) => VisitExpression(node);
@@ -526,6 +530,7 @@ public abstract class AstVisitor<T>
             StringLiteral n => VisitStringLiteral(n),
             BytesLiteralExpression n => VisitBytesLiteral(n),
             FStringLiteral n => VisitFStringLiteral(n),
+            TStringLiteral n => VisitTStringLiteral(n),
             BooleanLiteral n => VisitBooleanLiteral(n),
             NoneLiteral n => VisitNoneLiteral(n),
             EllipsisLiteral n => VisitEllipsisLiteral(n),
@@ -684,6 +689,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitStringLiteral(StringLiteral node) => VisitExpression(node);
     public virtual T VisitBytesLiteral(BytesLiteralExpression node) => VisitExpression(node);
     public virtual T VisitFStringLiteral(FStringLiteral node) => VisitExpression(node);
+    public virtual T VisitTStringLiteral(TStringLiteral node) => VisitExpression(node);
     public virtual T VisitBooleanLiteral(BooleanLiteral node) => VisitExpression(node);
     public virtual T VisitNoneLiteral(NoneLiteral node) => VisitExpression(node);
     public virtual T VisitEllipsisLiteral(EllipsisLiteral node) => VisitExpression(node);

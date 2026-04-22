@@ -12,6 +12,7 @@ public partial class Lexer
         public int BraceDepth { get; set; }
         public bool InFormatSpec { get; set; }  // Tracks if we're processing format specification after ':'
         public int DedentAmount { get; set; }   // PEP 822: number of whitespace chars to strip after each \n (0 = no dedent)
+        public bool IsTString { get; set; }     // PEP 750: template string (t"...") — same scanning, different AST
     }
 
     /// <summary>
@@ -51,6 +52,43 @@ public partial class Lexer
         });
 
         return CreateToken(TokenType.FStringStart, isTriple ? $"f{quote}{quote}{quote}" : $"f{quote}", startLine, startColumn, startPosition);
+    }
+
+    /// <summary>
+    /// Read the start of a t-string (PEP 750) and enter f-string mode with IsTString flag.
+    /// </summary>
+    private Token ReadTStringStart()
+    {
+        var startLine = _line;
+        var startColumn = _column;
+        var startPosition = _position;
+
+        _position++; // skip 't'
+        _column++;
+
+        var quote = _source[_position];
+        _position++;
+        _column++;
+
+        var isTriple = _position + 1 < _source.Length &&
+                       _source[_position] == quote &&
+                       _source[_position + 1] == quote;
+
+        if (isTriple)
+        {
+            _position += 2;
+            _column += 2;
+        }
+
+        _fstringStack.Push(new FStringContext
+        {
+            QuoteChar = quote,
+            IsTriple = isTriple,
+            BraceDepth = 0,
+            IsTString = true
+        });
+
+        return CreateToken(TokenType.FStringStart, isTriple ? $"t{quote}{quote}{quote}" : $"t{quote}", startLine, startColumn, startPosition);
     }
 
     /// <summary>

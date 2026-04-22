@@ -675,6 +675,29 @@ internal class AstDumper : AstVisitor
         }
     }
 
+    public override void VisitTStringLiteral(TStringLiteral node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TStringLiteral @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parts: [{node.Parts.Length}]");
+        for (int i = 0; i < node.Parts.Length; i++)
+        {
+            var part = node.Parts[i];
+            var partIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+            var partPrefix = i == node.Parts.Length - 1 ? "└─ " : "├─ ";
+            if (part.Text != null)
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Text: \"{EscapeString(part.Text)}\"");
+            }
+            else if (part.Expression != null)
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Expression:");
+                VisitChild(part.Expression, depth + 3, true);
+            }
+        }
+    }
+
     public override void VisitBooleanLiteral(BooleanLiteral node)
     {
         _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}BooleanLiteral: {node.Value} @ L{node.LineStart}:C{node.ColumnStart}");

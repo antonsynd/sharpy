@@ -332,6 +332,13 @@ internal class ExecutionOrderAnalyzer
                         CollectReferencedIdentifiers(part.Expression, identifiers);
                 }
                 break;
+            case TStringLiteral tString:
+                foreach (var part in tString.Parts)
+                {
+                    if (part.Expression != null)
+                        CollectReferencedIdentifiers(part.Expression, identifiers);
+                }
+                break;
             // Literals don't reference identifiers
             case IntegerLiteral:
             case FloatLiteral:

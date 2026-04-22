@@ -34,7 +34,7 @@ public class AstExhaustivenessTests
         {
             // Literals
             "IntegerLiteral", "FloatLiteral", "StringLiteral", "BytesLiteralExpression",
-            "BooleanLiteral", "NoneLiteral", "EllipsisLiteral", "FStringLiteral",
+            "BooleanLiteral", "NoneLiteral", "EllipsisLiteral", "FStringLiteral", "TStringLiteral",
             // Collections
             "ListLiteral", "DictLiteral", "SetLiteral", "TupleLiteral",
             // Comprehensions

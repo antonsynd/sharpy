@@ -475,6 +475,11 @@ public partial class Lexer
             (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
             return LogAndReturn(ReadFStringStart());
 
+        // T-strings (PEP 750 template strings)
+        if (current == 't' && (_position + 1 < _source.Length) &&
+            (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
+            return LogAndReturn(ReadTStringStart());
+
         // Raw strings
         if (current == 'r' && (_position + 1 < _source.Length) &&
             (_source[_position + 1] == '"' || _source[_position + 1] == '\''))

@@ -73,8 +73,17 @@ internal partial class RoslynEmitter
             TypeCheck check => GenerateTypeCheck(check),
             Parenthesized paren => ParenthesizedExpression(GenerateExpression(paren.Expression)),
 
-            // F-strings
+            // F-strings and T-strings (t-strings emit as f-strings until Task 6.2 adds Template type)
             FStringLiteral fstring => GenerateFString(fstring),
+            TStringLiteral tstring => GenerateFString(new FStringLiteral
+            {
+                Parts = tstring.Parts,
+                LineStart = tstring.LineStart,
+                ColumnStart = tstring.ColumnStart,
+                LineEnd = tstring.LineEnd,
+                ColumnEnd = tstring.ColumnEnd,
+                Span = tstring.Span
+            }),
 
             // Try/Maybe expressions
             TryExpression tryExpr => GenerateTryExpression(tryExpr),

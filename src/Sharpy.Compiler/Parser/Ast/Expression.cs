@@ -78,6 +78,32 @@ public record FStringPart
 }
 
 /// <summary>
+/// Template string literal (t"..." / t'...' / t"""..."""), PEP 750.
+/// Same structure as FStringLiteral but produces a Template object, not a string.
+/// </summary>
+public record TStringLiteral : Expression
+{
+    public ImmutableArray<FStringPart> Parts { get; init; } = ImmutableArray<FStringPart>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Parts != null, "TStringLiteral.Parts cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        foreach (var part in Parts)
+        {
+            if (part.Expression != null)
+                yield return part.Expression;
+        }
+    }
+}
+
+/// <summary>
 /// Boolean literal (True or False)
 /// </summary>
 public record BooleanLiteral : Expression

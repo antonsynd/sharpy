@@ -1,0 +1,4 @@
+def main():
+    name: str = "world"
+    result = t"Hello {name}"
+    print(result)

@@ -143,7 +143,9 @@ public partial class Parser
             case TokenType.FStringStart:
                 {
                     var startToken = Current;
-                    // Segmented f-string lexing
+                    bool isTString = startToken.Value.StartsWith("t");
+                    if (isTString)
+                        return ParseSegmentedTString(startLine, startColumn, startToken);
                     return ParseSegmentedFString(startLine, startColumn, startToken);
                 }
 

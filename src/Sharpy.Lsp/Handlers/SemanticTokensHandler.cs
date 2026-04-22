@@ -524,6 +524,14 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 }
                 break;
 
+            case TStringLiteral tstr:
+                foreach (var part in tstr.Parts)
+                {
+                    if (part.Expression != null)
+                        CollectExpressionTokens(part.Expression, tokens, parameterNames);
+                }
+                break;
+
             case TryExpression tryExpr:
                 CollectExpressionTokens(tryExpr.Operand, tokens, parameterNames);
                 break;
