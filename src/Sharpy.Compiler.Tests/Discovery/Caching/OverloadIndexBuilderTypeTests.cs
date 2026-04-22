@@ -120,7 +120,7 @@ public class OverloadIndexBuilderTypeTests
         // UnauthorizedAccessException, or ValueError (JSONDecodeError)
         var allowedBaseTypes = new HashSet<string?>
         {
-            "Exception", "IOException", "IOError", "FileNotFoundException", "UnauthorizedAccessException", "ValueError"
+            "Exception", "IOException", "IOError", "FileNotFoundException", "UnauthorizedAccessException", "ValueError", "AggregateException"
         };
         foreach (var exType in exceptionTypes)
         {

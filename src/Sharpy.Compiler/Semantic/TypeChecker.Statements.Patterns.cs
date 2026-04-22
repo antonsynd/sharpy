@@ -70,6 +70,25 @@ internal partial class TypeChecker
 
             case BindingPattern binding:
                 {
+                    // RFC 3535: Check if the identifier resolves to a module-level
+                    // constant (Final-annotated or IsConstant) before treating as capture.
+                    var existingSymbol = _symbolTable.Lookup(binding.Name.Name, searchParents: true) as VariableSymbol;
+                    if (existingSymbol is { IsConstant: true })
+                    {
+                        _semanticInfo.SetPatternConstantSymbol(binding, existingSymbol);
+                        _semanticInfo.SetIdentifierSymbol(binding.Name, existingSymbol);
+
+                        var constType = existingSymbol.Type;
+                        if (constType != SemanticType.Unknown && !IsAssignable(scrutineeType, constType))
+                        {
+                            _diagnostics.AddError(
+                                $"Constant pattern type '{constType}' is not compatible with match subject type '{scrutineeType}'",
+                                binding,
+                                code: DiagnosticCodes.Semantic.TypeMismatch);
+                        }
+                        break;
+                    }
+
                     var newSymbol = new VariableSymbol
                     {
                         Name = binding.Name.Name,

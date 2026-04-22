@@ -481,7 +481,9 @@ public static class DiagnosticCodes
 
         // Readonly property violation (SPY0467)
         public const string ReadonlyPropertyAssignment = "SPY0467"; // Active
-        // SPY0468-SPY0499: Reserved for future validation warnings
+        // Constant pattern shadow warning (SPY0468)
+        public const string ConstantPatternShadow = "SPY0468";    // Active
+        // SPY0469-SPY0499: Reserved for future validation warnings
 
         #endregion
     }

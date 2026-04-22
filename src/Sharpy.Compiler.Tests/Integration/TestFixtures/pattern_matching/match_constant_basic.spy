@@ -1,0 +1,16 @@
+const MAX = 100
+const MIN = 0
+
+def classify(x: int) -> str:
+    match x:
+        case MAX:
+            return "max"
+        case MIN:
+            return "min"
+        case _:
+            return "other"
+
+def main():
+    print(classify(100))
+    print(classify(0))
+    print(classify(50))

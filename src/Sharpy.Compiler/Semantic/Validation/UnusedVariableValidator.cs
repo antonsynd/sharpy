@@ -288,6 +288,9 @@ internal class UnusedVariableValidator : ValidatingAstWalker
         switch (pattern)
         {
             case BindingPattern binding:
+                // Skip constant patterns (RFC 3535) — they reference existing constants, not new variables
+                if (Context.SemanticInfo?.GetPatternConstantSymbol(binding) != null)
+                    break;
                 if (!parameters.Contains(binding.Name.Name))
                 {
                     defined[binding.Name.Name] = new VariableInfo(

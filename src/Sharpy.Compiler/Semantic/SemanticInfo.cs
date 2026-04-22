@@ -68,6 +68,11 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Pattern, TypeSymbol> _patternUnionCases =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map BindingPatterns to constant VariableSymbols when the identifier resolves
+    // to a module-level Final/const variable (RFC 3535 — constants in match patterns)
+    private readonly ConcurrentDictionary<Pattern, VariableSymbol> _patternConstants =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track expressions whose type was set to UnknownType due to a user error
     // (i.e., a diagnostic was already emitted for the node). This distinguishes
     // expected error-recovery Unknown types from unexpected ones (compiler bugs).
@@ -226,6 +231,23 @@ public class SemanticInfo : ISemanticQuery
     public TypeSymbol? GetPatternUnionCase(Pattern pattern)
     {
         return _patternUnionCases.TryGetValue(pattern, out var symbol) ? symbol : null;
+    }
+
+    /// <summary>
+    /// Records that a BindingPattern resolved to a module-level constant (RFC 3535).
+    /// </summary>
+    public void SetPatternConstantSymbol(Pattern pattern, VariableSymbol constantSymbol)
+    {
+        _patternConstants[pattern] = constantSymbol;
+    }
+
+    /// <summary>
+    /// Gets the constant variable symbol for a pattern, if one was recorded.
+    /// Returns null if the pattern is a normal capture binding.
+    /// </summary>
+    public VariableSymbol? GetPatternConstantSymbol(Pattern pattern)
+    {
+        return _patternConstants.TryGetValue(pattern, out var symbol) ? symbol : null;
     }
 
     /// <summary>

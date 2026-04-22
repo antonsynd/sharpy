@@ -1459,6 +1459,17 @@ public static class DiagnosticExplanations
             "@readonly\nproperty name: str\n\ndef change(self):\n    self.name = \"new\"  # SPY0467 error",
             "Remove the assignment or change the property to not be @readonly.");
 
+        // ── Validation warnings: Constant pattern shadow (SPY0468) ─────
+
+        Add(dict, DiagnosticCodes.Validation.ConstantPatternShadow,
+            "Pattern capture shadows constant",
+            "Validation",
+            "A capture variable in a match pattern has the same name as a module-level constant. " +
+            "The identifier is treated as a constant pattern (matching its value), not a capture binding. " +
+            "Use a different name if you intended to capture the matched value.",
+            "MAX: Final[int] = 100\nmatch x:\n    case MAX:  # matches value 100, does NOT capture into MAX",
+            "Rename the capture variable to avoid ambiguity with the constant.");
+
         // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",

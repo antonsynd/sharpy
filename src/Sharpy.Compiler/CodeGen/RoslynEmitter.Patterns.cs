@@ -73,7 +73,9 @@ internal partial class RoslynEmitter
         // but has no wildcard/default case, add a default throw to satisfy the C# compiler's
         // definite return analysis. This is unreachable at runtime.
         bool hasDefault = matchStmt.Cases.Any(c =>
-            c.Guard == null && c.Pattern is WildcardPattern or BindingPattern);
+            c.Guard == null && c.Pattern is WildcardPattern
+            || (c.Guard == null && c.Pattern is BindingPattern bp
+                && _context.SemanticInfo?.GetPatternConstantSymbol(bp) == null));
         if (!hasDefault && scrutineeType != null && _context.SemanticInfo != null
             && ExhaustivenessHelper.IsExhaustiveMatch(
                 scrutineeType,
@@ -135,6 +137,15 @@ internal partial class RoslynEmitter
 
             case BindingPattern binding:
                 {
+                    // RFC 3535: If this binding was resolved as a constant, emit as constant pattern
+                    var constSymbol = _context.SemanticInfo?.GetPatternConstantSymbol(binding);
+                    if (constSymbol != null)
+                    {
+                        var constName = constSymbol.CodeGenInfo?.CSharpName
+                            ?? NameMangler.ToConstantCase(constSymbol.Name);
+                        return ConstantPattern(IdentifierName(constName));
+                    }
+
                     var varName = GetMangledVariableName(binding.Name.Name, isNewDeclaration: true);
                     return VarPattern(SingleVariableDesignation(Identifier(varName)));
                 }
