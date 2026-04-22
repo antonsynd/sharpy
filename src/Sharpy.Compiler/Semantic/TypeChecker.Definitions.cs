@@ -1686,6 +1686,7 @@ internal partial class TypeChecker
             {
                 seenDefault = true;
                 firstDefaultName ??= tp.Name;
+                ValidateTypeParameterDefaultConstraints(tp);
             }
             else if (seenDefault)
             {
@@ -1694,6 +1695,52 @@ internal partial class TypeChecker
                     tp.LineStart, tp.ColumnStart,
                     code: DiagnosticCodes.Semantic.TypeParameterDefaultOrdering,
                     span: tp.Span);
+            }
+        }
+    }
+
+    private void ValidateTypeParameterDefaultConstraints(TypeParameterDef typeParam)
+    {
+        if (typeParam.DefaultType == null || typeParam.Constraints.IsEmpty)
+            return;
+
+        var defaultType = _typeResolver.ResolveTypeAnnotation(typeParam.DefaultType);
+        if (defaultType is UnknownType)
+            return;
+
+        foreach (var constraint in typeParam.Constraints)
+        {
+            switch (constraint)
+            {
+                case Parser.Ast.ClassConstraint when defaultType.IsValueType:
+                    AddError(
+                        $"Default type '{defaultType.GetDisplayName()}' for type parameter '{typeParam.Name}' is a value type, but constraint requires a reference type (class)",
+                        typeParam.DefaultType.LineStart, typeParam.DefaultType.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeParameterDefaultViolatesConstraint,
+                        span: typeParam.DefaultType.Span);
+                    break;
+
+                case Parser.Ast.StructConstraint when !defaultType.IsValueType:
+                    AddError(
+                        $"Default type '{defaultType.GetDisplayName()}' for type parameter '{typeParam.Name}' is a reference type, but constraint requires a value type (struct)",
+                        typeParam.DefaultType.LineStart, typeParam.DefaultType.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeParameterDefaultViolatesConstraint,
+                        span: typeParam.DefaultType.Span);
+                    break;
+
+                case Parser.Ast.TypeConstraint tc:
+                    var constraintType = _typeResolver.ResolveTypeAnnotation(tc.Type);
+                    if (constraintType is UnknownType)
+                        break;
+                    if (!defaultType.IsAssignableTo(constraintType))
+                    {
+                        AddError(
+                            $"Default type '{defaultType.GetDisplayName()}' for type parameter '{typeParam.Name}' does not satisfy constraint '{constraintType.GetDisplayName()}'",
+                            typeParam.DefaultType.LineStart, typeParam.DefaultType.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeParameterDefaultViolatesConstraint,
+                            span: typeParam.DefaultType.Span);
+                    }
+                    break;
             }
         }
     }
