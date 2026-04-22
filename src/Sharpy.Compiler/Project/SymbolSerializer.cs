@@ -258,6 +258,7 @@ internal static class SymbolSerializer
             IsVariadic = ps.IsVariadic,
             IsPositionalOnly = ps.IsPositionalOnly,
             IsKeywordOnly = ps.IsKeywordOnly,
+            IsLateBound = ps.IsLateBound,
             Documentation = ps.Documentation
         };
     }
@@ -510,6 +511,7 @@ internal static class SymbolSerializer
             IsVariadic = cached.IsVariadic,
             IsPositionalOnly = cached.IsPositionalOnly,
             IsKeywordOnly = cached.IsKeywordOnly,
+            IsLateBound = cached.IsLateBound,
             Documentation = cached.Documentation
         };
     }

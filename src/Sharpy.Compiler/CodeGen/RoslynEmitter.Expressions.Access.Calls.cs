@@ -694,10 +694,18 @@ internal partial class RoslynEmitter
         {
             // No reordering — use the existing positional + keyword pattern
             var positionalArgs = GeneratePositionalArguments(call.Arguments);
-            // TODO(#579): Named args targeting late-bound params must use the mangled `__lb` name.
             var keywordArgs = call.KeywordArguments.Select(kwarg =>
-                Argument(GenerateExpression(kwarg.Value))
-                    .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
+            {
+                var csharpName = NameMangler.ToCamelCase(kwarg.Name);
+                if (funcSymbol != null)
+                {
+                    var targetParam = funcSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
+                    if (targetParam is { IsLateBound: true })
+                        csharpName += LateBoundSuffix;
+                }
+                return Argument(GenerateExpression(kwarg.Value))
+                    .WithNameColon(NameColon(IdentifierName(csharpName)));
+            });
             if (prependedArgument != null)
                 return new[] { prependedArgument }.Concat(positionalArgs).Concat(keywordArgs).ToArray();
             return positionalArgs.Concat(keywordArgs).ToArray();
@@ -735,6 +743,8 @@ internal partial class RoslynEmitter
                 continue;
 
             string csharpParamName = NameMangler.ToCamelCase(param.Name);
+            if (param.IsLateBound)
+                csharpParamName += LateBoundSuffix;
 
             if (keywordArgsByName.TryGetValue(param.Name, out var kwarg))
             {
@@ -755,9 +765,12 @@ internal partial class RoslynEmitter
                         result.Add(spreadArg);
                     foreach (var remaining in keywordArgsByName.Values)
                     {
+                        var remainingCsharpName = NameMangler.ToCamelCase(remaining.Name);
+                        var remainingParam = funcSymbol!.Parameters.FirstOrDefault(p => p.Name == remaining.Name);
+                        if (remainingParam is { IsLateBound: true })
+                            remainingCsharpName += LateBoundSuffix;
                         result.Add(Argument(GenerateExpression(remaining.Value))
-                            .WithNameColon(NameColon(IdentifierName(
-                                NameMangler.ToCamelCase(remaining.Name)))));
+                            .WithNameColon(NameColon(IdentifierName(remainingCsharpName))));
                     }
                     return result.ToArray();
                 }
@@ -783,12 +796,14 @@ internal partial class RoslynEmitter
         }
 
         // Add any remaining keyword args not matched to declared params
-        // TODO(#579): Named args targeting late-bound params must use the mangled `__lb` name.
         foreach (var remaining in keywordArgsByName.Values)
         {
+            var remainingCsharpName = NameMangler.ToCamelCase(remaining.Name);
+            var remainingParam = funcSymbol!.Parameters.FirstOrDefault(p => p.Name == remaining.Name);
+            if (remainingParam is { IsLateBound: true })
+                remainingCsharpName += LateBoundSuffix;
             orderedResult.Add(Argument(GenerateExpression(remaining.Value))
-                .WithNameColon(NameColon(IdentifierName(
-                    NameMangler.ToCamelCase(remaining.Name)))));
+                .WithNameColon(NameColon(IdentifierName(remainingCsharpName))));
         }
 
         // Phase 3: Variadic trailing args (remaining positional, unnamed)

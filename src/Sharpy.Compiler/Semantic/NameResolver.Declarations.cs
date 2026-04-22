@@ -339,6 +339,7 @@ internal partial class NameResolver
             IsVariadic = p.IsVariadic,
             IsPositionalOnly = p.Kind == ParameterKind.PositionalOnly,
             IsKeywordOnly = p.Kind == ParameterKind.KeywordOnly,
+            IsLateBound = p.IsLateBound,
             Modifier = p.Modifier
         }).ToList();
 

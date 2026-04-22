@@ -220,6 +220,8 @@ internal record CachedParameter
     /// </summary>
     public bool IsKeywordOnly { get; init; }
 
+    public bool IsLateBound { get; init; }
+
     /// <summary>
     /// Documentation string (from XML doc param tags or source)
     /// </summary>
