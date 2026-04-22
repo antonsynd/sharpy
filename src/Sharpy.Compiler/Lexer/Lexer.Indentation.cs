@@ -140,8 +140,8 @@ public partial class Lexer
                 _atLineStart = true;
             }
 
-            // Recursively get next token (don't produce NEWLINE for blank/comment lines)
-            return NextToken();
+            // Return null so the caller's loop re-enters (no recursion)
+            return null;
         }
 
         // Restore position to measure indentation properly

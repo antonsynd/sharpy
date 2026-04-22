@@ -310,121 +310,149 @@ public partial class Lexer
     /// </summary>
     public Token NextToken()
     {
-        // Return pending tokens first (INDENT/DEDENT)
-        if (_pendingTokens.Count > 0)
-            return _pendingTokens.Dequeue();
-
-        // If we're inside an f-string, handle f-string content
-        if (_fstringStack.Count > 0)
+        while (true)
         {
-            return NextFStringToken();
-        }
+            // Return pending tokens first (INDENT/DEDENT)
+            if (_pendingTokens.Count > 0)
+                return _pendingTokens.Dequeue();
 
-        // Handle end of file
-        if (_position >= _source.Length)
-        {
-            // Generate DEDENTs for remaining indentation levels
-            if (_indentStack.Count > 1)
+            // If we're inside an f-string, handle f-string content
+            if (_fstringStack.Count > 0)
             {
-                _indentStack.Pop();
-                return CreateToken(TokenType.Dedent, "", _line, _column, _position);
+                return NextFStringToken();
             }
-            return CreateToken(TokenType.Eof, "", _line, _column, _position);
-        }
 
-        // Handle indentation at line start
-        if (_atLineStart && _bracketDepth == 0)
-        {
-            var indentToken = HandleLineStartIndentation();
-            if (indentToken != null)
-                return indentToken;
-        }
-        else if (_atLineStart && _bracketDepth > 0)
-        {
-            // Inside brackets, skip indentation but clear the flag so that
-            // when bracket depth returns to 0, HandleLineStartIndentation
-            // doesn't fire on a subsequent newline (which would swallow
-            // the Newline token needed to terminate the enclosing statement).
-            _atLineStart = false;
-        }
-
-        // Skip whitespace (except newlines)
-        SkipWhitespace();
-
-        if (_position >= _source.Length)
-            return NextToken();  // Recurse to handle EOF
-
-        var startLine = _line;
-        var startColumn = _column;
-        var startPosition = _position;
-        var current = _source[_position];
-
-        // Comments
-        if (current == '#')
-            return ReadComment();
-
-        // Backslash line continuation
-        if (current == '\\')
-        {
-            var nextPos = _position + 1;
-
-            // If next character doesn't exist
-            if (nextPos >= _source.Length)
+            // Handle end of file
+            if (_position >= _source.Length)
             {
-                // Backslash at EOF - check if it's the only token
-                if (_position == 0)
+                // Generate DEDENTs for remaining indentation levels
+                if (_indentStack.Count > 1)
                 {
-                    // Just a standalone backslash token
-                    // Fall through to treat as backslash operator/delimiter
+                    _indentStack.Pop();
+                    return CreateToken(TokenType.Dedent, "", _line, _column, _position);
+                }
+                return CreateToken(TokenType.Eof, "", _line, _column, _position);
+            }
+
+            // Handle indentation at line start
+            if (_atLineStart && _bracketDepth == 0)
+            {
+                var indentToken = HandleLineStartIndentation();
+                if (indentToken != null)
+                    return indentToken;
+                if (_atLineStart)
+                    continue;
+            }
+            else if (_atLineStart && _bracketDepth > 0)
+            {
+                // Inside brackets, skip indentation but clear the flag so that
+                // when bracket depth returns to 0, HandleLineStartIndentation
+                // doesn't fire on a subsequent newline (which would swallow
+                // the Newline token needed to terminate the enclosing statement).
+                _atLineStart = false;
+            }
+
+            // Skip whitespace (except newlines)
+            SkipWhitespace();
+
+            if (_position >= _source.Length)
+                continue;  // Loop to handle EOF
+
+            var startLine = _line;
+            var startColumn = _column;
+            var startPosition = _position;
+            var current = _source[_position];
+
+            // Comments — skip and loop (no recursion)
+            if (current == '#')
+            {
+                SkipComment();
+                continue;
+            }
+
+            // Backslash line continuation
+            if (current == '\\')
+            {
+                var nextPos = _position + 1;
+
+                // If next character doesn't exist
+                if (nextPos >= _source.Length)
+                {
+                    // Backslash at EOF - check if it's the only token
+                    if (_position == 0)
+                    {
+                        // Just a standalone backslash token
+                        // Fall through to treat as backslash operator/delimiter
+                    }
+                    else
+                    {
+                        // Backslash at EOF after other content - likely a mistake
+                        throw ReportError("Backslash at end of file", _line, _column, DiagnosticCodes.Lexer.BackslashAtEof);
+                    }
                 }
                 else
                 {
-                    // Backslash at EOF after other content - likely a mistake
-                    throw ReportError("Backslash at end of file", _line, _column, DiagnosticCodes.Lexer.BackslashAtEof);
+                    // Check for trailing whitespace after backslash
+                    var tempPos = nextPos;
+                    while (tempPos < _source.Length && (_source[tempPos] == ' ' || _source[tempPos] == '\t'))
+                        tempPos++;
+
+                    // After skipping whitespace, check if we have a newline
+                    if (tempPos < _source.Length && (_source[tempPos] == '\n' || _source[tempPos] == '\r'))
+                    {
+                        if (tempPos != nextPos)
+                        {
+                            // There was whitespace between \ and newline
+                            throw ReportError("Backslash line continuation cannot have trailing whitespace", _line, _column, DiagnosticCodes.Lexer.BackslashTrailingWhitespace);
+                        }
+
+                        // Valid line continuation - skip the backslash and newline
+                        _position = tempPos;
+                        if (_source[_position] == '\r' && _position + 1 < _source.Length && _source[_position + 1] == '\n')
+                            _position += 2;
+                        else
+                            _position++;
+
+                        _line++;
+                        _column = 1;
+                        continue;  // Loop to get next token
+                    }
+                    else if (tempPos >= _source.Length && tempPos != nextPos)
+                    {
+                        // Backslash followed by whitespace at end of file
+                        throw ReportError("Backslash at end of file", _line, _column, DiagnosticCodes.Lexer.BackslashAtEof);
+                    }
+                    // Otherwise, fall through to treat backslash as operator
                 }
             }
-            else
+
+            // Newlines
+            if (current == '\n' || current == '\r')
             {
-                // Check for trailing whitespace after backslash
-                var tempPos = nextPos;
-                while (tempPos < _source.Length && (_source[tempPos] == ' ' || _source[tempPos] == '\t'))
-                    tempPos++;
-
-                // After skipping whitespace, check if we have a newline
-                if (tempPos < _source.Length && (_source[tempPos] == '\n' || _source[tempPos] == '\r'))
+                if (_bracketDepth > 0)
                 {
-                    if (tempPos != nextPos)
+                    // Inside brackets, skip newlines
+                    if (current == '\r')
                     {
-                        // There was whitespace between \ and newline
-                        throw ReportError("Backslash line continuation cannot have trailing whitespace", _line, _column, DiagnosticCodes.Lexer.BackslashTrailingWhitespace);
-                    }
-
-                    // Valid line continuation - skip the backslash and newline
-                    _position = tempPos;
-                    if (_source[_position] == '\r' && _position + 1 < _source.Length && _source[_position + 1] == '\n')
-                        _position += 2;
-                    else
                         _position++;
-
+                        _column++;
+                        // Check for \r\n sequence
+                        if (_position < _source.Length && _source[_position] == '\n')
+                        {
+                            _position++;
+                        }
+                    }
+                    else
+                    {
+                        _position++;
+                    }
                     _line++;
                     _column = 1;
-                    return NextToken();
+                    _atLineStart = true;
+                    continue;  // Loop to get next token
                 }
-                else if (tempPos >= _source.Length && tempPos != nextPos)
-                {
-                    // Backslash followed by whitespace at end of file
-                    throw ReportError("Backslash at end of file", _line, _column, DiagnosticCodes.Lexer.BackslashAtEof);
-                }
-                // Otherwise, fall through to treat backslash as operator
-            }
-        }
 
-        // Newlines
-        if (current == '\n' || current == '\r')
-        {
-            if (_bracketDepth > 0)
-            {
-                // Inside brackets, skip newlines
+                // Normal newline token
                 if (current == '\r')
                 {
                     _position++;
@@ -442,83 +470,63 @@ public partial class Lexer
                 _line++;
                 _column = 1;
                 _atLineStart = true;
-                return NextToken();
+                return LogAndReturn(CreateToken(TokenType.Newline, "\n", startLine, startColumn, startPosition));
             }
 
-            // Normal newline token
-            if (current == '\r')
-            {
-                _position++;
-                _column++;
-                // Check for \r\n sequence
-                if (_position < _source.Length && _source[_position] == '\n')
-                {
-                    _position++;
-                }
-            }
-            else
-            {
-                _position++;
-            }
-            _line++;
-            _column = 1;
-            _atLineStart = true;
-            return LogAndReturn(CreateToken(TokenType.Newline, "\n", startLine, startColumn, startPosition));
-        }
+            // String literals
+            if (current == '"' || current == '\'')
+                return LogAndReturn(ReadString());
 
-        // String literals
-        if (current == '"' || current == '\'')
-            return LogAndReturn(ReadString());
+            // F-strings
+            if (current == 'f' && (_position + 1 < _source.Length) &&
+                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
+                return LogAndReturn(ReadFStringStart());
 
-        // F-strings
-        if (current == 'f' && (_position + 1 < _source.Length) &&
-            (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-            return LogAndReturn(ReadFStringStart());
+            // T-strings (PEP 750 template strings)
+            if (current == 't' && (_position + 1 < _source.Length) &&
+                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
+                return LogAndReturn(ReadTStringStart());
 
-        // T-strings (PEP 750 template strings)
-        if (current == 't' && (_position + 1 < _source.Length) &&
-            (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-            return LogAndReturn(ReadTStringStart());
+            // Raw strings
+            if (current == 'r' && (_position + 1 < _source.Length) &&
+                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
+                return LogAndReturn(ReadRawString());
 
-        // Raw strings
-        if (current == 'r' && (_position + 1 < _source.Length) &&
-            (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-            return LogAndReturn(ReadRawString());
+            // Byte strings
+            if (current == 'b' && (_position + 1 < _source.Length) &&
+                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
+                return LogAndReturn(ReadByteString());
 
-        // Byte strings
-        if (current == 'b' && (_position + 1 < _source.Length) &&
-            (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-            return LogAndReturn(ReadByteString());
+            // Dedented raw strings (dr"""...""") — check before plain d to disambiguate
+            if (current == 'd' && _position + 1 < _source.Length && _source[_position + 1] == 'r' &&
+                _position + 2 < _source.Length && (_source[_position + 2] == '"' || _source[_position + 2] == '\''))
+                return LogAndReturn(ReadDedentedRawString());
 
-        // Dedented raw strings (dr"""...""") — check before plain d to disambiguate
-        if (current == 'd' && _position + 1 < _source.Length && _source[_position + 1] == 'r' &&
-            _position + 2 < _source.Length && (_source[_position + 2] == '"' || _source[_position + 2] == '\''))
-            return LogAndReturn(ReadDedentedRawString());
+            // Dedented f-strings (df"""...""") — check before plain d to disambiguate
+            if (current == 'd' && _position + 1 < _source.Length && _source[_position + 1] == 'f' &&
+                _position + 2 < _source.Length && (_source[_position + 2] == '"' || _source[_position + 2] == '\''))
+                return LogAndReturn(ReadDedentedFStringStart());
 
-        // Dedented f-strings (df"""...""") — check before plain d to disambiguate
-        if (current == 'd' && _position + 1 < _source.Length && _source[_position + 1] == 'f' &&
-            _position + 2 < _source.Length && (_source[_position + 2] == '"' || _source[_position + 2] == '\''))
-            return LogAndReturn(ReadDedentedFStringStart());
+            // D-strings (dedented multiline, PEP 822)
+            if (current == 'd' && _position + 1 < _source.Length &&
+                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
+                return LogAndReturn(ReadDedentedString());
 
-        // D-strings (dedented multiline, PEP 822)
-        if (current == 'd' && _position + 1 < _source.Length &&
-            (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-            return LogAndReturn(ReadDedentedString());
+            // Backtick-delimited literal names
+            if (current == '`')
+                return LogAndReturn(ReadLiteralName());
 
-        // Backtick-delimited literal names
-        if (current == '`')
-            return LogAndReturn(ReadLiteralName());
+            // Numbers
+            if (char.IsDigit(current))
+                return LogAndReturn(ReadNumber());
 
-        // Numbers
-        if (char.IsDigit(current))
-            return LogAndReturn(ReadNumber());
+            // Identifiers and keywords
+            if (char.IsLetter(current) || current == '_')
+                return LogAndReturn(ReadIdentifierOrKeyword());
 
-        // Identifiers and keywords
-        if (char.IsLetter(current) || current == '_')
-            return LogAndReturn(ReadIdentifierOrKeyword());
-
-        // Operators and delimiters
-        return LogAndReturn(ReadOperatorOrDelimiter());
+            // Operators and delimiters
+            return LogAndReturn(ReadOperatorOrDelimiter());
+        } // while (true)
     }
 
     private Token LogAndReturn(Token token)
@@ -571,7 +579,7 @@ public partial class Lexer
         return pos < _source.Length ? _source[pos] : '\0';
     }
 
-    private Token ReadComment()
+    private void SkipComment()
     {
         var startLine = _line;
         var startColumn = _column;
@@ -600,9 +608,6 @@ public partial class Lexer
                 Position = startPosition
             });
         }
-
-        // Comments are skipped in the token stream; get next token
-        return NextToken();
     }
 
     private Token ReadIdentifierOrKeyword()
