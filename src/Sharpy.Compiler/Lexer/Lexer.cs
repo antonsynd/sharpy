@@ -751,6 +751,10 @@ public partial class Lexer
                     _position += 2;
                     _column += 2;
                     return CreateToken(TokenType.Arrow, twoChar, startLine, startColumn, startPosition);
+                case "=>":
+                    _position += 2;
+                    _column += 2;
+                    return CreateToken(TokenType.FatArrow, twoChar, startLine, startColumn, startPosition);
                 case "?.":
                     _position += 2;
                     _column += 2;

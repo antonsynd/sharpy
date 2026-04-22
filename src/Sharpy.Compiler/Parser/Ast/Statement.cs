@@ -796,6 +796,11 @@ public record Parameter
     public TypeAnnotation? Type { get; init; }
     public Expression? DefaultValue { get; init; }
     /// <summary>
+    /// When true, the default is late-bound: evaluated at call time, not definition time (PEP 671).
+    /// Syntax: <c>def f(x => expr)</c> instead of <c>def f(x = expr)</c>.
+    /// </summary>
+    public bool IsLateBound { get; init; }
+    /// <summary>
     /// True if this parameter is variadic (*args). Maps to C# params T[].
     /// </summary>
     public bool IsVariadic { get; init; }

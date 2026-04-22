@@ -1046,12 +1046,23 @@ public partial class Parser
                 type = ParseTypeAnnotation();
             }
 
+            bool isLateBound = false;
+
             if (Current.Type == TokenType.Assign)
             {
                 if (isVariadic)
                     throw ReportError("Variadic parameter (*args) cannot have a default value", Current.Line, Current.Column, DiagnosticCodes.Parser.VariadicWithDefault, span: CurrentSpan);
                 Advance();
                 defaultValue = ParseExpression();
+            }
+            else if (Current.Type == TokenType.FatArrow)
+            {
+                // PEP 671: late-bound default — evaluated at call time, not definition time
+                if (isVariadic)
+                    throw ReportError("Variadic parameter (*args) cannot have a default value", Current.Line, Current.Column, DiagnosticCodes.Parser.VariadicWithDefault, span: CurrentSpan);
+                Advance();
+                defaultValue = ParseExpression();
+                isLateBound = true;
             }
 
             var endToken = Previous;
@@ -1069,6 +1080,7 @@ public partial class Parser
                 IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                 Type = type,
                 DefaultValue = defaultValue,
+                IsLateBound = isLateBound,
                 IsVariadic = isVariadic,
                 Kind = kind,
                 Modifier = modifier,

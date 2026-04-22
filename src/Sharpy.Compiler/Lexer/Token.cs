@@ -158,6 +158,7 @@ public enum TokenType
     Semicolon,      // ;
     Dot,            // .
     Arrow,          // ->
+    FatArrow,       // => (late-bound default, PEP 671)
     At,             // @ (decorators)
     Backslash,      // \ (line continuation)
 
