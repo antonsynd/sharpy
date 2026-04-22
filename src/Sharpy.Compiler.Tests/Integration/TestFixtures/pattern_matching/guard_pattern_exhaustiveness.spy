@@ -1,0 +1,12 @@
+def check(x: int) -> str:
+    match x:
+        case v if v > 0:
+            return "positive"
+        case v if v < 0:
+            return "negative"
+    return "zero"
+
+def main():
+    print(check(5))
+    print(check(-3))
+    print(check(0))

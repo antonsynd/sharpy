@@ -1,0 +1,11 @@
+def append_to(items: list[int] => []) -> list[int]:
+    items.append(42)
+    return items
+
+def main():
+    a = append_to()
+    b = append_to()
+    print(len(a))
+    print(len(b))
+    print(a[0])
+    print(b[0])

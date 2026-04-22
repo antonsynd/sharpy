@@ -1,0 +1,7 @@
+def main():
+    name = "World"
+    value = 42
+    result = df"""
+        {name}: {value}
+        """
+    print(result)

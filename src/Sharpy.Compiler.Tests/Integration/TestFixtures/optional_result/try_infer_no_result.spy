@@ -1,0 +1,12 @@
+def safe_divide(a: int, b: int) -> int !Exception:
+    return try a // b
+
+def main():
+    result = safe_divide(10, 2)
+    print(result.unwrap())
+    result2 = safe_divide(10, 0)
+    match result2:
+        case Ok(v):
+            print(v)
+        case Err(_):
+            print("division error")
