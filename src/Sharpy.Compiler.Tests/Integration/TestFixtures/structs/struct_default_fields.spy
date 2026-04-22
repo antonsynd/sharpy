@@ -1,0 +1,11 @@
+# Test struct with some fields having default values
+
+struct Point:
+    x: int
+    y: int = 0
+
+def main():
+    p1 = Point(1, 2)
+    p2 = Point(3)
+    print(p1.x, p1.y)
+    print(p2.x, p2.y)

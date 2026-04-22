@@ -1,0 +1,14 @@
+# Test struct where all fields have default values
+
+struct Config:
+    width: int = 800
+    height: int = 600
+    fullscreen: bool = False
+
+def main():
+    c1 = Config()
+    c2 = Config(1024, 768, True)
+    c3 = Config(1920)
+    print(c1.width, c1.height, c1.fullscreen)
+    print(c2.width, c2.height, c2.fullscreen)
+    print(c3.width, c3.height, c3.fullscreen)

@@ -448,7 +448,10 @@ public static class DiagnosticCodes
         // Late-bound default validation (SPY0433-SPY0434)
         public const string LateBoundSelfReference = "SPY0433";     // Active
         public const string LateBoundForwardReference = "SPY0434";  // Active
-        // SPY0435-SPY0449: Reserved for future validation errors
+
+        // Struct field ordering (SPY0435)
+        public const string StructFieldOrdering = "SPY0435";        // Active
+        // SPY0436-SPY0449: Reserved for future validation errors
 
         #endregion
 

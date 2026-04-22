@@ -218,6 +218,132 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Generates auto-constructor(s) for a struct that has fields but no explicit __init__.
+    /// Required fields (no default) become required parameters; fields with defaults become
+    /// optional parameters. Required parameters precede optional ones.
+    /// When all fields have defaults, also generates an explicit parameterless constructor
+    /// so that <c>new T()</c> uses the declared defaults rather than zero-initialization.
+    /// </summary>
+    private List<ConstructorDeclarationSyntax> GenerateStructAutoConstructors(
+        string className,
+        IReadOnlyList<Statement> body)
+    {
+        var constructors = new List<ConstructorDeclarationSyntax>();
+
+        // Collect instance field declarations in body order
+        var fieldDecls = body.OfType<VariableDeclaration>()
+            .Where(v => !v.Decorators.Any(d => d.Name == DecoratorNames.Static))
+            .ToList();
+
+        // Partition into required (no default) and optional (with default), preserving order within each group
+        var requiredFields = fieldDecls.Where(f => f.InitialValue == null).ToList();
+        var optionalFields = fieldDecls.Where(f => f.InitialValue != null).ToList();
+        var orderedFields = requiredFields.Concat(optionalFields).ToList();
+
+        // When all fields have defaults, generate an explicit parameterless constructor.
+        // Without this, `new T()` on a struct uses zero-initialization and skips
+        // the constructor whose parameters all happen to be optional.
+        if (requiredFields.Count == 0 && optionalFields.Count > 0)
+        {
+            var parameterlessStatements = new List<StatementSyntax>();
+            foreach (var fieldDecl in optionalFields)
+            {
+                var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
+                var propName = fieldSymbol != null
+                    ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameMangler.ToPascalCase(fieldDecl.Name))
+                    : NameMangler.ToPascalCase(fieldDecl.Name);
+
+                var previousTargetType = _targetTypeContext;
+                _targetTypeContext = fieldDecl.Type;
+                try
+                {
+                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue!);
+                    parameterlessStatements.Add(ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ThisExpression(),
+                                IdentifierName(propName)),
+                            defaultExpr)));
+                }
+                finally
+                {
+                    _targetTypeContext = previousTargetType;
+                }
+            }
+
+            constructors.Add(ConstructorDeclaration(Identifier(className))
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithParameterList(ParameterList())
+                .WithBody(Block(parameterlessStatements)));
+        }
+
+        // Build the main constructor with parameters
+        var parameters = new List<ParameterSyntax>();
+        foreach (var fieldDecl in orderedFields)
+        {
+            var paramName = fieldDecl.Name;
+            TypeSyntax paramType = fieldDecl.Type != null
+                ? _typeMapper.MapType(fieldDecl.Type)
+                : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+            var param = Parameter(Identifier(paramName))
+                .WithType(paramType);
+
+            // Add default value if present
+            if (fieldDecl.InitialValue != null)
+            {
+                var previousTargetType = _targetTypeContext;
+                _targetTypeContext = fieldDecl.Type;
+                try
+                {
+                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue);
+                    param = param.WithDefault(EqualsValueClause(defaultExpr));
+                }
+                finally
+                {
+                    _targetTypeContext = previousTargetType;
+                }
+            }
+
+            parameters.Add(param);
+        }
+
+        // Build constructor body: assign all fields
+        var statements = new List<StatementSyntax>();
+        foreach (var fieldDecl in orderedFields)
+        {
+            var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
+            var propName = fieldSymbol != null
+                ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameMangler.ToPascalCase(fieldDecl.Name))
+                : NameMangler.ToPascalCase(fieldDecl.Name);
+            var paramName = fieldDecl.Name;
+
+            statements.Add(ExpressionStatement(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        ThisExpression(),
+                        IdentifierName(propName)),
+                    IdentifierName(paramName))));
+        }
+
+        // Only add the parameterized constructor if it has at least one parameter
+        // (avoids duplicate when parameterless was already generated above)
+        if (orderedFields.Count > 0)
+        {
+            constructors.Add(ConstructorDeclaration(Identifier(className))
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithParameterList(ParameterList(SeparatedList(parameters)))
+                .WithBody(Block(statements)));
+        }
+
+        return constructors;
+    }
+
+    /// <summary>
     /// Generates forwarding constructors for a class that doesn't define __init__
     /// but inherits from a class that has constructors with parameters.
     /// C# doesn't inherit constructors, so we must explicitly forward them.

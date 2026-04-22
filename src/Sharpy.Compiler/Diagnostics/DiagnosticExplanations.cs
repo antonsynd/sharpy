@@ -1419,6 +1419,18 @@ public static class DiagnosticExplanations
             "Reorder parameters so that referenced parameters come first:\n" +
             "def f(y: int = 0, x: int => y) -> int: ...");
 
+        // ── Validation errors: Struct field ordering (SPY0435) ─────────
+
+        Add(dict, DiagnosticCodes.Validation.StructFieldOrdering,
+            "Non-default struct field follows a field with a default value",
+            "Validation",
+            "In a struct definition, fields without default values must be declared before fields " +
+            "with default values. This ensures the auto-generated constructor has required parameters " +
+            "before optional ones, which is required by C#.",
+            "struct Bad:\n    x: int = 0\n    y: int  # error: no default after default",
+            "Move fields without defaults before fields with defaults:\n" +
+            "struct Good:\n    y: int\n    x: int = 0");
+
         // ── Validation warnings: Deprecation (SPY0464) ─────────────────
 
         Add(dict, DiagnosticCodes.Validation.DeprecatedBodylessSyntax,

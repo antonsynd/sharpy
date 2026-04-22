@@ -230,10 +230,17 @@ internal partial class RoslynEmitter
                 members.Add(GenerateConstructor(initMethod, className, fieldMapping, fieldTypeMapping));
             }
 
+            // Generate auto-constructor(s) for structs with fields but no explicit __init__
+            if (initMethods.Count == 0
+                && _currentTypeSymbol is { TypeKind: Semantic.TypeKind.Struct }
+                && _currentTypeSymbol.Fields.Count > 0)
+            {
+                members.AddRange(GenerateStructAutoConstructors(className, body));
+            }
             // Generate forwarding constructors if this class has no __init__ and inherits
             // from a class with constructors. C# doesn't inherit constructors, so subclasses
             // without __init__ need forwarding constructors to call the parent's constructor.
-            if (initMethods.Count == 0 && _currentTypeSymbol?.BaseType != null)
+            else if (initMethods.Count == 0 && _currentTypeSymbol?.BaseType != null)
             {
                 members.AddRange(GenerateForwardingConstructors(className));
             }

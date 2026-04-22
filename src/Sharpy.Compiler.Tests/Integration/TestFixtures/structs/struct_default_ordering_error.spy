@@ -1,0 +1,9 @@
+# Test error: non-default field after field with default value
+
+struct BadStruct:
+    x: int = 0
+    y: int
+
+def main():
+    b = BadStruct(1, 2)
+    print(b.x)
