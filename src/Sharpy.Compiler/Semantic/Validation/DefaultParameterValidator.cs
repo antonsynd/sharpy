@@ -7,9 +7,11 @@ namespace Sharpy.Compiler.Semantic.Validation;
 
 /// <summary>
 /// Validates default parameter values in function definitions:
-/// - Default values must be compile-time constant expressions
-/// - Mutable defaults ([], {}, set()) are not allowed
+/// - Early-bound defaults must be compile-time constant expressions
+/// - Mutable defaults ([], {}, set()) are not allowed in early-bound position
 /// - None is only allowed for nullable parameter types
+/// - Late-bound defaults (=>) must not reference their own parameter (self-reference)
+/// - Late-bound defaults (=>) must not reference parameters declared after them (forward-reference)
 ///
 /// This is the pipeline-compatible version of DefaultParameterValidator.
 /// </summary>
@@ -38,12 +40,126 @@ internal class DefaultParameterValidator : ValidatingAstWalker
     /// </summary>
     private void ValidateFunctionDefaults(FunctionDef functionDef)
     {
+        // Build set of all parameter names for forward-reference detection
+        var allParamNames = new HashSet<string>(
+            functionDef.Parameters.Select(p => p.Name),
+            StringComparer.Ordinal);
+
         foreach (var param in functionDef.Parameters)
         {
-            if (param.DefaultValue != null)
+            if (param.DefaultValue == null)
+                continue;
+
+            if (param.IsLateBound)
+            {
+                ValidateLateBoundDefault(param, functionDef);
+            }
+            else
             {
                 ValidateDefaultValue(param, functionDef.Name);
             }
+        }
+    }
+
+    /// <summary>
+    /// Validates a late-bound default expression for self-reference and forward-reference.
+    /// </summary>
+    private void ValidateLateBoundDefault(Parameter param, FunctionDef functionDef)
+    {
+        var referencedNames = CollectIdentifierNames(param.DefaultValue!);
+
+        // Self-reference: the default expression references the parameter itself
+        if (referencedNames.Contains(param.Name))
+        {
+            AddError(
+                $"Late-bound default for parameter '{param.Name}' in function '{functionDef.Name}' cannot reference itself.",
+                param.LineStart,
+                param.ColumnStart,
+                code: DiagnosticCodes.Validation.LateBoundSelfReference,
+                span: param.Span);
+            return;
+        }
+
+        // Forward-reference: the default expression references a parameter declared after this one
+        // Collect names of parameters that come AFTER this parameter
+        bool foundSelf = false;
+        foreach (var other in functionDef.Parameters)
+        {
+            if (!foundSelf)
+            {
+                if (other.Name == param.Name)
+                    foundSelf = true;
+                continue;
+            }
+            // other comes after param
+            if (referencedNames.Contains(other.Name))
+            {
+                AddError(
+                    $"Late-bound default for parameter '{param.Name}' in function '{functionDef.Name}' cannot reference later parameter '{other.Name}'.",
+                    param.LineStart,
+                    param.ColumnStart,
+                    code: DiagnosticCodes.Validation.LateBoundForwardReference,
+                    span: param.Span);
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Collects all identifier names referenced anywhere in an expression (recursive).
+    /// </summary>
+    private static HashSet<string> CollectIdentifierNames(Expression expr)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        CollectIdentifierNamesInto(expr, names);
+        return names;
+    }
+
+    private static void CollectIdentifierNamesInto(Expression expr, HashSet<string> names)
+    {
+        switch (expr)
+        {
+            case Identifier id:
+                names.Add(id.Name);
+                break;
+            case BinaryOp bin:
+                CollectIdentifierNamesInto(bin.Left, names);
+                CollectIdentifierNamesInto(bin.Right, names);
+                break;
+            case UnaryOp unary:
+                CollectIdentifierNamesInto(unary.Operand, names);
+                break;
+            case Parenthesized paren:
+                CollectIdentifierNamesInto(paren.Expression, names);
+                break;
+            case ConditionalExpression cond:
+                CollectIdentifierNamesInto(cond.Test, names);
+                CollectIdentifierNamesInto(cond.ThenValue, names);
+                CollectIdentifierNamesInto(cond.ElseValue, names);
+                break;
+            case FunctionCall call:
+                CollectIdentifierNamesInto(call.Function, names);
+                foreach (var arg in call.Arguments)
+                    CollectIdentifierNamesInto(arg, names);
+                foreach (var kwarg in call.KeywordArguments)
+                    CollectIdentifierNamesInto(kwarg.Value, names);
+                break;
+            case MemberAccess memberAccess:
+                CollectIdentifierNamesInto(memberAccess.Object, names);
+                break;
+            case IndexAccess indexAccess:
+                CollectIdentifierNamesInto(indexAccess.Object, names);
+                CollectIdentifierNamesInto(indexAccess.Index, names);
+                break;
+            case TupleLiteral tuple:
+                foreach (var elem in tuple.Elements)
+                    CollectIdentifierNamesInto(elem, names);
+                break;
+            case ListLiteral list:
+                foreach (var elem in list.Elements)
+                    CollectIdentifierNamesInto(elem, names);
+                break;
+            // Literals and other leaf nodes contribute no identifiers
         }
     }
 

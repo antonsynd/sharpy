@@ -1399,6 +1399,26 @@ public static class DiagnosticExplanations
             "Use native named tuples:\ntype Point = tuple[x: float, y: float]\n\n" +
             "Or use @dataclass:\n@dataclass\nclass Point:\n    x: float\n    y: float");
 
+        // ── Validation errors: Late-bound defaults (SPY0433-SPY0434) ────
+
+        Add(dict, DiagnosticCodes.Validation.LateBoundSelfReference,
+            "Late-bound default references its own parameter",
+            "Validation",
+            "A late-bound default expression (=>) references the parameter it is the default for. " +
+            "This would be a circular evaluation and is not allowed.",
+            "def f(x: int => x) -> int: ...",
+            "Remove the self-reference or use a different expression:\n" +
+            "def f(x: int => 0) -> int: ...");
+
+        Add(dict, DiagnosticCodes.Validation.LateBoundForwardReference,
+            "Late-bound default references a later parameter",
+            "Validation",
+            "A late-bound default expression (=>) references a parameter that is declared after it. " +
+            "Late-bound defaults may only reference parameters that appear before them in the parameter list.",
+            "def f(x: int => y, y: int = 0) -> int: ...",
+            "Reorder parameters so that referenced parameters come first:\n" +
+            "def f(y: int = 0, x: int => y) -> int: ...");
+
         // ── Validation warnings: Deprecation (SPY0464) ─────────────────
 
         Add(dict, DiagnosticCodes.Validation.DeprecatedBodylessSyntax,

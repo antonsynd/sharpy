@@ -151,7 +151,16 @@ internal partial class RoslynEmitter
                 string.Equals(param.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))
                 continue;
             var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
-            _declaredVariables.Add(paramName);
+            if (param.IsLateBound)
+            {
+                // The C# parameter is named `y__lb`; the preamble local is named `y`
+                _declaredVariables.Add(paramName + LateBoundSuffix);
+                _declaredVariables.Add(paramName);
+            }
+            else
+            {
+                _declaredVariables.Add(paramName);
+            }
             // Also track in version map so assignments to parameters work correctly
             var baseName = NameMangler.ToCamelCase(param.Name);
             _variableVersions[baseName] = 0;
@@ -200,6 +209,7 @@ internal partial class RoslynEmitter
         else
         {
             // Generate method body for concrete methods
+            var preamble = GenerateLateBoundPreamble(func.Parameters);
             var userStatements = func.Body.SelectMany(GenerateBodyStatements);
 
             // For __eq__ implementing IEquatable<T> on classes, prepend null guard:
@@ -221,18 +231,18 @@ internal partial class RoslynEmitter
                             ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression))),
                         ReturnStatement(LiteralExpression(SyntaxKind.FalseLiteralExpression)));
 
-                    var body = Block(new StatementSyntax[] { nullGuard }.Concat(userStatements));
+                    var body = Block(preamble.Concat(new StatementSyntax[] { nullGuard }).Concat(userStatements));
                     method = method.WithBody(body);
                 }
                 else
                 {
-                    var body = Block(userStatements);
+                    var body = Block(preamble.Concat(userStatements));
                     method = method.WithBody(body);
                 }
             }
             else
             {
-                var body = Block(userStatements);
+                var body = Block(preamble.Concat(userStatements));
                 method = method.WithBody(body);
             }
         }

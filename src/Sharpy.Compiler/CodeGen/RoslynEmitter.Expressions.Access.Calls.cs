@@ -694,6 +694,7 @@ internal partial class RoslynEmitter
         {
             // No reordering — use the existing positional + keyword pattern
             var positionalArgs = GeneratePositionalArguments(call.Arguments);
+            // TODO(#579): Named args targeting late-bound params must use the mangled `__lb` name.
             var keywordArgs = call.KeywordArguments.Select(kwarg =>
                 Argument(GenerateExpression(kwarg.Value))
                     .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
@@ -782,6 +783,7 @@ internal partial class RoslynEmitter
         }
 
         // Add any remaining keyword args not matched to declared params
+        // TODO(#579): Named args targeting late-bound params must use the mangled `__lb` name.
         foreach (var remaining in keywordArgsByName.Values)
         {
             orderedResult.Add(Argument(GenerateExpression(remaining.Value))

@@ -88,14 +88,24 @@ internal partial class RoslynEmitter
         foreach (var param in func.Parameters)
         {
             var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
-            _declaredVariables.Add(paramName);
+            if (param.IsLateBound)
+            {
+                // The C# parameter is named `y__lb`; the preamble local is named `y`
+                _declaredVariables.Add(paramName + LateBoundSuffix);
+                _declaredVariables.Add(paramName);
+            }
+            else
+            {
+                _declaredVariables.Add(paramName);
+            }
             // Also track in version map so assignments to parameters work correctly
             var baseName = NameMangler.ToCamelCase(param.Name);
             _variableVersions[baseName] = 0;
         }
 
-        // Generate method body
-        var body = Block(func.Body.SelectMany(GenerateBodyStatements));
+        // Generate method body, prepending late-bound default locals
+        var preamble = GenerateLateBoundPreamble(func.Parameters);
+        var body = Block(preamble.Concat(func.Body.SelectMany(GenerateBodyStatements)));
 
         var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)
@@ -137,6 +147,26 @@ internal partial class RoslynEmitter
     private ParameterSyntax GenerateParameter(Parameter param)
     {
         var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+
+        // Late-bound default (PEP 671): emit as nullable sentinel parameter.
+        // E.g., `y: int => x + 1` becomes `int? y__lb = null` in the C# signature.
+        // The actual local `y` is emitted in the method body preamble via GenerateLateBoundPreamble.
+        if (param.IsLateBound)
+        {
+            TypeSyntax baseType = param.Type != null
+                ? _typeMapper.MapType(param.Type)
+                : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+            // Value types need Nullable<T> wrapper; reference/optional types already allow null.
+            TypeSyntax lbType = IsValueTypeAnnotation(param.Type)
+                ? NullableType(baseType)
+                : baseType;
+
+            return Parameter(Identifier(paramName + LateBoundSuffix))
+                .WithType(lbType)
+                .WithDefault(EqualsValueClause(
+                    LiteralExpression(SyntaxKind.NullLiteralExpression)));
+        }
 
         // Get parameter type from annotation or default to object
         TypeSyntax paramType = param.Type != null
@@ -192,6 +222,52 @@ internal partial class RoslynEmitter
         }
 
         return parameter;
+    }
+
+    private const string LateBoundSuffix = "__lb";
+
+    /// <summary>
+    /// Returns true when a type annotation refers to a .NET value type that requires
+    /// Nullable&lt;T&gt; wrapping to accept null as a sentinel in a C# parameter default.
+    /// </summary>
+    private static bool IsValueTypeAnnotation(Parser.Ast.TypeAnnotation? type)
+    {
+        if (type == null || type.IsOptional || type.IsCSharpNullable)
+            return false;
+        return type.Name is
+            BuiltinNames.Int or BuiltinNames.Bool or
+            BuiltinNames.Long or BuiltinNames.Float or
+            BuiltinNames.Float32 or BuiltinNames.Double or
+            BuiltinNames.Float64 or BuiltinNames.Decimal;
+    }
+
+    /// <summary>
+    /// Generates the late-bound default preamble for a function body.
+    /// For each late-bound parameter `y`, emits: <c>var y = y__lb ?? &lt;default_expr&gt;;</c>
+    /// This shadows the C# sentinel parameter with a local of the correct non-nullable type.
+    /// </summary>
+    private IEnumerable<StatementSyntax> GenerateLateBoundPreamble(
+        IReadOnlyList<Parameter> parameters)
+    {
+        foreach (var param in parameters)
+        {
+            if (!param.IsLateBound || param.DefaultValue == null)
+                continue;
+
+            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            var lbParamName = paramName + LateBoundSuffix;
+            var defaultExpr = GenerateExpression(param.DefaultValue);
+
+            yield return LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"),
+                    SingletonSeparatedList(
+                        VariableDeclarator(Identifier(paramName))
+                            .WithInitializer(EqualsValueClause(
+                                BinaryExpression(
+                                    SyntaxKind.CoalesceExpression,
+                                    IdentifierName(lbParamName),
+                                    defaultExpr))))));
+        }
     }
 
     /// <summary>
