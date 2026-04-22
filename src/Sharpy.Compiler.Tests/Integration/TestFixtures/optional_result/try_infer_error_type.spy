@@ -1,0 +1,16 @@
+# RFC 3721: infer error type in try expression from enclosing Result return
+def parse_number(text: str) -> int !ValueError:
+    return try int(text)
+
+def main():
+    result = parse_number("42")
+    print(result.unwrap())
+    result2 = parse_number("bad")
+    is_err = False
+    try:
+        result2.unwrap_err()
+        is_err = True
+    except:
+        is_err = False
+    if is_err:
+        print("error")

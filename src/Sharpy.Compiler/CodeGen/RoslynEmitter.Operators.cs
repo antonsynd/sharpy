@@ -715,10 +715,14 @@ internal partial class RoslynEmitter
         // Get the ResultType from semantic info to extract T and E
         var resultType = GetExpressionSemanticType(tryExpr) as Semantic.ResultType;
 
-        if (tryExpr.ExceptionType != null || tryExpr.Operand is TypeCoercion)
+        // Use typed Result.Try<T, E> when error type is known and not the default Exception
+        bool needsTypedTry = tryExpr.ExceptionType != null
+            || tryExpr.Operand is TypeCoercion
+            || (resultType != null && resultType.ErrorType is Semantic.UserDefinedType { Name: not "Exception" });
+
+        if (needsTypedTry)
         {
             // Typed version: Result.Try<T, E>(() => operand)
-            // Used for try[ValueError] expr and try x to Cat
             var okTypeSyntax = resultType != null
                 ? _typeMapper.MapSemanticType(resultType.OkType)
                 : (TypeSyntax)PredefinedType(Token(SyntaxKind.ObjectKeyword));

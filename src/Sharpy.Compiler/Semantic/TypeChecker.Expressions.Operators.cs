@@ -716,6 +716,19 @@ internal partial class TypeChecker
             var clrSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType("InvalidCastException");
             errorType = new UserDefinedType { Name = "InvalidCastException", Symbol = clrSymbol };
         }
+        else if (_expectedType is ResultType expectedResult)
+        {
+            // RFC 3721: infer error type from expected type context (return statement
+            // or variable annotation with Result type)
+            errorType = expectedResult.ErrorType;
+        }
+        else if (_currentFunctionReturnType is ResultType enclosingResult
+            && _expectedType == null)
+        {
+            // RFC 3721: infer error type from enclosing function's Result return type
+            // Only when there's no explicit type context (e.g., variable annotation)
+            errorType = enclosingResult.ErrorType;
+        }
         else
         {
             // Default: try expr → Result[T, Exception]
