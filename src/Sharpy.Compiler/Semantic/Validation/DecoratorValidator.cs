@@ -554,7 +554,8 @@ internal class DecoratorValidator : ValidatingAstWalker
     private void ValidateReadonlyOnProperty(PropertyDef propDef, string definitionName)
     {
         var readonlyDecorator = propDef.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.Readonly);
-        if (readonlyDecorator == null) return;
+        if (readonlyDecorator == null)
+            return;
 
         if (propDef.Accessor == PropertyAccessor.Set)
         {

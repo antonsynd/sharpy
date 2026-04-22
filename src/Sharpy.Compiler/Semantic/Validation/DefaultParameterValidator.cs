@@ -159,7 +159,7 @@ internal class DefaultParameterValidator : ValidatingAstWalker
                 foreach (var elem in list.Elements)
                     CollectIdentifierNamesInto(elem, names);
                 break;
-            // Literals and other leaf nodes contribute no identifiers
+                // Literals and other leaf nodes contribute no identifiers
         }
     }
 

@@ -381,7 +381,8 @@ public partial class Lexer
 
     private static bool LineStartsWithNWhitespace(string line, int n)
     {
-        if (line.Length < n) return false;
+        if (line.Length < n)
+            return false;
         for (int i = 0; i < n; i++)
         {
             var c = line[i];
