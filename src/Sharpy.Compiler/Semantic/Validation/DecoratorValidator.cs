@@ -251,11 +251,19 @@ internal class DecoratorValidator : ValidatingAstWalker
                     span: decorator.Span);
             }
 
+            // @deprecated requires exactly one positional string argument
+            if (decorator.Name == DecoratorNames.Deprecated)
+            {
+                ValidateDeprecatedArguments(decorator, definitionName);
+                continue;
+            }
+
             // For unknown decorators (custom attributes), validate arguments are compile-time constants
             // Skip @dataclass — it's a known built-in with its own validation
             if (!DecoratorNames.KnownModifierDecorators.Contains(decorator.Name)
                 && !UnsupportedDecorators.ContainsKey(decorator.Name)
-                && decorator.Name != DecoratorNames.Dataclass)
+                && decorator.Name != DecoratorNames.Dataclass
+                && !DecoratorNames.KnownAttributeDecorators.Contains(decorator.Name))
             {
                 ValidateDecoratorArgumentsAreConstants(decorator);
             }
@@ -366,6 +374,8 @@ internal class DecoratorValidator : ValidatingAstWalker
                     span: decorator.Span);
             }
         }
+
+        ValidateDeprecatedOnVariable(varDecl, $"{typeName}.{varDecl.Name}");
     }
 
     /// <summary>
@@ -535,6 +545,51 @@ internal class DecoratorValidator : ValidatingAstWalker
                     code: DiagnosticCodes.Semantic.DataclassInvalidOption,
                     span: kwArg.Value.Span);
             }
+        }
+    }
+
+    /// <summary>
+    /// Validates that @deprecated has exactly one positional string argument (the message).
+    /// </summary>
+    private void ValidateDeprecatedArguments(Decorator decorator, string definitionName)
+    {
+        if (decorator.Arguments.Length != 1 || decorator.Arguments[0] is not StringLiteral)
+        {
+            AddError(
+                $"'@deprecated' on '{definitionName}' requires exactly one string argument: @deprecated(\"reason\")",
+                decorator.LineStart,
+                decorator.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                span: decorator.Span);
+        }
+
+        if (decorator.KeywordArguments.Length > 0)
+        {
+            AddError(
+                $"'@deprecated' on '{definitionName}' does not accept keyword arguments",
+                decorator.KeywordArguments[0].Value.LineStart,
+                decorator.KeywordArguments[0].Value.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                span: decorator.KeywordArguments[0].Value.Span);
+        }
+    }
+
+    /// <summary>
+    /// Validates that @deprecated is not applied to variable declarations.
+    /// It's valid on functions, methods, classes, and properties.
+    /// </summary>
+    private void ValidateDeprecatedOnVariable(VariableDeclaration varDecl, string definitionName)
+    {
+        var deprecatedDecorator = varDecl.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.Deprecated);
+        if (deprecatedDecorator != null)
+        {
+            AddError(
+                $"'@deprecated' cannot be applied to variable '{definitionName}'. " +
+                "Use @deprecated on functions, methods, classes, or properties.",
+                deprecatedDecorator.LineStart,
+                deprecatedDecorator.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                span: deprecatedDecorator.Span);
         }
     }
 

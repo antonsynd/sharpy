@@ -1439,6 +1439,26 @@ public static class DiagnosticExplanations
             "Use '==' for value comparison instead.",
             "x: int = 42\nif x is 42: ...",
             "Use '==' instead of 'is' for value types:\nif x == 42: ...");
+        // ── Validation warnings: Deprecated usage (SPY0466) ──────────────
+
+        Add(dict, DiagnosticCodes.Validation.DeprecatedUsage,
+            "Usage of deprecated symbol",
+            "Validation",
+            "A function, method, class, or property marked with @deprecated is being used. " +
+            "The deprecation message explains why and what to use instead.",
+            "@deprecated(\"Use bar() instead\")\ndef foo(): ...\n\nfoo()  # SPY0466 warning",
+            "Follow the deprecation message and migrate to the suggested alternative.");
+
+        // ── Validation warnings: Readonly property assignment (SPY0467) ────
+
+        Add(dict, DiagnosticCodes.Validation.ReadonlyPropertyAssignment,
+            "Assignment to readonly property",
+            "Validation",
+            "A property marked with @readonly cannot be assigned to after construction. " +
+            "@readonly properties can only be set in __init__.",
+            "@readonly\nproperty name: str\n\ndef change(self):\n    self.name = \"new\"  # SPY0467 error",
+            "Remove the assignment or change the property to not be @readonly.");
+
         // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",

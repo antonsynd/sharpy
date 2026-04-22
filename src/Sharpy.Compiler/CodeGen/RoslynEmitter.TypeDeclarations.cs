@@ -1118,9 +1118,18 @@ internal partial class RoslynEmitter
             if (decorator.Name == DecoratorNames.Dataclass)
                 continue;
 
+            // Skip @readonly — it's a property modifier handled in property codegen
+            if (decorator.Name == DecoratorNames.Readonly)
+                continue;
+
             // Build the attribute name
             NameSyntax attributeName;
-            if (decorator.QualifiedParts.Length > 0)
+            if (decorator.Name == DecoratorNames.Deprecated)
+            {
+                // @deprecated("msg") → [Obsolete("msg")] (PEP 702 → .NET mapping)
+                attributeName = IdentifierName("Obsolete");
+            }
+            else if (decorator.QualifiedParts.Length > 0)
             {
                 // Dotted name: build QualifiedNameSyntax from parts, each PascalCase-mangled
                 attributeName = IdentifierName(NameMangler.ToPascalCase(decorator.QualifiedParts[0]));

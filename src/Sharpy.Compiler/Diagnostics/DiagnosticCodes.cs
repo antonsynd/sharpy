@@ -475,7 +475,13 @@ public static class DiagnosticCodes
 
         // Identity operator warnings (SPY0465)
         public const string IsWithValueTypes = "SPY0465";           // Active
-        // SPY0466-SPY0499: Reserved for future validation warnings
+
+        // Deprecated usage warnings (SPY0466)
+        public const string DeprecatedUsage = "SPY0466";            // Active
+
+        // Readonly property violation (SPY0467)
+        public const string ReadonlyPropertyAssignment = "SPY0467"; // Active
+        // SPY0468-SPY0499: Reserved for future validation warnings
 
         #endregion
     }

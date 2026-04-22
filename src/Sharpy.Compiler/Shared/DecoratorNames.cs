@@ -15,6 +15,8 @@ internal static class DecoratorNames
     public const string StaticMethod = "staticmethod";
     public const string ClassMethod = "classmethod";
     public const string Dataclass = "dataclass";
+    public const string Deprecated = "deprecated";
+    public const string Readonly = "readonly";
 
     // Access modifiers
     public const string Public = "public";
@@ -37,5 +39,14 @@ internal static class DecoratorNames
         Protected,
         Private,
         Internal,
+    }.ToImmutableHashSet();
+
+    /// <summary>
+    /// Built-in decorators that emit as C# attributes (not modifier keywords).
+    /// These require special handling in codegen rather than default name-mangling.
+    /// </summary>
+    public static readonly ImmutableHashSet<string> KnownAttributeDecorators = new[]
+    {
+        Deprecated,
     }.ToImmutableHashSet();
 }

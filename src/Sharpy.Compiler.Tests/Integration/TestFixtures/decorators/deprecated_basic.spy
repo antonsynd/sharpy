@@ -1,0 +1,13 @@
+@deprecated("Use bar() instead")
+def foo() -> str:
+    return "foo"
+
+@deprecated("Use NewGreeter instead")
+class OldGreeter:
+    def greet(self) -> str:
+        return "hello from old"
+
+def main():
+    print(foo())
+    g = OldGreeter()
+    print(g.greet())
