@@ -1,0 +1,4 @@
+def main():
+    name = "Alice"
+    result = f"Hello\t{name}\nBye"
+    print(result)

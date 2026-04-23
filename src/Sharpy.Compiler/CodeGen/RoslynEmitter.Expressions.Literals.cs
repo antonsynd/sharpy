@@ -466,6 +466,10 @@ internal partial class RoslynEmitter
                    .Replace("\r", "\\r", StringComparison.Ordinal)
                    .Replace("\t", "\\t", StringComparison.Ordinal)
                    .Replace("\0", "\\0", StringComparison.Ordinal)
+                   .Replace("\a", "\\a", StringComparison.Ordinal)
+                   .Replace("\b", "\\b", StringComparison.Ordinal)
+                   .Replace("\f", "\\f", StringComparison.Ordinal)
+                   .Replace("\v", "\\v", StringComparison.Ordinal)
                    .Replace("\"", "\\\"", StringComparison.Ordinal);
     }
 
