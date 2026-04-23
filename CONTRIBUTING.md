@@ -8,14 +8,14 @@ Thank you for your interest in contributing to Sharpy! This guide will help you 
 
 ### Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download) (or .NET 9)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - Python 3 (for verifying language semantics)
 - A C# editor (VS Code with C# Dev Kit, Rider, or Visual Studio)
 
 ### Build and Test
 
 ```bash
-git clone https://github.com/anthropics/sharpy.git
+git clone https://github.com/antonsynd/sharpy.git
 cd sharpy
 dotnet build sharpy.sln    # Build everything
 dotnet test                # Run all tests (~4400 tests)
