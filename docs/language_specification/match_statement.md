@@ -237,6 +237,61 @@ match value:
 | Positional | `Point(0, y)` | Extract by position (field order) | ✅ Implemented |
 | Type with binding | `int() as n` | Check type and bind entire value | ✅ Implemented |
 
+## Guard Patterns
+
+Guard clauses add conditions to any pattern using `if`. The `GuardPattern` AST node wraps an inner pattern with a boolean guard expression.
+
+### Basic Guard
+
+```python
+match value:
+    case x if x > 0:
+        print(f"positive: {x}")
+    case x if x < 0:
+        print(f"negative: {x}")
+    case _:
+        print("zero")
+```
+
+### Guards on Type Patterns
+
+```python
+match value:
+    case int() as n if n > 0:
+        print(f"positive int: {n}")
+    case str() as s if len(s) > 0:
+        print(f"non-empty string: {s}")
+```
+
+### Per-Alternative Guards
+
+Guards can be applied to individual alternatives within an or-pattern:
+
+```python
+match value:
+    case Foo(x) if x > 0 | Bar(y) if y < 0:
+        print("matched")
+```
+
+Each alternative in the or-pattern can have its own guard condition. This maps to C# `when` clauses on individual arms of a disjunctive pattern.
+
+### Guard vs Exhaustiveness
+
+Guards make patterns conditional, so a guarded pattern is **not** considered exhaustive — even `case _ if condition:` does not cover all values. For exhaustive matching, include an unguarded wildcard or binding pattern:
+
+```python
+match value:
+    case _ if value > 0:
+        print("positive")
+    case _:              # Unguarded wildcard ensures exhaustiveness
+        print("non-positive")
+```
+
+*Implementation*
+- *✅ Implemented — `GuardPattern` AST node with `Inner` (pattern) and `Guard` (expression) properties*
+- *Maps to C# `when` clause on `case` arms*
+- *Guards do not affect exhaustiveness analysis*
+
 ## Exhaustiveness Checking
 
 The `ExhaustivenessValidator` checks that `match` statements and expressions cover all possible cases.
