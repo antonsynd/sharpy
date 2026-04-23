@@ -41,7 +41,7 @@ Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, 
 
 ## Semantic Analysis Pipeline
 
-Five-pass architecture (order matters):
+Six-stage architecture (order matters):
 
 ```
 NameResolver.ResolveDeclarations()  → Pass 1: build symbol table
