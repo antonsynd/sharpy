@@ -22,15 +22,15 @@ Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files com
 |-------|-----------|-------|
 | Lexer | `Compiler/Lexer/Lexer*.cs` (4 partials), `Token.cs` | Indentation-aware tokenization |
 | Parser | `Compiler/Parser/Parser*.cs` (6 partials), `Ast/*.cs` | Immutable AST records |
-| Semantic | `Compiler/Semantic/{NameResolver,TypeResolver,TypeChecker}.cs` | 5 ordered passes—see below |
-| CodeGen | `Compiler/CodeGen/RoslynEmitter*.cs` (18 partials) | **SyntaxFactory only**—no string templating |
+| Semantic | `Compiler/Semantic/{NameResolver,TypeResolver,TypeChecker}.cs` | 6 ordered passes—see below |
+| CodeGen | `Compiler/CodeGen/RoslynEmitter*.cs` (22 partials) | **SyntaxFactory only**—no string templating |
 
 ### Semantic Pass Order (Critical)
 1. `NameResolver.ResolveDeclarations()` → symbol table
 2. `NameResolver.ResolveInheritance()` → base classes
 3. `ImportResolver` → module loading
 4. `TypeResolver` → type annotations
-5. `TypeChecker` (10 partials) → inference + `ValidationPipeline`
+5. `TypeChecker` (11 partials) → inference + `ValidationPipeline`
 
 **Key structures:** `SemanticInfo` (AST→type via `ReferenceEqualityComparer`), `SymbolTable`, `SemanticBinding`
 
