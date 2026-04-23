@@ -86,6 +86,48 @@ print(d.describe())  # "Point(10, 20)" - works but allocates
 
 **Performance Note:** When a struct is assigned to an interface variable or passed as an interface parameter, the struct is boxed (copied to the heap). For performance-critical code, prefer calling struct methods directly rather than through interface references.
 
+## Default Field Values
+
+Struct fields can have default values, enabling partial construction:
+
+```python
+struct Point:
+    x: int
+    y: int = 0
+
+p1 = Point(1, 2)   # x = 1, y = 2
+p2 = Point(3)      # x = 3, y = 0 (default)
+```
+
+All fields can have defaults:
+
+```python
+struct Config:
+    width: int = 800
+    height: int = 600
+    fullscreen: bool = False
+
+c1 = Config()                    # 800, 600, False
+c2 = Config(1024, 768, True)     # 1024, 768, True
+c3 = Config(1920)                # 1920, 600, False
+```
+
+**Ordering rule:** Once a field has a default value, all subsequent fields must also have defaults (same as function parameters):
+
+```python
+# OK: defaults at the end
+struct Good:
+    x: int
+    y: int = 0
+
+# ERROR: non-default field after field with default value
+struct Bad:
+    x: int = 0
+    y: int         # Error: cannot follow a field with a default value
+```
+
+The compiler auto-generates a constructor with optional parameters for fields that have defaults.
+
 **When to Use Structs:**
 - Small data structures (typically < 16 bytes)
 - Immutable value types (Vector2, Point, Color)
