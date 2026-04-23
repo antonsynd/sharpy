@@ -13,17 +13,28 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type 
 
 **Owns:** `src/Sharpy.Compiler/CodeGen/`
 - `RoslynEmitter.cs` — Main emitter orchestration, name resolution
-- `RoslynEmitter.*.cs` — 11 partial classes (~10,300 lines total):
+- `RoslynEmitter.*.cs` — 22 partial classes (~16,445 lines total):
   - `.Expressions.cs` — Expression generation
   - `.Expressions.Access.cs` — Attribute/index/slice access
+  - `.Expressions.Access.Calls.cs` — Method/function call emission
+  - `.Expressions.Comprehensions.cs` — List/dict/set comprehensions
   - `.Expressions.Literals.cs` — Literal expressions
   - `.Expressions.Operators.cs` — Binary/unary expression operators
   - `.Statements.cs` — Statement generation
+  - `.Statements.Assignments.cs` — Assignment statement emission
+  - `.Statements.ControlFlow.cs` — Control flow statements
   - `.TypeDeclarations.cs` — Class/struct/interface/enum
-  - `.ClassMembers.cs` — Methods, properties, constructors
+  - `.ClassMembers.cs` — Class member orchestration
+  - `.ClassMembers.Constructors.cs` — Constructor emission
+  - `.ClassMembers.Dataclass.cs` — Dataclass generation
+  - `.ClassMembers.Events.cs` — Event emission
+  - `.ClassMembers.Iterators.cs` — Iterator/generator emission
+  - `.ClassMembers.Methods.cs` — Method emission
+  - `.ClassMembers.Properties.cs` — Property emission
   - `.ModuleClass.cs` — Module class generation (file-named static class)
   - `.CompilationUnit.cs` — Top-level compilation unit
   - `.Operators.cs` — Operator declarations
+  - `.Patterns.cs` — Pattern matching emission
 - `TypeMapper.cs` — Sharpy types → C# types
 - `NameMangler.cs` — Name transformations
 - `CodeValidator.cs` — Validates generated code compiles
@@ -33,7 +44,7 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type 
 
 ## Preferred Tools
 
-- **Navigating RoslynEmitter partials (16 files):** Use Serena `get_symbols_overview` to survey a partial, `find_symbol` to read specific methods. Avoid reading entire 1000+ line files.
+- **Navigating RoslynEmitter partials (22 files):** Use Serena `get_symbols_overview` to survey a partial, `find_symbol` to read specific methods. Avoid reading entire 1000+ line files.
 - **Finding all emission sites for an AST node:** Use Serena `find_referencing_symbols` on the AST node type, or CodeGraphContext `analyze_code_relationships` with `find_callers`.
 - **Editing emitter methods:** Use Serena `replace_symbol_body` for full method replacements. Use `Edit` only for small intra-method patches.
 - **Impact analysis:** Before changing a shared helper (e.g., `EmitExpression`), use CodeGraphContext `find_callers` to assess blast radius.
