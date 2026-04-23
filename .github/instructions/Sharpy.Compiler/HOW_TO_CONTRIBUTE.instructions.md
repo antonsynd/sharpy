@@ -11,9 +11,9 @@ Core compiler: Lexer → Parser → Semantic → ValidationPipeline → CodeGen.
 Sharpy.Compiler/
 ├── Lexer/           # Tokenization (Lexer*.cs — 4 partials, Token.cs)
 ├── Parser/          # Recursive descent → AST (Parser*.cs — 6 files, Ast/*.cs)
-├── Semantic/        # NameResolver → ImportResolver → TypeResolver → TypeChecker (8 partial files)
+├── Semantic/        # NameResolver → ImportResolver → TypeResolver → TypeChecker (11 partial files)
 │   └── Validation/  # Pluggable validators (OperatorValidator, etc.)
-├── CodeGen/         # RoslynEmitter*.cs (11 partial files), TypeMapper.cs, NameMangler.cs
+├── CodeGen/         # RoslynEmitter*.cs (22 partial files), TypeMapper.cs, NameMangler.cs
 ├── Discovery/       # CLR type discovery, module imports, caching
 ├── Analysis/        # Control flow analysis (ControlFlowGraph, BasicBlock)
 ├── Diagnostics/     # DiagnosticBag, DiagnosticCodes, DiagnosticRenderer
@@ -143,7 +143,7 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect tokens
 | `SemanticInfo.cs` | Type/symbol annotations (separate from AST) |
 | `SemanticBinding.cs` | Computed data, materialized at phase boundaries |
 | `CodeGenInfo.cs` | Per-symbol codegen metadata (invocation style, etc.) |
-| `RoslynEmitter*.cs` | 11 partial classes by AST category |
+| `RoslynEmitter*.cs` | 22 partial classes by AST category |
 | `PrimitiveCatalog.cs` | Source of truth for primitive types and CLR mappings |
 | `OperatorRegistry.cs` | Operator type rules |
 
