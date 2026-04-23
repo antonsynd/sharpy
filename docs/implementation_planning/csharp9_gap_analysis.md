@@ -16,14 +16,14 @@ Goal: identify what Sharpy must add to serve as a full C# 9.0 replacement.
 > **C# version target:** Sharpy.Core targets `LangVersion 9.0` / `netstandard2.1`, making
 > C# 9.0 the effective ceiling for generated code.
 >
-> **Last updated:** 2026-04-22
+> **Last updated:** 2026-04-23
 
 ---
 
 ## Summary
 
 - **13 Tier 1 gaps** (high priority, blocking for C# replacement) — was 14, `ref`/`out`/`in` implemented
-- **20 Tier 2 gaps** (medium priority, workaroundable) — was 22, lambda annotations (#417) and `not (x is None)` narrowing (#476) resolved
+- **18 Tier 2 gaps** (medium priority, workaroundable) — was 22; lambda annotations (#417), `not (x is None)` narrowing (#476), multi-catch (#16), and tuple equality (#36) resolved
 - **20 Tier 3 items** (intentionally excluded or very niche)
 - **50+ C# features** already covered with Pythonic equivalents
 - **3 open GitHub issues** tracking specific gaps (#424, #416, #108)
@@ -205,16 +205,13 @@ These features have workarounds in Sharpy but add friction when porting C# code.
 - **Scope:** Parser (allow raise in expression context), CodeGen (emit `ThrowExpression`)
 - **Workaround:** Multi-line `if`/`raise` blocks.
 
-### 16. Multi-Catch Exception Types
+### ~~16. Multi-Catch Exception Types~~ ✅ Implemented
 
 - **C# feature:** `catch (IOException | TimeoutException ex)` — catch multiple types in
   one clause (C# 6.0, via exception filters)
-- **Sharpy status:** MISSING — each `except` clause catches a single type. No union syntax.
-- **Tracking:** #424 (RFC open for try expressions; also applies to except clauses)
-- **Impact:** Reduces boilerplate when the same handler applies to multiple exception types.
-- **Possible syntax:** `except ValueError | TypeError as e:` (Python 3 style)
-- **Scope:** Parser (union type in except), CodeGen (emit multiple catch clauses or filter)
-- **Workaround:** Separate `except` clauses with duplicated bodies.
+- **Sharpy status:** ✅ IMPLEMENTED — `except (ValueError, TypeError):` tuple syntax works.
+  Test fixture: `exception_handling/multi_except.spy`.
+- **Tracking:** #424 (RFC still open for try expression variant)
 
 ### 17. `is` Type Pattern Outside `match`
 
@@ -369,13 +366,10 @@ These features have workarounds in Sharpy but add friction when porting C# code.
 - **Scope:** Parser (ref in local declarations and return types), Semantic, CodeGen
 - **Workaround:** Use ref parameters or accept the copy overhead.
 
-### 36. Tuple Equality
+### ~~36. Tuple Equality~~ ✅ Implemented
 
 - **C# feature:** `(1, "a") == (1, "a")` — element-wise `==`/`!=` on tuples (C# 7.3)
-- **Sharpy status:** MISSING — tuples cannot be compared with `==`/`!=`.
-- **Impact:** Common for value comparisons. Small implementation scope.
-- **Scope:** Semantic (recognize tuple `==`/`!=`), CodeGen (emit element-wise comparison)
-- **Workaround:** Compare individual elements manually.
+- **Sharpy status:** ✅ IMPLEMENTED — general equality operator works on tuples.
 
 ### 37. Static Local Functions
 
@@ -453,6 +447,8 @@ Verified against compiler source (lexer, parser AST, codegen, semantic analysis)
 | Null-conditional (`?.`) incl. chaining | `a?.b?.c` with nullable flattening | Implemented |
 | Null-coalescing (`??`, `??=`) | Supported | Implemented |
 | Exception handling (try/except/finally) | Supported | Implemented |
+| Multi-catch exception types | `except (ValueError, TypeError):` tuple syntax | Implemented |
+| ExceptionGroup / `except*` | `except* ValueError as eg:` | Implemented |
 | Context managers / IDisposable | `with` statement | Implemented |
 | Named/default arguments | Supported (compile-time constants only for defaults) | Implemented |
 | Method overloading | Supported | Implemented |
@@ -465,6 +461,7 @@ Verified against compiler source (lexer, parser AST, codegen, semantic analysis)
 | Type casting | `x to Type` (direct), `x to Type?` (safe) | Implemented |
 | `typeof(T)` | `type(T)` builtin | Implemented |
 | Tuples + deconstruction | Named tuples + unpacking | Implemented |
+| Tuple equality (`==`/`!=`) | General equality works on tuples | Implemented |
 | Collection literals + comprehensions | `[...]`, `{...}`, comprehensions | Implemented |
 | Extension methods | Via .NET interop | Implemented |
 | Variadic params (`params T[]`) | `*args` | Implemented |
@@ -524,12 +521,12 @@ maximizes value per effort). Grouped into phases.
 2. **`nameof`** (#12) — small scope, high value for argument validation
 3. **`private protected`** (#11) — small scope, semantic + codegen only
 4. **`default` literal** (#14) — small scope, essential for generic code
-5. **Tuple equality** (#36) — small codegen change, element-wise `==`/`!=`
+5. ~~**Tuple equality** (#36) — small codegen change, element-wise `==`/`!=`~~ ✅ Implemented
 
 ### Phase 2: Control flow completeness
 
 6. **Exception filters (`when`)** (#4) — small parser change, high value
-7. **Multi-catch** (#16) — small parser change, reduces boilerplate
+7. ~~**Multi-catch** (#16) — small parser change, reduces boilerplate~~ ✅ Implemented
 8. **Raise expressions** (#15) — allow `raise` in expression position
 9. **`lock` statement** (#5) — essential for concurrency
 10. **`is` pattern outside `match`** (#17) — very common C# 7+ idiom
@@ -564,6 +561,6 @@ maximizes value per effort). Grouped into phases.
 27. **Static classes** (#19) — modules cover most cases
 28. **`readonly struct`** (#24), **`ref struct`** (#25) — advanced value types
 29. **Static lambdas** (#23) — performance optimization
-30. **Lambda type annotations** (#30, issue #417) — pending RFC
+30. ~~**Lambda type annotations** (#30, issue #417) — pending RFC~~ ✅ Resolved
 31. **Remaining items** — multi-dim arrays, LINQ query syntax, volatile, delegate
     combination, etc.

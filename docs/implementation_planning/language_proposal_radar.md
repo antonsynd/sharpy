@@ -1,10 +1,10 @@
 # Language Proposal Radar for Sharpy
 
 > Surveyed: Python PEPs, Swift Evolution, Rust RFCs  
-> Date: 2026-04-21  
+> Date: 2026-04-23  
 > Scope: Proposals relevant to Sharpy's ergonomics, DX, and type system that are implementable given the C#/.NET target
 
-**Exclusions:** Features already implemented in Sharpy are omitted — walrus operator (PEP 572), `X|Y` union syntax (PEP 604), type aliases (PEP 613), `str.removeprefix`/`removesuffix` (PEP 616), match statements (PEP 634), late-bound defaults (PEP 671), SelfType (PEP 673), dataclass (PEP 681), type parameter defaults (PEP 696), `@override` (PEP 698), f-strings (PEP 701), `@deprecated` (PEP 702), d-strings (PEP 822), list/dict/set comprehensions, generators (`yield`/`yield from`), `maybe`/`try`/`??` expressions, guard patterns in match (RFC 3637).
+**Exclusions:** Features already implemented in Sharpy are omitted — walrus operator (PEP 572), `X|Y` union syntax (PEP 604), type aliases (PEP 613), `str.removeprefix`/`removesuffix` (PEP 616), match statements (PEP 634), ExceptionGroup/`except*` (PEP 654), late-bound defaults (PEP 671), SelfType (PEP 673), `LiteralString` (PEP 675), dataclass (PEP 681), type parameter defaults (PEP 696), `@override` (PEP 698), f-strings (PEP 701), `@deprecated` (PEP 702), unpacking in comprehensions (PEP 798), `frozendict` (PEP 814), d-strings (PEP 822), list/dict/set comprehensions, generators (`yield`/`yield from`), `maybe`/`try`/`??` expressions, guard patterns in match (RFC 3637), constants in match patterns (RFC 3535), struct default field values (RFC 3681).
 
 ---
 
@@ -22,15 +22,15 @@
 | 8 | PEP 742 — `TypeIs` narrowing | Type System | **High** | Medium |
 | 9 | PEP 750 — template strings (t-strings) | Standard Library | **High** | Medium |
 | ~~10~~ | ~~PEP 616 — `removeprefix`/`removesuffix`~~ | ~~Standard Library~~ | ✅ Implemented | — |
-| 11 | PEP 654 — ExceptionGroup / `except*` | Error Handling | Medium | Medium |
+| ~~11~~ | ~~PEP 654 — ExceptionGroup / `except*`~~ | ~~Error Handling~~ | ✅ Implemented | — |
 | 12 | PEP 646 — variadic generics (TypeVarTuple) | Type System | Medium | High |
-| 13 | PEP 675 — `LiteralString` type | Type System | Medium | Medium |
+| ~~13~~ | ~~PEP 675 — `LiteralString` type~~ | ~~Type System~~ | ✅ Implemented | — |
 | 14 | PEP 705/767 — ReadOnly annotations | Type System | Medium | Low |
-| 15 | PEP 798 — unpacking in comprehensions | Syntax Sugar | Medium | Low |
+| ~~15~~ | ~~PEP 798 — unpacking in comprehensions~~ | ~~Syntax Sugar~~ | ✅ Implemented | — |
 | 16 | PEP 678 — exception notes | Error Handling | Medium | Low |
-| 17 | RFC 3535 — constants in patterns | Pattern Matching | Medium | Low |
-| 18 | PEP 814 — `frozendict` built-in | Standard Library | Medium | Low |
-| 19 | RFC 3681 — struct default field values | Standard Library | Medium | Medium |
+| ~~17~~ | ~~RFC 3535 — constants in patterns~~ | ~~Pattern Matching~~ | ✅ Implemented | — |
+| ~~18~~ | ~~PEP 814 — `frozendict` built-in~~ | ~~Standard Library~~ | ✅ Implemented | — |
+| ~~19~~ | ~~RFC 3681 — struct default field values~~ | ~~Standard Library~~ | ✅ Implemented | — |
 | 20 | PEP 612 — ParamSpec | Type System | Medium | High |
 | 21 | SE-0380 — if/switch as expressions | Syntax Sugar | Low | High |
 | 22 | PEP 758 — `except` without parentheses | Syntax Sugar | Low | Low |
@@ -48,7 +48,7 @@ High return, low effort — implementable in a single session:
 2. ~~**PEP 702** — `@deprecated` → emit `[Obsolete]` in `RoslynEmitter` + SPY045x warning at call sites~~ ✅ Implemented
 3. ~~**PEP 822** — `d"""..."""` dedented string lexing in `Lexer/Lexer.cs`, zero codegen change~~ ✅ Implemented
 4. **RFC 3721** — infer `E` from enclosing return type in `try` expressions via `TypeInferenceService`
-5. **PEP 705/767** — `ReadOnly[T]` annotation enforcement in `PropertyValidator`, emit `{ get; }` C# property
+5. **PEP 705/767** — partially done (`@readonly` on properties works); remaining: field-level `ReadOnly[T]` annotation
 
 ---
 
@@ -79,8 +79,8 @@ High return, low effort — implementable in a single session:
 ---
 
 ### PEP 798 — Unpacking in Comprehensions
-**Status:** Accepted, Python 3.15  
-**Priority: Medium | Effort: Low**
+**Status:** ✅ Implemented — dict spread in comprehensions (`{**d for d in dicts}`) supported  
+**Priority: ~~Medium~~ Done | Effort: ~~Low~~ Done**
 
 `[*it for it in its]` flattens nested iterables inline. `{**d for d in dicts}` merges dicts inline. Currently requires manual `itertools.chain.from_iterable` or nested comprehensions.
 
@@ -149,8 +149,8 @@ High return, low effort — implementable in a single session:
 ---
 
 ### PEP 675 — LiteralString Type
-**Status:** Final, Python 3.11  
-**Priority: Medium | Effort: Medium**
+**Status:** ✅ Implemented — `LiteralStringType` in `SemanticType.cs`, compile-time enforcement  
+**Priority: ~~Medium~~ Done | Effort: ~~Medium~~ Done**
 
 A compile-time type that accepts only string literals and concatenations thereof — not runtime-computed strings. Enables SQL-injection-safe APIs: `def query(sql: LiteralString): ...`.
 
@@ -161,14 +161,14 @@ A compile-time type that accepts only string literals and concatenations thereof
 ---
 
 ### PEP 705 / PEP 767 — ReadOnly Type Qualifier
-**Status:** PEP 705 Final (Python 3.13), PEP 767 Draft (Python 3.15)  
-**Priority: Medium | Effort: Low**
+**Status:** Partially implemented — `@readonly` decorator on properties emits get-only C# property. Field-level `ReadOnly[T]` annotation not yet supported.  
+**Priority: Medium | Effort: Low** (remaining: field-level support)
 
 `x: ReadOnly[int]` on a class attribute makes it a read-only property enforced at compile time. A zero-ceremony alternative to explicit `@property` boilerplate for simple immutable fields.
 
-**Sharpy implementation:** Recognize `ReadOnly` as a special annotation in `TypeResolver`. `PropertyValidator` enforces no setter is present. CodeGen emits a `{ get; }` (or `{ get; init; }`) C# property.
+**Sharpy implementation:** `@readonly` on properties works. Remaining: recognize `ReadOnly` as a special annotation in `TypeResolver` for field-level enforcement.
 
-**Touches:** `Semantic/TypeResolver.cs`, `Semantic/Validation/PropertyValidator.cs`, `CodeGen/RoslynEmitter.ClassMembers.Properties.cs`
+**Touches:** `Semantic/TypeResolver.cs`, `Semantic/Validation/PropertyValidator.cs`
 
 ---
 
@@ -207,8 +207,8 @@ A compile-time type that accepts only string literals and concatenations thereof
 ---
 
 ### PEP 654 — Exception Groups and except*
-**Status:** Final, Python 3.11  
-**Priority: Medium | Effort: Medium**
+**Status:** ✅ Implemented — `IsExceptStar` on `ExceptHandler`, codegen via `GenerateExceptStarCatchClauses()`  
+**Priority: ~~Medium~~ Done | Effort: ~~Medium~~ Done**
 
 `ExceptionGroup` bundles multiple concurrent exceptions. `except* ValueError as eg:` catches groups of exceptions by type. Designed for async/concurrent error aggregation.
 
@@ -255,8 +255,8 @@ Per-alternative guards within or-patterns: `case (Some(x) if x > 0) | None:` —
 ---
 
 ### RFC 3535 — Constants in Patterns
-**Status:** Accepted, Rust  
-**Priority: Medium | Effort: Low**
+**Status:** ✅ Implemented — `const` values match as value patterns in `case` arms  
+**Priority: ~~Medium~~ Done | Effort: ~~Low~~ Done**
 
 Named constants (not just literals) directly in match arm position: `case MAX:` instead of `case x if x == MAX:`. The compiler verifies the constant has structural equality.
 
@@ -331,8 +331,8 @@ Comprehensions no longer create a nested function scope. Sharpy's comprehensions
 ---
 
 ### PEP 814 — frozendict Built-in Type
-**Status:** Final, Python 3.15  
-**Priority: Medium | Effort: Low**
+**Status:** ✅ Implemented — `FrozenDict<TKey, TValue>` in `Sharpy.Core/FrozenDict.cs`  
+**Priority: ~~Medium~~ Done | Effort: ~~Low~~ Done**
 
 `frozendict` — an immutable, hashable mapping usable as a dict key or set member.
 
@@ -343,8 +343,8 @@ Comprehensions no longer create a nested function scope. Sharpy's comprehensions
 ---
 
 ### RFC 3681 — Default Field Values for Structs
-**Status:** Accepted, Rust  
-**Priority: Medium | Effort: Medium**
+**Status:** ✅ Implemented — struct fields support `y: int = 0` default value syntax  
+**Priority: ~~Medium~~ Done | Effort: ~~Medium~~ Done**
 
 `x: int = 42` directly in the class body for dataclass/struct definitions — field-level defaults visible at the declaration site rather than only in the constructor signature. Aligns with `dataclasses.field(default=...)` made syntactic.
 
