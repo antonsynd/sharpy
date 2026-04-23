@@ -16,31 +16,31 @@ Goal: identify what Sharpy must add to serve as a full C# 9.0 replacement.
 > **C# version target:** Sharpy.Core targets `LangVersion 9.0` / `netstandard2.1`, making
 > C# 9.0 the effective ceiling for generated code.
 >
-> **Last updated:** 2026-03-29
+> **Last updated:** 2026-04-22
 
 ---
 
 ## Summary
 
-- **14 Tier 1 gaps** (high priority, blocking for C# replacement)
-- **22 Tier 2 gaps** (medium priority, workaroundable)
+- **13 Tier 1 gaps** (high priority, blocking for C# replacement) — was 14, `ref`/`out`/`in` implemented
+- **20 Tier 2 gaps** (medium priority, workaroundable) — was 22, lambda annotations (#417) and `not (x is None)` narrowing (#476) resolved
 - **20 Tier 3 items** (intentionally excluded or very niche)
 - **50+ C# features** already covered with Pythonic equivalents
-- **6 open GitHub issues** tracking specific gaps
-- **13 skipped test fixtures** tracking implementation gaps
+- **3 open GitHub issues** tracking specific gaps (#424, #416, #108)
+- **2 skipped test fixtures** tracking implementation gaps (was 13+, most resolved)
 
 ---
 
 ## Open Issues Already Tracking Gaps
 
-| Issue | Title | Category |
-|-------|-------|----------|
-| #417 | RFC: Lambda parameter type annotations syntax | Syntax |
-| #419 | Implement struct parameter modifiers (`in[]`, `mut[]`, `out[]`) | Parameters |
-| #424 | RFC: Combining exception types in try expressions | Error handling |
-| #476 | `not (x is None)` does not narrow types | Type narrowing |
-| #416 | Proposal: Property observers (willset/didset) | Properties |
-| #108 | str.format() parser | Stdlib |
+| Issue | Title | Category | Status |
+|-------|-------|----------|--------|
+| ~~#417~~ | ~~RFC: Lambda parameter type annotations syntax~~ | ~~Syntax~~ | ✅ Closed |
+| ~~#419~~ | ~~Implement struct parameter modifiers (`in[]`, `mut[]`, `out[]`)~~ | ~~Parameters~~ | ✅ Closed |
+| #424 | RFC: Combining exception types in try expressions | Error handling | Open |
+| ~~#476~~ | ~~`not (x is None)` does not narrow types~~ | ~~Type narrowing~~ | ✅ Closed |
+| #416 | Proposal: Property observers (willset/didset) | Properties | Open |
+| #108 | str.format() parser | Stdlib | Open |
 
 ---
 
@@ -49,16 +49,12 @@ Goal: identify what Sharpy must add to serve as a full C# 9.0 replacement.
 These features are commonly used in C# codebases. Without them, Sharpy cannot express
 many real-world C# 9.0 programs.
 
-### 1. `ref`/`out`/`in` Parameter Modifiers
+### ~~1. `ref`/`out`/`in` Parameter Modifiers~~ ✅ Implemented
 
 - **C# feature:** `ref`, `out`, `in` on parameters and locals (C# 1.0, extended in 7.0/7.2)
-- **Sharpy status:** SPEC-ONLY — `ref[T]`, `out[T]`, `in[T]` syntax specified in
-  `docs/language_specification/parameter_modifiers.md` but not implemented. Deferred post-v0.2.x.
-- **Tracking:** #419
-- **Impact:** Blocks interop with a huge .NET API surface (`int.TryParse`, `Dictionary.TryGetValue`,
-  `Interlocked.CompareExchange`, `Span<T>` APIs, etc.)
-- **Scope:** Lexer (contextual keywords), Parser (parameter modifier syntax), Semantic
-  (validation), CodeGen (emit `ref`/`in`/`out` C# modifiers)
+- **Sharpy status:** ✅ IMPLEMENTED — `ParameterModifier` enum (`None`, `Ref`, `Out`, `In`),
+  parser handles modifiers, codegen emits proper C# syntax including call-site argument modifiers.
+- **Tracking:** ~~#419~~ (closed)
 
 ### 2. Implicit/Explicit Conversion Operators
 
@@ -314,10 +310,10 @@ These features have workarounds in Sharpy but add friction when porting C# code.
 - **Sharpy status:** MISSING
 - **Impact:** Niche but important for lock-free programming.
 
-### 30. Lambda Type Annotations
+### ~~30. Lambda Type Annotations~~ ✅ Resolved
 
 - **C# feature:** `(int x, int y) => x + y` — typed lambda parameters (C# 3.0)
-- **Sharpy status:** RFC open (#417) — syntax ambiguity with `lambda x: int: x + 1`
+- **Sharpy status:** ✅ RESOLVED — RFC closed (#417).
 - **Impact:** Required for disambiguation when type inference is insufficient.
 
 ### 31. General Delegate Combination
@@ -507,7 +503,7 @@ Not all are C# feature gaps — some are Sharpy stdlib or semantic issues.
 | GAP-39 | `expressions/chained_identity_operators` | `a is b is c` chaining not supported |
 | GAP-46 | `errors/partial_type_argument_error` | Partial type argument error handling |
 | GAP-47 | `properties/covariant_property_return` | Covariant property return types |
-| #476 | `type_system/narrowing_not_is_none` | `not (x is None)` doesn't narrow types |
+| ~~#476~~ | ~~`type_system/narrowing_not_is_none`~~ | ~~`not (x is None)` doesn't narrow types~~ ✅ Fixed |
 | — | `pattern_matching/match_named_tuple` | `collections.namedtuple` import fails |
 | — | `generators/yield_nested_function` | Nested function identifiers not resolved in generators |
 | — | `errors/type_none_error` | `type(None)` returns `System.Object` instead of compile error |
@@ -541,8 +537,8 @@ maximizes value per effort). Grouped into phases.
 
 ### Phase 3: Interop-critical
 
-12. **`ref`/`out`/`in` parameters** (#1, issue #419) — largest interop impact
-13. **Ref locals and ref returns** (#35) — extends #1 to locals/returns
+12. ~~**`ref`/`out`/`in` parameters** (#1, issue #419) — largest interop impact~~ ✅ Implemented
+13. **Ref locals and ref returns** (#35) — extends #1 to locals/returns (unblocked now)
 14. **`checked`/`unchecked`** (#8) — numeric safety
 15. **Object initializers** (#13) — ubiquitous in C# for DTOs, EF, etc.
 16. **Caller info attributes** (#33) — common in WPF, logging

@@ -1,6 +1,6 @@
 # Parameter Modifiers (`ref`, `out`, `in`)
 
-> **Implementation status:** Deferred post-v0.2.x — most Sharpy code won't need pass-by-reference semantics.
+> **Implementation status:** ✅ Implemented — `ParameterModifier` enum with `Ref`, `Out`, `In` values; parser, semantic, and codegen support including call-site argument modifiers.
 
 Sharpy supports pass-by-reference semantics for function parameters using space-separated modifier syntax. These modifiers enable direct mutation of caller variables and efficient passing of large value types.
 

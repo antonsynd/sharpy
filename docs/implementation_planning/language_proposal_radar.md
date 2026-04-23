@@ -4,7 +4,7 @@
 > Date: 2026-04-21  
 > Scope: Proposals relevant to Sharpy's ergonomics, DX, and type system that are implementable given the C#/.NET target
 
-**Exclusions:** Features already implemented in Sharpy are omitted — walrus operator (PEP 572), `X|Y` union syntax (PEP 604), type aliases (PEP 613), match statements (PEP 634), SelfType (PEP 673), dataclass (PEP 681), `@override` (PEP 698), f-strings (PEP 701), list/dict/set comprehensions, generators (`yield`/`yield from`), `maybe`/`try`/`??` expressions.
+**Exclusions:** Features already implemented in Sharpy are omitted — walrus operator (PEP 572), `X|Y` union syntax (PEP 604), type aliases (PEP 613), `str.removeprefix`/`removesuffix` (PEP 616), match statements (PEP 634), late-bound defaults (PEP 671), SelfType (PEP 673), dataclass (PEP 681), type parameter defaults (PEP 696), `@override` (PEP 698), f-strings (PEP 701), `@deprecated` (PEP 702), d-strings (PEP 822), list/dict/set comprehensions, generators (`yield`/`yield from`), `maybe`/`try`/`??` expressions, guard patterns in match (RFC 3637).
 
 ---
 
@@ -12,16 +12,16 @@
 
 | # | Proposal | Category | Priority | Effort |
 |---|----------|----------|----------|--------|
-| 1 | PEP 822 — d-strings (dedented multiline) | Syntax Sugar | **High** | Low |
-| 2 | PEP 671 — late-bound defaults | Syntax Sugar | **High** | Medium |
+| ~~1~~ | ~~PEP 822 — d-strings (dedented multiline)~~ | ~~Syntax Sugar~~ | ✅ Implemented | — |
+| ~~2~~ | ~~PEP 671 — late-bound defaults~~ | ~~Syntax Sugar~~ | ✅ Implemented | — |
 | 3 | RFC 3721 — inferred error type in try blocks | Error Handling | **High** | Low |
 | 4 | RFC 3513 — inline `gen {}` blocks | Iterators | **High** | Medium |
-| 5 | PEP 702 — `@deprecated` decorator | Type System | **High** | Low |
-| 6 | RFC 3637 — guard patterns in match | Pattern Matching | **High** | Medium |
-| 7 | PEP 696 — type defaults for type parameters | Type System | **High** | Medium |
+| ~~5~~ | ~~PEP 702 — `@deprecated` decorator~~ | ~~Type System~~ | ✅ Implemented | — |
+| ~~6~~ | ~~RFC 3637 — guard patterns in match~~ | ~~Pattern Matching~~ | ✅ Implemented | — |
+| ~~7~~ | ~~PEP 696 — type defaults for type parameters~~ | ~~Type System~~ | ✅ Implemented | — |
 | 8 | PEP 742 — `TypeIs` narrowing | Type System | **High** | Medium |
 | 9 | PEP 750 — template strings (t-strings) | Standard Library | **High** | Medium |
-| 10 | PEP 616 — `removeprefix`/`removesuffix` | Standard Library | **High** | Low |
+| ~~10~~ | ~~PEP 616 — `removeprefix`/`removesuffix`~~ | ~~Standard Library~~ | ✅ Implemented | — |
 | 11 | PEP 654 — ExceptionGroup / `except*` | Error Handling | Medium | Medium |
 | 12 | PEP 646 — variadic generics (TypeVarTuple) | Type System | Medium | High |
 | 13 | PEP 675 — `LiteralString` type | Type System | Medium | Medium |
@@ -44,9 +44,9 @@
 
 High return, low effort — implementable in a single session:
 
-1. **PEP 616** — `str.removeprefix`/`removesuffix` in `Sharpy.Core/Partial.String/`
-2. **PEP 702** — `@deprecated` → emit `[Obsolete]` in `RoslynEmitter` + SPY045x warning at call sites
-3. **PEP 822** — `d"""..."""` dedented string lexing in `Lexer/Lexer.cs`, zero codegen change
+1. ~~**PEP 616** — `str.removeprefix`/`removesuffix` in `Sharpy.Core/Partial.String/`~~ ✅ Implemented
+2. ~~**PEP 702** — `@deprecated` → emit `[Obsolete]` in `RoslynEmitter` + SPY045x warning at call sites~~ ✅ Implemented
+3. ~~**PEP 822** — `d"""..."""` dedented string lexing in `Lexer/Lexer.cs`, zero codegen change~~ ✅ Implemented
 4. **RFC 3721** — infer `E` from enclosing return type in `try` expressions via `TypeInferenceService`
 5. **PEP 705/767** — `ReadOnly[T]` annotation enforcement in `PropertyValidator`, emit `{ get; }` C# property
 
@@ -55,8 +55,8 @@ High return, low effort — implementable in a single session:
 ## Syntax Sugar
 
 ### PEP 822 — Dedented Multiline d-strings
-**Status:** Draft, Python 3.15 target  
-**Priority: High | Effort: Low**
+**Status:** ✅ Implemented — `d"..."`, `d"""..."""`, `df"..."`, `dr"..."` all supported  
+**Priority: ~~High~~ Done | Effort: ~~Low~~ Done**
 
 `d"""..."""` automatically strips leading indentation matching the closing `"""` line. Embedded SQL, XML, JSON, and code templates in indented functions currently carry spurious whitespace or require `textwrap.dedent()` manually.
 
@@ -67,8 +67,8 @@ High return, low effort — implementable in a single session:
 ---
 
 ### PEP 671 — Late-Bound Function Argument Defaults
-**Status:** Draft, Python 3.12 target  
-**Priority: High | Effort: Medium**
+**Status:** ✅ Implemented — `def f(x, y => x + 1)` syntax with `=>` operator, full pipeline  
+**Priority: ~~High~~ Done | Effort: ~~Medium~~ Done**
 
 `def f(x, y => x + 1)` — defaults evaluated at call time rather than definition time. Eliminates both the mutable-default footgun (`def f(lst=[])`) and the verbose None-guard pattern (`if y is None: y = x + 1`).
 
@@ -113,8 +113,8 @@ High return, low effort — implementable in a single session:
 ## Type System
 
 ### PEP 696 — Type Defaults for Type Parameters
-**Status:** Final, Python 3.13  
-**Priority: High | Effort: Medium**
+**Status:** ✅ Implemented — `DefaultType` on `TypeParameterSymbol`, SPY0395/SPY0396 validation  
+**Priority: ~~High~~ Done | Effort: ~~Medium~~ Done**
 
 `class Result[T, E = Exception]:` — type parameters get default types, so `Result[int]` infers `Result[int, Exception]` without an explicit second argument. Directly useful for Sharpy's `Result[T, E]` and `Optional[T]` where the error type is almost always `Exception`.
 
@@ -137,8 +137,8 @@ High return, low effort — implementable in a single session:
 ---
 
 ### PEP 702 — @deprecated Decorator
-**Status:** Final, Python 3.13  
-**Priority: High | Effort: Low**
+**Status:** ✅ Implemented — emits `[Obsolete]`, SPY0466 warning at call sites  
+**Priority: ~~High~~ Done | Effort: ~~Low~~ Done**
 
 `@deprecated("Use new_func instead")` marks APIs as deprecated; type checkers emit warnings at call sites. Maps perfectly to .NET's `[Obsolete("...")]` attribute.
 
@@ -243,8 +243,8 @@ A compile-time type that accepts only string literals and concatenations thereof
 ## Pattern Matching
 
 ### RFC 3637 — Guard Patterns in Match
-**Status:** Accepted, Rust  
-**Priority: High | Effort: Medium**
+**Status:** ✅ Implemented — `GuardPattern` AST node, codegen to C# `when` clauses  
+**Priority: ~~High~~ Done | Effort: ~~Medium~~ Done**
 
 Per-alternative guards within or-patterns: `case (Some(x) if x > 0) | None:` — the guard applies only to the `Some` branch. Currently in Sharpy, a guard on a `case` applies to the entire clause; splitting is required.
 
@@ -319,8 +319,8 @@ Comprehensions no longer create a nested function scope. Sharpy's comprehensions
 ---
 
 ### PEP 616 — str.removeprefix / str.removesuffix
-**Status:** Final, Python 3.9  
-**Priority: High | Effort: Low**
+**Status:** ✅ Implemented — `Removeprefix`/`Removesuffix` extension methods in `StringExtensions.cs`  
+**Priority: ~~High~~ Done | Effort: ~~Low~~ Done**
 
 `"foobar".removeprefix("foo")` → `"bar"`. Non-destructive: returns the original string if the prefix is not found. The existing `lstrip` and slice-based approaches are error-prone.
 
