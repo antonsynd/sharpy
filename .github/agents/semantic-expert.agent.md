@@ -15,7 +15,7 @@ Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, 
 - `NameResolver.cs` — Symbol table construction, name binding
 - `ImportResolver.cs` — Module imports via `ModuleLoader`
 - `TypeResolver.cs` — Type annotation resolution
-- `TypeChecker*.cs` — Type checking (8 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Utilities.cs`)
+- `TypeChecker*.cs` — Type checking (11 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Access.Lambdas.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Patterns.cs`, `.Utilities.cs`)
 - `SemanticInfo.cs` — Type/symbol annotations (separate from AST)
 - `SemanticBinding.cs` — Computed data, materialized at phase boundaries
 - `Symbol.cs` — Symbol hierarchy (VariableSymbol, FunctionSymbol, TypeSymbol, etc.)
@@ -26,7 +26,7 @@ Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, 
 
 ## Preferred Tools
 
-- **Navigating TypeChecker partials (10 files):** Use Serena `get_symbols_overview` to survey a partial, `find_symbol` with `depth=1` to list methods in a class.
+- **Navigating TypeChecker partials (11 files):** Use Serena `get_symbols_overview` to survey a partial, `find_symbol` with `depth=1` to list methods in a class.
 - **Tracing type resolution:** Use Serena `find_referencing_symbols` to find all consumers of a SemanticType subclass or Symbol property.
 - **Understanding validator relationships:** Use CodeGraphContext `analyze_code_relationships` on validator classes to see what they call/reference.
 - **Editing type checking methods:** Use Serena `replace_symbol_body` for clean method replacements in large TypeChecker files.
