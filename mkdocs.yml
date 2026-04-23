@@ -67,12 +67,14 @@ nav:
       - Extended Numeric Literals: language_specification/extended_numeric_literals.md
       - String Literals: language_specification/string_literals.md
       - F-Strings: language_specification/fstrings.md
+      - Template Strings: language_specification/template_strings.md
       - Boolean Literals: language_specification/boolean_literals.md
       - None Literal: language_specification/none_literal.md
       - Ellipsis Literal: language_specification/ellipsis_literal.md
     - Types:
       - Primitive Types: language_specification/primitive_types.md
       - String Type: language_specification/string_type.md
+      - LiteralString: language_specification/literal_string.md
       - Type Annotations: language_specification/type_annotations.md
       - Type Annotation Shorthand: language_specification/type_annotation_shorthand.md
       - Type Hierarchy: language_specification/type_hierarchy.md
@@ -148,6 +150,7 @@ nav:
     - Generics:
       - Generics: language_specification/generics.md
       - Generic Variance: language_specification/generic_variance.md
+      - Type Parameter Defaults: language_specification/type_parameter_defaults.md
     - Enumerations: language_specification/enums.md
     - Operator Overloading:
       - Operator Overloading: language_specification/operator_overloading.md
