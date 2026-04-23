@@ -1,0 +1,9 @@
+def main():
+    a = "hello"
+    b = 42
+    result = df"""
+        First: {a}
+        Second: {b}
+        Done
+        """
+    print(result)

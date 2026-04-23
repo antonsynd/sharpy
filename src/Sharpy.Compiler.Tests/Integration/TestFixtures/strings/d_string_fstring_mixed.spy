@@ -1,0 +1,12 @@
+def main():
+    name = "Alice"
+    age = 30
+    result = df"""
+        Name: {name}
+        Age: {age}
+        ---
+        Status: Active
+
+        End
+        """
+    print(result)

@@ -1,0 +1,8 @@
+def main():
+    x = "A"
+    y = "B"
+    z = "C"
+    result = f"""Line1: {x}
+Line2: {y}
+Line3: {z}"""
+    print(result)

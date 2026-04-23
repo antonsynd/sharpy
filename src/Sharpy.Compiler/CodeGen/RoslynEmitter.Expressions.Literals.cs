@@ -203,7 +203,9 @@ internal partial class RoslynEmitter
                 // Escape literal braces for C# interpolated strings:
                 // The lexer already converts Python's {{ → { and }} → },
                 // so we re-escape { → {{ and } → }} for C# interpolation syntax.
-                var sourceText = part.Text.Replace("{", "{{", StringComparison.Ordinal).Replace("}", "}}", StringComparison.Ordinal);
+                var sourceText = EscapeForInterpolatedStringSource(
+                    part.Text).Replace("{", "{{", StringComparison.Ordinal)
+                              .Replace("}", "}}", StringComparison.Ordinal);
                 parts.Add(InterpolatedStringText()
                     .WithTextToken(Token(
                         TriviaList(),
@@ -455,6 +457,16 @@ internal partial class RoslynEmitter
                 Argument(interpolatedString))));
 
         return invariantCall;
+    }
+
+    private static string EscapeForInterpolatedStringSource(string text)
+    {
+        return text.Replace("\\", "\\\\", StringComparison.Ordinal)
+                   .Replace("\n", "\\n", StringComparison.Ordinal)
+                   .Replace("\r", "\\r", StringComparison.Ordinal)
+                   .Replace("\t", "\\t", StringComparison.Ordinal)
+                   .Replace("\0", "\\0", StringComparison.Ordinal)
+                   .Replace("\"", "\\\"", StringComparison.Ordinal);
     }
 
     /// <summary>
