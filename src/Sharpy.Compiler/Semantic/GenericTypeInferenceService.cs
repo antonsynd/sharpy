@@ -188,6 +188,42 @@ internal class GenericTypeInferenceService
     }
 
     /// <summary>
+    /// Unify parallel lists of formal and actual types, returning the collected
+    /// type-parameter substitutions.  Returns null on unification failure;
+    /// returns an empty dictionary (not null) when no type parameters were bound.
+    /// </summary>
+    public Dictionary<string, SemanticType>? UnifyTypes(
+        IReadOnlyList<SemanticType> formalTypes,
+        IReadOnlyList<SemanticType> actualTypes)
+    {
+        var substitutions = new Dictionary<string, SemanticType>();
+        var count = Math.Min(formalTypes.Count, actualTypes.Count);
+
+        for (int i = 0; i < count; i++)
+        {
+            var result = Unify(formalTypes[i], actualTypes[i], substitutions);
+            if (!result.Success)
+            {
+                return null;
+            }
+        }
+
+        return substitutions;
+    }
+
+    /// <summary>
+    /// Replace every <see cref="TypeParameterType"/> in <paramref name="type"/>
+    /// whose name appears in <paramref name="substitutions"/> with the mapped
+    /// concrete type.  Delegates to <see cref="TypeSubstitution.Apply"/>.
+    /// </summary>
+    public static SemanticType SubstituteTypeParameters(
+        SemanticType type,
+        Dictionary<string, SemanticType> substitutions)
+    {
+        return TypeSubstitution.Apply(type, substitutions);
+    }
+
+    /// <summary>
     /// Attempt to unify a formal type with an actual type, binding type parameters.
     /// </summary>
     private InferenceResult Unify(SemanticType formal, SemanticType actual, Dictionary<string, SemanticType> substitutions)
