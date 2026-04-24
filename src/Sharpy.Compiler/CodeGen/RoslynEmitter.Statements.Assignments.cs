@@ -149,6 +149,42 @@ internal partial class RoslynEmitter
             var obj = GenerateExpression(indexAccess.Object);
             var index = GenerateExpression(indexAccess.Index);
 
+            // Array index assignment: route through ArrayHelpers for negative index support
+            var objectType = GetExpressionSemanticType(indexAccess.Object);
+            if (objectType is Semantic.GenericType { Name: BuiltinNames.Array })
+            {
+                var arrayHelpersSetItem = InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        MakeGlobalQualifiedName("Sharpy", "ArrayHelpers"),
+                        IdentifierName("SetItem")));
+
+                if (assign.Operator == AssignmentOperator.Assign)
+                {
+                    return ExpressionStatement(
+                        arrayHelpersSetItem.AddArgumentListArguments(
+                            Argument(obj),
+                            Argument(index),
+                            Argument(value)));
+                }
+
+                // Compound assignment (+=, -=, etc.): read via GetItem, compute, write via SetItem
+                var getItem = InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        MakeGlobalQualifiedName("Sharpy", "ArrayHelpers"),
+                        IdentifierName("GetItem")))
+                    .AddArgumentListArguments(
+                        Argument(obj),
+                        Argument(index));
+
+                var augmented = GenerateAugmentedValue(assign.Operator, getItem, value, assign.Target, assign.Value);
+
+                return ExpressionStatement(
+                    arrayHelpersSetItem.AddArgumentListArguments(
+                        Argument(obj),
+                        Argument(index),
+                        Argument(augmented)));
+            }
+
             var elementAccess = ElementAccessExpression(obj)
                 .WithArgumentList(BracketedArgumentList(
                     SingletonSeparatedList(Argument(index))));

@@ -1197,6 +1197,18 @@ internal partial class RoslynEmitter
                     Argument(index));
         }
 
+        // Array indexing: arr[i] -> ArrayHelpers.GetItem(arr, i) to support negative indexing
+        if (objectType is Semantic.GenericType { Name: BuiltinNames.Array })
+        {
+            return InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "ArrayHelpers"),
+                    IdentifierName("GetItem")))
+                .AddArgumentListArguments(
+                    Argument(objExpr),
+                    Argument(index));
+        }
+
         var elementAccess = ElementAccessExpression(objExpr)
             .AddArgumentListArguments(Argument(index));
 
