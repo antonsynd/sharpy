@@ -94,6 +94,14 @@ internal static class SymbolSerializer
                 SerializeFunctionSymbol(c, ComputeSymbolId(c, filePath), filePath)).ToList();
         }
 
+        // Serialize nested types as nested CachedSymbols
+        List<CachedSymbol>? nestedTypes = null;
+        if (ts.NestedTypes.Count > 0)
+        {
+            nestedTypes = ts.NestedTypes.Select(nt =>
+                SerializeTypeSymbol(nt, ComputeSymbolId(nt, nt.DefiningFilePath ?? filePath), nt.DefiningFilePath ?? filePath)).ToList();
+        }
+
         return new CachedSymbol
         {
             Id = id,
@@ -121,6 +129,7 @@ internal static class SymbolSerializer
             Fields = fields,
             Methods = methods,
             Constructors = constructors,
+            NestedTypes = nestedTypes,
             IsReExport = ts.IsReExport,
             OriginalModule = ts.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(ts.CodeGenInfo),
@@ -322,6 +331,11 @@ internal static class SymbolSerializer
         var constructors = cached.Constructors?.Select(c => DeserializeFunctionSymbol(c, typeResolver)).ToList()
             ?? new List<FunctionSymbol>();
 
+        // Deserialize nested types
+        var nestedTypes = cached.NestedTypes?
+            .Select(nt => DeserializeTypeSymbol(nt, symbolRegistry, typeResolver))
+            .ToList() ?? new List<TypeSymbol>();
+
         var symbol = new TypeSymbol
         {
             Name = cached.Name,
@@ -338,12 +352,20 @@ internal static class SymbolSerializer
             Fields = fields,
             Methods = methods,
             Constructors = constructors,
+            NestedTypes = nestedTypes,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
         };
 
         symbol.Documentation = cached.Documentation;
+
+        // Set DeclaringType on nested types and register them
+        foreach (var nested in nestedTypes)
+        {
+            nested.DeclaringType = symbol;
+            symbolRegistry[ComputeSymbolId(nested, nested.DefiningFilePath ?? cached.FilePath)] = nested;
+        }
 
         // BaseType and Interfaces resolved in a second pass via symbolRegistry
         return symbol;
@@ -735,33 +757,7 @@ internal static class SymbolSerializer
             // Resolve TypeSymbol references
             if (symbol is TypeSymbol ts)
             {
-                // Resolve BaseType
-                if (cached.BaseTypeId != null && symbolRegistry.TryGetValue(cached.BaseTypeId, out var baseSymbol))
-                {
-                    if (baseSymbol is TypeSymbol baseType)
-                    {
-                        ts.BaseType = baseType;
-                    }
-                }
-
-                // Resolve Interfaces
-                if (cached.InterfaceEntries != null)
-                {
-                    foreach (var entry in cached.InterfaceEntries)
-                    {
-                        if (symbolRegistry.TryGetValue(entry.SymbolId, out var ifaceSymbol) && ifaceSymbol is TypeSymbol ifaceType)
-                        {
-                            var typeArgs = entry.TypeArgs != null && entry.TypeArgs.Count > 0
-                                ? entry.TypeArgs.Select(DeserializeTypeAnnotation).ToImmutableArray()
-                                : ImmutableArray<TypeAnnotation>.Empty;
-                            ts.Interfaces.Add(new InterfaceReference
-                            {
-                                Definition = ifaceType,
-                                TypeArgAnnotations = typeArgs
-                            });
-                        }
-                    }
-                }
+                ResolveTypeReferences(cached, ts, symbolRegistry);
             }
 
             // Resolve ModuleSymbol exports
@@ -774,6 +770,47 @@ internal static class SymbolSerializer
                         ms.Exports[name] = exportSymbol;
                     }
                 }
+            }
+        }
+    }
+
+    private static void ResolveTypeReferences(
+        CachedSymbol cached, TypeSymbol ts, Dictionary<string, Symbol> symbolRegistry)
+    {
+        // Resolve BaseType
+        if (cached.BaseTypeId != null && symbolRegistry.TryGetValue(cached.BaseTypeId, out var baseSymbol))
+        {
+            if (baseSymbol is TypeSymbol baseType)
+            {
+                ts.BaseType = baseType;
+            }
+        }
+
+        // Resolve Interfaces
+        if (cached.InterfaceEntries != null)
+        {
+            foreach (var entry in cached.InterfaceEntries)
+            {
+                if (symbolRegistry.TryGetValue(entry.SymbolId, out var ifaceSymbol) && ifaceSymbol is TypeSymbol ifaceType)
+                {
+                    var typeArgs = entry.TypeArgs != null && entry.TypeArgs.Count > 0
+                        ? entry.TypeArgs.Select(DeserializeTypeAnnotation).ToImmutableArray()
+                        : ImmutableArray<TypeAnnotation>.Empty;
+                    ts.Interfaces.Add(new InterfaceReference
+                    {
+                        Definition = ifaceType,
+                        TypeArgAnnotations = typeArgs
+                    });
+                }
+            }
+        }
+
+        // Recursively resolve nested types' references
+        if (cached.NestedTypes != null)
+        {
+            for (int i = 0; i < cached.NestedTypes.Count && i < ts.NestedTypes.Count; i++)
+            {
+                ResolveTypeReferences(cached.NestedTypes[i], ts.NestedTypes[i], symbolRegistry);
             }
         }
     }

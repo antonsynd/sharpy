@@ -97,6 +97,11 @@ internal record CachedSymbol
     public List<CachedSymbol>? Constructors { get; init; }
 
     /// <summary>
+    /// For TypeSymbol: nested types (serialized as CachedSymbol with Kind=Type)
+    /// </summary>
+    public List<CachedSymbol>? NestedTypes { get; init; }
+
+    /// <summary>
     /// For FunctionSymbol: parameters
     /// </summary>
     public List<CachedParameter>? Parameters { get; init; }

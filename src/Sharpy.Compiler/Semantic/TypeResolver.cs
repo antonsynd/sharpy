@@ -168,23 +168,8 @@ internal class TypeResolver
         // Look up user-defined type
         else
         {
-            var typeSymbol = _symbolTable.LookupType(annotation.Name);
-
-            // Handle dotted names for nested types (e.g., "Outer.Inner")
-            if (typeSymbol == null && annotation.Name.Contains('.', StringComparison.Ordinal))
-            {
-                var parts = annotation.Name.Split('.');
-                var outerSymbol = _symbolTable.LookupType(parts[0]);
-                if (outerSymbol != null)
-                {
-                    for (int i = 1; i < parts.Length && outerSymbol != null; i++)
-                    {
-                        typeSymbol = outerSymbol.NestedTypes.FirstOrDefault(
-                            n => n.Name == parts[i]);
-                        outerSymbol = typeSymbol;
-                    }
-                }
-            }
+            var typeSymbol = _symbolTable.LookupType(annotation.Name)
+                ?? LookupNestedType(annotation.Name);
 
             if (typeSymbol != null)
             {
@@ -260,6 +245,25 @@ internal class TypeResolver
             _semanticInfo.SetTypeAnnotation(annotation, result);
         }
         return result;
+    }
+
+    private TypeSymbol? LookupNestedType(string dottedName)
+    {
+        if (!dottedName.Contains('.', StringComparison.Ordinal))
+            return null;
+
+        var parts = dottedName.Split('.');
+        var outerSymbol = _symbolTable.LookupType(parts[0]);
+        if (outerSymbol == null)
+            return null;
+
+        for (int i = 1; i < parts.Length && outerSymbol != null; i++)
+        {
+            var nested = outerSymbol.NestedTypes.FirstOrDefault(n => n.Name == parts[i]);
+            outerSymbol = nested;
+        }
+
+        return outerSymbol;
     }
 
     private bool TryResolveBuiltinType(string name, out SemanticType type)
@@ -360,7 +364,8 @@ internal class TypeResolver
             };
         }
 
-        var typeSymbol = _symbolTable.LookupType(annotation.Name);
+        var typeSymbol = _symbolTable.LookupType(annotation.Name)
+            ?? LookupNestedType(annotation.Name);
         if (typeSymbol == null)
         {
             var genericMessage = $"Generic type '{annotation.Name}' not found";

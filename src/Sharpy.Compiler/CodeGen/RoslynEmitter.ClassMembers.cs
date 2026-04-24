@@ -210,10 +210,13 @@ internal partial class RoslynEmitter
                     break;
 
                 case EnumDef nestedEnum:
-                    // EnumDef lacks Decorators — keep public until parser supports access decorators on enums (#592)
                     var nestedEnumNode = GenerateEnumDeclaration(nestedEnum);
                     if (nestedEnumNode is MemberDeclarationSyntax nestedEnumMember)
+                    {
+                        if (!HasExplicitAccessDecorator(nestedEnum.Decorators))
+                            nestedEnumMember = ReplaceAccessModifier(nestedEnumMember, SyntaxKind.PrivateKeyword);
                         members.Add(nestedEnumMember);
+                    }
                     break;
 
                 default:

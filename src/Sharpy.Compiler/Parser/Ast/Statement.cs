@@ -604,6 +604,7 @@ public record EnumDef : Statement
     public bool IsNameBacktickEscaped { get; init; }
     public ImmutableArray<EnumMember> Members { get; init; } = ImmutableArray<EnumMember>.Empty;
     public string? DocString { get; init; }
+    public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
@@ -611,6 +612,7 @@ public record EnumDef : Statement
         base.ValidateInvariants();
         Debug.Assert(!string.IsNullOrEmpty(Name), "EnumDef.Name cannot be null or empty");
         Debug.Assert(Members != null, "EnumDef.Members cannot be null");
+        Debug.Assert(Decorators != null, "EnumDef.Decorators cannot be null");
     }
 
     /// <inheritdoc/>

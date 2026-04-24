@@ -2014,4 +2014,62 @@ def some_function() -> int:
     }
 
     #endregion
+
+    #region Nested Type Serialization
+
+    [Fact]
+    public void SymbolSerializer_RoundTrip_NestedTypes()
+    {
+        var innerType = new TypeSymbol
+        {
+            Name = "Inner",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Private,
+            DefiningFilePath = "/test/nested.spy",
+            DeclaringFilePath = "/test/nested.spy",
+            DeclarationLine = 2,
+            DeclarationColumn = 5,
+            Fields = new List<VariableSymbol>
+            {
+                new VariableSymbol { Name = "value", Kind = SymbolKind.Variable, Type = BuiltinType.Int }
+            }
+        };
+
+        var outerType = new TypeSymbol
+        {
+            Name = "Outer",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            DefiningFilePath = "/test/nested.spy",
+            DeclaringFilePath = "/test/nested.spy",
+            DeclarationLine = 1,
+            DeclarationColumn = 1,
+            NestedTypes = new List<TypeSymbol> { innerType }
+        };
+        innerType.DeclaringType = outerType;
+
+        var filePath = CreateTempFile("nested.spy", "class Outer:\n    class Inner:\n        value: int");
+        var cached = SymbolSerializer.Serialize(outerType, filePath);
+
+        Assert.NotNull(cached.NestedTypes);
+        Assert.Single(cached.NestedTypes!);
+        Assert.Equal("Inner", cached.NestedTypes[0].Name);
+        Assert.Equal("Type", cached.NestedTypes[0].Kind);
+
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as TypeSymbol;
+
+        Assert.NotNull(restored);
+        Assert.Single(restored!.NestedTypes);
+        Assert.Equal("Inner", restored.NestedTypes[0].Name);
+        Assert.Equal(TypeKind.Class, restored.NestedTypes[0].TypeKind);
+        Assert.Equal(AccessLevel.Private, restored.NestedTypes[0].AccessLevel);
+        Assert.Equal(restored, restored.NestedTypes[0].DeclaringType);
+        Assert.Single(restored.NestedTypes[0].Fields);
+        Assert.Equal("value", restored.NestedTypes[0].Fields[0].Name);
+    }
+
+    #endregion
 }

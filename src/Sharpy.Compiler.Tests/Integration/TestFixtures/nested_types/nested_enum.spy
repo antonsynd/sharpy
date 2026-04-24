@@ -1,4 +1,5 @@
 class TrafficLight:
+    @public
     enum State:
         Red = 1
         Yellow = 2

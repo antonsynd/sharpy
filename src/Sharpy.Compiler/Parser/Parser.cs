@@ -499,11 +499,12 @@ public partial class Parser
                 TokenType.Struct => ParseStructDef(),
                 TokenType.Interface => ParseInterfaceDef(),
                 TokenType.Union => ParseUnionDef(),
+                TokenType.Enum => ParseEnumDef(),
                 TokenType.Property => ParsePropertyDef(),
                 TokenType.Event => ParseEventDef(),
                 // Allow decorators on variable declarations (e.g., @static field in class body)
                 TokenType.Identifier => ParseSimpleStatement(),
-                _ => throw ReportError("Decorators can only be applied to functions, classes, structs, interfaces, properties, events, or field declarations", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan)
+                _ => throw ReportError("Decorators can only be applied to functions, classes, structs, interfaces, enums, properties, events, or field declarations", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan)
             };
         }
         finally
@@ -519,11 +520,12 @@ public partial class Parser
             StructDef str => str with { Decorators = decorators.ToImmutableArray() },
             InterfaceDef iface => iface with { Decorators = decorators.ToImmutableArray() },
             UnionDef union => union with { Decorators = decorators.ToImmutableArray() },
+            EnumDef en => en with { Decorators = decorators.ToImmutableArray() },
             PropertyDef prop => prop with { Decorators = decorators.ToImmutableArray() },
             EventDef ev => ev with { Decorators = decorators.ToImmutableArray() },
             VariableDeclaration varDecl => varDecl with { Decorators = decorators.ToImmutableArray() },
-            Assignment => throw ReportError("Decorators cannot be applied to assignments — only functions, classes, structs, interfaces, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span),
-            _ => throw ReportError("Decorators can only be applied to functions, classes, structs, interfaces, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span)
+            Assignment => throw ReportError("Decorators cannot be applied to assignments — only functions, classes, structs, interfaces, enums, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span),
+            _ => throw ReportError("Decorators can only be applied to functions, classes, structs, interfaces, enums, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span)
         };
     }
 

@@ -1,0 +1,22 @@
+class Container:
+    @public
+    enum Color:
+        Red = 1
+        Blue = 2
+        Green = 3
+
+    enum Shape:
+        Circle = 1
+        Square = 2
+
+    def show_color(self) -> str:
+        return str(Container.Color.Blue)
+
+    def show_shape(self) -> str:
+        return str(Container.Shape.Square)
+
+def main():
+    c: Container = Container()
+    print(c.show_color())
+    print(c.show_shape())
+    print(Container.Color.Green)
