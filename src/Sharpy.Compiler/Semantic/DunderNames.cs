@@ -65,4 +65,6 @@ internal static class DunderNames
     public const string Implicit = "__implicit__";
     public const string Explicit = "__explicit__";
 
+    // ---- Dunder properties ----
+    public const string Name = "__name__";
 }

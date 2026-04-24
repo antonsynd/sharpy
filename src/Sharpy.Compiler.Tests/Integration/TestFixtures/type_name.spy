@@ -1,0 +1,8 @@
+class Animal:
+    pass
+
+def main():
+    print(type(42).__name__)
+    print(type("hello").__name__)
+    a: Animal = Animal()
+    print(type(a).__name__)
