@@ -152,10 +152,6 @@ internal class AccessValidator : ValidatingAstWalker
     /// Does not use <see cref="TypeHierarchyService.InheritsFrom"/> because that also checks
     /// interfaces, which would incorrectly grant protected access through interface relationships.
     /// </summary>
-    /// <remarks>
-    /// Name equality fallback (ancestor.Name == target.Name) is a cross-module identity
-    /// approximation tracked by TODO(#361).
-    /// </remarks>
     private bool IsInHierarchy(TypeSymbol currentClass, TypeSymbol targetClass)
     {
         if (currentClass == targetClass)
@@ -164,14 +160,14 @@ internal class AccessValidator : ValidatingAstWalker
         // Check if currentClass is a subclass of targetClass
         foreach (var ancestor in TypeHierarchyService.GetAllBaseTypes(currentClass, Context.SemanticBinding))
         {
-            if (ReferenceEquals(ancestor, targetClass) || ancestor.Name == targetClass.Name)
+            if (TypeHierarchyService.IsSameType(ancestor, targetClass))
                 return true;
         }
 
         // Check if targetClass is a subclass of currentClass
         foreach (var ancestor in TypeHierarchyService.GetAllBaseTypes(targetClass, Context.SemanticBinding))
         {
-            if (ReferenceEquals(ancestor, currentClass) || ancestor.Name == currentClass.Name)
+            if (TypeHierarchyService.IsSameType(ancestor, currentClass))
                 return true;
         }
 
