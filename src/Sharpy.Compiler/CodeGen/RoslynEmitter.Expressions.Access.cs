@@ -257,7 +257,6 @@ internal partial class RoslynEmitter
 
                     var qualifiedCaseName = QualifiedName(unionNameSyntax, IdentifierName(caseCSharpName));
 
-                    // TODO(#254): GetCallTarget always returns null — reordering is a no-op here.
                     var caseCallTarget = _context.SemanticInfo?.GetCallTarget(call);
                     var caseAllArgs = GenerateReorderedCallArguments(call, caseCallTarget);
 
@@ -411,14 +410,12 @@ internal partial class RoslynEmitter
             }
             else
             {
-                // TODO(#231): Type not fully resolved (e.g., bare lambda without type annotations in IIFE).
-                // C# requires explicit delegate type for lambda invocation — this will produce
-                // a CS0149 error. Requires semantic analysis to infer lambda types from call-site args.
+                // Bare lambda without type annotations — C# requires an explicit delegate type
+                // for lambda invocation, so this produces CS0149 at the C# level.
                 callTarget = ParenthesizedExpression(innerExprForCheck);
             }
         }
 
-        // TODO(#254): GetCallTarget always returns null — reordering is a no-op here.
         var fallbackCallTarget = _context.SemanticInfo?.GetCallTarget(call);
         var fallbackAllArgs = GenerateReorderedCallArguments(call, fallbackCallTarget);
 

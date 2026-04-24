@@ -191,7 +191,7 @@ public sealed class CompilerApi
         var result = compiler.Analyze(source, "<source>", cancellationToken);
 
         // Collect comment spans via a second lightweight lex pass with preserveTrivia.
-        // TODO(#540): This doubles lexer work per Analyze call. Consider threading
+        // TODO(#596): This doubles lexer work per Analyze call. Consider threading
         // preserveTrivia through the pipeline so the primary lex can emit trivia directly.
         var commentSpans = CollectCommentSpans(source, cancellationToken);
 
