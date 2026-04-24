@@ -26,6 +26,15 @@ internal partial class RoslynEmitter
                 return result;
         }
 
+        // Handle generic nested type instantiation: Outer.Inner[int](42)
+        if (call.Function is IndexAccess nestedIndexAccess &&
+            nestedIndexAccess.Object is MemberAccess nestedMemberAccess)
+        {
+            var result = GenerateNestedGenericInstantiation(nestedIndexAccess, nestedMemberAccess, call);
+            if (result != null)
+                return result;
+        }
+
         if (call.Function is Identifier funcName)
         {
             // Check if this is a builtin function call (e.g., int(), str(), print(), len(), etc.)
@@ -490,6 +499,56 @@ internal partial class RoslynEmitter
         }
 
         return null;
+    }
+
+    private ExpressionSyntax? GenerateNestedGenericInstantiation(
+        IndexAccess indexAccess, MemberAccess memberAccess, FunctionCall call)
+    {
+        var nestedTypeSymbol = LookupNestedTypeFromMemberAccess(memberAccess);
+        if (nestedTypeSymbol == null || !nestedTypeSymbol.IsGeneric)
+            return null;
+
+        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var csharpName = NameMangler.ToPascalCase(memberAccess.Member);
+        var outerName = GetNestedTypeOuterPrefix(nestedTypeSymbol);
+        var qualifiedGenericName = QualifiedName(
+            ParseName(outerName),
+            GenericName(csharpName)
+                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax))));
+
+        var constructorTarget = ResolveConstructorForCall(nestedTypeSymbol, call);
+        var allArgs = GenerateReorderedCallArguments(call, constructorTarget);
+
+        return ObjectCreationExpression(qualifiedGenericName)
+            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+    }
+
+    private TypeSymbol? LookupNestedTypeFromMemberAccess(MemberAccess memberAccess)
+    {
+        if (memberAccess.Object is Identifier outerName)
+        {
+            var outerSymbol = _context.LookupSymbol(outerName.Name) as TypeSymbol;
+            return outerSymbol?.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member);
+        }
+        if (memberAccess.Object is MemberAccess innerAccess)
+        {
+            var parentType = LookupNestedTypeFromMemberAccess(innerAccess);
+            return parentType?.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member);
+        }
+        return null;
+    }
+
+    private static string GetNestedTypeOuterPrefix(TypeSymbol nestedType)
+    {
+        var parts = new List<string>();
+        var declaring = nestedType.DeclaringType;
+        while (declaring != null)
+        {
+            parts.Add(NameMangler.ToPascalCase(declaring.Name));
+            declaring = declaring.DeclaringType;
+        }
+        parts.Reverse();
+        return string.Join(".", parts);
     }
 
     /// <summary>
