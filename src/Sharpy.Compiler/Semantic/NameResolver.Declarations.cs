@@ -516,6 +516,7 @@ internal partial class NameResolver
             ClassDef c => c.Decorators,
             StructDef s => s.Decorators,
             InterfaceDef i => i.Decorators,
+            EnumDef e => e.Decorators,
             _ => System.Collections.Immutable.ImmutableArray<Decorator>.Empty
         };
 
