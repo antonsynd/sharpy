@@ -1,0 +1,6 @@
+def main():
+    x: int = 42
+    try:
+        raise ValueError("test")
+    except ValueError as e when x > 10 and x < 100:
+        print("caught with complex filter")

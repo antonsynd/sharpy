@@ -829,6 +829,18 @@ internal partial class TypeChecker
                 SemanticBinding.SetVariableType(varSymbol, exceptionType);
             }
 
+            if (handler.Filter != null)
+            {
+                var filterType = CheckExpression(handler.Filter);
+                if (filterType != null && filterType is not UnknownType && filterType != BuiltinType.Bool)
+                {
+                    AddError("Exception filter must be a boolean expression",
+                        handler.Filter.LineStart, handler.Filter.ColumnStart,
+                        code: DiagnosticCodes.Semantic.ExceptionFilterNotBoolean,
+                        span: handler.Filter.Span);
+                }
+            }
+
             foreach (var stmt in handler.Body)
                 CheckStatement(stmt);
             _inExceptBlock = false;

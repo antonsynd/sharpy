@@ -1,0 +1,7 @@
+def main():
+    try:
+        raise ValueError("specific error")
+    except ValueError as e when e.message == "specific error":
+        print("caught filtered")
+    except ValueError as e:
+        print("caught unfiltered")

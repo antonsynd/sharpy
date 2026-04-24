@@ -840,6 +840,8 @@ internal partial class RoslynEmitter
 
         foreach (var handler in handlers)
         {
+            var filterClause = GenerateCatchFilterClause(handler);
+
             if (handler.ExceptionType != null)
             {
                 // Tuple exception type: except (T1, T2): or except T1, T2:
@@ -852,7 +854,7 @@ internal partial class RoslynEmitter
                     {
                         var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
                         var declaration = CatchDeclaration(_typeMapper.MapType(typeArg));
-                        result.Add(CatchClause(declaration, null, catchBlock));
+                        result.Add(CatchClause(declaration, filterClause, catchBlock));
                     }
                     continue;
                 }
@@ -894,23 +896,41 @@ internal partial class RoslynEmitter
                         _variableVersions.Remove(baseName);
                     }
 
-                    result.Add(CatchClause(declaration, null, catchBlock));
+                    result.Add(CatchClause(declaration, filterClause, catchBlock));
                 }
                 else
                 {
                     var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
                     var declaration = CatchDeclaration(exceptionType);
-                    result.Add(CatchClause(declaration, null, catchBlock));
+                    result.Add(CatchClause(declaration, filterClause, catchBlock));
                 }
             }
             else
             {
+                // Bare except — with filter we still need a declaration to attach the filter to
                 var catchBlock = Block(handler.Body.SelectMany(GenerateBodyStatements));
-                result.Add(CatchClause().WithBlock(catchBlock));
+                if (filterClause != null)
+                {
+                    var declaration = CatchDeclaration(IdentifierName("Exception"));
+                    result.Add(CatchClause(declaration, filterClause, catchBlock));
+                }
+                else
+                {
+                    result.Add(CatchClause().WithBlock(catchBlock));
+                }
             }
         }
 
         return result;
+    }
+
+    private CatchFilterClauseSyntax? GenerateCatchFilterClause(ExceptHandler handler)
+    {
+        if (handler.Filter == null)
+            return null;
+
+        var filterExpr = GenerateExpression(handler.Filter);
+        return CatchFilterClause(filterExpr);
     }
 
     /// <summary>

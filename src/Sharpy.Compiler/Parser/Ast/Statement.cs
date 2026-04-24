@@ -356,6 +356,8 @@ public record TryStatement : Statement
         // Note: handler.ExceptionType is a TypeAnnotation which doesn't inherit from Node
         foreach (var handler in Handlers)
         {
+            if (handler.Filter != null)
+                yield return handler.Filter;
             foreach (var stmt in handler.Body)
                 yield return stmt;
         }
@@ -376,6 +378,11 @@ public record ExceptHandler
     /// Whether this is an except* handler (PEP 654 ExceptionGroup handling).
     /// </summary>
     public bool IsExceptStar { get; init; }
+
+    /// <summary>
+    /// Optional filter expression for catch-when semantics (except Type as e when expr:).
+    /// </summary>
+    public Expression? Filter { get; init; }
 
     // Source location
     public int LineStart { get; init; }

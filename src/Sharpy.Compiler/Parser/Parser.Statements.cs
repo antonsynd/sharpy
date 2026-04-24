@@ -483,6 +483,24 @@ public partial class Parser
                 }
             }
 
+            // Parse optional 'when' filter clause (soft keyword)
+            Expression? filter = null;
+            if (Current.Type == TokenType.Identifier && Current.Value == "when")
+            {
+                if (isExceptStar)
+                {
+                    throw ReportError(
+                        "'except*' handlers do not support 'when' filters",
+                        Current.Line,
+                        Current.Column,
+                        DiagnosticCodes.Semantic.ExceptStarWhenNotSupported,
+                        span: CurrentSpan
+                    );
+                }
+                Advance(); // consume 'when'
+                filter = ParseExpression();
+            }
+
             Expect(TokenType.Colon);
             ExpectNewline();
             Expect(TokenType.Indent);
@@ -497,6 +515,7 @@ public partial class Parser
                 ExceptionType = exceptionType,
                 Name = name,
                 IsExceptStar = isExceptStar,
+                Filter = filter,
                 Body = handlerBody.ToImmutableArray(),
                 LineStart = handlerStartLine,
                 ColumnStart = handlerStartColumn,

@@ -393,7 +393,9 @@ public static class DiagnosticCodes
         // Generic type parameter default errors (SPY0395-SPY0396)
         public const string TypeParameterDefaultOrdering = "SPY0395"; // Active
         public const string TypeParameterDefaultViolatesConstraint = "SPY0396"; // Active
-        // SPY0397-SPY0399: Reserved for future semantic errors
+        // Exception filter errors (SPY0397-SPY0398)
+        public const string ExceptionFilterNotBoolean = "SPY0397";       // Active
+        public const string ExceptStarWhenNotSupported = "SPY0398";      // Active
 
         #endregion
     }

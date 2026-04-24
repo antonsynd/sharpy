@@ -1,0 +1,7 @@
+retries: int = 0
+
+def main():
+    try:
+        raise IOError("network failure")
+    except IOError when retries < 3:
+        print("retrying")

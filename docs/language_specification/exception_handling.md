@@ -81,6 +81,47 @@ except Exception as e:
 - *raise: ✅ Native - `throw new Exception()`*
 - *bare raise: ✅ Native - `throw;`*
 
+## Exception Filters (`when`)
+
+Exception filters allow catch handlers to conditionally match exceptions based on a boolean expression, mapping directly to C#'s `catch ... when` syntax.
+
+```python
+try:
+    raise ValueError("specific error")
+except ValueError as e when e.message == "specific error":
+    print("caught specific")
+except ValueError:
+    print("caught generic")
+```
+
+The `when` keyword is a **soft keyword** — it is only special after an `except` clause. It can be used as a variable name elsewhere without conflict.
+
+### Syntax
+
+```
+except Type as name when condition:
+except Type when condition:
+except when condition:          # bare except with filter
+```
+
+### Rules
+
+- The filter expression must evaluate to `bool`
+- The filter is evaluated before entering the handler body; if it returns `False`, the exception propagates to the next handler
+- Exception filters do not unwind the stack — the exception object remains valid during filter evaluation
+- `except*` handlers do not support `when` filters
+
+### C# Emission
+
+```csharp
+catch (ValueError e) when (e.Message == "specific error")
+{
+    // handler body
+}
+```
+
+*Implementation: ✅ Native — `catch ... when (expr)`*
+
 ## Exception Groups and `except*`
 
 Sharpy supports structured exception handling for multiple concurrent errors via `ExceptionGroup` and the `except*` syntax, inspired by Python PEP 654.

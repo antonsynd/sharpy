@@ -1,0 +1,5 @@
+def main():
+    try:
+        raise ValueError("test")
+    except ValueError as e when "not a bool":
+        print("should not compile")

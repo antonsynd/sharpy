@@ -1,0 +1,8 @@
+def main():
+    when: str = "this is a variable named when"
+    print(when)
+    try:
+        raise ValueError("test")
+    except ValueError as e when True:
+        print("caught")
+    print(when)
