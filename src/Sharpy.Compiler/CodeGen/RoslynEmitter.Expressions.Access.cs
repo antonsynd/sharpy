@@ -257,6 +257,32 @@ internal partial class RoslynEmitter
                 }
             }
 
+            // Check for nested type construction: Outer.Inner(42) → new Outer.Inner(42)
+            if (memberAccess.Object is Identifier outerTypeId)
+            {
+                var outerSym = _context.LookupSymbol(outerTypeId.Name);
+                if (outerSym is TypeSymbol outerTypeSym)
+                {
+                    var nestedSym = outerTypeSym.NestedTypes.FirstOrDefault(
+                        n => n.Name == memberAccess.Member);
+                    if (nestedSym != null && (nestedSym.TypeKind == Semantic.TypeKind.Class ||
+                                              nestedSym.TypeKind == Semantic.TypeKind.Struct))
+                    {
+                        var outerCSharpName = NameMangler.Transform(outerTypeId.Name, NameContext.Type);
+                        var nestedCSharpName = NameMangler.Transform(memberAccess.Member, NameContext.Type);
+                        var qualifiedName = QualifiedName(
+                            IdentifierName(outerCSharpName),
+                            IdentifierName(nestedCSharpName));
+
+                        var nestedCallTarget = ResolveConstructorForCall(nestedSym, call);
+                        var nestedAllArgs = GenerateReorderedCallArguments(call, nestedCallTarget);
+
+                        return ObjectCreationExpression(qualifiedName)
+                            .WithArgumentList(ArgumentList(SeparatedList(nestedAllArgs)));
+                    }
+                }
+            }
+
             // Handle static method calls on primitive types: int.parse(s), float.parse(s)
             // The TypeChecker records these via SetMemberAccessResolution. We intercept here
             // to emit the correct Sharpy.Core helper class call instead of trying to generate

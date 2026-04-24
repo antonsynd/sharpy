@@ -168,8 +168,8 @@ public class OperatorRegistryTests
     [Fact]
     public void Count_ReturnsExpectedNumberOfOperators()
     {
-        // 5 arithmetic + 5 bitwise + 6 comparison + 3 unary = 19
-        OperatorRegistry.Count.Should().Be(19);
+        // 5 arithmetic + 5 bitwise + 6 comparison + 3 unary + 2 conversion = 21
+        OperatorRegistry.Count.Should().Be(21);
     }
 
     [Fact]

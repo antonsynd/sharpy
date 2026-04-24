@@ -453,6 +453,9 @@ class_member    ::= field_decl
                   | method_def
                   | const_stmt
                   | class_def          (* nested class *)
+                  | struct_def         (* nested struct *)
+                  | interface_def      (* nested interface *)
+                  | enum_def           (* nested enum *)
                   | type_alias_stmt
                   | event_decl
                   | 'pass' NEWLINE
@@ -509,6 +512,10 @@ struct_member   ::= field_decl
                   | property_decl
                   | method_def
                   | const_stmt
+                  | class_def          (* nested class *)
+                  | struct_def         (* nested struct *)
+                  | interface_def      (* nested interface *)
+                  | enum_def           (* nested enum *)
                   | 'pass' NEWLINE
 
 # -----------------------------------------------------------------------------
@@ -525,6 +532,10 @@ interface_body  ::= NEWLINE INDENT interface_member { interface_member } DEDENT
 interface_member
                 ::= interface_method
                   | interface_property
+                  | class_def          (* nested class *)
+                  | struct_def         (* nested struct *)
+                  | interface_def      (* nested interface *)
+                  | enum_def           (* nested enum *)
                   | 'pass' NEWLINE
 
 interface_method

@@ -1,0 +1,11 @@
+class Outer:
+    class Secret:
+        value: int = 42
+
+    def get_secret(self) -> int:
+        s: Outer.Secret = Outer.Secret()
+        return s.value
+
+def main():
+    o: Outer = Outer()
+    print(o.get_secret())

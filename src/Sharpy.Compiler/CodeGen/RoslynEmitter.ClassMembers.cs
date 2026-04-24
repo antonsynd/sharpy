@@ -188,6 +188,33 @@ internal partial class RoslynEmitter
                     // Type aliases are compile-time only, no C# output
                     break;
 
+                case ClassDef nestedClass:
+                    var nestedClassDecl = GenerateClassDeclaration(nestedClass);
+                    if (!HasExplicitAccessDecorator(nestedClass.Decorators))
+                        nestedClassDecl = ReplaceAccessModifier(nestedClassDecl, SyntaxKind.PrivateKeyword);
+                    members.Add(nestedClassDecl);
+                    break;
+
+                case StructDef nestedStruct:
+                    var nestedStructDecl = GenerateStructDeclaration(nestedStruct);
+                    if (!HasExplicitAccessDecorator(nestedStruct.Decorators))
+                        nestedStructDecl = ReplaceAccessModifier(nestedStructDecl, SyntaxKind.PrivateKeyword);
+                    members.Add(nestedStructDecl);
+                    break;
+
+                case InterfaceDef nestedInterface:
+                    var nestedInterfaceDecl = GenerateInterfaceDeclaration(nestedInterface);
+                    if (!HasExplicitAccessDecorator(nestedInterface.Decorators))
+                        nestedInterfaceDecl = ReplaceAccessModifier(nestedInterfaceDecl, SyntaxKind.PrivateKeyword);
+                    members.Add(nestedInterfaceDecl);
+                    break;
+
+                case EnumDef nestedEnum:
+                    var nestedEnumNode = GenerateEnumDeclaration(nestedEnum);
+                    if (nestedEnumNode is MemberDeclarationSyntax nestedEnumMember)
+                        members.Add(nestedEnumMember);
+                    break;
+
                 default:
                     _context.AddError(
                         $"Internal: unrecognized statement type '{stmt.GetType().Name}' in class body was not emitted. This is a compiler bug — please report it.",
@@ -326,6 +353,24 @@ internal partial class RoslynEmitter
                     // Ignore ellipsis in interface body
                     break;
 
+                case ClassDef nestedClass:
+                    members.Add(GenerateClassDeclaration(nestedClass));
+                    break;
+
+                case StructDef nestedStruct:
+                    members.Add(GenerateStructDeclaration(nestedStruct));
+                    break;
+
+                case InterfaceDef nestedInterface:
+                    members.Add(GenerateInterfaceDeclaration(nestedInterface));
+                    break;
+
+                case EnumDef nestedEnum:
+                    var nestedEnumNode = GenerateEnumDeclaration(nestedEnum);
+                    if (nestedEnumNode is MemberDeclarationSyntax nestedEnumMember)
+                        members.Add(nestedEnumMember);
+                    break;
+
                 default:
                     _context.AddError(
                         $"Internal: unrecognized statement type '{stmt.GetType().Name}' in interface body was not emitted. This is a compiler bug — please report it.",
@@ -446,6 +491,53 @@ internal partial class RoslynEmitter
             // Fallback for dunders that don't map to operators
             return new[] { GenerateClassMethod(funcDef) };
         }
+    }
+
+    private static bool HasExplicitAccessDecorator(ImmutableArray<Decorator> decorators)
+    {
+        return decorators.Any(d =>
+            d.Name == DecoratorNames.Public ||
+            d.Name == DecoratorNames.Protected ||
+            d.Name == DecoratorNames.Private ||
+            d.Name == DecoratorNames.Internal);
+    }
+
+    private static T ReplaceAccessModifier<T>(T declaration, SyntaxKind newAccess) where T : MemberDeclarationSyntax
+    {
+        var accessKinds = new[]
+        {
+            SyntaxKind.PublicKeyword,
+            SyntaxKind.ProtectedKeyword,
+            SyntaxKind.PrivateKeyword,
+            SyntaxKind.InternalKeyword
+        };
+
+        var modifiers = declaration.Modifiers;
+        var newModifiers = new SyntaxTokenList();
+        bool replaced = false;
+
+        foreach (var modifier in modifiers)
+        {
+            if (accessKinds.Contains(modifier.Kind()))
+            {
+                if (!replaced)
+                {
+                    newModifiers = newModifiers.Add(Token(newAccess));
+                    replaced = true;
+                }
+            }
+            else
+            {
+                newModifiers = newModifiers.Add(modifier);
+            }
+        }
+
+        if (!replaced)
+        {
+            newModifiers = newModifiers.Insert(0, Token(newAccess));
+        }
+
+        return (T)declaration.WithModifiers(newModifiers);
     }
 
 }

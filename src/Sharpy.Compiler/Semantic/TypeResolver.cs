@@ -169,6 +169,23 @@ internal class TypeResolver
         else
         {
             var typeSymbol = _symbolTable.LookupType(annotation.Name);
+
+            // Handle dotted names for nested types (e.g., "Outer.Inner")
+            if (typeSymbol == null && annotation.Name.Contains('.', StringComparison.Ordinal))
+            {
+                var parts = annotation.Name.Split('.');
+                var outerSymbol = _symbolTable.LookupType(parts[0]);
+                if (outerSymbol != null)
+                {
+                    for (int i = 1; i < parts.Length && outerSymbol != null; i++)
+                    {
+                        typeSymbol = outerSymbol.NestedTypes.FirstOrDefault(
+                            n => n.Name == parts[i]);
+                        outerSymbol = typeSymbol;
+                    }
+                }
+            }
+
             if (typeSymbol != null)
             {
                 result = new UserDefinedType

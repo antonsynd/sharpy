@@ -1,0 +1,17 @@
+class TrafficLight:
+    enum State:
+        Red = 1
+        Yellow = 2
+        Green = 3
+
+    current: TrafficLight.State
+
+    def __init__(self, current: TrafficLight.State):
+        self.current = current
+
+    def __str__(self) -> str:
+        return "Light:" + str(self.current)
+
+def main():
+    light: TrafficLight = TrafficLight(TrafficLight.State.Green)
+    print(light)

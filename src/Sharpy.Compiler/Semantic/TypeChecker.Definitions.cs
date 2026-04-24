@@ -743,6 +743,12 @@ internal partial class TypeChecker
             }
         }
 
+        // Re-register nested type symbols in this scope
+        foreach (var nestedType in classSymbol.NestedTypes)
+        {
+            _symbolTable.Define(nestedType);
+        }
+
         // Resolve field types first (before checking methods that might reference them)
         for (int i = 0; i < classSymbol.Fields.Count; i++)
         {
@@ -834,6 +840,12 @@ internal partial class TypeChecker
             }
         }
 
+        // Re-register nested type symbols in this scope
+        foreach (var nestedType in structSymbol.NestedTypes)
+        {
+            _symbolTable.Define(nestedType);
+        }
+
         // Resolve field types first (before checking methods that might reference them)
         for (int i = 0; i < structSymbol.Fields.Count; i++)
         {
@@ -911,6 +923,12 @@ internal partial class TypeChecker
                 DeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
+        }
+
+        // Re-register nested type symbols in this scope
+        foreach (var nestedType in interfaceSymbol.NestedTypes)
+        {
+            _symbolTable.Define(nestedType);
         }
 
         // Resolve method parameter types and return types

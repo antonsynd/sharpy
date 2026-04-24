@@ -134,6 +134,10 @@ internal partial class NameResolver
             {
                 ResolveTypeAliasDeclaration(typeAlias);
             }
+            else if (statement is ClassDef or StructDef or InterfaceDef or EnumDef)
+            {
+                ResolveNestedTypeDeclaration(statement, typeSymbol);
+            }
         }
 
         _symbolTable.ExitScope();
@@ -210,6 +214,10 @@ internal partial class NameResolver
             {
                 ResolveTypeAliasDeclaration(typeAlias);
             }
+            else if (statement is ClassDef or StructDef or InterfaceDef or EnumDef)
+            {
+                ResolveNestedTypeDeclaration(statement, typeSymbol);
+            }
         }
 
         _symbolTable.ExitScope();
@@ -279,6 +287,10 @@ internal partial class NameResolver
             else if (statement is EventDef eventDef)
             {
                 ResolveEventDeclaration(eventDef, typeSymbol);
+            }
+            else if (statement is ClassDef or StructDef or InterfaceDef or EnumDef)
+            {
+                ResolveNestedTypeDeclaration(statement, typeSymbol);
             }
         }
 
@@ -460,6 +472,63 @@ internal partial class NameResolver
         }
 
         _symbolTable.Define(unionSymbol);
+    }
+
+    private void ResolveNestedTypeDeclaration(Statement statement, TypeSymbol enclosingType)
+    {
+        switch (statement)
+        {
+            case ClassDef classDef:
+                ResolveClassDeclaration(classDef);
+                break;
+            case StructDef structDef:
+                ResolveStructDeclaration(structDef);
+                break;
+            case InterfaceDef interfaceDef:
+                ResolveInterfaceDeclaration(interfaceDef);
+                break;
+            case EnumDef enumDef:
+                ResolveEnumDeclaration(enumDef);
+                break;
+        }
+
+        var nestedName = statement switch
+        {
+            ClassDef c => c.Name,
+            StructDef s => s.Name,
+            InterfaceDef i => i.Name,
+            EnumDef e => e.Name,
+            _ => null
+        };
+
+        if (nestedName != null && _symbolTable.Lookup(nestedName) is TypeSymbol nestedSymbol)
+        {
+            nestedSymbol.DeclaringType = enclosingType;
+            nestedSymbol.AccessLevel = GetAccessLevel(statement) ?? AccessLevel.Private;
+            enclosingType.NestedTypes.Add(nestedSymbol);
+        }
+    }
+
+    private static AccessLevel? GetAccessLevel(Statement statement)
+    {
+        var decorators = statement switch
+        {
+            ClassDef c => c.Decorators,
+            StructDef s => s.Decorators,
+            InterfaceDef i => i.Decorators,
+            _ => System.Collections.Immutable.ImmutableArray<Decorator>.Empty
+        };
+
+        if (decorators.Any(d => d.Name == DecoratorNames.Public))
+            return AccessLevel.Public;
+        if (decorators.Any(d => d.Name == DecoratorNames.Protected))
+            return AccessLevel.Protected;
+        if (decorators.Any(d => d.Name == DecoratorNames.Private))
+            return AccessLevel.Private;
+        if (decorators.Any(d => d.Name == DecoratorNames.Internal))
+            return AccessLevel.Internal;
+
+        return null;
     }
 
 }

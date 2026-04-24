@@ -1,0 +1,17 @@
+class Container:
+    @public
+    class Item:
+        name: str
+
+        def __init__(self, name: str):
+            self.name = name
+
+        def __str__(self) -> str:
+            return "Item(" + self.name + ")"
+
+    def __init__(self):
+        pass
+
+def main():
+    item: Container.Item = Container.Item("widget")
+    print(item)

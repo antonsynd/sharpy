@@ -185,6 +185,13 @@ public partial class Parser
         else
         {
             name = ExpectIdentifier();
+
+            // Handle dotted type names for nested types (e.g., Outer.Inner)
+            while (Current.Type == TokenType.Dot && Peek().Type == TokenType.Identifier)
+            {
+                Advance(); // consume '.'
+                name += "." + ExpectIdentifier();
+            }
         }
 
         var typeArgs = new List<TypeAnnotation>();

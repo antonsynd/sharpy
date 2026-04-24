@@ -19,7 +19,7 @@ public abstract record Symbol
 {
     public string Name { get; init; } = string.Empty;
     public SymbolKind Kind { get; init; }
-    public AccessLevel AccessLevel { get; init; } = AccessLevel.Public;
+    public AccessLevel AccessLevel { get; internal set; } = AccessLevel.Public;
     public int? DeclarationLine { get; init; }
     public int? DeclarationColumn { get; init; }
 
@@ -238,6 +238,14 @@ public record TypeSymbol : Symbol
 
     // Union cases (only populated for TypeKind.Union)
     public List<TypeSymbol> UnionCases { get; init; } = new();
+
+    // Nested types
+    public List<TypeSymbol> NestedTypes { get; init; } = new();
+
+    /// <summary>
+    /// The enclosing type for nested types. Null for top-level types.
+    /// </summary>
+    public TypeSymbol? DeclaringType { get; internal set; }
 
     // Inheritance
     /// <summary>

@@ -1123,6 +1123,22 @@ public static class DiagnosticExplanations
             "class Foo[T: class = int]:  # Error: int is a value type, not a class",
             "Use a default type that satisfies the constraint:\nclass Foo[T: class = str]: ...");
 
+        // ── Semantic errors: Exception filters (SPY0397-SPY0398) ──
+
+        Add(dict, DiagnosticCodes.Semantic.ExceptionFilterNotBoolean,
+            "Exception filter must be a boolean expression",
+            "Semantic",
+            "The 'when' clause in an except handler must evaluate to a boolean value. The filter determines whether the handler matches the exception.",
+            "except ValueError as e when \"not a bool\":",
+            "Use a boolean expression:\nexcept ValueError as e when e.message == \"expected\":");
+
+        Add(dict, DiagnosticCodes.Semantic.ExceptStarWhenNotSupported,
+            "'except*' handlers do not support 'when' filters",
+            "Semantic",
+            "Exception filters (when clauses) cannot be used with except* handlers. This is a language restriction.",
+            "except* ValueError as e when True:",
+            "Use a regular except handler with a when filter, or filter inside the except* body.");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",
@@ -1477,6 +1493,36 @@ public static class DiagnosticExplanations
             "struct Bad:\n    x: int = 0\n    y: int  # error: no default after default",
             "Move fields without defaults before fields with defaults:\n" +
             "struct Good:\n    y: int\n    x: int = 0");
+
+        // ── Validation errors: Conversion operators (SPY0436-SPY0439) ────
+
+        Add(dict, DiagnosticCodes.Validation.ConversionOperatorNotStatic,
+            "Conversion operator must be @static",
+            "Validation",
+            "Conversion operators (__implicit__ and __explicit__) must be declared as @static methods with no 'self' parameter.",
+            "def __implicit__(self, val: int) -> MyType: ...",
+            "Add @static and remove self:\n@static\ndef __implicit__(val: int) -> MyType: ...");
+
+        Add(dict, DiagnosticCodes.Validation.ConversionOperatorParamCount,
+            "Conversion operator must have exactly 1 parameter",
+            "Validation",
+            "Conversion operators must have exactly one parameter (the source value to convert).",
+            "@static\ndef __implicit__(a: int, b: int) -> MyType: ...",
+            "Use exactly one parameter:\n@static\ndef __implicit__(val: int) -> MyType: ...");
+
+        Add(dict, DiagnosticCodes.Validation.ConversionOperatorNoEnclosingType,
+            "At least one type must be the enclosing type",
+            "Validation",
+            "In a conversion operator, either the parameter type or the return type must be the enclosing class/struct type.",
+            "class Foo:\n    @static\n    def __implicit__(val: int) -> str: ...",
+            "Ensure one of the types is the enclosing type:\nclass Foo:\n    @static\n    def __implicit__(val: int) -> Foo: ...");
+
+        Add(dict, DiagnosticCodes.Validation.ConversionOperatorDuplicate,
+            "Cannot define both implicit and explicit for the same type pair",
+            "Validation",
+            "A class cannot define both __implicit__ and __explicit__ conversion operators for the same source and target type pair.",
+            "@static\ndef __implicit__(val: int) -> Foo: ...\n@static\ndef __explicit__(val: int) -> Foo: ...",
+            "Choose either __implicit__ or __explicit__ for each type pair.");
 
         // ── Validation warnings: Deprecation (SPY0464) ─────────────────
 
