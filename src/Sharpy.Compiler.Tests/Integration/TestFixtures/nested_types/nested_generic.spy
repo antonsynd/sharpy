@@ -1,0 +1,16 @@
+class Registry:
+    @public
+    class Entry[T]:
+        key: str
+        value: T
+
+        def __init__(self, key: str, value: T):
+            self.key = key
+            self.value = value
+
+        def __str__(self) -> str:
+            return self.key + "=" + str(self.value)
+
+def main():
+    e: Registry.Entry[int] = Registry.Entry[int]("count", 5)
+    print(e)

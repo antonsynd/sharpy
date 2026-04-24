@@ -1,0 +1,15 @@
+class Vault:
+    code: int
+
+    def __init__(self, code: int):
+        self.code = code
+
+    @public
+    class Inspector:
+        def inspect(self, vault: Vault) -> int:
+            return vault.code
+
+def main():
+    v: Vault = Vault(42)
+    inspector: Vault.Inspector = Vault.Inspector()
+    print(inspector.inspect(v))

@@ -1,0 +1,16 @@
+class Outer:
+    @public
+    class Middle:
+        @public
+        class Inner:
+            value: int
+
+            def __init__(self, value: int):
+                self.value = value
+
+            def __str__(self) -> str:
+                return "Inner(" + str(self.value) + ")"
+
+def main():
+    obj: Outer.Middle.Inner = Outer.Middle.Inner(99)
+    print(obj)

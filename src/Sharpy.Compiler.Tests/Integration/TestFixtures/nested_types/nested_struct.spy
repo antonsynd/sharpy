@@ -1,0 +1,16 @@
+class Geometry:
+    @public
+    struct Point:
+        x: float
+        y: float
+
+        def __init__(self, x: float, y: float):
+            self.x = x
+            self.y = y
+
+        def __str__(self) -> str:
+            return "(" + str(self.x) + ", " + str(self.y) + ")"
+
+def main():
+    p: Geometry.Point = Geometry.Point(3.0, 4.0)
+    print(p)

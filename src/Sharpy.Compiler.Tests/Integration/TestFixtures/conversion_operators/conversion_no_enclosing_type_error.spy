@@ -1,0 +1,7 @@
+class Converter:
+    @static
+    def __implicit__(val: int) -> str:
+        return str(val)
+
+def main():
+    pass

@@ -1,0 +1,14 @@
+class Animal:
+    @public
+    interface Speakable:
+        def speak(self) -> str:
+            ...
+
+    @public
+    class Dog(Animal.Speakable):
+        def speak(self) -> str:
+            return "Woof"
+
+def main():
+    dog: Animal.Dog = Animal.Dog()
+    print(dog.speak())

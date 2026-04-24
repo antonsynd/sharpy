@@ -1,0 +1,17 @@
+class LinkedList:
+    @public
+    class Node:
+        value: int
+
+        def __init__(self, value: int):
+            self.value = value
+
+        def __str__(self) -> str:
+            return "Node(" + str(self.value) + ")"
+
+def make_node(v: int) -> LinkedList.Node:
+    return LinkedList.Node(v)
+
+def main():
+    n: LinkedList.Node = make_node(42)
+    print(n)
