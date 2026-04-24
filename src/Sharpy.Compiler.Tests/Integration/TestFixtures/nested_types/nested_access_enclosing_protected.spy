@@ -1,0 +1,15 @@
+class Base:
+    _value: int
+
+    def __init__(self, val: int):
+        self._value = val
+
+    @public
+    class Helper:
+        def get_value(self, b: Base) -> int:
+            return b._value
+
+def main():
+    b: Base = Base(99)
+    h: Base.Helper = Base.Helper()
+    print(h.get_value(b))

@@ -32,7 +32,8 @@ internal class AccessValidator : ValidatingAstWalker
 
     public override void VisitClassDef(ClassDef node)
     {
-        var classSymbol = Context.SymbolTable.LookupType(node.Name);
+        var classSymbol = Context.SymbolTable.LookupType(node.Name)
+            ?? Context.Traversal.CurrentClass?.NestedTypes.FirstOrDefault(n => n.Name == node.Name);
         using (Context.Traversal.EnterClass(classSymbol))
         {
             base.VisitClassDef(node);
@@ -41,7 +42,8 @@ internal class AccessValidator : ValidatingAstWalker
 
     public override void VisitStructDef(StructDef node)
     {
-        var structSymbol = Context.SymbolTable.LookupType(node.Name);
+        var structSymbol = Context.SymbolTable.LookupType(node.Name)
+            ?? Context.Traversal.CurrentClass?.NestedTypes.FirstOrDefault(n => n.Name == node.Name);
         using (Context.Traversal.EnterClass(structSymbol))
         {
             base.VisitStructDef(node);
@@ -85,8 +87,8 @@ internal class AccessValidator : ValidatingAstWalker
         switch (accessLevel)
         {
             case AccessLevel.Private:
-                // Private members only accessible within the same class
-                if (Context.Traversal.CurrentClass != owningType)
+                if (Context.Traversal.CurrentClass != owningType &&
+                    !IsNestedWithin(Context.Traversal.CurrentClass, owningType))
                 {
                     AddError(
                         $"Cannot access private member '{memberName}' of '{owningType.Name}' from outside the class",
@@ -96,8 +98,9 @@ internal class AccessValidator : ValidatingAstWalker
                 break;
 
             case AccessLevel.Protected:
-                // Protected members accessible within the class hierarchy
-                if (Context.Traversal.CurrentClass == null || !IsInHierarchy(Context.Traversal.CurrentClass, owningType))
+                if (Context.Traversal.CurrentClass == null ||
+                    (!IsInHierarchy(Context.Traversal.CurrentClass, owningType) &&
+                     !IsNestedWithin(Context.Traversal.CurrentClass, owningType)))
                 {
                     AddError(
                         $"Cannot access protected member '{memberName}' of '{owningType.Name}' from outside the class hierarchy",
@@ -172,6 +175,18 @@ internal class AccessValidator : ValidatingAstWalker
                 return true;
         }
 
+        return false;
+    }
+
+    private static bool IsNestedWithin(TypeSymbol? currentClass, TypeSymbol owningType)
+    {
+        var declaring = currentClass?.DeclaringType;
+        while (declaring != null)
+        {
+            if (ReferenceEquals(declaring, owningType) || declaring.Name == owningType.Name)
+                return true;
+            declaring = declaring.DeclaringType;
+        }
         return false;
     }
 }

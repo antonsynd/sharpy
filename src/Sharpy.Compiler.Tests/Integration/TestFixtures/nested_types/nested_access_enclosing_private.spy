@@ -1,0 +1,15 @@
+class Outer:
+    __secret: int
+
+    def __init__(self, val: int):
+        self.__secret = val
+
+    @public
+    class Inner:
+        def reveal(self, outer: Outer) -> int:
+            return outer.__secret
+
+def main():
+    o: Outer = Outer(42)
+    i: Outer.Inner = Outer.Inner()
+    print(i.reveal(o))
