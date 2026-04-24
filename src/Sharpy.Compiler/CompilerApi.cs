@@ -188,12 +188,7 @@ public sealed class CompilerApi
         var opts = new CompilerOptions { OutputType = "library" };
         MergeDefaultReferences(opts);
         var compiler = new Compiler(opts, _logger);
-        var result = compiler.Analyze(source, "<source>", cancellationToken);
-
-        // Collect comment spans via a second lightweight lex pass with preserveTrivia.
-        // TODO(#596): This doubles lexer work per Analyze call. Consider threading
-        // preserveTrivia through the pipeline so the primary lex can emit trivia directly.
-        var commentSpans = CollectCommentSpans(source, cancellationToken);
+        var result = compiler.Analyze(source, "<source>", cancellationToken, preserveTrivia: true);
 
         return new SemanticResult
         {
@@ -202,51 +197,8 @@ public sealed class CompilerApi
             Ast = result.Module,
             SemanticInfo = result.SemanticInfo,
             SymbolTable = result.SymbolTable,
-            CommentSpans = commentSpans
+            CommentSpans = result.CommentSpans ?? Array.Empty<CommentSpan>()
         };
-    }
-
-    private IReadOnlyList<CommentSpan> CollectCommentSpans(string source, CancellationToken cancellationToken)
-    {
-        // Analyze is expected to return a (failed) result rather than throw when the
-        // caller cancels, so swallow cancellation here like the primary pipeline does.
-        if (cancellationToken.IsCancellationRequested)
-            return Array.Empty<CommentSpan>();
-        try
-        {
-            var lexer = new Lexer.Lexer(source, _logger, cancellationToken: cancellationToken, preserveTrivia: true);
-            var tokens = lexer.TokenizeAll();
-            var spans = new List<CommentSpan>();
-            var seen = new HashSet<(int, int)>();
-            foreach (var tok in tokens)
-            {
-                AppendTriviaSpans(tok.LeadingTrivia, spans, seen);
-                AppendTriviaSpans(tok.TrailingTrivia, spans, seen);
-            }
-            return spans;
-        }
-        catch
-        {
-            return Array.Empty<CommentSpan>();
-        }
-    }
-
-    private static void AppendTriviaSpans(
-        IReadOnlyList<Lexer.Trivia>? trivia,
-        List<CommentSpan> spans,
-        HashSet<(int, int)> seen)
-    {
-        if (trivia == null)
-            return;
-        foreach (var t in trivia)
-        {
-            if (t.Kind != Lexer.TriviaKind.Comment)
-                continue;
-            var key = (t.Line, t.Column);
-            if (!seen.Add(key))
-                continue;
-            spans.Add(new CommentSpan(t.Line, t.Column, t.Column + t.Text.Length));
-        }
     }
 
     /// <summary>

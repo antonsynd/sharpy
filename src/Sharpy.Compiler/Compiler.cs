@@ -117,8 +117,9 @@ public class Compiler
     /// Analyze Sharpy source code through phases 1–3 (Lexer → Parser → Semantic) without codegen.
     /// Returns the same <see cref="CompilationResult"/> shape but with no generated C#.
     /// </summary>
-    public CompilationResult Analyze(string sourceCode, string filePath, CancellationToken cancellationToken) =>
-        CompileInternal(sourceCode, filePath, cancellationToken, analyzeOnly: true);
+    public CompilationResult Analyze(string sourceCode, string filePath, CancellationToken cancellationToken,
+        bool preserveTrivia = false) =>
+        CompileInternal(sourceCode, filePath, cancellationToken, analyzeOnly: true, preserveTrivia: preserveTrivia);
 
     public CompilationResult Compile(string sourceCode, string filePath) =>
         Compile(sourceCode, filePath, CancellationToken.None);
@@ -127,7 +128,8 @@ public class Compiler
         CompileInternal(sourceCode, filePath, cancellationToken, analyzeOnly: false);
 
     private CompilationResult CompileInternal(
-        string sourceCode, string filePath, CancellationToken cancellationToken, bool analyzeOnly)
+        string sourceCode, string filePath, CancellationToken cancellationToken, bool analyzeOnly,
+        bool preserveTrivia = false)
     {
         _logger.LogInfo($"Starting {(analyzeOnly ? "analysis" : "compilation")} of {filePath}");
         var metrics = new CompilationMetrics(fileName: filePath);
@@ -142,9 +144,11 @@ public class Compiler
             LogPhaseStart("Lexical Analysis", filePath);
             var sourceText = new SourceText(sourceCode, filePath);
             result.SourceText = sourceText;
-            var lexResult = FileCompilationPipeline.Lex(sourceText, _logger, _options.MaxErrors, cancellationToken);
+            var lexResult = FileCompilationPipeline.Lex(sourceText, _logger, _options.MaxErrors, cancellationToken, preserveTrivia);
             result.Tokens = lexResult.Tokens;
             metrics.TokenCount = lexResult.Tokens.Count;
+            if (preserveTrivia)
+                result.CommentSpans = ExtractCommentSpans(lexResult.Tokens);
             LogPhaseEnd(filePath, lexResult.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
@@ -323,6 +327,36 @@ public class Compiler
 
     // ----- Helpers -----
 
+    private static IReadOnlyList<CommentSpan> ExtractCommentSpans(IReadOnlyList<Lexer.Token> tokens)
+    {
+        var spans = new List<CommentSpan>();
+        var seen = new HashSet<(int, int)>();
+        foreach (var tok in tokens)
+        {
+            AppendCommentSpans(tok.LeadingTrivia, spans, seen);
+            AppendCommentSpans(tok.TrailingTrivia, spans, seen);
+        }
+        return spans;
+
+        static void AppendCommentSpans(
+            IReadOnlyList<Lexer.Trivia>? trivia,
+            List<CommentSpan> spans,
+            HashSet<(int, int)> seen)
+        {
+            if (trivia == null)
+                return;
+            foreach (var t in trivia)
+            {
+                if (t.Kind != Lexer.TriviaKind.Comment)
+                    continue;
+                var key = (t.Line, t.Column);
+                if (!seen.Add(key))
+                    continue;
+                spans.Add(new CommentSpan(t.Line, t.Column, t.Column + t.Text.Length));
+            }
+        }
+    }
+
     private static CompilationResult MergeAndFail(
         DiagnosticBag target, DiagnosticBag source, CompilationMetrics metrics, CompilationResultBuilder result)
     {
@@ -435,6 +469,12 @@ public class CompilationResult
     /// Read-only query interface for import resolution information.
     /// </summary>
     public IImportQuery? Imports => ImportResolver != null ? new ImportQueryAdapter(ImportResolver) : null;
+
+    /// <summary>
+    /// Comment spans extracted from trivia when <c>preserveTrivia</c> is enabled.
+    /// Available for tooling that needs comment location data (e.g., LSP hover filtering).
+    /// </summary>
+    public IReadOnlyList<CommentSpan>? CommentSpans { get; init; }
 }
 
 /// <summary>

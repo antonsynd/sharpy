@@ -127,9 +127,9 @@ internal class FileCompilationPipeline
     /// </summary>
     public static LexResult Lex(
         SourceText sourceText, ICompilerLogger logger, int maxErrors = 0,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, bool preserveTrivia = false)
     {
-        var lexer = new Lexer.Lexer(sourceText, logger, cancellationToken: cancellationToken);
+        var lexer = new Lexer.Lexer(sourceText, logger, cancellationToken: cancellationToken, preserveTrivia: preserveTrivia);
         if (maxErrors > 0)
         {
             lexer.MaxErrors = maxErrors;

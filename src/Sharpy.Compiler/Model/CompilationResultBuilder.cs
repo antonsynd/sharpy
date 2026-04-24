@@ -28,6 +28,7 @@ internal class CompilationResultBuilder
     private Dictionary<string, string>? _generatedCSharpFiles;
     private SemanticBinding? _semanticBinding;
     private ImportResolver? _importResolver;
+    private IReadOnlyList<CommentSpan>? _commentSpans;
 
     public CompilationResultBuilder(DiagnosticBag diagnostics, CompilationMetrics metrics)
     {
@@ -41,6 +42,7 @@ internal class CompilationResultBuilder
     public Module? Module { set => _module = value; }
     public SemanticBinding? SemanticBinding { set => _semanticBinding = value; }
     public ImportResolver? ImportResolver { set => _importResolver = value; }
+    public IReadOnlyList<CommentSpan>? CommentSpans { set => _commentSpans = value; }
 
     // Fluent setters for properties only set on the success path
     public CompilationResultBuilder WithSuccess(bool success) { _success = success; return this; }
@@ -78,7 +80,8 @@ internal class CompilationResultBuilder
             GeneratedCSharpCode = _generatedCSharpCode,
             GeneratedCSharpFiles = _generatedCSharpFiles ?? new(),
             SemanticBinding = _semanticBinding,
-            ImportResolver = _importResolver
+            ImportResolver = _importResolver,
+            CommentSpans = _commentSpans
         };
     }
 }
