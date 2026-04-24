@@ -464,7 +464,12 @@ public static class DiagnosticCodes
 
         // Struct field ordering (SPY0435)
         public const string StructFieldOrdering = "SPY0435";        // Active
-        // SPY0436-SPY0449: Reserved for future validation errors
+        // Conversion operator validation (SPY0436-SPY0439)
+        public const string ConversionOperatorNotStatic = "SPY0436";       // Active
+        public const string ConversionOperatorParamCount = "SPY0437";      // Active
+        public const string ConversionOperatorNoEnclosingType = "SPY0438"; // Active
+        public const string ConversionOperatorDuplicate = "SPY0439";       // Active
+        // SPY0440-SPY0449: Reserved for future validation errors
 
         #endregion
 

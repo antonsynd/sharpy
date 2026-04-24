@@ -132,6 +132,11 @@ internal class SignatureValidator : SemanticValidatorBase
     private void ValidateOperatorSignature(FunctionDef funcDef, TypeSymbol owningType)
     {
         var methodName = funcDef.Name;
+
+        // Conversion operators are validated by ConversionOperatorValidator
+        if (OperatorRegistry.IsConversionOperator(methodName))
+            return;
+
         var paramCount = funcDef.Parameters.Length;
         var expectedParamCount = OperatorRegistry.GetExpectedParamCount(methodName);
 

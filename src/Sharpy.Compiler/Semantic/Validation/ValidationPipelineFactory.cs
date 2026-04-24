@@ -24,6 +24,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new StructRulesValidator())       // Order: 145 (struct-specific rules)
             .AddValidator(new EnumRulesValidator())         // Order: 147 (enum-specific rules)
             .AddValidator(new SignatureValidator())         // Order: 150 (early, validates dunder signatures)
+            .AddValidator(new ConversionOperatorValidator()) // Order: 152 (conversion operator rules)
             .AddValidator(new GeneratorValidator())         // Order: 155 (generator guard rails)
             .AddValidator(new EqualityContractValidator())  // Order: 160 (warns on __eq__ without object overload)
             .AddValidator(new InterfaceConflictValidator()) // Order: 170 (detects conflicting synthesized interfaces)

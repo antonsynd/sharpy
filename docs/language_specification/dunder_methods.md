@@ -181,6 +181,8 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 |--------|-----------|-------|
 | `__bool__(self) -> bool` | `public static bool operator true(T self)`, and `public static bool operator false(T self)` | The latter invokes the former and returns the negated value |
 | `__str__(self) -> str` | `public static explicit operator string(T self)` and `public override string ToString()` | The former invokes the latter. `@override` is optional (implicit override of `System.Object.ToString`). |
+| `@static __implicit__(val: S) -> T` | `public static implicit operator T(S val)` | Must be `@static`, exactly 1 param, one type must be enclosing |
+| `@static __explicit__(val: S) -> T` | `public static explicit operator T(S val)` | Must be `@static`, exactly 1 param, one type must be enclosing |
 
 ## Special Methods
 

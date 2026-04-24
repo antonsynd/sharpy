@@ -1,0 +1,22 @@
+class Meters:
+    value: float
+
+    def __init__(self, value: float):
+        self.value = value
+
+    @static
+    def __implicit__(val: float) -> Meters:
+        return Meters(val)
+
+    @static
+    def __explicit__(val: Meters) -> float:
+        return val.value
+
+    def __str__(self) -> str:
+        return str(self.value) + "m"
+
+def main():
+    m: Meters = Meters(5.0)
+    print(m)
+    raw: float = m to float
+    print(raw)

@@ -61,4 +61,8 @@ internal static class DunderNames
     public const string Aenter = "__aenter__";
     public const string Aexit = "__aexit__";
 
+    // ---- Conversion operators ----
+    public const string Implicit = "__implicit__";
+    public const string Explicit = "__explicit__";
+
 }

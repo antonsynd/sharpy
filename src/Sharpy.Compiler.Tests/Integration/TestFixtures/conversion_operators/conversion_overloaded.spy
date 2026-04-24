@@ -1,0 +1,22 @@
+class Wrapper:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    @static
+    def __implicit__(val: int) -> Wrapper:
+        return Wrapper(val)
+
+    @static
+    def __implicit__(val: str) -> Wrapper:
+        return Wrapper(len(val))
+
+    def __str__(self) -> str:
+        return "Wrapper(" + str(self.value) + ")"
+
+def main():
+    a: Wrapper = Wrapper(42)
+    print(a)
+    b: Wrapper = Wrapper(5)
+    print(b)

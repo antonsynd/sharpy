@@ -554,6 +554,13 @@ internal partial class TypeChecker
             }
         }
 
+        // Check for user-defined __explicit__ conversion operators
+        if (HasUserDefinedConversion(sourceType, targetType, DunderNames.Explicit)
+            || HasUserDefinedConversion(targetType, sourceType, DunderNames.Explicit))
+        {
+            return; // Valid — C# will invoke the user-defined explicit operator
+        }
+
         // Check for valid reference type casts (inheritance relationship or interface implementation)
         if (!CanPotentiallyCast(sourceType, targetType))
         {
@@ -638,6 +645,32 @@ internal partial class TypeChecker
         // Default: allow if types don't fit the checked categories (to be conservative)
         // This handles edge cases and allows the C# compiler to do final validation
         return true;
+    }
+
+    private bool HasUserDefinedConversion(SemanticType sourceType, SemanticType targetType, string dunderName)
+    {
+        var typeSymbol = sourceType switch
+        {
+            UserDefinedType udt => udt.Symbol,
+            _ => null
+        };
+
+        if (typeSymbol == null)
+            return false;
+
+        foreach (var method in typeSymbol.Methods)
+        {
+            if (method.Name != dunderName || !method.IsStatic)
+                continue;
+
+            if (method.Parameters.Count == 1 && method.ReturnType != null)
+            {
+                if (method.ReturnType.Equals(targetType))
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

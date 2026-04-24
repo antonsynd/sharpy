@@ -1,0 +1,16 @@
+class Celsius:
+    value: float
+
+    def __init__(self, value: float):
+        self.value = value
+
+    @static
+    def __implicit__(val: float) -> Celsius:
+        return Celsius(val)
+
+    def __str__(self) -> str:
+        return str(self.value) + "C"
+
+def main():
+    temp: Celsius = Celsius(36.6)
+    print(temp)

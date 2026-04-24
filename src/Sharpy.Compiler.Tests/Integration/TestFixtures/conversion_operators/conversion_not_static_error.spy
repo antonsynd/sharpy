@@ -1,0 +1,11 @@
+class Bad:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def __implicit__(self, val: int) -> Bad:
+        return Bad(val)
+
+def main():
+    pass

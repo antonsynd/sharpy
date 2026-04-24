@@ -1,8 +1,83 @@
 # Conversion Operators
 
-> **Implementation status:** Deferred post-v0.2.x — spec not finalized. `@implicit` and `@explicit` decorators are not yet recognized.
+> **Implementation status:** ✅ Implemented
 
-Sharpy currently doesn't support user-provided implicit or explicit conversion operators. They are planned for a future version. .NET numeric types and all (.NET, Sharpy, or user-provided) polymorphic types have the same conversion semantics as they would in C#/.NET.
+User-defined implicit and explicit type conversions via `__implicit__` and `__explicit__` dunder methods, mapping directly to C# conversion operators.
+
+## Syntax
+
+```python
+class Celsius:
+    value: float
+
+    def __init__(self, value: float):
+        self.value = value
+
+    @static
+    def __implicit__(val: float) -> Celsius:
+        return Celsius(val)
+
+    @static
+    def __explicit__(val: Celsius) -> float:
+        return val.value
+```
+
+## Rules
+
+- Must be `@static` (no `self` parameter)
+- Exactly one parameter (the source type)
+- Return type must be specified (not inferred)
+- At least one of {parameter type, return type} must be the enclosing type
+- Cannot define both `__implicit__` and `__explicit__` for the same source→target pair
+- Multiple `__implicit__` (or `__explicit__`) methods with different source types are allowed (overloading)
+
+## Implicit Conversions (`__implicit__`)
+
+Implicit conversions are applied automatically by the C# runtime when assigning a value of the source type to a variable of the target type.
+
+```python
+@static
+def __implicit__(val: float) -> Celsius:
+    return Celsius(val)
+```
+
+Emits: `public static implicit operator Celsius(double val) { ... }`
+
+## Explicit Conversions (`__explicit__`)
+
+Explicit conversions require the `to` operator:
+
+```python
+temp: Celsius = Celsius(100.0)
+raw: float = temp to float  # invokes __explicit__
+```
+
+Emits: `public static explicit operator double(Celsius val) { ... }`
+
+## Diagnostics
+
+| Code | Message |
+|------|---------|
+| SPY0436 | Conversion operator must be @static |
+| SPY0437 | Conversion operator must have exactly 1 parameter |
+| SPY0438 | At least one type must be the enclosing type |
+| SPY0439 | Cannot define both implicit and explicit for the same type pair |
+
+## C# Emission
+
+```csharp
+// __implicit__(val: float) -> Celsius
+public static implicit operator Celsius(double val)
+{
+    return new Celsius(val);
+}
+
+// __explicit__(val: Celsius) -> float
+public static explicit operator double(Celsius val)
+{
+    return val.Value;
+}
+```
 
 ## See Also
 

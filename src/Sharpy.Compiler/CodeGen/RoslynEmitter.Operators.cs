@@ -82,6 +82,10 @@ internal partial class RoslynEmitter
             DunderNames.Pos => GenerateUnaryOperator(funcDef, className, SyntaxKind.PlusToken),
             DunderNames.Invert => GenerateUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
 
+            // Conversion operators
+            DunderNames.Implicit => GenerateConversionOperator(funcDef, className, isImplicit: true),
+            DunderNames.Explicit => GenerateConversionOperator(funcDef, className, isImplicit: false),
+
             // __bool__ is handled in GenerateClassMembers (IsTrue property + operators)
             DunderNames.Bool => null,
 
@@ -128,6 +132,10 @@ internal partial class RoslynEmitter
             DunderNames.Neg => GenerateInlinedUnaryOperator(funcDef, className, SyntaxKind.MinusToken),
             DunderNames.Pos => GenerateInlinedUnaryOperator(funcDef, className, SyntaxKind.PlusToken),
             DunderNames.Invert => GenerateInlinedUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
+
+            // Conversion operators (always inlined — they're static with no instance method)
+            DunderNames.Implicit => GenerateInlinedConversionOperator(funcDef, className, isImplicit: true),
+            DunderNames.Explicit => GenerateInlinedConversionOperator(funcDef, className, isImplicit: false),
 
             _ => null
         };
@@ -618,6 +626,64 @@ internal partial class RoslynEmitter
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SingletonSeparatedList(param)))
             .WithBody(body);
+    }
+
+    private ConversionOperatorDeclarationSyntax GenerateConversionOperator(
+        FunctionDef funcDef, string className, bool isImplicit)
+    {
+        var sourceParam = funcDef.Parameters[0];
+        var paramType = sourceParam.Type != null
+            ? _typeMapper.MapType(sourceParam.Type)
+            : IdentifierName(className);
+
+        var returnType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : IdentifierName(className);
+
+        var keyword = isImplicit
+            ? Token(SyntaxKind.ImplicitKeyword)
+            : Token(SyntaxKind.ExplicitKeyword);
+
+        var paramName = NameMangler.ToCamelCase(sourceParam.Name);
+        var param = Parameter(Identifier(paramName)).WithType(paramType);
+
+        var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
+
+        return ConversionOperatorDeclaration(keyword, returnType)
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SingletonSeparatedList(param)))
+            .WithBody(body);
+    }
+
+    private List<MemberDeclarationSyntax>? GenerateInlinedConversionOperator(
+        FunctionDef funcDef, string className, bool isImplicit)
+    {
+        var sourceParam = funcDef.Parameters[0];
+        var paramType = sourceParam.Type != null
+            ? _typeMapper.MapType(sourceParam.Type)
+            : IdentifierName(className);
+
+        var returnType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : IdentifierName(className);
+
+        var keyword = isImplicit
+            ? Token(SyntaxKind.ImplicitKeyword)
+            : Token(SyntaxKind.ExplicitKeyword);
+
+        var paramName = NameMangler.ToCamelCase(sourceParam.Name);
+        var param = Parameter(Identifier(paramName)).WithType(paramType);
+
+        _variableVersions[paramName] = 0;
+        var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
+        _variableVersions.Remove(paramName);
+
+        var conversionOp = ConversionOperatorDeclaration(keyword, returnType)
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SingletonSeparatedList(param)))
+            .WithBody(body);
+
+        return new List<MemberDeclarationSyntax> { conversionOp };
     }
 
     /// <summary>

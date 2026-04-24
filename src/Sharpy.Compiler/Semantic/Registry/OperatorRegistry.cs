@@ -10,7 +10,8 @@ public enum OperatorKind
     BinaryArithmetic,  // __add__, __sub__, __mul__, etc.
     BinaryBitwise,     // __and__, __or__, __xor__, etc.
     Comparison,        // __eq__, __ne__, __lt__, etc.
-    Unary              // __pos__, __neg__, __invert__
+    Unary,             // __pos__, __neg__, __invert__
+    Conversion         // __implicit__, __explicit__
 }
 
 /// <summary>
@@ -39,6 +40,11 @@ public static class OperatorRegistry
         DunderNames.Pos, DunderNames.Neg, DunderNames.Invert
     }.ToImmutableHashSet();
 
+    private static readonly ImmutableHashSet<string> ConversionOps = new[]
+    {
+        DunderNames.Implicit, DunderNames.Explicit
+    }.ToImmutableHashSet();
+
     private static readonly ImmutableDictionary<string, OperatorKind> AllOperatorDunders;
 
     static OperatorRegistry()
@@ -52,6 +58,8 @@ public static class OperatorRegistry
             dict[op] = OperatorKind.Comparison;
         foreach (var op in UnaryOps)
             dict[op] = OperatorKind.Unary;
+        foreach (var op in ConversionOps)
+            dict[op] = OperatorKind.Conversion;
         AllOperatorDunders = dict.ToImmutableDictionary();
     }
 
@@ -91,9 +99,16 @@ public static class OperatorRegistry
             OperatorKind.Unary => 1,
             OperatorKind.BinaryArithmetic or OperatorKind.BinaryBitwise
                 or OperatorKind.Comparison => 2,
+            OperatorKind.Conversion => 1,
             _ => null
         };
     }
+
+    /// <summary>
+    /// Checks if the operator is a conversion operator (__implicit__/__explicit__).
+    /// </summary>
+    public static bool IsConversionOperator(string methodName)
+        => ConversionOps.Contains(methodName);
 
     /// <summary>
     /// Returns all registered operator dunder names.
