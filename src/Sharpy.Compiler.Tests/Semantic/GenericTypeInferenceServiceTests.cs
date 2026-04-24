@@ -904,4 +904,371 @@ public class GenericTypeInferenceServiceTests
     }
 
     #endregion
+
+    #region UnifyTypes
+
+    [Fact]
+    public void UnifyTypes_SingleParam_FunctionType_InfersTFromParameter()
+    {
+        // Formal: (T) -> bool, Actual: (int) -> bool → T=int
+        var formals = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+                ReturnType = SemanticType.Bool
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Int },
+                ReturnType = SemanticType.Bool
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void UnifyTypes_TwoParams_FunctionType_InfersTAndU()
+    {
+        // Formal: (T) -> U, Actual: (str) -> int → T=str, U=int
+        var formals = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+                ReturnType = new TypeParameterType { Name = "U" }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Str },
+                ReturnType = SemanticType.Int
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().HaveCount(2);
+        result!["T"].Should().Be(SemanticType.Str);
+        result["U"].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void UnifyTypes_EmptyLists_ReturnsEmptyDict()
+    {
+        // No params to unify → empty dict, not null
+        var formals = new List<SemanticType>();
+        var actuals = new List<SemanticType>();
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UnifyTypes_NestedGenericType_InfersT()
+    {
+        // Formal: list[T], Actual: list[int] → T=int
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { SemanticType.Int }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void UnifyTypes_MismatchedArity_UnifiesWhatItCan()
+    {
+        // 2 formals vs 1 actual → should still unify the first pair
+        var formals = new List<SemanticType>
+        {
+            new TypeParameterType { Name = "T" },
+            new TypeParameterType { Name = "U" }
+        };
+        var actuals = new List<SemanticType>
+        {
+            SemanticType.Int
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(SemanticType.Int);
+        result.Should().NotContainKey("U");
+    }
+
+    [Fact]
+    public void UnifyTypes_ResultTypeWithFunctionParams_InfersTAndE()
+    {
+        // Formal: Result[T, E] + (T) -> U
+        // Actual: Result[int, str] + (int) -> bool
+        // → T=int, E=str, U=bool
+        var formals = new List<SemanticType>
+        {
+            new ResultType
+            {
+                OkType = new TypeParameterType { Name = "T" },
+                ErrorType = new TypeParameterType { Name = "E" }
+            },
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+                ReturnType = new TypeParameterType { Name = "U" }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new ResultType
+            {
+                OkType = SemanticType.Int,
+                ErrorType = SemanticType.Str
+            },
+            new FunctionType
+            {
+                ParameterTypes = new List<SemanticType> { SemanticType.Int },
+                ReturnType = SemanticType.Bool
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().HaveCount(3);
+        result!["T"].Should().Be(SemanticType.Int);
+        result["E"].Should().Be(SemanticType.Str);
+        result["U"].Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void UnifyTypes_ConflictingBindings_ReturnsNull()
+    {
+        // Formal: T, T
+        // Actual: int, str
+        // → T=int conflicts with T=str → null
+        var formals = new List<SemanticType>
+        {
+            new TypeParameterType { Name = "T" },
+            new TypeParameterType { Name = "T" }
+        };
+        var actuals = new List<SemanticType>
+        {
+            SemanticType.Int,
+            SemanticType.Str
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void UnifyTypes_ConcreteTypesOnly_ReturnsEmptyDict()
+    {
+        // Formal: int, str (no type params) → empty dict
+        var formals = new List<SemanticType>
+        {
+            SemanticType.Int,
+            SemanticType.Str
+        };
+        var actuals = new List<SemanticType>
+        {
+            SemanticType.Int,
+            SemanticType.Str
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UnifyTypes_DictWithTypeParams_InfersKAndV()
+    {
+        // Formal: dict[K, V], Actual: dict[str, int] → K=str, V=int
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "dict",
+                TypeArguments = new List<SemanticType>
+                {
+                    new TypeParameterType { Name = "K" },
+                    new TypeParameterType { Name = "V" }
+                }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "dict",
+                TypeArguments = new List<SemanticType>
+                {
+                    SemanticType.Str,
+                    SemanticType.Int
+                }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().HaveCount(2);
+        result!["K"].Should().Be(SemanticType.Str);
+        result["V"].Should().Be(SemanticType.Int);
+    }
+
+    #endregion
+
+    #region SubstituteTypeParameters
+
+    [Fact]
+    public void SubstituteTypeParameters_FunctionType_ReplacesTypeParam()
+    {
+        // (T) -> bool with T=int → (int) -> bool
+        var funcType = new FunctionType
+        {
+            ParameterTypes = new List<SemanticType> { new TypeParameterType { Name = "T" } },
+            ReturnType = SemanticType.Bool
+        };
+        var substitutions = new Dictionary<string, SemanticType>
+        {
+            ["T"] = SemanticType.Int
+        };
+
+        var result = GenericTypeInferenceService.SubstituteTypeParameters(funcType, substitutions);
+
+        var ft = result.Should().BeOfType<FunctionType>().Subject;
+        ft.ParameterTypes.Should().HaveCount(1);
+        ft.ParameterTypes[0].Should().Be(SemanticType.Int);
+        ft.ReturnType.Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void SubstituteTypeParameters_FunctionType_ReplacesMultipleParams()
+    {
+        // (T, U) -> T with T=int, U=str → (int, str) -> int
+        var funcType = new FunctionType
+        {
+            ParameterTypes = new List<SemanticType>
+            {
+                new TypeParameterType { Name = "T" },
+                new TypeParameterType { Name = "U" }
+            },
+            ReturnType = new TypeParameterType { Name = "T" }
+        };
+        var substitutions = new Dictionary<string, SemanticType>
+        {
+            ["T"] = SemanticType.Int,
+            ["U"] = SemanticType.Str
+        };
+
+        var result = GenericTypeInferenceService.SubstituteTypeParameters(funcType, substitutions);
+
+        var ft = result.Should().BeOfType<FunctionType>().Subject;
+        ft.ParameterTypes.Should().HaveCount(2);
+        ft.ParameterTypes[0].Should().Be(SemanticType.Int);
+        ft.ParameterTypes[1].Should().Be(SemanticType.Str);
+        ft.ReturnType.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void SubstituteTypeParameters_NestedGenericInFunction_ReplacesRecursively()
+    {
+        // (list[T]) -> dict[T, U] with T=int, U=str → (list[int]) -> dict[int, str]
+        var funcType = new FunctionType
+        {
+            ParameterTypes = new List<SemanticType>
+            {
+                new GenericType
+                {
+                    Name = "list",
+                    TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+                }
+            },
+            ReturnType = new GenericType
+            {
+                Name = "dict",
+                TypeArguments = new List<SemanticType>
+                {
+                    new TypeParameterType { Name = "T" },
+                    new TypeParameterType { Name = "U" }
+                }
+            }
+        };
+        var substitutions = new Dictionary<string, SemanticType>
+        {
+            ["T"] = SemanticType.Int,
+            ["U"] = SemanticType.Str
+        };
+
+        var result = GenericTypeInferenceService.SubstituteTypeParameters(funcType, substitutions);
+
+        var ft = result.Should().BeOfType<FunctionType>().Subject;
+
+        // Check parameter: list[int]
+        var paramType = ft.ParameterTypes[0].Should().BeOfType<GenericType>().Subject;
+        paramType.Name.Should().Be("list");
+        paramType.TypeArguments[0].Should().Be(SemanticType.Int);
+
+        // Check return: dict[int, str]
+        var retType = ft.ReturnType.Should().BeOfType<GenericType>().Subject;
+        retType.Name.Should().Be("dict");
+        retType.TypeArguments[0].Should().Be(SemanticType.Int);
+        retType.TypeArguments[1].Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void SubstituteTypeParameters_NoMatchingParams_ReturnsUnchanged()
+    {
+        // (int) -> bool with T=str → no change
+        var funcType = new FunctionType
+        {
+            ParameterTypes = new List<SemanticType> { SemanticType.Int },
+            ReturnType = SemanticType.Bool
+        };
+        var substitutions = new Dictionary<string, SemanticType>
+        {
+            ["T"] = SemanticType.Str
+        };
+
+        var result = GenericTypeInferenceService.SubstituteTypeParameters(funcType, substitutions);
+
+        var ft = result.Should().BeOfType<FunctionType>().Subject;
+        ft.ParameterTypes[0].Should().Be(SemanticType.Int);
+        ft.ReturnType.Should().Be(SemanticType.Bool);
+    }
+
+    #endregion
 }

@@ -1,0 +1,21 @@
+# Test: generic function with lambda parameter type inference
+# Verifies that UnifyTypes correctly infers T from a lambda's parameter type
+
+def apply[T](f: (T) -> str, value: T) -> str:
+    return f(value)
+
+def transform[T, U](f: (T) -> U, value: T) -> U:
+    return f(value)
+
+def main():
+    # T inferred as int from both lambda and value argument
+    result1: str = apply(lambda x: str(x * 2), 21)
+    print(result1)
+
+    # T=int, U=str inferred from lambda (int) -> str and value int
+    result2: str = transform(lambda x: str(x), 42)
+    print(result2)
+
+    # T=str inferred, U=bool from lambda return
+    result3: bool = transform(lambda s: s == "hello", "hello")
+    print(result3)
