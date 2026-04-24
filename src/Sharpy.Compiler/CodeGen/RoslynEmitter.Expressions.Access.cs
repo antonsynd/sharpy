@@ -258,28 +258,18 @@ internal partial class RoslynEmitter
             }
 
             // Check for nested type construction: Outer.Inner(42) → new Outer.Inner(42)
-            if (memberAccess.Object is Identifier outerTypeId)
+            // Also handles multi-level: Outer.Middle.Inner(42)
             {
-                var outerSym = _context.LookupSymbol(outerTypeId.Name);
-                if (outerSym is TypeSymbol outerTypeSym)
+                var nestedSym = ResolveNestedTypeFromAccess(memberAccess);
+                if (nestedSym != null && (nestedSym.TypeKind == Semantic.TypeKind.Class ||
+                                          nestedSym.TypeKind == Semantic.TypeKind.Struct))
                 {
-                    var nestedSym = outerTypeSym.NestedTypes.FirstOrDefault(
-                        n => n.Name == memberAccess.Member);
-                    if (nestedSym != null && (nestedSym.TypeKind == Semantic.TypeKind.Class ||
-                                              nestedSym.TypeKind == Semantic.TypeKind.Struct))
-                    {
-                        var outerCSharpName = NameMangler.Transform(outerTypeId.Name, NameContext.Type);
-                        var nestedCSharpName = NameMangler.Transform(memberAccess.Member, NameContext.Type);
-                        var qualifiedName = QualifiedName(
-                            IdentifierName(outerCSharpName),
-                            IdentifierName(nestedCSharpName));
+                    var qualifiedName = BuildNestedTypeName(nestedSym);
+                    var nestedCallTarget = ResolveConstructorForCall(nestedSym, call);
+                    var nestedAllArgs = GenerateReorderedCallArguments(call, nestedCallTarget);
 
-                        var nestedCallTarget = ResolveConstructorForCall(nestedSym, call);
-                        var nestedAllArgs = GenerateReorderedCallArguments(call, nestedCallTarget);
-
-                        return ObjectCreationExpression(qualifiedName)
-                            .WithArgumentList(ArgumentList(SeparatedList(nestedAllArgs)));
-                    }
+                    return ObjectCreationExpression(qualifiedName)
+                        .WithArgumentList(ArgumentList(SeparatedList(nestedAllArgs)));
                 }
             }
 
@@ -1195,5 +1185,49 @@ internal partial class RoslynEmitter
                 Argument(start),
                 Argument(stop),
                 Argument(step));
+    }
+
+    private TypeSymbol? ResolveNestedTypeFromAccess(MemberAccess memberAccess)
+    {
+        if (memberAccess.Object is Identifier outerTypeId)
+        {
+            var outerSym = _context.LookupSymbol(outerTypeId.Name);
+            if (outerSym is TypeSymbol outerTypeSym)
+            {
+                return outerTypeSym.NestedTypes.FirstOrDefault(
+                    n => n.Name == memberAccess.Member);
+            }
+        }
+
+        if (memberAccess.Object is MemberAccess innerAccess)
+        {
+            var parentSym = ResolveNestedTypeFromAccess(innerAccess);
+            if (parentSym != null)
+            {
+                return parentSym.NestedTypes.FirstOrDefault(
+                    n => n.Name == memberAccess.Member);
+            }
+        }
+
+        return null;
+    }
+
+    private NameSyntax BuildNestedTypeName(TypeSymbol nestedSym)
+    {
+        var parts = new List<string>();
+        var current = nestedSym;
+        while (current != null)
+        {
+            parts.Add(NameMangler.Transform(current.Name, NameContext.Type));
+            current = current.DeclaringType;
+        }
+        parts.Reverse();
+
+        NameSyntax result = IdentifierName(parts[0]);
+        for (int i = 1; i < parts.Count; i++)
+        {
+            result = QualifiedName(result, IdentifierName(parts[i]));
+        }
+        return result;
     }
 }

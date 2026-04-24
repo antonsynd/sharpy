@@ -210,6 +210,7 @@ internal partial class RoslynEmitter
                     break;
 
                 case EnumDef nestedEnum:
+                    // EnumDef lacks Decorators — keep public until parser supports access decorators on enums (#592)
                     var nestedEnumNode = GenerateEnumDeclaration(nestedEnum);
                     if (nestedEnumNode is MemberDeclarationSyntax nestedEnumMember)
                         members.Add(nestedEnumMember);
@@ -502,15 +503,16 @@ internal partial class RoslynEmitter
             d.Name == DecoratorNames.Internal);
     }
 
+    private static readonly SyntaxKind[] s_accessKinds =
+    {
+        SyntaxKind.PublicKeyword,
+        SyntaxKind.ProtectedKeyword,
+        SyntaxKind.PrivateKeyword,
+        SyntaxKind.InternalKeyword
+    };
+
     private static T ReplaceAccessModifier<T>(T declaration, SyntaxKind newAccess) where T : MemberDeclarationSyntax
     {
-        var accessKinds = new[]
-        {
-            SyntaxKind.PublicKeyword,
-            SyntaxKind.ProtectedKeyword,
-            SyntaxKind.PrivateKeyword,
-            SyntaxKind.InternalKeyword
-        };
 
         var modifiers = declaration.Modifiers;
         var newModifiers = new SyntaxTokenList();
@@ -518,7 +520,7 @@ internal partial class RoslynEmitter
 
         foreach (var modifier in modifiers)
         {
-            if (accessKinds.Contains(modifier.Kind()))
+            if (s_accessKinds.Contains(modifier.Kind()))
             {
                 if (!replaced)
                 {

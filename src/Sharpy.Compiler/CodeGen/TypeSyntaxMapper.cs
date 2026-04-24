@@ -624,12 +624,18 @@ internal class TypeSyntaxMapper
             }
         }
 
-        // Handle nested types — emit qualified name Outer.Inner
+        // Handle nested types — emit qualified name (e.g., Outer.Middle.Inner)
         if (udt.Symbol?.DeclaringType != null)
         {
-            var outerName = NameMangler.ToPascalCase(udt.Symbol.DeclaringType.Name);
-            var innerName = NameMangler.ToPascalCase(udt.Symbol.Name);
-            return $"{outerName}.{innerName}";
+            var parts = new List<string>();
+            var current = udt.Symbol;
+            while (current != null)
+            {
+                parts.Add(NameMangler.ToPascalCase(current.Name));
+                current = current.DeclaringType;
+            }
+            parts.Reverse();
+            return string.Join(".", parts);
         }
 
         // Fall back to name-based lookup

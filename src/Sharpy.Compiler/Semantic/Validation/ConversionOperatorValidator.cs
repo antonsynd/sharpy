@@ -1,5 +1,4 @@
 using Sharpy.Compiler.Diagnostics;
-using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
@@ -10,14 +9,6 @@ internal class ConversionOperatorValidator : ValidatingAstWalker
 {
     public override string Name => "ConversionOperatorValidator";
     public override int Order => 152;
-
-    private ICompilerLogger _logger = NullLogger.Instance;
-
-    public override void Validate(Module module, SemanticContext context)
-    {
-        _logger = context.Logger;
-        base.Validate(module, context);
-    }
 
     public override void VisitClassDef(ClassDef node)
     {
@@ -33,7 +24,7 @@ internal class ConversionOperatorValidator : ValidatingAstWalker
 
     private void ValidateConversionOperators(string typeName, IReadOnlyList<Statement> body)
     {
-        var seen = new Dictionary<string, List<(string paramType, string returnType)>>();
+        var conversionPairs = new Dictionary<(string paramType, string returnType), string>();
 
         foreach (var member in body)
         {
@@ -48,15 +39,12 @@ internal class ConversionOperatorValidator : ValidatingAstWalker
 
             if (!isStatic)
             {
-                if (funcDef.Parameters.Length > 0 && funcDef.Parameters[0].Name == "self")
-                {
-                    AddError(
-                        $"Conversion operator '{funcDef.Name}' on '{typeName}' must be @static (no 'self' parameter)",
-                        funcDef.LineStart, funcDef.ColumnStart,
-                        code: DiagnosticCodes.Validation.ConversionOperatorNotStatic,
-                        span: funcDef.Span);
-                    continue;
-                }
+                AddError(
+                    $"Conversion operator '{funcDef.Name}' on '{typeName}' must be @static",
+                    funcDef.LineStart, funcDef.ColumnStart,
+                    code: DiagnosticCodes.Validation.ConversionOperatorNotStatic,
+                    span: funcDef.Span);
+                continue;
             }
 
             var paramCount = funcDef.Parameters.Length;
@@ -70,10 +58,10 @@ internal class ConversionOperatorValidator : ValidatingAstWalker
                 continue;
             }
 
-            var paramTypeName = funcDef.Parameters[0].Type?.Name;
-            var returnTypeName = funcDef.ReturnType?.Name;
+            var paramTypeName = funcDef.Parameters[0].Type?.Name ?? "?";
+            var returnTypeName = funcDef.ReturnType?.Name ?? "?";
 
-            if (paramTypeName != null && returnTypeName != null &&
+            if (paramTypeName != "?" && returnTypeName != "?" &&
                 paramTypeName != typeName && returnTypeName != typeName)
             {
                 AddError(
@@ -83,43 +71,7 @@ internal class ConversionOperatorValidator : ValidatingAstWalker
                     span: funcDef.Span);
             }
 
-            var pairKey = $"{paramTypeName ?? "?"}→{returnTypeName ?? "?"}";
-            if (!seen.TryGetValue(pairKey, out var existing))
-            {
-                existing = new List<(string, string)>();
-                seen[pairKey] = existing;
-            }
-
-            var otherKind = funcDef.Name == DunderNames.Implicit ? DunderNames.Explicit : DunderNames.Implicit;
-            foreach (var (_, _) in existing.Where(_ => true))
-            {
-            }
-
-            existing.Add((funcDef.Name, pairKey));
-        }
-
-        ValidateNoDuplicateConversions(typeName, body);
-    }
-
-    private void ValidateNoDuplicateConversions(string typeName, IReadOnlyList<Statement> body)
-    {
-        var conversionPairs = new Dictionary<string, string>();
-
-        foreach (var member in body)
-        {
-            if (member is not FunctionDef funcDef)
-                continue;
-
-            if (!OperatorRegistry.IsConversionOperator(funcDef.Name))
-                continue;
-
-            if (funcDef.Parameters.Length != 1)
-                continue;
-
-            var paramTypeName = funcDef.Parameters[0].Type?.Name ?? "?";
-            var returnTypeName = funcDef.ReturnType?.Name ?? "?";
-            var pairKey = $"{paramTypeName}→{returnTypeName}";
-
+            var pairKey = (paramTypeName, returnTypeName);
             if (conversionPairs.TryGetValue(pairKey, out var existingKind))
             {
                 if (existingKind != funcDef.Name)
