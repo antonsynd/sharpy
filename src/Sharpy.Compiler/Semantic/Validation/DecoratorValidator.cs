@@ -110,6 +110,13 @@ internal class DecoratorValidator : ValidatingAstWalker
         _containingType = previousType;
     }
 
+    public override void VisitEnumDef(EnumDef node)
+    {
+        ValidateDecorators(node.Decorators, node.Name);
+        ValidateDataclassOnNonClass(node.Decorators, node.Name, "enum");
+        base.VisitEnumDef(node);
+    }
+
     public override void VisitPropertyDef(PropertyDef node)
     {
         var definitionName = _containingType != null

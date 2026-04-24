@@ -1,1 +1,1 @@
-Decorators can only be applied to functions, classes, structs, interfaces, properties, events, or field declarations
+The '@dataclass' decorator can only be applied to classes, not to enum 'Color'.
