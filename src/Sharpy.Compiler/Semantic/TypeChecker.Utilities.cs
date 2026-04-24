@@ -437,53 +437,6 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Collects mappings from TypeParameterType names to concrete types by structurally
-    /// comparing a parameter type (with TypeParameterType placeholders) against an argument type
-    /// (with concrete types). Used for method-level generic type parameter inference.
-    /// </summary>
-    private static void CollectTypeParameterMappings(
-        SemanticType paramType, SemanticType argType, Dictionary<string, SemanticType> map)
-    {
-        switch (paramType)
-        {
-            case TypeParameterType tpt:
-                if (argType is not TypeParameterType and not UnknownType)
-                    map[tpt.Name] = argType;
-                break;
-            case FunctionType paramFt when argType is FunctionType argFt:
-                var minParams = Math.Min(paramFt.ParameterTypes.Count, argFt.ParameterTypes.Count);
-                for (int i = 0; i < minParams; i++)
-                    CollectTypeParameterMappings(paramFt.ParameterTypes[i], argFt.ParameterTypes[i], map);
-                CollectTypeParameterMappings(paramFt.ReturnType, argFt.ReturnType, map);
-                break;
-            case GenericType paramGt when argType is GenericType argGt && paramGt.TypeArguments.Count == argGt.TypeArguments.Count:
-                for (int i = 0; i < paramGt.TypeArguments.Count; i++)
-                    CollectTypeParameterMappings(paramGt.TypeArguments[i], argGt.TypeArguments[i], map);
-                break;
-            case ResultType paramRt when argType is ResultType argRt:
-                CollectTypeParameterMappings(paramRt.OkType, argRt.OkType, map);
-                CollectTypeParameterMappings(paramRt.ErrorType, argRt.ErrorType, map);
-                break;
-            case OptionalType paramOt when argType is OptionalType argOt:
-                CollectTypeParameterMappings(paramOt.UnderlyingType, argOt.UnderlyingType, map);
-                break;
-            case TupleType paramTt when argType is TupleType argTt && paramTt.ElementTypes.Count == argTt.ElementTypes.Count:
-                for (int i = 0; i < paramTt.ElementTypes.Count; i++)
-                    CollectTypeParameterMappings(paramTt.ElementTypes[i], argTt.ElementTypes[i], map);
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Applies a type parameter substitution map to a type.
-    /// </summary>
-    private static SemanticType ApplyTypeParameterMap(
-        SemanticType type, Dictionary<string, SemanticType> map)
-    {
-        return TypeSubstitution.Apply(type, map);
-    }
-
-    /// <summary>
     /// Checks if an expression is a valid assignment target.
     /// Valid targets: Identifier, MemberAccess (attribute), IndexAccess, TupleLiteral (for unpacking)
     /// Invalid targets: FunctionCall, Literal, BinaryExpression, etc.
