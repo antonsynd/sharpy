@@ -22,13 +22,13 @@ internal sealed class SharpyLinkedEditingRangeHandler : LinkedEditingRangeHandle
         CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var parseResult = await _languageService.GetParseResultAsync(uri, ct).ConfigureAwait(false);
 
-        if (analysis?.Ast == null)
+        if (parseResult?.Ast == null)
             return null!;
 
         var (line, col) = PositionConverter.ToCompiler(request.Position);
-        var nodes = PositionService.FindAllContainingNodes(analysis.Ast, line, col);
+        var nodes = PositionService.FindAllContainingNodes(parseResult.Ast, line, col);
 
         if (nodes.Count == 0)
             return null!;

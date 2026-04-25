@@ -21,9 +21,9 @@ internal sealed class SharpySelectionRangeHandler : SelectionRangeHandlerBase
         CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        var parseResult = await _languageService.GetParseResultAsync(uri, ct).ConfigureAwait(false);
 
-        if (analysis?.Ast == null)
+        if (parseResult?.Ast == null)
             return null;
 
         var results = new List<SelectionRange>();
@@ -31,7 +31,7 @@ internal sealed class SharpySelectionRangeHandler : SelectionRangeHandlerBase
         foreach (var position in request.Positions)
         {
             var (line, col) = PositionConverter.ToCompiler(position);
-            var nodes = PositionService.FindAllContainingNodes(analysis.Ast, line, col);
+            var nodes = PositionService.FindAllContainingNodes(parseResult.Ast, line, col);
 
             if (nodes.Count == 0)
             {

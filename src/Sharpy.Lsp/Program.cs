@@ -127,7 +127,6 @@ public class Program
                 .WithHandler<SharpySemanticTokensHandler>()
                 .WithHandler<SharpyCodeActionHandler>()
                 .WithHandler<SharpyFormattingHandler>()
-                .WithHandler<SharpyRangeFormattingHandler>()
                 .WithHandler<SharpyFoldingRangeHandler>()
                 .WithHandler<FileWatcherHandler>()
                 // Phase 4 handlers
@@ -144,6 +143,7 @@ public class Program
                 .WithHandler<SharpyTypeHierarchySubtypesHandler>()
                 .WithHandler<SharpyImplementationHandler>()
                 // Phase 5 handlers
+                .WithHandler<SharpyRangeFormattingHandler>()
                 .WithHandler<SharpySelectionRangeHandler>()
                 .WithHandler<SharpyLinkedEditingRangeHandler>()
         ).ConfigureAwait(false);

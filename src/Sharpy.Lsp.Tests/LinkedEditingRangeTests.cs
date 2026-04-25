@@ -127,6 +127,21 @@ public class LinkedEditingRangeTests : IDisposable
     }
 
     [Fact]
+    public async Task TString_TwoSameIdentifiers_ReturnsBothRangesAsync()
+    {
+        var source = "name: str = \"world\"\nx: str = t\"Hello {name}, bye {name}\"";
+        // x: str = t"Hello {name}, bye {name}"
+        // 0         1         2
+        // 0123456789012345678901234567
+        // 'name' starts at col 18 (after t"Hello {)
+        var result = await GetLinkedRangesAsync(source, 1, 18);
+
+        result.Should().NotBeNull();
+        result!.Ranges.Should().HaveCount(2);
+        result.WordPattern.Should().Be("[a-zA-Z_][a-zA-Z0-9_]*");
+    }
+
+    [Fact]
     public async Task EmptyFile_ReturnsNullAsync()
     {
         var result = await GetLinkedRangesAsync("", 0, 0);
