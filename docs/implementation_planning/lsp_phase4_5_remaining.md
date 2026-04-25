@@ -38,21 +38,21 @@ Export the project's full symbol graph (types, functions, imports, call relation
 
 **Scope: Medium | Priority: Lower | Ongoing**
 
-### 5.1 — Range Formatting
+### 5.1 — Range Formatting ✅ (completed 2026-04-24)
 
-Currently only full-document formatting. Add `textDocument/rangeFormatting` to format a selection. The lexer-based formatter needs to handle partial indentation contexts.
+`textDocument/rangeFormatting` via `SharpyRangeFormattingHandler`. Computes indent levels from full document context, applies formatting only within the requested range. Shared `IndentationService` extracted from `SharpyFormattingHandler`.
 
-### 5.2 — Selection Range
+### 5.2 — Selection Range ✅ (completed 2026-04-24)
 
-`textDocument/selectionRange` — expand selection to next syntactic scope (expression -> statement -> block -> function -> class -> module). Walk the AST containment hierarchy using `AstPositionService.FindAllContainingNodes()`.
+`textDocument/selectionRange` via `SharpySelectionRangeHandler`. Builds a containment chain from the AST using `AstPositionService.FindAllContainingNodes()`, enabling VS Code's "Expand Selection" to grow to the next syntactic scope.
 
-### 5.3 — Linked Editing Ranges
+### 5.3 — Linked Editing Ranges ✅ (completed 2026-04-24)
 
-For string interpolation, f-strings, or paired delimiters — highlight both ends simultaneously. Low priority but nice UX.
+`textDocument/linkedEditingRanges` via `SharpyLinkedEditingRangeHandler`. Links same-name identifier references within f-string and t-string interpolations for simultaneous rename.
 
-### 5.4 — Notebook Support
+### 5.4 — Notebook Support (deferred)
 
-If Sharpy ever targets notebook-style execution (like Jupyter for Python), the LSP would need `NotebookDocumentSyncHandler`. Low priority.
+If Sharpy ever targets notebook-style execution (like Jupyter for Python), the LSP would need `NotebookDocumentSyncHandler`. Low priority — Sharpy targets file-based editing.
 
 ---
 
@@ -64,6 +64,9 @@ Phase 4  [2026 Edge]
   4.2 AI fix suggestions       **  (medium)
   4.3 Semantic graph export    **  (medium)
 
-Phase 5  [Polish]                             <- ongoing
-  5.1-5.4 Range fmt, selection, linked editing, notebooks
+Phase 5  [Polish]
+  5.1 Range formatting          ✅  (2026-04-24)
+  5.2 Selection range           ✅  (2026-04-24)
+  5.3 Linked editing ranges     ✅  (2026-04-24)
+  5.4 Notebook support          --  (deferred)
 ```
