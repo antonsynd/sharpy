@@ -42,15 +42,14 @@ internal sealed class SharpySelectionRangeHandler : SelectionRangeHandlerBase
                 continue;
             }
 
-            // Build chain: innermost first (no parent), each outer node wraps the previous
-            var innerIdx = nodes.Count - 1;
+            // Build chain: outermost first (no parent), each inner node points to outer as Parent
             var chain = new SelectionRange
             {
                 Range = new LspRange(
-                    PositionConverter.ToLsp(nodes[innerIdx].LineStart, nodes[innerIdx].ColumnStart),
-                    PositionConverter.ToLsp(nodes[innerIdx].LineEnd, nodes[innerIdx].ColumnEnd))
+                    PositionConverter.ToLsp(nodes[0].LineStart, nodes[0].ColumnStart),
+                    PositionConverter.ToLsp(nodes[0].LineEnd, nodes[0].ColumnEnd))
             };
-            for (var i = innerIdx - 1; i >= 0; i--)
+            for (var i = 1; i < nodes.Count; i++)
             {
                 var node = nodes[i];
                 chain = new SelectionRange
