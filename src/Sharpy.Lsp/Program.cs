@@ -143,6 +143,9 @@ public class Program
                 .WithHandler<SharpyTypeHierarchySupertypesHandler>()
                 .WithHandler<SharpyTypeHierarchySubtypesHandler>()
                 .WithHandler<SharpyImplementationHandler>()
+                // Phase 5 handlers
+                .WithHandler<SharpySelectionRangeHandler>()
+                .WithHandler<SharpyLinkedEditingRangeHandler>()
         ).ConfigureAwait(false);
 
         await server.WaitForExit.ConfigureAwait(false);
