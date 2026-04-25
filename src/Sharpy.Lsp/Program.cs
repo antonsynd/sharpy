@@ -127,6 +127,7 @@ public class Program
                 .WithHandler<SharpySemanticTokensHandler>()
                 .WithHandler<SharpyCodeActionHandler>()
                 .WithHandler<SharpyFormattingHandler>()
+                .WithHandler<SharpyRangeFormattingHandler>()
                 .WithHandler<SharpyFoldingRangeHandler>()
                 .WithHandler<FileWatcherHandler>()
                 // Phase 4 handlers
