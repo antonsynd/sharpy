@@ -1,0 +1,19 @@
+# Test str.format() conversion flags (!r, !s, !a)
+
+def main():
+    # !s conversion (str)
+    print("{0!s}".format(42))
+    print("{0!s}".format(True))
+
+    # !r conversion (repr)
+    print("{0!r}".format("hello"))
+
+    # !a conversion (ascii)
+    print("{0!a}".format("hello"))
+
+    # Conversion with format spec
+    print("{0!r:.5}".format("hello world"))
+    print("{0!s:>10}".format(42))
+
+    # Auto-numbering with conversion
+    print("{!s}".format(100))

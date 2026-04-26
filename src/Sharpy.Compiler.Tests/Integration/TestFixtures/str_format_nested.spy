@@ -1,0 +1,18 @@
+# Test str.format() nested field access ({0[key]}, {0[idx]})
+
+def main():
+    # List index access
+    items: list[int] = [10, 20, 30]
+    print("{0[0]}".format(items))
+    print("{0[2]}".format(items))
+
+    # Dict key access
+    d: dict[str, str] = {"name": "Alice", "role": "admin"}
+    print("{0[name]}".format(d))
+    print("{0[role]}".format(d))
+
+    # Combined with conversion flag
+    print("{0[0]!r}".format(["hello"]))
+
+    # Combined with format spec
+    print("{0[0]:>10}".format([42]))
