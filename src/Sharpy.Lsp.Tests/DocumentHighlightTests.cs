@@ -132,6 +132,35 @@ public class DocumentHighlightTests : IDisposable
             "variable declaration highlight should start at col 0");
     }
 
+    [Fact]
+    public async Task Highlight_DecoratedClass_HighlightsNameNotDecorator()
+    {
+        // Line 0: "@dataclass"
+        // Line 1: "class Foo:"       ("Foo" at col 6)
+        // Line 2: "    x: int = 0"
+        // Line 3: "def main():"
+        // Line 4: "    f = Foo()"    ("Foo" at col 8)
+        var source = "@dataclass\nclass Foo:\n    x: int = 0\ndef main():\n    f = Foo()";
+
+        // Cursor on "Foo" at usage: line 4, col 8 (0-based)
+        var highlights = await GetHighlightsAsync(source, 4, 8);
+
+        highlights.Should().NotBeNull("highlights should be returned for a valid symbol");
+
+        var highlightList = highlights!.ToList();
+        highlightList.Should().NotBeEmpty();
+
+        // The Write (declaration) highlight should be on line 1 at col 6, NOT line 0 (decorator)
+        var writeHighlight = highlightList.FirstOrDefault(h =>
+            h.Kind == DocumentHighlightKind.Write && h.Range.Start.Line == 1);
+        writeHighlight.Should().NotBeNull(
+            "should have a Write highlight on the class definition line (line 1), not the decorator");
+        writeHighlight!.Range.Start.Character.Should().Be(6,
+            "declaration highlight should start at the name token 'Foo' (col 6), not at the decorator");
+        writeHighlight.Range.End.Character.Should().Be(6 + "Foo".Length,
+            "declaration highlight end should cover the full name");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();

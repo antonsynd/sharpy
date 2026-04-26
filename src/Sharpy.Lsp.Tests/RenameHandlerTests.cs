@@ -200,6 +200,38 @@ public class RenameHandlerTests : IDisposable
         callEdit!.NewText.Should().Be("bar");
     }
 
+    [Fact]
+    public async Task Rename_StructDefinition_RenamesFromDeclarationSite()
+    {
+        // Line 0: "struct Point:"
+        //          "struct " = 7 chars, "Point" at col 7
+        // Line 1: "    x: int = 0"
+        // Line 2: "    y: int = 0"
+        // Line 3: "def main():"
+        // Line 4: "    p = Point()"  ("Point" at col 8)
+        var source = "struct Point:\n    x: int = 0\n    y: int = 0\ndef main():\n    p = Point()";
+
+        // Cursor on "Point" at declaration: line 0, col 7 (0-based)
+        var result = await RenameAsync(source, 0, 7, "Vec2");
+
+        result.Should().NotBeNull("rename should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var uri = DocumentUri.From("file:///test.spy");
+        result.Changes.Should().ContainKey(uri);
+
+        var edits = result.Changes![uri].ToList();
+        edits.Should().NotBeEmpty();
+
+        // The declaration edit should start at col 7 ("Point"), NOT col 0 ("struct")
+        var declEdit = edits.FirstOrDefault(e => e.Range.Start.Line == 0);
+        declEdit.Should().NotBeNull("should have an edit on declaration line");
+        declEdit!.Range.Start.Character.Should().Be(7,
+            "declaration edit should start at the name token 'Point' (col 7), not at 'struct' (col 0)");
+        declEdit.Range.End.Character.Should().Be(7 + "Point".Length,
+            "declaration edit end should cover the full name");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();

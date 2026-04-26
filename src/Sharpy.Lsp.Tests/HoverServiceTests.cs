@@ -389,6 +389,48 @@ public class HoverServiceTests
         hover.Should().BeNull();
     }
 
+    // --- Await hover content: keyword shows result type, operand shows function ---
+
+    [Fact]
+    public void GetHoverResult_OverAwaitKeyword_ShowsAwaitResultType()
+    {
+        var source = "async def foo() -> int:\n    return 1\nasync def main():\n    await foo()\n";
+        var result = _api.Analyze(source);
+
+        // Line 4: "    await foo()" — 'await' starts at col 5
+        var hover = _hoverService.GetHoverResult(result, 4, 5);
+
+        hover.Should().NotBeNull();
+        hover!.Markdown.Should().Contain("(await)");
+        hover.Markdown.Should().Contain("int");
+    }
+
+    [Fact]
+    public void GetHoverResult_OverAwaitOperand_ShowsFunctionSignature()
+    {
+        var source = "async def foo() -> int:\n    return 1\nasync def main():\n    await foo()\n";
+        var result = _api.Analyze(source);
+
+        // Line 4: "    await foo()" — 'foo' starts at col 11
+        var hover = _hoverService.GetHoverResult(result, 4, 11);
+
+        hover.Should().NotBeNull();
+        hover!.Markdown.Should().Contain("def foo");
+    }
+
+    [Fact]
+    public void GetHoverResult_OverAwaitVoid_ShowsAwaitWithoutType()
+    {
+        var source = "async def do_work():\n    pass\nasync def main():\n    await do_work()\n";
+        var result = _api.Analyze(source);
+
+        // Line 4: "    await do_work()" — 'await' starts at col 5
+        var hover = _hoverService.GetHoverResult(result, 4, 5);
+
+        hover.Should().NotBeNull();
+        hover!.Markdown.Should().Contain("(await)");
+    }
+
     // --- #540 sub-fix B: keyword hover narrows highlight to the keyword span ---
 
     [Fact]
