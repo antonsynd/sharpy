@@ -650,6 +650,8 @@ public record EnumMember
 public record TypeAlias : Statement
 {
     public string Name { get; init; } = "";
+    public int NameLineStart { get; init; }
+    public int NameColumnStart { get; init; }
     public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
     public TypeAnnotation? Type { get; init; }
     public FunctionType? FunctionType { get; init; }

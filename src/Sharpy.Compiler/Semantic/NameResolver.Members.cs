@@ -432,7 +432,9 @@ internal partial class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = constDecl.Span,
             DeclarationLine = constDecl.LineStart,
-            DeclarationColumn = constDecl.ColumnStart
+            DeclarationColumn = constDecl.ColumnStart,
+            NameDeclarationLine = constDecl.NameLineStart,
+            NameDeclarationColumn = constDecl.NameColumnStart
         };
 
         _symbolTable.Define(varSymbol);

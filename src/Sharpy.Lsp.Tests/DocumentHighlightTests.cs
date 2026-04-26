@@ -75,6 +75,63 @@ public class DocumentHighlightTests : IDisposable
         result.Should().BeNull();
     }
 
+    [Fact]
+    public async Task Highlight_AsyncFunction_HighlightsNameNotKeyword()
+    {
+        // Line 0: "async def do_something() -> int:"
+        //          "async" at col 0, "do_something" at col 10
+        // Line 1: "    return 1"
+        // Line 2: "async def main():"
+        // Line 3: "    await do_something()"
+        //          "    await " = 10 chars, "do_something" at col 10
+        var source = "async def do_something() -> int:\n    return 1\nasync def main():\n    await do_something()";
+
+        // Cursor on "do_something" at call site: line 3, col 10 (0-based)
+        var highlights = await GetHighlightsAsync(source, 3, 10);
+
+        highlights.Should().NotBeNull("highlights should be returned for a valid symbol");
+
+        var highlightList = highlights!.ToList();
+        highlightList.Should().NotBeEmpty();
+
+        // The Write (declaration) highlight should start at col 10 on line 0, NOT col 0
+        var writeHighlight = highlightList.FirstOrDefault(h =>
+            h.Kind == DocumentHighlightKind.Write && h.Range.Start.Line == 0);
+        writeHighlight.Should().NotBeNull(
+            "should have a Write highlight for the declaration on line 0");
+        writeHighlight!.Range.Start.Character.Should().Be(10,
+            "declaration highlight should start at the name token 'do_something' (col 10), not at 'async' (col 0)");
+        writeHighlight.Range.End.Character.Should().Be(10 + "do_something".Length,
+            "declaration highlight end should cover the full name");
+    }
+
+    [Fact]
+    public async Task Highlight_Variable_HighlightsDeclarationAndReferences()
+    {
+        // Line 0: "x: int = 5"  ("x" at col 0)
+        // Line 1: "def main():"
+        // Line 2: "    print(x)"  ("x" at col 10)
+        var source = "x: int = 5\ndef main():\n    print(x)";
+
+        // Cursor on "x" reference at line 2, col 10 (0-based)
+        var highlights = await GetHighlightsAsync(source, 2, 10);
+
+        highlights.Should().NotBeNull("highlights should be returned for a valid symbol");
+
+        var highlightList = highlights!.ToList();
+        // Should have at least 2 highlights: Write for declaration + Read for reference
+        highlightList.Should().HaveCountGreaterThanOrEqualTo(2,
+            "should have highlights for both declaration and reference");
+
+        // The Write (declaration) highlight should be at line 0, col 0
+        var writeHighlight = highlightList.FirstOrDefault(h =>
+            h.Kind == DocumentHighlightKind.Write && h.Range.Start.Line == 0);
+        writeHighlight.Should().NotBeNull(
+            "should have a Write highlight for the declaration on line 0");
+        writeHighlight!.Range.Start.Character.Should().Be(0,
+            "variable declaration highlight should start at col 0");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();

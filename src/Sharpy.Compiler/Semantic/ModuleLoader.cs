@@ -238,7 +238,9 @@ internal class ModuleLoader
                         : SemanticType.Void,
                     AccessLevel = accessLevel,
                     DeclarationLine = functionDef.LineStart,
-                    DeclarationColumn = functionDef.ColumnStart
+                    DeclarationColumn = functionDef.ColumnStart,
+                    NameDeclarationLine = functionDef.NameLineStart,
+                    NameDeclarationColumn = functionDef.NameColumnStart
                 };
                 moduleInfo.ExportedSymbols[functionDef.Name] = funcSymbol;
                 break;
@@ -268,6 +270,8 @@ internal class ModuleLoader
                     AccessLevel = enumAccessLevel,
                     DeclarationLine = enumDef.LineStart,
                     DeclarationColumn = enumDef.ColumnStart,
+                    NameDeclarationLine = enumDef.NameLineStart,
+                    NameDeclarationColumn = enumDef.NameColumnStart,
                     DefiningModule = moduleInfo.CanonicalModuleName ?? moduleInfo.Path
                 };
                 // Register enum members as static fields for pattern matching resolution
@@ -282,6 +286,8 @@ internal class ModuleLoader
                         AccessLevel = AccessLevel.Public,
                         DeclarationLine = member.LineStart,
                         DeclarationColumn = member.ColumnStart,
+                        NameDeclarationLine = member.LineStart,
+                        NameDeclarationColumn = member.ColumnStart,
                         DeclarationSpan = member.Span
                     });
                 }
@@ -298,7 +304,9 @@ internal class ModuleLoader
                     IsConstant = varDecl.IsConst,
                     AccessLevel = varAccessLevel,
                     DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart
+                    DeclarationColumn = varDecl.ColumnStart,
+                    NameDeclarationLine = varDecl.NameLineStart,
+                    NameDeclarationColumn = varDecl.NameColumnStart
                 };
                 moduleInfo.ExportedSymbols[varDecl.Name] = varSymbol;
                 break;
@@ -336,7 +344,9 @@ internal class ModuleLoader
                     IsStatic = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static),
                     AccessLevel = GetAccessLevel(varDecl.Name),
                     DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart
+                    DeclarationColumn = varDecl.ColumnStart,
+                    NameDeclarationLine = varDecl.NameLineStart,
+                    NameDeclarationColumn = varDecl.NameColumnStart
                 });
             }
         }
@@ -364,6 +374,8 @@ internal class ModuleLoader
             TypeParameters = classDef.TypeParameters.ToList(),
             DeclarationLine = classDef.LineStart,
             DeclarationColumn = classDef.ColumnStart,
+            NameDeclarationLine = classDef.NameLineStart,
+            NameDeclarationColumn = classDef.NameColumnStart,
             DefiningModule = definingModulePath,
             UnresolvedBaseName = unresolvedBase,
             UnresolvedInterfaceNames = unresolvedInterfaces,
@@ -402,7 +414,9 @@ internal class ModuleLoader
                     IsStatic = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static),
                     AccessLevel = GetAccessLevel(varDecl.Name),
                     DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart
+                    DeclarationColumn = varDecl.ColumnStart,
+                    NameDeclarationLine = varDecl.NameLineStart,
+                    NameDeclarationColumn = varDecl.NameColumnStart
                 });
             }
         }
@@ -429,6 +443,8 @@ internal class ModuleLoader
             TypeParameters = structDef.TypeParameters.ToList(),
             DeclarationLine = structDef.LineStart,
             DeclarationColumn = structDef.ColumnStart,
+            NameDeclarationLine = structDef.NameLineStart,
+            NameDeclarationColumn = structDef.NameColumnStart,
             DefiningModule = definingModulePath,
             UnresolvedInterfaceNames = structDef.BaseClasses.Select(b => b.Name).ToList(),
             Fields = fields,
@@ -473,6 +489,8 @@ internal class ModuleLoader
             TypeParameters = interfaceDef.TypeParameters.ToList(),
             DeclarationLine = interfaceDef.LineStart,
             DeclarationColumn = interfaceDef.ColumnStart,
+            NameDeclarationLine = interfaceDef.NameLineStart,
+            NameDeclarationColumn = interfaceDef.NameColumnStart,
             DefiningModule = definingModulePath,
             UnresolvedInterfaceNames = interfaceDef.BaseInterfaces.Select(b => b.Name).ToList(),
             Methods = methods
@@ -519,7 +537,9 @@ internal class ModuleLoader
             TypeParameters = method.TypeParameters.ToList(),
             AccessLevel = accessLevel,
             DeclarationLine = method.LineStart,
-            DeclarationColumn = method.ColumnStart
+            DeclarationColumn = method.ColumnStart,
+            NameDeclarationLine = method.NameLineStart,
+            NameDeclarationColumn = method.NameColumnStart
         };
     }
 

@@ -272,6 +272,8 @@ internal class PackageResolver
                         AccessLevel = AccessLevel.Public,
                         DeclarationLine = member.LineStart,
                         DeclarationColumn = member.ColumnStart,
+                        NameDeclarationLine = member.LineStart,
+                        NameDeclarationColumn = member.ColumnStart,
                         DeclarationSpan = member.Span
                     });
                 }
@@ -287,7 +289,9 @@ internal class PackageResolver
                     IsConstant = true,
                     AccessLevel = constAccessLevel,
                     DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart
+                    DeclarationColumn = varDecl.ColumnStart,
+                    NameDeclarationLine = varDecl.NameLineStart,
+                    NameDeclarationColumn = varDecl.NameColumnStart
                 };
                 moduleInfo.ExportedSymbols[varDecl.Name] = constSymbol;
                 break;

@@ -57,8 +57,8 @@ internal sealed class SharpyWorkspaceSymbolHandler : WorkspaceSymbolsHandlerBase
                     continue;
 
                 var kind = MapSymbolKind(symbol);
-                var line = System.Math.Max(0, (symbol.DeclarationLine ?? 1) - 1);
-                var col = System.Math.Max(0, (symbol.DeclarationColumn ?? 1) - 1);
+                var line = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
+                var col = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
                 var endCol = col + symbol.Name.Length;
 
                 var symbolUri = symbol.DeclaringFilePath != null

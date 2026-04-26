@@ -96,6 +96,57 @@ public class DefinitionTests : IDisposable
         lspPos.Character.Should().Be(10);
     }
 
+    [Fact]
+    public async Task Definition_AsyncFunction_NamePositionIsCorrect()
+    {
+        // Line 1 (1-based): "async def foo() -> int:"
+        //                     col 1 = 'a', col 11 = 'f' in "foo"
+        // "async def " = 10 chars, so "foo" starts at column 11 (1-based)
+        var source = "async def foo() -> int:\n    return 1\ndef main():\n    pass";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        analysis.Should().NotBeNull();
+        analysis!.Success.Should().BeTrue();
+
+        var symbol = analysis.SymbolTable?.Lookup("foo");
+        symbol.Should().NotBeNull();
+        symbol.Should().BeOfType<Compiler.Semantic.FunctionSymbol>();
+
+        // DeclarationLine/Column point to the statement start ("async")
+        symbol!.DeclarationLine.Should().Be(1, "DeclarationLine should be 1 (1-based, line of 'async')");
+        symbol.DeclarationColumn.Should().Be(1, "DeclarationColumn should be 1 (1-based, col of 'async')");
+
+        // EffectiveNameLine/Column should point to the name token "foo"
+        symbol.EffectiveNameLine.Should().Be(1, "EffectiveNameLine should be 1 (same line)");
+        symbol.EffectiveNameColumn.Should().Be(11,
+            "EffectiveNameColumn should be 11 (1-based), pointing to 'foo' after 'async def '");
+    }
+
+    [Fact]
+    public async Task Definition_DecoratedClass_NamePositionIsCorrect()
+    {
+        // Line 1 (1-based): "@dataclass"
+        // Line 2 (1-based): "class Foo:"
+        //                     "class " = 6 chars, "Foo" at column 7 (1-based)
+        var source = "@dataclass\nclass Foo:\n    x: int = 0\ndef main():\n    pass";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy");
+        analysis.Should().NotBeNull();
+        analysis!.Success.Should().BeTrue();
+
+        var symbol = analysis.SymbolTable?.Lookup("Foo");
+        symbol.Should().NotBeNull();
+        symbol.Should().BeOfType<Compiler.Semantic.TypeSymbol>();
+
+        // EffectiveNameLine should point to the "class Foo:" line, not the decorator
+        symbol!.EffectiveNameLine.Should().Be(2,
+            "EffectiveNameLine should be 2 (1-based), pointing to the 'class Foo:' line");
+        symbol.EffectiveNameColumn.Should().Be(7,
+            "EffectiveNameColumn should be 7 (1-based), pointing to 'Foo' after 'class '");
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();

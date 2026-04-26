@@ -119,7 +119,9 @@ internal class ImportResolver
                             CanonicalModuleName = moduleInfo.CanonicalModuleName,
                             NetNamespaceName = moduleInfo.NetNamespaceName,
                             Documentation = moduleInfo.Module?.DocString
-                                ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
+                                ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name),
+                            NameDeclarationLine = importAlias.LineStart,
+                            NameDeclarationColumn = importAlias.ColumnStart
                         };
                         symbolTable.TryDefine(aliasedModule);
                     }
@@ -140,7 +142,9 @@ internal class ImportResolver
                             CanonicalModuleName = moduleInfo.CanonicalModuleName,
                             NetNamespaceName = moduleInfo.NetNamespaceName,
                             Documentation = moduleInfo.Module?.DocString
-                                ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
+                                ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name),
+                            NameDeclarationLine = importAlias.LineStart,
+                            NameDeclarationColumn = importAlias.ColumnStart
                         };
 
                         ModuleSymbol currentModule = leafModule;
@@ -153,7 +157,9 @@ internal class ImportResolver
                                 FilePath = "",
                                 Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } },
                                 IsErrorRecovery = moduleInfo.IsErrorRecovery,
-                                IsNetModule = moduleInfo.IsNetModule
+                                IsNetModule = moduleInfo.IsNetModule,
+                                NameDeclarationLine = importAlias.LineStart,
+                                NameDeclarationColumn = importAlias.ColumnStart
                             };
                             currentModule = parentModule;
                         }
@@ -716,6 +722,8 @@ internal class ImportResolver
                 AccessLevel = func.AccessLevel,
                 DeclarationLine = fromImport.LineStart,
                 DeclarationColumn = fromImport.ColumnStart,
+                NameDeclarationLine = func.NameDeclarationLine,
+                NameDeclarationColumn = func.NameDeclarationColumn,
                 IsReExport = true,
                 OriginalModule = fromImport.Module
             },
@@ -729,6 +737,8 @@ internal class ImportResolver
                 AccessLevel = var.AccessLevel,
                 DeclarationLine = fromImport.LineStart,
                 DeclarationColumn = fromImport.ColumnStart,
+                NameDeclarationLine = var.NameDeclarationLine,
+                NameDeclarationColumn = var.NameDeclarationColumn,
                 IsReExport = true,
                 OriginalModule = fromImport.Module
             },
@@ -773,6 +783,8 @@ internal class ImportResolver
             UnresolvedInterfaceNames = originalType.UnresolvedInterfaceNames,
             DeclarationLine = fromImport.LineStart,
             DeclarationColumn = fromImport.ColumnStart,
+            NameDeclarationLine = originalType.NameDeclarationLine,
+            NameDeclarationColumn = originalType.NameDeclarationColumn,
             IsReExport = true,
             OriginalModule = fromImport.Module,
             DefiningModule = definingModule
@@ -875,7 +887,9 @@ internal class ImportResolver
                 Type = fieldType,
                 IsConstant = isConst,
                 IsStatic = true,
-                AccessLevel = AccessLevel.Public
+                AccessLevel = AccessLevel.Public,
+                NameDeclarationLine = null,
+                NameDeclarationColumn = null
             };
         }
 
@@ -991,7 +1005,9 @@ internal class ImportResolver
                 }
             },
             AccessLevel = AccessLevel.Public,
-            IsStatic = true
+            IsStatic = true,
+            NameDeclarationLine = null,
+            NameDeclarationColumn = null
         };
 
         // asyncio.sleep(seconds) -> Task.Delay(TimeSpan.FromSeconds(seconds))
@@ -1010,7 +1026,9 @@ internal class ImportResolver
                 }
             },
             AccessLevel = AccessLevel.Public,
-            IsStatic = true
+            IsStatic = true,
+            NameDeclarationLine = null,
+            NameDeclarationColumn = null
         };
 
         var moduleInfo = new ModuleInfo
@@ -1166,7 +1184,9 @@ internal class ImportResolver
             IsErrorRecovery = true,
             OriginalModule = moduleName,
             DeclarationLine = line,
-            DeclarationColumn = column
+            DeclarationColumn = column,
+            NameDeclarationLine = null,
+            NameDeclarationColumn = null
         };
     }
 
@@ -1187,7 +1207,9 @@ internal class ImportResolver
             Exports = new Dictionary<string, Symbol>(),
             IsErrorRecovery = true,
             DeclarationLine = line,
-            DeclarationColumn = column
+            DeclarationColumn = column,
+            NameDeclarationLine = null,
+            NameDeclarationColumn = null
         };
     }
 }

@@ -128,7 +128,9 @@ internal partial class TypeChecker
                     Type = resolvedType,
                     IsConstant = false,
                     DeclarationLine = modArg.Argument.LineStart,
-                    DeclarationColumn = modArg.Argument.ColumnStart
+                    DeclarationColumn = modArg.Argument.ColumnStart,
+                    NameDeclarationLine = modArg.Argument.LineStart,
+                    NameDeclarationColumn = modArg.Argument.ColumnStart
                 };
                 _symbolTable.Define(newSymbol);
                 SemanticBinding.SetVariableType(newSymbol, resolvedType);
@@ -350,7 +352,9 @@ internal partial class TypeChecker
                 Type = valueType,
                 IsConstant = false,
                 DeclarationLine = walrus.LineStart,
-                DeclarationColumn = walrus.ColumnStart
+                DeclarationColumn = walrus.ColumnStart,
+                NameDeclarationLine = walrus.LineStart,
+                NameDeclarationColumn = walrus.ColumnStart
             };
             _symbolTable.Define(newSymbol);
             SemanticBinding.SetVariableType(newSymbol, valueType);

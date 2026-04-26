@@ -22,8 +22,8 @@ internal static class TypeHierarchyHelper
         if (type.DeclarationSpan == null)
             return null;
 
-        var startLine = System.Math.Max(0, (type.DeclarationLine ?? 1) - 1);
-        var startCol = System.Math.Max(0, (type.DeclarationColumn ?? 1) - 1);
+        var startLine = System.Math.Max(0, (type.EffectiveNameLine ?? 1) - 1);
+        var startCol = System.Math.Max(0, (type.EffectiveNameColumn ?? 1) - 1);
         var endCol = startCol + type.Name.Length;
 
         var filePath = type.DeclaringFilePath ?? type.DefiningFilePath ?? fallbackUri;

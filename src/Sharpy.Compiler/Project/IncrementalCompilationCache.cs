@@ -41,7 +41,8 @@ internal class IncrementalCompilationCache
     /// Current schema version for the symbol cache.
     /// Increment this when making breaking changes to FileCacheEntry or CachedSymbol structures.
     /// </summary>
-    internal const int CurrentSchemaVersion = 11;
+    // v12: Added NameDeclarationLine/Column to CachedSymbol
+    internal const int CurrentSchemaVersion = 12;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

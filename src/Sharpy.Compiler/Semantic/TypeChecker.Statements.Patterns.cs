@@ -102,6 +102,8 @@ internal partial class TypeChecker
                         IsConstant = false,
                         DeclarationLine = binding.LineStart,
                         DeclarationColumn = binding.ColumnStart,
+                        NameDeclarationLine = binding.Name.LineStart,
+                        NameDeclarationColumn = binding.Name.ColumnStart,
                         AccessLevel = AccessLevel.Public
                     };
 
@@ -315,6 +317,8 @@ internal partial class TypeChecker
                 IsConstant = false,
                 DeclarationLine = typePattern.BindingName.LineStart,
                 DeclarationColumn = typePattern.BindingName.ColumnStart,
+                NameDeclarationLine = typePattern.BindingName.LineStart,
+                NameDeclarationColumn = typePattern.BindingName.ColumnStart,
                 AccessLevel = AccessLevel.Public
             };
             _symbolTable.Define(newSymbol);
@@ -807,6 +811,8 @@ internal partial class TypeChecker
                     IsConstant = false,
                     DeclarationLine = tupleTargetId.LineStart,
                     DeclarationColumn = tupleTargetId.ColumnStart,
+                    NameDeclarationLine = tupleTargetId.LineStart,
+                    NameDeclarationColumn = tupleTargetId.ColumnStart,
                     AccessLevel = AccessLevel.Public
                 };
                 _symbolTable.Define(newSymbol);
@@ -930,6 +936,8 @@ internal partial class TypeChecker
                     IsConstant = false,
                     DeclarationLine = starId.LineStart,
                     DeclarationColumn = starId.ColumnStart,
+                    NameDeclarationLine = starId.LineStart,
+                    NameDeclarationColumn = starId.ColumnStart,
                     AccessLevel = AccessLevel.Public
                 };
                 _symbolTable.Define(starSymbol);
@@ -948,6 +956,8 @@ internal partial class TypeChecker
                     IsConstant = false,
                     DeclarationLine = id.LineStart,
                     DeclarationColumn = id.ColumnStart,
+                    NameDeclarationLine = id.LineStart,
+                    NameDeclarationColumn = id.ColumnStart,
                     AccessLevel = AccessLevel.Public
                 };
                 _symbolTable.Define(symbol);

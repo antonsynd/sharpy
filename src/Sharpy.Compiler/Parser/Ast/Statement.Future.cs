@@ -102,6 +102,8 @@ public record UnionDef : Statement
     /// The name of the union type.
     /// </summary>
     public string Name { get; init; } = "";
+    public int NameLineStart { get; init; }
+    public int NameColumnStart { get; init; }
 
     public bool IsNameBacktickEscaped { get; init; }
 
@@ -158,6 +160,9 @@ public record UnionCaseDef
     /// The name of this case (e.g., Ok, Err, None).
     /// </summary>
     public string Name { get; init; } = "";
+    public int NameLineStart { get; init; }
+    public int NameColumnStart { get; init; }
+
 
     /// <summary>
     /// Fields for this case. Empty for singleton cases (e.g., None).
@@ -212,6 +217,8 @@ public record DelegateDef : Statement
     /// The name of the delegate type.
     /// </summary>
     public string Name { get; init; } = "";
+    public int NameLineStart { get; init; }
+    public int NameColumnStart { get; init; }
 
     public bool IsNameBacktickEscaped { get; init; }
 
@@ -285,6 +292,8 @@ public record EventDef : Statement
     /// The event name.
     /// </summary>
     public string Name { get; init; } = "";
+    public int NameLineStart { get; init; }
+    public int NameColumnStart { get; init; }
 
     public bool IsNameBacktickEscaped { get; init; }
 

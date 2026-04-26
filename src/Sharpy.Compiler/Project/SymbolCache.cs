@@ -41,6 +41,9 @@ internal record CachedSymbol
     /// </summary>
     public int? DeclarationColumn { get; init; }
 
+    public int? NameDeclarationLine { get; init; }
+    public int? NameDeclarationColumn { get; init; }
+
     /// <summary>
     /// Declaration span start offset (for LSP go-to-definition)
     /// </summary>

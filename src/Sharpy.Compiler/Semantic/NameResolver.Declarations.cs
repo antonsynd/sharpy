@@ -109,7 +109,9 @@ internal partial class NameResolver
                 Constraints = typeParam.Constraints,
                 Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
-                DeclarationColumn = typeParam.ColumnStart
+                DeclarationColumn = typeParam.ColumnStart,
+                NameDeclarationLine = typeParam.LineStart,
+                NameDeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -191,7 +193,9 @@ internal partial class NameResolver
                 Constraints = typeParam.Constraints,
                 Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
-                DeclarationColumn = typeParam.ColumnStart
+                DeclarationColumn = typeParam.ColumnStart,
+                NameDeclarationLine = typeParam.LineStart,
+                NameDeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -273,7 +277,9 @@ internal partial class NameResolver
                 Constraints = typeParam.Constraints,
                 Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
-                DeclarationColumn = typeParam.ColumnStart
+                DeclarationColumn = typeParam.ColumnStart,
+                NameDeclarationLine = typeParam.LineStart,
+                NameDeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -326,6 +332,8 @@ internal partial class NameResolver
             DeclarationSpan = delegateDef.Span,
             DeclarationLine = delegateDef.LineStart,
             DeclarationColumn = delegateDef.ColumnStart,
+            NameDeclarationLine = delegateDef.NameLineStart,
+            NameDeclarationColumn = delegateDef.NameColumnStart,
             Documentation = delegateDef.DocString
         };
 
@@ -342,7 +350,9 @@ internal partial class NameResolver
                 Constraints = typeParam.Constraints,
                 Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
-                DeclarationColumn = typeParam.ColumnStart
+                DeclarationColumn = typeParam.ColumnStart,
+                NameDeclarationLine = typeParam.LineStart,
+                NameDeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -372,7 +382,9 @@ internal partial class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = delegateDef.Span,
             DeclarationLine = delegateDef.LineStart,
-            DeclarationColumn = delegateDef.ColumnStart
+            DeclarationColumn = delegateDef.ColumnStart,
+            NameDeclarationLine = delegateDef.NameLineStart,
+            NameDeclarationColumn = delegateDef.NameColumnStart
         };
 
         typeSymbol.Methods.Add(invokeSymbol);
@@ -423,6 +435,8 @@ internal partial class NameResolver
                 AccessLevel = AccessLevel.Public,
                 DeclarationLine = member.LineStart,
                 DeclarationColumn = member.ColumnStart,
+                NameDeclarationLine = member.LineStart,
+                NameDeclarationColumn = member.ColumnStart,
                 DeclarationSpan = member.Span
             });
         }
@@ -454,6 +468,8 @@ internal partial class NameResolver
             DeclarationSpan = unionDef.Span,
             DeclarationLine = unionDef.LineStart,
             DeclarationColumn = unionDef.ColumnStart,
+            NameDeclarationLine = unionDef.NameLineStart,
+            NameDeclarationColumn = unionDef.NameColumnStart,
             Documentation = unionDef.DocString
         };
 
@@ -472,7 +488,9 @@ internal partial class NameResolver
                 DeclaringFilePath = _currentFilePath,
                 DeclarationSpan = caseDef.Span,
                 DeclarationLine = caseDef.LineStart,
-                DeclarationColumn = caseDef.ColumnStart
+                DeclarationColumn = caseDef.ColumnStart,
+                NameDeclarationLine = caseDef.NameLineStart,
+                NameDeclarationColumn = caseDef.NameColumnStart
             };
 
             // Fields resolved during type checking phase

@@ -96,8 +96,8 @@ internal sealed class SharpyCallHierarchyPrepareHandler : CallHierarchyPrepareHa
         if (symbol.DeclarationLine == null || symbol.DeclarationColumn == null)
             return null;
 
-        var startLine = System.Math.Max(0, symbol.DeclarationLine.Value - 1);
-        var startCol = System.Math.Max(0, symbol.DeclarationColumn.Value - 1);
+        var startLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? symbol.DeclarationLine!.Value) - 1);
+        var startCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? symbol.DeclarationColumn!.Value) - 1);
         var endCol = startCol + symbol.Name.Length;
 
         var filePath = symbol.DeclaringFilePath ?? fallbackUri;

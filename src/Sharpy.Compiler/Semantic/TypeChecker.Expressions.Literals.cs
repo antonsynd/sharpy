@@ -353,7 +353,9 @@ internal partial class TypeChecker
                 Type = elemType,
                 AccessLevel = AccessLevel.Public,
                 DeclarationLine = id.LineStart,
-                DeclarationColumn = id.ColumnStart
+                DeclarationColumn = id.ColumnStart,
+                NameDeclarationLine = id.LineStart,
+                NameDeclarationColumn = id.ColumnStart
             };
             _symbolTable.Define(loopVarSymbol);
             _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);

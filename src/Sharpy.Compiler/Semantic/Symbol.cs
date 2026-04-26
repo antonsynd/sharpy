@@ -32,6 +32,9 @@ public abstract record Symbol
     public int? NameDeclarationLine { get; init; }
     public int? NameDeclarationColumn { get; init; }
 
+    public int? EffectiveNameLine => NameDeclarationLine ?? DeclarationLine;
+    public int? EffectiveNameColumn => NameDeclarationColumn ?? DeclarationColumn;
+
     /// <summary>
     /// The source span of this symbol's declaration (for LSP go-to-definition).
     /// </summary>
@@ -428,7 +431,9 @@ public record TypeAliasSymbol : Symbol
             ? Array.Empty<TypeParameterDef>()
             : typeAlias.TypeParameters.ToArray(),
         DeclarationLine = typeAlias.LineStart,
-        DeclarationColumn = typeAlias.ColumnStart
+        DeclarationColumn = typeAlias.ColumnStart,
+        NameDeclarationLine = typeAlias.NameLineStart,
+        NameDeclarationColumn = typeAlias.NameColumnStart
     };
 
     public virtual bool Equals(TypeAliasSymbol? other) => ReferenceEquals(this, other);

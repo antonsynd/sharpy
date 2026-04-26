@@ -36,7 +36,9 @@ internal partial class TypeChecker
                 Constraints = typeParam.Constraints,
                 Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
-                DeclarationColumn = typeParam.ColumnStart
+                DeclarationColumn = typeParam.ColumnStart,
+                NameDeclarationLine = typeParam.LineStart,
+                NameDeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -109,6 +111,8 @@ internal partial class TypeChecker
                     DeclarationSpan = functionDef.Span,
                     DeclarationLine = functionDef.LineStart,
                     DeclarationColumn = functionDef.ColumnStart,
+                    NameDeclarationLine = functionDef.NameLineStart,
+                    NameDeclarationColumn = functionDef.NameColumnStart,
                     Documentation = functionDef.DocString
                 };
 
@@ -141,7 +145,9 @@ internal partial class TypeChecker
                 Constraints = typeParam.Constraints,
                 Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
-                DeclarationColumn = typeParam.ColumnStart
+                DeclarationColumn = typeParam.ColumnStart,
+                NameDeclarationLine = typeParam.LineStart,
+                NameDeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -527,7 +533,9 @@ internal partial class TypeChecker
                 IsParameter = true,
                 ParameterModifier = param.Modifier,
                 DeclarationLine = null,
-                DeclarationColumn = null
+                DeclarationColumn = null,
+                NameDeclarationLine = null,
+                NameDeclarationColumn = null
             };
             _symbolTable.Define(paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);
@@ -727,7 +735,9 @@ internal partial class TypeChecker
                 Constraints = typeParam.Constraints,
                 Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
-                DeclarationColumn = typeParam.ColumnStart
+                DeclarationColumn = typeParam.ColumnStart,
+                NameDeclarationLine = typeParam.LineStart,
+                NameDeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -826,7 +836,9 @@ internal partial class TypeChecker
                 Constraints = typeParam.Constraints,
                 Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
-                DeclarationColumn = typeParam.ColumnStart
+                DeclarationColumn = typeParam.ColumnStart,
+                NameDeclarationLine = typeParam.LineStart,
+                NameDeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -920,7 +932,9 @@ internal partial class TypeChecker
                 Constraints = typeParam.Constraints,
                 Variance = typeParam.Variance,
                 DeclarationLine = typeParam.LineStart,
-                DeclarationColumn = typeParam.ColumnStart
+                DeclarationColumn = typeParam.ColumnStart,
+                NameDeclarationLine = typeParam.LineStart,
+                NameDeclarationColumn = typeParam.ColumnStart
             };
             _symbolTable.Define(typeParamSymbol);
         }
@@ -1062,7 +1076,9 @@ internal partial class TypeChecker
                     Constraints = typeParam.Constraints,
                     Variance = typeParam.Variance,
                     DeclarationLine = typeParam.LineStart,
-                    DeclarationColumn = typeParam.ColumnStart
+                    DeclarationColumn = typeParam.ColumnStart,
+                    NameDeclarationLine = typeParam.LineStart,
+                    NameDeclarationColumn = typeParam.ColumnStart
                 };
                 _symbolTable.Define(typeParamSymbol);
             }
@@ -1107,7 +1123,9 @@ internal partial class TypeChecker
                         Kind = SymbolKind.Variable,
                         Type = resolvedType,
                         DeclarationLine = field.LineStart,
-                        DeclarationColumn = field.ColumnStart
+                        DeclarationColumn = field.ColumnStart,
+                        NameDeclarationLine = field.LineStart,
+                        NameDeclarationColumn = field.ColumnStart
                     });
                 }
             }
@@ -1145,7 +1163,9 @@ internal partial class TypeChecker
                     Constraints = typeParam.Constraints,
                     Variance = typeParam.Variance,
                     DeclarationLine = typeParam.LineStart,
-                    DeclarationColumn = typeParam.ColumnStart
+                    DeclarationColumn = typeParam.ColumnStart,
+                    NameDeclarationLine = typeParam.LineStart,
+                    NameDeclarationColumn = typeParam.ColumnStart
                 };
                 _symbolTable.Define(typeParamSymbol);
             }
@@ -1353,7 +1373,9 @@ internal partial class TypeChecker
                 Type = paramType,
                 IsParameter = true,
                 DeclarationLine = param.LineStart,
-                DeclarationColumn = param.ColumnStart
+                DeclarationColumn = param.ColumnStart,
+                NameDeclarationLine = param.LineStart,
+                NameDeclarationColumn = param.ColumnStart
             };
             _symbolTable.Define(paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);
@@ -1446,6 +1468,8 @@ internal partial class TypeChecker
                         Type = propType,
                         AccessLevel = AccessLevel.Private,
                         DeclaringFilePath = _currentFilePath,
+                        NameDeclarationLine = autoProp.NameLineStart,
+                        NameDeclarationColumn = autoProp.NameColumnStart,
                     };
                     SemanticBinding.SetVariableType(backingField, propType);
                     typeSymbol.Fields.Add(backingField);
@@ -1621,6 +1645,8 @@ internal partial class TypeChecker
                 Parameters = initParams,
                 DeclarationLine = classDef.LineStart,
                 DeclarationColumn = classDef.ColumnStart,
+                NameDeclarationLine = classDef.LineStart,
+                NameDeclarationColumn = classDef.ColumnStart,
             };
 
             classSymbol.Constructors.Add(initSymbol);
@@ -1643,6 +1669,8 @@ internal partial class TypeChecker
                 IsOverride = true,
                 DeclarationLine = classDef.LineStart,
                 DeclarationColumn = classDef.ColumnStart,
+                NameDeclarationLine = classDef.LineStart,
+                NameDeclarationColumn = classDef.ColumnStart,
             };
 
             classSymbol.OperatorMethods[DunderNames.Eq] = new List<FunctionSymbol> { eqSymbol };
@@ -1665,6 +1693,8 @@ internal partial class TypeChecker
                 IsOverride = true,
                 DeclarationLine = classDef.LineStart,
                 DeclarationColumn = classDef.ColumnStart,
+                NameDeclarationLine = classDef.LineStart,
+                NameDeclarationColumn = classDef.ColumnStart,
             };
 
             classSymbol.ProtocolMethods[DunderNames.Hash] = new List<FunctionSymbol> { hashSymbol };
@@ -1686,6 +1716,8 @@ internal partial class TypeChecker
                 IsOverride = true,
                 DeclarationLine = classDef.LineStart,
                 DeclarationColumn = classDef.ColumnStart,
+                NameDeclarationLine = classDef.LineStart,
+                NameDeclarationColumn = classDef.ColumnStart,
             };
 
             classSymbol.ProtocolMethods[DunderNames.Repr] = new List<FunctionSymbol> { reprSymbol };

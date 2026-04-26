@@ -63,8 +63,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         // Edit declaration — use the name token position, not the statement start
         if (symbol.DeclarationSpan != null)
         {
-            var declLine = System.Math.Max(0, ((symbol.NameDeclarationLine ?? symbol.DeclarationLine) ?? 1) - 1);
-            var declCol = System.Math.Max(0, ((symbol.NameDeclarationColumn ?? symbol.DeclarationColumn) ?? 1) - 1);
+            var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
+            var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
 
             var declFilePath = symbol.DeclaringFilePath ?? uri;
             var declUri = declFilePath.StartsWith("file://", StringComparison.Ordinal)

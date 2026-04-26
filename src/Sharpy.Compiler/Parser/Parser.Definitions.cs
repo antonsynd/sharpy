@@ -953,6 +953,7 @@ public partial class Parser
                 var caseStartToken = Current;
 
                 Expect(TokenType.Case);
+                var caseNameToken = Current;
                 var caseName = ExpectIdentifier();
 
                 var fields = new List<UnionCaseField>();
@@ -1006,6 +1007,8 @@ public partial class Parser
                 cases.Add(new UnionCaseDef
                 {
                     Name = caseName,
+                    NameLineStart = caseNameToken.Line,
+                    NameColumnStart = caseNameToken.Column,
                     Fields = fields.ToImmutableArray(),
                     LineStart = caseStartLine,
                     ColumnStart = caseStartColumn,
@@ -1038,6 +1041,8 @@ public partial class Parser
         return new UnionDef
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams,
             Cases = cases.ToImmutableArray(),
@@ -1084,6 +1089,8 @@ public partial class Parser
         return new DelegateDef
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams.ToImmutableArray(),
             Parameters = parameters.ToImmutableArray(),
@@ -1103,6 +1110,7 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.Type);
+        var nameToken = Current;
         var name = ExpectIdentifier();
 
         // Optional type parameters: type Cb[T] = (T) -> None
@@ -1164,6 +1172,8 @@ public partial class Parser
         return new TypeAlias
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             TypeParameters = typeParams.ToImmutableArray(),
             Type = type,
             FunctionType = functionType,
@@ -1443,6 +1453,8 @@ public partial class Parser
                 return new EventDef
                 {
                     Name = name,
+                    NameLineStart = nameToken.Line,
+                    NameColumnStart = nameToken.Column,
                     IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                     Accessor = accessor,
                     IsFunctionStyle = true,
@@ -1469,6 +1481,8 @@ public partial class Parser
                 return new EventDef
                 {
                     Name = name,
+                    NameLineStart = nameToken.Line,
+                    NameColumnStart = nameToken.Column,
                     IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                     Accessor = accessor,
                     IsFunctionStyle = true,
@@ -1508,6 +1522,8 @@ public partial class Parser
             return new EventDef
             {
                 Name = name,
+                NameLineStart = nameToken.Line,
+                NameColumnStart = nameToken.Column,
                 IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                 Accessor = accessor,
                 IsFunctionStyle = true,
@@ -1540,6 +1556,8 @@ public partial class Parser
         return new EventDef
         {
             Name = name,
+            NameLineStart = nameToken.Line,
+            NameColumnStart = nameToken.Column,
             IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             Accessor = EventAccessor.None,
             Type = type,

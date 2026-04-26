@@ -24,8 +24,8 @@ internal static class SymbolLocationHelper
             ? DocumentUri.From(filePath)
             : DocumentUri.FromFileSystemPath(filePath);
 
-        var startLine = System.Math.Max(0, (symbol.DeclarationLine ?? 1) - 1);
-        var startCol = System.Math.Max(0, (symbol.DeclarationColumn ?? 1) - 1);
+        var startLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
+        var startCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
         var endCol = startCol + symbol.Name.Length;
 
         return new Location

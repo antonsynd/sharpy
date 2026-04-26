@@ -135,6 +135,8 @@ internal partial class TypeChecker
                 IsConstant = false,
                 DeclarationLine = assignment.LineStart,
                 DeclarationColumn = assignment.ColumnStart,
+                NameDeclarationLine = targetId.LineStart,
+                NameDeclarationColumn = targetId.ColumnStart,
                 AccessLevel = AccessLevel.Public
             };
             _symbolTable.Define(newSymbol);
@@ -371,7 +373,9 @@ internal partial class TypeChecker
                 Type = declaredType,
                 IsConstant = true,
                 DeclarationLine = varDecl.LineStart,
-                DeclarationColumn = varDecl.ColumnStart
+                DeclarationColumn = varDecl.ColumnStart,
+                NameDeclarationLine = varDecl.NameLineStart,
+                NameDeclarationColumn = varDecl.NameColumnStart
             };
             _symbolTable.Define(constSymbol);
             SemanticBinding.SetVariableType(constSymbol, declaredType);
@@ -403,7 +407,9 @@ internal partial class TypeChecker
             Type = declaredType,
             IsConstant = false,  // Non-const variable
             DeclarationLine = varDecl.LineStart,
-            DeclarationColumn = varDecl.ColumnStart
+            DeclarationColumn = varDecl.ColumnStart,
+            NameDeclarationLine = varDecl.NameLineStart,
+            NameDeclarationColumn = varDecl.NameColumnStart
         };
         _symbolTable.Define(newSymbol);
         SemanticBinding.SetVariableType(newSymbol, declaredType);
@@ -714,7 +720,9 @@ internal partial class TypeChecker
                 Type = elementType,
                 AccessLevel = AccessLevel.Public,
                 DeclarationLine = id.LineStart,
-                DeclarationColumn = id.ColumnStart
+                DeclarationColumn = id.ColumnStart,
+                NameDeclarationLine = id.LineStart,
+                NameDeclarationColumn = id.ColumnStart
             };
 
             // Check if already defined in this scope
@@ -822,7 +830,9 @@ internal partial class TypeChecker
                     Type = exceptionType,
                     AccessLevel = AccessLevel.Public,
                     DeclarationLine = handler.LineStart,
-                    DeclarationColumn = handler.ColumnStart
+                    DeclarationColumn = handler.ColumnStart,
+                    NameDeclarationLine = handler.LineStart,
+                    NameDeclarationColumn = handler.ColumnStart
                 };
 
                 _symbolTable.Define(varSymbol);
@@ -928,6 +938,8 @@ internal partial class TypeChecker
                     AccessLevel = AccessLevel.Public,
                     DeclarationLine = item.LineStart,
                     DeclarationColumn = item.ColumnStart,
+                    NameDeclarationLine = item.NameLineStart,
+                    NameDeclarationColumn = item.NameColumnStart,
                     DeclaringFilePath = _currentFilePath
                 };
 
@@ -1109,7 +1121,9 @@ internal partial class TypeChecker
                     Type = elemType,
                     AccessLevel = AccessLevel.Public,
                     DeclarationLine = id.LineStart,
-                    DeclarationColumn = id.ColumnStart
+                    DeclarationColumn = id.ColumnStart,
+                    NameDeclarationLine = id.LineStart,
+                    NameDeclarationColumn = id.ColumnStart
                 };
 
                 if (_symbolTable.Lookup(id.Name, searchParents: false) == null)

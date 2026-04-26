@@ -480,7 +480,9 @@ internal class TypeResolver
                     Kind = SymbolKind.TypeParameter,
                     AccessLevel = AccessLevel.Public,
                     DeclarationLine = paramDef.LineStart,
-                    DeclarationColumn = paramDef.ColumnStart
+                    DeclarationColumn = paramDef.ColumnStart,
+                    NameDeclarationLine = paramDef.LineStart,
+                    NameDeclarationColumn = paramDef.ColumnStart
                 };
                 _symbolTable.Define(typeParamSymbol);
             }

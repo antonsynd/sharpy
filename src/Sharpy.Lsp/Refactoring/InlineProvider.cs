@@ -471,7 +471,13 @@ internal sealed class InlineProvider : ICodeActionProvider
         return PositionService.FindNodeOfType<FunctionDef>(
             ast,
             symbol.DeclarationLine.Value,
-            symbol.DeclarationColumn.Value);
+            symbol.DeclarationColumn.Value)
+            ?? (symbol.EffectiveNameLine is not null && symbol.EffectiveNameColumn is not null
+                ? PositionService.FindNodeOfType<FunctionDef>(
+                    ast,
+                    symbol.EffectiveNameLine.Value,
+                    symbol.EffectiveNameColumn.Value)
+                : null);
     }
 
     /// <summary>

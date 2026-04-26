@@ -75,6 +75,12 @@ The semantic phase runs multiple ordered passes. Understanding this is critical 
 1. After import resolution → `MaterializeInheritance()` (BaseType, Interfaces)
 2. After type checking → `MaterializeVariableTypes()`, `MaterializeCodeGenInfo()`
 
+### Symbol Position Fields
+
+- `Symbol.DeclarationLine/Column` — statement start (e.g., `async` in `async def foo`). Used for diagnostics and identity comparisons.
+- `Symbol.NameDeclarationLine/Column` — name token position (e.g., `foo` in `async def foo`). Used for text edits and highlight ranges.
+- `Symbol.EffectiveNameLine/Column` — preferred accessor: returns `NameDeclarationLine ?? DeclarationLine`. LSP handlers must use this for text edits and highlight ranges.
+
 ### Key Data Structures
 
 - **`SemanticInfo`** — Maps AST nodes → types/symbols. Uses `ReferenceEqualityComparer` because AST nodes are records (value equality) but we need identity.
