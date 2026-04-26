@@ -137,7 +137,9 @@ internal partial class TypeChecker
                 DeclarationColumn = assignment.ColumnStart,
                 NameDeclarationLine = targetId.LineStart,
                 NameDeclarationColumn = targetId.ColumnStart,
-                AccessLevel = AccessLevel.Public
+                AccessLevel = AccessLevel.Public,
+                DeclarationSpan = assignment.Span,
+                DeclaringFilePath = _currentFilePath
             };
             _symbolTable.Define(newSymbol);
             SemanticBinding.SetVariableType(newSymbol, inferredType);
@@ -375,7 +377,9 @@ internal partial class TypeChecker
                 DeclarationLine = varDecl.LineStart,
                 DeclarationColumn = varDecl.ColumnStart,
                 NameDeclarationLine = varDecl.NameLineStart,
-                NameDeclarationColumn = varDecl.NameColumnStart
+                NameDeclarationColumn = varDecl.NameColumnStart,
+                DeclarationSpan = varDecl.Span,
+                DeclaringFilePath = _currentFilePath
             };
             _symbolTable.Define(constSymbol);
             SemanticBinding.SetVariableType(constSymbol, declaredType);
@@ -409,7 +413,9 @@ internal partial class TypeChecker
             DeclarationLine = varDecl.LineStart,
             DeclarationColumn = varDecl.ColumnStart,
             NameDeclarationLine = varDecl.NameLineStart,
-            NameDeclarationColumn = varDecl.NameColumnStart
+            NameDeclarationColumn = varDecl.NameColumnStart,
+            DeclarationSpan = varDecl.Span,
+            DeclaringFilePath = _currentFilePath
         };
         _symbolTable.Define(newSymbol);
         SemanticBinding.SetVariableType(newSymbol, declaredType);
@@ -722,7 +728,9 @@ internal partial class TypeChecker
                 DeclarationLine = id.LineStart,
                 DeclarationColumn = id.ColumnStart,
                 NameDeclarationLine = id.LineStart,
-                NameDeclarationColumn = id.ColumnStart
+                NameDeclarationColumn = id.ColumnStart,
+                DeclarationSpan = id.Span,
+                DeclaringFilePath = _currentFilePath
             };
 
             // Check if already defined in this scope
@@ -832,7 +840,9 @@ internal partial class TypeChecker
                     DeclarationLine = handler.LineStart,
                     DeclarationColumn = handler.ColumnStart,
                     NameDeclarationLine = handler.LineStart,
-                    NameDeclarationColumn = handler.ColumnStart
+                    NameDeclarationColumn = handler.ColumnStart,
+                    DeclarationSpan = handler.Span,
+                    DeclaringFilePath = _currentFilePath
                 };
 
                 _symbolTable.Define(varSymbol);
@@ -940,6 +950,7 @@ internal partial class TypeChecker
                     DeclarationColumn = item.ColumnStart,
                     NameDeclarationLine = item.NameLineStart,
                     NameDeclarationColumn = item.NameColumnStart,
+                    DeclarationSpan = item.Span,
                     DeclaringFilePath = _currentFilePath
                 };
 
@@ -1123,7 +1134,9 @@ internal partial class TypeChecker
                     DeclarationLine = id.LineStart,
                     DeclarationColumn = id.ColumnStart,
                     NameDeclarationLine = id.LineStart,
-                    NameDeclarationColumn = id.ColumnStart
+                    NameDeclarationColumn = id.ColumnStart,
+                    DeclarationSpan = id.Span,
+                    DeclaringFilePath = _currentFilePath
                 };
 
                 if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
