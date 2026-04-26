@@ -374,4 +374,91 @@ public class StrFormatTests
 
     #endregion
 
+    #region Nested Field Access
+
+    [Fact]
+    public void Format_BracketIndex_ListAccess()
+    {
+        string s = "{0[0]}";
+        s.Format(new List<int>(new[] { 10, 20 })).Should().Be("10");
+    }
+
+    [Fact]
+    public void Format_BracketIndex_SecondElement()
+    {
+        string s = "{0[1]}";
+        s.Format(new List<int>(new[] { 10, 20 })).Should().Be("20");
+    }
+
+    [Fact]
+    public void Format_BracketKey_DictAccess()
+    {
+        string s = "{0[key]}";
+        var d = new Dict<string, object>();
+        d["key"] = "val";
+        s.Format(d).Should().Be("val");
+    }
+
+    [Fact]
+    public void Format_BracketIndex_OutOfRange_ThrowsIndexError()
+    {
+        string s = "{0[99]}";
+        var act = () => s.Format(new List<int>(new[] { 10, 20 }));
+        act.Should().Throw<IndexError>();
+    }
+
+    [Fact]
+    public void Format_BracketKey_Missing_ThrowsKeyError()
+    {
+        string s = "{0[bad]}";
+        var d = new Dict<string, object>();
+        d["key"] = "val";
+        var act = () => s.Format(d);
+        act.Should().Throw<KeyError>();
+    }
+
+    [Fact]
+    public void Format_DotAccess_Property()
+    {
+        // Access the Length property of a string
+        string s = "{0.Length}";
+        s.Format("hello").Should().Be("5");
+    }
+
+    [Fact]
+    public void Format_DotAccess_MissingProperty_ThrowsAttributeError()
+    {
+        string s = "{0.nonexistent}";
+        var act = () => s.Format("hello");
+        act.Should().Throw<AttributeError>();
+    }
+
+    [Fact]
+    public void Format_ChainedBracketAccess()
+    {
+        string s = "{0[0][1]}";
+        var outer = new List<object>(new object[]
+        {
+            new List<int>(new[] { 10, 20 }),
+            new List<int>(new[] { 30, 40 })
+        });
+        s.Format(outer).Should().Be("20");
+    }
+
+    [Fact]
+    public void Format_BracketAccess_WithConversion()
+    {
+        string s = "{0[0]!r}";
+        var list = new List<object>(new object[] { "hello" });
+        s.Format(list).Should().Be("'hello'");
+    }
+
+    [Fact]
+    public void Format_DotAccess_WithFormatSpec()
+    {
+        string s = "{0.Length:03d}";
+        s.Format("hello").Should().Be("005");
+    }
+
+    #endregion
 }

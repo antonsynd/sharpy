@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 
 namespace Sharpy
@@ -94,6 +96,33 @@ namespace Sharpy
                         fieldName = fieldExpr;
                     }
 
+                    // Split fieldName into base field and nested access path.
+                    // The first '.' or '[' starts the access path.
+                    string baseField;
+                    string? accessPath;
+                    int dotPos = fieldName.IndexOf('.');
+                    int bracketPos = fieldName.IndexOf('[');
+                    int accessStart = -1;
+                    if (dotPos >= 0 && (bracketPos < 0 || dotPos < bracketPos))
+                    {
+                        accessStart = dotPos;
+                    }
+                    else if (bracketPos >= 0)
+                    {
+                        accessStart = bracketPos;
+                    }
+
+                    if (accessStart >= 0)
+                    {
+                        baseField = fieldName.Substring(0, accessStart);
+                        accessPath = fieldName.Substring(accessStart);
+                    }
+                    else
+                    {
+                        baseField = fieldName;
+                        accessPath = null;
+                    }
+
                     object value;
 
                     if (useMapping)
@@ -101,18 +130,18 @@ namespace Sharpy
                         // format_map mode: look up by name
                         try
                         {
-                            value = mapping[fieldName];
+                            value = mapping[baseField];
                         }
                         catch (KeyError)
                         {
-                            throw new KeyError(fieldName);
+                            throw new KeyError(baseField);
                         }
                     }
                     else
                     {
                         // format mode: positional
                         int index;
-                        if (fieldName.Length == 0)
+                        if (baseField.Length == 0)
                         {
                             if (usedManualNumbering)
                             {
@@ -122,7 +151,7 @@ namespace Sharpy
                             usedAutoNumbering = true;
                             index = autoIndex++;
                         }
-                        else if (int.TryParse(fieldName, NumberStyles.None, CultureInfo.InvariantCulture, out int parsed))
+                        else if (int.TryParse(baseField, NumberStyles.None, CultureInfo.InvariantCulture, out int parsed))
                         {
                             if (usedAutoNumbering)
                             {
@@ -143,6 +172,12 @@ namespace Sharpy
                                 "Replacement index " + index + " out of range for positional args tuple");
                         }
                         value = args[index];
+                    }
+
+                    // Resolve nested field access (.attr, [key], [index]).
+                    if (accessPath != null)
+                    {
+                        value = ResolveFieldAccess(value, accessPath);
                     }
 
                     // Apply conversion flag.
@@ -505,6 +540,184 @@ namespace Sharpy
             }
 
             return signPart + sb.ToString() + rest;
+        }
+
+        /// <summary>
+        /// Resolve nested field access in a format field expression.
+        /// Supports <c>.attr</c> (property access) and <c>[key]</c> (item/index access),
+        /// including chaining (e.g., <c>.items[0]</c>).
+        /// </summary>
+        private static object ResolveFieldAccess(object value, string accessPath)
+        {
+            int pos = 0;
+            while (pos < accessPath.Length)
+            {
+                char ch = accessPath[pos];
+                if (ch == '.')
+                {
+                    // Attribute access: .attr
+                    pos++;
+                    int start = pos;
+                    while (pos < accessPath.Length && accessPath[pos] != '.' && accessPath[pos] != '[')
+                    {
+                        pos++;
+                    }
+                    string attr = accessPath.Substring(start, pos - start);
+                    value = ResolveAttribute(value, attr);
+                }
+                else if (ch == '[')
+                {
+                    // Item access: [key] or [index]
+                    pos++;
+                    int closeBracket = accessPath.IndexOf(']', pos);
+                    if (closeBracket < 0)
+                    {
+                        throw new ValueError("Missing ']' in format field expression");
+                    }
+                    string key = accessPath.Substring(pos, closeBracket - pos);
+                    pos = closeBracket + 1;
+                    value = ResolveItem(value, key);
+                }
+                else
+                {
+                    throw new ValueError("Unexpected character '" + ch + "' in format field expression");
+                }
+            }
+            return value;
+        }
+
+        private static object ResolveAttribute(object value, string attr)
+        {
+            if (value == null)
+            {
+                throw new AttributeError("'NoneType' object has no attribute '" + attr + "'");
+            }
+
+            var type = value.GetType();
+            var prop = type.GetProperty(attr, BindingFlags.Public | BindingFlags.Instance);
+            if (prop != null)
+            {
+                return prop.GetValue(value)!;
+            }
+
+            var field = type.GetField(attr, BindingFlags.Public | BindingFlags.Instance);
+            if (field != null)
+            {
+                return field.GetValue(value)!;
+            }
+
+            // Python-style error message
+            string typeName = type.Name;
+            throw new AttributeError("'" + typeName + "' object has no attribute '" + attr + "'");
+        }
+
+        private static object ResolveItem(object value, string key)
+        {
+            if (value == null)
+            {
+                throw new TypeError("'NoneType' object is not subscriptable");
+            }
+
+            // Try non-generic IList first (covers System.Collections.Generic.List<T>, arrays, etc.)
+            if (value is IList nonGenericList)
+            {
+                if (int.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out int idx))
+                {
+                    if (idx < 0 || idx >= nonGenericList.Count)
+                    {
+                        throw new IndexError("list index out of range");
+                    }
+                    return nonGenericList[idx]!;
+                }
+                throw new KeyError(key);
+            }
+
+            // Try non-generic IDictionary (covers System.Collections.Generic.Dictionary<K,V>)
+            if (value is IDictionary nonGenericDict)
+            {
+                if (!nonGenericDict.Contains(key))
+                {
+                    throw new KeyError(key);
+                }
+                return nonGenericDict[key]!;
+            }
+
+            // Handle generic IList<T> types that don't implement non-generic IList
+            // (e.g., Sharpy.List<T>).
+            var valueType = value.GetType();
+            Type? listInterface = FindGenericInterface(valueType, typeof(IList<>));
+            if (listInterface != null)
+            {
+                if (int.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out int idx))
+                {
+                    int count = GetCollectionCount(value, valueType);
+                    if (idx < 0 || idx >= count)
+                    {
+                        throw new IndexError("list index out of range");
+                    }
+                    var indexerProp = listInterface.GetProperty("Item");
+                    return indexerProp!.GetValue(value, new object[] { idx })!;
+                }
+                throw new KeyError(key);
+            }
+
+            // Handle generic IDictionary<K,V> types that don't implement non-generic IDictionary
+            // (e.g., Sharpy.Dict<K,V>).
+            Type? dictInterface = FindGenericInterface(valueType, typeof(IDictionary<,>));
+            if (dictInterface != null)
+            {
+                var containsMethod = dictInterface.GetMethod("ContainsKey");
+                var keyType = dictInterface.GetGenericArguments()[0];
+                object convertedKey;
+                try
+                {
+                    convertedKey = keyType == typeof(string)
+                        ? (object)key
+                        : Convert.ChangeType(key, keyType, CultureInfo.InvariantCulture);
+                }
+                catch
+                {
+                    throw new KeyError(key);
+                }
+
+                bool contains = (bool)containsMethod!.Invoke(value, new[] { convertedKey })!;
+                if (!contains)
+                {
+                    throw new KeyError(key);
+                }
+                var indexerProp = dictInterface.GetProperty("Item");
+                return indexerProp!.GetValue(value, new[] { convertedKey })!;
+            }
+
+            throw new TypeError("'" + valueType.Name + "' object is not subscriptable");
+        }
+
+        private static Type? FindGenericInterface(Type type, Type genericInterfaceDefinition)
+        {
+            foreach (var iface in type.GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == genericInterfaceDefinition)
+                {
+                    return iface;
+                }
+            }
+            return null;
+        }
+
+        private static int GetCollectionCount(object value, Type valueType)
+        {
+            // Try ISized (Sharpy collections).
+            if (value is ISized sized)
+            {
+                return sized.Count;
+            }
+            // Fall back to Count property via reflection.
+            var countProp = valueType.GetProperty("Count");
+            if (countProp != null)
+            {
+                return (int)countProp.GetValue(value)!;
+            }
+            return 0;
         }
 
         /// <summary>
