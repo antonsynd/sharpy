@@ -60,16 +60,38 @@ namespace Sharpy
 
                     string fieldName;
                     string? formatSpec;
+                    char conversion = '\0';
+
+                    // Split on ':' to separate field expression from format spec.
                     int colonPos = field.IndexOf(':');
+                    string fieldExpr;
                     if (colonPos >= 0)
                     {
-                        fieldName = field.Substring(0, colonPos);
+                        fieldExpr = field.Substring(0, colonPos);
                         formatSpec = field.Substring(colonPos + 1);
                     }
                     else
                     {
-                        fieldName = field;
+                        fieldExpr = field;
                         formatSpec = null;
+                    }
+
+                    // Parse conversion flag (!r, !s, !a) from the field expression.
+                    // Format: fieldName[!conversion]
+                    int bangPos = fieldExpr.IndexOf('!');
+                    if (bangPos >= 0)
+                    {
+                        fieldName = fieldExpr.Substring(0, bangPos);
+                        string convStr = fieldExpr.Substring(bangPos + 1);
+                        if (convStr.Length != 1 || (convStr[0] != 'r' && convStr[0] != 's' && convStr[0] != 'a'))
+                        {
+                            throw new ValueError("Unknown conversion specifier '" + convStr + "'");
+                        }
+                        conversion = convStr[0];
+                    }
+                    else
+                    {
+                        fieldName = fieldExpr;
                     }
 
                     object value;
@@ -121,6 +143,20 @@ namespace Sharpy
                                 "Replacement index " + index + " out of range for positional args tuple");
                         }
                         value = args[index];
+                    }
+
+                    // Apply conversion flag.
+                    if (conversion == 's')
+                    {
+                        value = value != null ? (value.ToString() ?? "None") : "None";
+                    }
+                    else if (conversion == 'r')
+                    {
+                        value = Builtins.Repr(value);
+                    }
+                    else if (conversion == 'a')
+                    {
+                        value = Builtins.Ascii(value);
                     }
 
                     if (formatSpec != null)

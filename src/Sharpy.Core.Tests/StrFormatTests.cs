@@ -304,4 +304,74 @@ public class StrFormatTests
     }
 
     #endregion
+
+    #region Conversion Flags
+
+    [Fact]
+    public void Format_ConversionR_WrapsStringInQuotes()
+    {
+        string s = "{0!r}";
+        s.Format("hello").Should().Be("'hello'");
+    }
+
+    [Fact]
+    public void Format_ConversionS_CallsStr()
+    {
+        string s = "{0!s}";
+        s.Format(42).Should().Be("42");
+    }
+
+    [Fact]
+    public void Format_ConversionA_CallsAscii()
+    {
+        string s = "{0!a}";
+        s.Format("hello").Should().Be("hello");
+    }
+
+    [Fact]
+    public void Format_ConversionR_WithFormatSpec()
+    {
+        // '{0!r:.5}'.format('hello world') => "'hell"
+        string s = "{0!r:.5}";
+        s.Format("hello world").Should().Be("'hell");
+    }
+
+    [Fact]
+    public void Format_ConversionR_None()
+    {
+        string s = "{0!r}";
+        s.Format(new object[] { null! }).Should().Be("None");
+    }
+
+    [Fact]
+    public void Format_ConversionS_None()
+    {
+        string s = "{0!s}";
+        s.Format(new object[] { null! }).Should().Be("None");
+    }
+
+    [Fact]
+    public void Format_ConversionR_AutoNumbering()
+    {
+        string s = "{!r}";
+        s.Format("test").Should().Be("'test'");
+    }
+
+    [Fact]
+    public void Format_ConversionS_AutoNumbering()
+    {
+        string s = "{!s}";
+        s.Format(99).Should().Be("99");
+    }
+
+    [Fact]
+    public void Format_UnknownConversion_ThrowsValueError()
+    {
+        string s = "{0!x}";
+        var act = () => s.Format("hello");
+        act.Should().Throw<ValueError>().WithMessage("*Unknown conversion specifier*");
+    }
+
+    #endregion
+
 }
