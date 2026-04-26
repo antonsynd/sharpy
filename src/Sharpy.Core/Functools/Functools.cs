@@ -99,9 +99,9 @@ namespace Sharpy
                 _func = func;
             }
 
-            public int Compare(T x, T y)
+            public int Compare(T? x, T? y)
             {
-                return _func(x, y);
+                return _func(x!, y!);
             }
         }
     }

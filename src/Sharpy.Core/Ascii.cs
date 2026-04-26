@@ -21,7 +21,7 @@ namespace Sharpy
                 return "None";
             }
 
-            string s = obj.ToString();
+            string? s = obj.ToString();
             if (s is null)
             {
                 return "None";

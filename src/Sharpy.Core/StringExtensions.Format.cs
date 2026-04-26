@@ -354,7 +354,7 @@ namespace Sharpy
                             }
                             else
                             {
-                                result = value.ToString();
+                                result = value.ToString() ?? "";
                             }
                         }
                         else
@@ -364,7 +364,7 @@ namespace Sharpy
                     }
                     else
                     {
-                        result = value != null ? value.ToString() : "";
+                        result = value != null ? (value.ToString() ?? "") : "";
                         if (precision >= 0 && result.Length > precision)
                         {
                             result = result.Substring(0, precision);
@@ -397,7 +397,7 @@ namespace Sharpy
                 result = ApplyGrouping(result, grouping);
             }
 
-            return result;
+            return result!;
         }
 
         private static string NormalizeScientific(string s)
@@ -532,7 +532,7 @@ namespace Sharpy
         /// </summary>
         public static Bytes Encode(this string s, string encoding = "utf-8")
         {
-#pragma warning disable CA1307 // string.Replace(string, string, StringComparison) not available in netstandard2.0
+#pragma warning disable CA1307
             switch (encoding.ToLowerInvariant().Replace("-", "").Replace("_", ""))
 #pragma warning restore CA1307
             {

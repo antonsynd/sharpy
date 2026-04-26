@@ -38,7 +38,7 @@ namespace Sharpy
                 return formattable.ToString(FormatSpec, System.Globalization.CultureInfo.InvariantCulture);
             }
 
-            return Value.ToString();
+            return Value.ToString() ?? "";
         }
 
         /// <summary>

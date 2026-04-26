@@ -122,7 +122,7 @@ namespace Sharpy
         }
 
         /// <summary>Determine equality with another date.</summary>
-        public bool Equals(Date other)
+        public bool Equals(Date? other)
         {
             if (other is null)
                 return false;
@@ -130,7 +130,7 @@ namespace Sharpy
         }
 
         /// <summary>Determine equality with another object.</summary>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return Equals(obj as Date);
         }
@@ -242,7 +242,7 @@ namespace Sharpy
         }
 
         /// <summary>Determine equality with another time.</summary>
-        public bool Equals(Time other)
+        public bool Equals(Time? other)
         {
             if (other is null)
                 return false;
@@ -250,7 +250,7 @@ namespace Sharpy
         }
 
         /// <summary>Determine equality with another object.</summary>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return Equals(obj as Time);
         }

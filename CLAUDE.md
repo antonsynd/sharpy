@@ -51,7 +51,7 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 2. **RoslynEmitter uses SyntaxFactory exclusively** — no string templating
 3. **Immutable AST** — annotations go in `SemanticInfo`, not AST nodes
 4. **Axiom precedence**: .NET > Type Safety > Python Syntax
-5. **C# 9.0 target for Sharpy.Core only** — `Sharpy.Core` targets `netstandard2.1;netstandard2.0` with `LangVersion 9.0` (no global usings, file-scoped namespaces, or record structs). `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` with `LangVersion latest`.
+5. **C# 9.0 minimum for Sharpy.Core** — `Sharpy.Core` multi-targets `net10.0;netstandard2.1`. On `netstandard2.1`: `LangVersion 9.0` (no global usings, file-scoped namespaces, or record structs). On `net10.0`: `LangVersion 14`. Use `#if NET10_0_OR_GREATER` for net10.0-only code paths. `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` with `LangVersion latest`.
 6. **Always verify Python behavior first** — run `python3 -c "..."` before implementing Python semantics
 7. **Language spec is authoritative** — check `docs/language_specification/` before implementing; change implementation to match spec, not the other way around
 8. **TODO/BUG/FIXME comments must have GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment in code, always create a corresponding GitHub issue first (via `gh issue create`) and reference it in the comment (e.g., `// TODO(#123): ...`). This makes deferred work visible at the project level, not buried in code.

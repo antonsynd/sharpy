@@ -323,7 +323,7 @@ namespace Sharpy
         /// to register <c>str.replace</c> for type-checking, and (2) the 3-arg overload
         /// calls it directly (as a static call) when <c>count &lt; 0</c> to get Python
         /// empty-string replacement semantics (BCL throws on empty <paramref name="old"/>
-        /// in netstandard2.0).
+        /// on empty <paramref name="old"/>).
         /// </remarks>
         public static string Replace(this string s, string old, string new_)
         {
@@ -338,7 +338,7 @@ namespace Sharpy
                 }
                 return sb.ToString();
             }
-#pragma warning disable CA1307 // string.Replace(string, string, StringComparison) not available in netstandard2.0
+#pragma warning disable CA1307
             return s.Replace(old, new_);
 #pragma warning restore CA1307
         }

@@ -188,11 +188,7 @@ namespace Sharpy
 
             string hex = json.Substring(index, 4);
 
-#if NETSTANDARD2_0
-            if (!int.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int codePoint))
-#else
             if (!int.TryParse(hex.AsSpan(), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int codePoint))
-#endif
             {
                 throw new JSONDecodeError(
                     "Invalid \\uXXXX escape",

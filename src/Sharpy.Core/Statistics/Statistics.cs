@@ -193,7 +193,7 @@ namespace Sharpy
         /// statistics.mode([1, 1, 2, 3])    # 1
         /// </code>
         /// </example>
-        public static T Mode<T>(IEnumerable<T> data)
+        public static T Mode<T>(IEnumerable<T> data) where T : notnull
         {
             var counts = new Dictionary<T, int>();
             var order = new System.Collections.Generic.List<T>();

@@ -1,15 +1,16 @@
 # .NET 10 / C# 14 Migration Plan
 
-**Status:** Planning
+**Status:** In Progress (Phase 0)
 **Target:** Post-Unity 6.8 CoreCLR migration (expected late 2026)
+**Minimum Unity version:** Unity 6.3 LTS
 **Scope:** Lift Sharpy.Core from `netstandard2.1` / C# 9.0 to `net10.0` / C# 14
 
 ## Context
 
 Unity 6.8 replaces Mono with CoreCLR and ships a .NET 10 toolchain. The only supported
 TFM for precompiled assemblies will be .NET Standard 2.1 (backward compat) and .NET 10
-(full access). This removes the rationale for Sharpy.Core's current floor of
-`netstandard2.0` + C# 9.0.
+(full access). With Unity 6.3 LTS as the minimum supported version, `netstandard2.0`
+can be dropped (Unity 6.x supports `netstandard2.1`; only Unity 2020 LTS required 2.0).
 
 The migration spans 5 C# language versions (10-14) and ~7 .NET runtime releases (5-10)
 worth of APIs that Sharpy currently cannot use.
@@ -37,8 +38,8 @@ worth of APIs that Sharpy currently cannot use.
 ### Guiding Principles
 
 1. **Multi-target with `netstandard2.1` fallback** — Sharpy.Core keeps backward compat
-   via conditional compilation (`#if NET10_0_OR_GREATER`). Older Unity/embedded scenarios
-   still work.
+   via conditional compilation (`#if NET10_0_OR_GREATER`). Unity 6.3 LTS+
+   (netstandard2.1) and modern .NET (net10.0) both work.
 2. **Generated code adapts to target** — The RoslynEmitter detects the output target and
    emits modern C# when available, falling back to C# 9.0 patterns otherwise.
 3. **Phases are independently shippable** — Each phase produces a releasable state. No
@@ -51,22 +52,24 @@ worth of APIs that Sharpy currently cannot use.
 ## Phase 0: Foundation — Multi-Target Sharpy.Core
 
 **Goal:** Add `net10.0` target to Sharpy.Core alongside `netstandard2.1`. Drop
-`netstandard2.0`. Establish conditional compilation infrastructure.
+`netstandard2.0` (minimum supported Unity is 6.3 LTS, which uses netstandard2.1).
+Establish conditional compilation infrastructure.
 
 ### Tasks
 
-- [ ] Change `Sharpy.Core.csproj` TargetFrameworks to `net10.0;netstandard2.1`
-- [ ] Remove `netstandard2.0` target (Unity 6.8 requires at minimum netstandard2.1)
-- [ ] Remove `Microsoft.Bcl.Memory` polyfill (only needed for netstandard2.0)
-- [ ] Add `LangVersion` conditional: 14 for net10.0, 9.0 for netstandard2.1
-- [ ] Verify all 10,218+ tests pass on both targets
+- [x] Change `Sharpy.Core.csproj` TargetFrameworks to `net10.0;netstandard2.1`
+- [x] Remove `netstandard2.0` target and `Microsoft.Bcl.Memory` polyfill
+- [x] Remove `NETSTANDARD2_0`-specific code paths
+- [x] Add `LangVersion` conditional: 14 for net10.0, 9.0 for netstandard2.1
+- [ ] Verify all tests pass on both targets
 - [ ] Update CI to matrix-test both TFMs
 - [ ] Update `CLAUDE.md` and `deferred_features.md` to reflect new constraints
 
 ### Breaking Changes
 
-- Drop `netstandard2.0` support. Projects on .NET Core 2.0 or Unity 2018 can no longer
-  use Sharpy.Core. This is acceptable — those runtimes are EOL.
+- Drop `netstandard2.0` support. Unity versions before 6.x (which only support
+  netstandard2.0) can no longer use Sharpy.Core. This is acceptable — minimum
+  supported version is Unity 6.3 LTS, which supports netstandard2.1.
 
 ### Estimated Effort
 
@@ -513,8 +516,8 @@ members, list patterns, generic math protocols, required members).
 
 ### 6.4 Deprecation of netstandard2.1 path
 
-Once Unity 6.8 is widely adopted (estimated mid-2027), evaluate dropping the
-`netstandard2.1` target entirely to eliminate conditional compilation complexity.
+Once Unity 6.8 is widely adopted (estimated mid-2027), evaluate dropping
+`netstandard2.1`, leaving only `net10.0` to eliminate conditional compilation complexity.
 
 ---
 

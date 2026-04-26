@@ -152,8 +152,8 @@ namespace Sharpy
             if (!ReflectionCache.TryGetValue(type, out var accessors))
             {
                 accessors = (
-                    type.GetProperty("IsSome"),
-                    type.GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance)
+                    type.GetProperty("IsSome")!,
+                    type.GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance)!
                 );
                 ReflectionCache[type] = accessors;
             }
@@ -174,7 +174,7 @@ namespace Sharpy
             if (type.IsGenericType && type.GetGenericTypeDefinition() == OptionalGenericDef)
             {
                 var (isSomeProp, valueField) = GetAccessors(type);
-                var hasValue = (bool)isSomeProp.GetValue(obj);
+                var hasValue = (bool)isSomeProp.GetValue(obj)!;
                 if (!hasValue)
                 {
                     result = "None";
