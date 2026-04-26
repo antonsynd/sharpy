@@ -232,6 +232,176 @@ public class RenameHandlerTests : IDisposable
             "declaration edit end should cover the full name");
     }
 
+    /// <summary>
+    /// Regression test for #597: Rename from an assignment declaration site.
+    /// When the cursor is on `x` in `x = 5`, the Identifier AST node is resolved
+    /// and the rename should produce edits at both the declaration and all references.
+    /// </summary>
+    [Fact]
+    public async Task Rename_AssignmentVariable_RenamesFromDeclarationSite()
+    {
+        // Line 0: "def main():"
+        // Line 1: "    x = 5"
+        //          "    " = 4 chars, "x" at col 4
+        // Line 2: "    print(x)"
+        //          "print(" = 10 chars, "x" at col 10
+        var source = "def main():\n    x = 5\n    print(x)";
+
+        // Cursor on "x" at assignment (declaration): line 1, col 4 (0-based)
+        var result = await RenameAsync(source, 1, 4, "value");
+
+        result.Should().NotBeNull("rename from assignment declaration should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var uri = DocumentUri.From("file:///test.spy");
+        result.Changes.Should().ContainKey(uri);
+
+        var edits = result.Changes![uri].ToList();
+        edits.Should().HaveCountGreaterThanOrEqualTo(2, "should have edits for declaration and reference");
+
+        // Declaration edit at line 1, col 4
+        var declEdit = edits.FirstOrDefault(e => e.Range.Start.Line == 1);
+        declEdit.Should().NotBeNull("should have an edit on the assignment declaration line");
+        declEdit!.Range.Start.Character.Should().Be(4,
+            "declaration edit should start at the name 'x' (col 4)");
+        declEdit.Range.End.Character.Should().Be(4 + "x".Length,
+            "declaration edit end should cover the full name");
+        declEdit.NewText.Should().Be("value");
+
+        // Reference edit at line 2 (print(x))
+        var refEdit = edits.FirstOrDefault(e => e.Range.Start.Line == 2);
+        refEdit.Should().NotBeNull("should have an edit at the reference site");
+        refEdit!.NewText.Should().Be("value");
+    }
+
+    /// <summary>
+    /// Regression test for #597: Rename from a const declaration site.
+    /// `const y: int = 10` is parsed as a VariableDeclaration with IsConst=true.
+    /// ResolveSymbol handles VariableDeclaration via FindSymbolByDeclaration.
+    /// </summary>
+    [Fact]
+    public async Task Rename_ConstVariable_RenamesFromDeclarationSite()
+    {
+        // Line 0: "const MAX_SIZE: int = 10"
+        //          "const " = 6 chars, "MAX_SIZE" at col 6
+        // Line 1: "def main():"
+        // Line 2: "    print(MAX_SIZE)"
+        //          "print(" = 10 chars, "MAX_SIZE" at col 10
+        var source = "const MAX_SIZE: int = 10\ndef main():\n    print(MAX_SIZE)";
+
+        // Cursor on "MAX_SIZE" at const declaration: line 0, col 6 (0-based)
+        var result = await RenameAsync(source, 0, 6, "LIMIT");
+
+        result.Should().NotBeNull("rename from const declaration should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var uri = DocumentUri.From("file:///test.spy");
+        result.Changes.Should().ContainKey(uri);
+
+        var edits = result.Changes![uri].ToList();
+        edits.Should().HaveCountGreaterThanOrEqualTo(2, "should have edits for declaration and reference");
+
+        // Declaration edit at line 0, col 6
+        var declEdit = edits.FirstOrDefault(e => e.Range.Start.Line == 0);
+        declEdit.Should().NotBeNull("should have an edit on the const declaration line");
+        declEdit!.Range.Start.Character.Should().Be(6,
+            "declaration edit should start at the name 'MAX_SIZE' (col 6), not at 'const' (col 0)");
+        declEdit.Range.End.Character.Should().Be(6 + "MAX_SIZE".Length,
+            "declaration edit end should cover the full name");
+        declEdit.NewText.Should().Be("LIMIT");
+
+        // Reference edit at line 2 (print(MAX_SIZE))
+        var refEdit = edits.FirstOrDefault(e => e.Range.Start.Line == 2);
+        refEdit.Should().NotBeNull("should have an edit at the reference site");
+        refEdit!.NewText.Should().Be("LIMIT");
+    }
+
+    /// <summary>
+    /// Regression test for #597: Rename from a for-loop variable declaration site.
+    /// `for i in range(5)` has the loop target as an Identifier AST node.
+    /// ResolveSymbol resolves it via GetIdentifierSymbol.
+    /// </summary>
+    [Fact]
+    public async Task Rename_ForLoopVariable_RenamesFromDeclarationSite()
+    {
+        // Line 0: "def main():"
+        // Line 1: "    for idx in range(5):"
+        //          "    for " = 8 chars, "idx" at col 8
+        // Line 2: "        print(idx)"
+        //          "        print(" = 14 chars, "idx" at col 14
+        var source = "def main():\n    for idx in range(5):\n        print(idx)";
+
+        // Cursor on "idx" at for-loop declaration: line 1, col 8 (0-based)
+        var result = await RenameAsync(source, 1, 8, "index");
+
+        result.Should().NotBeNull("rename from for-loop variable declaration should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var uri = DocumentUri.From("file:///test.spy");
+        result.Changes.Should().ContainKey(uri);
+
+        var edits = result.Changes![uri].ToList();
+        edits.Should().HaveCountGreaterThanOrEqualTo(2, "should have edits for declaration and reference");
+
+        // Declaration edit at line 1, col 8
+        var declEdit = edits.FirstOrDefault(e => e.Range.Start.Line == 1);
+        declEdit.Should().NotBeNull("should have an edit on the for-loop declaration line");
+        declEdit!.Range.Start.Character.Should().Be(8,
+            "declaration edit should start at the name 'idx' (col 8)");
+        declEdit.Range.End.Character.Should().Be(8 + "idx".Length,
+            "declaration edit end should cover the full name");
+        declEdit.NewText.Should().Be("index");
+
+        // Reference edit at line 2 (print(idx))
+        var refEdit = edits.FirstOrDefault(e => e.Range.Start.Line == 2);
+        refEdit.Should().NotBeNull("should have an edit at the reference site");
+        refEdit!.NewText.Should().Be("index");
+    }
+
+    /// <summary>
+    /// Regression test for #597: Rename from a for-tuple unpacking variable declaration site.
+    /// `for x, y in items` has TupleLiteral as the loop target, with Identifier children.
+    /// When the cursor is on one of the Identifier children, ResolveSymbol resolves it
+    /// via GetIdentifierSymbol.
+    /// </summary>
+    [Fact]
+    public async Task Rename_ForTupleVariable_RenamesFromDeclarationSite()
+    {
+        // Line 0: "def main():"
+        // Line 1: "    items: list[tuple[str, int]] = [(\"a\", 1), (\"b\", 2)]"
+        // Line 2: "    for key, val in items:"
+        //          "    for " = 8 chars, "key" at col 8, ", " at col 11, "val" at col 13
+        // Line 3: "        print(key)"
+        //          "        print(" = 14 chars, "key" at col 14
+        var source = "def main():\n    items: list[tuple[str, int]] = [(\"a\", 1), (\"b\", 2)]\n    for key, val in items:\n        print(key)";
+
+        // Cursor on "key" at for-tuple declaration: line 2, col 8 (0-based)
+        var result = await RenameAsync(source, 2, 8, "name");
+
+        result.Should().NotBeNull("rename from for-tuple variable declaration should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var uri = DocumentUri.From("file:///test.spy");
+        result.Changes.Should().ContainKey(uri);
+
+        var edits = result.Changes![uri].ToList();
+        edits.Should().HaveCountGreaterThanOrEqualTo(2, "should have edits for declaration and reference");
+
+        // Declaration edit at line 2, col 8
+        var declEdit = edits.FirstOrDefault(e => e.Range.Start.Line == 2);
+        declEdit.Should().NotBeNull("should have an edit on the for-tuple declaration line");
+        declEdit!.Range.Start.Character.Should().Be(8,
+            "declaration edit should start at the name 'key' (col 8)");
+        declEdit.Range.End.Character.Should().Be(8 + "key".Length,
+            "declaration edit end should cover the full name");
+        declEdit.NewText.Should().Be("name");
+
+        // Reference edit at line 3 (print(key))
+        var refEdit = edits.FirstOrDefault(e => e.Range.Start.Line == 3);
+        refEdit.Should().NotBeNull("should have an edit at the reference site");
+        refEdit!.NewText.Should().Be("name");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();
