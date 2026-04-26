@@ -57,6 +57,8 @@ internal partial class NameResolver
             DeclarationSpan = functionDef.Span,
             DeclarationLine = functionDef.LineStart,
             DeclarationColumn = functionDef.ColumnStart,
+            NameDeclarationLine = functionDef.NameLineStart,
+            NameDeclarationColumn = functionDef.NameColumnStart,
             Documentation = functionDef.DocString,
             DeprecationMessage = GetDeprecationMessage(functionDef.Decorators)
         };
@@ -131,6 +133,8 @@ internal partial class NameResolver
             DeclarationSpan = method.Span,
             DeclarationLine = method.LineStart,
             DeclarationColumn = method.ColumnStart,
+            NameDeclarationLine = method.NameLineStart,
+            NameDeclarationColumn = method.NameColumnStart,
             SignatureKey = GetMethodSignatureKey(method),
             Documentation = method.DocString,
             DeprecationMessage = GetDeprecationMessage(method.Decorators)
@@ -269,7 +273,9 @@ internal partial class NameResolver
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = field.Span,
             DeclarationLine = field.LineStart,
-            DeclarationColumn = field.ColumnStart
+            DeclarationColumn = field.ColumnStart,
+            NameDeclarationLine = field.NameLineStart,
+            NameDeclarationColumn = field.NameColumnStart
         };
 
         owningType.Fields.Add(varSymbol);

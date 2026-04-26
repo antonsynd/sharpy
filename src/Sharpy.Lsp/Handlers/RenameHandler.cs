@@ -5,6 +5,8 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Services;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Handlers;
@@ -45,10 +47,10 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         var (line, col) = PositionConverter.ToCompiler(request.Position);
         var node = _api.FindNodeAtPosition(analysis.Ast, line, col);
 
-        if (node is not Identifier id)
+        if (node == null)
             return null;
 
-        var symbol = analysis.SemanticQuery.GetIdentifierSymbol(id);
+        var symbol = ResolveSymbol(node, analysis.SemanticQuery, line, col);
         if (symbol == null)
             return null;
 
@@ -58,11 +60,11 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
 
         var edits = new Dictionary<DocumentUri, System.Collections.Generic.IList<TextEdit>>();
 
-        // Edit declaration
+        // Edit declaration — use the name token position, not the statement start
         if (symbol.DeclarationSpan != null)
         {
-            var declLine = System.Math.Max(0, (symbol.DeclarationLine ?? 1) - 1);
-            var declCol = System.Math.Max(0, (symbol.DeclarationColumn ?? 1) - 1);
+            var declLine = System.Math.Max(0, ((symbol.NameDeclarationLine ?? symbol.DeclarationLine) ?? 1) - 1);
+            var declCol = System.Math.Max(0, ((symbol.NameDeclarationColumn ?? symbol.DeclarationColumn) ?? 1) - 1);
 
             var declFilePath = symbol.DeclaringFilePath ?? uri;
             var declUri = declFilePath.StartsWith("file://", StringComparison.Ordinal)
@@ -121,6 +123,42 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
                 kvp => kvp.Key,
                 kvp => kvp.Value as IEnumerable<TextEdit>)
         };
+    }
+
+    private static Symbol? ResolveSymbol(Node node, ISemanticQuery query, int line, int col)
+    {
+        if (node is Identifier id)
+            return query.GetIdentifierSymbol(id);
+
+        // Handle declaration nodes where the name is a string property, not an Identifier child
+        (string name, int nameLine, int nameCol)? decl = node switch
+        {
+            VariableDeclaration v when IsOnName(line, col, v.NameLineStart, v.NameColumnStart, v.Name.Length)
+                => (v.Name, v.LineStart, v.ColumnStart),
+            FunctionDef f when IsOnName(line, col, f.NameLineStart, f.NameColumnStart, f.Name.Length)
+                => (f.Name, f.LineStart, f.ColumnStart),
+            ClassDef c when IsOnName(line, col, c.NameLineStart, c.NameColumnStart, c.Name.Length)
+                => (c.Name, c.LineStart, c.ColumnStart),
+            StructDef s when IsOnName(line, col, s.NameLineStart, s.NameColumnStart, s.Name.Length)
+                => (s.Name, s.LineStart, s.ColumnStart),
+            InterfaceDef i when IsOnName(line, col, i.NameLineStart, i.NameColumnStart, i.Name.Length)
+                => (i.Name, i.LineStart, i.ColumnStart),
+            EnumDef e when IsOnName(line, col, e.NameLineStart, e.NameColumnStart, e.Name.Length)
+                => (e.Name, e.LineStart, e.ColumnStart),
+            _ => null
+        };
+
+        if (decl is var (name, nameLine, nameCol))
+            return query.FindSymbolByDeclaration(name, nameLine, nameCol);
+
+        return null;
+    }
+
+    private static bool IsOnName(int cursorLine, int cursorCol, int nameLineStart, int nameColStart, int nameLength)
+    {
+        return cursorLine == nameLineStart
+            && cursorCol >= nameColStart
+            && cursorCol < nameColStart + nameLength;
     }
 
     private static void AddReferenceEdits(

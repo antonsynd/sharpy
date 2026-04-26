@@ -192,7 +192,9 @@ internal class PackageResolver
                     Kind = SymbolKind.Function,
                     AccessLevel = funcAccessLevel,
                     DeclarationLine = functionDef.LineStart,
-                    DeclarationColumn = functionDef.ColumnStart
+                    DeclarationColumn = functionDef.ColumnStart,
+                    NameDeclarationLine = functionDef.NameLineStart,
+                    NameDeclarationColumn = functionDef.NameColumnStart
                 };
                 moduleInfo.ExportedSymbols[functionDef.Name] = funcSymbol;
                 break;
@@ -206,7 +208,9 @@ internal class PackageResolver
                     TypeKind = TypeKind.Class,
                     AccessLevel = classAccessLevel,
                     DeclarationLine = classDef.LineStart,
-                    DeclarationColumn = classDef.ColumnStart
+                    DeclarationColumn = classDef.ColumnStart,
+                    NameDeclarationLine = classDef.NameLineStart,
+                    NameDeclarationColumn = classDef.NameColumnStart
                 };
                 moduleInfo.ExportedSymbols[classDef.Name] = classSymbol;
                 break;
@@ -220,7 +224,9 @@ internal class PackageResolver
                     TypeKind = TypeKind.Struct,
                     AccessLevel = structAccessLevel,
                     DeclarationLine = structDef.LineStart,
-                    DeclarationColumn = structDef.ColumnStart
+                    DeclarationColumn = structDef.ColumnStart,
+                    NameDeclarationLine = structDef.NameLineStart,
+                    NameDeclarationColumn = structDef.NameColumnStart
                 };
                 moduleInfo.ExportedSymbols[structDef.Name] = structSymbol;
                 break;
@@ -234,7 +240,9 @@ internal class PackageResolver
                     TypeKind = TypeKind.Interface,
                     AccessLevel = interfaceAccessLevel,
                     DeclarationLine = interfaceDef.LineStart,
-                    DeclarationColumn = interfaceDef.ColumnStart
+                    DeclarationColumn = interfaceDef.ColumnStart,
+                    NameDeclarationLine = interfaceDef.NameLineStart,
+                    NameDeclarationColumn = interfaceDef.NameColumnStart
                 };
                 moduleInfo.ExportedSymbols[interfaceDef.Name] = interfaceSymbol;
                 break;
@@ -248,7 +256,9 @@ internal class PackageResolver
                     TypeKind = TypeKind.Enum,
                     AccessLevel = enumAccessLevel,
                     DeclarationLine = enumDef.LineStart,
-                    DeclarationColumn = enumDef.ColumnStart
+                    DeclarationColumn = enumDef.ColumnStart,
+                    NameDeclarationLine = enumDef.NameLineStart,
+                    NameDeclarationColumn = enumDef.NameColumnStart
                 };
                 // Register enum members as static fields for pattern matching resolution
                 foreach (var member in enumDef.Members)

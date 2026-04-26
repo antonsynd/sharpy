@@ -72,4 +72,11 @@ public interface ISemanticQuery
     /// Returns null if no symbol was recorded (e.g., no <c>as</c> clause).
     /// </summary>
     VariableSymbol? GetWithItemSymbol(WithItem item);
+
+    /// <summary>
+    /// Finds a symbol by matching its name and declaration position.
+    /// Used by rename/references handlers when the cursor is on a declaration node
+    /// (e.g., VariableDeclaration, FunctionDef) rather than an Identifier reference.
+    /// </summary>
+    Symbol? FindSymbolByDeclaration(string name, int line, int column);
 }

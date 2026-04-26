@@ -55,8 +55,8 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
         // Include declaration if requested
         if (request.Context.IncludeDeclaration && symbol.DeclarationSpan != null)
         {
-            var declLine = System.Math.Max(0, (symbol.DeclarationLine ?? 1) - 1);
-            var declCol = System.Math.Max(0, (symbol.DeclarationColumn ?? 1) - 1);
+            var declLine = System.Math.Max(0, ((symbol.NameDeclarationLine ?? symbol.DeclarationLine) ?? 1) - 1);
+            var declCol = System.Math.Max(0, ((symbol.NameDeclarationColumn ?? symbol.DeclarationColumn) ?? 1) - 1);
             var declEnd = declCol + symbol.Name.Length;
 
             var declFilePath = symbol.DeclaringFilePath ?? uri;

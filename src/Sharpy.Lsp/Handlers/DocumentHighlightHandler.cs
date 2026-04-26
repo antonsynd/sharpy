@@ -55,8 +55,8 @@ internal sealed class SharpyDocumentHighlightHandler : DocumentHighlightHandlerB
         // Add declaration highlight (Write kind)
         if (symbol.DeclarationLine != null)
         {
-            var declLine = System.Math.Max(0, (symbol.DeclarationLine ?? 1) - 1);
-            var declCol = System.Math.Max(0, (symbol.DeclarationColumn ?? 1) - 1);
+            var declLine = System.Math.Max(0, ((symbol.NameDeclarationLine ?? symbol.DeclarationLine) ?? 1) - 1);
+            var declCol = System.Math.Max(0, ((symbol.NameDeclarationColumn ?? symbol.DeclarationColumn) ?? 1) - 1);
             var declEnd = declCol + symbol.Name.Length;
 
             results.Add(new DocumentHighlight

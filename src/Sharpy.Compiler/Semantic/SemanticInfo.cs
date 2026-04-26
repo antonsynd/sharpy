@@ -416,6 +416,32 @@ public class SemanticInfo : ISemanticQuery
         }
         return Array.Empty<SymbolReference>();
     }
+
+    /// <inheritdoc/>
+    public Symbol? FindSymbolByDeclaration(string name, int line, int column)
+    {
+        foreach (var symbol in _symbolReferences.Keys)
+        {
+            if (symbol.Name == name
+                && symbol.DeclarationLine == line
+                && symbol.DeclarationColumn == column)
+            {
+                return symbol;
+            }
+        }
+
+        foreach (var symbol in _identifierSymbols.Values)
+        {
+            if (symbol.Name == name
+                && symbol.DeclarationLine == line
+                && symbol.DeclarationColumn == column)
+            {
+                return symbol;
+            }
+        }
+
+        return null;
+    }
 }
 
 /// <summary>

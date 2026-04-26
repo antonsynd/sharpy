@@ -83,6 +83,8 @@ internal partial class NameResolver
             DeclarationSpan = classDef.Span,
             DeclarationLine = classDef.LineStart,
             DeclarationColumn = classDef.ColumnStart,
+            NameDeclarationLine = classDef.NameLineStart,
+            NameDeclarationColumn = classDef.NameColumnStart,
             Documentation = classDef.DocString,
             DeprecationMessage = GetDeprecationMessage(classDef.Decorators)
         };
@@ -166,6 +168,8 @@ internal partial class NameResolver
             DeclarationSpan = structDef.Span,
             DeclarationLine = structDef.LineStart,
             DeclarationColumn = structDef.ColumnStart,
+            NameDeclarationLine = structDef.NameLineStart,
+            NameDeclarationColumn = structDef.NameColumnStart,
             Documentation = structDef.DocString
         };
 
@@ -246,6 +250,8 @@ internal partial class NameResolver
             DeclarationSpan = interfaceDef.Span,
             DeclarationLine = interfaceDef.LineStart,
             DeclarationColumn = interfaceDef.ColumnStart,
+            NameDeclarationLine = interfaceDef.NameLineStart,
+            NameDeclarationColumn = interfaceDef.NameColumnStart,
             Documentation = interfaceDef.DocString
         };
 
@@ -398,6 +404,8 @@ internal partial class NameResolver
             DeclarationSpan = enumDef.Span,
             DeclarationLine = enumDef.LineStart,
             DeclarationColumn = enumDef.ColumnStart,
+            NameDeclarationLine = enumDef.NameLineStart,
+            NameDeclarationColumn = enumDef.NameColumnStart,
             Documentation = enumDef.DocString
         };
 

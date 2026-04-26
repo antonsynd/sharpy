@@ -102,10 +102,6 @@ public sealed class HoverService
         int keywordLength;
         switch (node)
         {
-            case AwaitExpression awaitExpr:
-                operand = awaitExpr.Operand;
-                keywordLength = 5; // "await"
-                break;
             case YieldStatement yieldStmt:
                 if (yieldStmt.Value == null)
                     return null;
@@ -152,6 +148,8 @@ public sealed class HoverService
                 => (i.NameLineStart, i.NameColumnStart, i.NameColumnStart + i.Name.Length),
             EnumDef e when IsOnHeaderName(cursorLine, cursorCol, e.NameLineStart, e.NameColumnStart, e.Name)
                 => (e.NameLineStart, e.NameColumnStart, e.NameColumnStart + e.Name.Length),
+            AwaitExpression aw
+                => (aw.LineStart, aw.ColumnStart, aw.ColumnStart + 5), // "await"
             ReturnStatement ret
                 => (ret.LineStart, ret.ColumnStart, ret.ColumnStart + 6), // "return"
             _ => null

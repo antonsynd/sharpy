@@ -24,6 +24,15 @@ public abstract record Symbol
     public int? DeclarationColumn { get; init; }
 
     /// <summary>
+    /// Line/column of the symbol's name token within its declaration.
+    /// For <c>async def foo</c>, DeclarationLine points to <c>async</c> while
+    /// NameDeclarationLine points to <c>foo</c>. Falls back to DeclarationLine/Column
+    /// when not explicitly set (e.g. variables where the name IS the declaration start).
+    /// </summary>
+    public int? NameDeclarationLine { get; init; }
+    public int? NameDeclarationColumn { get; init; }
+
+    /// <summary>
     /// The source span of this symbol's declaration (for LSP go-to-definition).
     /// </summary>
     public Text.TextSpan? DeclarationSpan { get; init; }
