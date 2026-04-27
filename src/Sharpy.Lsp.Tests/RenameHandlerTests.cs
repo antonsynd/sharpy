@@ -402,6 +402,78 @@ public class RenameHandlerTests : IDisposable
         refEdit!.NewText.Should().Be("name");
     }
 
+    /// <summary>
+    /// Regression test for #597: Rename from a module-level variable declaration site.
+    /// TypeChecker sets DeclarationSpan/DeclaringFilePath on non-const module-level variables.
+    /// Note: In single-file test context, the declaration edit may be stored under a
+    /// different URI key (TypeChecker uses "&lt;source&gt;" as file path), so we collect
+    /// all edits across all URI keys to verify both declaration and reference edits exist.
+    /// </summary>
+    [Fact]
+    public async Task Rename_ModuleLevelVariable_RenamesFromDeclarationSite()
+    {
+        var source = "counter: int = 0\ndef main():\n    print(counter)";
+
+        var result = await RenameAsync(source, 0, 0, "total");
+
+        result.Should().NotBeNull("rename from module-level variable declaration should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var allEdits = result.Changes!.SelectMany(kv => kv.Value).ToList();
+        allEdits.Should().HaveCountGreaterThanOrEqualTo(2,
+            "should have edits for declaration and reference (possibly across URI keys)");
+
+        var declEdit = allEdits.FirstOrDefault(e => e.Range.Start.Line == 0);
+        declEdit.Should().NotBeNull("should have an edit on the module-level declaration line");
+        declEdit!.NewText.Should().Be("total");
+
+        var refEdit = allEdits.FirstOrDefault(e => e.Range.Start.Line == 2);
+        refEdit.Should().NotBeNull("should have an edit at the reference site");
+        refEdit!.NewText.Should().Be("total");
+    }
+
+    /// <summary>
+    /// Documents handler limitation for #597: ExceptHandler.Name is a string property,
+    /// not an Identifier AST node, so FindNodeAtPosition cannot locate it.
+    /// Rename from a reference site (the Identifier in the handler body) works;
+    /// rename from the declaration-site name in "except ... as err" does not yet.
+    /// </summary>
+    [Fact]
+    public async Task Rename_ExceptVariable_WorksFromReferenceSite()
+    {
+        var source = "def main():\n    try:\n        x: int = int(\"abc\")\n    except ValueError as err:\n        print(err)";
+
+        // Rename from the REFERENCE site (print(err)) — line 4, col 14
+        var result = await RenameAsync(source, 4, 14, "error");
+
+        result.Should().NotBeNull("rename from except-variable reference should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var allEdits = result.Changes!.SelectMany(kv => kv.Value).ToList();
+        allEdits.Should().Contain(e => e.NewText == "error");
+    }
+
+    /// <summary>
+    /// Documents handler limitation for #597: WithItem.Name is a string property,
+    /// not an Identifier AST node, so FindNodeAtPosition cannot locate it.
+    /// Rename from a reference site (the Identifier in the with body) works;
+    /// rename from the declaration-site name in "with ... as writer" does not yet.
+    /// </summary>
+    [Fact]
+    public async Task Rename_WithVariable_WorksFromReferenceSite()
+    {
+        var source = "from System.IO import StringWriter\ndef main():\n    with StringWriter() as writer:\n        print(writer)";
+
+        // Rename from the REFERENCE site (print(writer)) — line 3, col 14
+        var result = await RenameAsync(source, 3, 14, "output");
+
+        result.Should().NotBeNull("rename from with-variable reference should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var allEdits = result.Changes!.SelectMany(kv => kv.Value).ToList();
+        allEdits.Should().Contain(e => e.NewText == "output");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();
