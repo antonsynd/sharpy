@@ -24,7 +24,7 @@
   <ItemGroup>
     <PackageReference Include="System.Collections.Immutable" Version="10.0.6" />
     <!-- Async interfaces for IAsyncEnumerable<T>, IAsyncDisposable (Phase 10 prep) -->
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.6" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.7" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
   </ItemGroup>
 
 </Project>
