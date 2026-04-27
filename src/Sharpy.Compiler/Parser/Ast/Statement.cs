@@ -384,6 +384,9 @@ public record ExceptHandler
     /// </summary>
     public Expression? Filter { get; init; }
 
+    public int NameLineStart { get; init; }
+    public int NameColumnStart { get; init; }
+
     // Source location
     public int LineStart { get; init; }
     public int ColumnStart { get; init; }

@@ -183,6 +183,7 @@ public class Compiler
             var builtinRegistry = new BuiltinRegistry(_logger);
             var symbolTable = new SymbolTable(builtinRegistry);
             var semanticInfo = new SemanticInfo();
+            semanticInfo.SetSymbolTable(symbolTable);
             var semanticBinding = new SemanticBinding();
             result.SemanticBinding = semanticBinding;
 

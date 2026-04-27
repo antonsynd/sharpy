@@ -114,6 +114,7 @@ internal class CompilerServicesBuilder
         var builtinRegistry = new BuiltinRegistry(logger);
         var symbolTable = new SymbolTable(builtinRegistry);
         var semanticInfo = new SemanticInfo();
+        semanticInfo.SetSymbolTable(symbolTable);
 
         return new CompilerServicesBuilder()
             .WithLogger(logger)

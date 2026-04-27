@@ -839,8 +839,8 @@ internal partial class TypeChecker
                     AccessLevel = AccessLevel.Public,
                     DeclarationLine = handler.LineStart,
                     DeclarationColumn = handler.ColumnStart,
-                    NameDeclarationLine = handler.LineStart,
-                    NameDeclarationColumn = handler.ColumnStart,
+                    NameDeclarationLine = handler.NameLineStart,
+                    NameDeclarationColumn = handler.NameColumnStart,
                     DeclarationSpan = handler.Span,
                     DeclaringFilePath = _currentFilePath
                 };

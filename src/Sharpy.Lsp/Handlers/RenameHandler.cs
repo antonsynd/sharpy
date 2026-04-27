@@ -61,7 +61,7 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         var edits = new Dictionary<DocumentUri, System.Collections.Generic.IList<TextEdit>>();
 
         // Edit declaration — use the name token position, not the statement start
-        if (symbol.DeclarationSpan != null)
+        if (symbol.DeclaringFilePath != null || symbol.DeclarationSpan != null)
         {
             var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
             var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
@@ -145,12 +145,40 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
                 => (i.Name, i.LineStart, i.ColumnStart),
             EnumDef e when IsOnName(line, col, e.NameLineStart, e.NameColumnStart, e.Name.Length)
                 => (e.Name, e.LineStart, e.ColumnStart),
+            TryStatement t => ResolveExceptHandlerName(t, line, col),
+            WithStatement w => ResolveWithItemName(w, line, col),
             _ => null
         };
 
         if (decl is var (name, nameLine, nameCol))
             return query.FindSymbolByDeclaration(name, nameLine, nameCol);
 
+        return null;
+    }
+
+    private static (string name, int nameLine, int nameCol)? ResolveExceptHandlerName(TryStatement t, int line, int col)
+    {
+        foreach (var handler in t.Handlers)
+        {
+            if (handler.Name != null
+                && IsOnName(line, col, handler.NameLineStart, handler.NameColumnStart, handler.Name.Length))
+            {
+                return (handler.Name, handler.LineStart, handler.ColumnStart);
+            }
+        }
+        return null;
+    }
+
+    private static (string name, int nameLine, int nameCol)? ResolveWithItemName(WithStatement w, int line, int col)
+    {
+        foreach (var item in w.Items)
+        {
+            if (item.Name != null
+                && IsOnName(line, col, item.NameLineStart, item.NameColumnStart, item.Name.Length))
+            {
+                return (item.Name, item.LineStart, item.ColumnStart);
+            }
+        }
         return null;
     }
 

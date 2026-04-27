@@ -1,0 +1,17 @@
+# Test ascii() builtin function
+
+def main():
+    # ASCII-only string gets repr quotes
+    print(ascii("hello"))
+
+    # Non-ASCII string gets escaped with quotes
+    print(ascii("héllo"))
+
+    # Integer has no quotes
+    print(ascii(42))
+
+    # Boolean uses Python keyword
+    print(ascii(True))
+
+    # None
+    print(ascii(None))

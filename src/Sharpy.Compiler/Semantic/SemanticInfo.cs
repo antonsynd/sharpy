@@ -101,10 +101,17 @@ public class SemanticInfo : ISemanticQuery
     // Read access is safe after analysis completes.
     private readonly Dictionary<Symbol, List<SymbolReference>> _symbolReferences = new();
 
+    private SymbolTable? _symbolTable;
+
     /// <summary>
     /// The file path of the current compilation unit, used to tag symbol references.
     /// </summary>
     public string? CurrentFilePath { get; internal set; }
+
+    public void SetSymbolTable(SymbolTable symbolTable)
+    {
+        _symbolTable = symbolTable;
+    }
 
     public void SetExpressionType(Expression expr, SemanticType type)
     {
@@ -437,6 +444,19 @@ public class SemanticInfo : ISemanticQuery
                 && symbol.DeclarationColumn == column)
             {
                 return symbol;
+            }
+        }
+
+        if (_symbolTable != null)
+        {
+            foreach (var symbol in _symbolTable.GetAllModuleScopeSymbols())
+            {
+                if (symbol.Name == name
+                    && symbol.DeclarationLine == line
+                    && symbol.DeclarationColumn == column)
+                {
+                    return symbol;
+                }
             }
         }
 

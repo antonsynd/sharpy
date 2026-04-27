@@ -14,6 +14,7 @@ internal partial class ProjectCompiler
         var builtinRegistry = new BuiltinRegistry(_logger);
         _symbolTableBacking = new SymbolTable(builtinRegistry);
         _semanticInfoBacking = new SemanticInfo();
+        _semanticInfoBacking.SetSymbolTable(_symbolTableBacking);
         // Create SemanticBinding for storing semantic data separate from AST
         var semanticBinding = new SemanticBinding();
 

@@ -418,6 +418,8 @@ public partial class Parser
 
             TypeAnnotation? exceptionType = null;
             string? name = null;
+            int nameLineStart = 0;
+            int nameColumnStart = 0;
 
             // except* requires a type — bare `except*:` is invalid
             if (isExceptStar && Current.Type == TokenType.Colon)
@@ -480,6 +482,8 @@ public partial class Parser
                 {
                     Advance();
                     name = ExpectIdentifier();
+                    nameLineStart = Previous.Line;
+                    nameColumnStart = Previous.Column;
                 }
             }
 
@@ -514,6 +518,8 @@ public partial class Parser
             {
                 ExceptionType = exceptionType,
                 Name = name,
+                NameLineStart = nameLineStart,
+                NameColumnStart = nameColumnStart,
                 IsExceptStar = isExceptStar,
                 Filter = filter,
                 Body = handlerBody.ToImmutableArray(),

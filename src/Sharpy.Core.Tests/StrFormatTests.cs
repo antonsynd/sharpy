@@ -325,7 +325,7 @@ public class StrFormatTests
     public void Format_ConversionA_CallsAscii()
     {
         string s = "{0!a}";
-        s.Format("hello").Should().Be("hello");
+        s.Format("hello").Should().Be("'hello'");
     }
 
     [Fact]

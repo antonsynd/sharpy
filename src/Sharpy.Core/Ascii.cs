@@ -6,26 +6,17 @@ namespace Sharpy
     {
         /// <summary>
         /// Return a string with non-ASCII characters escaped.
-        /// Like repr(), but escapes non-ASCII characters with \xNN, \uNNNN, or \UNNNNNNNN.
+        /// Calls repr() first, then escapes non-ASCII characters with \xNN, \uNNNN, or \UNNNNNNNN.
         /// </summary>
         /// <example>
         /// <code>
-        /// ascii("hello")      # "hello"
-        /// ascii("héllo")      # "h\xe9llo"
+        /// ascii("hello")      # "'hello'"
+        /// ascii("héllo")      # "'h\\xe9llo'"
         /// </code>
         /// </example>
         public static string Ascii(object obj)
         {
-            if (obj is null)
-            {
-                return "None";
-            }
-
-            string? s = obj.ToString();
-            if (s is null)
-            {
-                return "None";
-            }
+            string s = Repr(obj);
 
             bool hasNonAscii = false;
             for (int i = 0; i < s.Length; i++)
@@ -54,7 +45,7 @@ namespace Sharpy
                 {
                     int codePoint = char.ConvertToUtf32(c, s[i + 1]);
                     sb.Append("\\U" + codePoint.ToString("x8"));
-                    i++; // skip low surrogate
+                    i++;
                 }
                 else if (c <= 0xFF)
                 {

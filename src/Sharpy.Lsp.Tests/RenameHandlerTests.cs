@@ -453,12 +453,6 @@ public class RenameHandlerTests : IDisposable
         allEdits.Should().Contain(e => e.NewText == "error");
     }
 
-    /// <summary>
-    /// Documents handler limitation for #597: WithItem.Name is a string property,
-    /// not an Identifier AST node, so FindNodeAtPosition cannot locate it.
-    /// Rename from a reference site (the Identifier in the with body) works;
-    /// rename from the declaration-site name in "with ... as writer" does not yet.
-    /// </summary>
     [Fact]
     public async Task Rename_WithVariable_WorksFromReferenceSite()
     {
@@ -472,6 +466,77 @@ public class RenameHandlerTests : IDisposable
 
         var allEdits = result.Changes!.SelectMany(kv => kv.Value).ToList();
         allEdits.Should().Contain(e => e.NewText == "output");
+    }
+
+    [Fact]
+    public async Task Rename_ExceptVariable_WorksFromDeclarationSite()
+    {
+        var source = "def main():\n    try:\n        x: int = int(\"abc\")\n    except ValueError as err:\n        print(err)";
+
+        // Rename from the DECLARATION site — cursor on "err" in "except ValueError as err:"
+        // Line 3: "    except ValueError as err:"
+        //          0123456789012345678901234567
+        var result = await RenameAsync(source, 3, 27, "error");
+
+        result.Should().NotBeNull("rename from except-variable declaration should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var allEdits = result.Changes!.SelectMany(kv => kv.Value).ToList();
+        allEdits.Should().HaveCountGreaterThanOrEqualTo(2, "should edit both declaration and reference");
+        allEdits.Should().OnlyContain(e => e.NewText == "error");
+    }
+
+    [Fact]
+    public async Task Rename_WithVariable_WorksFromDeclarationSite()
+    {
+        var source = "from System.IO import StringWriter\ndef main():\n    with StringWriter() as writer:\n        print(writer)";
+
+        // Rename from the DECLARATION site — cursor on "writer" in "with StringWriter() as writer:"
+        // Line 2: "    with StringWriter() as writer:"
+        //          0123456789012345678901234567
+        var result = await RenameAsync(source, 2, 27, "output");
+
+        result.Should().NotBeNull("rename from with-variable declaration should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var allEdits = result.Changes!.SelectMany(kv => kv.Value).ToList();
+        allEdits.Should().HaveCountGreaterThanOrEqualTo(2, "should edit both declaration and reference");
+        allEdits.Should().OnlyContain(e => e.NewText == "output");
+    }
+
+    [Fact]
+    public async Task Rename_TypedVariableDeclaration_WorksFromDeclarationSite()
+    {
+        var source = "def main():\n    count: int = 5\n    print(count)";
+
+        // Rename from declaration site — cursor on "count" in "count: int = 5"
+        // Line 1: "    count: int = 5"
+        //          01234
+        var result = await RenameAsync(source, 1, 4, "total");
+
+        result.Should().NotBeNull("rename from typed variable declaration should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var allEdits = result.Changes!.SelectMany(kv => kv.Value).ToList();
+        allEdits.Should().HaveCountGreaterThanOrEqualTo(2, "should edit both declaration and reference");
+        allEdits.Should().OnlyContain(e => e.NewText == "total");
+    }
+
+    [Fact]
+    public async Task Rename_TypedVariableDeclaration_NoInitializer()
+    {
+        var source = "def main():\n    count: int\n    print(count)";
+
+        // Rename from declaration site — cursor on "count" in "count: int"
+        // Line 1: "    count: int"
+        //          01234
+        var result = await RenameAsync(source, 1, 4, "total");
+
+        result.Should().NotBeNull("rename from typed variable declaration without initializer should produce edits");
+        result!.Changes.Should().NotBeNull();
+
+        var allEdits = result.Changes!.SelectMany(kv => kv.Value).ToList();
+        allEdits.Should().Contain(e => e.NewText == "total");
     }
 
     public void Dispose()
