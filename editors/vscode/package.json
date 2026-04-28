@@ -83,6 +83,11 @@
           "default": true,
           "description": "Show parameter names at call sites."
         },
+        "sharpy.transitionHints.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show hints about Python/C# behavioral differences in Sharpy code"
+        },
         "sharpy.debug.dotnetPath": {
           "type": "string",
           "default": "dotnet",
