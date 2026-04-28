@@ -155,9 +155,10 @@ public class ValidationPipelineTests
         var pipeline = ValidationPipelineFactory.CreateDefault();
         var validators = pipeline.Validators.ToList();
 
-        Assert.Equal(25, validators.Count);
+        Assert.Equal(26, validators.Count);
         Assert.Contains(validators, v => v is ModuleLevelValidator);
         Assert.Contains(validators, v => v is NamingConventionValidator);
+        Assert.Contains(validators, v => v is TransitionWarningValidator);
         Assert.Contains(validators, v => v is DecoratorValidator);
         Assert.Contains(validators, v => v is ConstructorOverloadValidator);
         Assert.Contains(validators, v => v is StructRulesValidator);

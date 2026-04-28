@@ -18,6 +18,7 @@ internal static class ValidationPipelineFactory
             // Order values determine execution sequence
             .AddValidator(new ModuleLevelValidator())       // Order: 50 (earliest, validates module structure)
             .AddValidator(new NamingConventionValidator())  // Order: 55 (naming convention warnings)
+            .AddValidator(new TransitionWarningValidator()) // Order: 56 (Python/C# transition hints — SPY0470+)
             .AddValidator(new DecoratorValidator())         // Order: 60 (validates decorator usage)
             .AddValidator(new BodylessSyntaxValidator())    // Order: 62 (deprecation warnings for body-less methods)
             .AddValidator(new ConstructorOverloadValidator()) // Order: 140 (constructor overload validation)
