@@ -402,7 +402,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Validation diagnostic codes (SPY0400-SPY0499).
-    /// Errors: SPY0400-SPY0449, Warnings: SPY0450-SPY0499
+    /// Errors: SPY0400-SPY0449, Warnings: SPY0450-SPY0469,
+    /// Transition hints: SPY0470-SPY0489 (advisory; emitted at Hint severity).
     /// </summary>
     public static class Validation
     {
@@ -504,7 +505,25 @@ public static class DiagnosticCodes
         public const string ReadonlyPropertyAssignment = "SPY0467"; // Active
         // Constant pattern shadow warning (SPY0468)
         public const string ConstantPatternShadow = "SPY0468";    // Active
-        // SPY0469-SPY0499: Reserved for future validation warnings
+        // SPY0469: Reserved for future validation warnings
+
+        #endregion
+
+        #region Transition diagnostics (SPY0470-SPY0489)
+
+        // Hint-severity diagnostics that warn Python/C# developers about behavioral
+        // differences in Sharpy. These share the validation-warning code range but
+        // are emitted at Hint severity (advisory; not promoted to errors under
+        // -Werror) and share suppression with warnings.
+
+        public const string Utf16StringLengthHint = "SPY0470";        // Allocated — not yet emitted
+        public const string StructValueSemanticsHint = "SPY0471";     // Allocated — not yet emitted
+        public const string HomogeneousVariadicHint = "SPY0472";      // Allocated — not yet emitted
+        public const string NoClassmethodHint = "SPY0473";            // Allocated — not yet emitted
+        public const string NoAsyncComprehensionHint = "SPY0474";     // Allocated — not yet emitted
+        public const string SingleIsinstanceTypeHint = "SPY0475";     // Allocated — not yet emitted
+        public const string NegativeTupleIndexHint = "SPY0476";       // Allocated — not yet emitted
+        // SPY0477-SPY0489: Reserved for future transition diagnostics
 
         #endregion
     }
