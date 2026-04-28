@@ -738,4 +738,294 @@ public class DiagnosticBagTests
 
         Assert.Single(bag.GetAll());
     }
+
+    // --- Hint Severity Tests ---
+
+    [Fact]
+    public void AddHint_AddsHintDiagnostic()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddHint("String indexing returns UTF-16 code units", 10, 5, code: "SPY0470");
+
+        Assert.False(bag.HasErrors);
+        Assert.Equal(0, bag.ErrorCount);
+        Assert.Equal(0, bag.WarningCount);
+        Assert.Equal(1, bag.HintCount);
+        var hints = bag.GetHints();
+        Assert.Single(hints);
+        Assert.Equal("String indexing returns UTF-16 code units", hints[0].Message);
+        Assert.Equal(CompilerDiagnosticSeverity.Hint, hints[0].Severity);
+        Assert.Equal("SPY0470", hints[0].Code);
+        Assert.Equal(10, hints[0].Line);
+        Assert.Equal(5, hints[0].Column);
+    }
+
+    [Fact]
+    public void AddHint_WithTextSpan_SetsSpanOnDiagnostic()
+    {
+        var bag = new DiagnosticBag();
+        var span = new TextSpan(20, 10);
+
+        bag.AddHint("Behavioral note", span, 5, 3, "test.spy", "SPY0470");
+
+        var hints = bag.GetHints();
+        Assert.Single(hints);
+        Assert.Equal(span, hints[0].Span);
+        Assert.Equal(5, hints[0].Line);
+        Assert.Equal(3, hints[0].Column);
+        Assert.Equal(CompilerDiagnosticSeverity.Hint, hints[0].Severity);
+    }
+
+    [Fact]
+    public void AddHint_WithILocatable_ExtractsSpanCorrectly()
+    {
+        var bag = new DiagnosticBag();
+        var locatable = new TestLocatable(new TextSpan(42, 7));
+
+        bag.AddHint("Locatable hint", locatable, "test.spy", "SPY0470");
+
+        var hints = bag.GetHints();
+        Assert.Single(hints);
+        Assert.NotNull(hints[0].Span);
+        Assert.Equal(42, hints[0].Span!.Value.Start);
+        Assert.Equal(7, hints[0].Span!.Value.Length);
+        Assert.Equal(CompilerDiagnosticSeverity.Hint, hints[0].Severity);
+    }
+
+    [Fact]
+    public void HintCount_StartsAtZero()
+    {
+        var bag = new DiagnosticBag();
+
+        Assert.Equal(0, bag.HintCount);
+    }
+
+    [Fact]
+    public void HintCount_IncrementsForEachHint()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddHint("First hint", 1, 1, code: "SPY0470");
+        bag.AddHint("Second hint", 2, 1, code: "SPY0471");
+        bag.AddHint("Third hint", 3, 1, code: "SPY0472");
+
+        Assert.Equal(3, bag.HintCount);
+        Assert.Equal(0, bag.ErrorCount);
+        Assert.Equal(0, bag.WarningCount);
+    }
+
+    [Fact]
+    public void HintCount_NotAffectedByErrorsOrWarnings()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddError("Some error", 1, 1, code: "SPY0200");
+        bag.AddWarning("Some warning", 2, 1, code: "SPY0451");
+        bag.AddHint("Some hint", 3, 1, code: "SPY0470");
+
+        Assert.Equal(1, bag.ErrorCount);
+        Assert.Equal(1, bag.WarningCount);
+        Assert.Equal(1, bag.HintCount);
+    }
+
+    [Fact]
+    public void GetHints_ReturnsOnlyHintDiagnostics()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddError("Error", 1, 1, code: "SPY0200");
+        bag.AddWarning("Warning", 2, 1, code: "SPY0451");
+        bag.AddHint("Hint 1", 3, 1, code: "SPY0470");
+        bag.AddHint("Hint 2", 4, 1, code: "SPY0471");
+
+        var hints = bag.GetHints();
+        Assert.Equal(2, hints.Count);
+        Assert.All(hints, h => Assert.Equal(CompilerDiagnosticSeverity.Hint, h.Severity));
+    }
+
+    [Fact]
+    public void GetAll_IncludesHints()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddError("Error", 1, 1, code: "SPY0200");
+        bag.AddWarning("Warning", 2, 1, code: "SPY0451");
+        bag.AddHint("Hint", 3, 1, code: "SPY0470");
+
+        var all = bag.GetAll();
+        Assert.Equal(3, all.Count);
+        Assert.Contains(all, d => d.Severity == CompilerDiagnosticSeverity.Hint);
+    }
+
+    [Fact]
+    public void Clear_ResetsHintCount()
+    {
+        var bag = new DiagnosticBag();
+        bag.AddHint("Hint 1", 1, 1, code: "SPY0470");
+        bag.AddHint("Hint 2", 2, 1, code: "SPY0471");
+
+        Assert.Equal(2, bag.HintCount);
+
+        bag.Clear();
+
+        Assert.Equal(0, bag.HintCount);
+        Assert.Empty(bag.GetHints());
+    }
+
+    [Fact]
+    public void SuppressedHint_IsNotAdded()
+    {
+        // Hints share the suppression mechanism with warnings
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0470" });
+
+        bag.AddHint("Behavioral hint", code: "SPY0470");
+
+        Assert.Equal(0, bag.HintCount);
+        Assert.Empty(bag.GetAll());
+    }
+
+    [Fact]
+    public void SuppressedHint_OtherHintsStillAdded()
+    {
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0470" });
+
+        bag.AddHint("Suppressed hint", code: "SPY0470");
+        bag.AddHint("Other hint", code: "SPY0471");
+
+        Assert.Equal(1, bag.HintCount);
+        Assert.Equal("SPY0471", bag.GetHints()[0].Code);
+    }
+
+    [Fact]
+    public void SuppressedHint_WithSpan_IsNotAdded()
+    {
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0470" });
+
+        bag.AddHint("Behavioral hint", new TextSpan(10, 5), code: "SPY0470");
+
+        Assert.Equal(0, bag.HintCount);
+    }
+
+    [Fact]
+    public void SuppressedHint_WithLocatable_IsNotAdded()
+    {
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0470" });
+
+        bag.AddHint("Behavioral hint", new TestLocatable(new TextSpan(10, 5)), code: "SPY0470");
+
+        Assert.Equal(0, bag.HintCount);
+    }
+
+    [Fact]
+    public void SuppressedHint_CaseInsensitive()
+    {
+        var suppressed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "spy0470" };
+        var bag = new DiagnosticBag(suppressedWarnings: suppressed);
+
+        bag.AddHint("Behavioral hint", code: "SPY0470");
+
+        Assert.Equal(0, bag.HintCount);
+    }
+
+    [Fact]
+    public void HintWithNoCode_NotSuppressed()
+    {
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0470" });
+
+        bag.AddHint("Hint without code");
+
+        Assert.Equal(1, bag.HintCount);
+    }
+
+    [Fact]
+    public void WarningsAsErrors_DoesNotPromoteHints()
+    {
+        // Hints are advisory; -Werror should NOT promote them to errors
+        var bag = new DiagnosticBag(warningsAsErrors: true);
+
+        bag.AddHint("Behavioral hint", code: "SPY0470");
+
+        Assert.False(bag.HasErrors);
+        Assert.Equal(0, bag.ErrorCount);
+        Assert.Equal(1, bag.HintCount);
+        var hints = bag.GetHints();
+        Assert.Single(hints);
+        Assert.Equal(CompilerDiagnosticSeverity.Hint, hints[0].Severity);
+    }
+
+    [Fact]
+    public void Hint_RoundTrip_PreservesSeverity()
+    {
+        // Verify that hint severity flows through Add → GetAll → individual
+        // diagnostic without being mutated (e.g., not promoted under -Werror).
+        var bag = new DiagnosticBag(warningsAsErrors: true);
+        var span = new TextSpan(10, 5);
+
+        bag.AddHint("Round-trip hint", span, line: 5, column: 3,
+            filePath: "test.spy", code: "SPY0470");
+
+        var all = bag.GetAll();
+        Assert.Single(all);
+        var diag = all[0];
+        Assert.Equal(CompilerDiagnosticSeverity.Hint, diag.Severity);
+        Assert.True(diag.IsHint);
+        Assert.False(diag.IsError);
+        Assert.False(diag.IsWarning);
+        Assert.Equal("Round-trip hint", diag.Message);
+        Assert.Equal("SPY0470", diag.Code);
+        Assert.Equal(5, diag.Line);
+        Assert.Equal(3, diag.Column);
+        Assert.Equal("test.spy", diag.FilePath);
+        Assert.Equal(span, diag.Span);
+    }
+
+    [Fact]
+    public void Hint_RoundTrip_DirectAdd_PreservesSeverity()
+    {
+        // Verify round-trip when adding via Add() directly with a hint diagnostic.
+        var bag = new DiagnosticBag();
+        var hint = new CompilerDiagnostic(
+            "Direct hint",
+            CompilerDiagnosticSeverity.Hint,
+            Line: 1,
+            Column: 1,
+            Code: "SPY0471");
+
+        bag.Add(hint);
+
+        Assert.Equal(1, bag.HintCount);
+        var hints = bag.GetHints();
+        Assert.Single(hints);
+        Assert.Equal(CompilerDiagnosticSeverity.Hint, hints[0].Severity);
+        Assert.True(hints[0].IsHint);
+    }
+
+    [Fact]
+    public void Merge_TransfersHints()
+    {
+        var bag1 = new DiagnosticBag();
+        bag1.AddHint("Hint A", 1, 1, code: "SPY0470");
+
+        var bag2 = new DiagnosticBag();
+        bag2.AddHint("Hint B", 2, 1, code: "SPY0471");
+
+        bag1.Merge(bag2);
+
+        Assert.Equal(2, bag1.HintCount);
+        var hints = bag1.GetHints();
+        Assert.Equal(2, hints.Count);
+    }
+
+    [Fact]
+    public void Deduplication_HintsDeduped()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddHint("Same hint", 10, 5, code: "SPY0470");
+        bag.AddHint("Same hint variant", 10, 5, code: "SPY0470");
+
+        var hints = bag.GetHints();
+        Assert.Single(hints);
+    }
 }
