@@ -235,9 +235,34 @@ internal partial class TypeChecker
             }
 
             var message = $"Undefined identifier '{id.Name}'";
-            var suggestion = FindSuggestion(id.Name);
-            if (suggestion != null)
-                message += $". Did you mean '{suggestion}'?";
+
+            // Enhanced diagnostic for Python developers: if the identifier was
+            // declared inside a now-exited block scope (for/if/while/try/with/
+            // except/match/comprehension), explain why it isn't visible here.
+            // Sharpy uses block scoping (unlike Python, where for-loop and
+            // except variables leak into the enclosing function).
+            if (_symbolTable.TryGetExitedVariable(id.Name, out var blockType, out var declLine))
+            {
+                if (blockType == "comprehension")
+                {
+                    message += $". Note: '{id.Name}' was declared inside a comprehension"
+                        + " — in Sharpy, comprehension variables (including walrus assignments)"
+                        + " don't leak to outer scope (unlike Python 3.8+)";
+                }
+                else
+                {
+                    message += $". Note: '{id.Name}' was declared inside a {blockType} block"
+                        + $" at line {declLine} — in Sharpy, block-scoped variables are"
+                        + " not accessible outside their block (unlike Python)";
+                }
+            }
+            else
+            {
+                var suggestion = FindSuggestion(id.Name);
+                if (suggestion != null)
+                    message += $". Did you mean '{suggestion}'?";
+            }
+
             AddError(message,
                 id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedVariable,
                 span: id.Span);
