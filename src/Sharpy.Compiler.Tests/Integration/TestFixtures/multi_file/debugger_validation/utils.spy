@@ -1,0 +1,12 @@
+def transform_all(items: list[str]) -> list[str]:
+    result: list[str] = []
+    for item in items:
+        result.append(item.upper())
+    return result
+
+def safe_divide(a: int, b: int) -> int:
+    try:
+        return a // b
+    except ZeroDivisionError:
+        print("Division by zero, returning -1")
+        return -1

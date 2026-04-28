@@ -1,3 +1,5 @@
+extern alias SharpyRT;
+
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
@@ -5,6 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
 using Xunit.Abstractions;
 using FluentAssertions;
@@ -144,6 +147,86 @@ def main():
         {
             CleanupTempDir(tempDir);
         }
+    }
+
+    [Fact]
+    public void MultiFile_LineDirectives_Reference_Correct_SpyFiles()
+    {
+        // Two-file project: main.spy calls lib.spy, lib.spy throws an exception.
+        // Verifies that generated C# for each file contains #line directives
+        // referencing the correct .spy filename, and that the runtime stack trace
+        // references both .spy files.
+
+        var mainSource = @"from lib import crash_with_message
+
+def main():
+    result: str = crash_with_message(""multi-file error"")
+    print(result)
+";
+
+        var libSource = @"def crash_with_message(msg: str) -> str:
+    raise ValueError(msg)
+    return ""unreachable""
+";
+
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("LineDirectiveMultiFile")
+            .AddSourceFile("main.spy", mainSource)
+            .AddSourceFile("lib.spy", libSource)
+            .CreateProjectFile();
+
+        var result = helper.Compile();
+
+        result.Success.Should().BeTrue(
+            $"compilation should succeed, errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+
+        // Phase 1: Verify generated C# contains #line directives for each .spy file
+        result.GeneratedCSharpFiles.Should().NotBeEmpty("should have generated C# files");
+
+        _output.WriteLine($"Generated C# files: {string.Join(", ", result.GeneratedCSharpFiles.Keys)}");
+
+        // Find the generated C# that contains #line directives for each source file.
+        // The keys may be full paths, so we check for filename containment.
+        var allGeneratedCode = string.Join("\n", result.GeneratedCSharpFiles.Values);
+
+        _output.WriteLine("=== All Generated C# ===");
+        _output.WriteLine(allGeneratedCode);
+        _output.WriteLine("========================");
+
+        allGeneratedCode.Should().Contain("#line", "generated C# should contain #line directives");
+
+        // Each .spy file should be referenced in #line directives
+        allGeneratedCode.Should().Contain("main.spy",
+            "generated C# should contain #line directive referencing main.spy");
+        allGeneratedCode.Should().Contain("lib.spy",
+            "generated C# should contain #line directive referencing lib.spy");
+
+        // Phase 2: Execute out-of-process and verify stack trace
+        var assemblyPath = result.OutputAssemblyPath;
+        assemblyPath.Should().NotBeNullOrEmpty("compilation should produce an assembly");
+
+        var assemblyDir = Path.GetDirectoryName(assemblyPath)!;
+
+        // Copy Sharpy.Core.dll to the assembly output directory so dotnet exec can find it
+        CopySharpyCoreToDirectory(assemblyDir);
+
+        var execResult = ExecuteAssembly(assemblyPath!, assemblyDir);
+
+        _output.WriteLine($"Exit code: {(execResult.Success ? 0 : 1)}");
+        _output.WriteLine($"Stdout: {execResult.StandardOutput}");
+        _output.WriteLine($"Stderr: {execResult.StandardError}");
+
+        // The program should crash with ValueError (ArgumentException)
+        execResult.Success.Should().BeFalse("program should crash with ValueError");
+
+        var stderr = execResult.StandardError;
+        stderr.Should().Contain("multi-file error",
+            "exception message should appear in stderr");
+
+        // Stack trace should reference .spy files, not .cs files
+        // The lib.spy file is where the raise happens
+        stderr.Should().Contain("lib.spy",
+            "stack trace should reference lib.spy where the exception was raised");
     }
 
     private (string? assemblyPath, string? pdbPath, string tempDir) CompileCSharpToAssembly(string csharpCode)
@@ -296,6 +379,23 @@ def main():
         process.WaitForExit();
 
         return new ExecResult(process.ExitCode == 0, stdout.ToString(), stderr.ToString());
+    }
+
+    /// <summary>
+    /// Copies Sharpy.Core.dll to the specified directory so that assemblies
+    /// compiled by the Sharpy compiler can find it at runtime.
+    /// </summary>
+    private static void CopySharpyCoreToDirectory(string targetDir)
+    {
+        var sharpyCoreLocation = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
+        if (!string.IsNullOrEmpty(sharpyCoreLocation) && File.Exists(sharpyCoreLocation))
+        {
+            var destPath = Path.Combine(targetDir, Path.GetFileName(sharpyCoreLocation));
+            if (!File.Exists(destPath))
+            {
+                File.Copy(sharpyCoreLocation, destPath, overwrite: true);
+            }
+        }
     }
 
     private static void CleanupTempDir(string tempDir)

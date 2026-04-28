@@ -1,0 +1,15 @@
+from models import Person
+from utils import transform_all, safe_divide
+
+def main():
+    items: list[str] = ["hello", "world", "sharpy"]
+    upper_items: list[str] = transform_all(items)
+    for item in upper_items:
+        print(item)
+
+    p: Person = Person("Alice", 30)
+    greeting: str = p.greet()
+    print(greeting)
+
+    result: int = safe_divide(10, 0)
+    print(result)

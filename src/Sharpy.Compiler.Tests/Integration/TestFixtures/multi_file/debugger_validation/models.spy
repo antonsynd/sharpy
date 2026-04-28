@@ -1,0 +1,16 @@
+class Person:
+    _name: str
+    _age: int
+
+    def __init__(self, name: str, age: int):
+        self._name = name
+        self._age = age
+
+    def greet(self) -> str:
+        if self._age >= 18:
+            return "Hello, I'm " + self._name + " (adult)"
+        else:
+            return "Hi, I'm " + self._name + " (minor)"
+
+    def name(self) -> str:
+        return self._name
