@@ -48,6 +48,7 @@ public record CompilerDiagnostic(
 {
     public bool IsError => Severity == CompilerDiagnosticSeverity.Error;
     public bool IsWarning => Severity == CompilerDiagnosticSeverity.Warning;
+    public bool IsHint => Severity == CompilerDiagnosticSeverity.Hint;
 
     public override string ToString()
     {
@@ -86,6 +87,7 @@ public class DiagnosticBag
     private readonly bool _warningsAsErrors;
     private int _errorCount;
     private int _warningCount;
+    private int _hintCount;
 
     /// <summary>
     /// Tracks diagnostics that have already been added, using (Code, Line, Column, Message?, SpanStart, SpanLength) as the key.
@@ -118,11 +120,16 @@ public class DiagnosticBag
 
     public void Add(CompilerDiagnostic diagnostic)
     {
-        // Apply suppression: skip warnings whose code is in the suppressed set
-        if (diagnostic.IsWarning && !string.IsNullOrEmpty(diagnostic.Code) && _suppressedWarnings.Contains(diagnostic.Code))
+        // Apply suppression: skip warnings/hints whose code is in the suppressed set.
+        // Hints share the same suppression mechanism as warnings.
+        if ((diagnostic.IsWarning || diagnostic.IsHint)
+            && !string.IsNullOrEmpty(diagnostic.Code)
+            && _suppressedWarnings.Contains(diagnostic.Code))
             return;
 
-        // Apply promotion: warnings become errors when WarningsAsErrors is enabled
+        // Apply promotion: warnings become errors when WarningsAsErrors is enabled.
+        // Hints are NOT promoted — they are advisory diagnostics about behavioral
+        // differences from Python/C# and remain hint-severity even under -Werror.
         if (diagnostic.IsWarning && _warningsAsErrors)
         {
             diagnostic = diagnostic with { Severity = CompilerDiagnosticSeverity.Error };
@@ -144,6 +151,8 @@ public class DiagnosticBag
                 _errorCount++;
             else if (diagnostic.IsWarning)
                 _warningCount++;
+            else if (diagnostic.IsHint)
+                _hintCount++;
         }
     }
 
@@ -220,6 +229,44 @@ public class DiagnosticBag
         Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Info, line, column, filePath, code, phase));
     }
 
+    /// <summary>
+    /// Adds a hint-severity diagnostic. Hints are advisory notes about behavioral
+    /// differences from Python/C# (e.g., string indexing, struct value semantics).
+    /// Hints share the same suppression mechanism as warnings (via the suppressed-warning
+    /// set) but are NOT promoted to errors when WarningsAsErrors is enabled.
+    /// </summary>
+    public void AddHint(string message, int? line = null, int? column = null, string? filePath = null,
+        string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+    {
+        if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
+            return;
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Hint, line, column, filePath, code, phase));
+    }
+
+    /// <summary>
+    /// Adds a hint-severity diagnostic with an associated text span and optional data dictionary.
+    /// </summary>
+    public void AddHint(string message, TextSpan? span, int? line = null, int? column = null,
+        string? filePath = null, string? code = null, CompilerPhase phase = CompilerPhase.Unknown,
+        IReadOnlyDictionary<string, string>? data = null)
+    {
+        if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
+            return;
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Hint, line, column, filePath, code, phase, span, data));
+    }
+
+    /// <summary>
+    /// Adds a hint-severity diagnostic anchored to an <see cref="ILocatable"/> AST node.
+    /// </summary>
+    public void AddHint(string message, ILocatable locatable, string? filePath = null,
+        string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+    {
+        if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
+            return;
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Hint, Span: locatable.Span,
+            FilePath: filePath, Code: code, Phase: phase));
+    }
+
     public void AddRange(IEnumerable<CompilerDiagnostic> diagnostics)
     {
         foreach (var diagnostic in diagnostics)
@@ -275,6 +322,17 @@ public class DiagnosticBag
         }
     }
 
+    public int HintCount
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _hintCount;
+            }
+        }
+    }
+
     public IReadOnlyList<CompilerDiagnostic> GetAll()
     {
         lock (_lock)
@@ -299,6 +357,14 @@ public class DiagnosticBag
         }
     }
 
+    public IReadOnlyList<CompilerDiagnostic> GetHints()
+    {
+        lock (_lock)
+        {
+            return _diagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Hint).ToList();
+        }
+    }
+
     public void Clear()
     {
         lock (_lock)
@@ -308,6 +374,7 @@ public class DiagnosticBag
             _rootCauseIdentifiers.Clear();
             _errorCount = 0;
             _warningCount = 0;
+            _hintCount = 0;
         }
     }
 
