@@ -57,17 +57,17 @@ internal sealed class SharpyTypeDefinitionHandler : TypeDefinitionHandlerBase
         switch (node)
         {
             case Identifier id:
-            {
-                var symbol = query.GetIdentifierSymbol(id);
-                if (symbol is TypeSymbol)
-                    return query.GetEffectiveType(id);
-                return symbol switch
                 {
-                    VariableSymbol vs => vs.Type,
-                    FunctionSymbol fs => fs.ReturnType,
-                    _ => query.GetEffectiveType(id)
-                };
-            }
+                    var symbol = query.GetIdentifierSymbol(id);
+                    if (symbol is TypeSymbol)
+                        return query.GetEffectiveType(id);
+                    return symbol switch
+                    {
+                        VariableSymbol vs => vs.Type,
+                        FunctionSymbol fs => fs.ReturnType,
+                        _ => query.GetEffectiveType(id)
+                    };
+                }
 
             case FunctionCall call:
                 return query.GetEffectiveType(call);
@@ -76,22 +76,22 @@ internal sealed class SharpyTypeDefinitionHandler : TypeDefinitionHandlerBase
                 return query.GetEffectiveType(ma);
 
             case ClassDef cd:
-            {
-                var sym = analysis.SymbolTable?.Lookup(cd.Name)
-                    ?? analysis.SymbolTable?.LookupInModuleScopes(cd.Name);
-                if (sym is TypeSymbol ts)
-                    return new UserDefinedType { Name = ts.Name, Symbol = ts };
-                return null;
-            }
+                {
+                    var sym = analysis.SymbolTable?.Lookup(cd.Name)
+                        ?? analysis.SymbolTable?.LookupInModuleScopes(cd.Name);
+                    if (sym is TypeSymbol ts)
+                        return new UserDefinedType { Name = ts.Name, Symbol = ts };
+                    return null;
+                }
 
             case InterfaceDef ifd:
-            {
-                var sym = analysis.SymbolTable?.Lookup(ifd.Name)
-                    ?? analysis.SymbolTable?.LookupInModuleScopes(ifd.Name);
-                if (sym is TypeSymbol ts)
-                    return new UserDefinedType { Name = ts.Name, Symbol = ts };
-                return null;
-            }
+                {
+                    var sym = analysis.SymbolTable?.Lookup(ifd.Name)
+                        ?? analysis.SymbolTable?.LookupInModuleScopes(ifd.Name);
+                    if (sym is TypeSymbol ts)
+                        return new UserDefinedType { Name = ts.Name, Symbol = ts };
+                    return null;
+                }
 
             default:
                 if (node is Expression expr)
