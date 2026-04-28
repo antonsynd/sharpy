@@ -41,6 +41,27 @@ public partial class Parser
         };
     }
 
+    /// <summary>
+    /// Parses a single expression from the token stream.
+    /// Callers must lex source text into tokens first via <see cref="Lexer.Lexer"/>.
+    /// Parse errors accumulate in <see cref="Diagnostics"/>.
+    /// </summary>
+    public Expression ParseSingleExpression()
+    {
+        SkipNewlines();
+        var expr = ParseExpression();
+        SkipNewlines();
+        if (!IsAtEnd)
+        {
+            _diagnostics.AddError(
+                $"Unexpected token '{Current.Value}' after expression",
+                CurrentSpan, Current.Line, Current.Column,
+                code: DiagnosticCodes.Parser.UnexpectedToken,
+                phase: CompilerPhase.Parser);
+        }
+        return expr;
+    }
+
     private Expression ParseExpression()
     {
         if (++_recursionDepth > MaxRecursionDepth)

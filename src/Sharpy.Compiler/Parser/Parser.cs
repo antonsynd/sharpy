@@ -178,6 +178,76 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Parses a single statement from the token stream.
+    /// Callers must lex source text into tokens first via <see cref="Lexer.Lexer"/>.
+    /// Parse errors accumulate in <see cref="Diagnostics"/>.
+    /// </summary>
+    public Statement ParseSingleStatement()
+    {
+        SkipNewlines();
+        try
+        {
+            return ParseStatement();
+        }
+        catch (ParserAbortException)
+        {
+            return new ExpressionStatement
+            {
+                Expression = new Identifier
+                {
+                    Name = "<error>",
+                    LineStart = Current.Line,
+                    ColumnStart = Current.Column,
+                    LineEnd = Current.Line,
+                    ColumnEnd = Current.Column
+                },
+                LineStart = Current.Line,
+                ColumnStart = Current.Column,
+                LineEnd = Current.Line,
+                ColumnEnd = Current.Column
+            };
+        }
+    }
+
+    /// <summary>
+    /// Parses all statements until EOF, without wrapping in a <see cref="Module"/> node.
+    /// Useful for REPL multi-line input where a full module is not needed.
+    /// Callers must lex source text into tokens first via <see cref="Lexer.Lexer"/>.
+    /// Parse errors accumulate in <see cref="Diagnostics"/>.
+    /// </summary>
+    public IReadOnlyList<Statement> ParseStatements()
+    {
+        var statements = new List<Statement>();
+        SkipNewlines();
+
+        _lastLoopPosition = -1;
+        while (!IsAtEnd)
+        {
+            if (!CheckLoopProgress())
+                break;
+
+            SkipNewlines();
+            if (IsAtEnd)
+                break;
+
+            try
+            {
+                var stmt = ParseStatement();
+                statements.Add(stmt);
+            }
+            catch (ParserAbortException)
+            {
+                if (_diagnostics.ErrorCount >= _maxErrors)
+                    break;
+                Synchronize();
+            }
+            SkipNewlines();
+        }
+
+        return statements;
+    }
+
+    /// <summary>
     /// Checks if parser position advanced since last call within a loop.
     /// If no progress was made, forces an advance and returns false to signal
     /// the loop should break. This prevents infinite loops on malformed input.
