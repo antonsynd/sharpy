@@ -35,4 +35,15 @@ internal abstract class ValidatingAstWalker : AstVisitor, ISemanticValidator
     {
         Context.Diagnostics.AddWarning(message, span, line, column, Context.CurrentFilePath, code: code, phase: CompilerPhase.Validation, data: data);
     }
+
+    /// <summary>
+    /// Convenience method to emit a hint-severity diagnostic about a behavioral
+    /// difference from Python/C#. Hints share suppression with warnings but are
+    /// not promoted to errors under WarningsAsErrors.
+    /// </summary>
+    protected void AddHint(string message, int? line = null, int? column = null,
+        string? code = null, TextSpan? span = null, IReadOnlyDictionary<string, string>? data = null)
+    {
+        Context.Diagnostics.AddHint(message, span, line, column, Context.CurrentFilePath, code: code, phase: CompilerPhase.Validation, data: data);
+    }
 }

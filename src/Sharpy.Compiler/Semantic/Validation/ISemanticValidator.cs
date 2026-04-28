@@ -62,4 +62,15 @@ internal abstract class SemanticValidatorBase : ISemanticValidator
     {
         context.Diagnostics.AddWarning(message, span, line, column, context.CurrentFilePath, code: code, phase: CompilerPhase.Validation);
     }
+
+    /// <summary>
+    /// Convenience method to add a hint-severity diagnostic to the context's diagnostics.
+    /// Hints are advisory notes about behavioral differences from Python/C#.
+    /// They share suppression with warnings but are not promoted to errors under WarningsAsErrors.
+    /// </summary>
+    protected void AddHint(SemanticContext context, string message, int? line = null, int? column = null,
+        string? code = null, TextSpan? span = null)
+    {
+        context.Diagnostics.AddHint(message, span, line, column, context.CurrentFilePath, code: code, phase: CompilerPhase.Validation);
+    }
 }
