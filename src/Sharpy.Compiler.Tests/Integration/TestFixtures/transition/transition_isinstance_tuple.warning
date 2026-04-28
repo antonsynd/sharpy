@@ -1,0 +1,2 @@
+isinstance() in Sharpy accepts only a single type argument
+tuple of 2 types (Dog, Cat)

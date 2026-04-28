@@ -1,0 +1,13 @@
+# SPY0477: @static on a method that already lacks a 'self' parameter is
+# unnecessary — Sharpy infers static from the absence of an implicit
+# first 'self' receiver, so the decorator is redundant. The program is
+# semantically valid and should compile and run; only an advisory hint
+# is emitted.
+
+class Calc:
+    @static
+    def add(a: int, b: int) -> int:
+        return a + b
+
+def main():
+    print(Calc.add(1, 2))

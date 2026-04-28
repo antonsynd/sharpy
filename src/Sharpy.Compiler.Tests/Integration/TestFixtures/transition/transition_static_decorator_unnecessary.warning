@@ -1,0 +1,2 @@
+@static is unnecessary on 'add'
+already lacks a 'self' parameter
