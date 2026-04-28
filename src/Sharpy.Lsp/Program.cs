@@ -142,6 +142,7 @@ public class Program
                 .WithHandler<SharpyTypeHierarchySupertypesHandler>()
                 .WithHandler<SharpyTypeHierarchySubtypesHandler>()
                 .WithHandler<SharpyImplementationHandler>()
+                .WithHandler<SharpyTypeDefinitionHandler>()
                 // Phase 5 handlers
                 .WithHandler<SharpyRangeFormattingHandler>()
                 .WithHandler<SharpySelectionRangeHandler>()
