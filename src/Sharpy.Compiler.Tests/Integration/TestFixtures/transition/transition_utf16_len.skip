@@ -1,3 +1,0 @@
-SPY0470 (UTF-16 len hint) currently never fires because TransitionWarningValidator.IsBuiltinLenCall requires SemanticInfo.GetCallTarget(call) \!= null, but BuiltinReturnTypeInference handles `len()` via an early return in TypeChecker.CheckFunctionCall without calling SetCallTarget. Once that gap is closed (or IsBuiltinLenCall is relaxed to consult BuiltinRegistry directly), remove this .skip file.
-
-See issue #611.

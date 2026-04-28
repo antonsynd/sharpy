@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
@@ -137,11 +138,26 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
             return false;
 
         var target = Context.SemanticInfo.GetCallTarget(call);
-        if (target == null)
+        if (target != null)
+        {
+            var overloads = Context.SymbolTable.BuiltinRegistry.GetFunctionOverloads("len");
+            return overloads != null && overloads.Contains(target);
+        }
+
+        // Builtin functions handled by BuiltinReturnTypeInference don't get a
+        // call target recorded. Fall back to identifier resolution to detect shadowing.
+        var resolved = Context.SemanticInfo.GetIdentifierSymbol(id);
+        var builtinOverloads = Context.SymbolTable.BuiltinRegistry.GetFunctionOverloads("len");
+        if (builtinOverloads == null || builtinOverloads.Count == 0)
             return false;
 
-        var overloads = Context.SymbolTable.BuiltinRegistry.GetFunctionOverloads("len");
-        return overloads != null && overloads.Contains(target);
+        if (resolved is VariableSymbol)
+            return false;
+
+        if (resolved is FunctionSymbol fs)
+            return builtinOverloads.Contains(fs);
+
+        return true;
     }
 
     private static bool ContainsNonBmpChar(string value)

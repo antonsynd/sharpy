@@ -1,0 +1,8 @@
+# Verify that shadowing `len` with a user-defined function suppresses SPY0470.
+
+def len(s: str) -> int:
+    return 42
+
+def main():
+    n: int = len("😀")
+    print(n)
