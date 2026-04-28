@@ -1,0 +1,3 @@
+Undefined identifier 'x' @4:11
+was declared inside a if block at line 3
+block-scoped variables are not accessible outside their block

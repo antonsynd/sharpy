@@ -1,0 +1,3 @@
+Undefined identifier 'y' @5:15
+was declared inside a try block at line 3
+block-scoped variables are not accessible outside their block

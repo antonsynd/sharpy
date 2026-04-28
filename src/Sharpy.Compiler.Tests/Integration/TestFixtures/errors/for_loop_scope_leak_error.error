@@ -1,0 +1,3 @@
+Undefined identifier 'i' @4:11
+was declared inside a for block at line 2
+block-scoped variables are not accessible outside their block
