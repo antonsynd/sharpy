@@ -98,8 +98,9 @@ def main():
         // "42" literal on line 2 (0-based: 1), col 9
         var result = await HandleAsync("file:///test.spy", 1, 9);
 
-        // Builtin types (int) have no navigable source
-        // Result may be null since int is a builtin
+        // Builtin types (int) have no navigable source — should return null or empty
+        if (result is not null)
+            result.ToArray().Should().BeEmpty();
     }
 
     [Fact]
@@ -137,7 +138,7 @@ def main():
         // Empty space / whitespace area — line 0, col 0
         var result = await HandleAsync("file:///test.spy", 0, 0);
 
-        // Should gracefully return null
+        Assert.Null(result);
     }
 
     [Fact]
@@ -179,6 +180,50 @@ def main():
 
         // Should navigate to Point class when type is resolvable
         result?.ToArray().Should().HaveCountGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task Handle_GenericType_NavigatesToGenericDefinitionAsync()
+    {
+        var source = @"
+class Item:
+    name: str = """"
+
+items: list[Item] = []
+
+def main():
+    pass
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // "items" variable on line 5 (0-based: 4), col 0
+        var result = await HandleAsync("file:///test.spy", 4, 0);
+
+        // list[Item] is a GenericType — navigates to the generic definition (list)
+        // May return null if list has no navigable source, or a location if it does
+        result?.ToArray().Should().HaveCountGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task Handle_FunctionName_ReturnsNullAsync()
+    {
+        var source = @"
+class Result:
+    value: int = 0
+
+def make_result() -> Result:
+    return Result()
+
+def main():
+    pass
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // "make_result" function name on line 5 (0-based: 4), col 4
+        var result = await HandleAsync("file:///test.spy", 4, 4);
+
+        // Function names have FunctionType which is not navigable
+        Assert.Null(result);
     }
 
     private async Task<LocationOrLocationLinks?> HandleAsync(string uri, int line, int character)

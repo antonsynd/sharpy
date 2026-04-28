@@ -117,6 +117,23 @@ public class ParserTriviaTests
     }
 
     [Fact]
+    public void InlineComment_NotAttachedToStatements()
+    {
+        // Inline comments (after code on the same line) are attached to the
+        // Newline token by the lexer. The parser skips newlines without
+        // preserving their trivia, so inline comments are not yet propagated
+        // to AST nodes. A future formatter will need to address this.
+        var source = "x = 1  # inline comment\ny = 2\n";
+        var module = ParseWithTrivia(source);
+
+        module.Body.Should().HaveCount(2);
+        module.Body[0].TrailingTrivia.Should().BeNull();
+        module.Body[0].LeadingTrivia.Should().BeNull();
+        module.Body[1].TrailingTrivia.Should().BeNull();
+        module.Body[1].LeadingTrivia.Should().BeNull();
+    }
+
+    [Fact]
     public void TriviaPreserved_ExistingTestsStillPass()
     {
         var source = "def foo(x: int) -> int:\n    return x + 1\n";

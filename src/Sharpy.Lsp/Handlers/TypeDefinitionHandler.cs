@@ -64,7 +64,7 @@ internal sealed class SharpyTypeDefinitionHandler : TypeDefinitionHandlerBase
                     return symbol switch
                     {
                         VariableSymbol vs => vs.Type,
-                        FunctionSymbol fs => fs.ReturnType,
+                        FunctionSymbol => null,
                         _ => query.GetEffectiveType(id)
                     };
                 }
@@ -105,16 +105,11 @@ internal sealed class SharpyTypeDefinitionHandler : TypeDefinitionHandlerBase
         return type switch
         {
             UserDefinedType udt => udt.Symbol,
-            GenericType gt => GetGenericBaseTypeSymbol(gt),
+            GenericType gt => gt.GenericDefinition,
             NullableType nt => GetTypeSymbol(nt.UnderlyingType),
             OptionalType ot => GetTypeSymbol(ot.UnderlyingType),
             _ => null
         };
-    }
-
-    private static TypeSymbol? GetGenericBaseTypeSymbol(GenericType gt)
-    {
-        return gt.GenericDefinition;
     }
 
     protected override TypeDefinitionRegistrationOptions CreateRegistrationOptions(

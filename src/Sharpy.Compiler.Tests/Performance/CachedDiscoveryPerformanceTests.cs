@@ -19,8 +19,6 @@ public class CachedDiscoveryPerformanceTests : IDisposable
     private readonly string _testCacheDir;
 
     // Performance test thresholds
-    private const int MinMeasurableMilliseconds = 1;
-    private const int MaxCachedLoadMultiplier = 5;
     private const int CachedLoadThresholdMs = 200;
     private const int MinFastCachedLoadsRequired = 3;
     private const int TotalCachedLoadRuns = 5;

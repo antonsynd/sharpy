@@ -49,17 +49,31 @@ public partial class Parser
     public Expression ParseSingleExpression()
     {
         SkipNewlines();
-        var expr = ParseExpression();
-        SkipNewlines();
-        if (!IsAtEnd)
+        try
         {
-            _diagnostics.AddError(
-                $"Unexpected token '{Current.Value}' after expression",
-                CurrentSpan, Current.Line, Current.Column,
-                code: DiagnosticCodes.Parser.UnexpectedToken,
-                phase: CompilerPhase.Parser);
+            var expr = ParseExpression();
+            SkipNewlines();
+            if (!IsAtEnd)
+            {
+                _diagnostics.AddError(
+                    $"Unexpected token '{Current.Value}' after expression",
+                    CurrentSpan, Current.Line, Current.Column,
+                    code: DiagnosticCodes.Parser.UnexpectedToken,
+                    phase: CompilerPhase.Parser);
+            }
+            return expr;
         }
-        return expr;
+        catch (ParserAbortException)
+        {
+            return new Identifier
+            {
+                Name = "<error>",
+                LineStart = Current.Line,
+                ColumnStart = Current.Column,
+                LineEnd = Current.Line,
+                ColumnEnd = Current.Column
+            };
+        }
     }
 
     private Expression ParseExpression()
