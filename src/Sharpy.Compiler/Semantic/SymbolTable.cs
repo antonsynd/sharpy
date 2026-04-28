@@ -5,6 +5,11 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// Manages all scopes and symbols during semantic analysis
 /// </summary>
+// TODO(#610): SymbolTable uses non-concurrent Dictionary and Stack, making it
+// unsuitable for concurrent access. The parallel compilation design
+// (docs/design/parallel-compilation.md) creates per-file instances during name
+// resolution, then merges into a read-only GlobalSymbolTable for parallel type
+// checking.
 public class SymbolTable
 {
     private readonly Stack<Scope> _scopeStack = new();

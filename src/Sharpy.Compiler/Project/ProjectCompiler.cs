@@ -21,6 +21,9 @@ internal partial class ProjectCompiler
     private readonly bool _incremental;
     private CancellationToken _cancellationToken;
 
+    // TODO(#610): Refactor to per-file SymbolTable and SemanticInfo for parallel compilation.
+    // See docs/design/parallel-compilation.md for the full design.
+    //
     // Shared symbol table and semantic info across all files.
     // SemanticInfo is shared (not per-file) because files are processed sequentially
     // in dependency order. For parallel per-file analysis (e.g., LSP), SemanticInfo
