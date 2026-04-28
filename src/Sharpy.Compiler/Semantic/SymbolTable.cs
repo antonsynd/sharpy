@@ -12,6 +12,19 @@ public class SymbolTable
     private readonly BuiltinRegistry _builtins;
     private readonly Dictionary<string, Scope> _moduleScopes = new();
 
+    /// <summary>
+    /// Tracks variables that were declared inside a now-exited block scope but are
+    /// no longer visible in any active outer scope. Populated by <see cref="ExitScope"/>
+    /// for block-like scopes (if, for, while, try, with, except, match, comprehension).
+    /// Used to enhance SPY0200 "Undefined identifier" diagnostics with a hint that the
+    /// variable was block-scoped (unlike Python, where for-loop and except variables
+    /// leak into the enclosing function).
+    ///
+    /// Cleared when entering a new function-like scope so that exited variables from
+    /// one function aren't surfaced as suggestions in a sibling/nested function.
+    /// </summary>
+    private readonly Dictionary<string, (string BlockType, int Line)> _exitedVariables = new();
+
     internal SymbolTable(BuiltinRegistry builtins)
     {
         _builtins = builtins;
@@ -50,6 +63,15 @@ public class SymbolTable
 
     public void EnterScope(string name)
     {
+        // Exited-variable tracking is only meaningful within the same function body.
+        // When entering a new function-like scope (function/lambda/pre-pass), clear
+        // any prior entries so block-scoped variables from one function aren't
+        // surfaced as hints inside a sibling or nested function.
+        if (IsFunctionLikeScope(name))
+        {
+            _exitedVariables.Clear();
+        }
+
         var newScope = new Scope(name, CurrentScope);
         _scopeStack.Push(newScope);
     }
@@ -74,6 +96,10 @@ public class SymbolTable
             _moduleScopes[moduleName] = moduleScope;
         }
 
+        // Exited-variable tracking is per-function within a module — clear when
+        // crossing a module boundary so hints don't leak between modules.
+        _exitedVariables.Clear();
+
         _scopeStack.Push(moduleScope);
     }
 
@@ -91,7 +117,92 @@ public class SymbolTable
         {
             throw new InvalidOperationException("Cannot exit global scope");
         }
+
+        // Before popping, record any block-scoped variables that are about to go
+        // out of view. This powers enhanced SPY0200 diagnostics that explain to
+        // Python developers why a `for` / `if` / `with` / comprehension variable
+        // is unreachable outside its block in Sharpy.
+        var scope = _scopeStack.Peek();
+        var blockType = GetBlockTypeFromScopeName(scope.Name);
+        if (blockType != null)
+        {
+            var parent = scope.Parent;
+            foreach (var symbol in scope.GetAllSymbols())
+            {
+                if (symbol is not VariableSymbol variable)
+                    continue;
+                if (variable.DeclarationLine is not int declLine)
+                    continue;
+
+                // Skip if a same-named symbol is still visible in an outer active
+                // scope — in that case the identifier resolves successfully and
+                // the hint would be misleading (false positive for shadowing).
+                if (parent != null && parent.Lookup(symbol.Name) != null)
+                    continue;
+
+                // Last writer wins: the most recently exited block is the most
+                // useful suggestion in the common single-block case.
+                _exitedVariables[symbol.Name] = (blockType, declLine);
+            }
+        }
+
         _scopeStack.Pop();
+    }
+
+    /// <summary>
+    /// Looks up a variable that was previously declared inside a now-exited
+    /// block scope (if/for/while/try/with/except/match/comprehension) within
+    /// the current function body. Used by <c>TypeChecker</c> to enhance the
+    /// SPY0200 "Undefined identifier" diagnostic with an explanation of
+    /// Sharpy's block-scoping rules for Python developers.
+    /// </summary>
+    public bool TryGetExitedVariable(string name, out string blockType, out int line)
+    {
+        if (_exitedVariables.TryGetValue(name, out var info))
+        {
+            blockType = info.BlockType;
+            line = info.Line;
+            return true;
+        }
+
+        blockType = string.Empty;
+        line = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// Maps internal scope names (used as <c>EnterScope</c> tags throughout the
+    /// semantic pipeline) to the user-facing block-type label that appears in
+    /// SPY0200 diagnostics. Returns <c>null</c> for non-block scopes (functions,
+    /// classes, modules, etc.) which should not contribute to exited-variable tracking.
+    /// </summary>
+    private static string? GetBlockTypeFromScopeName(string scopeName)
+    {
+        return scopeName switch
+        {
+            "if-then" or "elif" or "if-else" => "if",
+            "while-body" => "while",
+            "for-body" => "for",
+            "try" or "try-else" or "finally" => "try",
+            "except" => "except",
+            "with" => "with",
+            "match-case" or "match-arm" => "match",
+            "list-comprehension" or "set-comprehension"
+                or "dict-comprehension" or "dict-spread-comprehension" => "comprehension",
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Returns true if the scope name represents a function-like boundary
+    /// (function body, lambda, or type-checker pre-pass). Crossing such a
+    /// boundary invalidates exited-variable tracking from the prior function.
+    /// </summary>
+    private static bool IsFunctionLikeScope(string scopeName)
+    {
+        return scopeName == "lambda"
+            || scopeName.StartsWith("function:", StringComparison.Ordinal)
+            || scopeName.StartsWith("pre-pass:", StringComparison.Ordinal);
     }
 
     public void Define(Symbol symbol)
