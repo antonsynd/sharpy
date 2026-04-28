@@ -18,6 +18,9 @@ namespace Sharpy.Compiler.Semantic.Validation;
 ///         (value-copy semantics vs. Python's reference semantics).</item>
 ///   <item>SPY0475 — <c>isinstance(x, (T1, T2))</c> tuple-of-types form
 ///         (Sharpy accepts only a single type argument).</item>
+///   <item>SPY0477 — <c>@static</c> / <c>@staticmethod</c> on a class/struct/interface
+///         method that already lacks a <c>self</c> parameter (decorator is unnecessary;
+///         Sharpy auto-detects static methods).</item>
 /// </list>
 ///
 /// Hints share suppression with warnings but are NOT promoted to errors under
@@ -30,6 +33,41 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     // After NamingConventionValidator (55), before DecoratorValidator (60).
     public override int Order => 56;
 
+    /// <summary>
+    /// Tracks nesting inside class/struct/interface bodies. Used to scope
+    /// the @static / @staticmethod hint to type members only — at module
+    /// level, those decorators have different meaning and DecoratorValidator
+    /// already governs validity.
+    /// </summary>
+    private int _typeDepth;
+
+    public override void Validate(Module module, SemanticContext context)
+    {
+        _typeDepth = 0;
+        base.Validate(module, context);
+    }
+
+    public override void VisitClassDef(ClassDef node)
+    {
+        _typeDepth++;
+        try { base.VisitClassDef(node); }
+        finally { _typeDepth--; }
+    }
+
+    public override void VisitStructDef(StructDef node)
+    {
+        _typeDepth++;
+        try { base.VisitStructDef(node); }
+        finally { _typeDepth--; }
+    }
+
+    public override void VisitInterfaceDef(InterfaceDef node)
+    {
+        _typeDepth++;
+        try { base.VisitInterfaceDef(node); }
+        finally { _typeDepth--; }
+    }
+
     public override void VisitFunctionCall(FunctionCall node)
     {
         CheckUtf16StringLength(node);
@@ -41,6 +79,12 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     {
         CheckStructValueSemantics(node);
         base.VisitAssignment(node);
+    }
+
+    public override void VisitFunctionDef(FunctionDef node)
+    {
+        CheckUnnecessaryStaticDecorator(node);
+        base.VisitFunctionDef(node);
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -215,5 +259,70 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
             MemberAccess ma => $"{DescribeTypeArg(ma.Object)}.{ma.Member}",
             _ => "?",
         };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // SPY0477 — Unnecessary @static / @staticmethod on a method without self
+    // ──────────────────────────────────────────────────────────────────────
+
+    private void CheckUnnecessaryStaticDecorator(FunctionDef node)
+    {
+        if (node.Decorators.Length == 0)
+            return;
+
+        // Only emit for class/struct/interface members. At module level the
+        // decorator has a different role (e.g., on a module-level field), and
+        // DecoratorValidator already governs validity there.
+        if (_typeDepth == 0)
+            return;
+
+        // The hint applies precisely when the method is already static-shaped:
+        // either it has no parameters, or its first parameter is not the
+        // implicit `self` (untyped first parameter named "self").
+        if (HasSelfParameter(node))
+            return;
+
+        Decorator? staticDecorator = null;
+        foreach (var dec in node.Decorators)
+        {
+            if (dec.Name == DecoratorNames.Static || dec.Name == DecoratorNames.StaticMethod)
+            {
+                staticDecorator = dec;
+                break;
+            }
+        }
+
+        if (staticDecorator is null)
+            return;
+
+        var decoratorName = staticDecorator.Name == DecoratorNames.StaticMethod
+            ? "@staticmethod"
+            : "@static";
+
+        AddHint(
+            $"{decoratorName} is unnecessary on '{node.Name}': the method already lacks a "
+                + "'self' parameter, and Sharpy automatically treats methods without a "
+                + "'self' first parameter as static. "
+                + "You can drop the decorator without changing behavior. "
+                + "(Python's @staticmethod and C#'s 'static' keyword are explicit; "
+                + "Sharpy infers the same fact from the parameter list.)",
+            staticDecorator.LineStart, staticDecorator.ColumnStart,
+            code: DiagnosticCodes.Validation.UnnecessaryStaticDecoratorHint,
+            span: staticDecorator.Span);
+    }
+
+    /// <summary>
+    /// Returns true when the function definition begins with the implicit
+    /// instance receiver: a first parameter named <c>self</c> with no type
+    /// annotation. A typed <c>self: T</c> first parameter is treated as a
+    /// regular parameter, in which case the method is considered static-shaped.
+    /// </summary>
+    private static bool HasSelfParameter(FunctionDef node)
+    {
+        if (node.Parameters.Length == 0)
+            return false;
+
+        var first = node.Parameters[0];
+        return first.Name == "self" && first.Type == null;
     }
 }

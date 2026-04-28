@@ -523,7 +523,8 @@ public static class DiagnosticCodes
         public const string NoAsyncComprehensionHint = "SPY0474";     // Allocated — not yet emitted
         public const string SingleIsinstanceTypeHint = "SPY0475";     // Active
         public const string NegativeTupleIndexHint = "SPY0476";       // Allocated — not yet emitted
-        // SPY0477-SPY0489: Reserved for future transition diagnostics
+        public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active
+        // SPY0478-SPY0489: Reserved for future transition diagnostics
 
         #endregion
     }

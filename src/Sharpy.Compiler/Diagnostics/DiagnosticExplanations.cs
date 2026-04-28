@@ -1644,6 +1644,17 @@ public static class DiagnosticExplanations
             "t = (1, 2, 3)\nlast = t[-1]  # SPY0259 — use t[2] instead",
             "Use the explicit positive index, or convert to a list if dynamic indexing is needed.");
 
+        Add(dict, DiagnosticCodes.Validation.UnnecessaryStaticDecoratorHint,
+            "@static / @staticmethod is unnecessary on a method without 'self'",
+            "Validation",
+            "Sharpy infers static methods automatically: a method declared inside a class, struct, or interface " +
+            "is treated as static when its first parameter is not the implicit 'self' (an untyped first " +
+            "parameter named 'self'). The '@static' decorator is therefore optional, and the Python " +
+            "'@staticmethod' decorator is rejected outright (DecoratorValidator). This hint flags the redundant " +
+            "case so users transitioning from Python or C# learn the convention and can simplify their code.",
+            "class Math:\n    @static                     # redundant — already static\n    def square(x: int) -> int:\n        return x * x",
+            "Drop the '@static' / '@staticmethod' decorator. The method remains static because it has no 'self' parameter.");
+
         // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",
