@@ -1,0 +1,7 @@
+# SPY0470: len() on a string literal containing non-BMP characters
+# returns the UTF-16 code-unit count, not Python's code-point count.
+# The emoji 😀 is a single code-point but two UTF-16 code units.
+
+def main():
+    n: int = len("😀")
+    print(n)

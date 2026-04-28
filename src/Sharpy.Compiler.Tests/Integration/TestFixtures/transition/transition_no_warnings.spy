@@ -1,0 +1,14 @@
+# Negative test: ordinary code that should NOT produce any transition hints.
+# - len() on a BMP-only string literal → no SPY0470
+# - reassignment of a non-struct → no SPY0471
+
+def main():
+    s: str = "hello"
+    n: int = len(s)
+    msg: str = "ascii only"
+    m: int = len(msg)
+    x: int = 1
+    x = 2
+    print(n)
+    print(m)
+    print(x)

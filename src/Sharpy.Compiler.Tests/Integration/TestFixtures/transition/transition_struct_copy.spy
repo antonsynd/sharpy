@@ -1,0 +1,14 @@
+# SPY0471: assigning a struct value to a variable creates a copy
+# (value-copy semantics). Reassignment between two existing struct
+# variables triggers the hint; a fresh declaration does not.
+
+struct Point:
+    x: int
+    y: int
+
+def main():
+    p1: Point = Point(1, 2)
+    p2: Point = Point(0, 0)
+    p2 = p1
+    print(p2.x)
+    print(p2.y)

@@ -1,0 +1,2 @@
+struct type 'Point' creates a copy
+struct value-semantics
