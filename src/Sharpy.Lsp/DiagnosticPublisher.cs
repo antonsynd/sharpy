@@ -68,12 +68,42 @@ internal sealed class DiagnosticPublisher
             Code = !string.IsNullOrEmpty(diag.Code)
                 ? new DiagnosticCode(diag.Code)
                 : default,
+            Tags = GetDiagnosticTags(diag),
             Data = diag.Data is { Count: > 0 }
                 ? JObject.FromObject(diag.Data)
                 : null
         };
 
         return lspDiag;
+    }
+
+    /// <summary>
+    /// Returns LSP diagnostic tags for a compiler diagnostic. Tags allow editors to
+    /// render diagnostics with special styling (e.g., faded text for unnecessary code).
+    /// </summary>
+    internal static Container<DiagnosticTag>? GetDiagnosticTags(CompilerDiagnostic diag)
+    {
+        // Tag advisory hints about redundant/unnecessary code so editors render
+        // them with faded text. Only specific transition hints qualify — most
+        // hints are informational about behavioral differences, not redundancy.
+        if (diag.Severity == CompilerDiagnosticSeverity.Hint && IsUnnecessaryCodeHint(diag.Code))
+        {
+            return new Container<DiagnosticTag>(DiagnosticTag.Unnecessary);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Returns true if the diagnostic code identifies code that is unnecessary
+    /// or redundant and should be rendered with faded text.
+    /// </summary>
+    private static bool IsUnnecessaryCodeHint(string? code)
+    {
+        // SPY0477: @static decorator is unnecessary on a method without 'self'.
+        // Other transition hints (SPY0470-SPY0476) are informational about behavioral
+        // differences from Python/C# — the code is not redundant.
+        return code == DiagnosticCodes.Validation.UnnecessaryStaticDecoratorHint;
     }
 
     internal static DiagnosticSeverity ConvertSeverity(CompilerDiagnosticSeverity severity)

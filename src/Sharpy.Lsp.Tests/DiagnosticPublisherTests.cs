@@ -76,4 +76,43 @@ public class DiagnosticPublisherTests
         result[0].Severity.Should().Be(DiagnosticSeverity.Error);
         result[1].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
+
+    [Fact]
+    public void GetDiagnosticTags_TagsUnnecessaryStaticDecoratorAsUnnecessary()
+    {
+        var diag = new CompilerDiagnostic(
+            Message: "@static is unnecessary",
+            Severity: CompilerDiagnosticSeverity.Hint,
+            Code: DiagnosticCodes.Validation.UnnecessaryStaticDecoratorHint);
+
+        var tags = DiagnosticPublisher.GetDiagnosticTags(diag);
+
+        tags.Should().NotBeNull();
+        tags!.Should().Contain(DiagnosticTag.Unnecessary);
+    }
+
+    [Fact]
+    public void GetDiagnosticTags_DoesNotTagInformationalHints()
+    {
+        // SPY0475 is informational about behavioral differences, not redundant code.
+        var diag = new CompilerDiagnostic(
+            Message: "isinstance with single type",
+            Severity: CompilerDiagnosticSeverity.Hint,
+            Code: DiagnosticCodes.Validation.SingleIsinstanceTypeHint);
+
+        var tags = DiagnosticPublisher.GetDiagnosticTags(diag);
+
+        tags.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetDiagnosticTags_DoesNotTagErrorsOrWarnings()
+    {
+        var diag = new CompilerDiagnostic(
+            Message: "error",
+            Severity: CompilerDiagnosticSeverity.Error,
+            Code: DiagnosticCodes.Validation.UnnecessaryStaticDecoratorHint);
+
+        DiagnosticPublisher.GetDiagnosticTags(diag).Should().BeNull();
+    }
 }
