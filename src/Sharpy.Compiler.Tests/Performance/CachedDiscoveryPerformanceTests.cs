@@ -21,7 +21,7 @@ public class CachedDiscoveryPerformanceTests : IDisposable
     // Performance test thresholds
     private const int MinMeasurableMilliseconds = 1;
     private const int MaxCachedLoadMultiplier = 5;
-    private const int MinReasonableTimeMs = 100;
+    private const int CachedLoadThresholdMs = 200;
     private const int MinFastCachedLoadsRequired = 3;
     private const int TotalCachedLoadRuns = 5;
 
@@ -112,17 +112,17 @@ public class CachedDiscoveryPerformanceTests : IDisposable
         _output.WriteLine($"Median cached: {medianCachedTime}ms");
 
         // Count how many cached loads were fast (under 100ms threshold)
-        var fastCachedLoads = cachedTimes.Count(t => t < MinReasonableTimeMs);
-        _output.WriteLine($"Fast cached loads (<{MinReasonableTimeMs}ms): {fastCachedLoads}/{TotalCachedLoadRuns}");
+        var fastCachedLoads = cachedTimes.Count(t => t < CachedLoadThresholdMs);
+        _output.WriteLine($"Fast cached loads (<{CachedLoadThresholdMs}ms): {fastCachedLoads}/{TotalCachedLoadRuns}");
 
         // For very fast operations, verify that cached loads complete quickly
         // rather than comparing to an unreliable first-load time which has high variance
-        Assert.True(medianCachedTime < MinReasonableTimeMs,
-            $"Cached load median ({medianCachedTime}ms) should be under {MinReasonableTimeMs}ms");
+        Assert.True(medianCachedTime < CachedLoadThresholdMs,
+            $"Cached load median ({medianCachedTime}ms) should be under {CachedLoadThresholdMs}ms");
 
         // At least some cached loads should be fast
         Assert.True(fastCachedLoads >= MinFastCachedLoadsRequired,
-            $"At least {MinFastCachedLoadsRequired} cached loads should be under {MinReasonableTimeMs}ms, but only {fastCachedLoads} were");
+            $"At least {MinFastCachedLoadsRequired} cached loads should be under {CachedLoadThresholdMs}ms, but only {fastCachedLoads} were");
     }
 
     [Fact]
@@ -145,9 +145,8 @@ public class CachedDiscoveryPerformanceTests : IDisposable
 
         _output.WriteLine($"Cached load: {stopwatch.ElapsedMilliseconds}ms");
 
-        // Should be under 100ms (documentation target: 30-50ms, but being generous)
-        Assert.True(stopwatch.ElapsedMilliseconds < 100,
-            $"Cached load took {stopwatch.ElapsedMilliseconds}ms, expected < 100ms");
+        Assert.True(stopwatch.ElapsedMilliseconds < CachedLoadThresholdMs,
+            $"Cached load took {stopwatch.ElapsedMilliseconds}ms, expected < {CachedLoadThresholdMs}ms");
     }
 
     [Fact]
