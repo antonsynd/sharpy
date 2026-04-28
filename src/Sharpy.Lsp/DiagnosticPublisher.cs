@@ -107,22 +107,28 @@ internal sealed class DiagnosticPublisher
         return null;
     }
 
+    private const string DiagnosticCodePrefix = "SPY";
+    private const int TransitionHintRangeStart = 470;
+    private const int TransitionHintRangeEnd = 489;
+
     /// <summary>
     /// Returns true if the diagnostic code is a transition hint (SPY0470-SPY0489).
     /// </summary>
     internal static bool IsTransitionHintCode(string? code)
     {
-        if (string.IsNullOrEmpty(code) || code.Length != 7 || !code.StartsWith("SPY"))
+        if (string.IsNullOrEmpty(code)
+            || code.Length != 7
+            || !code.StartsWith(DiagnosticCodePrefix))
         {
             return false;
         }
 
-        if (!int.TryParse(code.AsSpan(3), out var n))
+        if (!int.TryParse(code.AsSpan(DiagnosticCodePrefix.Length), out var n))
         {
             return false;
         }
 
-        return n >= 470 && n <= 489;
+        return n >= TransitionHintRangeStart && n <= TransitionHintRangeEnd;
     }
 
     /// <summary>

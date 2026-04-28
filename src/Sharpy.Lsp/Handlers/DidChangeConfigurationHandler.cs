@@ -47,8 +47,10 @@ internal sealed class SharpyDidChangeConfigurationHandler : IDidChangeConfigurat
                 "Configuration updated: TransitionHintsEnabled={Enabled}",
                 _configuration.TransitionHintsEnabled);
 
-            // Republish diagnostics for all open documents so the new filter
-            // is applied without waiting for the next edit.
+            // Republish cached analysis results so the new filter is applied
+            // without waiting for the next edit. This works because hint filtering
+            // happens at ConvertDiagnostics time, not at analysis time — no
+            // reanalysis is needed to reflect the configuration change.
             foreach (var fileUri in _languageService.GetProjectFileUris())
             {
                 if (ct.IsCancellationRequested)

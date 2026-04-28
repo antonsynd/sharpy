@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// Emits hint-severity transition diagnostics that inform Python and C# developers
 /// about behavioral differences in Sharpy. Each hint targets a specific axis where
 /// Sharpy's semantics diverge from one of its source languages — see
-/// <c>docs/development/transition_diagnostics.md</c> for the full catalog.
+/// <c>docs/deviations.yaml</c> for the full catalog.
 ///
 /// Currently emitted:
 /// <list type="bullet">
@@ -18,9 +18,10 @@ namespace Sharpy.Compiler.Semantic.Validation;
 ///         (value-copy semantics vs. Python's reference semantics).</item>
 ///   <item>SPY0475 — <c>isinstance(x, (T1, T2))</c> tuple-of-types form
 ///         (Sharpy accepts only a single type argument).</item>
-///   <item>SPY0477 — <c>@static</c> / <c>@staticmethod</c> on a class/struct/interface
-///         method that already lacks a <c>self</c> parameter (decorator is unnecessary;
-///         Sharpy auto-detects static methods).</item>
+///   <item>SPY0477 — <c>@static</c> on a class/struct/interface method that already
+///         lacks a <c>self</c> parameter (decorator is unnecessary; Sharpy auto-detects
+///         static methods). Note: <c>@staticmethod</c> is a hard error via
+///         DecoratorValidator, so it is not flagged here.</item>
 /// </list>
 ///
 /// Hints share suppression with warnings but are NOT promoted to errors under
@@ -265,7 +266,7 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    // SPY0477 — Unnecessary @static / @staticmethod on a method without self
+    // SPY0477 — Unnecessary @static on a method without self
     // ──────────────────────────────────────────────────────────────────────
 
     private void CheckUnnecessaryStaticDecorator(FunctionDef node)
@@ -285,10 +286,13 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
         if (HasSelfParameter(node))
             return;
 
+        // Only match @static — @staticmethod is already rejected as a hard error
+        // by DecoratorValidator (Order 60), so emitting an advisory hint here would
+        // contradict the error diagnostic.
         Decorator? staticDecorator = null;
         foreach (var dec in node.Decorators)
         {
-            if (dec.Name == DecoratorNames.Static || dec.Name == DecoratorNames.StaticMethod)
+            if (dec.Name == DecoratorNames.Static)
             {
                 staticDecorator = dec;
                 break;
@@ -298,12 +302,8 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
         if (staticDecorator is null)
             return;
 
-        var decoratorName = staticDecorator.Name == DecoratorNames.StaticMethod
-            ? "@staticmethod"
-            : "@static";
-
         AddHint(
-            $"{decoratorName} is unnecessary on '{node.Name}': the method already lacks a "
+            $"@static is unnecessary on '{node.Name}': the method already lacks a "
                 + "'self' parameter, and Sharpy automatically treats methods without a "
                 + "'self' first parameter as static. "
                 + "You can drop the decorator without changing behavior. "

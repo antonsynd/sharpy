@@ -203,8 +203,8 @@ public class TransitionWarningValidatorIntegrationTests : IntegrationTestBase
 
         var result = CompileAndExecute(source);
 
-        // The compound-assignment hint must not be emitted regardless of
-        // whether this particular program type-checks; assert only on hints.
+        Assert.True(result.Success,
+            $"Compilation failed: {string.Join("\n", result.CompilationErrors)}");
         Assert.DoesNotContain(result.CompilationWarnings,
             w => w.Contains("creates a copy"));
     }
@@ -265,8 +265,8 @@ public class TransitionWarningValidatorIntegrationTests : IntegrationTestBase
 
         var result = CompileAndExecute(source);
 
-        // Must not contain the Identifier-targeted struct-copy hint for
-        // the self.origin = p assignment.
+        Assert.True(result.Success,
+            $"Compilation failed: {string.Join("\n", result.CompilationErrors)}");
         Assert.DoesNotContain(result.CompilationWarnings,
             w => w.Contains("creates a copy"));
     }

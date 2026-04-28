@@ -516,8 +516,8 @@ public static class DiagnosticCodes
         // are emitted at Hint severity (advisory; not promoted to errors under
         // -Werror) and share suppression with warnings.
 
-        public const string Utf16StringLengthHint = "SPY0470";        // Allocated — not yet emitted
-        public const string StructValueSemanticsHint = "SPY0471";     // Allocated — not yet emitted
+        public const string Utf16StringLengthHint = "SPY0470";        // Active (emitted by TransitionWarningValidator; pending #611 for builtin len resolution)
+        public const string StructValueSemanticsHint = "SPY0471";     // Active
         public const string HomogeneousVariadicHint = "SPY0472";      // Allocated — not yet emitted
         public const string NoClassmethodHint = "SPY0473";            // Allocated — not yet emitted
         public const string NoAsyncComprehensionHint = "SPY0474";     // Allocated — not yet emitted

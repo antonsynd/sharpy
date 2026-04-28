@@ -6,9 +6,9 @@ namespace Sharpy.Lsp;
 /// </summary>
 /// <remarks>
 /// This is registered as a singleton in DI and read by handlers/services on
-/// each request. All mutations from the configuration handler use the
-/// <see cref="UpdateFrom"/> method; reads are simple property accesses
-/// (no locking required for boolean flags).
+/// each request. All mutations come from the configuration handler; reads
+/// happen on LSP request threads. Thread safety relies on Volatile to ensure
+/// cross-thread visibility of flag updates.
 /// </remarks>
 internal sealed class LspConfiguration
 {
@@ -16,7 +16,13 @@ internal sealed class LspConfiguration
     /// When false, transition hints (SPY0470-SPY0489) are filtered out before
     /// diagnostics are published to the editor. Default: true.
     /// </summary>
-    public bool TransitionHintsEnabled { get; private set; } = true;
+    private volatile bool _transitionHintsEnabled = true;
+
+    public bool TransitionHintsEnabled
+    {
+        get => _transitionHintsEnabled;
+        private set => _transitionHintsEnabled = value;
+    }
 
     /// <summary>
     /// Updates this configuration from a parsed settings object.
