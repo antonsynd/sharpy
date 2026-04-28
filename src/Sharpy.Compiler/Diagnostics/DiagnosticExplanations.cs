@@ -1575,6 +1575,75 @@ public static class DiagnosticExplanations
             "MAX: Final[int] = 100\nmatch x:\n    case MAX:  # matches value 100, does NOT capture into MAX",
             "Rename the capture variable to avoid ambiguity with the constant.");
 
+        // ── Validation transition hints (SPY0470-SPY0489) ──────────────
+        // Hint-severity advisories about behavioral differences from Python/C#.
+        // Suppressible like warnings, but never promoted to errors under -Werror.
+
+        Add(dict, DiagnosticCodes.Validation.Utf16StringLengthHint,
+            "len(str) returns UTF-16 code units, not Unicode code points",
+            "Validation",
+            "In Sharpy, len(s) on a string returns the number of UTF-16 code units (matching .NET's String.Length), " +
+            "not the number of Unicode code points (as Python does). Strings outside the BMP (e.g., emoji, " +
+            "supplementary plane characters) are encoded as surrogate pairs and count as 2 code units. This is a " +
+            "deliberate Axiom 1 (.NET first) decision; helper methods in the str module provide code-point counts.",
+            "len(\"\\U0001F600\")  # Sharpy: 2 (UTF-16 surrogate pair); Python: 1 (1 code point)",
+            "If you need Unicode code-point counts, use the explicit helper (e.g., str.code_point_count(s)).");
+
+        Add(dict, DiagnosticCodes.Validation.StructValueSemanticsHint,
+            "Struct assignment copies the value (value semantics)",
+            "Validation",
+            "Sharpy structs follow .NET value semantics: assigning a struct or passing it to a function copies the " +
+            "entire value, so mutations on the copy do not affect the original. This differs from Python (where " +
+            "everything is a reference) and from Sharpy classes. Mark a parameter as `ref` (or use a class) if you " +
+            "want shared mutation.",
+            "@struct\nclass Point:\n    x: int = 0\n\np = Point()\nq = p          # copy — q.x = 5 won't change p.x\nq.x = 5",
+            "Use `ref` parameters for in-place mutation, or model the type as a class if reference semantics are required.");
+
+        Add(dict, DiagnosticCodes.Validation.HomogeneousVariadicHint,
+            "Variadic parameters in Sharpy are homogeneous and statically typed",
+            "Validation",
+            "Sharpy's `*args` declares a typed, homogeneous list (`list[T]`), not Python's heterogeneous tuple of " +
+            "`Any`. Every argument forwarded through `*args` must satisfy the declared element type. This enforces " +
+            "Axiom 3 (type safety) — there is no `Any` escape hatch.",
+            "def log(*args: int) -> None: ...\nlog(1, 2, \"three\")  # SPY0220 — \"three\" violates int element type",
+            "Annotate the variadic with the broadest concrete type your callers need (e.g., `*args: object`), or define overloads.");
+
+        Add(dict, DiagnosticCodes.Validation.NoClassmethodHint,
+            "@classmethod is not supported — use @staticmethod or a factory",
+            "Validation",
+            "Sharpy intentionally omits Python's @classmethod decorator. .NET's type system does not pass the class " +
+            "object as a first parameter, and the feature would require a runtime indirection that conflicts with " +
+            "Axiom 1. Use @staticmethod for type-independent helpers, or define a regular factory method.",
+            "@classmethod\ndef from_string(cls, s: str) -> Self: ...   # not supported",
+            "Use @staticmethod and reference the type by name, or use a factory function on the module.");
+
+        Add(dict, DiagnosticCodes.Validation.NoAsyncComprehensionHint,
+            "Async comprehensions are not supported",
+            "Validation",
+            "Sharpy does not support `async for` inside list/set/dict comprehensions or generator expressions. " +
+            ".NET's async streaming model (IAsyncEnumerable<T>) is exposed differently and is most cleanly used " +
+            "via explicit `async for` loops over async iterables.",
+            "results = [x async for x in stream()]  # not supported",
+            "Rewrite using an explicit `async for` loop and append/yield each element.");
+
+        Add(dict, DiagnosticCodes.Validation.SingleIsinstanceTypeHint,
+            "isinstance() takes exactly one type argument",
+            "Validation",
+            "Unlike Python, Sharpy's isinstance() accepts only a single type, not a tuple of types. This keeps the " +
+            "result type narrowing precise (the value is narrowed to that one type) and avoids tuple-shaped " +
+            "argument quirks. Compose multiple checks with `or`.",
+            "if isinstance(x, (int, str)):  # not supported\n    ...",
+            "Combine type checks with `or`: `if isinstance(x, int) or isinstance(x, str): ...`");
+
+        Add(dict, DiagnosticCodes.Validation.NegativeTupleIndexHint,
+            "Negative tuple indices are rejected at compile time",
+            "Validation",
+            "Tuples in Sharpy have a fixed, statically known length, so negative indexing (Python's t[-1] for the " +
+            "last element) is rejected at compile time as SPY0259 — you should use the positive index of the " +
+            "corresponding element. This is a transition hint that explains the diagnostic for Python users.",
+            "t = (1, 2, 3)\nlast = t[-1]  # SPY0259 — use t[2] instead",
+            "Use the explicit positive index, or convert to a list if dynamic indexing is needed.");
+
         // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",
