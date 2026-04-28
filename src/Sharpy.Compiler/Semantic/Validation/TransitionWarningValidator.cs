@@ -50,21 +50,24 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     public override void VisitClassDef(ClassDef node)
     {
         _typeDepth++;
-        try { base.VisitClassDef(node); }
+        try
+        { base.VisitClassDef(node); }
         finally { _typeDepth--; }
     }
 
     public override void VisitStructDef(StructDef node)
     {
         _typeDepth++;
-        try { base.VisitStructDef(node); }
+        try
+        { base.VisitStructDef(node); }
         finally { _typeDepth--; }
     }
 
     public override void VisitInterfaceDef(InterfaceDef node)
     {
         _typeDepth++;
-        try { base.VisitInterfaceDef(node); }
+        try
+        { base.VisitInterfaceDef(node); }
         finally { _typeDepth--; }
     }
 
