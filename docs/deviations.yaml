@@ -1,0 +1,1108 @@
+# Sharpy Deviation Catalog
+#
+# This file documents known behavioral deviations between Sharpy and the
+# languages it draws from (Python syntactically, C# semantically). It is a
+# documentation/planning artifact for the diagnostic transition system —
+# it is NOT compiled into the compiler.
+#
+# Schema (per entry):
+#   id                  — unique kebab-case identifier
+#   code                — diagnostic code if applicable, null if no diagnostic
+#   category            — scoping | types | operators | syntax | semantics | stdlib
+#   audience            — python | csharp | both
+#   severity            — error | warning | hint | info | none
+#   python_behavior     — what Python does
+#   sharpy_behavior     — what Sharpy does
+#   spec_ref            — relative path to spec section (or null)
+#   existing_diagnostic — diagnostic code that already covers this (or null)
+#   planned_diagnostic  — planned new diagnostic from transition system (or null)
+#   example.python      — short Python snippet showing the deviation
+#   example.sharpy      — short Sharpy snippet (or comment) showing Sharpy behavior
+#
+# Categories:
+#   scoping    — variable visibility / lifetime
+#   types      — type system, type rules, generics, protocols
+#   operators  — operator behavior / overloading / precedence
+#   syntax     — surface syntax accepted/rejected
+#   semantics  — runtime semantics that differ silently or with diagnostics
+#   stdlib     — standard library / builtin behavior
+#
+# Severity reflects the *current* compiler behavior. "none" = silent deviation
+# (no diagnostic today); "hint" = planned hint-level transition diagnostic.
+
+deviations:
+
+  # ============================================================
+  # Hard-rejected Python syntax (already produces errors)
+  # ============================================================
+
+  - id: global-nonlocal-keywords
+    code: SPY0134
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "`global` and `nonlocal` declarations rebind names in outer scopes."
+    sharpy_behavior: "`global` and `nonlocal` are rejected. C# scoping rules apply; use mutable containers or return values."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0134
+    planned_diagnostic: null
+    example:
+      python: |
+        x = 1
+        def f():
+            global x
+            x = 2
+      sharpy: |
+        x = 1
+        def f():
+            global x  # ERROR SPY0134: 'global' keyword is not supported in Sharpy
+            x = 2
+
+  - id: raise-from
+    code: SPY0122
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "`raise NewError() from cause` chains exceptions via __cause__."
+    sharpy_behavior: "`raise ... from ...` is not supported. Use the inner-exception constructor argument or `try/except` to wrap exceptions."
+    spec_ref: docs/language_specification/exception_handling.md
+    existing_diagnostic: SPY0122
+    planned_diagnostic: null
+    example:
+      python: |
+        try:
+            do_thing()
+        except IOError as e:
+            raise RuntimeError("wrapped") from e
+      sharpy: |
+        try:
+            do_thing()
+        except IOError as e:
+            raise RuntimeError("wrapped", e)  # pass cause as arg instead
+
+  - id: free-union-syntax
+    code: SPY0113
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`int | str` and `Union[int, str]` are first-class union types in Python typing."
+    sharpy_behavior: "Free unions are rejected. Use `T?` (Nullable/Optional), tagged unions (`union` declaration), or interfaces."
+    spec_ref: docs/language_specification/tagged_unions.md
+    existing_diagnostic: SPY0113
+    planned_diagnostic: null
+    example:
+      python: |
+        def parse(x: int | str) -> int: ...
+      sharpy: |
+        # ERROR SPY0113: free union types are not supported
+        # Use a tagged union or a common interface instead.
+        union IntOrStr:
+            case AsInt(value: int)
+            case AsStr(value: str)
+
+  - id: dict-spread-in-call
+    code: SPY0123
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "`f(**kwargs)` spreads a dict into keyword arguments."
+    sharpy_behavior: "Dict spread (`**`) in calls is rejected. Pass explicit keyword arguments or an options struct."
+    spec_ref: docs/language_specification/flexible_arguments.md
+    existing_diagnostic: SPY0123
+    planned_diagnostic: null
+    example:
+      python: |
+        opts = {"host": "x", "port": 80}
+        connect(**opts)
+      sharpy: |
+        # ERROR SPY0123: dict spread in calls is not supported
+        connect(host="x", port=80)
+
+  - id: empty-list-shorthand
+    code: SPY0114
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "`x = []` produces an empty list with inferred element type."
+    sharpy_behavior: "Bare `[]` is rejected; an explicit element type is required (e.g., `list[int]()` or `[]: list[int]`)."
+    spec_ref: docs/language_specification/collection_types.md
+    existing_diagnostic: SPY0114
+    planned_diagnostic: null
+    example:
+      python: |
+        xs = []
+      sharpy: |
+        xs: list[int] = []     # OK — annotation provides element type
+        ys = list[int]()       # OK — constructor form
+
+  - id: empty-set-dict-shorthand
+    code: SPY0115
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "`{}` is an empty dict; `set()` is required for an empty set."
+    sharpy_behavior: "Bare `{}` for an empty dict/set is rejected; explicit constructor with type arguments is required."
+    spec_ref: docs/language_specification/collection_types.md
+    existing_diagnostic: SPY0115
+    planned_diagnostic: null
+    example:
+      python: |
+        d = {}
+      sharpy: |
+        d = dict[str, int]()  # explicit constructor required
+
+  # ============================================================
+  # Block / comprehension scoping (enhanced SPY0200)
+  # ============================================================
+
+  - id: block-scoping-if
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "Variables declared inside `if`/`elif`/`else` bodies leak into the surrounding scope."
+    sharpy_behavior: "Compound-statement bodies introduce a new scope; variables declared inside are not visible outside the block."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        if cond:
+            x = 1
+        print(x)  # works in Python
+      sharpy: |
+        if cond:
+            x = 1
+        print(x)  # ERROR SPY0200: undefined identifier 'x' (block-scoped)
+
+  - id: block-scoping-for-loop-variable
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "The for-loop iteration variable persists after the loop ends."
+    sharpy_behavior: "The for-loop iteration variable is scoped to the loop body only."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        for i in range(5):
+            pass
+        print(i)  # 4 in Python
+      sharpy: |
+        for i in range(5):
+            pass
+        print(i)  # ERROR SPY0200: 'i' is block-scoped to the for loop
+
+  - id: block-scoping-while
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "Variables declared inside a `while` body remain visible after the loop."
+    sharpy_behavior: "Variables declared inside a `while` body are not visible after the loop."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        while cond():
+            result = compute()
+        print(result)
+      sharpy: |
+        result: int = 0
+        while cond():
+            result = compute()
+        print(result)  # declare 'result' outside the loop
+
+  - id: block-scoping-try-except
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "Variables declared in a `try` body are visible in `except`/`else`/`finally` and after the statement."
+    sharpy_behavior: "Each clause (`try`, `except`, `else`, `finally`) is its own scope. Cross-clause variables must be declared before the `try` statement."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        try:
+            result = risky()
+        except ValueError:
+            result = -1
+        print(result)
+      sharpy: |
+        result: int = 0
+        try:
+            result = risky()
+        except ValueError:
+            result = -1
+        print(result)
+
+  - id: block-scoping-with
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "Variables declared inside `with` (including the `as` binding) remain accessible after the block."
+    sharpy_behavior: "`with` body and `as` binding are block-scoped."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        with open("f.txt") as f:
+            data = f.read()
+        print(data)
+      sharpy: |
+        with open("f.txt") as f:
+            data = f.read()
+            print(data)  # use 'data' inside the block
+
+  - id: comprehension-loop-variable-leak
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "In Python 3, comprehension loop variables do not leak (matches Sharpy). In Python 2 and generator expressions in some contexts they could."
+    sharpy_behavior: "Comprehension loop variables are local to the comprehension (matches Python 3)."
+    spec_ref: docs/language_specification/comprehensions.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        xs = [x * 2 for x in range(5)]
+        # 'x' is not visible here in Python 3 either
+      sharpy: |
+        xs = [x * 2 for x in range(5)]
+        # 'x' is not visible here
+
+  - id: walrus-in-comprehension-scope
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "Python 3.8+: walrus (`:=`) inside a comprehension binds in the *enclosing* scope and leaks out."
+    sharpy_behavior: "Walrus inside a comprehension is local to the comprehension. The syntactic boundary equals the semantic boundary."
+    spec_ref: docs/language_specification/walrus_operator.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        results = [y for x in data if (y := transform(x)) > 0]
+        print(y)  # leaks in Python 3.8+
+      sharpy: |
+        results = [y for x in data if (y := transform(x)) > 0]
+        print(y)  # ERROR SPY0200: 'y' is comprehension-local
+
+  # ============================================================
+  # Planned transition hints (SPY0470 - SPY0476)
+  # ============================================================
+
+  - id: utf16-string-length
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`len(s)` returns the number of Unicode code points; indexing yields a single-character string per code point."
+    sharpy_behavior: "`len(s)` returns the number of UTF-16 code units (matching .NET `string.Length`); indexing yields a single UTF-16 code unit. Surrogate pairs count as 2."
+    spec_ref: docs/language_specification/string_type.md
+    existing_diagnostic: null
+    planned_diagnostic: SPY0470
+    example:
+      python: |
+        len("😀")        # 1
+        "😀"[0]          # '😀'
+      sharpy: |
+        len("😀")        # 2  (UTF-16 code units)
+        "😀"[0]          # high-surrogate code unit '\uD83D'
+
+  - id: struct-value-semantics
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "All user-defined classes have reference semantics; assignment shares the same object."
+    sharpy_behavior: "`struct` declarations have value semantics (C# `struct`). Assignment / argument passing copies the value."
+    spec_ref: docs/language_specification/structs.md
+    existing_diagnostic: null
+    planned_diagnostic: SPY0471
+    example:
+      python: |
+        class Point:
+            x: int
+            y: int
+        a = Point(1, 2)
+        b = a          # 'b' aliases 'a'
+        b.x = 99
+        # a.x == 99
+      sharpy: |
+        struct Point:
+            x: int
+            y: int
+        a = Point(1, 2)
+        b = a          # 'b' is a *copy* of 'a'
+        b.x = 99
+        # a.x == 1     (unchanged)
+
+  - id: homogeneous-variadic-args
+    code: SPY0220
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`*args` accepts arbitrary heterogeneous values; the function sees a tuple of `object`-typed elements."
+    sharpy_behavior: "`*args: T` is homogeneously typed — every passed argument must be assignable to `T`."
+    spec_ref: docs/language_specification/function_variadic_arguments.md
+    existing_diagnostic: SPY0220
+    planned_diagnostic: SPY0472
+    example:
+      python: |
+        def log(*args):
+            for a in args: print(a)
+        log(1, "two", 3.0)        # OK in Python
+      sharpy: |
+        def log(*args: int) -> None:
+            for a in args:
+                print(a)
+        log(1, "two", 3.0)
+        # ERROR SPY0220: argument 'two' (str) not assignable to int
+
+  - id: no-classmethod
+    code: null
+    category: syntax
+    audience: python
+    severity: none
+    python_behavior: "`@classmethod` defines a method whose first argument is the class object."
+    sharpy_behavior: "Only instance methods, static methods, and dunder methods exist. There is no `@classmethod`. Use a static method (no `self`) and reference the type directly when needed."
+    spec_ref: docs/language_specification/class_methods.md
+    existing_diagnostic: null
+    planned_diagnostic: SPY0473
+    example:
+      python: |
+        class Foo:
+            @classmethod
+            def make(cls) -> "Foo":
+                return cls()
+      sharpy: |
+        class Foo:
+            # static method — no 'self'
+            def make() -> Foo:
+                return Foo()
+
+  - id: no-async-comprehensions
+    code: null
+    category: syntax
+    audience: python
+    severity: none
+    python_behavior: "`[x async for x in src]` and `[await f(x) for x in xs]` are valid async comprehensions."
+    sharpy_behavior: "Async comprehensions are a deliberate non-feature. Use an explicit `async for` loop and `append` instead."
+    spec_ref: docs/language_specification/async_programming.md
+    existing_diagnostic: null
+    planned_diagnostic: SPY0474
+    example:
+      python: |
+        results = [x async for x in source()]
+      sharpy: |
+        results: list[int] = []
+        async for x in source():
+            results.append(x)
+
+  - id: isinstance-single-type
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`isinstance(x, (A, B))` checks against a tuple of types."
+    sharpy_behavior: "`isinstance()` accepts a single type only. Combine multiple checks with explicit `or`, or use a tagged union / pattern matching."
+    spec_ref: docs/language_specification/builtin_functions.md
+    existing_diagnostic: null
+    planned_diagnostic: SPY0475
+    example:
+      python: |
+        if isinstance(x, (int, str)):
+            ...
+      sharpy: |
+        if isinstance(x, int) or isinstance(x, str):
+            ...
+        # Note: 'or' does not narrow — see type_narrowing.md
+
+  - id: no-negative-tuple-indexing
+    code: SPY0259
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`t[-1]` returns the last element of a tuple."
+    sharpy_behavior: "Tuples are statically typed; negative indices on a tuple are rejected. Use the literal positive index."
+    spec_ref: docs/language_specification/type_hierarchy.md
+    existing_diagnostic: SPY0259
+    planned_diagnostic: SPY0476
+    example:
+      python: |
+        t = (1, 2, 3)
+        last = t[-1]      # 3
+      sharpy: |
+        t: tuple[int, int, int] = (1, 2, 3)
+        last = t[-1]      # ERROR SPY0259: negative tuple index not allowed
+        last = t[2]       # OK
+
+  # ============================================================
+  # Other deviations (no current or planned diagnostic, or
+  # covered by an existing diagnostic)
+  # ============================================================
+
+  - id: integer-division-floor
+    code: null
+    category: operators
+    audience: python
+    severity: none
+    python_behavior: "`a // b` for ints is floor division: `-7 // 2 == -4`."
+    sharpy_behavior: "`//` is lowered to truncating C# integer division by default; use `math.floor_div(a, b)` to match Python's flooring semantics for negatives."
+    spec_ref: docs/language_specification/arithmetic_operators.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        -7 // 2   # -4 (floor)
+      sharpy: |
+        -7 // 2                 # -3 (C# truncating semantics)
+        math.floor_div(-7, 2)   # -4 (matches Python)
+
+  - id: string-indexing-utf16
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`s[i]` indexes by Unicode code point."
+    sharpy_behavior: "`s[i]` indexes by UTF-16 code unit; multi-code-unit characters require surrogate-pair handling."
+    spec_ref: docs/language_specification/string_type.md
+    existing_diagnostic: null
+    planned_diagnostic: SPY0470
+    example:
+      python: |
+        "café"[3]    # 'é'
+      sharpy: |
+        "café"[3]    # 'é' (BMP — single code unit)
+        "𝄞ab"[0]     # high surrogate, not the G clef glyph
+
+  - id: duck-typing-rejected
+    code: null
+    category: types
+    audience: python
+    severity: none
+    python_behavior: "Methods are resolved structurally at runtime — any object with the right method works."
+    sharpy_behavior: "Polymorphism requires explicit interfaces or base classes. Duck typing is rejected in favor of nominal typing (Axioms 1+3)."
+    spec_ref: docs/language_specification/interfaces.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        def quack(d):
+            d.quack()       # works for any object with .quack()
+      sharpy: |
+        class IQuacker:
+            def quack(self) -> None: ...
+        def quack(d: IQuacker) -> None:
+            d.quack()
+
+  - id: no-multiple-class-inheritance
+    code: SPY0281
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "Classes may inherit from multiple base classes (with MRO/C3 linearization)."
+    sharpy_behavior: "Single class inheritance only. A class may implement multiple interfaces, but extend at most one base class."
+    spec_ref: docs/language_specification/inheritance.md
+    existing_diagnostic: SPY0281
+    planned_diagnostic: null
+    example:
+      python: |
+        class C(A, B):  # multiple inheritance
+            pass
+      sharpy: |
+        class C(A, IB, IC):  # one base class + interfaces only
+            pass
+
+  - id: no-metaclasses
+    code: null
+    category: types
+    audience: python
+    severity: none
+    python_behavior: "Classes may declare a `metaclass=` to customize class creation."
+    sharpy_behavior: "Metaclasses are not supported. Use generators / source generators or hand-written code."
+    spec_ref: docs/language_specification/classes.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        class Meta(type): ...
+        class Foo(metaclass=Meta): ...
+      sharpy: |
+        # No equivalent. Use code generation or a base class.
+        class Foo: ...
+
+  - id: no-descriptors
+    code: null
+    category: types
+    audience: python
+    severity: none
+    python_behavior: "Objects implementing `__get__`/`__set__`/`__delete__` participate in attribute lookup as descriptors."
+    sharpy_behavior: "The descriptor protocol is not supported. Use properties (function-style or auto) for controlled attribute access."
+    spec_ref: docs/language_specification/properties.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        class Lazy:
+            def __get__(self, obj, owner): ...
+      sharpy: |
+        class Foo:
+            @property
+            def value(self) -> int: ...
+
+  - id: explicit-type-annotations-required
+    code: SPY0226
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "Type annotations are optional; untyped code is fully dynamic."
+    sharpy_behavior: "Type annotations are required for parameters, return types, and any variable that cannot be inferred from the initializer."
+    spec_ref: docs/language_specification/type_annotations.md
+    existing_diagnostic: SPY0226
+    planned_diagnostic: null
+    example:
+      python: |
+        def add(a, b):
+            return a + b
+      sharpy: |
+        def add(a: int, b: int) -> int:
+            return a + b
+
+  - id: no-double-star-kwargs
+    code: null
+    category: syntax
+    audience: python
+    severity: none
+    python_behavior: "`**kwargs` accepts arbitrary keyword arguments as a `dict[str, Any]`."
+    sharpy_behavior: "`**kwargs` is not supported. Use named parameters with defaults or an explicit options struct."
+    spec_ref: docs/language_specification/flexible_arguments.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        def configure(**kwargs):
+            host = kwargs.get("host", "localhost")
+      sharpy: |
+        def configure(*, host: str = "localhost", port: int = 80) -> None:
+            ...
+
+  - id: tuple-immutability-typed
+    code: null
+    category: types
+    audience: python
+    severity: none
+    python_behavior: "Tuples are runtime-immutable but indexed dynamically (any element type)."
+    sharpy_behavior: "Tuples have positionally-typed elements (`tuple[int, str]`); each index has a known static type. The tuple itself is immutable."
+    spec_ref: docs/language_specification/type_hierarchy.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        t = (1, "two")
+        x = t[0] + 1     # int + int OK at runtime
+      sharpy: |
+        t: tuple[int, str] = (1, "two")
+        x = t[0] + 1     # statically typed int
+
+  - id: optional-chaining-no-flatten
+    code: null
+    category: operators
+    audience: both
+    severity: none
+    python_behavior: "Python has no `?.` operator; chained nullable navigation is manual."
+    sharpy_behavior: "`a?.b?.c` short-circuits to `None` on any null link. The result type is `T?` (the underlying member type lifted, not flattened — chained `??` already produces `T?`)."
+    spec_ref: docs/language_specification/null_conditional_access.md
+    existing_diagnostic: SPY0236
+    planned_diagnostic: null
+    example:
+      python: |
+        v = a.b.c if a and a.b else None
+      sharpy: |
+        v = a?.b?.c           # type is T?
+
+  - id: no-stopiteration
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "Iterators raise `StopIteration` to signal exhaustion. `next()` propagates this exception."
+    sharpy_behavior: "Iteration uses the .NET `IEnumerator<T>` pattern (`MoveNext()` returns `bool`). `StopIteration` is not raised; `next()` returns `Optional[T]` or accepts a default."
+    spec_ref: docs/language_specification/builtin_functions.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        it = iter([1, 2])
+        next(it)         # 1
+        next(it)         # 2
+        next(it)         # raises StopIteration
+      sharpy: |
+        it = iter([1, 2])
+        next(it, -1)     # 1
+        next(it, -1)     # 2
+        next(it, -1)     # -1 (default — no exception)
+
+  - id: no-generator-send-throw
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "Generators support `gen.send(value)`, `gen.throw(exc)`, and `gen.close()` for bidirectional coroutine-style communication."
+    sharpy_behavior: "Generators emit `IEnumerable<T>` / `IAsyncEnumerable<T>`. `send()`, `throw()`, and `close()` are not supported. Use async/await for cooperative communication."
+    spec_ref: docs/language_specification/generators.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        def gen():
+            x = yield 1
+            yield x + 1
+        g = gen()
+        next(g)
+        g.send(10)        # yields 11
+      sharpy: |
+        # No equivalent. Use 'async def' + IAsyncEnumerable, or a class
+        # with an explicit channel/queue for bidirectional communication.
+
+  - id: match-statement-differences
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "PEP 634 structural pattern matching — class patterns use `__match_args__`, capture vs. constant disambiguated by name shape (dotted = constant)."
+    sharpy_behavior: "`match` exists but with C#-style pattern semantics: tagged-union case patterns, type patterns (`case T(...)`), property patterns, and exhaustiveness checking. Constant pattern shadowing is a warning (SPY0468)."
+    spec_ref: docs/language_specification/match_statement.md
+    existing_diagnostic: SPY0468
+    planned_diagnostic: null
+    example:
+      python: |
+        match cmd:
+            case Move(x, y):
+                ...
+            case Quit():
+                ...
+      sharpy: |
+        match cmd:
+            case Command.Move(x, y):
+                ...
+            case Command.Quit():
+                ...
+        # Match expressions require exhaustiveness — SPY0416 / SPY0463
+
+  - id: no-namedtuple-runtime
+    code: SPY0432
+    category: stdlib
+    audience: python
+    severity: error
+    python_behavior: "`collections.namedtuple` and `typing.NamedTuple` create lightweight tuple subclasses with named fields."
+    sharpy_behavior: "Runtime `namedtuple` is rejected. Use a `@dataclass`, a `struct`, or named tuple types (`tuple[x: int, y: int]`)."
+    spec_ref: docs/language_specification/named_tuples.md
+    existing_diagnostic: SPY0432
+    planned_diagnostic: null
+    example:
+      python: |
+        from collections import namedtuple
+        Point = namedtuple("Point", "x y")
+      sharpy: |
+        @dataclass
+        class Point:
+            x: int
+            y: int
+
+  - id: mutable-default-rejected
+    code: SPY0400
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "Mutable default arguments are evaluated once and shared across calls — a classic foot-gun."
+    sharpy_behavior: "Mutable default arguments are rejected at compile time. Use `None` and instantiate inside the body."
+    spec_ref: docs/language_specification/function_default_parameters.md
+    existing_diagnostic: SPY0400
+    planned_diagnostic: null
+    example:
+      python: |
+        def f(xs=[]):  # shared across calls!
+            xs.append(1)
+            return xs
+      sharpy: |
+        def f(xs: list[int]? = None) -> list[int]:
+            xs = xs or []
+            xs.append(1)
+            return xs
+
+  - id: identity-with-value-types
+    code: SPY0465
+    category: operators
+    audience: python
+    severity: warning
+    python_behavior: "`is`/`is not` compare object identity. For small ints and interned strings the result is unspecified-but-often-True."
+    sharpy_behavior: "`is`/`is not` lower to reference equality. Using them on value types (struct, primitives) is a warning — they always compare boxed identity."
+    spec_ref: docs/language_specification/identity_operators.md
+    existing_diagnostic: SPY0465
+    planned_diagnostic: null
+    example:
+      python: |
+        if x is 1:    # SyntaxWarning in 3.8+
+            ...
+      sharpy: |
+        if x is 1:    # SPY0465: 'is' with value types is unreliable
+            ...
+
+  - id: dunder-direct-invocation
+    code: SPY0427
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "Calling `obj.__add__(other)` directly is permitted (though uncommon)."
+    sharpy_behavior: "Direct dunder invocation is rejected. Use the corresponding operator or builtin (`a + b`, `len(x)`, `str(x)`, ...)."
+    spec_ref: docs/language_specification/dunder_invocation_rules.md
+    existing_diagnostic: SPY0427
+    planned_diagnostic: null
+    example:
+      python: |
+        a.__add__(b)
+      sharpy: |
+        a + b   # use the operator instead
+
+  - id: implicit-bool-conversion
+    code: SPY0241
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "Any value can be used as a condition; `__bool__`/`__len__` provide truthiness."
+    sharpy_behavior: "Conditions must have type `bool`. Implement `__bool__` (synthesizes `IBoolConvertible`) for explicit `bool(x)` conversion."
+    spec_ref: docs/language_specification/boolean_literals.md
+    existing_diagnostic: SPY0241
+    planned_diagnostic: null
+    example:
+      python: |
+        if my_list:
+            ...
+      sharpy: |
+        if len(my_list) > 0:
+            ...
+        # Or implement __bool__ and call bool(my_list).
+
+  - id: comparison-chaining
+    code: null
+    category: operators
+    audience: csharp
+    severity: none
+    python_behavior: "`a < b < c` chains as `a < b and b < c` with `b` evaluated once."
+    sharpy_behavior: "Same as Python — comparison chaining is supported (a deliberate Python-favoring exception to the C#-first rule)."
+    spec_ref: docs/language_specification/comparison_chaining.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        if 0 < x < 10: ...
+      sharpy: |
+        if 0 < x < 10: ...   # supported
+
+  - id: walrus-no-annotation
+    code: null
+    category: syntax
+    audience: csharp
+    severity: none
+    python_behavior: "Python's walrus has never accepted a type annotation."
+    sharpy_behavior: "Walrus does not accept a type annotation; the type is always inferred from the RHS."
+    spec_ref: docs/language_specification/walrus_operator.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        if (x := compute()) > 0: ...
+      sharpy: |
+        if (x := compute()) > 0: ...
+
+  - id: module-level-executable-statement
+    code: SPY0340
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "Arbitrary statements at module top level execute on import."
+    sharpy_behavior: "Module top level allows only declarations, imports, type aliases, and constant initializers. Executable code lives in `main()`."
+    spec_ref: docs/language_specification/program_entry_point.md
+    existing_diagnostic: SPY0340
+    planned_diagnostic: null
+    example:
+      python: |
+        print("hello")    # runs on import
+      sharpy: |
+        def main() -> None:
+            print("hello")
+
+  - id: missing-main-function
+    code: SPY0403
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "Any script can run; an explicit `if __name__ == \"__main__\":` block is conventional but optional."
+    sharpy_behavior: "Executable programs require a top-level `def main() -> None:` function."
+    spec_ref: docs/language_specification/program_entry_point.md
+    existing_diagnostic: SPY0403
+    planned_diagnostic: null
+    example:
+      python: |
+        # script.py
+        do_work()
+      sharpy: |
+        def main() -> None:
+            do_work()
+
+  - id: no-multiple-ways-string-formatting
+    code: null
+    category: syntax
+    audience: python
+    severity: none
+    python_behavior: "Multiple equivalent options: `%`-formatting, `str.format`, f-strings, `Template`."
+    sharpy_behavior: "F-strings and template strings (t-strings) are the canonical forms. `%`-formatting and `str.format` are not encouraged but `format` extension exists."
+    spec_ref: docs/language_specification/fstrings.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        "%s is %d" % (name, age)
+        "{} is {}".format(name, age)
+        f"{name} is {age}"
+      sharpy: |
+        f"{name} is {age}"     # canonical
+
+  - id: type-narrowing-or-not-supported
+    code: null
+    category: types
+    audience: python
+    severity: none
+    python_behavior: "Some type checkers narrow with `or` (e.g., `isinstance(x, int) or isinstance(x, str)` narrows to `int | str`)."
+    sharpy_behavior: "`or` does not produce union types. Type narrowing only happens on `is None`/`is not None` and single `isinstance(x, T)` checks."
+    spec_ref: docs/language_specification/type_narrowing.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        if isinstance(x, int) or isinstance(x, str):
+            x.bit_length()    # type checker may narrow to int|str
+      sharpy: |
+        if isinstance(x, int):
+            x.bit_length()    # narrowed to int here
+        elif isinstance(x, str):
+            x.upper()         # narrowed to str here
+
+  - id: variance-required-on-generics
+    code: SPY0418
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "Variance is computed by tools like mypy from `_co`/`_contra` TypeVars; runtime is invariant."
+    sharpy_behavior: "Generic variance is explicit (`out T`, `in T`) on type parameters and validated at compile time. Mismatched positions are errors (SPY0418/SPY0419)."
+    spec_ref: docs/language_specification/generic_variance.md
+    existing_diagnostic: SPY0418
+    planned_diagnostic: null
+    example:
+      python: |
+        T_co = TypeVar("T_co", covariant=True)
+        class Box(Generic[T_co]): ...
+      sharpy: |
+        class Box[out T]:
+            def get(self) -> T: ...
+
+  - id: enum-value-type-consistency
+    code: SPY0253
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`enum.Enum` members can have arbitrary mixed-type values."
+    sharpy_behavior: "All members of an enum must share the same value type."
+    spec_ref: docs/language_specification/enums.md
+    existing_diagnostic: SPY0253
+    planned_diagnostic: null
+    example:
+      python: |
+        class Mixed(Enum):
+            A = 1
+            B = "two"     # OK in Python
+      sharpy: |
+        enum Mixed:
+            A = 1
+            B = "two"     # ERROR SPY0253: inconsistent enum value types
+
+  - id: dataclass-field-ordering
+    code: SPY0381
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "Python dataclass requires fields without defaults before fields with defaults."
+    sharpy_behavior: "Same rule, enforced at compile time (SPY0381) — also enforced for plain structs (SPY0435)."
+    spec_ref: docs/language_specification/dataclass.md
+    existing_diagnostic: SPY0381
+    planned_diagnostic: null
+    example:
+      python: |
+        @dataclass
+        class C:
+            a: int = 0
+            b: int     # TypeError at class creation
+      sharpy: |
+        @dataclass
+        class C:
+            b: int
+            a: int = 0   # OK
+
+  - id: late-bound-default-self-reference
+    code: SPY0433
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "Default-argument expressions are evaluated once at definition and cannot reference `self`."
+    sharpy_behavior: "Same — referencing `self` in a default value is a compile-time error."
+    spec_ref: docs/language_specification/function_default_parameters.md
+    existing_diagnostic: SPY0433
+    planned_diagnostic: null
+    example:
+      python: |
+        class C:
+            def f(self, x=self.value):  # NameError
+                ...
+      sharpy: |
+        class C:
+            def f(self, x: int = self.value):
+                # ERROR SPY0433: cannot reference 'self' in default value
+                ...
+
+  - id: implicit-protocol-synthesis
+    code: SPY1001
+    category: types
+    audience: csharp
+    severity: info
+    python_behavior: "Python uses structural duck typing for `len`, `bool`, etc."
+    sharpy_behavior: "Defining `__len__` / `__bool__` / `__reversed__` causes the emitter to implicitly add `ISized` / `IBoolConvertible` / `IReverseEnumerable[T]` to the class's interface list (SPY1001 info)."
+    spec_ref: docs/language_specification/dunder_methods.md
+    existing_diagnostic: SPY1001
+    planned_diagnostic: null
+    example:
+      python: |
+        class Bag:
+            def __len__(self): return 0
+      sharpy: |
+        class Bag:
+            def __len__(self) -> int:
+                return 0
+        # Note SPY1001: Bag now implicitly implements ISized.
+
+  - id: unknown-dunder-rejected
+    code: SPY0414
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "Any `__name__` is permitted; unknown dunders are inert."
+    sharpy_behavior: "Only the documented dunder set is allowed. Unknown dunders are rejected at compile time (SPY0414)."
+    spec_ref: docs/language_specification/dunder_methods.md
+    existing_diagnostic: SPY0414
+    planned_diagnostic: null
+    example:
+      python: |
+        class C:
+            def __wibble__(self): ...   # Python allows
+      sharpy: |
+        class C:
+            def __wibble__(self) -> None: ...
+            # ERROR SPY0414: unknown dunder method
+
+  - id: naming-conventions-enforced
+    code: SPY0453
+    category: syntax
+    audience: python
+    severity: warning
+    python_behavior: "PEP 8 conventions are advisory; the runtime accepts any valid identifier casing."
+    sharpy_behavior: "Naming conventions are enforced as warnings (SPY0453): types `PascalCase`, functions/variables `snake_case`, constants `SCREAMING_SNAKE_CASE`."
+    spec_ref: docs/language_specification/naming_conventions.md
+    existing_diagnostic: SPY0453
+    planned_diagnostic: null
+    example:
+      python: |
+        my_class = type("Foo", (), {})  # any naming OK
+      sharpy: |
+        class my_class: ...   # WARNING SPY0453: should be PascalCase
+
+  - id: bodyless-method-syntax-deprecated
+    code: SPY0464
+    category: syntax
+    audience: python
+    severity: warning
+    python_behavior: "N/A — Python has no body-less method syntax outside `Protocol` ellipsis."
+    sharpy_behavior: "Body-less method syntax (`def foo(self) -> int` without a body) is deprecated (SPY0464). Use `def foo(self) -> int: ...` for abstract/interface methods."
+    spec_ref: docs/language_specification/dunder_invocation_rules.md
+    existing_diagnostic: SPY0464
+    planned_diagnostic: null
+    example:
+      python: |
+        # not applicable
+        pass
+      sharpy: |
+        class IFoo:
+            def bar(self) -> int      # WARNING SPY0464: deprecated
+            def baz(self) -> int: ... # OK — preferred
+
+  - id: int-overflow-checked
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "Python `int` is arbitrary precision; no overflow."
+    sharpy_behavior: "`int` maps to `System.Int32` (32-bit). Overflow follows .NET semantics (wraps under default unchecked context). Use `long` for 64-bit, or `bigint` (if available) for arbitrary precision."
+    spec_ref: docs/language_specification/primitive_types.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        2 ** 100      # huge int, exact
+      sharpy: |
+        # int is 32-bit — this overflows.
+        # Use 'long' or arbitrary-precision helpers.
+        x: long = 1 << 62
+
+  - id: float-is-double
+    code: null
+    category: types
+    audience: python
+    severity: none
+    python_behavior: "`float` is IEEE-754 double (64-bit)."
+    sharpy_behavior: "`float` maps to `System.Double` (64-bit) — same precision as Python. `float32` is the 32-bit alternative."
+    spec_ref: docs/language_specification/primitive_types.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        x: float = 1.0
+      sharpy: |
+        x: float = 1.0       # 64-bit
+        y: float32 = 1.0f    # 32-bit
+
+  - id: super-requires-class-context
+    code: SPY0284
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "`super()` is a class-aware reference resolved at call time."
+    sharpy_behavior: "`super().method(...)` is allowed only inside instance methods of a class with a base class (SPY0284/SPY0285)."
+    spec_ref: docs/language_specification/inheritance.md
+    existing_diagnostic: SPY0284
+    planned_diagnostic: null
+    example:
+      python: |
+        super().__init__()    # in any method
+      sharpy: |
+        class B(A):
+            def __init__(self) -> None:
+                super().__init__()   # OK
