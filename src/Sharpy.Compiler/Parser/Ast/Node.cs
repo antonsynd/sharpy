@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
+using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Parser.Ast;
@@ -31,6 +32,16 @@ public abstract record Node : ILocatable
     /// sets Line/Column properties will continue to work.
     /// </summary>
     public TextSpan? Span { get; init; }
+
+    /// <summary>
+    /// Trivia (comments) preceding this node. Null when trivia preservation is off.
+    /// </summary>
+    public IReadOnlyList<Trivia>? LeadingTrivia { get; init; }
+
+    /// <summary>
+    /// Trivia (end-of-line comments) following this node. Null when trivia preservation is off.
+    /// </summary>
+    public IReadOnlyList<Trivia>? TrailingTrivia { get; init; }
 
     /// <summary>
     /// Validates structural invariants of this node.

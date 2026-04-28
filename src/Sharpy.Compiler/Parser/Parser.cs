@@ -435,6 +435,24 @@ public partial class Parser
 
     private Statement ParseStatement()
     {
+        var leadingTrivia = Current.LeadingTrivia;
+        var stmt = ParseStatementCore();
+        var trailingTrivia = Previous.TrailingTrivia;
+
+        if (leadingTrivia != null || trailingTrivia != null)
+        {
+            stmt = stmt with
+            {
+                LeadingTrivia = leadingTrivia ?? stmt.LeadingTrivia,
+                TrailingTrivia = trailingTrivia ?? stmt.TrailingTrivia
+            };
+        }
+
+        return stmt;
+    }
+
+    private Statement ParseStatementCore()
+    {
         // Decorators (for functions, classes, structs)
         if (Current.Type == TokenType.At)
             return ParseDecoratedStatement();

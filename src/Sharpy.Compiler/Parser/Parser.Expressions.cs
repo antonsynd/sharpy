@@ -75,7 +75,20 @@ public partial class Parser
         }
         try
         {
-            return ParseWalrusExpression();
+            var leadingTrivia = Current.LeadingTrivia;
+            var expr = ParseWalrusExpression();
+            var trailingTrivia = Previous.TrailingTrivia;
+
+            if (leadingTrivia != null || trailingTrivia != null)
+            {
+                expr = expr with
+                {
+                    LeadingTrivia = leadingTrivia ?? expr.LeadingTrivia,
+                    TrailingTrivia = trailingTrivia ?? expr.TrailingTrivia
+                };
+            }
+
+            return expr;
         }
         finally
         {
