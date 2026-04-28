@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Lsp;
@@ -114,5 +115,73 @@ public class DiagnosticPublisherTests
             Code: DiagnosticCodes.Validation.UnnecessaryStaticDecoratorHint);
 
         DiagnosticPublisher.GetDiagnosticTags(diag).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("SPY0470", true)]
+    [InlineData("SPY0477", true)]
+    [InlineData("SPY0489", true)]
+    [InlineData("SPY0469", false)]
+    [InlineData("SPY0490", false)]
+    [InlineData("SPY0100", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    [InlineData("INVALID", false)]
+    public void IsTransitionHintCode_RecognizesRange(string? code, bool expected)
+    {
+        DiagnosticPublisher.IsTransitionHintCode(code).Should().Be(expected);
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_FiltersTransitionHintsWhenDisabled()
+    {
+        var configuration = new LspConfiguration();
+        configuration.UpdateFrom(JToken.Parse("""{"transitionHints":{"enabled":false}}"""));
+
+        var diagnostics = new[]
+        {
+            new CompilerDiagnostic("err1", CompilerDiagnosticSeverity.Error, Line: 1, Column: 1, Code: "SPY0100"),
+            new CompilerDiagnostic("warn1", CompilerDiagnosticSeverity.Warning, Line: 2, Column: 1, Code: "SPY0450"),
+            new CompilerDiagnostic("hint1", CompilerDiagnosticSeverity.Hint, Line: 3, Column: 1, Code: "SPY0475"),
+            new CompilerDiagnostic("hint2", CompilerDiagnosticSeverity.Hint, Line: 4, Column: 1, Code: "SPY0477"),
+        };
+
+        var result = DiagnosticPublisher.ConvertDiagnostics(diagnostics, null, configuration);
+
+        result.Should().HaveCount(2);
+        result.Select(d => d.Severity).Should().NotContain(DiagnosticSeverity.Hint);
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_KeepsTransitionHintsByDefault()
+    {
+        var configuration = new LspConfiguration();
+
+        var diagnostics = new[]
+        {
+            new CompilerDiagnostic("hint1", CompilerDiagnosticSeverity.Hint, Line: 1, Column: 1, Code: "SPY0475"),
+            new CompilerDiagnostic("hint2", CompilerDiagnosticSeverity.Hint, Line: 2, Column: 1, Code: "SPY0477"),
+        };
+
+        var result = DiagnosticPublisher.ConvertDiagnostics(diagnostics, null, configuration);
+
+        result.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_DoesNotFilterNonTransitionHintsWhenDisabled()
+    {
+        var configuration = new LspConfiguration();
+        configuration.UpdateFrom(JToken.Parse("""{"transitionHints":{"enabled":false}}"""));
+
+        // A Hint-severity diagnostic outside the SPY0470-SPY0489 range — should not be filtered.
+        var diagnostics = new[]
+        {
+            new CompilerDiagnostic("style hint", CompilerDiagnosticSeverity.Hint, Line: 1, Column: 1, Code: "SPY0999"),
+        };
+
+        var result = DiagnosticPublisher.ConvertDiagnostics(diagnostics, null, configuration);
+
+        result.Should().HaveCount(1);
     }
 }

@@ -15,15 +15,17 @@ namespace Sharpy.Lsp;
 internal sealed class DiagnosticPublisher
 {
     private readonly ILanguageServerFacade _server;
+    private readonly LspConfiguration _configuration;
 
-    public DiagnosticPublisher(ILanguageServerFacade server)
+    public DiagnosticPublisher(ILanguageServerFacade server, LspConfiguration configuration)
     {
         _server = server;
+        _configuration = configuration;
     }
 
     public void PublishDiagnostics(string uri, SemanticResult result, SourceText? sourceText)
     {
-        var lspDiagnostics = ConvertDiagnostics(result.Diagnostics, sourceText);
+        var lspDiagnostics = ConvertDiagnostics(result.Diagnostics, sourceText, _configuration);
 
         _server.TextDocument.PublishDiagnostics(new PublishDiagnosticsParams
         {
@@ -43,12 +45,23 @@ internal sealed class DiagnosticPublisher
 
     internal static System.Collections.Generic.List<Diagnostic> ConvertDiagnostics(
         IReadOnlyList<CompilerDiagnostic> diagnostics,
-        SourceText? sourceText)
+        SourceText? sourceText,
+        LspConfiguration? configuration = null)
     {
         var result = new System.Collections.Generic.List<Diagnostic>(diagnostics.Count);
+        var transitionHintsEnabled = configuration?.TransitionHintsEnabled ?? true;
 
         foreach (var diag in diagnostics)
         {
+            // Filter out transition hints when disabled.
+            // Transition hints are Hint-severity diagnostics in the SPY0470-SPY0489 range.
+            if (!transitionHintsEnabled
+                && diag.Severity == CompilerDiagnosticSeverity.Hint
+                && IsTransitionHintCode(diag.Code))
+            {
+                continue;
+            }
+
             result.Add(ConvertDiagnostic(diag, sourceText));
         }
 
@@ -92,6 +105,24 @@ internal sealed class DiagnosticPublisher
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Returns true if the diagnostic code is a transition hint (SPY0470-SPY0489).
+    /// </summary>
+    internal static bool IsTransitionHintCode(string? code)
+    {
+        if (string.IsNullOrEmpty(code) || code.Length != 7 || !code.StartsWith("SPY"))
+        {
+            return false;
+        }
+
+        if (!int.TryParse(code.AsSpan(3), out var n))
+        {
+            return false;
+        }
+
+        return n >= 470 && n <= 489;
     }
 
     /// <summary>

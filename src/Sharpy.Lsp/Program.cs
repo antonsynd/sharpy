@@ -52,6 +52,7 @@ public class Program
                     var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
                     var sharpyCorePath = sharpyCoreAssembly.Location;
                     services.AddSingleton(new CompilerApi(null, new[] { sharpyCorePath }));
+                    services.AddSingleton<LspConfiguration>();
                     services.AddSingleton<SharpyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
                     services.AddSingleton<LanguageService>();
@@ -129,6 +130,7 @@ public class Program
                 .WithHandler<SharpyFormattingHandler>()
                 .WithHandler<SharpyFoldingRangeHandler>()
                 .WithHandler<FileWatcherHandler>()
+                .WithHandler<SharpyDidChangeConfigurationHandler>()
                 // Phase 4 handlers
                 .WithHandler<SharpyWorkspaceSymbolHandler>()
                 .WithHandler<SharpyInlayHintHandler>()
