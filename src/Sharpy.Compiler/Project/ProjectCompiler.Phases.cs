@@ -476,13 +476,20 @@ internal partial class ProjectCompiler
             SymbolTable.EnterModuleScope(unit.ModulePath);
             try
             {
-                // Type checking via shared pipeline
+                // Create per-file SemanticInfo for isolation
+                var localSemanticInfo = new SemanticInfo();
+                localSemanticInfo.SetSymbolTable(SymbolTable);
+                localSemanticInfo.CurrentFilePath = unit.FilePath;
+                unit.FileSemanticInfo = localSemanticInfo;
+
+                // Type checking via shared pipeline with per-file SemanticInfo
                 fileMetrics.StartPhase("Type Checking");
                 var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
                 var typeCheckResult = compilationPipeline.TypeCheck(
                     unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
                     computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,
-                    cancellationToken: cancellationToken);
+                    cancellationToken: cancellationToken,
+                    fileSemanticInfo: localSemanticInfo);
                 var typeChecker = typeCheckResult.TypeChecker;
 
                 if (typeCheckResult.Aborted)
@@ -526,8 +533,11 @@ internal partial class ProjectCompiler
                 else
                 {
                     unit.Phase = CompilationPhase.TypeChecked;
-                    CompilerInvariants.AssertPostTypeChecking(SemanticInfo, typeChecker.Diagnostics);
+                    CompilerInvariants.AssertPostTypeChecking(localSemanticInfo, typeChecker.Diagnostics);
                 }
+
+                // Merge per-file SemanticInfo into the shared project-level instance
+                SemanticInfo.MergeFrom(localSemanticInfo);
 
                 // Log per-file semantic analysis metrics at Debug level
                 if (_logger.IsEnabled(CompilerLogLevel.Debug))

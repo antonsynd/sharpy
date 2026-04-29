@@ -54,11 +54,12 @@ public sealed class ProjectAnalysisResult
             return null;
 
         var succeeded = unit.Phase == CompilationPhase.TypeChecked;
+        var semanticInfo = unit.FileSemanticInfo ?? ProjectModel.SemanticInfo;
 
         return new FileAnalysisResult(
             Success: succeeded,
             Ast: unit.Ast,
-            SemanticInfo: ProjectModel.SemanticInfo,
+            SemanticInfo: semanticInfo,
             SymbolTable: ProjectModel.GlobalSymbols,
             Diagnostics: unit.Diagnostics.GetAll());
     }

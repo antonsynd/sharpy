@@ -77,12 +77,14 @@ internal class FileCompilationPipeline
         int maxErrors,
         DiagnosticBag existingDiagnostics,
         bool computeCodeGenInfo = true,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        SemanticInfo? fileSemanticInfo = null)
     {
-        var typeResolver = new TypeResolver(_symbolTable, _semanticInfo, _logger, cancellationToken);
+        var effectiveSemanticInfo = fileSemanticInfo ?? _semanticInfo;
+        var typeResolver = new TypeResolver(_symbolTable, effectiveSemanticInfo, _logger, cancellationToken);
         var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
         var semanticMaxErrors = maxErrors > 0 ? maxErrors : 100;
-        var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger, pipeline)
+        var typeChecker = new TypeChecker(_symbolTable, effectiveSemanticInfo, typeResolver, _logger, pipeline)
         {
             CurrentFilePath = filePath,
             SemanticBinding = _semanticBinding,

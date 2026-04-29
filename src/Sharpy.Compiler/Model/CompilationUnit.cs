@@ -83,6 +83,13 @@ public class CompilationUnit
     #region Semantic Artifacts
 
     /// <summary>
+    /// Per-file SemanticInfo created during type checking.
+    /// Contains only the semantic data for this file's AST nodes.
+    /// Null until semantic analysis completes.
+    /// </summary>
+    public SemanticInfo? FileSemanticInfo { get; internal set; }
+
+    /// <summary>
     /// The module-level scope containing all declarations from this file.
     /// Null until name resolution completes.
     /// </summary>

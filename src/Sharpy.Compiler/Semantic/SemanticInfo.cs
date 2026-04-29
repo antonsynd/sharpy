@@ -383,6 +383,70 @@ public class SemanticInfo : ISemanticQuery
         return _narrowingDecisions.TryGetValue(test, out var decision) ? decision : null;
     }
 
+    /// <summary>
+    /// Merges all entries from another SemanticInfo into this instance.
+    /// Used to combine per-file SemanticInfo back into a project-level instance.
+    /// </summary>
+    public void MergeFrom(SemanticInfo other)
+    {
+        foreach (var kvp in other._expressionTypes)
+            _expressionTypes.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._identifierSymbols)
+            _identifierSymbols.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._callTargets)
+            _callTargets.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._typeAnnotations)
+            _typeAnnotations.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._narrowedExpressionTypes)
+            _narrowedExpressionTypes.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._inferredTypeArguments)
+            _inferredTypeArguments.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._memberAccessResolutions)
+            _memberAccessResolutions.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._generatorFunctions)
+            _generatorFunctions.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._eventAccessNodes)
+            _eventAccessNodes.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._patternUnionCases)
+            _patternUnionCases.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._patternConstants)
+            _patternConstants.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._errorRecoveryNodes)
+            _errorRecoveryNodes.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._contextManagerKinds)
+            _contextManagerKinds.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._withItemSymbols)
+            _withItemSymbols.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._narrowingDecisions)
+            _narrowingDecisions.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var (symbol, refs) in other._symbolReferences)
+        {
+            if (_symbolReferences.TryGetValue(symbol, out var existing))
+            {
+                existing.AddRange(refs);
+            }
+            else
+            {
+                _symbolReferences[symbol] = new List<SymbolReference>(refs);
+            }
+        }
+    }
+
     // === Symbol Reference Tracking ===
 
     private void RecordReference(Symbol symbol, Node node)
