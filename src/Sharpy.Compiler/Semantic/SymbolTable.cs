@@ -10,7 +10,7 @@ namespace Sharpy.Compiler.Semantic;
 // (docs/design/parallel-compilation.md) creates per-file instances during name
 // resolution, then merges into a read-only GlobalSymbolTable for parallel type
 // checking.
-public class SymbolTable
+public class SymbolTable : IGlobalSymbolTable
 {
     private readonly Stack<Scope> _scopeStack = new();
     private readonly Scope _globalScope;

@@ -37,6 +37,12 @@ public class CompilerServices
     public SymbolTable SymbolTable { get; }
     public SemanticInfo SemanticInfo { get; }
 
+    /// <summary>
+    /// Read-only interface over the symbol table for downstream consumers
+    /// that only need lookups (CodeGen, LSP handlers).
+    /// </summary>
+    public IGlobalSymbolTable GlobalSymbolTable => SymbolTable;
+
     // Configuration
     internal CompilerServicesConfiguration Configuration => _config;
 
