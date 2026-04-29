@@ -34,10 +34,9 @@ namespace Sharpy.Compiler.Semantic;
 /// </para>
 /// <para>
 /// <b>Threading:</b> Internal stores use <see cref="ConcurrentDictionary{TKey,TValue}"/>
-/// for cross-file symbol materialization, but the freeze-gate bool flags
-/// (<c>_inheritanceFrozen</c>, etc.) are plain fields — not volatile. Under the current
-/// single-threaded-per-phase execution model this is safe, but concurrent freeze/write
-/// races would require marking the flags <c>volatile</c> or using <c>Interlocked</c>.
+/// for cross-file symbol materialization. The freeze-gate bool flags
+/// (<c>_inheritanceFrozen</c>, etc.) are <c>volatile</c> for thread safety
+/// when per-file bindings are frozen concurrently.
 /// </para>
 /// </remarks>
 public class SemanticBinding

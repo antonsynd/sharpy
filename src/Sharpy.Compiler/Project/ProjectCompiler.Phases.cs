@@ -505,14 +505,20 @@ internal partial class ProjectCompiler
                 localSemanticInfo.CurrentFilePath = unit.FilePath;
                 unit.FileSemanticInfo = localSemanticInfo;
 
-                // Type checking via shared pipeline with per-file SemanticInfo
+                // Create per-file SemanticBinding for isolation
+                // Inheritance data is already materialized onto Symbol properties (Phase 4b),
+                // so the per-file binding only captures CodeGenInfo and VariableTypes.
+                var localBinding = new SemanticBinding();
+
+                // Type checking via shared pipeline with per-file state
                 fileMetrics.StartPhase("Type Checking");
                 var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
                 var typeCheckResult = compilationPipeline.TypeCheck(
                     unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
                     computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,
                     cancellationToken: cancellationToken,
-                    fileSemanticInfo: localSemanticInfo);
+                    fileSemanticInfo: localSemanticInfo,
+                    fileSemanticBinding: localBinding);
                 var typeChecker = typeCheckResult.TypeChecker;
 
                 if (typeCheckResult.Aborted)
@@ -559,8 +565,9 @@ internal partial class ProjectCompiler
                     CompilerInvariants.AssertPostTypeChecking(localSemanticInfo, typeChecker.Diagnostics);
                 }
 
-                // Merge per-file SemanticInfo into the shared project-level instance
+                // Merge per-file state into shared project-level instances
                 SemanticInfo.MergeFrom(localSemanticInfo);
+                _projectModel!.SemanticBinding.MergeFrom(localBinding);
 
                 // Log per-file semantic analysis metrics at Debug level
                 if (_logger.IsEnabled(CompilerLogLevel.Debug))
