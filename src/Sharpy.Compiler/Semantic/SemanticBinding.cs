@@ -40,7 +40,6 @@ namespace Sharpy.Compiler.Semantic;
 /// races would require marking the flags <c>volatile</c> or using <c>Interlocked</c>.
 /// </para>
 /// </remarks>
-[NotThreadSafe(Reason = "ConcurrentDictionary stores are thread-safe, but freeze-gate bool flags are not volatile — concurrent freeze/write races are possible. Safe under current single-threaded-per-phase usage.")]
 public class SemanticBinding
 {
     // Use ReferenceEqualityComparer for all symbol-keyed dictionaries.
@@ -74,11 +73,12 @@ public class SemanticBinding
     // Tracks which import module names refer to .NET stdlib modules
     private readonly ConcurrentDictionary<string, bool> _netModuleNames = new();
 
-    // Phase-gating freeze flags - prevent mutations after a phase completes
-    private bool _inheritanceFrozen;
-    private bool _variableTypesFrozen;
-    private bool _codeGenInfoFrozen;
-    private bool _netModuleNamesFrozen;
+    // Phase-gating freeze flags - prevent mutations after a phase completes.
+    // Volatile for thread safety when per-file bindings are frozen concurrently.
+    private volatile bool _inheritanceFrozen;
+    private volatile bool _variableTypesFrozen;
+    private volatile bool _codeGenInfoFrozen;
+    private volatile bool _netModuleNamesFrozen;
 
     /// <summary>
     /// Throws when a frozen store is written to after the corresponding phase has completed.
@@ -288,6 +288,27 @@ public class SemanticBinding
     }
 
     #endregion
+
+    /// <summary>
+    /// Merges all entries from another SemanticBinding into this instance.
+    /// Used to combine per-file SemanticBinding back into a project-level instance.
+    /// Skips inheritance data (BaseTypes, Interfaces) which are set during Phase 4b
+    /// and already present in the shared binding.
+    /// </summary>
+    public void MergeFrom(SemanticBinding other)
+    {
+        foreach (var (symbol, info) in other._codeGenInfo)
+            _codeGenInfo.TryAdd(symbol, info);
+
+        foreach (var (symbol, type) in other._variableTypes)
+            _variableTypes.TryAdd(symbol, type);
+
+        foreach (var (stmt, path) in other._resolvedModulePaths)
+            _resolvedModulePaths.TryAdd(stmt, path);
+
+        foreach (var (stmt, symbols) in other._reExportedSymbols)
+            _reExportedSymbols.TryAdd(stmt, symbols);
+    }
 
     #region Module Resolution
 
