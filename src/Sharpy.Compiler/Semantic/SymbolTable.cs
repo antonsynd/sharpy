@@ -389,4 +389,53 @@ public class SymbolTable : IGlobalSymbolTable
     {
         return CurrentScope.Remove(name);
     }
+
+    /// <summary>
+    /// Merges per-file symbol tables into a single unified table.
+    /// Transfers symbol references (not copies) to preserve reference equality.
+    /// </summary>
+    /// <param name="perFileTables">Per-file tables with their module paths.</param>
+    /// <param name="builtins">Builtin registry for the merged table.</param>
+    /// <param name="diagnostics">Bag to report duplicate symbol errors.</param>
+    /// <returns>A merged SymbolTable with all per-file symbols in their module scopes.</returns>
+    internal static SymbolTable MergeFrom(
+        IReadOnlyList<(string ModulePath, SymbolTable FileTable)> perFileTables,
+        BuiltinRegistry builtins,
+        Diagnostics.DiagnosticBag? diagnostics = null)
+    {
+        var merged = new SymbolTable(builtins);
+
+        foreach (var (modulePath, fileTable) in perFileTables)
+        {
+            var fileModuleScope = fileTable.GetModuleScope(modulePath);
+            if (fileModuleScope == null)
+                continue;
+
+            merged.EnterModuleScope(modulePath);
+            try
+            {
+                foreach (var symbol in fileModuleScope.GetAllSymbols())
+                {
+                    if (!merged.TryDefine(symbol))
+                    {
+                        diagnostics?.AddError(
+                            $"Duplicate definition '{symbol.Name}' across files",
+                            symbol.DeclarationLine, symbol.DeclarationColumn,
+                            code: Diagnostics.DiagnosticCodes.Semantic.DuplicateDefinition);
+                    }
+                }
+
+                foreach (var (name, overloads) in fileModuleScope.GetAllFunctionOverloads())
+                {
+                    merged.DefineFunctionOverloads(name, overloads);
+                }
+            }
+            finally
+            {
+                merged.ExitScope();
+            }
+        }
+
+        return merged;
+    }
 }

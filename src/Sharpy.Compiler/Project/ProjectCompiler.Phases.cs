@@ -11,14 +11,10 @@ namespace Sharpy.Compiler.Project;
 internal partial class ProjectCompiler
 {
     /// <summary>
-    /// Phase 3: Collect type declarations from all files
-    /// This is a preliminary pass that registers type names in the symbol table
-    /// without resolving inheritance or members yet. This enables cross-file type references.
-    ///
-    /// IMPORTANT: We use a SINGLE NameResolver instance across all files so that the
-    /// _classDefs, _structDefs, and _interfaceDefs lists are populated with ALL type
-    /// definitions before resolving inheritance. This is critical for cross-module
-    /// inheritance to work correctly.
+    /// Phase 3: Collect type declarations from all files using per-file SymbolTables.
+    /// Each file gets its own SymbolTable and NameResolver during declaration collection,
+    /// then results are merged into the shared SymbolTable. This enables future
+    /// parallelization of name resolution.
     ///
     /// NOTE: Inheritance resolution is deferred to Phase 4b (after imports are resolved)
     /// so that imported base types are available in the symbol table.
@@ -27,11 +23,8 @@ internal partial class ProjectCompiler
     {
         _logger.LogInfo("Phase 3: Collecting type declarations across all files");
 
-        // Create a SINGLE NameResolver for ALL files to preserve type definition lists
-        // across files for correct inheritance resolution
-        _sharedNameResolver = new NameResolver(SymbolTable, _logger, _projectModel!.SemanticBinding);
+        _perFileResolvers = new List<NameResolver>();
 
-        // Collect all type declarations (shells only)
         foreach (var (_, unit) in _projectModel!.Units)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -39,46 +32,76 @@ internal partial class ProjectCompiler
             if (unit.Phase == CompilationPhase.Failed || unit.Ast == null)
                 continue;
 
-            // Set current file path so types know which file they're defined in
-            // Use unit.FilePath for original path (Units dictionary keys are normalized)
-            _sharedNameResolver.SetCurrentFilePath(unit.FilePath);
+            // Create per-file SymbolTable and NameResolver
+            var fileTable = new SymbolTable(SymbolTable.BuiltinRegistry);
+            var fileResolver = new NameResolver(fileTable, _logger, _projectModel!.SemanticBinding);
+            fileResolver.SetCurrentFilePath(unit.FilePath);
 
-            // Enter per-module scope so each file's declarations are isolated
-            SymbolTable.EnterModuleScope(unit.ModulePath);
-            _sharedNameResolver.SetCurrentModulePath(unit.ModulePath);
+            fileTable.EnterModuleScope(unit.ModulePath);
+            fileResolver.SetCurrentModulePath(unit.ModulePath);
             try
             {
-                // Only collect declarations - don't resolve inheritance yet
-                // The NameResolver.ResolveDeclarations() method registers type names
-                // and stores ClassDef/StructDef/InterfaceDef in internal lists
-                _sharedNameResolver.ResolveDeclarations(unit.Ast, cancellationToken);
+                fileResolver.ResolveDeclarations(unit.Ast, cancellationToken);
 
-                // Capture the module scope on the CompilationUnit for later phases
-                unit.ModuleScope = SymbolTable.CurrentScope;
-
-                // Update phase
+                unit.FileSymbolTable = fileTable;
                 unit.Phase = CompilationPhase.NamesResolved;
             }
             finally
             {
-                // Exit module scope and clear module path
-                SymbolTable.ExitScope();
-                _sharedNameResolver.SetCurrentModulePath(null);
+                fileTable.ExitScope();
+                fileResolver.SetCurrentModulePath(null);
             }
-        }
 
-        // NOTE: Inheritance resolution is now done in ResolveInheritanceRelationships()
-        // after imports are resolved (Phase 4b)
+            _perFileResolvers.Add(fileResolver);
 
-        // Collect declaration errors (inheritance errors will be collected in Phase 4b)
-        if (_sharedNameResolver.Diagnostics.HasErrors)
-        {
-            foreach (var error in _sharedNameResolver.Diagnostics.GetErrors())
+            // Merge per-file symbols into the shared SymbolTable (preserves cached symbols)
+            var fileModuleScope = fileTable.GetModuleScope(unit.ModulePath);
+            if (fileModuleScope != null)
             {
-                _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code);
-                _diagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code, phase: CompilerPhase.NameResolution);
+                SymbolTable.EnterModuleScope(unit.ModulePath);
+                try
+                {
+                    foreach (var symbol in fileModuleScope.GetAllSymbols())
+                    {
+                        if (!SymbolTable.TryDefine(symbol))
+                        {
+                            _diagnostics.AddError(
+                                $"Duplicate definition '{symbol.Name}' across files",
+                                symbol.DeclarationLine, symbol.DeclarationColumn,
+                                code: DiagnosticCodes.Semantic.DuplicateDefinition,
+                                phase: CompilerPhase.NameResolution);
+                        }
+                    }
+
+                    foreach (var (name, overloads) in fileModuleScope.GetAllFunctionOverloads())
+                    {
+                        SymbolTable.DefineFunctionOverloads(name, overloads);
+                    }
+                }
+                finally
+                {
+                    SymbolTable.ExitScope();
+                }
+            }
+
+            // Capture the module scope from the shared table
+            unit.ModuleScope = SymbolTable.GetModuleScope(unit.ModulePath);
+            unit.FileSymbolTable = null; // Clear per-file table after merge
+
+            // Collect per-file declaration errors
+            if (fileResolver.Diagnostics.HasErrors)
+            {
+                foreach (var error in fileResolver.Diagnostics.GetErrors())
+                {
+                    _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code);
+                    _diagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code, phase: CompilerPhase.NameResolution);
+                }
             }
         }
+
+        // Create aggregated NameResolver for inheritance resolution (Phase 4b)
+        _sharedNameResolver = new NameResolver(SymbolTable, _logger, _projectModel!.SemanticBinding);
+        _sharedNameResolver.AggregateTypeDefinitionsFrom(_perFileResolvers);
     }
 
     /// <summary>

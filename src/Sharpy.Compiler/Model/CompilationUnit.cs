@@ -90,6 +90,12 @@ public class CompilationUnit
     public SemanticInfo? FileSemanticInfo { get; internal set; }
 
     /// <summary>
+    /// Per-file SymbolTable used during name resolution.
+    /// Cleared after merge into the global table to avoid holding stale references.
+    /// </summary>
+    public SymbolTable? FileSymbolTable { get; internal set; }
+
+    /// <summary>
     /// The module-level scope containing all declarations from this file.
     /// Null until name resolution completes.
     /// </summary>

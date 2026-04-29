@@ -52,6 +52,9 @@ internal partial class ProjectCompiler
     // Store NameResolver for deferred inheritance resolution
     private NameResolver? _sharedNameResolver;
 
+    // Per-file NameResolvers for aggregated inheritance resolution
+    private List<NameResolver>? _perFileResolvers;
+
     // Track errors and warnings using structured diagnostics
     private DiagnosticBag _diagnostics = new();
     private DependencyGraph? _dependencyGraph;

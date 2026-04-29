@@ -108,6 +108,14 @@ public class Scope
         return _symbols.Values;
     }
 
+    public IEnumerable<(string Name, List<FunctionSymbol> Overloads)> GetAllFunctionOverloads()
+    {
+        foreach (var (name, overloads) in _functionOverloads)
+        {
+            yield return (name, overloads);
+        }
+    }
+
     /// <summary>
     /// Removes a symbol from this scope or a parent scope.
     /// Used during incremental compilation to invalidate stale cached symbols.

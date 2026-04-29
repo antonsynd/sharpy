@@ -28,6 +28,25 @@ internal partial class NameResolver
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
+    public IReadOnlyList<(ClassDef Def, string? ModulePath)> ClassDefs => _classDefs;
+    public IReadOnlyList<(StructDef Def, string? ModulePath)> StructDefs => _structDefs;
+    public IReadOnlyList<(InterfaceDef Def, string? ModulePath)> InterfaceDefs => _interfaceDefs;
+
+    /// <summary>
+    /// Aggregates type definition lists from per-file resolvers into this resolver.
+    /// Used to prepare a merged NameResolver for inheritance resolution after
+    /// per-file name resolution and symbol table merge.
+    /// </summary>
+    public void AggregateTypeDefinitionsFrom(IEnumerable<NameResolver> perFileResolvers)
+    {
+        foreach (var resolver in perFileResolvers)
+        {
+            _classDefs.AddRange(resolver.ClassDefs);
+            _structDefs.AddRange(resolver.StructDefs);
+            _interfaceDefs.AddRange(resolver.InterfaceDefs);
+        }
+    }
+
     /// <summary>
     /// Set the current source file path for tracking type definitions.
     /// </summary>
