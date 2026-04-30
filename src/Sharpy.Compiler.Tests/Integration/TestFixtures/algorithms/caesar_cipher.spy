@@ -1,0 +1,19 @@
+def caesar(text: str, shift: int) -> str:
+    result: str = ""
+    i: int = 0
+    while i < len(text):
+        c: str = text[i]
+        if ord("A") <= ord(c) <= ord("Z"):
+            result = result + chr((ord(c) - ord("A") + shift) % 26 + ord("A"))
+        elif ord("a") <= ord(c) <= ord("z"):
+            result = result + chr((ord(c) - ord("a") + shift) % 26 + ord("a"))
+        else:
+            result = result + c
+        i += 1
+    return result
+
+def main():
+    encoded: str = caesar("Hello, World!", 3)
+    print(f"Encoded: {encoded}")
+    decoded: str = caesar(encoded, 23)
+    print(f"Decoded: {decoded}")

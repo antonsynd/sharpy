@@ -1,0 +1,10 @@
+def hanoi(n: int, src: str, aux: str, dst: str) -> None:
+    if n == 1:
+        print(f"Move disk {n} from {src} to {dst}")
+        return
+    hanoi(n - 1, src, dst, aux)
+    print(f"Move disk {n} from {src} to {dst}")
+    hanoi(n - 1, aux, src, dst)
+
+def main():
+    hanoi(3, "A", "B", "C")

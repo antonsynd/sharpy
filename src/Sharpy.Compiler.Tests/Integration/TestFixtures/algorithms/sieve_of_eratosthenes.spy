@@ -1,0 +1,26 @@
+def sieve(n: int) -> list[int]:
+    is_prime: list[bool] = []
+    k: int = 0
+    while k <= n:
+        is_prime.append(True)
+        k += 1
+    is_prime[0] = False
+    is_prime[1] = False
+    i: int = 2
+    while i * i <= n:
+        if is_prime[i]:
+            j: int = i * i
+            while j <= n:
+                is_prime[j] = False
+                j += i
+        i += 1
+    primes: list[int] = []
+    m: int = 0
+    while m <= n:
+        if is_prime[m]:
+            primes.append(m)
+        m += 1
+    return primes
+
+def main():
+    print(sieve(50))

@@ -1,0 +1,15 @@
+def main():
+    prev: list[int] = []
+    i: int = 0
+    while i < 5:
+        curr: list[int] = []
+        j: int = 0
+        while j <= i:
+            if j == 0 or j == i:
+                curr.append(1)
+            else:
+                curr.append(prev[j - 1] + prev[j])
+            j += 1
+        print(curr)
+        prev = curr
+        i += 1

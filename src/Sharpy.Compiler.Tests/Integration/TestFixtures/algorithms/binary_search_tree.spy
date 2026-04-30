@@ -1,0 +1,48 @@
+class BSTNode:
+    value: int
+    left: BSTNode?
+    right: BSTNode?
+
+    def __init__(self, val: int):
+        self.value = val
+        self.left = None()
+        self.right = None()
+
+def insert(root: BSTNode?, val: int) -> BSTNode:
+    if root is None:
+        return BSTNode(val)
+    else:
+        if val < root.value:
+            root.left = Some(insert(root.left, val))
+        else:
+            root.right = Some(insert(root.right, val))
+        return root
+
+def search(root: BSTNode?, val: int) -> bool:
+    if root is not None:
+        if val == root.value:
+            return True
+        elif val < root.value:
+            return search(root.left, val)
+        else:
+            return search(root.right, val)
+    return False
+
+def inorder(root: BSTNode?, result: list[str]) -> None:
+    if root is not None:
+        inorder(root.left, result)
+        result.append(str(root.value))
+        inorder(root.right, result)
+
+def main():
+    root: BSTNode? = None()
+    root = Some(insert(root, 5))
+    root = Some(insert(root, 3))
+    root = Some(insert(root, 7))
+    root = Some(insert(root, 1))
+    root = Some(insert(root, 4))
+    print(f"Search 4: {search(root, 4)}")
+    print(f"Search 6: {search(root, 6)}")
+    vals: list[str] = []
+    inorder(root, vals)
+    print("In-order: " + " ".join(vals))

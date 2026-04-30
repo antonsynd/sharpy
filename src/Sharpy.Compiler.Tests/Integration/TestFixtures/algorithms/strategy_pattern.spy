@@ -1,0 +1,42 @@
+interface ISortStrategy:
+    def sort(self, data: list[int]) -> list[int]: ...
+
+class BubbleSortStrategy(ISortStrategy):
+    def sort(self, data: list[int]) -> list[int]:
+        result: list[int] = [x for x in data]
+        n: int = len(result)
+        i: int = 0
+        while i < n:
+            j: int = 0
+            while j < n - i - 1:
+                if result[j] > result[j + 1]:
+                    temp: int = result[j]
+                    result[j] = result[j + 1]
+                    result[j + 1] = temp
+                j += 1
+            i += 1
+        return result
+
+class InsertionSortStrategy(ISortStrategy):
+    def sort(self, data: list[int]) -> list[int]:
+        result: list[int] = [x for x in data]
+        n: int = len(result)
+        i: int = 1
+        while i < n:
+            key: int = result[i]
+            j: int = i - 1
+            while j >= 0 and result[j] > key:
+                result[j + 1] = result[j]
+                j -= 1
+            result[j + 1] = key
+            i += 1
+        return result
+
+def main():
+    data: list[int] = [5, 3, 1, 4, 2]
+    bubble: ISortStrategy = BubbleSortStrategy()
+    insertion: ISortStrategy = InsertionSortStrategy()
+    bubble_result: list[int] = bubble.sort(data)
+    insertion_result: list[int] = insertion.sort(data)
+    print(f"BubbleSort result: {bubble_result}")
+    print(f"InsertionSort result: {insertion_result}")

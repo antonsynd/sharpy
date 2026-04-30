@@ -1,0 +1,28 @@
+class Queue:
+    _items: list[int]
+
+    def __init__(self):
+        self._items = []
+
+    def enqueue(self, value: int) -> None:
+        self._items.append(value)
+        print(f"Enqueued: {value}")
+
+    def dequeue(self) -> int:
+        return self._items.pop(0)
+
+    def front(self) -> int:
+        return self._items[0]
+
+    def size(self) -> int:
+        return len(self._items)
+
+def main():
+    q = Queue()
+    q.enqueue(1)
+    q.enqueue(2)
+    q.enqueue(3)
+    val: int = q.dequeue()
+    print(f"Dequeued: {val}")
+    print(f"Front: {q.front()}")
+    print(f"Size: {q.size()}")

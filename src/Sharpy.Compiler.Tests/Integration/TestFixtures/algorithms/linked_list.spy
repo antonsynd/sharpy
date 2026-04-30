@@ -1,0 +1,60 @@
+class Node:
+    value: int
+    next: Node?
+
+    def __init__(self, val: int):
+        self.value = val
+        self.next = None()
+
+class LinkedList:
+    head: Node?
+
+    def __init__(self):
+        self.head = None()
+
+    def insert(self, val: int) -> None:
+        new_node: Node = Node(val)
+        if self.head is None:
+            self.head = Some(new_node)
+            return
+        current: Node? = self.head
+        while current is not None:
+            nxt: Node? = current.next
+            if nxt is None:
+                current.next = Some(new_node)
+                return
+            current = nxt
+
+    def traverse(self) -> None:
+        parts: list[str] = []
+        current: Node? = self.head
+        while current is not None:
+            parts.append(str(current.value))
+            current = current.next
+        print(" -> ".join(parts) + " -> None")
+
+    def delete(self, val: int) -> None:
+        if self.head is None:
+            return
+        if self.head is not None:
+            if self.head.value == val:
+                self.head = self.head.next
+                return
+        current: Node? = self.head
+        while current is not None:
+            nxt: Node? = current.next
+            if nxt is not None:
+                if nxt.value == val:
+                    current.next = nxt.next
+                    return
+            current = nxt
+
+def main():
+    ll = LinkedList()
+    ll.insert(1)
+    ll.insert(2)
+    ll.insert(3)
+    ll.traverse()
+    print("After deleting 2:")
+    ll.delete(2)
+    ll.traverse()

@@ -1,0 +1,9 @@
+def is_palindrome(s: str) -> bool:
+    return s == s[::-1]
+
+def main():
+    print(is_palindrome("racecar"))
+    print(is_palindrome("hello"))
+    print(is_palindrome("madam"))
+    print(is_palindrome("world"))
+    print(is_palindrome("level"))

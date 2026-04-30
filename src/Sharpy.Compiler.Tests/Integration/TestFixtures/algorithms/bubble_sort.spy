@@ -1,0 +1,18 @@
+def sort(arr: list[int]) -> list[int]:
+    n: int = len(arr)
+    i: int = 0
+    while i < n:
+        j: int = 0
+        while j < n - i - 1:
+            if arr[j] > arr[j + 1]:
+                temp: int = arr[j]
+                arr[j] = arr[j + 1]
+                arr[j + 1] = temp
+            j += 1
+        i += 1
+    return arr
+
+def main():
+    nums: list[int] = [64, 34, 25, 12, 22, 11, 90]
+    result: list[int] = sort(nums)
+    print(result)

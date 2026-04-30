@@ -1,0 +1,12 @@
+def main():
+    sentence: str = "the cat sat on the mat the cat"
+    words: list[str] = sentence.split(" ")
+    freq: dict[str, int] = {}
+    for word in words:
+        if word in freq:
+            freq[word] += 1
+        else:
+            freq[word] = 1
+    keys: list[str] = sorted(list(freq.keys()))
+    for key in keys:
+        print(f"{key}: {freq[key]}")
