@@ -2284,4 +2284,113 @@ def main():
     }
 
     #endregion
+
+    #region And-narrowing propagation (#613)
+
+    [Fact]
+    public void AndNarrowing_FieldAccessAfterIsNotNone_NoError()
+    {
+        var source = @"
+class Node:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+def main():
+    node: Node? = Node(42)
+    if node is not None and node.value == 42:
+        print(node.value)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AndNarrowing_WhileCondition_NoError()
+    {
+        var source = @"
+class Node:
+    value: int
+    next: Node?
+
+    def __init__(self, v: int):
+        self.value = v
+        self.next = None()
+
+def main():
+    current: Node? = Node(1)
+    while current is not None and current.value > 0:
+        current = current.next
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AndNarrowing_ChainedAnd_NoError()
+    {
+        var source = @"
+class Node:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+def main():
+    a: Node? = Node(10)
+    b: Node? = Node(10)
+    if a is not None and b is not None and a.value == b.value:
+        print(a.value + b.value)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AndNarrowing_NonNarrowingOperands_NoError()
+    {
+        var source = @"
+def main():
+    x: int = 5
+    y: int = 10
+    if x > 0 and y > 0:
+        print(x + y)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AndNarrowing_DoesNotLeakPastExpression()
+    {
+        var source = @"
+class Node:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+def main():
+    node: Node? = Node(99)
+    if node is not None and node.value == 99:
+        print(node.value)
+    # After the if, node is still Optional — reassign to None
+    node = None()
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    #endregion
 }

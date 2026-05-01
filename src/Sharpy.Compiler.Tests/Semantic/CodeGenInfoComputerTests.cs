@@ -521,4 +521,94 @@ class MyIterator:
 
         diagnostics.HasErrors.Should().BeFalse();
     }
+
+    [Fact]
+    public void ComputeForModule_FunctionMatchesModuleClassName_EmitsSPY0523()
+    {
+        var source = @"
+def foo_bar() -> None:
+    pass
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module, sourceFilePath: "foo_bar.spy");
+
+        diagnostics.HasErrors.Should().BeTrue();
+        diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision &&
+            d.Message.Contains("conflicts with the module class name"));
+    }
+
+    [Fact]
+    public void ComputeForModule_FunctionDoesNotMatchModuleClassName_NoSPY0523()
+    {
+        var source = @"
+def sort() -> None:
+    pass
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module, sourceFilePath: "bubble_sort.spy");
+
+        diagnostics.GetErrors().Should().NotContain(d =>
+            d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision);
+    }
+
+    [Fact]
+    public void ComputeForModule_VariableMatchesModuleClassName_EmitsSPY0523()
+    {
+        var source = @"
+foo_bar: int = 42
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module, sourceFilePath: "foo_bar.spy");
+
+        diagnostics.HasErrors.Should().BeTrue();
+        diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision &&
+            d.Message.Contains("conflicts with the module class name"));
+    }
+
+    [Fact]
+    public void ComputeForModule_NoSourceFilePath_NoSPY0523()
+    {
+        var source = @"
+def foo_bar() -> None:
+    pass
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module, sourceFilePath: null);
+
+        diagnostics.GetErrors().Should().NotContain(d =>
+            d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision);
+    }
+
+    [Fact]
+    public void ComputeForModule_InitSpy_FunctionMatchesParentDir_EmitsSPY0523()
+    {
+        var source = @"
+def my_package() -> None:
+    pass
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module, sourceFilePath: "my_package/__init__.spy");
+
+        diagnostics.HasErrors.Should().BeTrue();
+        diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision &&
+            d.Message.Contains("conflicts with the module class name"));
+    }
 }
