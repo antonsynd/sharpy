@@ -310,6 +310,35 @@ internal static class NameMangler
     }
 
     /// <summary>
+    /// Computes the module class name that would be generated for the given source file path.
+    /// Returns null when no source file path is available (inline/REPL mode).
+    /// Does not handle the entry-point "Program" special case — that only applies to main.spy
+    /// and cannot collide since its class is "Program".
+    /// </summary>
+    public static string? ComputeModuleClassName(string? sourceFilePath)
+    {
+        if (string.IsNullOrEmpty(sourceFilePath))
+            return null;
+
+        var fileName = Path.GetFileNameWithoutExtension(sourceFilePath);
+        if (fileName == "__init__")
+        {
+            var dirName = Path.GetFileName(Path.GetDirectoryName(sourceFilePath));
+            return ToNamespacePart(dirName ?? "Module");
+        }
+
+        // main.spy uses "Program" as the class name when it contains a main() function.
+        // Since we're checking for function-name collisions, if the file is main.spy and
+        // the function is main(), the emitter would rename the class to Program anyway.
+        // If the file is main.spy but there's NO main() function, no collision can occur
+        // (no Main() method to collide with the Main class).
+        if (fileName.Equals("main", StringComparison.OrdinalIgnoreCase))
+            return "Program";
+
+        return ToNamespacePart(fileName);
+    }
+
+    /// <summary>
     /// Get the C# equivalent name for a Python list method, if it exists
     /// </summary>
     public static string? GetListMethodMapping(string methodName)

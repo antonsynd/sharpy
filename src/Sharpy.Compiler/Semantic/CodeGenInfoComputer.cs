@@ -18,6 +18,7 @@ internal class CodeGenInfoComputer
     private readonly DiagnosticBag _diagnostics;
     private readonly HashSet<string> _processedModuleLevelVars = new();
     private HashSet<string> _variablesWithExecutionOrderIssues = new();
+    private string? _sourceFilePath;
 
     public CodeGenInfoComputer(SymbolTable symbolTable, SemanticBinding? semanticBinding = null,
         DiagnosticBag? diagnostics = null)
@@ -39,8 +40,10 @@ internal class CodeGenInfoComputer
     /// <summary>
     /// Compute CodeGenInfo for all symbols in the module.
     /// </summary>
-    public void ComputeForModule(Module module)
+    public void ComputeForModule(Module module, string? sourceFilePath = null)
     {
+        _sourceFilePath = sourceFilePath;
+
         // Run execution order analysis first to detect variables that need special handling
         var analyzer = new ExecutionOrderAnalyzer(_symbolTable);
         _variablesWithExecutionOrderIssues = analyzer.Analyze(module.Body);
@@ -423,6 +426,52 @@ internal class CodeGenInfoComputer
     /// </summary>
     private void DetectModuleLevelCollisions(Module module)
     {
+        var moduleClassName = NameMangler.ComputeModuleClassName(_sourceFilePath);
+
+        // Check each function/variable against the module class name
+        if (moduleClassName != null)
+        {
+            foreach (var stmt in module.Body)
+            {
+                string? symbolName = null;
+                int? stmtLine = null;
+
+                switch (stmt)
+                {
+                    case FunctionDef funcDef:
+                        symbolName = funcDef.Name;
+                        stmtLine = funcDef.LineStart;
+                        break;
+                    case VariableDeclaration varDecl:
+                        symbolName = varDecl.Name;
+                        stmtLine = varDecl.LineStart;
+                        break;
+                }
+
+                if (symbolName == null)
+                    continue;
+
+                var symbol = _symbolTable.Lookup(symbolName);
+                if (symbol == null)
+                    continue;
+
+                var info = _semanticBinding.GetCodeGenInfo(symbol);
+                if (info == null)
+                    continue;
+
+                if (info.CSharpName == moduleClassName)
+                {
+                    _diagnostics.AddError(
+                        $"Function '{symbolName}' compiles to '{info.CSharpName}', which conflicts " +
+                        $"with the module class name derived from the filename. Rename the function " +
+                        $"to avoid the collision.",
+                        line: stmtLine,
+                        code: DiagnosticCodes.CodeGen.FunctionModuleClassCollision,
+                        phase: CompilerPhase.CodeGeneration);
+                }
+            }
+        }
+
         var seen = new Dictionary<string, (string originalName, int? line)>(); // CSharpName → (originalName, line)
 
         foreach (var stmt in module.Body)

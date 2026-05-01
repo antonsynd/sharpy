@@ -1,0 +1,54 @@
+class Node:
+    value: int
+    next: Node?
+
+    def __init__(self, val: int):
+        self.value = val
+        self.next = None()
+
+def test_if_narrowing() -> None:
+    node: Node? = Some(Node(42))
+    if node is not None and node.value == 42:
+        print("if narrowing works")
+    else:
+        print("if narrowing failed")
+
+def test_while_narrowing() -> None:
+    current: Node? = Some(Node(1))
+    current.unwrap().next = Some(Node(2))
+    parts: list[str] = []
+    while current is not None and current.value > 0:
+        parts.append(str(current.value))
+        current = current.next
+    print(" ".join(parts))
+
+def test_chained_and() -> None:
+    a: Node? = Some(Node(10))
+    b: Node? = Some(Node(10))
+    if a is not None and b is not None and a.value == b.value:
+        print("chained and works")
+    else:
+        print("chained and failed")
+
+def test_non_narrowing_and() -> None:
+    x: int = 5
+    y: int = 10
+    if x > 0 and y > 0:
+        print("non-narrowing and works")
+    else:
+        print("non-narrowing and failed")
+
+def test_narrowing_does_not_leak() -> None:
+    node: Node? = Some(Node(99))
+    if node is not None and node.value == 99:
+        print("inside if")
+    # After the if, node should still be Optional
+    node = None()
+    print("no leak")
+
+def main():
+    test_if_narrowing()
+    test_while_narrowing()
+    test_chained_and()
+    test_non_narrowing_and()
+    test_narrowing_does_not_leak()

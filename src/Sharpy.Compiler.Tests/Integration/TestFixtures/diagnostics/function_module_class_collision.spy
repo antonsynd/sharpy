@@ -1,0 +1,5 @@
+def function_module_class_collision() -> None:
+    print("this should fail")
+
+def main():
+    function_module_class_collision()

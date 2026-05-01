@@ -531,9 +531,9 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Code generation diagnostic codes (SPY0500-SPY0599).
-    /// Active: SPY0500-SPY0508, SPY0510, SPY0518-SPY0520, SPY0522, SPY0599 (15 codes)
+    /// Active: SPY0500-SPY0508, SPY0510, SPY0518-SPY0520, SPY0522-SPY0523, SPY0599 (16 codes)
     /// Reserved: SPY0521 (TypeReExportNotSupported — for future type re-export support)
-    /// Reserved: SPY0509, SPY0511-SPY0517, SPY0523-SPY0598 (83 codes)
+    /// Reserved: SPY0509, SPY0511-SPY0517, SPY0524-SPY0598 (82 codes)
     /// </summary>
     public static class CodeGen
     {
@@ -553,7 +553,7 @@ public static class DiagnosticCodes
 
         #endregion
 
-        #region Expression and operator errors (SPY0518-SPY0522)
+        #region Expression and operator errors (SPY0518-SPY0523)
 
         // SPY0511-SPY0517: Reserved for future statement-level codegen diagnostics
         public const string UnsupportedExpressionType = "SPY0518";  // Active
@@ -561,7 +561,8 @@ public static class DiagnosticCodes
         public const string NameCollision = "SPY0520";              // Active
         public const string TypeReExportNotSupported = "SPY0521";   // Reserved — for future type re-export support
         public const string MemberNameCollision = "SPY0522";        // Active
-        // SPY0523-SPY0598: Reserved for future codegen diagnostics
+        public const string FunctionModuleClassCollision = "SPY0523"; // Active
+        // SPY0524-SPY0598: Reserved for future codegen diagnostics
 
         #endregion
 

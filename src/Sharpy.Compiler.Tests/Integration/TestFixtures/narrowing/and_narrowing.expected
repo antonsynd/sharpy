@@ -1,0 +1,6 @@
+if narrowing works
+1 2
+chained and works
+non-narrowing and works
+inside if
+no leak

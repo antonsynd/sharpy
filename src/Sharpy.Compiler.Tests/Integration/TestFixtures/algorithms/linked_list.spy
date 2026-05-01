@@ -36,17 +36,15 @@ class LinkedList:
     def delete(self, val: int) -> None:
         if self.head is None:
             return
-        if self.head is not None:
-            if self.head.value == val:
-                self.head = self.head.next
-                return
+        if self.head is not None and self.head.value == val:
+            self.head = self.head.next
+            return
         current: Node? = self.head
         while current is not None:
             nxt: Node? = current.next
-            if nxt is not None:
-                if nxt.value == val:
-                    current.next = nxt.next
-                    return
+            if nxt is not None and nxt.value == val:
+                current.next = nxt.next
+                return
             current = nxt
 
 def main():

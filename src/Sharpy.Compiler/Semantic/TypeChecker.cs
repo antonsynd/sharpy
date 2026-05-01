@@ -300,7 +300,7 @@ internal partial class TypeChecker
         if (computeCodeGenInfo)
         {
             var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable, SemanticBinding, _diagnostics);
-            codeGenInfoComputer.ComputeForModule(module);
+            codeGenInfoComputer.ComputeForModule(module, _currentFilePath);
         }
 
         _logger.LogInfo($"Completed type checking ({module.Body.Length} statements, {_diagnostics.ErrorCount} errors)");

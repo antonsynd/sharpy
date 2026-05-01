@@ -18,6 +18,11 @@ internal partial class TypeChecker
             return CheckPipeForward(binOp);
         }
 
+        if (binOp.Operator == BinaryOperator.And)
+        {
+            return CheckBooleanAndOp(binOp);
+        }
+
         var leftType = CheckExpression(binOp.Left);
         var rightType = CheckExpression(binOp.Right);
 
@@ -63,6 +68,43 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Validation.IsWithValueTypes,
                     phase: CompilerPhase.TypeChecking);
             }
+        }
+
+        return resultType;
+    }
+
+    private SemanticType CheckBooleanAndOp(BinaryOp andOp)
+    {
+        var leftType = CheckExpression(andOp.Left);
+
+        if (leftType is UnknownType)
+        {
+            CheckExpression(andOp.Right);
+            return SemanticType.Unknown;
+        }
+
+        var (leftNarrowed, _) = ExtractNarrowedTypes(andOp.Left, true);
+
+        SemanticType rightType;
+        using (_narrowingContext.EnterScope())
+        {
+            _narrowingContext.ApplyNarrowings(leftNarrowed);
+            rightType = CheckExpression(andOp.Right);
+        }
+
+        if (rightType is UnknownType)
+            return SemanticType.Unknown;
+
+        var resultType = _typeInference.InferBinaryOpType(BinaryOperator.And, leftType, rightType);
+        if (resultType == null)
+        {
+            AddError(
+                $"Type '{leftType.GetDisplayName()}' does not support operator 'and' with operand of type '{rightType.GetDisplayName()}'",
+                andOp.LineStart,
+                andOp.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                span: andOp.Span);
+            return SemanticType.Unknown;
         }
 
         return resultType;

@@ -17,6 +17,11 @@ internal partial class RoslynEmitter
 {
     private ExpressionSyntax GenerateBinaryOp(BinaryOp binOp)
     {
+        if (binOp.Operator == BinaryOperator.And)
+        {
+            return GenerateAndWithNarrowing(binOp);
+        }
+
         var left = GenerateExpression(binOp.Left);
         var right = GenerateExpression(binOp.Right);
 
@@ -325,6 +330,74 @@ internal partial class RoslynEmitter
         }
 
         return BinaryExpression(kind, left, right);
+    }
+
+    private ExpressionSyntax GenerateAndWithNarrowing(BinaryOp andOp)
+    {
+        var left = GenerateExpression(andOp.Left);
+
+        var narrowedVars = CollectNarrowingVars(andOp.Left);
+
+        foreach (var name in narrowedVars)
+            _narrowing.PushNarrowing(name);
+
+        var right = GenerateExpression(andOp.Right);
+
+        foreach (var name in narrowedVars)
+            _narrowing.PopNarrowing(name);
+
+        return BinaryExpression(SyntaxKind.LogicalAndExpression, left, right);
+    }
+
+    private List<string> CollectNarrowingVars(Expression expr)
+    {
+        var vars = new List<string>();
+        CollectNarrowingVarsRecursive(expr, vars);
+        return vars;
+    }
+
+    private void CollectNarrowingVarsRecursive(Expression expr, List<string> vars)
+    {
+        if (expr is Parenthesized paren)
+        {
+            CollectNarrowingVarsRecursive(paren.Expression, vars);
+            return;
+        }
+
+        if (expr is BinaryOp { Operator: BinaryOperator.IsNot } isNotOp && isNotOp.Right is NoneLiteral)
+        {
+            var key = AstHelper.ExtractNarrowingKey(isNotOp.Left);
+            if (key != null)
+            {
+                vars.Add(key);
+                var exprType = _context.SemanticInfo?.GetExpressionType(isNotOp.Left);
+                if (exprType is Semantic.NullableType { IsValueType: true })
+                    _narrowing.AddNullableNarrowing(key);
+            }
+            return;
+        }
+
+        if (expr is BinaryOp { Operator: BinaryOperator.And } andOp)
+        {
+            CollectNarrowingVarsRecursive(andOp.Left, vars);
+            CollectNarrowingVarsRecursive(andOp.Right, vars);
+            return;
+        }
+
+        if (expr is UnaryOp { Operator: UnaryOperator.Not } notOp)
+        {
+            if (notOp.Operand is BinaryOp { Operator: BinaryOperator.Is } isOp && isOp.Right is NoneLiteral)
+            {
+                var key = AstHelper.ExtractNarrowingKey(isOp.Left);
+                if (key != null)
+                {
+                    vars.Add(key);
+                    var exprType = _context.SemanticInfo?.GetExpressionType(isOp.Left);
+                    if (exprType is Semantic.NullableType { IsValueType: true })
+                        _narrowing.AddNullableNarrowing(key);
+                }
+            }
+        }
     }
 
     /// <summary>

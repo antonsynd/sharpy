@@ -1735,6 +1735,12 @@ public static class DiagnosticExplanations
             "class Foo:\n    def foo_bar(self): ...\n    def FooBar(self): ...",
             "Rename one of the conflicting symbols or use backtick escaping.");
 
+        Add(dict, DiagnosticCodes.CodeGen.FunctionModuleClassCollision, "Function name collides with module class name", "CodeGen",
+            "A module-level function's mangled name matches the module class name derived from the source filename. " +
+            "In C#, a member cannot have the same name as its enclosing type (CS0542).",
+            "# File: bubble_sort.spy\ndef bubble_sort(arr: list[int]) -> list[int]:\n    ...\n# 'bubble_sort' compiles to 'BubbleSort', same as class 'BubbleSort' from filename",
+            "Rename the function or the source file so the function's PascalCase name does not match the filename's PascalCase name.");
+
         Add(dict, DiagnosticCodes.CodeGen.TypeReExportNotSupported, "Type re-export not supported", "CodeGen",
             "A type cannot be re-exported from an __init__.spy package file. Types should be imported directly " +
             "from their defining module rather than re-exported through package init files.",
