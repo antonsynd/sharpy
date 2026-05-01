@@ -112,6 +112,11 @@
         "path": "./snippets/sharpy.json"
       }
     ],
+    "breakpoints": [
+      {
+        "language": "sharpy"
+      }
+    ],
     "debuggers": [
       {
         "type": "sharpy",
