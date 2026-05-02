@@ -1,9 +1,15 @@
-# Sharpy
+<p align="center">
+  <img src="editors/vscode/icons/sharpy-icon.png" alt="Sharpy" width="128" />
+</p>
 
-[![.NET 10 Build](https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml/badge.svg)](https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml)
-![.NET](https://img.shields.io/badge/.NET-10.0-blue)
+<h1 align="center">Sharpy</h1>
 
-**A statically-typed Pythonic language for .NET**
+<p align="center">
+  <a href="https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml"><img src="https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml/badge.svg" alt=".NET 10 Build" /></a>
+  <img src="https://img.shields.io/badge/.NET-10.0-blue" alt=".NET" />
+</p>
+
+<p align="center"><strong>A statically-typed Pythonic language for .NET</strong></p>
 
 Sharpy starts with Python's syntax and adds static typing, null safety, tagged unions, and seamless .NET interop — then compiles to idiomatic C# via Roslyn with zero runtime overhead.
 

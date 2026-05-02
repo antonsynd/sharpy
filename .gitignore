@@ -59,6 +59,7 @@ _site/
 __resources/
 *.png
 !editors/vscode/icons/*.png
+!docs/assets/*.png
 *.gv
 *.dot
 **/.DS_Store

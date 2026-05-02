@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/sharpy-icon.png" alt="Sharpy" width="128" />
+</p>
+
 # Sharpy
 
 **A statically-typed Pythonic language for .NET**
