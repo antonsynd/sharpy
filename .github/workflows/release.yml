@@ -1,8 +1,9 @@
 name: Release Artifacts
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -27,10 +28,11 @@ jobs:
           cd publish/core
           zip -r ../../sharpy-core-netstandard2.1.zip .
 
-      - name: Upload release asset
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload --clobber ${{ github.event.release.tag_name }} sharpy-core-netstandard2.1.zip
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharpy-core
+          path: sharpy-core-netstandard2.1.zip
 
   build-cli:
     name: Build sharpyc (${{ matrix.rid }})
@@ -78,7 +80,29 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path publish/cli/* -DestinationPath sharpyc-${{ matrix.rid }}.zip
 
-      - name: Upload release asset
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharpyc-${{ matrix.rid }}
+          path: sharpyc-${{ matrix.rid }}.${{ matrix.archive }}
+
+  release:
+    name: Create GitHub Release
+    needs: [build-core, build-cli]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create release with assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload --clobber ${{ github.event.release.tag_name }} sharpyc-${{ matrix.rid }}.${{ matrix.archive }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            artifacts/*
