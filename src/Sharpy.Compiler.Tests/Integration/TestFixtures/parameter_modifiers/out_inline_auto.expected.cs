@@ -10,17 +10,17 @@ public static partial class OutInlineAuto
 {
     public static bool TryParse(string s, out int result)
     {
-#line 2 "out_inline_auto.spy"
+#line (2, 5) - (2, 20) 1 "out_inline_auto.spy"
         result = global::Sharpy.Builtins.Int(s);
-#line 3 "out_inline_auto.spy"
+#line (3, 5) - (3, 17) 1 "out_inline_auto.spy"
         return true;
     }
 
     public static void Main()
     {
-#line 6 "out_inline_auto.spy"
+#line (6, 5) - (6, 47) 1 "out_inline_auto.spy"
         var success = TryParse("42", out var value);
-#line 7 "out_inline_auto.spy"
+#line (7, 5) - (7, 26) 1 "out_inline_auto.spy"
         global::Sharpy.Builtins.Print(success, value);
     }
 }

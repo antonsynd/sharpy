@@ -14,23 +14,23 @@ public static partial class ComparisonOperators
     public static int Z = 10;
     public static void Main()
     {
-#line 9 "comparison_operators.spy"
+#line (9, 5) - (9, 18) 1 "comparison_operators.spy"
         global::Sharpy.Builtins.Print(X == Z);
-#line 10 "comparison_operators.spy"
+#line (10, 5) - (10, 18) 1 "comparison_operators.spy"
         global::Sharpy.Builtins.Print(X == Y);
-#line 11 "comparison_operators.spy"
+#line (11, 5) - (11, 18) 1 "comparison_operators.spy"
         global::Sharpy.Builtins.Print(X != Y);
-#line 14 "comparison_operators.spy"
+#line (14, 5) - (14, 17) 1 "comparison_operators.spy"
         global::Sharpy.Builtins.Print(X < Y);
-#line 15 "comparison_operators.spy"
+#line (15, 5) - (15, 17) 1 "comparison_operators.spy"
         global::Sharpy.Builtins.Print(Y > X);
-#line 16 "comparison_operators.spy"
+#line (16, 5) - (16, 17) 1 "comparison_operators.spy"
         global::Sharpy.Builtins.Print(X > Y);
-#line 19 "comparison_operators.spy"
+#line (19, 5) - (19, 18) 1 "comparison_operators.spy"
         global::Sharpy.Builtins.Print(X <= Z);
-#line 20 "comparison_operators.spy"
+#line (20, 5) - (20, 18) 1 "comparison_operators.spy"
         global::Sharpy.Builtins.Print(X >= Z);
-#line 21 "comparison_operators.spy"
+#line (21, 5) - (21, 18) 1 "comparison_operators.spy"
         global::Sharpy.Builtins.Print(Y <= X);
     }
 }

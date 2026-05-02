@@ -11,11 +11,11 @@ public static partial class ForLoopRange
 {
     public static void Main()
     {
-#line 2 "for_loop_range.spy"
+#line (2, 5) - (4, 1) 1 "for_loop_range.spy"
         foreach (var __loopVar_0 in global::Sharpy.Builtins.Range(5))
         {
             var i = __loopVar_0;
-#line 3 "for_loop_range.spy"
+#line (3, 9) - (3, 17) 1 "for_loop_range.spy"
             global::Sharpy.Builtins.Print(i);
         }
     }

@@ -359,7 +359,8 @@ public static class CompilerInvariants
     /// </summary>
     internal static void AssertGeneratedCSharpParses(string csharpCode, DiagnosticBag diagnostics)
     {
-        var tree = CSharpSyntaxTree.ParseText(csharpCode);
+        var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
+        var tree = CSharpSyntaxTree.ParseText(csharpCode, parseOptions);
         var parseDiagnostics = tree.GetDiagnostics()
             .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
             .ToList();

@@ -1,0 +1,12 @@
+class Greeter:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def greet(self) -> str:
+        return "Hello, " + self.name
+
+def main():
+    g: Greeter = Greeter("World")
+    print(g.greet())

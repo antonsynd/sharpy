@@ -1,0 +1,82 @@
+name: Release Artifacts
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-core:
+    name: Build Sharpy.Core (netstandard2.1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish Sharpy.Core
+        run: dotnet publish src/Sharpy.Core -f netstandard2.1 -c Release -o publish/core
+
+      - name: Package Sharpy.Core
+        run: |
+          cd publish/core
+          zip -r ../../sharpy-core-netstandard2.1.zip .
+
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload ${{ github.event.release.tag_name }} sharpy-core-netstandard2.1.zip
+
+  build-cli:
+    name: Build sharpyc (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - rid: osx-arm64
+            os: macos-latest
+            archive: tar.gz
+          - rid: osx-x64
+            os: macos-latest
+            archive: tar.gz
+          - rid: win-x64
+            os: windows-latest
+            archive: zip
+          - rid: linux-x64
+            os: ubuntu-latest
+            archive: tar.gz
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish sharpyc
+        run: >
+          dotnet publish src/Sharpy.Cli
+          -c Release
+          --self-contained
+          -r ${{ matrix.rid }}
+          -p:PublishSingleFile=true
+          -o publish/cli
+
+      - name: Package (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        run: tar -czf sharpyc-${{ matrix.rid }}.tar.gz -C publish/cli .
+
+      - name: Package (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: Compress-Archive -Path publish/cli/* -DestinationPath sharpyc-${{ matrix.rid }}.zip
+
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload ${{ github.event.release.tag_name }} sharpyc-${{ matrix.rid }}.${{ matrix.archive }}

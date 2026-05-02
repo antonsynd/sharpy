@@ -281,7 +281,7 @@ public class Compiler
 
             var codeGenResult = pipeline.GenerateCode(
                 module, filePath, importResolver, builtinRegistry,
-                isEntryPoint, "", _logger, cancellationToken);
+                isEntryPoint, _options.Namespace ?? "", _logger, cancellationToken);
 
             if (codeGenResult.HasErrors)
             {
@@ -560,4 +560,11 @@ public class CompilerOptions
     /// Default: "exe" (entry point required).
     /// </summary>
     public string OutputType { get; set; } = "exe";
+
+    /// <summary>
+    /// Wrap generated code in a namespace declaration.
+    /// Used by <c>emit csharp --namespace</c> for Unity integration.
+    /// When null, single-file compilation uses the global namespace.
+    /// </summary>
+    public string? Namespace { get; set; }
 }

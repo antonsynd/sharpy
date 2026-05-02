@@ -182,7 +182,8 @@ internal partial class RoslynEmitter
         }
 
         // Generate body (recursive — supports nested-nested functions)
-        var body = Block(func.Body.SelectMany(GenerateBodyStatements));
+        var body = AttachLineDirectiveToBlock(
+            Block(func.Body.SelectMany(GenerateBodyStatements)), func.LineStart);
 
         var localFunc = LocalFunctionStatement(returnType, Identifier(mangledName))
             .WithParameterList(ParameterList(SeparatedList(parameters)))
@@ -235,19 +236,65 @@ internal partial class RoslynEmitter
         if (astNode.LineStart <= 0)
             return csharpStatement;
 
-        var lineDirective = CreateLineDirectiveTrivia(astNode.LineStart, _context.SourceFilePath);
+        var lineDirective = CreateLineDirectiveTrivia(
+            astNode.LineStart, astNode.ColumnStart,
+            astNode.LineEnd, astNode.ColumnEnd,
+            _context.SourceFilePath);
         return csharpStatement.WithLeadingTrivia(lineDirective);
     }
 
     /// <summary>
-    /// Creates #line directive trivia for source mapping.
+    /// Creates enhanced #line directive trivia for source mapping.
+    /// Produces: #line (startLine, startCol) - (endLine, endCol) 1 "file.spy"
+    /// The charOffset placeholder (1) is corrected during post-processing after NormalizeWhitespace.
+    /// All values are clamped to >= 1 as required by the C# enhanced #line spec.
+    /// </summary>
+    private static SyntaxTriviaList CreateLineDirectiveTrivia(
+        int startLine, int startCol, int endLine, int endCol, string filePath)
+    {
+        var sl = Math.Max(1, startLine);
+        var sc = Math.Max(1, startCol);
+        var el = Math.Max(1, endLine);
+        var ec = Math.Max(1, endCol);
+        var escapedPath = filePath.Replace("\\", "\\\\", StringComparison.Ordinal);
+        return ParseLeadingTrivia(
+            $"#line ({sl}, {sc}) - ({el}, {ec}) 1 \"{escapedPath}\"\n");
+    }
+
+    /// <summary>
+    /// Creates #line directive trivia with line-only mapping (no column info).
+    /// Used for block opening braces where column span is not meaningful.
     /// Produces: #line N "file.spy"
     /// </summary>
-    private static SyntaxTriviaList CreateLineDirectiveTrivia(int line, string filePath)
+    private static SyntaxTriviaList CreateBasicLineDirectiveTrivia(int line, string filePath)
     {
-        // Escape backslashes in file path for the #line directive string
         var escapedPath = filePath.Replace("\\", "\\\\", StringComparison.Ordinal);
         return ParseLeadingTrivia($"#line {line} \"{escapedPath}\"\n");
+    }
+
+    private static SyntaxTriviaList CreateLineHiddenTrivia()
+    {
+        return ParseLeadingTrivia("#line hidden\n");
+    }
+
+    /// <summary>
+    /// Attaches a #line directive to a block's opening brace token so the debugger
+    /// shows the .spy file when stepping into a method/constructor/local function.
+    /// </summary>
+    private BlockSyntax AttachLineDirectiveToBlock(BlockSyntax block, int sourceLine)
+    {
+        if (!_context.EmitLineDirectives)
+            return block;
+
+        if (string.IsNullOrEmpty(_context.SourceFilePath))
+            return block;
+
+        if (sourceLine <= 0)
+            return block;
+
+        var lineDirective = CreateBasicLineDirectiveTrivia(sourceLine, _context.SourceFilePath);
+        return block.WithOpenBraceToken(
+            block.OpenBraceToken.WithLeadingTrivia(lineDirective));
     }
 
     /// <summary>

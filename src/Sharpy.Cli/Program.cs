@@ -210,12 +210,15 @@ class Program
         var emitCsharpLineDirectivesOpt = new Option<bool>("--show-line-directives") { Description = "Include #line directives for source mapping (default: stripped for clean output)" };
         var emitCsharpTypeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library' (default: exe)" };
         emitCsharpTypeOpt.Aliases.Add("-t");
+        var emitCsharpNamespaceOpt = new Option<string?>("--namespace") { Description = "Wrap generated code in a namespace declaration" };
+        emitCsharpNamespaceOpt.Aliases.Add("-n");
         emitCsharpCommand.Arguments.Add(emitCsharpInputArg);
         emitCsharpCommand.Options.Add(emitCsharpOutputOpt);
         emitCsharpCommand.Options.Add(emitCsharpRefOpt);
         emitCsharpCommand.Options.Add(emitCsharpModPathOpt);
         emitCsharpCommand.Options.Add(emitCsharpLineDirectivesOpt);
         emitCsharpCommand.Options.Add(emitCsharpTypeOpt);
+        emitCsharpCommand.Options.Add(emitCsharpNamespaceOpt);
         emitCsharpCommand.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(emitCsharpInputArg)!;
@@ -224,13 +227,14 @@ class Program
             var modulePath = parseResult.GetValue(emitCsharpModPathOpt) ?? Array.Empty<string>();
             var showLineDirectives = parseResult.GetValue(emitCsharpLineDirectivesOpt);
             var emitType = parseResult.GetValue(emitCsharpTypeOpt) ?? "exe";
+            var namespaceName = parseResult.GetValue(emitCsharpNamespaceOpt);
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
             var warnAsError = parseResult.GetValue(warnAsErrorOption);
             var nowarn = parseResult.GetValue(nowarnOption);
             var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives, emitType);
+            EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives, emitType, namespaceName);
         });
 
         var emitParseCommand = new Command("parse", "Validate lexing and parsing only");
@@ -1114,12 +1118,22 @@ class Program
         }
     }
 
+    static readonly System.Text.RegularExpressions.Regex ValidNamespaceRegex = new(
+        @"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$",
+        System.Text.RegularExpressions.RegexOptions.Compiled);
+
     static void EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths,
         ICompilerLogger logger, bool warnAsError = false, string? nowarn = null, int? maxErrors = null,
-        bool showLineDirectives = false, string outputType = "exe")
+        bool showLineDirectives = false, string outputType = "exe", string? namespaceName = null)
     {
         try
         {
+            if (namespaceName != null && !ValidNamespaceRegex.IsMatch(namespaceName))
+            {
+                Console.Error.WriteLine($"Invalid namespace '{namespaceName}': must be a valid dotted identifier (e.g., 'Game.Scripts')");
+                Environment.Exit(1);
+            }
+
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
 
@@ -1131,7 +1145,8 @@ class Program
                 ModulePaths = modulePaths,
                 WarningsAsErrors = warnAsError,
                 SuppressedWarnings = ParseNowarnCodes(nowarn),
-                MaxErrors = maxErrors ?? 0
+                MaxErrors = maxErrors ?? 0,
+                Namespace = namespaceName
             };
             var api = new CompilerApi(logger);
             var result = api.Compile(source, compilerOptions, inputFile.FullName);

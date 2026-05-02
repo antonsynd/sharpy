@@ -296,6 +296,11 @@ internal class FileCompilationPipeline
         var compilationUnit = emitter.GenerateCompilationUnit(module);
         var csharpCode = compilationUnit.ToFullString();
 
+        if (codeGenContext.EmitLineDirectives)
+        {
+            csharpCode = LineDirectivePostProcessor.Process(csharpCode);
+        }
+
         var diagnostics = new DiagnosticBag();
 
         // Verify generated C# parses without syntax errors
@@ -378,7 +383,12 @@ internal class FileCompilationPipeline
         if (codeGenContext.HasErrors)
             return null;
 
-        return compilationUnit.ToFullString();
+        var csharpCode = compilationUnit.ToFullString();
+        if (codeGenContext.EmitLineDirectives)
+        {
+            csharpCode = LineDirectivePostProcessor.Process(csharpCode);
+        }
+        return csharpCode;
     }
 }
 

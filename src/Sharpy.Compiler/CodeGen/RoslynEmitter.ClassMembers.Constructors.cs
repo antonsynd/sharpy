@@ -188,7 +188,7 @@ internal partial class RoslynEmitter
             }
         }
 
-        var body = Block(bodyStatements);
+        var body = AttachLineDirectiveToBlock(Block(bodyStatements), func.LineStart);
 
         var constructor = ConstructorDeclaration(className)
             .WithModifiers(modifiers)

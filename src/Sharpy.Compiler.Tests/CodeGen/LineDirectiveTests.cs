@@ -51,14 +51,14 @@ def main():
         result.Success.Should().BeTrue();
         var code = result.GeneratedCSharpCode!;
 
-        // Line 2 is "result: int = a + b" - should have #line 2
-        code.Should().Contain("#line 2");
-        // Line 3 is "return result" - should have #line 3
-        code.Should().Contain("#line 3");
-        // Line 6 is "x: int = add(1, 2)" - should have #line 6
-        code.Should().Contain("#line 6");
-        // Line 7 is "print(x)" - should have #line 7
-        code.Should().Contain("#line 7");
+        // Line 2 is "result: int = a + b" - should have #line (2,
+        code.Should().Contain("#line (2,");
+        // Line 3 is "return result" - should have #line (3,
+        code.Should().Contain("#line (3,");
+        // Line 6 is "x: int = add(1, 2)" - should have #line (6,
+        code.Should().Contain("#line (6,");
+        // Line 7 is "print(x)" - should have #line (7,
+        code.Should().Contain("#line (7,");
     }
 
     [Fact]
@@ -119,9 +119,9 @@ def main():
         var code = result.GeneratedCSharpCode!;
 
         // The if statement on line 2 should have a #line directive
-        code.Should().Contain("#line 2");
+        code.Should().Contain("#line (2,");
         // Return on line 3 should have a #line directive
-        code.Should().Contain("#line 3");
+        code.Should().Contain("#line (3,");
     }
 
     [Fact]
@@ -144,9 +144,9 @@ def main():
         var code = result.GeneratedCSharpCode!;
 
         // For loop on line 3 should have a #line directive
-        code.Should().Contain("#line 3");
+        code.Should().Contain("#line (3,");
         // Augmented assignment on line 4
-        code.Should().Contain("#line 4");
+        code.Should().Contain("#line (4,");
     }
 
     [Fact]
@@ -165,8 +165,8 @@ def main():
         // Backslashes should be escaped in #line directives
         code.Should().Contain("#line");
         // The generated code should be valid C# (no unescaped backslashes)
-        code.Should().NotContain("#line 2 \"C:\\Users");
-        code.Should().Contain("#line 2 \"C:\\\\Users");
+        code.Should().NotContain("\"C:\\Users");
+        code.Should().Contain("\"C:\\\\Users");
     }
 
     [Fact]
@@ -186,7 +186,7 @@ def main():
         {
             // If it succeeds, there should be no #line directives
             // because SourceFilePath is empty
-            result.GeneratedCSharpCode.Should().NotContain("#line 2");
+            result.GeneratedCSharpCode.Should().NotContain("#line (");
         }
     }
 
@@ -238,11 +238,11 @@ def main():
         var code = result.GeneratedCSharpCode!;
 
         // Class constructor body (line 5: self.value = start)
-        code.Should().Contain("#line 5");
+        code.Should().Contain("#line (5,");
         // Class method body (line 8: self.value += 1)
-        code.Should().Contain("#line 8");
+        code.Should().Contain("#line (8,");
         // Class method return (line 9: return self.value)
-        code.Should().Contain("#line 9");
+        code.Should().Contain("#line (9,");
         // All should reference the .spy file
         code.Should().Contain("\"class_test.spy\"");
     }
@@ -267,11 +267,11 @@ def main():
         var code = result.GeneratedCSharpCode!;
 
         // main() body: y = x + 1 on line 4
-        code.Should().Contain("#line 4");
+        code.Should().Contain("#line (4,");
         // main() body: print(y) on line 5
-        code.Should().Contain("#line 5");
+        code.Should().Contain("#line (5,");
         // main() body: print(x) on line 6
-        code.Should().Contain("#line 6");
+        code.Should().Contain("#line (6,");
         code.Should().Contain("\"module.spy\"");
     }
 
@@ -299,15 +299,15 @@ def main():
         var code = result.GeneratedCSharpCode!;
 
         // Variable declaration on line 2
-        code.Should().Contain("#line 2");
+        code.Should().Contain("#line (2,");
         // For loop on line 3
-        code.Should().Contain("#line 3");
+        code.Should().Contain("#line (3,");
         // If statement on line 4
-        code.Should().Contain("#line 4");
+        code.Should().Contain("#line (4,");
         // Augmented assignment on line 5
-        code.Should().Contain("#line 5");
+        code.Should().Contain("#line (5,");
         // Return on line 8
-        code.Should().Contain("#line 8");
+        code.Should().Contain("#line (8,");
     }
 
     [Fact]
@@ -335,15 +335,15 @@ def main():
         var code = result.GeneratedCSharpCode!;
 
         // Variable decl on line 2
-        code.Should().Contain("#line 2");
+        code.Should().Contain("#line (2,");
         // Assignment inside try on line 4
-        code.Should().Contain("#line 4");
+        code.Should().Contain("#line (4,");
         // Assignment inside except on line 6
-        code.Should().Contain("#line 6");
+        code.Should().Contain("#line (6,");
         // Print inside finally on line 8
-        code.Should().Contain("#line 8");
+        code.Should().Contain("#line (8,");
         // Return on line 9
-        code.Should().Contain("#line 9");
+        code.Should().Contain("#line (9,");
     }
 
     /// <summary>

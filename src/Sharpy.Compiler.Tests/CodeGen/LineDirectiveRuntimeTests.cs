@@ -115,8 +115,8 @@ def main():
         _output.WriteLine("=== Generated C# ===");
         _output.WriteLine(generatedCSharp);
 
-        // Verify #line 3 is present (raise ValueError is on line 3)
-        generatedCSharp.Should().Contain("#line 3");
+        // Verify #line for line 3 is present (raise ValueError is on line 3)
+        generatedCSharp.Should().Contain("#line (3,");
 
         var (assemblyPath, pdbPath, tempDir) = CompileCSharpToAssembly(generatedCSharp);
 
@@ -234,7 +234,8 @@ def main():
         var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_line_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
-        var syntaxTree = CSharpSyntaxTree.ParseText(csharpCode);
+        var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
+        var syntaxTree = CSharpSyntaxTree.ParseText(csharpCode, parseOptions);
 
         var references = new List<MetadataReference>
         {

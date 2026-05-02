@@ -11,21 +11,21 @@ public static partial class FibonacciRecursive
 {
     public static int Fibonacci(int n)
     {
-#line 2 "fibonacci_recursive.spy"
+#line (2, 5) - (4, 1) 1 "fibonacci_recursive.spy"
         if (n <= 1)
         {
-#line 3 "fibonacci_recursive.spy"
+#line (3, 9) - (3, 18) 1 "fibonacci_recursive.spy"
             return n;
         }
 
-#line 4 "fibonacci_recursive.spy"
+#line (4, 5) - (4, 48) 1 "fibonacci_recursive.spy"
         return Fibonacci(n - 1) + Fibonacci(n - 2);
     }
 
     public static int Result = Fibonacci(10);
     public static void Main()
     {
-#line 9 "fibonacci_recursive.spy"
+#line (9, 5) - (9, 18) 1 "fibonacci_recursive.spy"
         global::Sharpy.Builtins.Print(Result);
     }
 }

@@ -21,13 +21,13 @@ public static partial class NullCoalescing0003
     public static int Result = ((First).IsSome ? First : Second).UnwrapOr(Third);
     public static void Main()
     {
-#line 16 "null_coalescing_0003.spy"
+#line (16, 5) - (16, 13) 1 "null_coalescing_0003.spy"
         global::Sharpy.Builtins.Print(Y);
-#line 19 "null_coalescing_0003.spy"
+#line (19, 5) - (19, 13) 1 "null_coalescing_0003.spy"
         global::Sharpy.Builtins.Print(B);
-#line 22 "null_coalescing_0003.spy"
+#line (22, 5) - (22, 24) 1 "null_coalescing_0003.spy"
         global::Sharpy.Builtins.Print(DefaultName);
-#line 25 "null_coalescing_0003.spy"
+#line (25, 5) - (25, 18) 1 "null_coalescing_0003.spy"
         global::Sharpy.Builtins.Print(Result);
     }
 }

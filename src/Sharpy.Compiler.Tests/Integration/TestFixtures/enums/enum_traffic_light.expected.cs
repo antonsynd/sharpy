@@ -19,13 +19,13 @@ public static partial class EnumTrafficLight
     public static TrafficLight Current = TrafficLight.Red;
     public static void Main()
     {
-#line 11 "enum_traffic_light.spy"
+#line (11, 5) - (11, 39) 1 "enum_traffic_light.spy"
         global::Sharpy.Builtins.Print(Current == TrafficLight.Red);
-#line 12 "enum_traffic_light.spy"
+#line (12, 5) - (12, 41) 1 "enum_traffic_light.spy"
         global::Sharpy.Builtins.Print(Current == TrafficLight.Green);
-#line 15 "enum_traffic_light.spy"
+#line (15, 5) - (15, 34) 1 "enum_traffic_light.spy"
         Current = TrafficLight.Yellow;
-#line 16 "enum_traffic_light.spy"
+#line (16, 5) - (16, 42) 1 "enum_traffic_light.spy"
         global::Sharpy.Builtins.Print(Current == TrafficLight.Yellow);
     }
 }

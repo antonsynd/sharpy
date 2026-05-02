@@ -231,18 +231,21 @@ internal partial class RoslynEmitter
                             ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression))),
                         ReturnStatement(LiteralExpression(SyntaxKind.FalseLiteralExpression)));
 
-                    var body = Block(preamble.Concat(new StatementSyntax[] { nullGuard }).Concat(userStatements));
+                    var body = AttachLineDirectiveToBlock(
+                        Block(preamble.Concat(new StatementSyntax[] { nullGuard }).Concat(userStatements)), func.LineStart);
                     method = method.WithBody(body);
                 }
                 else
                 {
-                    var body = Block(preamble.Concat(userStatements));
+                    var body = AttachLineDirectiveToBlock(
+                        Block(preamble.Concat(userStatements)), func.LineStart);
                     method = method.WithBody(body);
                 }
             }
             else
             {
-                var body = Block(preamble.Concat(userStatements));
+                var body = AttachLineDirectiveToBlock(
+                    Block(preamble.Concat(userStatements)), func.LineStart);
                 method = method.WithBody(body);
             }
         }
@@ -589,7 +592,8 @@ internal partial class RoslynEmitter
             }
 
             var bodyStatements = func.Body.SelectMany(GenerateBodyStatements);
-            method = method.WithBody(Block(bodyStatements));
+            method = method.WithBody(AttachLineDirectiveToBlock(
+                Block(bodyStatements), func.LineStart));
         }
 
         // Add XML documentation from docstring if present
