@@ -36,7 +36,7 @@ namespace Sharpy
         /// A string containing the version number of the Python interpreter.
         /// This is a simplified version for Sharpy.
         /// </summary>
-        public static string Version => "Sharpy 0.1.0 (Python-like for .NET)";
+        public static string Version => "Sharpy 0.1.3 (Python-like for .NET)";
 
         /// <summary>
         /// This string contains a platform identifier.
