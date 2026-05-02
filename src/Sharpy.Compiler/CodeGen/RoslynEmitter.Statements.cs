@@ -272,11 +272,6 @@ internal partial class RoslynEmitter
         return ParseLeadingTrivia($"#line {line} \"{escapedPath}\"\n");
     }
 
-    private static SyntaxTriviaList CreateLineHiddenTrivia()
-    {
-        return ParseLeadingTrivia("#line hidden\n");
-    }
-
     /// <summary>
     /// Attaches a #line directive to a block's opening brace token so the debugger
     /// shows the .spy file when stepping into a method/constructor/local function.

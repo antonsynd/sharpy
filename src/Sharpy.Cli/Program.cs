@@ -8,6 +8,7 @@ using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Diagnostics;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Sharpy.Compiler.Text;
 using Sharpy.Lsp;
 
@@ -1118,9 +1119,9 @@ class Program
         }
     }
 
-    static readonly System.Text.RegularExpressions.Regex ValidNamespaceRegex = new(
+    private static readonly Regex ValidNamespaceRegex = new(
         @"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$",
-        System.Text.RegularExpressions.RegexOptions.Compiled);
+        RegexOptions.Compiled);
 
     static void EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths,
         ICompilerLogger logger, bool warnAsError = false, string? nowarn = null, int? maxErrors = null,

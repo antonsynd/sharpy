@@ -19,6 +19,8 @@ internal static class LineDirectivePostProcessor
         @"^\s*#line\b",
         RegexOptions.Compiled);
 
+    private const int DefaultTabWidth = 4;
+
     public static string Process(string csharpCode)
     {
         var newline = csharpCode.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
@@ -71,6 +73,14 @@ internal static class LineDirectivePostProcessor
                             result.Append(lines[j]);
                             result.Append(newline);
                         }
+
+                        if (nextDirectiveIndex >= lines.Length)
+                        {
+                            result.Append(indent);
+                            result.Append("#line default");
+                            result.Append(newline);
+                        }
+
                         i = nextDirectiveIndex - 1;
                     }
                 }
@@ -117,7 +127,7 @@ internal static class LineDirectivePostProcessor
             if (c == ' ')
                 count++;
             else if (c == '\t')
-                count += 4;
+                count += DefaultTabWidth;
             else
                 break;
         }

@@ -50,6 +50,9 @@ jobs:
           - rid: linux-x64
             os: ubuntu-latest
             archive: tar.gz
+          - rid: linux-arm64
+            os: ubuntu-latest
+            archive: tar.gz
     steps:
       - uses: actions/checkout@v6
 

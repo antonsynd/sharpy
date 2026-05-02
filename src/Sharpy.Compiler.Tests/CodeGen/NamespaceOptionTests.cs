@@ -48,4 +48,49 @@ public class NamespaceOptionTests
             $"compilation should succeed, errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
         result.GeneratedCSharpCode.Should().Contain("namespace MyGame");
     }
+
+    [Fact]
+    public void Compile_WithDeeplyNestedNamespace_Works()
+    {
+        var source = @"def main():
+    print(42)
+";
+        var options = new CompilerOptions { Namespace = "A.B.C.D.E" };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(source, "test.spy");
+
+        result.Success.Should().BeTrue(
+            $"compilation should succeed, errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+        result.GeneratedCSharpCode.Should().Contain("namespace A.B.C.D.E");
+    }
+
+    [Fact]
+    public void Compile_WithUnderscorePrefixedNamespace_Works()
+    {
+        var source = @"def main():
+    print(42)
+";
+        var options = new CompilerOptions { Namespace = "_Internal.Game2" };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(source, "test.spy");
+
+        result.Success.Should().BeTrue(
+            $"compilation should succeed, errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+        result.GeneratedCSharpCode.Should().Contain("namespace _Internal.Game2");
+    }
+
+    [Fact]
+    public void Compile_WithEmptyNamespace_NoNamespaceWrapper()
+    {
+        var source = @"def main():
+    print(42)
+";
+        var options = new CompilerOptions { Namespace = "" };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(source, "test.spy");
+
+        result.Success.Should().BeTrue();
+        result.GeneratedCSharpCode.Should().NotMatchRegex(@"^namespace\s",
+            "empty namespace string should not produce a namespace declaration");
+    }
 }
