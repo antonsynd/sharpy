@@ -29,7 +29,7 @@ jobs:
           zip -r ../../sharpy-core-netstandard2.1.zip .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sharpy-core
           path: sharpy-core-netstandard2.1.zip
@@ -81,7 +81,7 @@ jobs:
         run: Compress-Archive -Path publish/cli/* -DestinationPath sharpyc-${{ matrix.rid }}.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sharpyc-${{ matrix.rid }}
           path: sharpyc-${{ matrix.rid }}.${{ matrix.archive }}
