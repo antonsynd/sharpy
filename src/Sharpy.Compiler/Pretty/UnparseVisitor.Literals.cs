@@ -20,11 +20,27 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitStringLiteral(StringLiteral node)
     {
+        bool needsTripleQuote = node.Value.Contains('\n', System.StringComparison.Ordinal) || node.Value.Contains("\"\"\"", System.StringComparison.Ordinal);
         if (node.IsRaw)
         {
-            _w.Write("r\"");
-            _w.Write(node.Value);
-            _w.Write("\"");
+            if (needsTripleQuote || node.Value.Contains('"', System.StringComparison.Ordinal))
+            {
+                _w.Write("r\"\"\"");
+                _w.Write(node.Value);
+                _w.Write("\"\"\"");
+            }
+            else
+            {
+                _w.Write("r\"");
+                _w.Write(node.Value);
+                _w.Write("\"");
+            }
+        }
+        else if (needsTripleQuote)
+        {
+            _w.Write("\"\"\"");
+            _w.Write(EscapeTripleQuoted(node.Value));
+            _w.Write("\"\"\"");
         }
         else
         {

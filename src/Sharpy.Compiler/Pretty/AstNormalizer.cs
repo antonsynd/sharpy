@@ -402,11 +402,21 @@ public sealed class AstNormalizer : AstVisitor<Node>
         Zero(node) with
         {
             Scrutinee = (Expression)Visit(node.Scrutinee),
-            Cases = node.Cases.Select(c => new MatchCase
+            Cases = node.Cases.Select(c =>
             {
-                Pattern = (Pattern)Visit(c.Pattern),
-                Guard = c.Guard != null ? (Expression)Visit(c.Guard) : null,
-                Body = VisitStatements(c.Body)
+                var pattern = c.Pattern;
+                var guard = c.Guard;
+                if (pattern is GuardPattern gp && guard == null)
+                {
+                    pattern = gp.Inner;
+                    guard = gp.Guard;
+                }
+                return new MatchCase
+                {
+                    Pattern = (Pattern)Visit(pattern),
+                    Guard = guard != null ? (Expression)Visit(guard) : null,
+                    Body = VisitStatements(c.Body)
+                };
             }).ToImmutableArray()
         };
 

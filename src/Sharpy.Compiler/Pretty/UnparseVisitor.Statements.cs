@@ -557,11 +557,18 @@ internal sealed partial class UnparseVisitor
         foreach (var c in node.Cases)
         {
             _w.Write("case ");
-            Visit(c.Pattern);
-            if (c.Guard != null)
+            var pattern = c.Pattern;
+            Expression? guard = c.Guard;
+            if (pattern is GuardPattern gp && guard == null)
+            {
+                pattern = gp.Inner;
+                guard = gp.Guard;
+            }
+            Visit(pattern);
+            if (guard != null)
             {
                 _w.Write(" if ");
-                Visit(c.Guard);
+                Visit(guard);
             }
             _w.Write(":");
             _w.WriteLine();
