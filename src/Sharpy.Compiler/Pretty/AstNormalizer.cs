@@ -165,7 +165,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         Zero(node) with { Value = (Expression)Visit(node.Value), CheckType = NormalizeType(node.CheckType)! };
 
     public override Node VisitParenthesized(Parenthesized node) =>
-        Zero(node) with { Expression = (Expression)Visit(node.Expression) };
+        Visit(node.Expression);
 
     public override Node VisitSuperExpression(SuperExpression node) => Zero(node);
 

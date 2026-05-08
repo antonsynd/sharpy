@@ -144,6 +144,30 @@ internal sealed partial class UnparseVisitor : AstVisitor
         }
     }
 
+    private void VisitPostfixObject(Expression obj)
+    {
+        if (obj is Parenthesized)
+        {
+            Visit(obj);
+            return;
+        }
+
+        int childPrec = GetExpressionPrecedence(obj);
+        bool needsParens = childPrec < PrecPostfix
+            || obj is IntegerLiteral or FloatLiteral;
+
+        if (needsParens)
+        {
+            _w.Write("(");
+            Visit(obj);
+            _w.Write(")");
+        }
+        else
+        {
+            Visit(obj);
+        }
+    }
+
     #endregion
 
     #region Helpers

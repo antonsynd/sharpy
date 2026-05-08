@@ -71,14 +71,14 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitMemberAccess(MemberAccess node)
     {
-        Visit(node.Object);
+        VisitPostfixObject(node.Object);
         _w.Write(node.IsNullConditional ? "?." : ".");
         _w.Write(node.Member);
     }
 
     public override void VisitIndexAccess(IndexAccess node)
     {
-        Visit(node.Object);
+        VisitPostfixObject(node.Object);
         _w.Write("[");
         Visit(node.Index);
         _w.Write("]");
@@ -86,7 +86,7 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitSliceAccess(SliceAccess node)
     {
-        Visit(node.Object);
+        VisitPostfixObject(node.Object);
         _w.Write("[");
         if (node.Start != null)
             Visit(node.Start);
@@ -103,7 +103,7 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitFunctionCall(FunctionCall node)
     {
-        Visit(node.Function);
+        VisitPostfixObject(node.Function);
         _w.Write("(");
         WriteArgList(node.Arguments, node.KeywordArguments);
         _w.Write(")");
