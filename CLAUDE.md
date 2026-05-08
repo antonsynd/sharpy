@@ -306,6 +306,7 @@ All commands below log full output to `.claude/tmp/*.log` for investigation whil
 | `/build` | Build solution; shows last 100 lines on failure (log: `last-build.log`) |
 | `/format` | Format whitespace (auto-formatted on save by Claude hook) |
 | `/regenerate-snapshots` | Build + update `.expected.cs` files after codegen changes |
+| `/property-stress [rounds] [filter]` | Stress-test property tests across N rounds with fresh seeds (logs: `property-stress/`) |
 
 ### Debug & Development
 
