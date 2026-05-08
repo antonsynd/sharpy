@@ -53,4 +53,30 @@ public class CompoundStatementRoundTripTests
             _ = parser.ParseModule();
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
     }
+
+    [Fact]
+    public void ImportProgram_NeverCrashesParser()
+    {
+        GenShape.ImportProgram(GenContext.Default).Sample(module =>
+        {
+            var unparsed = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
+            var lexer = new Sharpy.Compiler.Lexer.Lexer(unparsed);
+            var tokens = lexer.TokenizeAll();
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens);
+            _ = parser.ParseModule();
+        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
+    }
+
+    [Fact]
+    public void EnumProgram_NeverCrashesParser()
+    {
+        GenShape.EnumProgram(GenContext.Default).Sample(module =>
+        {
+            var unparsed = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
+            var lexer = new Sharpy.Compiler.Lexer.Lexer(unparsed);
+            var tokens = lexer.TokenizeAll();
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens);
+            _ = parser.ParseModule();
+        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
+    }
 }
