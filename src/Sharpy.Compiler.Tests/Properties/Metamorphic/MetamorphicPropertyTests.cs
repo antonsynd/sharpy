@@ -13,7 +13,13 @@ public class MetamorphicPropertyTests : IntegrationTestBase
     private static readonly IAstTransform[] Transforms =
     {
         new CommentInsertionTransform(),
-        new PassInsertionTransform()
+        new PassInsertionTransform(),
+        new ParensWrapTransform(),
+        new DeadCodeAfterReturnTransform(),
+        new IfTrueWrapTransform(),
+        new SwapCommutativeTransform(),
+        new AlphaRenameTransform(),
+        new AddRedundantTypeAnnotationTransform()
     };
 
     public MetamorphicPropertyTests(ITestOutputHelper output) : base(output) { }
@@ -45,6 +51,63 @@ public class MetamorphicPropertyTests : IntegrationTestBase
     public void PassInsertion_PreservesOutput()
     {
         var transform = new PassInsertionTransform();
+        Gen.OneOfConst(SamplePrograms).Sample(source =>
+        {
+            var r1 = CompileAndExecute(source);
+            if (!r1.Success)
+                return;
+
+            var transformed = transform.Apply(source);
+            var r2 = CompileAndExecute(transformed);
+            if (!r2.Success)
+                return;
+
+            if (r1.StandardOutput != r2.StandardOutput)
+                throw new Exception(
+                    $"{transform.Name}: output changed.\n" +
+                    $"Original: {r1.StandardOutput.TrimEnd()}\n" +
+                    $"Transformed: {r2.StandardOutput.TrimEnd()}");
+        }, iter: 10);
+    }
+
+    [Fact]
+    public void ParensWrap_PreservesOutput()
+    {
+        RunTransformProperty(new ParensWrapTransform());
+    }
+
+    [Fact]
+    public void DeadCodeAfterReturn_PreservesOutput()
+    {
+        RunTransformProperty(new DeadCodeAfterReturnTransform());
+    }
+
+    [Fact]
+    public void IfTrueWrap_PreservesOutput()
+    {
+        RunTransformProperty(new IfTrueWrapTransform());
+    }
+
+    [Fact]
+    public void SwapCommutative_PreservesOutput()
+    {
+        RunTransformProperty(new SwapCommutativeTransform());
+    }
+
+    [Fact]
+    public void AlphaRename_PreservesOutput()
+    {
+        RunTransformProperty(new AlphaRenameTransform());
+    }
+
+    [Fact]
+    public void AddRedundantTypeAnnotation_PreservesOutput()
+    {
+        RunTransformProperty(new AddRedundantTypeAnnotationTransform());
+    }
+
+    private void RunTransformProperty(IAstTransform transform)
+    {
         Gen.OneOfConst(SamplePrograms).Sample(source =>
         {
             var r1 = CompileAndExecute(source);
