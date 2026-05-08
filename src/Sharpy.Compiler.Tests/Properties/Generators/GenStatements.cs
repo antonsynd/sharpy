@@ -13,23 +13,43 @@ internal static class GenStatements
                 (2, CompoundStatement(ctx.Burn())))
             : SimpleStatement(ctx);
 
-    private static Gen<Statement> SimpleStatement(GenContext ctx) =>
-        Gen.OneOf<Statement>(
-            ExprStmt(ctx),
-            VarDecl(ctx),
-            Assign(ctx),
-            ReturnStmt(ctx),
-            PassStmt(),
-            AssertStmt(ctx));
+    private static Gen<Statement> SimpleStatement(GenContext ctx)
+    {
+        var gens = new List<Gen<Statement>>
+        {
+            ExprStmt(ctx).Select(x => (Statement)x),
+            VarDecl(ctx).Select(x => (Statement)x),
+            Assign(ctx).Select(x => (Statement)x),
+            ReturnStmt(ctx).Select(x => (Statement)x),
+            PassStmt().Select(x => (Statement)x),
+            AssertStmt(ctx).Select(x => (Statement)x),
+            RaiseStmt(ctx).Select(x => (Statement)x),
+            ImportStmt().Select(x => (Statement)x),
+            FromImportStmt().Select(x => (Statement)x),
+            TypeAliasStmt().Select(x => (Statement)x),
+            PropertyDefStmt().Select(x => (Statement)x)
+        };
+        if (ctx.InLoop)
+        {
+            gens.Add(BreakStmt().Select(x => (Statement)x));
+            gens.Add(ContinueStmt().Select(x => (Statement)x));
+        }
+        if (ctx.AllowYield)
+            gens.Add(YieldStmt(ctx).Select(x => (Statement)x));
+        return Gen.OneOf(gens.ToArray());
+    }
 
     private static Gen<Statement> CompoundStatement(GenContext ctx) =>
-        Gen.OneOf<Statement>(
-            IfStmt(ctx),
-            WhileStmt(ctx),
-            ForStmt(ctx),
-            TryStmt(ctx),
-            WithStmt(ctx),
-            MatchStmt(ctx));
+        Gen.OneOf(
+            IfStmt(ctx).Select(x => (Statement)x),
+            WhileStmt(ctx).Select(x => (Statement)x),
+            ForStmt(ctx).Select(x => (Statement)x),
+            TryStmt(ctx).Select(x => (Statement)x),
+            WithStmt(ctx).Select(x => (Statement)x),
+            MatchStmt(ctx).Select(x => (Statement)x),
+            EnumDefStmt().Select(x => (Statement)x),
+            StructDefStmt(ctx).Select(x => (Statement)x),
+            InterfaceDefStmt(ctx).Select(x => (Statement)x));
 
     public static Gen<ExpressionStatement> ExprStmt(GenContext ctx) =>
         GenExpressions.Expression(ctx)
@@ -200,6 +220,112 @@ internal static class GenStatements
                     Name = name,
                     Body = body
                 };
+            });
+
+    public static Gen<BreakStatement> BreakStmt() =>
+        Gen.Const(new BreakStatement());
+
+    public static Gen<ContinueStatement> ContinueStmt() =>
+        Gen.Const(new ContinueStatement());
+
+    public static Gen<YieldStatement> YieldStmt(GenContext ctx) =>
+        Gen.Select(
+            GenExpressions.Expression(ctx),
+            Gen.Bool,
+            (val, isFrom) => new YieldStatement
+            {
+                Value = val,
+                IsFrom = isFrom
+            });
+
+    public static Gen<RaiseStatement> RaiseStmt(GenContext ctx) =>
+        Gen.Null(GenExpressions.Expression(ctx)).Select(exc =>
+            new RaiseStatement { Exception = exc });
+
+    public static Gen<ImportStatement> ImportStmt() =>
+        GenIdentifier.Name.Array[1, 2].Select(names =>
+            new ImportStatement
+            {
+                Names = names.Select(n => new ImportAlias { Name = n }).ToImmutableArray()
+            });
+
+    public static Gen<FromImportStatement> FromImportStmt() =>
+        Gen.Select(
+            GenIdentifier.Name,
+            GenIdentifier.Name.Array[1, 3],
+            (module, names) => new FromImportStatement
+            {
+                Module = module,
+                Names = names.Select(n => new ImportAlias { Name = n }).ToImmutableArray(),
+                ImportAll = false
+            });
+
+    public static Gen<TypeAlias> TypeAliasStmt() =>
+        Gen.Select(
+            GenIdentifier.ClassName,
+            GenTypes.SimpleType,
+            (name, type) => new TypeAlias
+            {
+                Name = name,
+                Type = type
+            });
+
+    private static readonly string[] EnumMemberNames = { "RED", "GREEN", "BLUE", "ALPHA" };
+
+    public static Gen<EnumDef> EnumDefStmt() =>
+        Gen.Select(
+            GenIdentifier.ClassName,
+            Gen.Int[2, 4],
+            (name, count) => new EnumDef
+            {
+                Name = name,
+                Members = EnumMemberNames.Take(count)
+                    .Select(n => new EnumMember { Name = n })
+                    .ToImmutableArray()
+            });
+
+    public static Gen<StructDef> StructDefStmt(GenContext ctx) =>
+        Gen.Select(
+            GenIdentifier.ClassName,
+            FunctionDefStmt(ctx.Burn() with { InClass = true }).Array[0, 2],
+            (name, methods) =>
+            {
+                var body = methods.Length > 0
+                    ? methods.Cast<Statement>().ToImmutableArray()
+                    : ImmutableArray.Create<Statement>(new PassStatement());
+                return new StructDef
+                {
+                    Name = name,
+                    Body = body
+                };
+            });
+
+    public static Gen<InterfaceDef> InterfaceDefStmt(GenContext ctx) =>
+        Gen.Select(
+            GenIdentifier.ClassName,
+            FunctionDefStmt(ctx.Burn() with { InClass = true }).Array[0, 2],
+            (name, methods) =>
+            {
+                var body = methods.Length > 0
+                    ? methods.Cast<Statement>().ToImmutableArray()
+                    : ImmutableArray.Create<Statement>(new PassStatement());
+                return new InterfaceDef
+                {
+                    Name = name,
+                    Body = body
+                };
+            });
+
+    public static Gen<PropertyDef> PropertyDefStmt() =>
+        Gen.Select(
+            GenIdentifier.Name,
+            GenTypes.SimpleType,
+            (name, type) => new PropertyDef
+            {
+                Name = name,
+                Type = type,
+                Accessor = PropertyAccessor.None,
+                IsFunctionStyle = false
             });
 
     public static Gen<ImmutableArray<Statement>> Body(GenContext ctx)

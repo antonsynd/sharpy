@@ -76,4 +76,26 @@ internal static class GenShape
                             })
                     })
             });
+
+    public static Gen<Module> ImportProgram(GenContext ctx) =>
+        Gen.Select(
+            GenStatements.ImportStmt(),
+            GenStatements.FunctionDefStmt(ctx with { Fuel = 2 }),
+            (imp, fn) => new Module
+            {
+                Body = ImmutableArray.Create<Statement>(
+                    imp,
+                    fn with { Name = "main" })
+            });
+
+    public static Gen<Module> EnumProgram(GenContext ctx) =>
+        Gen.Select(
+            GenStatements.EnumDefStmt(),
+            GenStatements.FunctionDefStmt(ctx with { Fuel = 2 }),
+            (enumDef, fn) => new Module
+            {
+                Body = ImmutableArray.Create<Statement>(
+                    enumDef,
+                    fn with { Name = "main" })
+            });
 }

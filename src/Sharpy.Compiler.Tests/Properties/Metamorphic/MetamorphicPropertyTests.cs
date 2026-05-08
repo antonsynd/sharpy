@@ -135,5 +135,11 @@ public class MetamorphicPropertyTests : IntegrationTestBase
         "def main():\n    x: int = 10\n    if x > 5:\n        print(\"big\")\n    else:\n        print(\"small\")",
         "def main():\n    for i in range(5):\n        print(i)",
         "def add(a: int, b: int) -> int:\n    return a + b\ndef main():\n    print(add(3, 4))",
+        "def main():\n    x: int = 3\n    match x:\n        case 1:\n            print(\"one\")\n        case 2:\n            print(\"two\")\n        case _:\n            print(\"other\")",
+        "def main():\n    s: str = \"hello world\"\n    print(s.upper())\n    print(s.lower())",
+        "def main():\n    print(len(str(42 + 8)))",
+        "def main():\n    nums: list[int] = [x * 2 for x in range(5)]\n    print(nums)",
+        "def main():\n    x: int = 0\n    while x < 3:\n        print(x)\n        x += 1",
+        "def double(n: int) -> int:\n    return n * 2\ndef main():\n    x: int = 5\n    if double(x) > 8:\n        print(\"big\")\n    else:\n        print(\"small\")",
     };
 }

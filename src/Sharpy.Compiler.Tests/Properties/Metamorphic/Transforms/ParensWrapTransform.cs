@@ -12,11 +12,16 @@ internal sealed partial class ParensWrapTransform : IAstTransform
         var result = new List<string>();
         foreach (var line in lines)
         {
-            var match = SimpleExprPattern().Match(line);
+            var match = PrintExprPattern().Match(line);
             if (match.Success)
             {
-                var prefix = line[..match.Groups[1].Index];
                 var expr = match.Groups[1].Value;
+                if (expr.StartsWith('(') && expr.EndsWith(')'))
+                {
+                    result.Add(line);
+                    continue;
+                }
+                var prefix = line[..match.Groups[1].Index];
                 var suffix = line[(match.Groups[1].Index + expr.Length)..];
                 result.Add($"{prefix}({expr}){suffix}");
             }
@@ -28,6 +33,6 @@ internal sealed partial class ParensWrapTransform : IAstTransform
         return string.Join('\n', result);
     }
 
-    [GeneratedRegex(@"print\((\d+(?:\s*[+\-*]\s*\d+)?)\)")]
-    private static partial Regex SimpleExprPattern();
+    [GeneratedRegex(@"print\(([^\)]+)\)(?:\s*$)")]
+    private static partial Regex PrintExprPattern();
 }

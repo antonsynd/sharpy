@@ -26,7 +26,12 @@ internal static class GenPatterns
             ListPat(ctx),
             OrPat(ctx),
             TypePat(),
-            PositionalPat(ctx));
+            PositionalPat(ctx),
+            AndPat(ctx),
+            GuardPat(ctx),
+            RelationalPat(),
+            PropertyPat(ctx),
+            UnionCasePat(ctx));
 
     public static Gen<WildcardPattern> Wildcard() =>
         Gen.Const(new WildcardPattern());
@@ -72,5 +77,50 @@ internal static class GenPatterns
             {
                 Type = new TypeAnnotation { Name = name },
                 Elements = elems.ToImmutableArray()
+            });
+
+    public static Gen<AndPattern> AndPat(GenContext ctx) =>
+        Gen.Select(
+            Pattern(ctx.Burn()),
+            Pattern(ctx.Burn()),
+            (left, right) => new AndPattern { Left = left, Right = right });
+
+    public static Gen<GuardPattern> GuardPat(GenContext ctx) =>
+        Gen.Select(
+            Pattern(ctx.Burn()),
+            GenExpressions.Expression(ctx.Burn()),
+            (inner, guard) => new GuardPattern { Inner = inner, Guard = guard });
+
+    public static Gen<RelationalPattern> RelationalPat() =>
+        Gen.Select(
+            Gen.OneOfConst(RelationalOperator.GreaterThan, RelationalOperator.GreaterThanOrEqual,
+                RelationalOperator.LessThan, RelationalOperator.LessThanOrEqual),
+            GenLiterals.Integer.Select(x => (Expression)x),
+            (op, val) => new RelationalPattern { Operator = op, Value = val });
+
+    public static Gen<PropertyPattern> PropertyPat(GenContext ctx) =>
+        Gen.Select(
+            Gen.Null(GenIdentifier.ClassName.Select(n => new TypeAnnotation { Name = n })),
+            PropertyPatternFieldGen(ctx).Array[1, 3],
+            (type, fields) => new PropertyPattern
+            {
+                Type = type,
+                Fields = fields.ToImmutableArray()
+            });
+
+    private static Gen<PropertyPatternField> PropertyPatternFieldGen(GenContext ctx) =>
+        Gen.Select(
+            GenIdentifier.Name,
+            Pattern(ctx.Burn()),
+            (name, pat) => new PropertyPatternField { Name = name, Pattern = pat });
+
+    public static Gen<UnionCasePattern> UnionCasePat(GenContext ctx) =>
+        Gen.Select(
+            GenIdentifier.ClassName,
+            Pattern(ctx.Burn()).Array[0, 2],
+            (caseName, fields) => new UnionCasePattern
+            {
+                CaseName = caseName,
+                FieldPatterns = fields.ToImmutableArray()
             });
 }

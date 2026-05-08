@@ -17,16 +17,30 @@ internal static class GenExpressions
     private static Gen<Expression> Leaf(GenContext ctx) =>
         Gen.OneOf<Expression>(
             GenLiterals.AnyLiteral,
-            IdentifierExpr(ctx));
+            IdentifierExpr(ctx),
+            BytesLiteralExpr(),
+            SuperExpressionExpr());
 
-    private static Gen<Expression> SimpleComposite(GenContext ctx) =>
-        Gen.OneOf<Expression>(
-            UnaryOpExpr(ctx),
-            BinaryOpExpr(ctx),
-            ParenthesizedExpr(ctx),
-            MemberAccessExpr(ctx),
-            FunctionCallExpr(ctx),
-            ConditionalExpr(ctx));
+    private static Gen<Expression> SimpleComposite(GenContext ctx)
+    {
+        var gens = new List<Gen<Expression>>
+        {
+            UnaryOpExpr(ctx).Select(x => (Expression)x),
+            BinaryOpExpr(ctx).Select(x => (Expression)x),
+            ParenthesizedExpr(ctx).Select(x => (Expression)x),
+            MemberAccessExpr(ctx).Select(x => (Expression)x),
+            FunctionCallExpr(ctx).Select(x => (Expression)x),
+            ConditionalExpr(ctx).Select(x => (Expression)x),
+            TryExpressionExpr(ctx).Select(x => (Expression)x),
+            MaybeExpressionExpr(ctx).Select(x => (Expression)x),
+            StarExpressionExpr(ctx).Select(x => (Expression)x),
+            SpreadElementExpr(ctx).Select(x => (Expression)x),
+            ModifiedArgumentExpr(ctx).Select(x => (Expression)x),
+        };
+        if (ctx.AllowAsync)
+            gens.Add(AwaitExpressionExpr(ctx).Select(x => (Expression)x));
+        return Gen.OneOf(gens.ToArray());
+    }
 
     private static Gen<Expression> ComplexComposite(GenContext ctx) =>
         Gen.OneOf<Expression>(
@@ -38,7 +52,12 @@ internal static class GenExpressions
             ListComprehensionExpr(ctx),
             IndexAccessExpr(ctx),
             SliceAccessExpr(ctx),
-            WalrusExpr(ctx));
+            WalrusExpr(ctx),
+            FStringLiteralExpr(ctx),
+            TStringLiteralExpr(ctx),
+            SetComprehensionExpr(ctx),
+            DictComprehensionExpr(ctx),
+            MatchExpressionExpr(ctx));
 
     public static Gen<Identifier> IdentifierExpr(GenContext ctx) =>
         GenIdentifier.NameFromContext(ctx).Select(n =>
@@ -203,4 +222,133 @@ internal static class GenExpressions
                 Target = name,
                 Value = val
             });
+
+    private static readonly string[] FStringTextParts =
+    {
+        "hello ", "world", " is ", "value: ", "result = ", " - ", ", ", "! ", " "
+    };
+
+    public static Gen<FStringLiteral> FStringLiteralExpr(GenContext ctx) =>
+        Gen.Int[1, 3].SelectMany(count =>
+            Enumerable.Range(0, count)
+                .Select(_ => Gen.Frequency(
+                    (1, Gen.OneOfConst(FStringTextParts).Select(t =>
+                        new FStringPart { Text = t })),
+                    (1, Expression(ctx.Burn()).Select(e =>
+                        new FStringPart { Expression = e }))))
+                .Aggregate(Gen.Const(ImmutableArray<FStringPart>.Empty),
+                    (acc, partGen) => Gen.Select(acc, partGen, (parts, part) => parts.Add(part)))
+                .Select(parts => new FStringLiteral { Parts = parts }));
+
+    public static Gen<TStringLiteral> TStringLiteralExpr(GenContext ctx) =>
+        Gen.Int[1, 3].SelectMany(count =>
+            Enumerable.Range(0, count)
+                .Select(_ => Gen.Frequency(
+                    (1, Gen.OneOfConst(FStringTextParts).Select(t =>
+                        new FStringPart { Text = t })),
+                    (1, Expression(ctx.Burn()).Select(e =>
+                        new FStringPart { Expression = e }))))
+                .Aggregate(Gen.Const(ImmutableArray<FStringPart>.Empty),
+                    (acc, partGen) => Gen.Select(acc, partGen, (parts, part) => parts.Add(part)))
+                .Select(parts => new TStringLiteral { Parts = parts }));
+
+    public static Gen<BytesLiteralExpression> BytesLiteralExpr() =>
+        Gen.OneOfConst("hello", "test", "data", "bytes", "", "abc")
+            .Select(v => new BytesLiteralExpression { Value = v });
+
+    public static Gen<SetComprehension> SetComprehensionExpr(GenContext ctx) =>
+        Gen.Select(
+            GenIdentifier.Name,
+            Expression(ctx),
+            Expression(ctx),
+            (varName, elem, iter) => new SetComprehension
+            {
+                Element = elem,
+                Clauses = ImmutableArray.Create<ComprehensionClause>(
+                    new ForClause
+                    {
+                        Target = new Identifier { Name = varName },
+                        Iterator = iter
+                    })
+            });
+
+    public static Gen<DictComprehension> DictComprehensionExpr(GenContext ctx) =>
+        Gen.Select(
+            GenIdentifier.Name,
+            Expression(ctx),
+            Expression(ctx),
+            Expression(ctx),
+            (varName, key, value, iter) => new DictComprehension
+            {
+                Key = key,
+                Value = value,
+                Clauses = ImmutableArray.Create<ComprehensionClause>(
+                    new ForClause
+                    {
+                        Target = new Identifier { Name = varName },
+                        Iterator = iter
+                    })
+            });
+
+    public static Gen<MatchExpression> MatchExpressionExpr(GenContext ctx) =>
+        Gen.Select(
+            Expression(ctx),
+            GenPatterns.Pattern(ctx.Burn()).Array[1, 3],
+            Expression(ctx.Burn()).Array[1, 3],
+            Gen.Null(Expression(ctx.Burn())).Array[1, 3],
+            (scrutinee, patterns, results, guards) =>
+            {
+                var armCount = Math.Min(patterns.Length, results.Length);
+                armCount = Math.Min(armCount, guards.Length);
+                var arms = new MatchArm[armCount];
+                for (int i = 0; i < armCount; i++)
+                {
+                    arms[i] = new MatchArm
+                    {
+                        Pattern = patterns[i],
+                        Guard = guards[i],
+                        Result = results[i]
+                    };
+                }
+                return new MatchExpression
+                {
+                    Scrutinee = scrutinee,
+                    Arms = arms.ToImmutableArray()
+                };
+            });
+
+    public static Gen<TryExpression> TryExpressionExpr(GenContext ctx) =>
+        Gen.Select(
+            Expression(ctx),
+            Gen.Null(GenTypes.SimpleType),
+            (operand, exType) => new TryExpression
+            {
+                Operand = operand,
+                ExceptionType = exType
+            });
+
+    public static Gen<MaybeExpression> MaybeExpressionExpr(GenContext ctx) =>
+        Expression(ctx).Select(operand => new MaybeExpression { Operand = operand });
+
+    public static Gen<StarExpression> StarExpressionExpr(GenContext ctx) =>
+        IdentifierExpr(ctx).Select(id => new StarExpression { Operand = id });
+
+    public static Gen<SpreadElement> SpreadElementExpr(GenContext ctx) =>
+        Expression(ctx).Select(value => new SpreadElement { Value = value });
+
+    public static Gen<ModifiedArgument> ModifiedArgumentExpr(GenContext ctx) =>
+        Gen.Select(
+            Gen.OneOfConst(ParameterModifier.Ref, ParameterModifier.Out, ParameterModifier.In),
+            IdentifierExpr(ctx),
+            (mod, id) => new ModifiedArgument
+            {
+                Modifier = mod,
+                Argument = id
+            });
+
+    public static Gen<AwaitExpression> AwaitExpressionExpr(GenContext ctx) =>
+        Expression(ctx).Select(operand => new AwaitExpression { Operand = operand });
+
+    public static Gen<SuperExpression> SuperExpressionExpr() =>
+        Gen.Const(new SuperExpression());
 }

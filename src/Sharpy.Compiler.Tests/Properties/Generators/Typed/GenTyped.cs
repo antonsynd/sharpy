@@ -47,6 +47,7 @@ internal static class GenTyped
         {
             "int" => Gen.OneOf<Expression>(
                 IntArithmetic(env, fuel),
+                LenExpression(env, fuel),
                 ConditionalOfType(env, "int", fuel)),
             "str" => Gen.OneOf<Expression>(
                 StringConcat(env, fuel),
@@ -136,6 +137,36 @@ internal static class GenTyped
                     })
             };
         });
+
+    private static Gen<Expression> LenExpression(TypeEnv env, int fuel)
+    {
+        var listVars = env.VarsOfType("list[int]")
+            .Concat(env.VarsOfType("list[str]"))
+            .ToList();
+        if (listVars.Count > 0)
+        {
+            return Gen.OneOfConst(listVars.ToArray()).Select(n =>
+                (Expression)new FunctionCall
+                {
+                    Function = new Identifier { Name = "len" },
+                    Arguments = ImmutableArray.Create<Expression>(new Identifier { Name = n })
+                });
+        }
+        return ExpressionOfType(env, "int", fuel).Select(inner =>
+            (Expression)new FunctionCall
+            {
+                Function = new Identifier { Name = "len" },
+                Arguments = ImmutableArray.Create<Expression>(
+                    new ListLiteral
+                    {
+                        Elements = ImmutableArray.Create<Expression>(inner)
+                    })
+            });
+    }
+
+    public static Gen<Expression> ListOfType(TypeEnv env, string elementType, int fuel) =>
+        ExpressionOfType(env, elementType, fuel).Array[0, 3].Select(elems =>
+            (Expression)new ListLiteral { Elements = elems.ToImmutableArray() });
 
     private static Expression DefaultValueForType(string type) => type switch
     {

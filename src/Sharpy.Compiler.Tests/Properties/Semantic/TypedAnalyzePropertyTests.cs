@@ -53,6 +53,36 @@ public class TypedAnalyzePropertyTests
     }
 
     [Fact]
+    public void FilteredTypedProgram_AnalyzesClean()
+    {
+        var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        {
+            var env = new TypeEnv()
+                .WithBinding("x", "int")
+                .WithBinding("s", "str")
+                .WithBinding("flag", "bool");
+            return GenTyped.TypedProgram(env, type, fuel: 2);
+        });
+
+        var filtered = SemanticFilter.WellTypedProgram(baseGen);
+
+        int count = 0;
+        filtered.Sample(module =>
+        {
+            Interlocked.Increment(ref count);
+            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
+            var compiler = new Sharpy.Compiler.Compiler();
+            var result = compiler.Analyze(source, "typed_test.spy");
+
+            if (!result.Success)
+                throw new Exception(
+                    $"Filtered program should analyze clean but got errors:\n{source}");
+        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+
+        _output.WriteLine($"Filtered typed analysis: {count} programs all analyzed clean");
+    }
+
+    [Fact]
     public void TypedProgram_NeverThrowsInternalError()
     {
         Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
