@@ -135,12 +135,14 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 
 - **Order 50**: `ModuleLevelValidator` — Entry point validation
 - **Order 55**: `NamingConventionValidator` — Naming convention checks
+- **Order 56**: `TransitionWarningValidator` — Transition hint diagnostics for Python/C# behavioral differences
 - **Order 60**: `DecoratorValidator` — Decorator validation
 - **Order 62**: `BodylessSyntaxValidator` — Deprecation warnings for body-less method syntax
 - **Order 140**: `ConstructorOverloadValidator` — Duplicate constructor signatures
 - **Order 145**: `StructRulesValidator` — Struct constructor field initialization
 - **Order 147**: `EnumRulesValidator` — Enum value type consistency
 - **Order 150**: `SignatureValidator` — Dunder method signatures
+- **Order 152**: `ConversionOperatorValidator` — Conversion operator validation
 - **Order 155**: `GeneratorValidator` — Generator function validation
 - **Order 160**: `EqualityContractValidator` — Equality contract checks
 - **Order 170**: `InterfaceConflictValidator` — Interface conflict detection
@@ -181,7 +183,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 22 partial classes (~16,445 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Events.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
+The `RoslynEmitter` is split into 22 partial classes (~16,927 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Events.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -405,6 +407,8 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 - `python-build-tools.yml` — Runs pytest for `build_tools/` on Python 3.12
 - `benchmarks.yml` — Performance benchmarks
 - `vscode-extension.yml` — VS Code extension CI
+- `auto-tag.yml` — Automatic version tagging
+- `release.yml` — Release workflow
 
 An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
 
