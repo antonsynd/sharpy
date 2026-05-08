@@ -12,13 +12,14 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Threading:</b> Most mutable fields use <see cref="ConcurrentDictionary{TKey,TValue}"/>
-/// for thread safety. The <c>_symbolReferences</c> Dictionary is the sole exception
-/// — it uses single-threaded write access only (populated during type checking,
-/// read-only after analysis completes). Each compilation creates its own instance.
+/// <b>Threading:</b> All mutable annotation fields use <see cref="ConcurrentDictionary{TKey,TValue}"/>
+/// for thread safety, with <c>_symbolReferences</c> using a <see cref="ConcurrentBag{T}"/>
+/// per symbol so concurrent writers can record references without locking. The
+/// <c>_symbolTable</c> backing field and <c>CurrentFilePath</c> are intended to be set
+/// once per instance during initialization and read concurrently afterward.
 /// </para>
 /// </remarks>
-[NotThreadSafe(Reason = "ConcurrentDictionary stores are thread-safe, but Dictionary field (_symbolReferences) uses single-threaded write access only. Safe under current per-file instance usage.")]
+[NotThreadSafe(Reason = "All annotation dictionaries are concurrent, but _symbolTable/CurrentFilePath are set-once initialization fields. Treat the instance as read-mostly after type checking completes.")]
 public class SemanticInfo : ISemanticQuery
 {
     // Use ReferenceEqualityComparer because AST nodes are records with value-based equality,
@@ -95,11 +96,12 @@ public class SemanticInfo : ISemanticQuery
         new(ReferenceEqualityComparer.Instance);
 
     // Track all reference locations for each symbol (for find-references and rename).
-    // Key is Symbol (reference-equality), value is list of (FilePath, Line, Column, Span) tuples.
+    // Key is Symbol (reference-equality), value is a thread-safe bag of references.
     // The FilePath may be null for the main file in single-file compilation.
-    // THREADING: single-threaded write access only (populated during type checking).
-    // Read access is safe after analysis completes.
-    private readonly Dictionary<Symbol, List<SymbolReference>> _symbolReferences = new();
+    // THREADING: ConcurrentDictionary + ConcurrentBag allow lock-free concurrent writes
+    // during type checking. Read order is unspecified, which is acceptable because
+    // consumers (find-references / rename) sort or treat results as a set.
+    private readonly ConcurrentDictionary<Symbol, ConcurrentBag<SymbolReference>> _symbolReferences = new();
 
     private SymbolTable? _symbolTable;
 
@@ -436,13 +438,10 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var (symbol, refs) in other._symbolReferences)
         {
-            if (_symbolReferences.TryGetValue(symbol, out var existing))
+            var bag = _symbolReferences.GetOrAdd(symbol, static _ => new ConcurrentBag<SymbolReference>());
+            foreach (var reference in refs)
             {
-                existing.AddRange(refs);
-            }
-            else
-            {
-                _symbolReferences[symbol] = new List<SymbolReference>(refs);
+                bag.Add(reference);
             }
         }
     }
@@ -455,12 +454,8 @@ public class SemanticInfo : ISemanticQuery
             return;
 
         var reference = new SymbolReference(CurrentFilePath, node.Span.Value, node.LineStart, node.ColumnStart);
-        if (!_symbolReferences.TryGetValue(symbol, out var list))
-        {
-            list = new List<SymbolReference>();
-            _symbolReferences[symbol] = list;
-        }
-        list.Add(reference);
+        var bag = _symbolReferences.GetOrAdd(symbol, static _ => new ConcurrentBag<SymbolReference>());
+        bag.Add(reference);
     }
 
     /// <summary>
@@ -469,8 +464,8 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public IReadOnlyList<SymbolReference> GetReferences(Symbol symbol)
     {
-        return _symbolReferences.TryGetValue(symbol, out var list)
-            ? list
+        return _symbolReferences.TryGetValue(symbol, out var bag)
+            ? bag.ToArray()
             : Array.Empty<SymbolReference>();
     }
 
@@ -482,7 +477,7 @@ public class SemanticInfo : ISemanticQuery
             if (symbol.Name == symbolName &&
                 string.Equals(symbol.DeclaringFilePath, declaringFilePath, StringComparison.Ordinal))
             {
-                return refs;
+                return refs.ToArray();
             }
         }
         return Array.Empty<SymbolReference>();
