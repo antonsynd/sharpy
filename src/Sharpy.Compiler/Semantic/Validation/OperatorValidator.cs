@@ -275,7 +275,7 @@ internal class OperatorValidator : ValidatingAstWalker
         // Generic types — check TypeSymbol metadata (populated by discovery)
         if (type is GenericType generic)
         {
-            var typeSymbol = Context.SymbolTable.BuiltinRegistry.GetType(generic.Name);
+            var typeSymbol = Context.Builtins.GetType(generic.Name);
             if (typeSymbol != null)
             {
                 if (typeSymbol.OperatorMethods.ContainsKey(dunderName))

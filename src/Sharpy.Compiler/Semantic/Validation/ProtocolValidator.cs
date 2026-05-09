@@ -181,7 +181,7 @@ internal class ProtocolValidator : ValidatingAstWalker
             // For defaultdict, check dict protocols since it inherits from Dict
             var lookupName = string.Equals(generic.Name, BuiltinNames.DefaultDict, StringComparison.OrdinalIgnoreCase)
                 ? BuiltinNames.Dict : generic.Name;
-            var typeSymbol = Context.SymbolTable.BuiltinRegistry.GetType(lookupName);
+            var typeSymbol = Context.Builtins.GetType(lookupName);
             if (typeSymbol != null)
                 return typeSymbol.ProtocolMethods.ContainsKey(dunderName);
 

@@ -140,14 +140,14 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
         var target = Context.SemanticInfo.GetCallTarget(call);
         if (target != null)
         {
-            var overloads = Context.SymbolTable.BuiltinRegistry.GetFunctionOverloads("len");
+            var overloads = Context.Builtins.GetFunctionOverloads("len");
             return overloads != null && overloads.Contains(target);
         }
 
         // Builtin functions handled by BuiltinReturnTypeInference don't get a
         // call target recorded. Fall back to identifier resolution to detect shadowing.
         var resolved = Context.SemanticInfo.GetIdentifierSymbol(id);
-        var builtinOverloads = Context.SymbolTable.BuiltinRegistry.GetFunctionOverloads("len");
+        var builtinOverloads = Context.Builtins.GetFunctionOverloads("len");
         if (builtinOverloads == null || builtinOverloads.Count == 0)
             return false;
 

@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Services;
 
 namespace Sharpy.Compiler.Semantic.Validation;
@@ -15,8 +16,11 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// </summary>
 internal class SemanticContext
 {
-    // Core semantic data
-    public SymbolTable SymbolTable { get; }
+    // Core semantic data — exposed via the read-only IGlobalSymbolTable interface
+    // because validators only read symbols. Write access is performed by NameResolver,
+    // ImportResolver, and TypeChecker via the concrete SymbolTable.
+    public IGlobalSymbolTable SymbolTable { get; }
+    public BuiltinRegistry Builtins { get; }
     public SemanticInfo SemanticInfo { get; }
     public TypeResolver TypeResolver { get; }
 
@@ -66,8 +70,24 @@ internal class SemanticContext
         SemanticInfo semanticInfo,
         TypeResolver typeResolver,
         ICompilerLogger? logger = null)
+        : this((IGlobalSymbolTable)symbolTable, symbolTable.BuiltinRegistry, semanticInfo, typeResolver, logger)
+    {
+    }
+
+    /// <summary>
+    /// Internal constructor used when only the read-only symbol-table view is available.
+    /// Callers must provide the BuiltinRegistry separately because it is not exposed on
+    /// <see cref="IGlobalSymbolTable"/>.
+    /// </summary>
+    internal SemanticContext(
+        IGlobalSymbolTable symbolTable,
+        BuiltinRegistry builtins,
+        SemanticInfo semanticInfo,
+        TypeResolver typeResolver,
+        ICompilerLogger? logger = null)
     {
         SymbolTable = symbolTable;
+        Builtins = builtins;
         SemanticInfo = semanticInfo;
         TypeResolver = typeResolver;
         Logger = logger ?? NullLogger.Instance;
@@ -84,6 +104,7 @@ internal class SemanticContext
     {
         Services = services ?? throw new ArgumentNullException(nameof(services));
         SymbolTable = services.SymbolTable;
+        Builtins = services.SymbolTable.BuiltinRegistry;
         SemanticInfo = services.SemanticInfo;
         TypeResolver = (services.TypeResolver as TypeResolverAdapter)?.UnderlyingResolver
             ?? throw new InvalidOperationException("TypeResolver must be a TypeResolverAdapter");
@@ -103,7 +124,7 @@ internal class SemanticContext
     /// </summary>
     public SemanticContext CreateForFile(string filePath)
     {
-        return new SemanticContext(SymbolTable, SemanticInfo, TypeResolver, Logger)
+        return new SemanticContext(SymbolTable, Builtins, SemanticInfo, TypeResolver, Logger)
         {
             CurrentFilePath = filePath,
             ContinueAfterErrors = ContinueAfterErrors,
