@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Properties.Parser;
 
 [Trait("Category", "Property")]
+[Trait("Category", "RandomProperty")]
 public class CompoundStatementRoundTripTests
 {
     private readonly ITestOutputHelper _output;

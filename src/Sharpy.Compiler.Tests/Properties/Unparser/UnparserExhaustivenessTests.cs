@@ -6,6 +6,7 @@ using Xunit;
 namespace Sharpy.Compiler.Tests.Properties.Unparser;
 
 [Trait("Category", "Property")]
+[Trait("Category", "RandomProperty")]
 public class UnparserExhaustivenessTests
 {
     [Fact]

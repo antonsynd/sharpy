@@ -8,6 +8,7 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Properties.Parser;
 
 [Trait("Category", "Property")]
+[Trait("Category", "RandomProperty")]
 public class ParserFromStringPropertyTests
 {
     private readonly ITestOutputHelper _output;

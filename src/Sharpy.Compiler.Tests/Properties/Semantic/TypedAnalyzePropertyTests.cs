@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Properties.Semantic;
 
 [Trait("Category", "Property")]
+[Trait("Category", "RandomProperty")]
 public class TypedAnalyzePropertyTests
 {
     private readonly ITestOutputHelper _output;

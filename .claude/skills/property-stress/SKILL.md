@@ -23,7 +23,7 @@ Run property tests repeatedly with fresh random seeds each round to surface rare
 Parse `$ARGUMENTS` to extract rounds and optional filter:
 - If first token is a number, use it as rounds count (default 10, max 100)
 - Any remaining text is the test filter
-- Construct the dotnet test filter: if user filter is set, use `"Category=Property&FullyQualifiedName~{filter}"`, otherwise `"Category=Property"`
+- Construct the dotnet test filter: if user filter is set, use `"Category=RandomProperty&FullyQualifiedName~{filter}"`, otherwise `"Category=RandomProperty"`
 
 ### 2. Setup
 

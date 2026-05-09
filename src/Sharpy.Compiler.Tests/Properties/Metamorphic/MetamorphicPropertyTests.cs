@@ -7,6 +7,7 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Properties.Metamorphic;
 
 [Trait("Category", "Property")]
+[Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
 public class MetamorphicPropertyTests : IntegrationTestBase
 {

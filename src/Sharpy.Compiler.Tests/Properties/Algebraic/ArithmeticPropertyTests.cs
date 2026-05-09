@@ -5,6 +5,7 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Properties.Algebraic;
 
 [Trait("Category", "Property")]
+[Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
 public class ArithmeticPropertyTests : AlgebraicTestBase
 {

@@ -7,6 +7,7 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Properties.Lexer;
 
 [Trait("Category", "Property")]
+[Trait("Category", "RandomProperty")]
 public class LexerCsCheckPropertyTests
 {
     private readonly ITestOutputHelper _output;
