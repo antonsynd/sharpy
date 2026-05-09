@@ -41,10 +41,11 @@ Run `dotnet build sharpy.sln --nologo -v q 2>&1 | tail -5`. If build fails, prin
 For each round 1..N:
 1. Print progress: `=== Round {i}/{N} ===`
 2. Run: `dotnet test src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj --filter "{filter}" --no-build --logger "console;verbosity=normal" > .claude/tmp/property-stress/round-{i}.log 2>&1`
-3. If exit code is non-zero:
+3. Kill lingering test host processes to prevent memory accumulation: `pkill -f testhost 2>/dev/null || true`
+4. If exit code is non-zero:
    - Extract failure blocks from the log. Look for lines containing `[FAIL]` to get test names, and lines containing `Set seed:` to get CsCheck reproduction seeds.
    - Print a brief summary: `Round {i}: FAIL — {test_name} (seed: {seed})`
-4. If exit code is zero:
+5. If exit code is zero:
    - Print: `Round {i}: PASS`
 
 ### 5. Generate summary report
