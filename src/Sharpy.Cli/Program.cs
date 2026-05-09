@@ -7,6 +7,8 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Services;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Sharpy.Compiler.Text;
@@ -355,6 +357,16 @@ class Program
             await Sharpy.Lsp.Program.Main(Array.Empty<string>()).ConfigureAwait(false);
         });
 
+        // === REPL Command ===
+        var replCommand = new Command("repl", "Start an interactive Sharpy REPL");
+        replCommand.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+            var logFile = parseResult.GetValue(logFileOption);
+            var logger = CreateLogger(logLevel, logFile);
+            return await RunReplAsync(logger, cancellationToken).ConfigureAwait(false);
+        });
+
         // === Add all commands to root ===
         rootCommand.Subcommands.Add(buildCommand);
         rootCommand.Subcommands.Add(runCommand);
@@ -363,8 +375,168 @@ class Program
         rootCommand.Subcommands.Add(cacheCommand);
         rootCommand.Subcommands.Add(explainCommand);
         rootCommand.Subcommands.Add(lspCommand);
+        rootCommand.Subcommands.Add(replCommand);
 
         return rootCommand.Parse(args).Invoke();
+    }
+
+    /// <summary>
+    /// Runs the interactive Sharpy REPL: a read-eval-print loop backed by
+    /// <see cref="ReplSession"/>. Multi-line input is supported via Python-style
+    /// trailing colons (the prompt switches to <c>...</c> until a blank line
+    /// terminates the block). Exits on EOF (Ctrl+D / Ctrl+Z), the typed commands
+    /// <c>exit()</c> / <c>quit()</c>, or cooperative cancellation.
+    /// </summary>
+    static async Task<int> RunReplAsync(ICompilerLogger logger, CancellationToken cancellationToken)
+    {
+        Console.WriteLine($"Sharpy REPL ({VersionInfo.GetDisplayString()})");
+        Console.WriteLine("Type 'exit()' or press Ctrl+D to quit. End a line with ':' to start a multi-line block.");
+
+        var session = new ReplSession(logger);
+        var pending = new StringBuilder();
+        var inMultiLine = false;
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                Console.Write(inMultiLine ? "... " : ">>> ");
+            }
+            catch (IOException)
+            {
+                // stdout closed — nothing more to do.
+                return 0;
+            }
+
+            string? line;
+            try
+            {
+                line = Console.ReadLine();
+            }
+            catch (IOException)
+            {
+                line = null;
+            }
+
+            // EOF (Ctrl+D on Unix, Ctrl+Z<Enter> on Windows).
+            if (line == null)
+            {
+                Console.WriteLine();
+                return 0;
+            }
+
+            if (inMultiLine)
+            {
+                // A blank line terminates the block, mirroring Python's REPL.
+                if (line.Length == 0)
+                {
+                    var block = pending.ToString();
+                    pending.Clear();
+                    inMultiLine = false;
+
+                    if (block.Trim().Length > 0)
+                    {
+                        await ExecuteAndDisplayAsync(session, block, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    pending.AppendLine(line);
+
+                    // Allow nested multi-line continuations (e.g., methods inside
+                    // a class). Detection is heuristic: if the new line itself
+                    // ends with ':' we keep collecting; the user still terminates
+                    // the entire block with a blank line.
+                    // No state change needed — inMultiLine stays true.
+                }
+                continue;
+            }
+
+            // Single-line mode.
+            if (line.TrimEnd().Length == 0)
+                continue;
+
+            var trimmedForExit = line.Trim();
+            if (trimmedForExit == "exit()" || trimmedForExit == "quit()")
+            {
+                return 0;
+            }
+
+            if (LineStartsBlock(line))
+            {
+                pending.AppendLine(line);
+                inMultiLine = true;
+                continue;
+            }
+
+            await ExecuteAndDisplayAsync(session, line, cancellationToken).ConfigureAwait(false);
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Compile + execute a single REPL submission and write its output (or
+    /// diagnostics) to the appropriate stream.
+    /// </summary>
+    static async Task ExecuteAndDisplayAsync(ReplSession session, string input, CancellationToken cancellationToken)
+    {
+        ReplResult result;
+        try
+        {
+            result = await session.EvaluateAsync(input, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            // Defensive: surface unexpected failures rather than killing the loop.
+            await Console.Error.WriteLineAsync($"REPL error: {ex.Message}").ConfigureAwait(false);
+            return;
+        }
+
+        if (result.Success)
+        {
+            // ReplSession.Output already includes its own trailing newlines.
+            if (!string.IsNullOrEmpty(result.Output))
+            {
+                Console.Write(result.Output);
+            }
+
+            // Surface non-error diagnostics (warnings, hints, info) so they're not lost.
+            var nonErrors = result.Diagnostics
+                .Where(d => d.Severity != CompilerDiagnosticSeverity.Error)
+                .ToList();
+            if (nonErrors.Count > 0)
+            {
+                RenderDiagnostics(nonErrors, sourceText: null, Console.Error);
+            }
+        }
+        else
+        {
+            RenderDiagnostics(result.Diagnostics, sourceText: null, Console.Error);
+        }
+    }
+
+    /// <summary>
+    /// Returns true when a line should open a multi-line block. The
+    /// heuristic mirrors Python's REPL: a trailing colon (after stripping a
+    /// trailing comment and whitespace) starts a new indented block. Colons
+    /// occurring inside string literals will be misclassified by this purely
+    /// textual check; users can always submit explicit multi-line text via a
+    /// here-doc style by typing the body and a blank line.
+    /// </summary>
+    static bool LineStartsBlock(string line)
+    {
+        // Strip a trailing line comment so `def foo():  # note` still triggers
+        // continuation. Naive: this also strips '#' inside strings, which is
+        // acceptable for the REPL's heuristic.
+        var hashIdx = line.IndexOf('#');
+        var withoutComment = hashIdx >= 0 ? line.Substring(0, hashIdx) : line;
+        var trimmed = withoutComment.TrimEnd();
+        return trimmed.EndsWith(':');
     }
 
     static ICompilerLogger CreateLogger(CompilerLogLevel logLevel, FileInfo? logFile)
