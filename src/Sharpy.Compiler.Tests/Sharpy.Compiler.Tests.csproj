@@ -20,7 +20,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="FluentAssertions" Version="8.9.0" />
-    <PackageReference Include="CsCheck" Version="4.4.0" />
+    <PackageReference Include="CsCheck" Version="4.6.2" />
   </ItemGroup>
 
   <ItemGroup>
