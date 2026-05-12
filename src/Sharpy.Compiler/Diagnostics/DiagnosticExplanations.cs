@@ -1366,6 +1366,7 @@ public static class DiagnosticExplanations
             "class Foo:\n    x: int\n    def __hash__(self) -> int:\n        return self.x",
             "Add an '__eq__(self, other: object) -> bool' method:\nclass Foo:\n    x: int\n    def __eq__(self, other: object) -> bool:\n        return False\n    def __hash__(self) -> int:\n        return self.x");
 
+#pragma warning disable CS0618
         Add(dict, DiagnosticCodes.Validation.UnsupportedDunderReversed,
             "__reversed__ now fully supported via generators",
             "Validation",
@@ -1375,6 +1376,7 @@ public static class DiagnosticExplanations
             "returning 'IEnumerator<T>' to satisfy 'IReverseEnumerable<T>'.",
             "class Countdown:\n    start: int\n    def __init__(self, start: int):\n        self.start = start\n    def __reversed__(self) -> int:\n        i = self.start\n        while i > 0:\n            yield i\n            i = i - 1",
             "Use 'yield' in '__reversed__' to produce elements in reverse order.");
+#pragma warning restore CS0618
 
         Add(dict, DiagnosticCodes.Validation.VirtualOnObjectOverride,
             "@virtual is redundant on Object override method",

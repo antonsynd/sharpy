@@ -751,9 +751,11 @@ class Container:
         var validator = new SignatureValidator();
         validator.Validate(module, context);
 
+#pragma warning disable CS0618
         var warnings = context.Diagnostics.GetWarnings()
             .Where(w => w.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnsupportedDunderReversed)
             .ToList();
+#pragma warning restore CS0618
         Assert.Empty(warnings);
     }
 

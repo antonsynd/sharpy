@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text.Json;
+using System.Threading;
 using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Discovery.Caching;
@@ -14,6 +15,8 @@ internal class OverloadIndexCache
     private readonly string _cacheDirectory;
     private readonly ICompilerLogger _logger;
     internal const int CurrentCacheFormatVersion = 10;
+
+    public CacheStatistics Statistics { get; } = new();
 
     // Using camelCase for JSON serialization to reduce file size and follow common conventions.
     // DefaultIgnoreCondition.WhenWritingNull reduces cache file size by omitting null properties.
@@ -69,7 +72,10 @@ internal class OverloadIndexCache
         var cachePath = Path.Combine(_cacheDirectory, cacheKey);
 
         if (!File.Exists(cachePath))
+        {
+            Statistics.RecordMiss();
             return null;
+        }
 
         try
         {
@@ -81,23 +87,27 @@ internal class OverloadIndexCache
             if (index?.CacheFormatVersion != CurrentCacheFormatVersion)
             {
                 TryDeleteFile(cachePath);
+                Statistics.RecordMiss();
                 return null;
             }
 
             // Verify the identity matches
             if (index.Identity.Equals(identity))
             {
+                Statistics.RecordHit();
                 return index;
             }
 
             // Cache is stale, delete it
             TryDeleteFile(cachePath);
+            Statistics.RecordMiss();
             return null;
         }
         catch (IOException ex)
         {
             // File locked by another process — skip rather than block
             _logger.LogDebug($"Cache load skipped (file locked): {ex.Message}");
+            Statistics.RecordMiss();
             return null;
         }
         catch (Exception ex)
@@ -105,6 +115,7 @@ internal class OverloadIndexCache
             // Cache file is corrupted, incompatible, or inaccessible
             _logger.LogDebug($"Failed to load cache from '{cachePath}': {ex.GetType().Name} - {ex.Message}");
             TryDeleteFile(cachePath);
+            Statistics.RecordMiss();
             return null;
         }
     }
@@ -242,6 +253,21 @@ internal class OverloadIndexCache
             TotalSizeBytes = totalSize
         };
     }
+}
+
+/// <summary>
+/// Tracks cache hit/miss counts. Thread-safe via Interlocked.
+/// </summary>
+internal class CacheStatistics
+{
+    private int _hits;
+    private int _misses;
+
+    public int Hits => _hits;
+    public int Misses => _misses;
+
+    internal void RecordHit() => Interlocked.Increment(ref _hits);
+    internal void RecordMiss() => Interlocked.Increment(ref _misses);
 }
 
 /// <summary>

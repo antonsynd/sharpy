@@ -483,7 +483,8 @@ public static class DiagnosticCodes
         public const string EqWithoutObjectOverload = "SPY0454";    // Active
         public const string EqObjectWithoutHash = "SPY0455";        // Active
         public const string HashWithoutEqObject = "SPY0456";        // Active
-        public const string UnsupportedDunderReversed = "SPY0457";  // Reserved — __reversed__ now supported
+        [System.Obsolete("SPY0457 is reserved — __reversed__ is now supported")]
+        public const string UnsupportedDunderReversed = "SPY0457";  // Deprecated — __reversed__ now supported (see audit 2026-05-11)
         public const string VirtualOnObjectOverride = "SPY0458";    // Active
         public const string StaticFieldViaInstance = "SPY0459";     // Active
 
