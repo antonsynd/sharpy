@@ -1,0 +1,1 @@
+Prefer the '_' placeholder syntax over functools.partial

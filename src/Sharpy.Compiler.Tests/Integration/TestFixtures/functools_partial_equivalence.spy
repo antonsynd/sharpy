@@ -1,0 +1,13 @@
+# Demonstrates that functools.partial(f, ...) and f(..., _) produce equivalent results.
+import functools
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+def main() -> None:
+    via_partial = functools.partial(add, 5)
+    via_placeholder = add(5, _)
+    print(via_partial(10))
+    print(via_placeholder(10))
+    print(via_partial(3))
+    print(via_placeholder(3))

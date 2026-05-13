@@ -158,13 +158,14 @@ public abstract class IntegrationTestBase
             semanticBinding.FreezeVariableTypes();
             semanticBinding.FreezeCodeGenInfo();
 
-            // Collect warnings and hints from type checking and validation pipeline.
-            // Hints are advisory diagnostics (e.g., transition hints SPY0470+) that
-            // share suppression with warnings; we surface them via the same channel
-            // so .warning fixtures can verify behavioral notes.
+            // Collect warnings, hints, and info notes from type checking and validation pipeline.
+            // Hints are advisory diagnostics (e.g., transition hints SPY0470+) and Info diagnostics
+            // (e.g., SPY1010 functools.partial placeholder hint) share suppression with warnings;
+            // we surface them via the same channel so .warning fixtures can verify behavioral notes.
             var compilationWarnings = typeChecker.Diagnostics.GetAll()
                 .Where(d => d.Severity == CompilerDiagnosticSeverity.Warning
-                         || d.Severity == CompilerDiagnosticSeverity.Hint)
+                         || d.Severity == CompilerDiagnosticSeverity.Hint
+                         || d.Severity == CompilerDiagnosticSeverity.Info)
                 .Select(d => d.Message)
                 .ToList();
 

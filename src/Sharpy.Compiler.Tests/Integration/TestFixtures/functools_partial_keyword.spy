@@ -1,0 +1,10 @@
+# Test functools.partial with keyword argument fixing
+import functools
+
+def greet(name: str, greeting: str) -> str:
+    return greeting + ", " + name + "!"
+
+def main() -> None:
+    say_hello = functools.partial(greet, greeting="Hello")
+    print(say_hello("Alice"))
+    print(say_hello("Bob"))

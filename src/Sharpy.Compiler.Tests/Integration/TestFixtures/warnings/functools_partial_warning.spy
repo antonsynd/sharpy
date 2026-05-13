@@ -1,0 +1,9 @@
+# Exercises SPY1010 — the placeholder-form hint emitted by functools.partial.
+import functools
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+def main() -> None:
+    add5 = functools.partial(add, 5)
+    print(add5(10))
