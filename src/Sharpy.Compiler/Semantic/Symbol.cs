@@ -126,6 +126,13 @@ public record VariableSymbol : Symbol
     public bool IsParameter { get; init; }
     public bool IsConstant { get; init; }
     public bool IsStatic { get; init; }
+
+    /// <summary>
+    /// Indicates the field was declared with the <c>@final</c> decorator.
+    /// Final fields can only be assigned within constructors of the declaring type
+    /// and emit a C# <c>readonly</c> modifier.
+    /// </summary>
+    public bool IsFinal { get; init; }
     public bool HasDefaultValue { get; init; }
     public Parser.Ast.ParameterModifier ParameterModifier { get; init; } = Parser.Ast.ParameterModifier.None;
 
