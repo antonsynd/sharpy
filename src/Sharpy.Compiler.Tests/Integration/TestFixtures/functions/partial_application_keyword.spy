@@ -1,0 +1,19 @@
+def f(x: int, y: int) -> int:
+    return x * 10 + y
+
+def main():
+    # Single keyword placeholder
+    fix_y: (int) -> int = f(x=_, y=3)
+    print(fix_y(2))
+
+    # Single keyword placeholder on second arg
+    fix_x: (int) -> int = f(x=5, y=_)
+    print(fix_x(7))
+
+    # Both keyword args as placeholders
+    both: (int, int) -> int = f(x=_, y=_)
+    print(both(4, 6))
+
+    # Mixed: positional placeholder + keyword placeholder
+    mixed: (int, int) -> int = f(_, y=_)
+    print(mixed(8, 9))

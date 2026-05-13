@@ -1,0 +1,23 @@
+def greet(name: str, greeting: str, punctuation: str) -> str:
+    return greeting + ", " + name + punctuation
+
+def apply_str(fn: (str) -> str, value: str) -> str:
+    return fn(value)
+
+def apply_str2(fn: (str, str) -> str, a: str, b: str) -> str:
+    return fn(a, b)
+
+def main():
+    # Single keyword placeholder, type inferred from call context
+    hello_for: (str) -> str = greet(greeting="Hello", name=_, punctuation="!")
+    print(hello_for("Alice"))
+
+    # Pass partial to higher-order function (type flows through)
+    print(apply_str(greet(greeting="Hi", name=_, punctuation="."), "Bob"))
+
+    # Two keyword placeholders, lambda type with two parameters
+    name_and_punct: (str, str) -> str = greet(greeting="Hey", name=_, punctuation=_)
+    print(name_and_punct("Carol", "?"))
+
+    # Pass two-placeholder partial through higher-order
+    print(apply_str2(greet(greeting="Hey", name=_, punctuation=_), "Dan", "!!"))

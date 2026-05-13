@@ -1,0 +1,4 @@
+localhost:8080 (retry=3)
+localhost:9090 (retry=3)
+example.com:8080 (retry=5)
+api.test:443 (retry=3)

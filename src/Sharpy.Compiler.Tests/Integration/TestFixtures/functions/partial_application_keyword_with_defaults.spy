@@ -1,0 +1,19 @@
+def connect(host: str, port: int = 8080, retry: int = 3) -> str:
+    return host + ":" + str(port) + " (retry=" + str(retry) + ")"
+
+def main():
+    # Keyword placeholder, other params use defaults
+    by_host: (str) -> str = connect(host=_)
+    print(by_host("localhost"))
+
+    # Keyword placeholder for a param with a default
+    on_localhost: (int) -> str = connect(host="localhost", port=_)
+    print(on_localhost(9090))
+
+    # Keyword placeholder for the last default param
+    fix_retry: (int) -> str = connect(host="example.com", retry=_)
+    print(fix_retry(5))
+
+    # Two keyword placeholders, one default-bearing param still defaulted
+    host_and_port: (str, int) -> str = connect(host=_, port=_)
+    print(host_and_port("api.test", 443))

@@ -88,10 +88,55 @@ public class PartialApplicationParserTests
     }
 
     [Fact]
-    public void KeywordArgPlaceholder_EmitsError()
+    public void KeywordArgPlaceholder_LowersToLambda()
     {
-        var errors = ParseExpectingError("f(x=_)");
-        errors.Should().Contain("SPY0130");
+        // f(x=_) should lower to (x) => f(x=x)
+        var module = Parse("f(x=_)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(1);
+        lambda.Parameters[0].Name.Should().Be("x");
+        var call = lambda.Body.Should().BeOfType<FunctionCall>().Subject;
+        call.Arguments.Should().BeEmpty();
+        call.KeywordArguments.Should().HaveCount(1);
+        call.KeywordArguments[0].Name.Should().Be("x");
+        call.KeywordArguments[0].Value.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+    }
+
+    [Fact]
+    public void MultipleKeywordPlaceholders_LowerToLambdaWithKeywordNames()
+    {
+        // f(x=_, y=_) should lower to (x, y) => f(x=x, y=y)
+        var module = Parse("f(x=_, y=_)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(2);
+        lambda.Parameters[0].Name.Should().Be("x");
+        lambda.Parameters[1].Name.Should().Be("y");
+        var call = lambda.Body.Should().BeOfType<FunctionCall>().Subject;
+        call.KeywordArguments.Should().HaveCount(2);
+        call.KeywordArguments[0].Value.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+        call.KeywordArguments[1].Value.Should().BeOfType<Identifier>().Which.Name.Should().Be("y");
+    }
+
+    [Fact]
+    public void MixedPositionalAndKeywordPlaceholders_PositionalParamsFirst()
+    {
+        // f(_, y=_) should lower to (__placeholder_0, y) => f(__placeholder_0, y=y)
+        var module = Parse("f(_, y=_)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(2);
+        // Positional placeholder first
+        lambda.Parameters[0].Name.Should().Be("__placeholder_0");
+        // Then keyword placeholder, named after the keyword
+        lambda.Parameters[1].Name.Should().Be("y");
+        var call = lambda.Body.Should().BeOfType<FunctionCall>().Subject;
+        call.Arguments.Should().HaveCount(1);
+        call.Arguments[0].Should().BeOfType<Identifier>().Which.Name.Should().Be("__placeholder_0");
+        call.KeywordArguments.Should().HaveCount(1);
+        call.KeywordArguments[0].Name.Should().Be("y");
+        call.KeywordArguments[0].Value.Should().BeOfType<Identifier>().Which.Name.Should().Be("y");
     }
 
     [Fact]
