@@ -1,7 +1,7 @@
 # Spread Operator
 
-> **Implementation status:** Spreading in collection literals (`[*a, *b]`, `{*s1, *s2}`, `{**d1, **d2}`) and
-> positional call-site spreading (`f(*args)`) are implemented. Tuple spreading is not yet supported.
+> **Implementation status:** Spreading in collection literals (`[*a, *b]`, `{*s1, *s2}`, `{**d1, **d2}`,
+> `(*t1, *t2)`) and positional call-site spreading (`f(*args)`) are implemented.
 > `**kwargs` call-site spreading is rejected — see [rejected_proposals.md](rejected_proposals.md#dynamic_kwargs-and-kwargs-call-site-spreading).
 
 The spread operator enables concise syntax for unpacking collections and objects in various contexts, extending Python's `*` and `**` operators.
@@ -71,19 +71,22 @@ add(*pair)  # Equivalent to: add(pair.Item1, pair.Item2)
 
 ## Tuple Spreading
 
-> **Not yet implemented.**
-
-Spread into tuple literals:
+Spread into tuple literals. The spread target must be a `tuple[...]` with known
+arity at compile time; the result type concatenates element types from each
+spread and literal element.
 
 ```python
 # Spread into tuples
-first = (1, 2)
-second = (3, 4)
-combined = (*first, *second)  # (1, 2, 3, 4)
+first: tuple[int, int] = (1, 2)
+second: tuple[int, int] = (3, 4)
+combined = (*first, *second)  # tuple[int, int, int, int] — (1, 2, 3, 4)
 
 # Mixed with literals
 coords = (*point_2d, z_value)  # Convert 2D to 3D
 ```
+
+Spreading a non-tuple value (e.g., a `list[T]`) into a tuple literal is rejected
+with `SPY0239` because tuple arities must be statically known.
 
 ## Set Spreading
 
@@ -247,7 +250,7 @@ Where spreading is allowed:
 | Set literal | `{*expr}` | `{1, *others, 5}` | ✅ |
 | Function call (positional) | `f(*args)` | `func(*items)` | ✅ |
 | Unpacking | `a, *rest = ...` | `first, *middle, last = items` | ✅ |
-| Tuple literal | `(*expr)` | `(1, *others, 5)` | ❌ Not yet |
+| Tuple literal | `(*expr)` | `(1, *others, 5)` | ✅ |
 | Function call (kwargs) | `f(**kwargs)` | `func(**opts)` | ❌ Rejected |
 
 ## Limitations
