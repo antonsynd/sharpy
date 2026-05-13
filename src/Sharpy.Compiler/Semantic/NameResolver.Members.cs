@@ -260,6 +260,7 @@ internal partial class NameResolver
             accessLevel = explicitAccess.Value;
 
         bool isStatic = field.Decorators.Any(d => d.Name == DecoratorNames.Static);
+        bool isFinal = field.Decorators.Any(d => d.Name == DecoratorNames.Final);
 
         var varSymbol = new VariableSymbol
         {
@@ -269,6 +270,7 @@ internal partial class NameResolver
             ExplicitAccessLevel = explicitAccess,
             IsConstant = field.IsConst,
             IsStatic = isStatic,
+            IsFinal = isFinal,
             HasDefaultValue = field.InitialValue != null,
             DeclaringFilePath = _currentFilePath,
             DeclarationSpan = field.Span,

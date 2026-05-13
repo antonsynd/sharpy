@@ -366,18 +366,19 @@ internal class DecoratorValidator : ValidatingAstWalker
     }
 
     /// <summary>
-    /// Validates decorators on field declarations. Only @static is allowed.
+    /// Validates decorators on field declarations. Only @static, @final, and access modifiers are allowed.
     /// </summary>
     private void ValidateFieldDecorators(VariableDeclaration varDecl, string typeName)
     {
         foreach (var decorator in varDecl.Decorators)
         {
             if (decorator.Name != DecoratorNames.Static
+                && decorator.Name != DecoratorNames.Final
                 && !AccessModifierDecorators.Contains(decorator.Name))
             {
                 AddError(
                     $"Decorator '@{decorator.Name}' is not valid on field '{varDecl.Name}' in '{typeName}'. " +
-                    "Only @static and access modifier decorators are allowed on field declarations.",
+                    "Only @static, @final, and access modifier decorators are allowed on field declarations.",
                     decorator.LineStart,
                     decorator.ColumnStart,
                     code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
