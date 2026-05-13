@@ -19,7 +19,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
         var errors = new List<string>();
 
         var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-            GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
+            GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true));
 
         var compilable = SemanticFilter.CompilableProgram(baseGen);
 

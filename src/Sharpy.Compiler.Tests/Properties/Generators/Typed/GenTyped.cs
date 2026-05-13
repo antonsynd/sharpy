@@ -119,36 +119,110 @@ internal static class GenTyped
             });
 
     public static Gen<Module> TypedProgram(TypeEnv env, string resultType, int fuel) =>
-        ExpressionOfType(env, resultType, fuel).Select(expr =>
-        {
-            var printCall = new FunctionCall
-            {
-                Function = new Identifier { Name = "print" },
-                Arguments = ImmutableArray.Create<Expression>(expr)
-            };
+        TypedProgram(env, resultType, fuel, withStatements: false);
 
-            var body = ImmutableArray.CreateBuilder<Statement>();
-            foreach (var binding in env.Bindings)
+    public static Gen<Module> TypedProgram(TypeEnv env, string resultType, int fuel, bool withStatements) =>
+        Gen.Select(
+            ExpressionOfType(env, resultType, fuel),
+            withStatements && fuel > 0
+                ? Gen.Int[0, 2].SelectMany(n =>
+                    Enumerable.Range(0, n)
+                        .Select(_ => StatementOfType(env, fuel - 1))
+                        .Aggregate(
+                            Gen.Const(ImmutableArray<Statement>.Empty),
+                            (acc, gen) => Gen.Select(acc, gen, (arr, s) => arr.Add(s))))
+                : Gen.Const(ImmutableArray<Statement>.Empty),
+            (expr, stmts) =>
             {
-                body.Add(new VariableDeclaration
+                var printCall = new FunctionCall
                 {
-                    Name = binding.Key,
-                    Type = new TypeAnnotation { Name = binding.Value },
-                    InitialValue = DefaultValueForType(binding.Value)
-                });
-            }
-            body.Add(new ExpressionStatement { Expression = printCall });
+                    Function = new Identifier { Name = "print" },
+                    Arguments = ImmutableArray.Create<Expression>(expr)
+                };
 
-            return new Module
-            {
-                Body = ImmutableArray.Create<Statement>(
-                    new FunctionDef
+                var body = ImmutableArray.CreateBuilder<Statement>();
+                foreach (var binding in env.Bindings)
+                {
+                    body.Add(new VariableDeclaration
                     {
-                        Name = "main",
-                        Body = body.ToImmutable()
-                    })
-            };
-        });
+                        Name = binding.Key,
+                        Type = new TypeAnnotation { Name = binding.Value },
+                        InitialValue = DefaultValueForType(binding.Value)
+                    });
+                }
+                body.AddRange(stmts);
+                body.Add(new ExpressionStatement { Expression = printCall });
+
+                return new Module
+                {
+                    Body = ImmutableArray.Create<Statement>(
+                        new FunctionDef
+                        {
+                            Name = "main",
+                            Body = body.ToImmutable()
+                        })
+                };
+            });
+
+    public static Gen<Statement> StatementOfType(TypeEnv env, int fuel) =>
+        Gen.OneOf(
+            IfElseStatement(env, fuel),
+            ForRangeStatement(env, fuel),
+            AssignmentStatement(env, fuel));
+
+    public static Gen<Statement> IfElseStatement(TypeEnv env, int fuel) =>
+        Gen.Select(
+            ExpressionOfType(env, "bool", fuel),
+            AssignmentStatement(env, fuel),
+            AssignmentStatement(env, fuel),
+            (test, thenStmt, elseStmt) => (Statement)new IfStatement
+            {
+                Test = test,
+                ThenBody = ImmutableArray.Create(thenStmt),
+                ElseBody = ImmutableArray.Create(elseStmt)
+            });
+
+    public static Gen<Statement> ForRangeStatement(TypeEnv env, int fuel) =>
+        Gen.Int[0, 5].SelectMany(rangeMax =>
+            AssignmentStatement(env, fuel).Select(bodyStmt =>
+                (Statement)new ForStatement
+                {
+                    Target = new Identifier { Name = "i" },
+                    Iterator = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "range" },
+                        Arguments = ImmutableArray.Create<Expression>(
+                            new IntegerLiteral { Value = rangeMax.ToString() })
+                    },
+                    Body = ImmutableArray.Create(bodyStmt)
+                }));
+
+    private static Gen<Statement> AssignmentStatement(TypeEnv env, int fuel)
+    {
+        var mutableVars = env.Bindings
+            .Where(kv => kv.Value is "int" or "str" or "bool" or "float")
+            .ToArray();
+
+        if (mutableVars.Length == 0)
+        {
+            return Gen.Const((Statement)new ExpressionStatement
+            {
+                Expression = new FunctionCall
+                {
+                    Function = new Identifier { Name = "print" },
+                    Arguments = ImmutableArray.Create<Expression>(new IntegerLiteral { Value = "0" })
+                }
+            });
+        }
+
+        return Gen.OneOfConst(mutableVars).SelectMany(kv =>
+            ExpressionOfType(env, kv.Value, fuel).Select(expr =>
+                (Statement)new VariableDeclaration
+                {
+                    Name = kv.Key,
+                    InitialValue = expr
+                }));
+    }
 
     private static Gen<Expression> LenExpression(TypeEnv env, int fuel)
     {
