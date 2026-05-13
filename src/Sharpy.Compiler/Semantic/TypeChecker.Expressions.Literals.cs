@@ -191,8 +191,41 @@ internal partial class TypeChecker
 
     private SemanticType CheckTupleLiteral(TupleLiteral tuple)
     {
-        var elementTypes = tuple.Elements.Select(CheckExpression).ToList();
-        var tupleType = new TupleType { ElementTypes = elementTypes };
+        var hasSpread = tuple.Elements.Any(e => e is SpreadElement);
+
+        if (hasSpread)
+        {
+            var elementTypes = new List<SemanticType>();
+            foreach (var elem in tuple.Elements)
+            {
+                if (elem is SpreadElement spread)
+                {
+                    var spreadType = CheckExpression(spread.Value);
+                    if (spreadType is TupleType tupleSpread)
+                    {
+                        elementTypes.AddRange(tupleSpread.ElementTypes);
+                    }
+                    else
+                    {
+                        AddError(
+                            $"Cannot spread non-tuple type '{spreadType}' into tuple literal; spread target must be a tuple with known arity",
+                            spread.LineStart, spread.ColumnStart,
+                            code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                            span: spread.Span);
+                        elementTypes.Add(SemanticType.Unknown);
+                    }
+                }
+                else
+                {
+                    elementTypes.Add(CheckExpression(elem));
+                }
+            }
+
+            return new TupleType { ElementTypes = elementTypes };
+        }
+
+        var directElementTypes = tuple.Elements.Select(CheckExpression).ToList();
+        var tupleType = new TupleType { ElementTypes = directElementTypes };
 
         // Propagate element names for named tuple literals
         if (!tuple.ElementNames.IsEmpty)
