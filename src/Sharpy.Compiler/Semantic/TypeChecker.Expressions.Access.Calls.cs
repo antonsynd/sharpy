@@ -1794,4 +1794,212 @@ internal partial class TypeChecker
         };
     }
 
+    /// <summary>
+    /// Type-checks a <c>functools.partial(f, fixed_args..., kw=val, ...)</c> call.
+    /// Validates the target is callable, type-checks the fixed arguments against the target's
+    /// parameters, and returns a <see cref="FunctionType"/> describing the remaining (unfixed)
+    /// parameters. Emits SPY1010 to encourage migration to the idiomatic <c>_</c> placeholder form.
+    /// </summary>
+    private SemanticType CheckFunctoolsPartialCall(FunctionCall call)
+    {
+        // Resolve the 'functools' module identifier so SemanticInfo records the binding;
+        // LSP find-references and go-to-definition for 'functools' continues to work even
+        // though we bypass the normal member-access resolution.
+        if (call.Function is MemberAccess memberAccess && memberAccess.Object is Identifier moduleId)
+        {
+            _ = CheckExpression(moduleId);
+        }
+
+        // Emit the placeholder-form suggestion.
+        AddInfo(
+            "Prefer the '_' placeholder syntax over functools.partial for new code; e.g., 'add(5, _)' instead of 'functools.partial(add, 5)'.",
+            call.LineStart, call.ColumnStart,
+            code: DiagnosticCodes.Info.FunctoolsPartialPlaceholderHint);
+
+        if (call.Arguments.IsDefaultOrEmpty || call.Arguments.Length == 0)
+        {
+            AddError(
+                "functools.partial() requires at least one argument (the target callable)",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+
+        // Validate the target is callable
+        var targetExpr = call.Arguments[0];
+        var targetType = CheckExpression(targetExpr);
+
+        FunctionType? targetFunctionType = null;
+        FunctionSymbol? targetFunctionSymbol = null;
+
+        // Prefer FunctionSymbol when available (preserves parameter names for keyword fixing)
+        if (targetExpr is Identifier targetId)
+        {
+            targetFunctionSymbol = _symbolTable.Lookup(targetId.Name) as FunctionSymbol;
+        }
+
+        if (targetType is FunctionType ft)
+        {
+            targetFunctionType = ft;
+        }
+        else if (targetFunctionSymbol != null)
+        {
+            targetFunctionType = BuildFunctionTypeFromSymbol(targetFunctionSymbol);
+        }
+        else if (targetType is UnknownType)
+        {
+            // Error recovery — already emitted
+            MarkExpressionAsErrorRecovery(call);
+            return SemanticType.Unknown;
+        }
+
+        if (targetFunctionType == null)
+        {
+            AddError(
+                $"First argument to functools.partial() must be callable; got '{targetType.GetDisplayName()}'",
+                targetExpr.LineStart, targetExpr.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedFunction,
+                span: targetExpr.Span);
+            return SemanticType.Unknown;
+        }
+
+        // Type-check fixed positional and keyword args so SemanticInfo records their types
+        var fixedPositionalCount = call.Arguments.Length - 1;
+        for (var i = 1; i < call.Arguments.Length; i++)
+        {
+            _ = CheckExpression(call.Arguments[i]);
+        }
+
+        var fixedKwargNames = new HashSet<string>(call.KeywordArguments.Length, System.StringComparer.Ordinal);
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            _ = CheckExpression(kwarg.Value);
+            fixedKwargNames.Add(kwarg.Name);
+        }
+
+        // Compute remaining parameters:
+        //   Positional fix consumes leading parameters in declaration order.
+        //   Keyword fix removes parameters by name (requires FunctionSymbol for names).
+        FunctionType resultType;
+        if (targetFunctionSymbol != null)
+        {
+            resultType = ComputeResultTypeFromSymbol(targetFunctionSymbol, fixedPositionalCount,
+                fixedKwargNames, targetExpr);
+        }
+        else
+        {
+            // FunctionType has no parameter names — keyword fixing is unsupported in this path
+            if (fixedKwargNames.Count > 0)
+            {
+                AddError(
+                    "Keyword arguments to functools.partial() require the target to be a named function; consider using '_' placeholder syntax with explicit keyword arguments instead.",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: call.Span);
+                return SemanticType.Unknown;
+            }
+
+            var computed = FunctoolsPartialHelper.ComputeResultTypeFromFunctionType(
+                targetFunctionType, fixedPositionalCount);
+            if (computed == null)
+            {
+                AddError(
+                    $"Too many positional arguments to functools.partial(); target accepts at most {targetFunctionType.ParameterTypes.Count} positional parameter(s).",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+                return SemanticType.Unknown;
+            }
+            resultType = computed;
+        }
+
+        _semanticInfo.SetExpressionType(call, resultType);
+        return resultType;
+    }
+
+    /// <summary>
+    /// Builds a <see cref="FunctionType"/> from a <see cref="FunctionSymbol"/>, projecting
+    /// each parameter's resolved <see cref="SemanticType"/> into the parameter list.
+    /// </summary>
+    private static FunctionType BuildFunctionTypeFromSymbol(FunctionSymbol funcSymbol)
+    {
+        var paramTypes = new List<SemanticType>(funcSymbol.Parameters.Count);
+        var optionalCount = 0;
+        foreach (var p in funcSymbol.Parameters)
+        {
+            paramTypes.Add(p.Type);
+            if (p.HasDefault)
+            {
+                optionalCount++;
+            }
+        }
+        return new FunctionType
+        {
+            ParameterTypes = paramTypes,
+            ReturnType = funcSymbol.ReturnType,
+            OptionalParameterCount = optionalCount,
+        };
+    }
+
+    /// <summary>
+    /// Computes the result <see cref="FunctionType"/> for a <c>functools.partial</c> call when
+    /// the target is a named <see cref="FunctionSymbol"/>. Positional fixing removes leading
+    /// parameters; keyword fixing removes parameters by name.
+    /// </summary>
+    private FunctionType ComputeResultTypeFromSymbol(FunctionSymbol targetSymbol,
+        int fixedPositionalCount, HashSet<string> fixedKwargNames, Expression targetExpr)
+    {
+        var parameters = targetSymbol.Parameters;
+
+        if (fixedPositionalCount > parameters.Count)
+        {
+            AddError(
+                $"Too many positional arguments to functools.partial(); '{targetSymbol.Name}' accepts at most {parameters.Count} positional parameter(s).",
+                targetExpr.LineStart, targetExpr.ColumnStart,
+                code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                span: targetExpr.Span);
+            fixedPositionalCount = parameters.Count;
+        }
+
+        var knownNames = new HashSet<string>(parameters.Count, System.StringComparer.Ordinal);
+        for (var i = 0; i < parameters.Count; i++)
+        {
+            knownNames.Add(parameters[i].Name);
+        }
+        foreach (var kwName in fixedKwargNames)
+        {
+            if (!knownNames.Contains(kwName))
+            {
+                AddError(
+                    $"functools.partial(): '{targetSymbol.Name}' has no parameter named '{kwName}'",
+                    targetExpr.LineStart, targetExpr.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                    span: targetExpr.Span);
+            }
+        }
+
+        var remaining = new List<SemanticType>();
+        var optionalCount = 0;
+        for (var i = fixedPositionalCount; i < parameters.Count; i++)
+        {
+            var p = parameters[i];
+            if (fixedKwargNames.Contains(p.Name))
+            {
+                continue;
+            }
+            remaining.Add(p.Type);
+            if (p.HasDefault)
+            {
+                optionalCount++;
+            }
+        }
+
+        return new FunctionType
+        {
+            ParameterTypes = remaining,
+            ReturnType = targetSymbol.ReturnType,
+            OptionalParameterCount = optionalCount,
+        };
+    }
+
 }
