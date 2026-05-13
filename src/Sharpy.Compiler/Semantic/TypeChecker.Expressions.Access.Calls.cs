@@ -13,6 +13,12 @@ internal partial class TypeChecker
 {
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
+        // Handle functools.partial(f, ...) — compatibility shim that desugars to a placeholder lambda
+        if (FunctoolsPartialHelper.IsFunctoolsPartialCall(call, _symbolTable))
+        {
+            return CheckFunctoolsPartialCall(call);
+        }
+
         // Handle None() — empty Optional constructor
         var noneResult = CheckNoneConstruction(call);
         if (noneResult != null)
