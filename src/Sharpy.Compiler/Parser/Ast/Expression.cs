@@ -888,26 +888,31 @@ public record WalrusExpression : Expression
 }
 
 /// <summary>
-/// Try expression (try expr or try[ExceptionType] expr)
-/// Wraps an expression in Result[T, E] where E is the exception type.
-/// If the expression raises an exception of type E, the result holds its Err case.
+/// Try expression (try expr or try[ExceptionType] expr or try[A | B | C] expr)
+/// Wraps an expression in Result[T, E] where E is the (common) exception type.
+/// If the expression raises an exception matching one of the listed types, the
+/// result holds its Err case; other exceptions propagate normally.
+/// An empty <see cref="ExceptionTypes"/> array represents the untyped form `try expr`,
+/// a single element represents `try[E] expr`, and multiple elements represent
+/// `try[A | B | C] expr` union exception types.
 /// </summary>
 public record TryExpression : Expression
 {
     public Expression Operand { get; init; } = null!;
-    public TypeAnnotation? ExceptionType { get; init; }  // Optional: try[ValueError] expr
+    public ImmutableArray<TypeAnnotation> ExceptionTypes { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
         base.ValidateInvariants();
         Debug.Assert(Operand != null, "TryExpression.Operand cannot be null");
+        Debug.Assert(!ExceptionTypes.IsDefault, "TryExpression.ExceptionTypes must be initialized (use ImmutableArray.Empty for none)");
     }
 
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Note: ExceptionType is TypeAnnotation which doesn't inherit from Node
+        // Note: ExceptionTypes are TypeAnnotations which don't inherit from Node
         yield return Operand;
     }
 }
