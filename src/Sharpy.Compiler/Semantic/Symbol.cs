@@ -178,6 +178,20 @@ public record FunctionSymbol : Symbol
     /// </summary>
     public string? SignatureKey { get; init; }
 
+    /// <summary>
+    /// Set by TypeChecker.Definitions.cs when the function is decorated with
+    /// <c>@functools.lru_cache</c> or <c>@functools.cache</c>. CodeGen reads this
+    /// to emit a memoization wrapper backed by <see cref="global::Sharpy.LruCache{TKey,TResult}"/>.
+    /// </summary>
+    public bool IsCached { get; internal set; }
+
+    /// <summary>
+    /// Maxsize for the <c>@lru_cache</c> wrapper, or <c>null</c> for an unbounded cache
+    /// (matching <c>@cache</c> and <c>@lru_cache(maxsize=None)</c>). Only meaningful
+    /// when <see cref="IsCached"/> is <c>true</c>.
+    /// </summary>
+    public int? CacheMaxSize { get; internal set; }
+
     public virtual bool Equals(FunctionSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

@@ -221,6 +221,9 @@ internal partial class TypeChecker
         ProcessGeneratorMetadata(functionDef, functionSymbol, isGenerator);
         ProcessAsyncMetadata(functionDef, functionSymbol, isGenerator);
 
+        // Mark memoization decorator metadata (@lru_cache, @cache)
+        ProcessCacheMetadata(functionDef, functionSymbol);
+
         // Restore previous method context
         _currentMethodName = previousMethodName;
         _currentMethodIsOverride = previousMethodIsOverride;
@@ -704,6 +707,83 @@ internal partial class TypeChecker
                 asyncSymbol.ReturnType = new TaskType { ResultType = asyncSymbol.ReturnType };
             }
         }
+    }
+
+    /// <summary>
+    /// Marks a function symbol with memoization metadata when decorated with
+    /// <c>@lru_cache</c> or <c>@cache</c>. The CodeGen layer reads
+    /// <see cref="FunctionSymbol.IsCached"/> and <see cref="FunctionSymbol.CacheMaxSize"/>
+    /// to emit a wrapper that delegates to <c>Sharpy.LruCache</c>.
+    /// </summary>
+    private void ProcessCacheMetadata(FunctionDef functionDef, FunctionSymbol? functionSymbol)
+    {
+        if (functionSymbol == null)
+            return;
+
+        var (isCached, maxSize) = ExtractCacheConfig(functionDef);
+        if (!isCached)
+            return;
+
+        // Look up the current symbol the same way ProcessGeneratorMetadata/ProcessAsyncMetadata do,
+        // because the TypeChecker class scope is already popped at this point.
+        var currentSymbol = _currentClass?.Methods.FirstOrDefault(m =>
+                m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
+            ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
+        if (currentSymbol == null)
+            return;
+
+        currentSymbol.IsCached = true;
+        currentSymbol.CacheMaxSize = maxSize;
+    }
+
+    /// <summary>
+    /// Returns whether the function is decorated with <c>@lru_cache</c> or <c>@cache</c>
+    /// and, when applicable, the integer maxsize. Validation of argument shape is performed
+    /// by <c>DecoratorValidator</c>; this helper assumes the AST is well-formed when
+    /// extracting the value.
+    /// </summary>
+    private static (bool IsCached, int? MaxSize) ExtractCacheConfig(FunctionDef functionDef)
+    {
+        // @cache → unbounded
+        var cacheDecorator = functionDef.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.Cache);
+        if (cacheDecorator != null)
+            return (true, null);
+
+        var lruDecorator = functionDef.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.LruCache);
+        if (lruDecorator == null)
+            return (false, null);
+
+        // No-argument @lru_cache → default to Python's documented maxsize=128.
+        if (lruDecorator.Arguments.Length == 0 && lruDecorator.KeywordArguments.Length == 0)
+            return (true, 128);
+
+        // Single keyword: @lru_cache(maxsize=N) or @lru_cache(maxsize=None)
+        if (lruDecorator.KeywordArguments.Length == 1
+            && lruDecorator.KeywordArguments[0].Name == "maxsize")
+        {
+            var value = lruDecorator.KeywordArguments[0].Value;
+            return value switch
+            {
+                NoneLiteral => (true, null),
+                IntegerLiteral intLit when int.TryParse(intLit.Value.Replace("_", "", System.StringComparison.Ordinal), out var n) => (true, (int?)n),
+                _ => (true, 128),
+            };
+        }
+
+        // Single positional: @lru_cache(N) or @lru_cache(None)
+        if (lruDecorator.Arguments.Length == 1)
+        {
+            var value = lruDecorator.Arguments[0];
+            return value switch
+            {
+                NoneLiteral => (true, null),
+                IntegerLiteral intLit when int.TryParse(intLit.Value.Replace("_", "", System.StringComparison.Ordinal), out var n) => (true, (int?)n),
+                _ => (true, 128),
+            };
+        }
+
+        // Malformed (DecoratorValidator already reported); fall back to default.
+        return (true, 128);
     }
 
     private void CheckClass(ClassDef classDef)
