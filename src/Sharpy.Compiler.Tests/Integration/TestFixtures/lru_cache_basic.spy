@@ -1,0 +1,12 @@
+@lru_cache(maxsize=128)
+def fib(n: int) -> int:
+    if n < 2:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+def main():
+    print(fib(10))
+    print(fib(20))
+    print(fib(30))
+    # Recompute the smaller values should hit the cache and return identical results
+    print(fib(10))

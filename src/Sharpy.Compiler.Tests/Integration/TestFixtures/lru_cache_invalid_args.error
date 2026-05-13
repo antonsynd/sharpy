@@ -1,0 +1,1 @@
+requires 'maxsize' to be an integer literal or None

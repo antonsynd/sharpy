@@ -1,0 +1,18 @@
+# @cache is sugar for @lru_cache(maxsize=None) — both must memoize results
+# and produce identical output for pure functions.
+@cache
+def cached_sum(a: int, b: int) -> int:
+    return a + b
+
+@lru_cache(maxsize=None)
+def lru_sum(a: int, b: int) -> int:
+    return a + b
+
+def main():
+    print(cached_sum(2, 3))
+    print(cached_sum(2, 3))
+    print(cached_sum(10, 20))
+    print(lru_sum(2, 3))
+    print(lru_sum(10, 20))
+    # The two cached implementations must return the same values for the same inputs.
+    print(cached_sum(1, 1) == lru_sum(1, 1))
