@@ -208,7 +208,7 @@ internal partial class TypeChecker
                     else
                     {
                         AddError(
-                            $"Cannot spread non-tuple type '{spreadType}' into tuple literal; spread target must be a tuple with known arity",
+                            $"Cannot spread non-tuple type '{spreadType.GetDisplayName()}' into tuple literal; spread target must be a tuple with known arity",
                             spread.LineStart, spread.ColumnStart,
                             code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                             span: spread.Span);

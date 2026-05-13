@@ -167,6 +167,78 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateTupleLiteral(TupleLiteral tuple)
     {
+        // Spread handling: (*a, *b) → expand each spread's items into the result tuple
+        // Each spread.Value must have a TupleType (enforced in TypeChecker).
+        if (tuple.Elements.Any(e => e is SpreadElement))
+        {
+            var expandedArgs = new List<ArgumentSyntax>();
+            foreach (var elem in tuple.Elements)
+            {
+                if (elem is SpreadElement spread)
+                {
+                    var spreadType = GetExpressionSemanticType(spread.Value);
+                    var spreadExpr = GenerateExpression(spread.Value);
+
+                    if (spreadType is Semantic.TupleType tt)
+                    {
+                        // Hoist the spread expression into a temp to avoid duplicate evaluation
+                        var tempName = GenerateTempVarName("tspread");
+                        _hoistedStatements.Add(LocalDeclarationStatement(
+                            VariableDeclaration(IdentifierName("var"))
+                                .WithVariables(SingletonSeparatedList(
+                                    VariableDeclarator(Identifier(tempName))
+                                        .WithInitializer(EqualsValueClause(spreadExpr))))));
+
+                        for (int i = 0; i < tt.ElementTypes.Count; i++)
+                        {
+                            expandedArgs.Add(Argument(
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    IdentifierName(tempName),
+                                    IdentifierName($"Item{i + 1}"))));
+                        }
+                    }
+                    else
+                    {
+                        // Defensive fallback — semantic phase should have rejected this.
+                        expandedArgs.Add(Argument(spreadExpr));
+                    }
+                }
+                else
+                {
+                    expandedArgs.Add(Argument(GenerateExpression(elem)));
+                }
+            }
+
+            // A single-element tuple expression like `(x,)` is not representable as a C#
+            // TupleExpression; use ValueTuple.Create(x) instead. C# tuple literals require
+            // at least two arguments.
+            if (expandedArgs.Count == 1)
+            {
+                return InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName("System.ValueTuple"),
+                        IdentifierName("Create")))
+                    .WithArgumentList(ArgumentList(SeparatedList(expandedArgs)));
+            }
+
+            if (expandedArgs.Count == 0)
+            {
+                // Empty tuple — fall back to ValueTuple.Create()
+                return InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName("System.ValueTuple"),
+                        IdentifierName("Create")))
+                    .WithArgumentList(ArgumentList());
+            }
+
+            // C#'s tuple literal syntax handles >7 elements automatically by nesting
+            // ValueTuple<...,TRest>; no manual handling required.
+            return TupleExpression(SeparatedList(expandedArgs));
+        }
+
         var elements = tuple.Elements.Select(GenerateExpression).ToArray();
 
         // Named tuple: (x: 1.0, y: 2.0)
