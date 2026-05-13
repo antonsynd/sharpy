@@ -1074,7 +1074,8 @@ internal partial class RoslynEmitter
             for (int i = fixedPosCount; i < targetSymbol.Parameters.Count; i++)
             {
                 var p = targetSymbol.Parameters[i];
-                if (fixedKwargNames.Contains(p.Name)) continue;
+                if (fixedKwargNames.Contains(p.Name))
+                    continue;
                 remainingParamNames.Add(p.Name);
             }
         }
