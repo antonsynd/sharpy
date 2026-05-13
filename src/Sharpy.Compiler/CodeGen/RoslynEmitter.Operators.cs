@@ -782,7 +782,7 @@ internal partial class RoslynEmitter
         var resultType = GetExpressionSemanticType(tryExpr) as Semantic.ResultType;
 
         // Use typed Result.Try<T, E> when error type is known and not the default Exception
-        bool needsTypedTry = tryExpr.ExceptionType != null
+        bool needsTypedTry = tryExpr.ExceptionTypes.Length > 0
             || tryExpr.Operand is TypeCoercion
             || (resultType != null && resultType.ErrorType is Semantic.UserDefinedType { Name: not "Exception" });
 

@@ -183,8 +183,10 @@ internal class UnusedImportValidator : ValidatingAstWalker
 
     public override void VisitTryExpression(TryExpression node)
     {
-        if (node.ExceptionType != null)
-            CollectReferencesFromTypeAnnotation(node.ExceptionType, _referencedNames);
+        foreach (var exceptionType in node.ExceptionTypes)
+        {
+            CollectReferencesFromTypeAnnotation(exceptionType, _referencedNames);
+        }
         base.VisitTryExpression(node);
     }
 

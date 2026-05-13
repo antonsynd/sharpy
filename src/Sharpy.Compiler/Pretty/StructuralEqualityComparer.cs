@@ -53,7 +53,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             Parenthesized a => Equals(a.Expression, ((Parenthesized)y).Expression),
             SuperExpression => true,
             WalrusExpression a => a.Target == ((WalrusExpression)y).Target && Equals(a.Value, ((WalrusExpression)y).Value),
-            TryExpression a => Equals(a.Operand, ((TryExpression)y).Operand) && NullableTypeEquals(a.ExceptionType, ((TryExpression)y).ExceptionType),
+            TryExpression a => Equals(a.Operand, ((TryExpression)y).Operand) && TypeAnnotationsEqual(a.ExceptionTypes, ((TryExpression)y).ExceptionTypes),
             MaybeExpression a => Equals(a.Operand, ((MaybeExpression)y).Operand),
             StarExpression a => Equals(a.Operand, ((StarExpression)y).Operand),
             SpreadElement a => Equals(a.Value, ((SpreadElement)y).Value),

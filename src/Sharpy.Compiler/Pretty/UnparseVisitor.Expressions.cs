@@ -255,10 +255,17 @@ internal sealed partial class UnparseVisitor
     public override void VisitTryExpression(TryExpression node)
     {
         _w.Write("try");
-        if (node.ExceptionType != null)
+        if (!node.ExceptionTypes.IsDefaultOrEmpty)
         {
             _w.Write("[");
-            WriteTypeAnnotation(node.ExceptionType);
+            for (int i = 0; i < node.ExceptionTypes.Length; i++)
+            {
+                if (i > 0)
+                {
+                    _w.Write(" | ");
+                }
+                WriteTypeAnnotation(node.ExceptionTypes[i]);
+            }
             _w.Write("]");
         }
         _w.Write(" ");

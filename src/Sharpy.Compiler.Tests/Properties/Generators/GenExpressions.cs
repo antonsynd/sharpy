@@ -324,7 +324,9 @@ internal static class GenExpressions
             (operand, exType) => new TryExpression
             {
                 Operand = operand,
-                ExceptionType = exType
+                ExceptionTypes = exType is null
+                    ? ImmutableArray<TypeAnnotation>.Empty
+                    : ImmutableArray.Create(exType)
             });
 
     public static Gen<MaybeExpression> MaybeExpressionExpr(GenContext ctx) =>

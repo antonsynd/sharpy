@@ -173,7 +173,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         Zero(node) with { Value = (Expression)Visit(node.Value) };
 
     public override Node VisitTryExpression(TryExpression node) =>
-        Zero(node) with { Operand = (Expression)Visit(node.Operand), ExceptionType = NormalizeType(node.ExceptionType) };
+        Zero(node) with { Operand = (Expression)Visit(node.Operand), ExceptionTypes = NormalizeTypes(node.ExceptionTypes) };
 
     public override Node VisitMaybeExpression(MaybeExpression node) =>
         Zero(node) with { Operand = (Expression)Visit(node.Operand) };

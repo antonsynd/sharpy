@@ -780,10 +780,10 @@ internal partial class TypeChecker
 
         // Determine the error type
         SemanticType errorType;
-        if (tryExpr.ExceptionType != null)
+        if (tryExpr.ExceptionTypes.Length == 1)
         {
-            // Explicit exception type: try[ValueError] expr
-            errorType = _typeResolver.ResolveTypeAnnotation(tryExpr.ExceptionType);
+            // Explicit single exception type: try[ValueError] expr
+            errorType = _typeResolver.ResolveTypeAnnotation(tryExpr.ExceptionTypes[0]);
         }
         else if (tryExpr.Operand is TypeCoercion)
         {
