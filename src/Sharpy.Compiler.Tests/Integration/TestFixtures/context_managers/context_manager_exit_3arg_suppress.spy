@@ -1,0 +1,18 @@
+# Test: 3-arg __exit__ returning True suppresses the exception.
+# Execution continues after the with block.
+class Suppress:
+    def __enter__(self) -> Suppress:
+        print("enter")
+        return self
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        if exc_val is not None:
+            print("suppressing")
+            return True
+        return False
+
+def main():
+    with Suppress():
+        print("inside")
+        raise ValueError("boom")
+    print("after with")

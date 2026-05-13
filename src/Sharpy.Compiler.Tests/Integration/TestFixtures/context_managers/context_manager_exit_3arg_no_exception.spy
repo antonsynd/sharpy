@@ -1,0 +1,21 @@
+# Test: 3-arg __exit__ when body completes normally (no exception).
+# Expect __exit__ to be called once with all-None arguments.
+class Resource:
+    def __init__(self):
+        pass
+
+    def __enter__(self) -> Resource:
+        print("enter")
+        return self
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        if exc_val is not None:
+            print("exit with exception")
+            return False
+        print("exit no exception")
+        return False
+
+def main():
+    with Resource() as r:
+        print("inside")
+    print("after")

@@ -1,0 +1,12 @@
+# Test: 3-arg __exit__ rejects invalid parameter types.
+# exc_val must be Exception? but is annotated as int? here.
+class Bad:
+    def __enter__(self) -> Bad:
+        return self
+
+    def __exit__(self, exc_type: object?, exc_val: int?, exc_tb: object?) -> bool:
+        return False
+
+def main():
+    with Bad():
+        print("inside")

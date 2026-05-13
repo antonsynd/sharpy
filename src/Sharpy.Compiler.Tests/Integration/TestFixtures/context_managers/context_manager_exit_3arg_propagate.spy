@@ -1,0 +1,20 @@
+# Test: 3-arg __exit__ returning False propagates the exception.
+# An outer try/except catches the propagated ValueError.
+class Propagate:
+    def __enter__(self) -> Propagate:
+        print("enter")
+        return self
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        if exc_val is not None:
+            print("propagating")
+            return False
+        return False
+
+def main():
+    try:
+        with Propagate():
+            print("inside")
+            raise ValueError("boom")
+    except ValueError:
+        print("caught")
