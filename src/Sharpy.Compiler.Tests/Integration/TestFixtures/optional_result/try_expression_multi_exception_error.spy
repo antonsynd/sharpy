@@ -1,0 +1,8 @@
+# Non-Exception type in a try expression union must produce SPY0399.
+
+class NotAnException:
+    pass
+
+def main():
+    result = try[ValueError | NotAnException] int("42")
+    print(result.unwrap())

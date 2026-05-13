@@ -1139,6 +1139,15 @@ public static class DiagnosticExplanations
             "except* ValueError as e when True:",
             "Use a regular except handler with a when filter, or filter inside the except* body.");
 
+        // ── Semantic errors: Try expression (SPY0399) ──
+
+        Add(dict, DiagnosticCodes.Semantic.TryExceptionTypeNotException,
+            "Try expression exception type must inherit from Exception",
+            "Semantic",
+            "Every type listed in a 'try[...]' expression must be a subclass of Exception. Only exception types can be caught at runtime; listing a non-exception type would never match.",
+            "result = try[ValueError | NotAnException] foo()",
+            "Use exception types in the union, or remove the non-exception entries:\nresult = try[ValueError | KeyError] foo()");
+
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",

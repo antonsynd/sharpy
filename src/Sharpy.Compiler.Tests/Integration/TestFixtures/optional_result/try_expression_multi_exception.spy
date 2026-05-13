@@ -1,0 +1,24 @@
+# Multi-exception try expressions: try[A | B] expr and try[A | B | C] expr
+# Each catch is emitted as a separate clause so unrelated exceptions propagate.
+
+def parse_or_lookup(text: str, table: dict[str, int]) -> int:
+    # Two exception types: catch ValueError from int(), catch KeyError from dict access.
+    result = try[ValueError | KeyError] int(text) + table[text]
+    if result.is_err:
+        return -1
+    return result.unwrap()
+
+def safe_divide(a: int, b: int) -> int:
+    # Three exception types — common base is Exception.
+    result = try[ValueError | KeyError | ZeroDivisionError] a // b
+    if result.is_err:
+        return -999
+    return result.unwrap()
+
+def main():
+    table = {"1": 100, "2": 200}
+    print(parse_or_lookup("1", table))   # ok: 1 + 100
+    print(parse_or_lookup("abc", table)) # ValueError caught
+    print(parse_or_lookup("9", table))   # KeyError caught
+    print(safe_divide(10, 2))            # ok: 5
+    print(safe_divide(10, 0))            # ZeroDivisionError caught

@@ -1,0 +1,31 @@
+# Multi-exception try where listed types share a custom common base.
+# The Result error type should resolve to that shared base (NetworkError),
+# not Exception, so the consumer can downcast safely.
+
+class NetworkError(Exception):
+    pass
+
+class TimeoutError(NetworkError):
+    pass
+
+class ConnectionError(NetworkError):
+    pass
+
+def fetch_timeout(url: str) -> str:
+    raise TimeoutError()
+
+def fetch_connection(url: str) -> str:
+    raise ConnectionError()
+
+def main():
+    r1 = try[TimeoutError | ConnectionError] fetch_timeout("a")
+    if r1.is_err:
+        print("timeout-branch caught")
+    else:
+        print(r1.unwrap())
+
+    r2 = try[TimeoutError | ConnectionError] fetch_connection("b")
+    if r2.is_err:
+        print("connection-branch caught")
+    else:
+        print(r2.unwrap())
