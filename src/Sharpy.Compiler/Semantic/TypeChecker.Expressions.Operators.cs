@@ -801,7 +801,7 @@ internal partial class TypeChecker
                 if (exceptionSymbol != null && !IsExceptionSubtype(resolvedType, exceptionSymbol))
                 {
                     AddError(
-                        $"Type '{resolvedType}' in 'try' expression must be a subclass of 'Exception'",
+                        $"Type '{typeAnnotation.Name}' in 'try' expression must be a subclass of 'Exception'",
                         typeAnnotation.LineStart, typeAnnotation.ColumnStart,
                         code: DiagnosticCodes.Semantic.TryExceptionTypeNotException,
                         span: typeAnnotation.Span);
@@ -866,6 +866,8 @@ internal partial class TypeChecker
     /// Computes the most specific common ancestor for a set of exception types used
     /// in a multi-exception try expression (try[A | B | C]). Falls back to the
     /// <c>Exception</c> base type when there is no shared ancestor lower in the chain.
+    /// Uses the CLR type chain when available because exception types discovered from
+    /// CLR metadata typically have <c>Symbol.BaseType</c> unset.
     /// </summary>
     private SemanticType FindCommonExceptionBase(IReadOnlyList<SemanticType> exceptionTypes, TypeSymbol? exceptionSymbol)
     {
@@ -882,7 +884,7 @@ internal partial class TypeChecker
                 continue;
             }
 
-            var chain = TypeHierarchyService.GetAncestorChain(t);
+            var chain = GetExceptionAncestorChain(t);
             if (commonChain == null)
             {
                 commonChain = chain;
@@ -911,6 +913,42 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Walks the ancestor chain for an exception SemanticType, preferring symbol-based
+    /// inheritance but falling back to the CLR <see cref="System.Type"/> chain for types
+    /// discovered from CLR metadata (where <c>Symbol.BaseType</c> is not set). The
+    /// returned chain is ordered from most specific (the type itself) to least specific.
+    /// </summary>
+    private IReadOnlyList<SemanticType> GetExceptionAncestorChain(SemanticType type)
+    {
+        var chain = new List<SemanticType> { type };
+
+        if (type is UserDefinedType { Symbol: { } symbol })
+        {
+            // Prefer the symbol-based chain when BaseType is populated (user-defined types).
+            if (symbol.BaseType != null)
+            {
+                return TypeHierarchyService.GetAncestorChain(type);
+            }
+
+            // Otherwise walk the CLR base chain (handles CLR-discovered exception types
+            // like Sharpy.ValueError where Symbol.BaseType is not set).
+            var clrType = symbol.ClrType;
+            while (clrType?.BaseType != null)
+            {
+                clrType = clrType.BaseType;
+                var ancestorSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType(clrType.Name);
+                chain.Add(new UserDefinedType
+                {
+                    Name = clrType.Name,
+                    Symbol = ancestorSymbol
+                });
+            }
+        }
+
+        return chain;
+    }
+
+    /// <summary>
     /// Compares two semantic types for "same type" purposes during ancestor intersection.
     /// Uses <see cref="TypeHierarchyService.IsSameType"/> for user-defined types and
     /// falls back to record equality for others (BuiltinType, Object, etc).
@@ -919,10 +957,13 @@ internal partial class TypeChecker
     {
         if (ReferenceEquals(a, b))
             return true;
-        if (a is UserDefinedType ua && b is UserDefinedType ub
-            && ua.Symbol != null && ub.Symbol != null)
+        if (a is UserDefinedType ua && b is UserDefinedType ub)
         {
-            return TypeHierarchyService.IsSameType(ua.Symbol, ub.Symbol);
+            if (ua.Symbol != null && ub.Symbol != null)
+            {
+                return TypeHierarchyService.IsSameType(ua.Symbol, ub.Symbol);
+            }
+            return ua.Name == ub.Name;
         }
         return a.Equals(b);
     }

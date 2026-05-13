@@ -766,23 +766,32 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generate a try expression: try expr or try[ExceptionType] expr
-    /// Wraps the expression in Result[T, E] using Result.Try().
+    /// Generate a try expression: try expr, try[E] expr, or try[A | B | C] expr
+    /// Wraps the expression in Result[T, E] using Result.Try() or, for multi-exception
+    /// unions, an inline immediately-invoked lambda with chained catch clauses.
     /// Default: Result.Try&lt;T&gt;(() => operand) → Result&lt;T, Exception&gt;
     /// Typed: Result.Try&lt;T, E&gt;(() => operand) → Result&lt;T, E&gt;
+    /// Multi: ((Func&lt;Result&lt;T, B&gt;&gt;)(() => { try { ... } catch (A) {...} catch (B) {...} }))()
     /// </summary>
     private ExpressionSyntax GenerateTryExpression(TryExpression tryExpr)
     {
+        // Get the ResultType from semantic info to extract T and E
+        var resultType = GetExpressionSemanticType(tryExpr) as Semantic.ResultType;
+
+        // Multi-exception union: emit an IIFE with chained catches so each listed
+        // exception type is caught individually and other exceptions propagate.
+        if (tryExpr.ExceptionTypes.Length > 1)
+        {
+            return GenerateMultiExceptionTryExpression(tryExpr, resultType);
+        }
+
         // Generate the operand expression wrapped in a lambda
         var operandExpr = GenerateExpression(tryExpr.Operand);
         var lambdaExpr = ParenthesizedLambdaExpression()
             .WithExpressionBody(operandExpr);
 
-        // Get the ResultType from semantic info to extract T and E
-        var resultType = GetExpressionSemanticType(tryExpr) as Semantic.ResultType;
-
         // Use typed Result.Try<T, E> when error type is known and not the default Exception
-        bool needsTypedTry = tryExpr.ExceptionTypes.Length > 0
+        bool needsTypedTry = tryExpr.ExceptionTypes.Length == 1
             || tryExpr.Operand is TypeCoercion
             || (resultType != null && resultType.ErrorType is Semantic.UserDefinedType { Name: not "Exception" });
 
@@ -816,6 +825,82 @@ internal partial class RoslynEmitter
                     IdentifierName("Try")))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(lambdaExpr))));
         }
+    }
+
+    /// <summary>
+    /// Generates the codegen for try[A | B | C] expr — an inline immediately-invoked
+    /// Func&lt;Result&lt;T, CommonBase&gt;&gt; lambda containing a try/catch with one catch clause
+    /// per listed exception type. Each catch constructs an Err result holding the caught
+    /// exception. Any exception not listed propagates naturally to the caller.
+    /// </summary>
+    private ExpressionSyntax GenerateMultiExceptionTryExpression(
+        TryExpression tryExpr, Semantic.ResultType? resultType)
+    {
+        var operandExpr = GenerateExpression(tryExpr.Operand);
+
+        var okTypeSyntax = resultType != null
+            ? _typeMapper.MapSemanticType(resultType.OkType)
+            : (TypeSyntax)PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        var errTypeSyntax = resultType != null
+            ? _typeMapper.MapSemanticType(resultType.ErrorType)
+            : (TypeSyntax)IdentifierName("Exception");
+
+        // global::Sharpy.Result<TOk, TErr>
+        TypeSyntax resultTypeSyntax = QualifiedName(
+            AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), IdentifierName("Sharpy")),
+            GenericName("Result")
+                .WithTypeArgumentList(TypeArgumentList(SeparatedList(new[] { okTypeSyntax, errTypeSyntax }))));
+
+        // try { return global::Sharpy.Result<T, E>.Ok(operand); }
+        var okReturn = ReturnStatement(
+            InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    resultTypeSyntax,
+                    IdentifierName("Ok")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(operandExpr)))));
+
+        var tryBlock = Block(okReturn);
+
+        // catch (Ai __ex) { return global::Sharpy.Result<T, E>.Err(__ex); }
+        const string CatchVarName = "__ex";
+        var catchClauses = new List<CatchClauseSyntax>(tryExpr.ExceptionTypes.Length);
+        foreach (var typeAnnotation in tryExpr.ExceptionTypes)
+        {
+            var catchType = _typeMapper.MapType(typeAnnotation);
+
+            var errReturn = ReturnStatement(
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        resultTypeSyntax,
+                        IdentifierName("Err")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(IdentifierName(CatchVarName))))));
+
+            catchClauses.Add(CatchClause()
+                .WithDeclaration(CatchDeclaration(catchType).WithIdentifier(Identifier(CatchVarName)))
+                .WithBlock(Block(errReturn)));
+        }
+
+        var tryStmt = TryStatement()
+            .WithBlock(tryBlock)
+            .WithCatches(List(catchClauses));
+
+        // () => { try { ... } catch ... catch ... }
+        var lambda = ParenthesizedLambdaExpression()
+            .WithBlock(Block(tryStmt));
+
+        // System.Func<Result<T, E>>
+        var funcType = QualifiedName(
+            IdentifierName("System"),
+            GenericName("Func")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(resultTypeSyntax))));
+
+        // ((Func<Result<T, E>>)(() => { ... }))()
+        var castLambda = ParenthesizedExpression(CastExpression(funcType, ParenthesizedExpression(lambda)));
+        return InvocationExpression(castLambda)
+            .WithArgumentList(ArgumentList());
     }
 
     /// <summary>

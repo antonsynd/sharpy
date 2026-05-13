@@ -150,17 +150,20 @@ public partial class Parser
             var startToken = Current;
             Advance();  // Skip 'try'
 
-            // Check for optional exception type list: try[ValueError] expr or try[A | B] expr
+            // Check for optional exception type list: try[ValueError] expr or try[A | B] expr.
+            // We parse each entry with ParseTypeAnnotationCore so the '|' delimiter is used
+            // for the union rather than being consumed as the '| None' nullable suffix
+            // (which would not be meaningful for an exception type anyway).
             var exceptionTypes = ImmutableArray<TypeAnnotation>.Empty;
             if (Current.Type == TokenType.LeftBracket)
             {
                 Advance();  // Skip '['
                 var typesBuilder = ImmutableArray.CreateBuilder<TypeAnnotation>();
-                typesBuilder.Add(ParseTypeAnnotation());
+                typesBuilder.Add(ParseTypeAnnotationCore());
                 while (Current.Type == TokenType.Pipe)
                 {
                     Advance();  // Skip '|'
-                    typesBuilder.Add(ParseTypeAnnotation());
+                    typesBuilder.Add(ParseTypeAnnotationCore());
                 }
                 Expect(TokenType.RightBracket);
                 exceptionTypes = typesBuilder.ToImmutable();
