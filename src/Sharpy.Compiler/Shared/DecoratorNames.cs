@@ -17,6 +17,8 @@ internal static class DecoratorNames
     public const string Dataclass = "dataclass";
     public const string Deprecated = "deprecated";
     public const string Readonly = "readonly";
+    public const string LruCache = "lru_cache";
+    public const string Cache = "cache";
 
     // Access modifiers
     public const string Public = "public";
