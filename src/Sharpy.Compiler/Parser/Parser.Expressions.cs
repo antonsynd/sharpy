@@ -1017,20 +1017,7 @@ public partial class Parser
     /// </summary>
     private Expression LowerPartialApplicationCall(FunctionCall call)
     {
-        // Check keyword args for placeholder usage (not allowed)
-        foreach (var kwarg in call.KeywordArguments)
-        {
-            if (kwarg.Value is Identifier { Name: "_" })
-            {
-                ReportError(
-                    "Cannot use '_' placeholder in keyword arguments",
-                    kwarg.LineStart, kwarg.ColumnStart,
-                    DiagnosticCodes.Parser.PlaceholderInKeywordArg,
-                    span: kwarg.Value.Span);
-            }
-        }
-
-        // Check if any positional argument is a placeholder
+        // Check if any positional or keyword argument is a placeholder
         var hasPlaceholder = false;
         var hasSpread = false;
         foreach (var arg in call.Arguments)
@@ -1039,6 +1026,11 @@ public partial class Parser
                 hasPlaceholder = true;
             if (arg is SpreadElement)
                 hasSpread = true;
+        }
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (kwarg.Value is Identifier { Name: "_" })
+                hasPlaceholder = true;
         }
 
         if (!hasPlaceholder)
@@ -1064,7 +1056,9 @@ public partial class Parser
             return call;
         }
 
-        // Lower to lambda: replace each Identifier("_") with a unique parameter
+        // Lower to lambda. Parameter ordering:
+        //   positional placeholders first (left-to-right),
+        //   then keyword placeholders (appearance order, named after the keyword).
         var placeholderIndex = 0;
         var parameters = new List<Parameter>();
         var modifiedArgs = new List<Expression>(call.Arguments.Length);
@@ -1103,9 +1097,48 @@ public partial class Parser
             }
         }
 
+        var modifiedKwargs = new List<KeywordArgument>(call.KeywordArguments.Length);
+
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (kwarg.Value is Identifier { Name: "_" } kwPlaceholder)
+            {
+                var paramName = kwarg.Name;
+                parameters.Add(new Parameter
+                {
+                    Name = paramName,
+                    Type = null,
+                    DefaultValue = null,
+                    Kind = ParameterKind.Normal,
+                    LineStart = kwPlaceholder.LineStart,
+                    ColumnStart = kwPlaceholder.ColumnStart,
+                    LineEnd = kwPlaceholder.LineEnd,
+                    ColumnEnd = kwPlaceholder.ColumnEnd,
+                    Span = kwPlaceholder.Span
+                });
+                modifiedKwargs.Add(kwarg with
+                {
+                    Value = new Identifier
+                    {
+                        Name = paramName,
+                        LineStart = kwPlaceholder.LineStart,
+                        ColumnStart = kwPlaceholder.ColumnStart,
+                        LineEnd = kwPlaceholder.LineEnd,
+                        ColumnEnd = kwPlaceholder.ColumnEnd,
+                        Span = kwPlaceholder.Span
+                    }
+                });
+            }
+            else
+            {
+                modifiedKwargs.Add(kwarg);
+            }
+        }
+
         var modifiedCall = call with
         {
-            Arguments = modifiedArgs.ToImmutableArray()
+            Arguments = modifiedArgs.ToImmutableArray(),
+            KeywordArguments = modifiedKwargs.ToImmutableArray()
         };
 
         return new LambdaExpression

@@ -340,9 +340,9 @@ public static class DiagnosticExplanations
             "Place at least one parameter before '/':\ndef foo(a: int, /): ...");
 
         Add(dict, DiagnosticCodes.Parser.PlaceholderInKeywordArg, "Placeholder in keyword argument", "Parser",
-            "The '_' placeholder for partial application cannot be used as the value of a keyword argument. Placeholders are only allowed in positional arguments.",
+            "Reserved diagnostic. Keyword argument '_' placeholders are supported and lower to a lambda whose parameter is named after the keyword.",
             "result = f(x=_)",
-            "Use a lambda instead:\nresult = lambda v: f(x=v)");
+            "result = f(x=_)  # lowers to: (x) => f(x=x)");
 
         Add(dict, DiagnosticCodes.Parser.PlaceholderWithSpread, "Placeholder with spread argument", "Parser",
             "The '_' placeholder for partial application cannot be mixed with spread (*) arguments in the same call. The number of arguments would be ambiguous.",

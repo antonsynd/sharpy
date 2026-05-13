@@ -160,7 +160,7 @@ public static class DiagnosticCodes
         public const string DuplicateSlashMarker = "SPY0127";       // Active
         public const string DuplicateStarMarker = "SPY0128";        // Active
         public const string SlashAtStart = "SPY0129";               // Active
-        public const string PlaceholderInKeywordArg = "SPY0130";    // Active
+        public const string PlaceholderInKeywordArg = "SPY0130";    // Reserved — keyword '_' placeholders are now supported
         public const string PlaceholderWithSpread = "SPY0131";      // Active
         public const string PlaceholderOutsideCallOrOperator = "SPY0132"; // Allocated — not yet emitted
         public const string NestedPlaceholder = "SPY0133";          // Allocated — not yet emitted
