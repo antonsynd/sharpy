@@ -88,10 +88,22 @@ internal static class GenTyped
             });
 
     private static Gen<Expression> BooleanLogic(TypeEnv env, int fuel) =>
+        Gen.OneOf(
+            Gen.Select(
+                ExpressionOfType(env, "bool", fuel),
+                ExpressionOfType(env, "bool", fuel),
+                Gen.OneOfConst(BinaryOperator.And, BinaryOperator.Or),
+                (left, right, op) => (Expression)new BinaryOp { Left = left, Right = right, Operator = op }),
+            ComparisonExpression(env, fuel));
+
+    private static Gen<Expression> ComparisonExpression(TypeEnv env, int fuel) =>
         Gen.Select(
-            ExpressionOfType(env, "bool", fuel),
-            ExpressionOfType(env, "bool", fuel),
-            Gen.OneOfConst(BinaryOperator.And, BinaryOperator.Or),
+            Gen.OneOfConst("int", "float").SelectMany(t => ExpressionOfType(env, t, fuel)),
+            Gen.OneOfConst("int", "float").SelectMany(t => ExpressionOfType(env, t, fuel)),
+            Gen.OneOfConst(
+                BinaryOperator.Equal, BinaryOperator.NotEqual,
+                BinaryOperator.LessThan, BinaryOperator.LessThanOrEqual,
+                BinaryOperator.GreaterThan, BinaryOperator.GreaterThanOrEqual),
             (left, right, op) => (Expression)new BinaryOp { Left = left, Right = right, Operator = op });
 
     private static Gen<Expression> ConditionalOfType(TypeEnv env, string targetType, int fuel) =>
