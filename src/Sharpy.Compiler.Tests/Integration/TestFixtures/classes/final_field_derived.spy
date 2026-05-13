@@ -1,0 +1,18 @@
+class Base:
+    @final
+    id: int
+
+    def __init__(self, id: int):
+        self.id = id
+
+class Derived(Base):
+    name: str
+
+    def __init__(self, id: int, name: str):
+        super().__init__(id)
+        self.id = id
+        self.name = name
+
+def main():
+    d = Derived(1, "foo")
+    print(d.name)

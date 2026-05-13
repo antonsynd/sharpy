@@ -1,0 +1,13 @@
+class Counter:
+    @final
+    start: int
+
+    def __init__(self, start: int):
+        self.start = start
+
+    def reset(self) -> None:
+        self.start = 0
+
+def main():
+    c = Counter(10)
+    c.reset()
