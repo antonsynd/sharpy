@@ -8,7 +8,7 @@ For rejected features, see [rejected_proposals.md](rejected_proposals.md).
 
 ## Tier 1 — Low Complexity, High Value
 
-### 1.1 Try Expression Multi-Exception Types
+### 1.1 Try Expression Multi-Exception Types ✅ Implemented
 
 **Issue:** [#424](https://github.com/antonsynd/sharpy/issues/424)
 **Spec:** [try_expressions.md](try_expressions.md)
@@ -35,7 +35,7 @@ x = try[ValueError | TypeError] int(input_str)
 
 ---
 
-### 1.2 Keyword Argument Partial Application (`_`)
+### 1.2 Keyword Argument Partial Application (`_`) ✅ Implemented
 
 **Spec:** [partial_application.md](partial_application.md)
 
@@ -71,7 +71,7 @@ robust_fetch("https://api.example.com", True)
 
 ---
 
-### 1.3 `@final` Field Decorator
+### 1.3 `@final` Field Decorator ✅ Implemented
 
 **Spec reference:** [statements.md](statements.md) line 218
 
@@ -105,7 +105,7 @@ class Config:
 
 ---
 
-### 1.4 Tuple Spreading
+### 1.4 Tuple Spreading ✅ Implemented
 
 **Spec:** [spread_operator.md](spread_operator.md)
 
@@ -135,7 +135,7 @@ coords = (*point_2d, z_value)  # Convert 2D to 3D
 
 ## Tier 2 — Medium Complexity
 
-### 2.1 `functools.partial` (Compatibility Shim)
+### 2.1 `functools.partial` (Compatibility Shim) ✅ Implemented
 
 **Issue:** [#396](https://github.com/antonsynd/sharpy/issues/396)
 
@@ -169,7 +169,7 @@ square = power(_, exp=2)
 
 ---
 
-### 2.2 Context Manager `__exit__` with Exception Args
+### 2.2 Context Manager `__exit__` with Exception Args ✅ Implemented
 
 **Spec:** [context_managers.md](context_managers.md) RFC section
 
@@ -202,7 +202,7 @@ class SuppressErrors:
 
 ---
 
-### 2.3 `functools.lru_cache` / `cache`
+### 2.3 `functools.lru_cache` / `cache` ✅ Implemented
 
 **Issue:** [#396](https://github.com/antonsynd/sharpy/issues/396)
 
@@ -265,7 +265,7 @@ Allow circular imports when imported symbols are used only in type annotation po
 
 ## Tier 4 — Standard Library
 
-### 4.1 Grapheme Cluster Module
+### 4.1 Grapheme Cluster Module ✅ Implemented
 
 **Spec reference:** [string_type.md](string_type.md) line 110
 
@@ -296,31 +296,8 @@ grapheme.slice("Héllo", 0, 3)  # "Hél"
 
 ## Proposals (Not Committed)
 
-These are ideas under consideration. They may be implemented, modified, or rejected based on further discussion.
-
-### Property Observers (`willset`/`didset`)
-
-**Issue:** [#416](https://github.com/antonsynd/sharpy/issues/416)
-
-Swift-inspired property observers for side effects on auto-properties. This is a proposal — not yet part of the committed language design.
-
-**Proposed syntax:**
-```python
-class Character:
-    property health: int
-        didset:
-            print(f"health changed from {oldvalue} to {self.health}")
-        willset(new_value):
-            assert new_value >= 0
-```
-
-**Open questions:**
-- Does this add enough value over converting to a function-style property with custom getter/setter?
-- Should `oldvalue` be a contextual keyword or an explicit parameter?
-- How does this interact with `@override` properties?
-- Is this orthogonal to events, or does it overlap?
-
-See [#416](https://github.com/antonsynd/sharpy/issues/416) for ongoing discussion.
+See [docs/design/](../design/) for standalone proposal documents:
+- [Property Observers (`willset`/`didset`)](../design/property-observers-proposal.md) — [#416](https://github.com/antonsynd/sharpy/issues/416)
 
 ---
 
