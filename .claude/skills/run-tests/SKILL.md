@@ -27,9 +27,9 @@ Run Sharpy tests with optional filter. Output is smart-truncated to avoid token 
 
 1. Run `mkdir -p .claude/tmp` to ensure log directory exists
 2. Clear the old log with `rm -f .claude/tmp/last-test-run.log`
-3. Build first: `dotnet build sharpy.sln --nologo -v q >> .claude/tmp/last-test-run.log 2>&1`. If build fails, print "=== BUILD FAILED — cannot run tests ===" then `tail -30 .claude/tmp/last-test-run.log` and stop.
-4. If `$ARGUMENTS` is non-empty, run: `dotnet test --filter "FullyQualifiedName~$ARGUMENTS&Category!=Benchmark" --no-build --logger "console;verbosity=normal" >> .claude/tmp/last-test-run.log 2>&1`
-5. Otherwise run: `dotnet test --filter "Category!=Benchmark" --no-build --logger "console;verbosity=normal" >> .claude/tmp/last-test-run.log 2>&1`
+3. Build first: `.claude/scripts/dotnet-serialized build sharpy.sln --nologo -v q >> .claude/tmp/last-test-run.log 2>&1`. If build fails, print "=== BUILD FAILED — cannot run tests ===" then `tail -30 .claude/tmp/last-test-run.log` and stop.
+4. If `$ARGUMENTS` is non-empty, run: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~$ARGUMENTS&Category!=Benchmark" --no-build --logger "console;verbosity=normal" >> .claude/tmp/last-test-run.log 2>&1`
+5. Otherwise run: `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --no-build --logger "console;verbosity=normal" >> .claude/tmp/last-test-run.log 2>&1`
 6. Check exit code:
    - Exit 0: Print "=== TESTS PASSED ===" then `tail -20 .claude/tmp/last-test-run.log`
    - Exit non-zero: Print "=== TESTS FAILED (last 80 lines) ===" then `tail -80 .claude/tmp/last-test-run.log`, then echo "Full log: .claude/tmp/last-test-run.log"

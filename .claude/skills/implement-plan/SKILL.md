@@ -87,13 +87,20 @@ CRITICAL RULES:
 - Language spec is authoritative — check docs/language_specification/ before implementing
 - TODO/BUG/FIXME comments must reference GitHub issues
 
+CRITICAL — SERIALIZED DOTNET EXECUTION:
+NEVER run `dotnet build` or `dotnet test` directly. Always use `.claude/scripts/dotnet-serialized` instead.
+This wrapper acquires an exclusive lock so only one dotnet process runs at a time.
+Multiple concurrent dotnet test runs will consume 5-10 GB RAM EACH and crash the system.
+The wrapper is a drop-in replacement — same args, same output, same exit code.
+You MUST use `dangerouslyDisableSandbox: true` for all dotnet commands.
+
 WORKFLOW:
 1. Read the plan section for your task
 2. Read existing code patterns in the area you're modifying
 3. Write tests first or alongside implementation (not after)
 4. Implement the changes
-5. Run component-specific tests: `dotnet test --filter "FullyQualifiedName~[Component]"`
-6. Run the full test suite: `dotnet test`
+5. Run component-specific tests: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~[Component]" --no-build`
+6. Run the full test suite: `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --no-build`
 7. Run `dotnet format whitespace`
 8. Stage ONLY the specific files you changed (never `git add -A` or `git add .`)
 9. Commit with a descriptive message referencing the plan section
@@ -119,9 +126,9 @@ After each task is completed by an agent:
 
 After all implementation tasks are complete, the `verification-expert` runs:
 
-1. `dotnet build sharpy.sln` — must succeed
-2. `dotnet test` — compare against baseline (no new failures)
-3. File-based integration tests: `dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`
+1. `.claude/scripts/dotnet-serialized build sharpy.sln` — must succeed
+2. `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --no-build` — compare against baseline (no new failures)
+3. File-based integration tests: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~FileBasedIntegrationTests" --no-build`
 4. Sample `emit csharp` on representative .spy files: pick 3-5 from test fixtures
 5. `dotnet format whitespace` — verify no changes needed (clean working tree)
 6. `git diff --stat` — summarize all changes made

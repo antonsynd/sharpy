@@ -27,6 +27,8 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect lexer tok
 
 > **Prefer skills over raw commands:** Use `/build`, `/run-tests`, `/spy-emit`, `/spy-run`, `/quick-check` instead of raw `dotnet` commands. Skills handle logging, truncation, and temp file management (avoiding bash escaping issues with `#` and backticks in Sharpy source).
 
+> **CRITICAL — Serialized dotnet execution:** When multiple agents run in parallel, **NEVER** call `dotnet build` or `dotnet test` directly. Use the serialized wrapper `.claude/scripts/dotnet-serialized` which acquires an exclusive flock so only one dotnet process runs at a time. Concurrent `dotnet test` invocations each consume 5-10 GB RAM (Roslyn + 9600 tests); three in parallel will OOM and crash the system. The wrapper is a drop-in replacement — same args, same output, same exit code. Example: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer" --no-build`.
+
 ## Architecture
 
 ```

@@ -17,7 +17,7 @@ Build the Sharpy solution. Output is smart-truncated to avoid token overload whi
 
 1. Run `mkdir -p .claude/tmp` to ensure log directory exists
 2. Clear the old log with `rm -f .claude/tmp/last-build.log`
-3. Run: `dotnet build sharpy.sln > .claude/tmp/last-build.log 2>&1`
+3. Run: `.claude/scripts/dotnet-serialized build sharpy.sln > .claude/tmp/last-build.log 2>&1`
 4. Check exit code:
    - Exit 0: Print "=== BUILD SUCCEEDED ===" then `tail -10 .claude/tmp/last-build.log`
    - Exit non-zero: Print "=== BUILD FAILED (last 100 lines) ===" then `tail -100 .claude/tmp/last-build.log`, then echo "=== Full log: .claude/tmp/last-build.log ==="

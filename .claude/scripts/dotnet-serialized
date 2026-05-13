@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Serialized dotnet wrapper — ensures only one dotnet build/test runs at a time.
+# Uses mkdir-based locking (atomic on all platforms) so concurrent agents queue
+# instead of OOM-ing the system.
+#
+# Drop-in replacement for `dotnet`: same arguments, same stdout/stderr, same exit code.
+# The ONLY difference is that concurrent calls block until the lock is free.
+#
+# Usage:  .claude/scripts/dotnet-serialized build sharpy.sln --nologo -v q
+#         .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer"
+
+LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
+TIMEOUT=900  # 15 minutes
+
+cleanup() {
+    rm -rf "$LOCK_DIR" 2>/dev/null
+}
+
+acquire_lock() {
+    local waited=0
+    while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+        if [ "$waited" -ge "$TIMEOUT" ]; then
+            echo "ERROR: Timed out waiting for dotnet lock after $((TIMEOUT/60)) minutes." >&2
+            echo "Another dotnet command may be hung. Run: pkill -f dotnet" >&2
+            exit 124
+        fi
+        sleep 2
+        waited=$((waited + 2))
+    done
+    # Store our PID so stale locks can be identified
+    echo $$ > "$LOCK_DIR/pid"
+    trap cleanup EXIT
+}
+
+mkdir -p "${HOME}/.claude/locks"
+acquire_lock
+
+dotnet "$@"
+EXIT_CODE=$?
+
+cleanup
+trap - EXIT
+exit $EXIT_CODE
