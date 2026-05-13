@@ -250,21 +250,40 @@ result = data
     |> sorted(_)
 ```
 
+## Keyword Argument Placeholders
+
+The `_` placeholder is supported in keyword argument positions. The
+generated lambda parameter takes the name of the keyword:
+
+```python
+# Sharpy
+fix_y = f(x=_, y=10)        # (x) => f(x=x, y=10)
+fix_x = f(x=3, y=_)         # (y) => f(x=3, y=y)
+both  = f(x=_, y=_)         # (x, y) => f(x=x, y=y)
+```
+
+Positional and keyword placeholders can be mixed. The resulting lambda
+takes positional placeholders first (in source order), followed by
+keyword placeholders (in source order):
+
+```python
+# Sharpy
+mixed = f(_, y=_)           # (__placeholder_0, y) => f(__placeholder_0, y=y)
+```
+
 ## Limitations
 
-- Cannot use `_` for keyword arguments (positional only)
 - Cannot mix `_` with `*args` or `**kwargs`
 - Placeholders must be in valid argument positions
 
 ```python
-# ❌ Cannot use with keyword arguments
-func(x=_, y=5)  # ERROR
-
 # ❌ Cannot use with *args
 func(_, *rest)  # ERROR
 
-# ✅ Only positional arguments
+# ✅ Positional, keyword, or both
 func(_, 5, _)   # OK
+func(x=_, y=5)  # OK
+func(_, y=_)    # OK
 ```
 
 ## C# Mapping
@@ -292,6 +311,20 @@ is_positive = (_ > 0)
 // C# 9.0
 Func<int, int> doubler = (x) => x * 2;
 Func<int, bool> isPositive = (x) => x > 0;
+```
+
+**Keyword Placeholders:**
+```python
+# Sharpy
+fix_y = f(x=_, y=10)
+both  = f(x=_, y=_)
+mixed = f(_, y=_)
+```
+```csharp
+// C# 9.0
+Func<int, int> fixY = (x) => F(x: x, y: 10);
+Func<int, int, int> both = (x, y) => F(x: x, y: y);
+Func<int, int, int> mixed = (__placeholder_0, y) => F(__placeholder_0, y: y);
 ```
 
 ## Performance Considerations
