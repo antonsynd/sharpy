@@ -473,7 +473,11 @@ public static class DiagnosticCodes
         public const string ConversionOperatorParamCount = "SPY0437";      // Active
         public const string ConversionOperatorNoEnclosingType = "SPY0438"; // Active
         public const string ConversionOperatorDuplicate = "SPY0439";       // Active
-        // SPY0440-SPY0449: Reserved for future validation errors
+
+        // @final field validation (SPY0440-SPY0441)
+        public const string FinalFieldAssignmentOutsideConstructor = "SPY0440"; // Active
+        public const string FinalOnLocalVariable = "SPY0441";              // Active
+        // SPY0442-SPY0449: Reserved for future validation errors
 
         #endregion
 

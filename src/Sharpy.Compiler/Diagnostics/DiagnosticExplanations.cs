@@ -1526,6 +1526,25 @@ public static class DiagnosticExplanations
             "@static\ndef __implicit__(val: int) -> Foo: ...\n@static\ndef __explicit__(val: int) -> Foo: ...",
             "Choose either __implicit__ or __explicit__ for each type pair.");
 
+        // ── Validation errors: @final field restrictions (SPY0440-SPY0441) ──
+
+        Add(dict, DiagnosticCodes.Validation.FinalFieldAssignmentOutsideConstructor,
+            "Cannot assign to @final field outside of constructor",
+            "Validation",
+            "A field declared with @final can only be assigned inside the declaring type's __init__ constructor. " +
+            "Subsequent assignments in other methods (or in a derived class's __init__) are forbidden. " +
+            "@final fields emit as C# readonly.",
+            "class Point:\n    @final\n    x: int\n\n    def __init__(self, x: int):\n        self.x = x\n\n    def reset(self):\n        self.x = 0  # SPY0440 error",
+            "Either remove @final from the field, or move the assignment into __init__ of the declaring class.");
+
+        Add(dict, DiagnosticCodes.Validation.FinalOnLocalVariable,
+            "@final is not valid on a local variable",
+            "Validation",
+            "The @final decorator may only be applied to class or struct fields. " +
+            "Local variables and parameters cannot be marked @final.",
+            "def foo():\n    @final\n    x: int = 1  # SPY0441 error",
+            "Remove the @final decorator. Use a plain local variable, or move the value to a @final field on a type.");
+
         // ── Validation warnings: Deprecation (SPY0464) ─────────────────
 
         Add(dict, DiagnosticCodes.Validation.DeprecatedBodylessSyntax,

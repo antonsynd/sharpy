@@ -33,6 +33,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new ControlFlowValidator())       // Order: 400 (CFG-based, handles unreachable code)
             .AddValidator(new ExhaustivenessValidator())    // Order: 405 (match exhaustiveness)
             .AddValidator(new PropertyValidator())           // Order: 410 (property declaration rules)
+            .AddValidator(new FinalFieldValidator())        // Order: 411 (@final field assignment restrictions)
             .AddValidator(new EventValidator())             // Order: 412 (event declaration rules)
             .AddValidator(new VarianceValidator())            // Order: 415 (type parameter variance rules)
             .AddValidator(new UnusedVariableValidator())      // Order: 420 (unused variable warnings)
