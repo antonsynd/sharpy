@@ -34,13 +34,13 @@ rm -f .claude/tmp/property-stress/*.log
 
 ### 3. Build
 
-Run `dotnet build sharpy.sln --nologo -v q 2>&1 | tail -5`. If build fails, print "BUILD FAILED — cannot stress test" and stop.
+Run `.claude/scripts/dotnet-serialized build sharpy.sln --nologo -v q 2>&1 | tail -5`. If build fails, print "BUILD FAILED — cannot stress test" and stop.
 
 ### 4. Run rounds
 
 For each round 1..N:
 1. Print progress: `=== Round {i}/{N} ===`
-2. Run: `dotnet test src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj --filter "{filter}" --no-build --logger "console;verbosity=normal" > .claude/tmp/property-stress/round-{i}.log 2>&1`
+2. Run: `.claude/scripts/dotnet-serialized test src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj --filter "{filter}" --no-build --logger "console;verbosity=normal" > .claude/tmp/property-stress/round-{i}.log 2>&1`
 3. Kill lingering test host processes to prevent memory accumulation: `pkill -f testhost 2>/dev/null || true`
 4. If exit code is non-zero:
    - Extract failure blocks from the log. Look for lines containing `[FAIL]` to get test names, and lines containing `Set seed:` to get CsCheck reproduction seeds.
