@@ -111,7 +111,7 @@ See [lambdas.md](lambdas.md) for lambda expressions.
 
 See [partial_application.md](partial_application.md) for partial application with `_` placeholder.
 
-See [expression_blocks.md](expression_blocks.md) for `do:` expression blocks.
+See [expression_blocks.md](expression_blocks.md) for `do:` expression blocks (❌ rejected — preserved for reference).
 
 ---
 
@@ -389,3 +389,15 @@ See [program_entry_point.md](program_entry_point.md) for the program entry point
 ## Deferred Features
 
 See [deferred_features.md](deferred_features.md) for features requiring newer C#/.NET versions.
+
+---
+
+## Rejected Proposals
+
+See [rejected_proposals.md](rejected_proposals.md) for features that were considered and explicitly rejected.
+
+---
+
+## Feature Roadmap
+
+See [feature_roadmap.md](feature_roadmap.md) for the implementation plan for upcoming features.

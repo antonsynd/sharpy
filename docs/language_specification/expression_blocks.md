@@ -1,6 +1,6 @@
 # Expression Blocks
 
-> **Implementation status:** Deferred post-v0.2.x — lambdas and helper functions suffice for most use cases.
+> **Status:** ❌ Rejected — lambdas and helper functions cover all use cases. See [rejected_proposals.md](rejected_proposals.md#expression-blocks-do).
 
 Expression blocks (`do:`) allow multiple statements to be grouped into a single expression that evaluates to the last value, inspired by Rust's everything-is-an-expression philosophy.
 
@@ -269,5 +269,4 @@ x = do:
 - Logic should be extracted to a named function
 - You need loops (use comprehensions or regular code instead)
 
-*Implementation*
-- *❌ Deferred post-v0.2.x. When implemented, will be lowered to immediately-invoked lambda expression (IILE).*
+*Status: ❌ Rejected. This document is preserved for historical reference. See [rejected_proposals.md](rejected_proposals.md#expression-blocks-do).*

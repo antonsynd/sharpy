@@ -1,8 +1,8 @@
 # Spread Operator
 
 > **Implementation status:** Spreading in collection literals (`[*a, *b]`, `{*s1, *s2}`, `{**d1, **d2}`) and
-> positional call-site spreading (`f(*args)`) are implemented. Tuple spreading, object copy with overrides,
-> and `**kwargs` call-site spreading are not yet supported.
+> positional call-site spreading (`f(*args)`) are implemented. Tuple spreading is not yet supported.
+> `**kwargs` call-site spreading is rejected — see [rejected_proposals.md](rejected_proposals.md#dynamic_kwargs-and-kwargs-call-site-spreading).
 
 The spread operator enables concise syntax for unpacking collections and objects in various contexts, extending Python's `*` and `**` operators.
 
@@ -63,9 +63,9 @@ result = some_function(*args)
 pair = (10, 20)
 add(*pair)  # Equivalent to: add(pair.Item1, pair.Item2)
 
-# ❌ NOT SUPPORTED: **kwargs spreading in function calls
+# ❌ REJECTED: **kwargs spreading in function calls
 # kwargs = {"prefix": ">>", "suffix": "<<"}
-# format_text(**kwargs)  # ERROR: dict spreading in calls not supported
+# format_text(**kwargs)  # ERROR: dict spreading in calls is rejected
 # Use named arguments instead: format_text(prefix=">>", suffix="<<")
 ```
 
@@ -99,14 +99,11 @@ combined = {*set1, *set2}  # {1, 2, 3, 4, 5}
 expanded = {*original_set, new_element}
 ```
 
-## Object Copy with Overrides
+## Object Copy with Named Arguments
 
-> **Not yet implemented.**
-
-Create modified copies of objects using spread:
+Create modified copies of dataclass/struct instances using named arguments:
 
 ```python
-# With dataclasses/structs
 @dataclass
 class User:
     name: str
@@ -115,12 +112,13 @@ class User:
 
 original = User(name="Alice", email="alice@example.com", age=30)
 
-# Create copy with changes
-updated = original.copy(**{"age": 31, "email": "newalice@example.com"})
-
-# Or with explicit fields
+# Create copy with changes using named arguments
 updated = original.copy(age=31, email="newalice@example.com")
 ```
+
+> **Note:** The dict-spreading form `original.copy(**{"age": 31})` is rejected.
+> See [rejected_proposals.md](rejected_proposals.md#dynamic_kwargs-and-kwargs-call-site-spreading).
+> Use named arguments instead.
 
 ## Spreading Iterables
 
@@ -210,9 +208,10 @@ all_tags = {*required_tags, *optional_tags}
 def wrapper(*args: int):
     return underlying_function(*args)
 
-# ❌ NOT YET SUPPORTED: **kwargs forwarding requires @dynamic_kwargs (Phase 11)
+# ❌ REJECTED: **kwargs forwarding — conflicts with static typing
 # def wrapper(*args, **kwargs):
 #     return underlying_function(*args, **kwargs)
+# See rejected_proposals.md for rationale
 ```
 
 **Immutable Updates:**
@@ -249,7 +248,7 @@ Where spreading is allowed:
 | Function call (positional) | `f(*args)` | `func(*items)` | ✅ |
 | Unpacking | `a, *rest = ...` | `first, *middle, last = items` | ✅ |
 | Tuple literal | `(*expr)` | `(1, *others, 5)` | ❌ Not yet |
-| Function call (kwargs) | `f(**kwargs)` | `func(**opts)` | ❌ Not yet |
+| Function call (kwargs) | `f(**kwargs)` | `func(**opts)` | ❌ Rejected |
 
 ## Limitations
 
