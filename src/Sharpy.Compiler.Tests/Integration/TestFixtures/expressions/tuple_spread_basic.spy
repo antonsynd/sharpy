@@ -1,0 +1,8 @@
+def main():
+    a: tuple[int, int] = (1, 2)
+    b: tuple[int, int] = (3, 4)
+    c = (*a, *b)
+    print(c[0])
+    print(c[1])
+    print(c[2])
+    print(c[3])

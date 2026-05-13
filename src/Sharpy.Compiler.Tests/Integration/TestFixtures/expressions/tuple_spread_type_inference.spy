@@ -1,0 +1,9 @@
+def main():
+    # Heterogeneous element types are preserved through concatenation
+    a: tuple[int, str] = (1, "hello")
+    b: tuple[bool, float] = (True, 3.5)
+    combined = (*a, *b)
+    print(combined[0])
+    print(combined[1])
+    print(combined[2])
+    print(combined[3])

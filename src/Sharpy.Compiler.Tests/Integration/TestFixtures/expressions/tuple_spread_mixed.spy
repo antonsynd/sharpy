@@ -1,0 +1,13 @@
+def main():
+    pair: tuple[int, int] = (10, 20)
+    triple = (*pair, 30)
+    print(triple[0])
+    print(triple[1])
+    print(triple[2])
+
+    # Spread surrounded by literals
+    surrounded = (0, *pair, 99)
+    print(surrounded[0])
+    print(surrounded[1])
+    print(surrounded[2])
+    print(surrounded[3])
