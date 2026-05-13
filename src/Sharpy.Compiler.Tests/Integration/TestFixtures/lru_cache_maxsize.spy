@@ -1,0 +1,15 @@
+# Test lru_cache with small maxsize — verifies correctness under eviction
+@lru_cache(maxsize=2)
+def square(n: int) -> int:
+    return n * n
+
+def main():
+    # Fill cache with 2 entries
+    print(square(3))
+    print(square(4))
+    # This evicts square(3) from cache
+    print(square(5))
+    # Recompute square(3) — cache miss but must return correct value
+    print(square(3))
+    # square(4) was evicted by square(3) — must still return correct value
+    print(square(4))
