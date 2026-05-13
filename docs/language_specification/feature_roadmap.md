@@ -35,7 +35,43 @@ x = try[ValueError | TypeError] int(input_str)
 
 ---
 
-### 1.2 `@final` Field Decorator
+### 1.2 Keyword Argument Partial Application (`_`)
+
+**Spec:** [partial_application.md](partial_application.md)
+
+Extend the existing `_` placeholder partial application to support keyword arguments.
+
+**Syntax:**
+```python
+def fetch_url(url: str, timeout: int, retry: bool) -> str:
+    ...
+
+# Today: positional only
+quick_fetch = fetch_url(_, 5, False)
+
+# Proposed: keyword arguments
+robust_fetch = fetch_url(_, timeout=30, retry=_)
+# Lowers to: (url, retry) => fetch_url(url, timeout=30, retry=retry)
+
+robust_fetch("https://api.example.com", True)
+```
+
+**Design decisions:**
+- Positional `_` params keep the existing `__placeholder_N` naming in the generated lambda.
+- Keyword `_` params use the keyword name itself as the lambda parameter name (e.g., `retry=_` produces a parameter named `retry`). This is more natural and produces readable generated code.
+- Mixed positional + keyword placeholders are supported. Parameter order in the lambda: positional placeholders first (left-to-right), then keyword placeholders (in order of appearance).
+- Operator sections (`(_ * 2)`) are unaffected — they don't involve keyword arguments.
+
+**Implementation outline:**
+1. **Parser** (~30 lines in `LowerPartialApplicationCall`) — Remove the SPY0130 error that rejects `_` in keyword args. Extend the `hasPlaceholder` scan to include `KeywordArguments`. In the lowering loop, when `kwarg.Value is Identifier { Name: "_" }`, create a parameter named after the keyword and replace the value with a reference to it.
+2. **Semantic** — No changes expected. The output is a standard `LambdaExpression` with a `FunctionCall` body; TypeChecker already handles keyword args in calls.
+3. **CodeGen** — No changes. Lambda emission and keyword arg emission are already independent.
+4. **Spec** — Update `partial_application.md` to remove the keyword limitation and add examples.
+5. **Tests** — `f(x=_)`, `f(_, y=_)`, `f(x=_, y=_)`, type inference through keyword placeholders, keyword placeholder with default values on other params.
+
+---
+
+### 1.3 `@final` Field Decorator
 
 **Spec reference:** [statements.md](statements.md) line 218
 
@@ -69,7 +105,7 @@ class Config:
 
 ---
 
-### 1.3 Tuple Spreading
+### 1.4 Tuple Spreading
 
 **Spec:** [spread_operator.md](spread_operator.md)
 
@@ -99,11 +135,11 @@ coords = (*point_2d, z_value)  # Convert 2D to 3D
 
 ## Tier 2 — Medium Complexity
 
-### 2.1 `functools.partial`
+### 2.1 `functools.partial` (Compatibility Shim)
 
 **Issue:** [#396](https://github.com/antonsynd/sharpy/issues/396)
 
-Create new functions by fixing some arguments of an existing function.
+> **Note:** With keyword `_` partial application (1.2), Sharpy's native syntax covers nearly all `functools.partial` use cases more ergonomically. This item is a compatibility shim for Python programmers who reach for `partial` out of habit.
 
 **Syntax (Sharpy user-facing):**
 ```python
@@ -115,21 +151,21 @@ def power(base: int, exp: int) -> int:
 square = partial(power, exp=2)
 print(square(5))  # 25
 
-basetwo = partial(int, base=2)
-print(basetwo("10010"))  # 18
+# Idiomatic Sharpy equivalent (preferred):
+square = power(_, exp=2)
 ```
 
 **Design decisions:**
-- `partial` returns a callable with the remaining (unfixed) parameters. The return type preserves full type information.
-- Compiler-assisted: the compiler sees `partial(f, ...)` and generates a lambda that captures the fixed arguments. This avoids runtime reflection and maintains static typing.
-- Named arguments in `partial()` fix specific parameters; positional arguments fix from the left.
-- `partial` objects are callable and have `.func`, `.args`, and `.keywords` attributes (read-only).
+- `partial` is a thin wrapper that the compiler lowers to the same lambda as `_` placeholder syntax. No runtime `Partial<T>` wrapper class needed.
+- A linter hint (or compiler info diagnostic) should suggest the `_` placeholder form as the idiomatic alternative.
+- `.func`, `.args`, `.keywords` introspection attributes are **not** supported — the lowered lambda has no such metadata. If introspection is needed, users should use the function directly.
+- Depends on keyword `_` support (1.2) being implemented first.
 
 **Implementation outline:**
-1. **Semantic** — Recognize `functools.partial(func, *args, **kwargs)` as a special form in TypeChecker. Compute the residual function type after fixing parameters.
-2. **CodeGen** — Lower `partial(f, x)` to a lambda: `(remaining_params) => f(x, remaining_params)`. The lambda captures fixed args.
-3. **Sharpy.Core** — Define `Partial<TResult>` wrapper class with `.Func`, `.Args`, `.Keywords` properties for introspection. The generated lambda delegates to the original function.
-4. **Tests** — Positional fixing, named fixing, mixed, type preservation, chained partials, error cases (too many args, wrong types).
+1. **Semantic** — Recognize `functools.partial(func, ...)` as a special form in TypeChecker. Desugar to the equivalent `_` placeholder call.
+2. **CodeGen** — No special handling needed — the desugared form is a standard lambda.
+3. **Diagnostics** — Emit an info-level hint suggesting the `_` placeholder equivalent.
+4. **Tests** — Positional fixing, named fixing, equivalence with `_` syntax, chained partials.
 
 ---
 
