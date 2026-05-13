@@ -822,6 +822,15 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Records an informational note from the type-checking phase.
+    /// Used for non-error suggestions (e.g., recommending idiomatic forms).
+    /// </summary>
+    private void AddInfo(string message, int? line = null, int? column = null, string? code = null)
+    {
+        _diagnostics.AddInfo(message, line, column, _currentFilePath, code, CompilerPhase.TypeChecking);
+    }
+
+    /// <summary>
     /// Finds a "did you mean?" suggestion for an undefined identifier from visible symbols.
     /// </summary>
     private string? FindSuggestion(string name)

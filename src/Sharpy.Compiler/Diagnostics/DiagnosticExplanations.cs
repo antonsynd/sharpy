@@ -1846,6 +1846,15 @@ public static class DiagnosticExplanations
             "This is informational only. No action is required. The synthesized interface enables interop with " +
             ".NET code that expects the interface (e.g., len() dispatch via ISized).");
 
+        Add(dict, DiagnosticCodes.Info.FunctoolsPartialPlaceholderHint, "Prefer '_' placeholder over functools.partial", "Semantic",
+            "Sharpy supports Python's functools.partial as a compatibility shim that desugars to an equivalent " +
+            "underscore-placeholder lambda. The idiomatic Sharpy form uses the '_' placeholder directly, which is " +
+            "more concise and avoids the extra import.",
+            "functools.partial(add, 5)   # compatibility shim\n" +
+            "add(5, _)                   # idiomatic Sharpy",
+            "Replace 'functools.partial(f, fixed_args...)' with 'f(fixed_args..., _, ...)' using '_' for the " +
+            "remaining (unfixed) arguments. The two forms are equivalent at runtime.");
+
         return dict;
     }
 
