@@ -477,7 +477,10 @@ public static class DiagnosticCodes
         // @final field validation (SPY0440-SPY0441)
         public const string FinalFieldAssignmentOutsideConstructor = "SPY0440"; // Active
         public const string FinalOnLocalVariable = "SPY0441";              // Active
-        // SPY0442-SPY0449: Reserved for future validation errors
+        // lru_cache / cache decorator validation (SPY0442-SPY0443)
+        public const string LruCacheInvalidMaxSize = "SPY0442";            // Active
+        public const string LruCacheOnNonFunction = "SPY0443";             // Active
+        // SPY0444-SPY0449: Reserved for future validation errors
 
         #endregion
 
@@ -584,13 +587,14 @@ public static class DiagnosticCodes
     /// <summary>
     /// Informational diagnostic codes (SPY1000-SPY1099).
     /// Non-error, non-warning notes emitted during compilation.
-    /// Active: SPY1001 (1 code)
-    /// Reserved: SPY1000, SPY1002-SPY1099 (99 codes)
+    /// Active: SPY1001, SPY1010 (2 codes)
+    /// Reserved: SPY1000, SPY1002-SPY1009, SPY1011-SPY1099 (97 codes)
     /// </summary>
     public static class Info
     {
         public const string ImplicitInterfaceSynthesis = "SPY1001"; // Active
-        // SPY1002-SPY1099: Reserved for future informational diagnostics
+        public const string FunctoolsPartialPlaceholderHint = "SPY1010"; // Active
+        // SPY1002-SPY1009, SPY1011-SPY1099: Reserved for future informational diagnostics
     }
 
     /// <summary>

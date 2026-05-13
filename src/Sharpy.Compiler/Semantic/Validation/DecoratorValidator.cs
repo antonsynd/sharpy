@@ -57,6 +57,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateDecorators(node.Decorators, definitionName);
         ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
         ValidateReadonlyNotOnNonProperty(node.Decorators, definitionName, "function");
+        ValidateLruCacheArguments(node.Decorators, definitionName);
 
         if (_containingType != null)
         {
@@ -80,6 +81,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateDecorators(node.Decorators, node.Name);
         ValidateDataclassArguments(node.Decorators, node.Name);
         ValidateReadonlyNotOnNonProperty(node.Decorators, node.Name, "class");
+        ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "class");
 
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Class);
@@ -91,6 +93,7 @@ internal class DecoratorValidator : ValidatingAstWalker
     {
         ValidateDecorators(node.Decorators, node.Name);
         ValidateDataclassOnNonClass(node.Decorators, node.Name, "struct");
+        ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "struct");
 
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Struct);
@@ -102,6 +105,7 @@ internal class DecoratorValidator : ValidatingAstWalker
     {
         ValidateDecorators(node.Decorators, node.Name);
         ValidateDataclassOnNonClass(node.Decorators, node.Name, "interface");
+        ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "interface");
         ValidateInterfaceDecorators(node);
 
         var previousType = _containingType;
@@ -114,6 +118,7 @@ internal class DecoratorValidator : ValidatingAstWalker
     {
         ValidateDecorators(node.Decorators, node.Name);
         ValidateDataclassOnNonClass(node.Decorators, node.Name, "enum");
+        ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "enum");
         base.VisitEnumDef(node);
     }
 
@@ -269,10 +274,12 @@ internal class DecoratorValidator : ValidatingAstWalker
             }
 
             // For unknown decorators (custom attributes), validate arguments are compile-time constants
-            // Skip @dataclass — it's a known built-in with its own validation
+            // Skip @dataclass, @lru_cache, @cache — they're known built-ins with their own validation
             if (!DecoratorNames.KnownModifierDecorators.Contains(decorator.Name)
                 && !UnsupportedDecorators.ContainsKey(decorator.Name)
                 && decorator.Name != DecoratorNames.Dataclass
+                && decorator.Name != DecoratorNames.LruCache
+                && decorator.Name != DecoratorNames.Cache
                 && !DecoratorNames.KnownAttributeDecorators.Contains(decorator.Name))
             {
                 ValidateDecoratorArgumentsAreConstants(decorator);
@@ -634,6 +641,130 @@ internal class DecoratorValidator : ValidatingAstWalker
                 deprecatedDecorator.ColumnStart,
                 code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
                 span: deprecatedDecorator.Span);
+        }
+    }
+
+    /// <summary>
+    /// Validates @lru_cache and @cache decorator arguments.
+    /// @cache must have no arguments. @lru_cache(maxsize=N) accepts a single optional
+    /// 'maxsize' keyword (or single positional) that must be a non-negative integer
+    /// literal or None.
+    /// </summary>
+    private void ValidateLruCacheArguments(IEnumerable<Decorator> decorators, string definitionName)
+    {
+        foreach (var decorator in decorators)
+        {
+            if (decorator.Name == DecoratorNames.Cache)
+            {
+                if (decorator.Arguments.Length > 0 || decorator.KeywordArguments.Length > 0)
+                {
+                    AddError(
+                        $"'@cache' on '{definitionName}' does not accept arguments. " +
+                        "Use '@lru_cache(maxsize=N)' to set a bound.",
+                        decorator.LineStart,
+                        decorator.ColumnStart,
+                        code: DiagnosticCodes.Validation.LruCacheInvalidMaxSize,
+                        span: decorator.Span);
+                }
+                continue;
+            }
+
+            if (decorator.Name != DecoratorNames.LruCache)
+                continue;
+
+            // No arguments → equivalent to @cache (unbounded). Allowed.
+            if (decorator.Arguments.Length == 0 && decorator.KeywordArguments.Length == 0)
+                continue;
+
+            // Disallow multiple arguments
+            int totalArgs = decorator.Arguments.Length + decorator.KeywordArguments.Length;
+            if (totalArgs > 1)
+            {
+                AddError(
+                    $"'@lru_cache' on '{definitionName}' accepts at most one 'maxsize' argument.",
+                    decorator.LineStart,
+                    decorator.ColumnStart,
+                    code: DiagnosticCodes.Validation.LruCacheInvalidMaxSize,
+                    span: decorator.Span);
+                continue;
+            }
+
+            // Keyword arguments must be named 'maxsize'
+            if (decorator.KeywordArguments.Length == 1)
+            {
+                var kw = decorator.KeywordArguments[0];
+                if (kw.Name != "maxsize")
+                {
+                    AddError(
+                        $"Unknown @lru_cache option '{kw.Name}' on '{definitionName}'. " +
+                        "The only supported option is 'maxsize'.",
+                        kw.Value.LineStart,
+                        kw.Value.ColumnStart,
+                        code: DiagnosticCodes.Validation.LruCacheInvalidMaxSize,
+                        span: kw.Value.Span);
+                    continue;
+                }
+
+                ValidateLruCacheMaxSizeValue(kw.Value, definitionName);
+            }
+            else
+            {
+                // Positional argument: must be the maxsize value
+                ValidateLruCacheMaxSizeValue(decorator.Arguments[0], definitionName);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates that the maxsize argument is either a non-negative integer literal or None.
+    /// </summary>
+    private void ValidateLruCacheMaxSizeValue(Expression value, string definitionName)
+    {
+        switch (value)
+        {
+            case NoneLiteral:
+                return;
+            case IntegerLiteral:
+                // Integer literals from the parser are always non-negative; the unary
+                // minus case is handled below as a separate AST node.
+                return;
+            case UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral }:
+                AddError(
+                    $"'@lru_cache' on '{definitionName}' requires a non-negative 'maxsize' value.",
+                    value.LineStart,
+                    value.ColumnStart,
+                    code: DiagnosticCodes.Validation.LruCacheInvalidMaxSize,
+                    span: value.Span);
+                return;
+            default:
+                AddError(
+                    $"'@lru_cache' on '{definitionName}' requires 'maxsize' to be an integer literal or None.",
+                    value.LineStart,
+                    value.ColumnStart,
+                    code: DiagnosticCodes.Validation.LruCacheInvalidMaxSize,
+                    span: value.Span);
+                return;
+        }
+    }
+
+    /// <summary>
+    /// Reports an error when @lru_cache or @cache is applied to a non-function definition.
+    /// </summary>
+    private void ValidateLruCacheNotOnNonFunction(
+        IEnumerable<Decorator> decorators, string definitionName, string kind)
+    {
+        foreach (var decorator in decorators)
+        {
+            if (decorator.Name == DecoratorNames.LruCache || decorator.Name == DecoratorNames.Cache)
+            {
+                AddError(
+                    $"'@{decorator.Name}' cannot be applied to {kind} '{definitionName}'. " +
+                    "Memoization decorators only apply to functions and methods.",
+                    decorator.LineStart,
+                    decorator.ColumnStart,
+                    code: DiagnosticCodes.Validation.LruCacheOnNonFunction,
+                    span: decorator.Span);
+            }
         }
     }
 
