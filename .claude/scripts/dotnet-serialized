@@ -16,9 +16,31 @@ cleanup() {
     rm -rf "$LOCK_DIR" 2>/dev/null
 }
 
+is_lock_stale() {
+    local pid_file="$LOCK_DIR/pid"
+    if [ ! -f "$pid_file" ]; then
+        return 0
+    fi
+    local lock_pid
+    lock_pid=$(cat "$pid_file" 2>/dev/null)
+    if [ -z "$lock_pid" ]; then
+        return 0
+    fi
+    # Check if the process is still running
+    if ! kill -0 "$lock_pid" 2>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
 acquire_lock() {
     local waited=0
     while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+        if is_lock_stale; then
+            echo "WARNING: Removing stale dotnet lock (owner PID gone)." >&2
+            rm -rf "$LOCK_DIR" 2>/dev/null
+            continue
+        fi
         if [ "$waited" -ge "$TIMEOUT" ]; then
             echo "ERROR: Timed out waiting for dotnet lock after $((TIMEOUT/60)) minutes." >&2
             echo "Another dotnet command may be hung. Run: pkill -f dotnet" >&2
