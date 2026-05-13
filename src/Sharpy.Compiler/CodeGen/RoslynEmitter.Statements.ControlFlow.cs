@@ -689,15 +689,35 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates try/finally with explicit Enter()/Exit() calls for dunder-protocol context managers.
-    /// Sync:  var __ctx_N = expr; var asVar = __ctx_N.Enter(); try { body } finally { __ctx_N.Exit(); }
-    /// Async: var __ctx_N = expr; var asVar = await __ctx_N.AenterAsync(); try { body } finally { await __ctx_N.AexitAsync(); }
+    /// Generates try/finally (or try/catch/finally) with explicit Enter()/Exit() calls for
+    /// dunder-protocol context managers.
+    ///
+    /// 1-arg __exit__ (sync):
+    ///   var __ctx_N = expr; var asVar = __ctx_N.Enter(); try { body } finally { __ctx_N.Exit(); }
+    /// 1-arg __aexit__ (async):
+    ///   var __ctx_N = expr; var asVar = await __ctx_N.AenterAsync(); try { body } finally { await __ctx_N.AexitAsync(); }
+    /// 4-arg __exit__ (sync) — with exception suppression support:
+    ///   var __ctx_N = expr;
+    ///   var asVar = __ctx_N.Enter();
+    ///   Exception? __exc_N = null;
+    ///   try { body }
+    ///   catch (Exception __e_N) {
+    ///       __exc_N = __e_N;
+    ///       var __suppress_N = __ctx_N.Exit(Optional&lt;T1&gt;.Some(__e_N.GetType()), Optional&lt;T2&gt;.Some(__e_N), Optional&lt;T3&gt;.None);
+    ///       if (!__suppress_N) throw;
+    ///   }
+    ///   finally { if (__exc_N == null) __ctx_N.Exit(Optional&lt;T1&gt;.None, Optional&lt;T2&gt;.None, Optional&lt;T3&gt;.None); }
+    /// 4-arg __aexit__ (async): analogous, with await on Enter/Exit calls.
     /// </summary>
     private StatementSyntax GenerateWithDunderProtocol(WithItem item, StatementSyntax innermost, ContextManagerKind cmKind)
     {
         bool isAsync = cmKind == ContextManagerKind.AsyncDunderProtocol;
         var enterMethod = isAsync ? ProtocolConstants.AenterAsync : ProtocolConstants.Enter;
         var exitMethod = isAsync ? ProtocolConstants.AexitAsync : ProtocolConstants.Exit;
+
+        // Determine which __exit__ form was declared (1-arg vs 4-arg).
+        var exitMethodSymbol = TryGetExitMethod(item.ContextExpression, isAsync);
+        bool isFourArgExit = exitMethodSymbol != null && exitMethodSymbol.Parameters.Count == 4;
 
         var contextExpr = GenerateExpression(item.ContextExpression);
         var ctxVarName = GenerateTempVarName("ctx");
@@ -736,23 +756,228 @@ internal partial class RoslynEmitter
             statements.Add(ExpressionStatement(enterCall));
         }
 
-        // Build the Exit() / AexitAsync() call
-        ExpressionSyntax exitCall = InvocationExpression(
+        var bodyBlock = innermost is BlockSyntax blk ? blk : Block(innermost);
+
+        if (isFourArgExit)
+        {
+            statements.Add(GenerateFourArgExitTry(ctxVarName, exitMethod, bodyBlock, isAsync, exitMethodSymbol!));
+        }
+        else
+        {
+            // 1-arg form: simple try { body } finally { __ctx_N.Exit(); }
+            ExpressionSyntax exitCall = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(ctxVarName),
+                    IdentifierName(exitMethod)));
+            if (isAsync)
+                exitCall = AwaitExpression(exitCall);
+
+            var tryStmt = TryStatement(
+                bodyBlock,
+                List<CatchClauseSyntax>(),
+                FinallyClause(Block(ExpressionStatement(exitCall))));
+            statements.Add(tryStmt);
+        }
+
+        return Block(statements);
+    }
+
+    /// <summary>
+    /// Resolves the FunctionSymbol for the context manager's __exit__ (or __aexit__) method.
+    /// Returns null if the symbol cannot be resolved.
+    /// </summary>
+    private FunctionSymbol? TryGetExitMethod(Expression contextExpression, bool isAsync)
+    {
+        var exprType = _context.SemanticInfo?.GetExpressionType(contextExpression);
+        if (exprType == null)
+            return null;
+
+        var typeSymbol = ExtractTypeSymbolForContextManager(exprType);
+        if (typeSymbol == null)
+            return null;
+
+        var exitName = isAsync ? DunderNames.Aexit : DunderNames.Exit;
+        return typeSymbol.Methods.FirstOrDefault(m => m.Name == exitName);
+    }
+
+    /// <summary>
+    /// Extracts the TypeSymbol underlying a SemanticType, unwrapping nullable/optional layers.
+    /// </summary>
+    private static TypeSymbol? ExtractTypeSymbolForContextManager(SemanticType type)
+    {
+        return type switch
+        {
+            UserDefinedType udt => udt.Symbol,
+            NullableType nullable => ExtractTypeSymbolForContextManager(nullable.UnderlyingType),
+            OptionalType optional => ExtractTypeSymbolForContextManager(optional.UnderlyingType),
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Generates the try/catch/finally block for the 4-arg __exit__ form. See
+    /// <see cref="GenerateWithDunderProtocol"/> for the emitted shape.
+    /// </summary>
+    private StatementSyntax GenerateFourArgExitTry(string ctxVarName, string exitMethod, BlockSyntax bodyBlock, bool isAsync, FunctionSymbol exitMethodSymbol)
+    {
+        var excVarName = GenerateTempVarName("exc");
+        var ePrime = GenerateTempVarName("e");
+        var suppressVarName = GenerateTempVarName("suppress");
+
+        // Build TypeSyntax wrappers for each of the three exception parameters of __exit__.
+        // Parameters: [self, exc_type, exc_val, exc_tb]. Indices 1..3 are the exception args.
+        // Each parameter is expected to be OptionalType<T>; if not, we fall back to passing
+        // the raw value (best-effort, the validator will already have flagged this).
+        var excTypeOptInner = GetOptionalInnerSyntax(exitMethodSymbol.Parameters[1].Type);
+        var excValOptInner = GetOptionalInnerSyntax(exitMethodSymbol.Parameters[2].Type);
+        var excTbOptInner = GetOptionalInnerSyntax(exitMethodSymbol.Parameters[3].Type);
+
+        // Exception? __exc_N = null;
+        var excTypeSyntax = NullableType(
+            QualifiedName(
+                AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), IdentifierName("System")),
+                IdentifierName("Exception")));
+        var excDecl = LocalDeclarationStatement(
+            VariableDeclaration(excTypeSyntax)
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(excVarName))
+                        .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.NullLiteralExpression))))));
+
+        // __e_N.GetType()
+        var getTypeCall = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(ePrime),
+                IdentifierName("GetType")));
+
+        // __ctx_N.Exit(Optional<T1>.Some(__e_N.GetType()), Optional<T2>.Some(__e_N), Optional<T3>.None)
+        var exitCallInCatch = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 IdentifierName(ctxVarName),
-                IdentifierName(exitMethod)));
-        if (isAsync)
-            exitCall = AwaitExpression(exitCall);
+                IdentifierName(exitMethod)))
+            .WithArgumentList(ArgumentList(SeparatedList(new[]
+            {
+                Argument(MakeOptionalArg(excTypeOptInner, getTypeCall, isSome: true)),
+                Argument(MakeOptionalArg(excValOptInner, IdentifierName(ePrime), isSome: true)),
+                Argument(MakeOptionalArg(excTbOptInner, null, isSome: false))
+            })));
+        ExpressionSyntax exitCallInCatchExpr = isAsync ? AwaitExpression(exitCallInCatch) : exitCallInCatch;
 
-        // try { body } finally { __ctx_N.Exit(); }
+        // var __suppress_N = __ctx_N.Exit(...)
+        var suppressDecl = LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(suppressVarName))
+                        .WithInitializer(EqualsValueClause(exitCallInCatchExpr)))));
+
+        // __exc_N = __e_N;
+        var excAssign = ExpressionStatement(
+            AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                IdentifierName(excVarName),
+                IdentifierName(ePrime)));
+
+        // if (!__suppress_N) throw;
+        var ifThrow = IfStatement(
+            PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, IdentifierName(suppressVarName)),
+            ThrowStatement());
+
+        var catchBlock = Block(excAssign, suppressDecl, ifThrow);
+
+        // catch (Exception __e_N) { ... }
+        var catchClause = CatchClause()
+            .WithDeclaration(CatchDeclaration(
+                QualifiedName(
+                    AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), IdentifierName("System")),
+                    IdentifierName("Exception")))
+                .WithIdentifier(Identifier(ePrime)))
+            .WithBlock(catchBlock);
+
+        // __ctx_N.Exit(Optional<T1>.None, Optional<T2>.None, Optional<T3>.None)
+        var exitCallInFinally = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(ctxVarName),
+                IdentifierName(exitMethod)))
+            .WithArgumentList(ArgumentList(SeparatedList(new[]
+            {
+                Argument(MakeOptionalArg(excTypeOptInner, null, isSome: false)),
+                Argument(MakeOptionalArg(excValOptInner, null, isSome: false)),
+                Argument(MakeOptionalArg(excTbOptInner, null, isSome: false))
+            })));
+        ExpressionSyntax exitCallInFinallyExpr = isAsync ? AwaitExpression(exitCallInFinally) : exitCallInFinally;
+
+        // if (__exc_N == null) __ctx_N.Exit(...)
+        var finallyIf = IfStatement(
+            BinaryExpression(
+                SyntaxKind.EqualsExpression,
+                IdentifierName(excVarName),
+                LiteralExpression(SyntaxKind.NullLiteralExpression)),
+            ExpressionStatement(exitCallInFinallyExpr));
+
+        var finallyBlock = Block(finallyIf);
+
         var tryStmt = TryStatement(
-            innermost is BlockSyntax blk ? blk : Block(innermost),
-            List<CatchClauseSyntax>(),
-            FinallyClause(Block(ExpressionStatement(exitCall))));
-        statements.Add(tryStmt);
+            bodyBlock,
+            SingletonList(catchClause),
+            FinallyClause(finallyBlock));
 
-        return Block(statements);
+        return Block(excDecl, tryStmt);
+    }
+
+    /// <summary>
+    /// Returns the inner TypeSyntax (T) for an OptionalType&lt;T&gt; parameter, or null if the
+    /// parameter is not declared as Optional. When null, the caller falls back to passing the
+    /// raw value/null literal.
+    /// </summary>
+    private TypeSyntax? GetOptionalInnerSyntax(SemanticType paramType)
+    {
+        if (paramType is OptionalType opt)
+            return _typeMapper.MapSemanticType(opt.UnderlyingType);
+        return null;
+    }
+
+    /// <summary>
+    /// Builds an argument expression for an Optional&lt;T&gt; parameter.
+    /// - isSome=true:  Optional&lt;T&gt;.Some(value)
+    /// - isSome=false: Optional&lt;T&gt;.None
+    /// When innerType is null (parameter not declared Optional), falls back to passing the value
+    /// directly or 'null'.
+    /// </summary>
+    private ExpressionSyntax MakeOptionalArg(TypeSyntax? innerType, ExpressionSyntax? value, bool isSome)
+    {
+        if (innerType == null)
+        {
+            // Fallback: pass value or null literal directly
+            return isSome && value != null
+                ? value
+                : LiteralExpression(SyntaxKind.NullLiteralExpression);
+        }
+
+        // global::Sharpy.Optional<T>
+        var optionalT = QualifiedName(
+            AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), IdentifierName("Sharpy")),
+            GenericName(Identifier("Optional"))
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(innerType))));
+
+        if (isSome && value != null)
+        {
+            // Optional<T>.Some(value)
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    optionalT,
+                    IdentifierName("Some")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(value))));
+        }
+
+        // Optional<T>.None
+        return MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            optionalT,
+            IdentifierName("None"));
     }
 
     private StatementSyntax GenerateTry(TryStatement tryStmt)

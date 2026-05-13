@@ -41,18 +41,31 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapType(func.ReturnType)
             : PredefinedType(Token(SyntaxKind.VoidKeyword));
 
-        // Use ProtocolRegistry to determine return types for protocol dunders
+        // Use ProtocolRegistry to determine return types for protocol dunders.
+        // For protocols with an alternate signature (e.g., __exit__ accepts 1 or 4 params),
+        // select the return type matching the form actually declared.
         var protocol = ProtocolRegistry.GetProtocol(func.Name);
-        if (protocol != null && protocol.ExpectedReturnType != null)
+        if (protocol != null)
         {
-            returnType = protocol.ExpectedReturnType switch
+            var effectiveReturnType = protocol.ExpectedReturnType;
+            if (protocol.AlternateParamCount.HasValue
+                && func.Parameters.Length == protocol.AlternateParamCount.Value
+                && protocol.AlternateReturnType != null)
             {
-                BuiltinNames.Str or "string" => PredefinedType(Token(SyntaxKind.StringKeyword)),
-                BuiltinNames.Int => PredefinedType(Token(SyntaxKind.IntKeyword)),
-                BuiltinNames.Bool => PredefinedType(Token(SyntaxKind.BoolKeyword)),
-                BuiltinNames.None or "void" => PredefinedType(Token(SyntaxKind.VoidKeyword)),
-                _ => func.ReturnType != null ? _typeMapper.MapType(func.ReturnType) : returnType
-            };
+                effectiveReturnType = protocol.AlternateReturnType;
+            }
+
+            if (effectiveReturnType != null)
+            {
+                returnType = effectiveReturnType switch
+                {
+                    BuiltinNames.Str or "string" => PredefinedType(Token(SyntaxKind.StringKeyword)),
+                    BuiltinNames.Int => PredefinedType(Token(SyntaxKind.IntKeyword)),
+                    BuiltinNames.Bool => PredefinedType(Token(SyntaxKind.BoolKeyword)),
+                    BuiltinNames.None or "void" => PredefinedType(Token(SyntaxKind.VoidKeyword)),
+                    _ => func.ReturnType != null ? _typeMapper.MapType(func.ReturnType) : returnType
+                };
+            }
         }
 
         // For non-dunder generator methods, wrap return type T in IEnumerable<T> or IAsyncEnumerable<T>
