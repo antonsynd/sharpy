@@ -1,0 +1,14 @@
+import functools
+
+def power(base: int, exp: int) -> int:
+    result = 1
+    for i in range(exp):
+        result = result * base
+    return result
+
+def main():
+    square = functools.partial(power, exp=2)
+    print(square(5))
+
+    cube = functools.partial(power, exp=3)
+    print(cube(2))

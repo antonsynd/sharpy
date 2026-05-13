@@ -1,0 +1,14 @@
+import functools
+
+def add(x: int, y: int) -> int:
+    return x + y
+
+def multiply(a: int, b: int, c: int) -> int:
+    return a * b * c
+
+def main():
+    add_five = functools.partial(add, 5)
+    print(add_five(3))
+
+    mul_by_2_3 = functools.partial(multiply, 2, 3)
+    print(mul_by_2_3(4))
