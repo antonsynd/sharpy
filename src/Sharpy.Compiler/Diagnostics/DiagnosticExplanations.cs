@@ -1554,6 +1554,24 @@ public static class DiagnosticExplanations
             "def foo():\n    @final\n    x: int = 1  # SPY0441 error",
             "Remove the @final decorator. Use a plain local variable, or move the value to a @final field on a type.");
 
+        // ── Validation errors: lru_cache / cache decorators (SPY0442-SPY0443) ──
+
+        Add(dict, DiagnosticCodes.Validation.LruCacheInvalidMaxSize,
+            "Invalid maxsize argument for @lru_cache",
+            "Validation",
+            "The @lru_cache decorator's 'maxsize' argument must be an integer literal or None. " +
+            "Non-literal expressions, negative values, and non-integer types are not supported.",
+            "@lru_cache(maxsize=\"big\")\ndef f(x: int) -> int: ...",
+            "Use an integer literal or None:\n@lru_cache(maxsize=128)\ndef f(x: int) -> int: ...");
+
+        Add(dict, DiagnosticCodes.Validation.LruCacheOnNonFunction,
+            "@lru_cache can only be applied to functions and methods",
+            "Validation",
+            "The @lru_cache and @cache decorators are only valid on function and method definitions. " +
+            "They cannot be applied to classes, fields, or other declarations.",
+            "@lru_cache\nclass Foo: ...",
+            "Apply @lru_cache to a function instead:\n@lru_cache\ndef compute(x: int) -> int: ...");
+
         // ── Validation warnings: Deprecation (SPY0464) ─────────────────
 
         Add(dict, DiagnosticCodes.Validation.DeprecatedBodylessSyntax,
