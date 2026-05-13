@@ -304,6 +304,32 @@ public partial class Parser
                             startLine, startColumn, startToken);
                     }
 
+                    // Tuple literal starting with spread: (*a, ...)
+                    if (Current.Type == TokenType.Star)
+                    {
+                        var spreadFirst = ParseTupleElement();
+                        var spreadElements = new List<Expression> { spreadFirst };
+
+                        while (Current.Type == TokenType.Comma)
+                        {
+                            Advance();
+                            if (Current.Type == TokenType.RightParen)
+                                break;
+                            spreadElements.Add(ParseTupleElement());
+                        }
+
+                        Expect(TokenType.RightParen);
+                        return new TupleLiteral
+                        {
+                            Elements = spreadElements.ToImmutableArray(),
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
+                        };
+                    }
+
                     var expr = ParseExpression();
 
                     // Tuple (expr,) or (expr, expr2, ...)
@@ -316,7 +342,7 @@ public partial class Parser
                             Advance();
                             if (Current.Type == TokenType.RightParen)
                                 break;
-                            elements.Add(ParseExpression());
+                            elements.Add(ParseTupleElement());
                         }
 
                         Expect(TokenType.RightParen);
@@ -787,6 +813,30 @@ public partial class Parser
     /// Parses a list element, handling *spread syntax.
     /// </summary>
     private Expression ParseListElement()
+    {
+        if (Current.Type == TokenType.Star)
+        {
+            var starToken = Current;
+            Advance();
+            var operand = ParseExpression();
+            return new SpreadElement
+            {
+                Value = operand,
+                LineStart = starToken.Line,
+                ColumnStart = starToken.Column,
+                LineEnd = operand.LineEnd,
+                ColumnEnd = operand.ColumnEnd,
+                Span = operand.Span
+            };
+        }
+
+        return ParseExpression();
+    }
+
+    /// <summary>
+    /// Parses a tuple element, handling *spread syntax.
+    /// </summary>
+    private Expression ParseTupleElement()
     {
         if (Current.Type == TokenType.Star)
         {
