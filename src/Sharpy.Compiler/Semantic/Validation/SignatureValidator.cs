@@ -199,6 +199,87 @@ internal class SignatureValidator : SemanticValidatorBase
         ValidateProtocolParameterCount(funcDef, protocol, owningType);
         ValidateProtocolReturnType(funcDef, protocol, owningType);
         ValidateProtocolSelfParameter(funcDef, protocol, owningType);
+        ValidateExitParameterTypes(funcDef, protocol, owningType);
+    }
+
+    /// <summary>
+    /// Validates parameter types for the 4-arg form of __exit__/__aexit__.
+    /// Expected: (self, exc_type: type?, exc_val: Exception?, exc_tb: object?)
+    /// The exc_type parameter accepts 'type?' or 'object?' (since the .NET equivalent is Type?).
+    /// Only validates when annotations are present — untyped parameters are allowed.
+    /// </summary>
+    private void ValidateExitParameterTypes(FunctionDef funcDef, ProtocolInfo protocol, TypeSymbol owningType)
+    {
+        // Only apply to __exit__ and __aexit__ in their 4-arg form
+        if (protocol.DunderName != DunderNames.Exit && protocol.DunderName != DunderNames.Aexit)
+            return;
+        if (funcDef.Parameters.Length != 4)
+            return;
+
+        // Parameter 1 is 'self' — validated elsewhere
+        var excTypeParam = funcDef.Parameters[1];
+        var excValParam = funcDef.Parameters[2];
+        var excTbParam = funcDef.Parameters[3];
+
+        // exc_type: type? or object?
+        if (excTypeParam.Type != null && !IsValidExcTypeAnnotation(excTypeParam.Type))
+        {
+            AddError(_context,
+                $"Parameter '{excTypeParam.Name}' of '{protocol.DunderName}' on '{owningType.Name}' must be 'type?' or 'object?', got '{TypeAnnotationHelper.GetName(excTypeParam.Type)}'.",
+                excTypeParam.LineStart, excTypeParam.ColumnStart,
+                code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: excTypeParam.Span ?? funcDef.Span);
+        }
+
+        // exc_val: Exception?
+        if (excValParam.Type != null && !IsValidExcValAnnotation(excValParam.Type))
+        {
+            AddError(_context,
+                $"Parameter '{excValParam.Name}' of '{protocol.DunderName}' on '{owningType.Name}' must be 'Exception?', got '{TypeAnnotationHelper.GetName(excValParam.Type)}'.",
+                excValParam.LineStart, excValParam.ColumnStart,
+                code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: excValParam.Span ?? funcDef.Span);
+        }
+
+        // exc_tb: object?
+        if (excTbParam.Type != null && !IsValidExcTbAnnotation(excTbParam.Type))
+        {
+            AddError(_context,
+                $"Parameter '{excTbParam.Name}' of '{protocol.DunderName}' on '{owningType.Name}' must be 'object?', got '{TypeAnnotationHelper.GetName(excTbParam.Type)}'.",
+                excTbParam.LineStart, excTbParam.ColumnStart,
+                code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: excTbParam.Span ?? funcDef.Span);
+        }
+    }
+
+    private static bool IsValidExcTypeAnnotation(TypeAnnotation annotation)
+    {
+        // Accept 'type?' or 'object?' (both must be nullable)
+        if (!annotation.IsOptional)
+            return false;
+        if (annotation.TypeArguments.Length != 0)
+            return false;
+        return annotation.Name == BuiltinNames.Type || annotation.Name == BuiltinNames.Object;
+    }
+
+    private static bool IsValidExcValAnnotation(TypeAnnotation annotation)
+    {
+        // Accept 'Exception?'
+        if (!annotation.IsOptional)
+            return false;
+        if (annotation.TypeArguments.Length != 0)
+            return false;
+        return annotation.Name == "Exception";
+    }
+
+    private static bool IsValidExcTbAnnotation(TypeAnnotation annotation)
+    {
+        // Accept 'object?'
+        if (!annotation.IsOptional)
+            return false;
+        if (annotation.TypeArguments.Length != 0)
+            return false;
+        return annotation.Name == BuiltinNames.Object;
     }
 
     private void ValidateProtocolParameterCount(FunctionDef funcDef, ProtocolInfo protocol, TypeSymbol owningType)
