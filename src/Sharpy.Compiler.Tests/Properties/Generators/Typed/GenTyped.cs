@@ -37,6 +37,13 @@ internal static class GenTyped
             "float" => varGen != null
                 ? Gen.OneOf(GenLiterals.Float.Select(x => (Expression)x), varGen)
                 : GenLiterals.Float.Select(x => (Expression)x),
+            "list[int]" => varGen != null
+                ? Gen.OneOf(ListLiteralGen("int"), varGen)
+                : ListLiteralGen("int"),
+            "list[str]" => varGen != null
+                ? Gen.OneOf(ListLiteralGen("str"), varGen)
+                : ListLiteralGen("str"),
+            "int?" or "str?" => OptionalLeaf(env, targetType, varGen),
             _ => GenLiterals.AnyLiteral
         };
     }
@@ -48,16 +55,29 @@ internal static class GenTyped
             "int" => Gen.OneOf<Expression>(
                 IntArithmetic(env, fuel),
                 LenExpression(env, fuel),
+                AbsExpression(env, fuel),
                 ConditionalOfType(env, "int", fuel)),
             "str" => Gen.OneOf<Expression>(
                 StringConcat(env, fuel),
+                StringMethodCall(env, fuel),
                 ConditionalOfType(env, "str", fuel)),
-            "bool" => Gen.OneOf<Expression>(
-                BooleanLogic(env, fuel),
-                ConditionalOfType(env, "bool", fuel)),
+            "bool" => HasOptionalVars(env)
+                ? Gen.OneOf<Expression>(
+                    BooleanLogic(env, fuel),
+                    IsNoneCheck(env),
+                    ConditionalOfType(env, "bool", fuel))
+                : Gen.OneOf<Expression>(
+                    BooleanLogic(env, fuel),
+                    ConditionalOfType(env, "bool", fuel)),
             "float" => Gen.OneOf<Expression>(
                 FloatArithmetic(env, fuel),
                 ConditionalOfType(env, "float", fuel)),
+            "list[int]" => Gen.OneOf<Expression>(
+                ListLiteralGen("int", env, fuel),
+                ConditionalOfType(env, "list[int]", fuel)),
+            "list[str]" => Gen.OneOf<Expression>(
+                ListLiteralGen("str", env, fuel),
+                ConditionalOfType(env, "list[str]", fuel)),
             _ => ConditionalOfType(env, targetType, fuel)
         };
     }
@@ -146,7 +166,7 @@ internal static class GenTyped
                     body.Add(new VariableDeclaration
                     {
                         Name = binding.Key,
-                        Type = new TypeAnnotation { Name = binding.Value },
+                        Type = TypeAnnotationForType(binding.Value),
                         InitialValue = DefaultValueForType(binding.Value)
                     });
                 }
@@ -254,12 +274,101 @@ internal static class GenTyped
         ExpressionOfType(env, elementType, fuel).Array[0, 3].Select(elems =>
             (Expression)new ListLiteral { Elements = elems.ToImmutableArray() });
 
+    private static Gen<Expression> OptionalLeaf(TypeEnv env, string targetType, Gen<Expression>? varGen)
+    {
+        var innerType = targetType.TrimEnd('?');
+        var noneGen = Gen.Const((Expression)new FunctionCall
+        {
+            Function = new Identifier { Name = "None" },
+            Arguments = ImmutableArray<Expression>.Empty
+        });
+        var valueGen = LeafOfType(env, innerType);
+        var combined = Gen.OneOf(noneGen, valueGen);
+        return varGen != null ? Gen.OneOf(combined, varGen) : combined;
+    }
+
+    private static bool HasOptionalVars(TypeEnv env) =>
+        env.Bindings.Any(kv => kv.Value.EndsWith("?"));
+
+    private static Gen<Expression> IsNoneCheck(TypeEnv env)
+    {
+        var optionalVars = env.Bindings
+            .Where(kv => kv.Value.EndsWith("?"))
+            .Select(kv => kv.Key)
+            .ToArray();
+        return Gen.Select(
+            Gen.OneOfConst(optionalVars),
+            Gen.OneOfConst(ComparisonOperator.Is, ComparisonOperator.IsNot),
+            (name, op) => (Expression)new ComparisonChain
+            {
+                Operands = ImmutableArray.Create<Expression>(
+                    new Identifier { Name = name },
+                    new NoneLiteral()),
+                Operators = ImmutableArray.Create(op)
+            });
+    }
+
+    private static Gen<Expression> StringMethodCall(TypeEnv env, int fuel) =>
+        Gen.Select(
+            ExpressionOfType(env, "str", fuel),
+            Gen.OneOfConst("upper", "lower", "strip"),
+            (obj, method) => (Expression)new FunctionCall
+            {
+                Function = new MemberAccess { Object = obj, Member = method },
+                Arguments = ImmutableArray<Expression>.Empty
+            });
+
+    private static Gen<Expression> AbsExpression(TypeEnv env, int fuel) =>
+        ExpressionOfType(env, "int", fuel).Select(inner =>
+            (Expression)new FunctionCall
+            {
+                Function = new Identifier { Name = "abs" },
+                Arguments = ImmutableArray.Create<Expression>(inner)
+            });
+
+    private static Gen<Expression> ListLiteralGen(string elementType) =>
+        Gen.Int[0, 3].Select(len =>
+        {
+            var elements = Enumerable.Range(0, len)
+                .Select(_ => DefaultValueForType(elementType))
+                .ToImmutableArray();
+            return (Expression)new ListLiteral { Elements = elements };
+        });
+
+    private static Gen<Expression> ListLiteralGen(string elementType, TypeEnv env, int fuel) =>
+        ExpressionOfType(env, elementType, fuel).Array[0, 3].Select(elems =>
+            (Expression)new ListLiteral { Elements = elems.ToImmutableArray() });
+
     private static Expression DefaultValueForType(string type) => type switch
     {
         "int" => new IntegerLiteral { Value = "0" },
         "str" => new StringLiteral { Value = "" },
         "bool" => new BooleanLiteral { Value = false },
         "float" => new FloatLiteral { Value = "0.0" },
+        "list[int]" => new ListLiteral { Elements = ImmutableArray<Expression>.Empty },
+        "list[str]" => new ListLiteral { Elements = ImmutableArray<Expression>.Empty },
+        "int?" or "str?" => new FunctionCall
+        {
+            Function = new Identifier { Name = "None" },
+            Arguments = ImmutableArray<Expression>.Empty
+        },
         _ => new IntegerLiteral { Value = "0" }
+    };
+
+    private static TypeAnnotation TypeAnnotationForType(string type) => type switch
+    {
+        "list[int]" => new TypeAnnotation
+        {
+            Name = "list",
+            TypeArguments = ImmutableArray.Create(new TypeAnnotation { Name = "int" })
+        },
+        "list[str]" => new TypeAnnotation
+        {
+            Name = "list",
+            TypeArguments = ImmutableArray.Create(new TypeAnnotation { Name = "str" })
+        },
+        "int?" => new TypeAnnotation { Name = "int", IsOptional = true },
+        "str?" => new TypeAnnotation { Name = "str", IsOptional = true },
+        _ => new TypeAnnotation { Name = type }
     };
 }

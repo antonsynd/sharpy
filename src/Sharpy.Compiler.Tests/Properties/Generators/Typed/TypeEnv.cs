@@ -21,4 +21,12 @@ internal sealed record TypeEnv
         .WithBinding("y", "int")
         .WithBinding("s", "str")
         .WithBinding("flag", "bool");
+
+    public static TypeEnv WithCollections { get; } = Default
+        .WithBinding("nums", "list[int]")
+        .WithBinding("words", "list[str]");
+
+    public static TypeEnv WithOptionals { get; } = Default
+        .WithBinding("maybe_n", "int?")
+        .WithBinding("maybe_s", "str?");
 }

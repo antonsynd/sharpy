@@ -6,4 +6,14 @@ internal static class TypeBuilders
     {
         "int", "str", "bool", "float"
     };
+
+    public static readonly string[] SupportedTypesWithCollections =
+    {
+        "int", "str", "bool", "float", "list[int]", "list[str]"
+    };
+
+    public static readonly string[] SupportedTypesWithOptionals =
+    {
+        "int", "str", "bool", "float", "int?", "str?"
+    };
 }
