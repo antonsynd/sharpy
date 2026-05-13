@@ -81,11 +81,11 @@ internal static class DunderDocumentation
 
         // Context manager
         ["__enter__"] = "Context manager entry. Called when entering a `with` block.\nMust return the value to bind to the `as` variable.",
-        ["__exit__"] = "Context manager exit. Called when leaving a `with` block.\nReceives exception info (type, value, traceback) if an error occurred.",
+        ["__exit__"] = "Context manager exit. Called when leaving a `with` block.\n\nSupports two forms:\n- `def __exit__(self) -> None` — simple cleanup; always invoked in `finally`.\n- `def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool` — exception-aware; returns `True` to suppress the exception, `False` to propagate.",
 
         // Async context manager
         ["__aenter__"] = "Async context manager entry. Called when entering an `async with` block.\nMust return the value to bind to the `as` variable.",
-        ["__aexit__"] = "Async context manager exit. Called when leaving an `async with` block.",
+        ["__aexit__"] = "Async context manager exit. Called when leaving an `async with` block.\n\nSupports two forms:\n- `async def __aexit__(self) -> None` — simple cleanup; always awaited in `finally`.\n- `async def __aexit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool` — exception-aware; returns `True` to suppress the exception, `False` to propagate.",
 
         // Async iteration
         ["__aiter__"] = "Returns an async iterator. Called by `async for` loops.",
