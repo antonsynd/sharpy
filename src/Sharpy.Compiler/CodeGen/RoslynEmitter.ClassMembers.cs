@@ -133,6 +133,14 @@ internal partial class RoslynEmitter
                     {
                         setItemFunc = funcDef;
                     }
+                    // Memoization decorators expand into multiple members (cache field +
+                    // private body + public wrapper + accessor methods). Handled before
+                    // the dunder registry/synthesis paths because cached dunders are not
+                    // supported and would conflict with operator/protocol generation.
+                    else if (IsLruCacheDecorated(funcDef))
+                    {
+                        members.AddRange(GenerateLruCacheWrappedFunction(funcDef, isModuleLevel: false));
+                    }
                     // Registry-based dispatch for dunders with special codegen
                     else if (_dunderRegistry.TryGetHandler(funcDef.Name, out var handler))
                     {

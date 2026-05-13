@@ -116,6 +116,19 @@ internal partial class RoslynEmitter
 
         foreach (var stmt in statements)
         {
+            // Module-level functions decorated with @lru_cache/@cache expand into a cache
+            // field plus a private/public method pair, so they need to bypass the single-
+            // member GenerateStatement dispatcher and emit several members at once.
+            if (stmt is FunctionDef cachedFunc && IsLruCacheDecorated(cachedFunc))
+            {
+                moduleDeclarations.AddRange(GenerateLruCacheWrappedFunction(cachedFunc, isModuleLevel: true));
+                _declaredVariables.Clear();
+                _variableVersions.Clear();
+                _constVariables.Clear();
+                _narrowing.Reset();
+                continue;
+            }
+
             var member = GenerateStatement(stmt);
 
             // After generating class/struct/function declarations, clear local scope tracking
