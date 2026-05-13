@@ -1041,7 +1041,7 @@ class MyClass:
         var module = Parse("try risky_operation()");
         var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
         var tryExpr = exprStmt.Expression.Should().BeOfType<TryExpression>().Subject;
-        tryExpr.ExceptionType.Should().BeNull();
+        tryExpr.ExceptionTypes.Should().BeEmpty();
         tryExpr.Operand.Should().BeOfType<FunctionCall>();
     }
 
@@ -1051,8 +1051,8 @@ class MyClass:
         var module = Parse("try[ValueError] int(user_input)");
         var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
         var tryExpr = exprStmt.Expression.Should().BeOfType<TryExpression>().Subject;
-        tryExpr.ExceptionType.Should().NotBeNull();
-        tryExpr.ExceptionType!.Name.Should().Be("ValueError");
+        tryExpr.ExceptionTypes.Should().HaveCount(1);
+        tryExpr.ExceptionTypes[0].Name.Should().Be("ValueError");
         tryExpr.Operand.Should().BeOfType<FunctionCall>();
     }
 
@@ -1062,10 +1062,22 @@ class MyClass:
         var module = Parse("try[HttpError[T]] fetch_data()");
         var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
         var tryExpr = exprStmt.Expression.Should().BeOfType<TryExpression>().Subject;
-        tryExpr.ExceptionType.Should().NotBeNull();
-        tryExpr.ExceptionType!.Name.Should().Be("HttpError");
-        tryExpr.ExceptionType!.TypeArguments.Should().HaveCount(1);
-        tryExpr.ExceptionType!.TypeArguments[0].Name.Should().Be("T");
+        tryExpr.ExceptionTypes.Should().HaveCount(1);
+        tryExpr.ExceptionTypes[0].Name.Should().Be("HttpError");
+        tryExpr.ExceptionTypes[0].TypeArguments.Should().HaveCount(1);
+        tryExpr.ExceptionTypes[0].TypeArguments[0].Name.Should().Be("T");
+    }
+
+    [Fact]
+    public void ParseTryExpression_WithUnionExceptionTypes()
+    {
+        var module = Parse("try[ValueError | KeyError | TypeError] do_something()");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var tryExpr = exprStmt.Expression.Should().BeOfType<TryExpression>().Subject;
+        tryExpr.ExceptionTypes.Should().HaveCount(3);
+        tryExpr.ExceptionTypes[0].Name.Should().Be("ValueError");
+        tryExpr.ExceptionTypes[1].Name.Should().Be("KeyError");
+        tryExpr.ExceptionTypes[2].Name.Should().Be("TypeError");
     }
 
     [Fact]

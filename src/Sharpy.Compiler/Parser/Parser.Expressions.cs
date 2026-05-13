@@ -141,7 +141,7 @@ public partial class Parser
 
     private Expression ParseTryMaybeExpression()
     {
-        // try expression: try expr or try[ExceptionType] expr
+        // try expression: try expr, try[E] expr, or try[A | B | C] expr
         // Wraps expression in Result[T, E]
         if (Current.Type == TokenType.Try)
         {
@@ -150,13 +150,20 @@ public partial class Parser
             var startToken = Current;
             Advance();  // Skip 'try'
 
-            // Check for optional exception type: try[ValueError] expr
-            TypeAnnotation? exceptionType = null;
+            // Check for optional exception type list: try[ValueError] expr or try[A | B] expr
+            var exceptionTypes = ImmutableArray<TypeAnnotation>.Empty;
             if (Current.Type == TokenType.LeftBracket)
             {
                 Advance();  // Skip '['
-                exceptionType = ParseTypeAnnotation();
+                var typesBuilder = ImmutableArray.CreateBuilder<TypeAnnotation>();
+                typesBuilder.Add(ParseTypeAnnotation());
+                while (Current.Type == TokenType.Pipe)
+                {
+                    Advance();  // Skip '|'
+                    typesBuilder.Add(ParseTypeAnnotation());
+                }
                 Expect(TokenType.RightBracket);
+                exceptionTypes = typesBuilder.ToImmutable();
             }
 
             // Parse the operand - try captures everything up to conditional expressions
@@ -165,7 +172,7 @@ public partial class Parser
             return new TryExpression
             {
                 Operand = operand,
-                ExceptionType = exceptionType,
+                ExceptionTypes = exceptionTypes,
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = operand.LineEnd,
