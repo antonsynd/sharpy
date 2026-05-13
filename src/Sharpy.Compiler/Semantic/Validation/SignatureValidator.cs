@@ -205,35 +205,46 @@ internal class SignatureValidator : SemanticValidatorBase
     {
         var actualCount = funcDef.Parameters.Length;
         var expectedCount = protocol.ExpectedParamCount;
+        var alternateCount = protocol.AlternateParamCount;
 
         // -1 means any count (e.g., __init__ can have any number of params)
         if (expectedCount == -1)
             return;
 
-        if (actualCount != expectedCount)
+        // Accept either the expected count or the alternate count (e.g., __exit__ accepts 1 or 4)
+        if (actualCount == expectedCount || (alternateCount.HasValue && actualCount == alternateCount.Value))
+            return;
+
+        // Provide context-specific parameter descriptions
+        var paramDescription = DescribeExpectedParameters(expectedCount, protocol.DunderName);
+        var alternateDescription = alternateCount.HasValue
+            ? $" or {alternateCount.Value} parameter{(alternateCount.Value == 1 ? "" : "s")} {DescribeExpectedParameters(alternateCount.Value, protocol.DunderName)}"
+            : "";
+
+        var interfaceHint = protocol.SharpyCoreInterface != null
+            ? $" See interface '{protocol.SharpyCoreInterface}' for expected signature."
+            : "";
+
+        AddError(_context,
+            $"Protocol method '{protocol.DunderName}' on '{owningType.Name}' must have exactly " +
+            $"{expectedCount} parameter{(expectedCount == 1 ? "" : "s")} {paramDescription}{alternateDescription}, got {actualCount}.{interfaceHint}",
+            funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+            span: funcDef.Span);
+    }
+
+    private static string DescribeExpectedParameters(int count, string dunderName)
+    {
+        return (count, dunderName) switch
         {
-            // Provide context-specific parameter descriptions
-            var paramDescription = (expectedCount, protocol.DunderName) switch
-            {
-                (1, _) => "(self)",
-                (2, DunderNames.Contains) => "(self, item)",
-                (2, DunderNames.GetItem) => "(self, index)",
-                (2, _) => "(self, other)",
-                (3, DunderNames.SetItem) => "(self, index, value)",
-                (3, _) => "(self, key, value)",
-                _ => $"({expectedCount} parameters)"
-            };
-
-            var interfaceHint = protocol.SharpyCoreInterface != null
-                ? $" See interface '{protocol.SharpyCoreInterface}' for expected signature."
-                : "";
-
-            AddError(_context,
-                $"Protocol method '{protocol.DunderName}' on '{owningType.Name}' must have exactly " +
-                $"{expectedCount} parameter{(expectedCount == 1 ? "" : "s")} {paramDescription}, got {actualCount}.{interfaceHint}",
-                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
-                span: funcDef.Span);
-        }
+            (1, _) => "(self)",
+            (2, DunderNames.Contains) => "(self, item)",
+            (2, DunderNames.GetItem) => "(self, index)",
+            (2, _) => "(self, other)",
+            (3, DunderNames.SetItem) => "(self, index, value)",
+            (3, _) => "(self, key, value)",
+            (4, DunderNames.Exit) or (4, DunderNames.Aexit) => "(self, exc_type, exc_val, exc_tb)",
+            _ => $"({count} parameters)"
+        };
     }
 
     private void ValidateProtocolReturnType(FunctionDef funcDef, ProtocolInfo protocol, TypeSymbol owningType)
@@ -246,10 +257,22 @@ internal class SignatureValidator : SemanticValidatorBase
         if (funcDef.ReturnType == null)
             return;
 
+        // Select expected return type based on which param-count form was used.
+        // For protocols with an alternate signature (e.g., __exit__), the 4-arg
+        // form may have a different expected return type (e.g., bool to suppress).
+        var actualParamCount = funcDef.Parameters.Length;
+        var expectedReturnType = protocol.ExpectedReturnType;
+        if (protocol.AlternateParamCount.HasValue
+            && actualParamCount == protocol.AlternateParamCount.Value
+            && protocol.AlternateReturnType != null)
+        {
+            expectedReturnType = protocol.AlternateReturnType;
+        }
+
         var actualReturnType = TypeAnnotationHelper.GetName(funcDef.ReturnType);
 
         // Normalize: "None" and "void" are equivalent
-        var expectedNormalized = protocol.ExpectedReturnType == BuiltinNames.None ? "void" : protocol.ExpectedReturnType;
+        var expectedNormalized = expectedReturnType == BuiltinNames.None ? "void" : expectedReturnType;
         var actualNormalized = actualReturnType == BuiltinNames.None ? "void" : actualReturnType;
 
         if (!string.Equals(actualNormalized, expectedNormalized, StringComparison.OrdinalIgnoreCase))
@@ -260,7 +283,7 @@ internal class SignatureValidator : SemanticValidatorBase
 
             AddError(_context,
                 $"Protocol method '{protocol.DunderName}' on '{owningType.Name}' must return " +
-                $"'{protocol.ExpectedReturnType}', got '{actualReturnType}'.{interfaceHint}",
+                $"'{expectedReturnType}', got '{actualReturnType}'.{interfaceHint}",
                 funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
                 span: funcDef.Span);
         }

@@ -27,6 +27,8 @@ public enum ProtocolKind
 /// <param name="ClrMethodName">The .NET method/property name (e.g., "get_Count"), or null if no direct mapping</param>
 /// <param name="ExpectedParamCount">Expected parameter count including 'self'</param>
 /// <param name="ExpectedReturnType">Expected return type name (e.g., "int", "bool", "str"), or null for any</param>
+/// <param name="AlternateParamCount">Optional alternate accepted parameter count (e.g., __exit__ accepts both 1 and 4)</param>
+/// <param name="AlternateReturnType">Optional alternate accepted return type, paired with AlternateParamCount</param>
 public record ProtocolInfo(
     string DunderName,
     ProtocolKind Kind,
@@ -34,7 +36,9 @@ public record ProtocolInfo(
     string? InterfaceMethodName,
     string? ClrMethodName,
     int ExpectedParamCount,
-    string? ExpectedReturnType
+    string? ExpectedReturnType,
+    int? AlternateParamCount = null,
+    string? AlternateReturnType = null
 );
 
 /// <summary>
@@ -218,8 +222,10 @@ public static class ProtocolRegistry
             SharpyCoreInterface: null,
             InterfaceMethodName: null,
             ClrMethodName: "Dispose",
-            ExpectedParamCount: 1,  // Sharpy: self-only (Python takes self, exc_type, exc_val, exc_tb)
-            ExpectedReturnType: "None"
+            ExpectedParamCount: 1,  // Sharpy: self-only — cleanup only
+            ExpectedReturnType: "None",
+            AlternateParamCount: 4,  // Python: self, exc_type, exc_val, exc_tb — exception aware
+            AlternateReturnType: "bool"  // Returns True to suppress exception
         ));
 
         Register(protocols, new ProtocolInfo(
@@ -238,8 +244,10 @@ public static class ProtocolRegistry
             SharpyCoreInterface: null,
             InterfaceMethodName: null,
             ClrMethodName: "DisposeAsync",
-            ExpectedParamCount: 1,  // Just self
-            ExpectedReturnType: "None"
+            ExpectedParamCount: 1,  // Sharpy: self-only — cleanup only
+            ExpectedReturnType: "None",
+            AlternateParamCount: 4,  // Python: self, exc_type, exc_val, exc_tb — exception aware
+            AlternateReturnType: "bool"  // Returns True to suppress exception
         ));
 
         // Note: __eq__ and __ne__ are handled by OperatorRegistry as they
