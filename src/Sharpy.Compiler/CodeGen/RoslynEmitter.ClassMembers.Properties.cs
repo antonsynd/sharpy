@@ -99,6 +99,12 @@ internal partial class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
         }
 
+        // @final fields emit as C# readonly (assignment restricted to constructors).
+        if (varDecl.Decorators.Any(d => d.Name == DecoratorNames.Final))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.ReadOnlyKeyword));
+        }
+
         return FieldDeclaration(declaration)
             .WithModifiers(modifiers);
     }
