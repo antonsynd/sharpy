@@ -780,10 +780,39 @@ internal partial class TypeChecker
 
         // Determine the error type
         SemanticType errorType;
-        if (tryExpr.ExceptionTypes.Length == 1)
+        if (tryExpr.ExceptionTypes.Length >= 1)
         {
-            // Explicit single exception type: try[ValueError] expr
-            errorType = _typeResolver.ResolveTypeAnnotation(tryExpr.ExceptionTypes[0]);
+            // Explicit exception type(s): try[E] expr or try[A | B | C] expr.
+            // Resolve each, validate it inherits from Exception, then compute the
+            // common base type (most specific shared ancestor) for the Result error.
+            var resolved = new List<SemanticType>(tryExpr.ExceptionTypes.Length);
+            var exceptionSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType("Exception");
+            foreach (var typeAnnotation in tryExpr.ExceptionTypes)
+            {
+                var resolvedType = _typeResolver.ResolveTypeAnnotation(typeAnnotation);
+                if (resolvedType is UnknownType)
+                {
+                    resolved.Add(resolvedType);
+                    continue;
+                }
+
+                // Validate it is an Exception subclass (skip when we can't find Exception
+                // symbol — fail open so unrelated environments still compile).
+                if (exceptionSymbol != null && !IsExceptionSubtype(resolvedType, exceptionSymbol))
+                {
+                    AddError(
+                        $"Type '{resolvedType}' in 'try' expression must be a subclass of 'Exception'",
+                        typeAnnotation.LineStart, typeAnnotation.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TryExceptionTypeNotException,
+                        span: typeAnnotation.Span);
+                }
+
+                resolved.Add(resolvedType);
+            }
+
+            errorType = resolved.Count == 1
+                ? resolved[0]
+                : FindCommonExceptionBase(resolved, exceptionSymbol);
         }
         else if (tryExpr.Operand is TypeCoercion)
         {
@@ -812,6 +841,90 @@ internal partial class TypeChecker
         }
 
         return new ResultType { OkType = operandType, ErrorType = errorType };
+    }
+
+    /// <summary>
+    /// Returns true when <paramref name="type"/> is the Exception type itself or a
+    /// subclass of it. Walks the base chain via <see cref="TypeHierarchyService"/>.
+    /// </summary>
+    private static bool IsExceptionSubtype(SemanticType type, TypeSymbol exceptionSymbol)
+    {
+        if (type is not UserDefinedType { Symbol: { } symbol })
+        {
+            return false;
+        }
+
+        if (TypeHierarchyService.IsSameType(symbol, exceptionSymbol))
+        {
+            return true;
+        }
+
+        return TypeHierarchyService.InheritsFrom(symbol, exceptionSymbol);
+    }
+
+    /// <summary>
+    /// Computes the most specific common ancestor for a set of exception types used
+    /// in a multi-exception try expression (try[A | B | C]). Falls back to the
+    /// <c>Exception</c> base type when there is no shared ancestor lower in the chain.
+    /// </summary>
+    private SemanticType FindCommonExceptionBase(IReadOnlyList<SemanticType> exceptionTypes, TypeSymbol? exceptionSymbol)
+    {
+        SemanticType fallback = exceptionSymbol != null
+            ? new UserDefinedType { Name = "Exception", Symbol = exceptionSymbol }
+            : (exceptionTypes.FirstOrDefault(t => t is not UnknownType) ?? SemanticType.Unknown);
+
+        // Start with the ancestor chain of the first type and intersect with each subsequent type's chain.
+        IReadOnlyList<SemanticType>? commonChain = null;
+        foreach (var t in exceptionTypes)
+        {
+            if (t is UnknownType)
+            {
+                continue;
+            }
+
+            var chain = TypeHierarchyService.GetAncestorChain(t);
+            if (commonChain == null)
+            {
+                commonChain = chain;
+                continue;
+            }
+
+            // Keep only ancestors that appear in 'chain' (preserving most-specific order from commonChain).
+            var filtered = new List<SemanticType>();
+            foreach (var ancestor in commonChain)
+            {
+                if (chain.Any(c => SemanticTypesAreSame(c, ancestor)))
+                {
+                    filtered.Add(ancestor);
+                }
+            }
+            commonChain = filtered;
+        }
+
+        if (commonChain == null || commonChain.Count == 0)
+        {
+            return fallback;
+        }
+
+        // First element is the most specific common ancestor
+        return commonChain[0];
+    }
+
+    /// <summary>
+    /// Compares two semantic types for "same type" purposes during ancestor intersection.
+    /// Uses <see cref="TypeHierarchyService.IsSameType"/> for user-defined types and
+    /// falls back to record equality for others (BuiltinType, Object, etc).
+    /// </summary>
+    private static bool SemanticTypesAreSame(SemanticType a, SemanticType b)
+    {
+        if (ReferenceEquals(a, b))
+            return true;
+        if (a is UserDefinedType ua && b is UserDefinedType ub
+            && ua.Symbol != null && ub.Symbol != null)
+        {
+            return TypeHierarchyService.IsSameType(ua.Symbol, ub.Symbol);
+        }
+        return a.Equals(b);
     }
 
     /// <summary>

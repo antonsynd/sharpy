@@ -397,6 +397,9 @@ public static class DiagnosticCodes
         public const string ExceptionFilterNotBoolean = "SPY0397";       // Active
         public const string ExceptStarWhenNotSupported = "SPY0398";      // Active
 
+        // Try expression errors (SPY0399)
+        public const string TryExceptionTypeNotException = "SPY0399";    // Active
+
         #endregion
     }
 
