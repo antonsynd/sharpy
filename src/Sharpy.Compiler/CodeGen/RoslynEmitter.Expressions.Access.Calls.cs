@@ -1018,4 +1018,137 @@ internal partial class RoslynEmitter
         foreach (var baseType in TypeHierarchyService.GetAllBaseTypes(typeSymbol))
             yield return baseType;
     }
+
+    /// <summary>
+    /// Generates code for a <c>functools.partial(f, fixed_args..., kw=val, ...)</c> call.
+    /// Desugars to a lambda that captures the fixed arguments and forwards the remaining
+    /// parameters to the target function:
+    /// <code>functools.partial(add, 5) -> (int x) => add(5, x)</code>
+    /// </summary>
+    private ExpressionSyntax GenerateFunctoolsPartialCall(FunctionCall call)
+    {
+        // call.Arguments[0] is the target callable; remaining positional args are fixed.
+        var targetExpr = call.Arguments[0];
+        var targetCSharp = GenerateExpression(targetExpr);
+
+        var resultType = GetExpressionSemanticType(call) as Semantic.FunctionType;
+        if (resultType == null)
+        {
+            // Defensive fallback: semantic analysis failed to compute a FunctionType
+            // (should not happen when IsFunctoolsPartialCall returns true and type checking succeeded).
+            return GenerateCall(call);
+        }
+
+        // Resolve target FunctionSymbol so we can name the remaining lambda parameters
+        // after the original function's parameter names (preserves keyword-fix support).
+        FunctionSymbol? targetSymbol = null;
+        if (targetExpr is Parser.Ast.Identifier targetId)
+        {
+            targetSymbol = _context.LookupSymbol(targetId.Name) as FunctionSymbol;
+        }
+
+        // Evaluate fixed positional and keyword args. Side-effect-bearing expressions are
+        // hoisted into local temps so they execute exactly once (matching Python semantics
+        // where partial captures its arguments at construction time).
+        var fixedPositionalArgs = new List<ExpressionSyntax>(call.Arguments.Length - 1);
+        for (int i = 1; i < call.Arguments.Length; i++)
+        {
+            fixedPositionalArgs.Add(CaptureFixedArg(call.Arguments[i]));
+        }
+
+        var fixedKwargNames = new HashSet<string>(StringComparer.Ordinal);
+        var fixedKwargs = new List<(string Name, ExpressionSyntax Value)>(call.KeywordArguments.Length);
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            fixedKwargs.Add((kwarg.Name, CaptureFixedArg(kwarg.Value)));
+            fixedKwargNames.Add(kwarg.Name);
+        }
+
+        // Determine names for the lambda's remaining parameters. Prefer the original
+        // function's parameter names (when a FunctionSymbol target is available); fall
+        // back to synthetic names otherwise.
+        var remainingParamNames = new List<string>(resultType.ParameterTypes.Count);
+        if (targetSymbol != null)
+        {
+            int fixedPosCount = fixedPositionalArgs.Count;
+            for (int i = fixedPosCount; i < targetSymbol.Parameters.Count; i++)
+            {
+                var p = targetSymbol.Parameters[i];
+                if (fixedKwargNames.Contains(p.Name)) continue;
+                remainingParamNames.Add(p.Name);
+            }
+        }
+
+        while (remainingParamNames.Count < resultType.ParameterTypes.Count)
+        {
+            remainingParamNames.Add($"__partial_arg{remainingParamNames.Count}");
+        }
+
+        var lambdaParams = new List<ParameterSyntax>(resultType.ParameterTypes.Count);
+        var lambdaParamIdentifiers = new List<string>(resultType.ParameterTypes.Count);
+        for (int i = 0; i < resultType.ParameterTypes.Count; i++)
+        {
+            var paramTypeSyntax = _typeMapper.MapSemanticType(resultType.ParameterTypes[i]);
+            var paramName = NameMangler.ToCamelCase(remainingParamNames[i]);
+            lambdaParams.Add(Parameter(Identifier(paramName)).WithType(paramTypeSyntax));
+            lambdaParamIdentifiers.Add(paramName);
+        }
+
+        // Build the call inside the lambda body:
+        //   target(fixed_positional..., remaining_positional..., fixedKw1: val1, ...)
+        var bodyArgs = new List<ArgumentSyntax>();
+        foreach (var fa in fixedPositionalArgs)
+        {
+            bodyArgs.Add(Argument(fa));
+        }
+        foreach (var lpn in lambdaParamIdentifiers)
+        {
+            bodyArgs.Add(Argument(IdentifierName(lpn)));
+        }
+        foreach (var (kwName, kwValue) in fixedKwargs)
+        {
+            var csharpName = NameMangler.ToCamelCase(kwName);
+            bodyArgs.Add(Argument(kwValue)
+                .WithNameColon(NameColon(IdentifierName(csharpName))));
+        }
+
+        var body = InvocationExpression(targetCSharp)
+            .WithArgumentList(ArgumentList(SeparatedList(bodyArgs)));
+
+        if (lambdaParams.Count == 0)
+        {
+            return ParenthesizedLambdaExpression().WithExpressionBody(body);
+        }
+        if (lambdaParams.Count == 1)
+        {
+            return ParenthesizedLambdaExpression()
+                .WithParameterList(ParameterList(SeparatedList(lambdaParams)))
+                .WithExpressionBody(body);
+        }
+        return ParenthesizedLambdaExpression()
+            .WithParameterList(ParameterList(SeparatedList(lambdaParams)))
+            .WithExpressionBody(body);
+    }
+
+    /// <summary>
+    /// Evaluates a fixed argument for <c>functools.partial</c>. Side-effect-free
+    /// expressions (literals, identifiers) are inlined; everything else is hoisted
+    /// into a local temp so it executes once at the partial-construction site.
+    /// </summary>
+    private ExpressionSyntax CaptureFixedArg(Expression argExpr)
+    {
+        var generated = GenerateExpression(argExpr);
+        if (IsSideEffectFree(argExpr))
+        {
+            return generated;
+        }
+
+        var tempName = GenerateTempVarName("partialArg");
+        _hoistedStatements.Add(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(tempName))
+                        .WithInitializer(EqualsValueClause(generated))))));
+        return IdentifierName(tempName);
+    }
 }

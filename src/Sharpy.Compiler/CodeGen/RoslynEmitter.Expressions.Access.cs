@@ -17,6 +17,12 @@ internal partial class RoslynEmitter
 {
     private ExpressionSyntax GenerateCall(FunctionCall call)
     {
+        // Handle functools.partial(f, ...) — compatibility shim that emits an equivalent lambda
+        if (Semantic.FunctoolsPartialHelper.IsFunctoolsPartialCall(call, _context.SymbolTable))
+        {
+            return GenerateFunctoolsPartialCall(call);
+        }
+
         // Handle generic type/function instantiation: Box[int](42) or identity[int](42)
         if (call.Function is IndexAccess indexAccess &&
             indexAccess.Object is Identifier genericName)
