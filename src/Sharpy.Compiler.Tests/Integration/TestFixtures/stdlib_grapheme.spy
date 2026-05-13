@@ -1,0 +1,14 @@
+# Test grapheme module: graphemes, length, slice, at
+import grapheme
+
+def main():
+    print(grapheme.length("hello"))
+    print(grapheme.length(""))
+    print(grapheme.at("hello", 0))
+    print(grapheme.at("hello", -1))
+    print(grapheme.slice("hello", 1, 4))
+    print(grapheme.slice("hello", 2))
+    parts = grapheme.graphemes("abc")
+    print(parts[0])
+    print(parts[1])
+    print(parts[2])

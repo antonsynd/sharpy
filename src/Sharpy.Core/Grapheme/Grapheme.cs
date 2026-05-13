@@ -68,25 +68,17 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Returns a substring by grapheme cluster index range.
+        /// Returns a substring containing all graphemes from <paramref name="start"/> to the end.
         /// </summary>
         /// <param name="text">The string to slice.</param>
-        /// <param name="start">The starting grapheme index (inclusive).</param>
-        /// <param name="end">
-        /// The ending grapheme index (exclusive), or <c>null</c> to slice to the end.
-        /// </param>
-        /// <returns>The substring containing graphemes from <paramref name="start"/> up to (but not including) <paramref name="end"/>.</returns>
+        /// <param name="start">The starting grapheme index (inclusive). Negative values count from the end.</param>
+        /// <returns>The substring from <paramref name="start"/> to the end of the string.</returns>
         /// <example>
         /// <code>
-        /// grapheme.slice("héllo", 0, 3)   # "hél"
-        /// grapheme.slice("héllo", 2, None) # "llo"
+        /// grapheme.slice("héllo", 2)   # "llo"
         /// </code>
         /// </example>
-        /// <remarks>
-        /// Indices are clamped to the valid range to match Python's slice semantics.
-        /// Negative indices count from the end of the string.
-        /// </remarks>
-        public static string Slice(string text, int start, int? end)
+        public static string Slice(string text, int start)
         {
             if (string.IsNullOrEmpty(text))
             {
@@ -94,12 +86,41 @@ namespace Sharpy
             }
 
             var info = new StringInfo(text);
-            var count = info.LengthInTextElements;
+            return SliceCore(info, info.LengthInTextElements, start, info.LengthInTextElements);
+        }
 
+        /// <summary>
+        /// Returns a substring by grapheme cluster index range.
+        /// </summary>
+        /// <param name="text">The string to slice.</param>
+        /// <param name="start">The starting grapheme index (inclusive).</param>
+        /// <param name="end">The ending grapheme index (exclusive).</param>
+        /// <returns>The substring containing graphemes from <paramref name="start"/> up to (but not including) <paramref name="end"/>.</returns>
+        /// <example>
+        /// <code>
+        /// grapheme.slice("héllo", 0, 3)   # "hél"
+        /// </code>
+        /// </example>
+        /// <remarks>
+        /// Indices are clamped to the valid range to match Python's slice semantics.
+        /// Negative indices count from the end of the string.
+        /// </remarks>
+        public static string Slice(string text, int start, int end)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return string.Empty;
+            }
+
+            var info = new StringInfo(text);
+            return SliceCore(info, info.LengthInTextElements, start, end);
+        }
+
+        private static string SliceCore(StringInfo info, int count, int start, int end)
+        {
             // Normalize negative indices (Python slice semantics: clamp to [0, count]).
             var s = start < 0 ? System.Math.Max(0, count + start) : System.Math.Min(start, count);
-            var eRaw = end ?? count;
-            var e = eRaw < 0 ? System.Math.Max(0, count + eRaw) : System.Math.Min(eRaw, count);
+            var e = end < 0 ? System.Math.Max(0, count + end) : System.Math.Min(end, count);
 
             if (s >= e)
             {
