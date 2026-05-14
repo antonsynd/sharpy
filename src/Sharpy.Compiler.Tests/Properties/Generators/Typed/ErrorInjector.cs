@@ -10,7 +10,8 @@ internal static class ErrorInjector
     public static InjectionResult? InjectTypeMismatchAssignment(Module module)
     {
         var body = GetMainBody(module);
-        if (body == null) return null;
+        if (body == null)
+            return null;
 
         for (int i = 0; i < body.Value.Length; i++)
         {
@@ -37,7 +38,8 @@ internal static class ErrorInjector
     public static InjectionResult? InjectUndefinedVariable(Module module)
     {
         var body = GetMainBody(module);
-        if (body == null) return null;
+        if (body == null)
+            return null;
 
         for (int i = body.Value.Length - 1; i >= 0; i--)
         {
@@ -57,7 +59,8 @@ internal static class ErrorInjector
     public static InjectionResult? InjectWrongArgumentType(Module module)
     {
         var body = GetMainBody(module);
-        if (body == null) return null;
+        if (body == null)
+            return null;
 
         for (int i = body.Value.Length - 1; i >= 0; i--)
         {
@@ -79,7 +82,8 @@ internal static class ErrorInjector
     public static InjectionResult? InjectMissingArgument(Module module)
     {
         var body = GetMainBody(module);
-        if (body == null) return null;
+        if (body == null)
+            return null;
 
         for (int i = body.Value.Length - 1; i >= 0; i--)
         {
