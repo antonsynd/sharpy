@@ -74,7 +74,8 @@ internal sealed partial class UnparseVisitor : AstVisitor
 
     private void WriteLeadingTrivia(Node node)
     {
-        if (node.LeadingTrivia == null) return;
+        if (node.LeadingTrivia == null)
+            return;
         foreach (var trivia in node.LeadingTrivia)
         {
             _w.WriteLine(trivia.Text);
@@ -84,7 +85,8 @@ internal sealed partial class UnparseVisitor : AstVisitor
     private void InsertTrailingTriviaAtFirstNewline(IReadOnlyList<Trivia> trivia, int startPos)
     {
         var nlIdx = _w.IndexOf(_options.LineEnding, startPos);
-        if (nlIdx < 0) return;
+        if (nlIdx < 0)
+            return;
 
         var triviaText = string.Concat(trivia.Select(t => "  " + t.Text));
         _w.InsertAt(nlIdx, triviaText);
