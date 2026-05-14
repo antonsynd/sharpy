@@ -51,8 +51,8 @@ public class FormatterIntegrationTests
                 continue;
             }
 
-            var skipFile = Path.ChangeExtension(spyFile, ".skip");
-            if (File.Exists(skipFile))
+            var formatSkipFile = Path.ChangeExtension(spyFile, ".format-skip");
+            if (File.Exists(formatSkipFile))
             {
                 continue;
             }
