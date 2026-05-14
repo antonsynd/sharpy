@@ -308,6 +308,48 @@ internal static class GenTyped
             });
     }
 
+    public static Gen<Statement> NarrowedBlock(TypeEnv env, int fuel)
+    {
+        var optionalVars = env.Bindings
+            .Where(kv => kv.Value.EndsWith("?"))
+            .Select(kv => kv.Key)
+            .ToArray();
+
+        if (optionalVars.Length == 0)
+            return AssignmentStatement(env, fuel);
+
+        return Gen.OneOfConst(optionalVars).Select(name =>
+            (Statement)new IfStatement
+            {
+                Test = new ComparisonChain
+                {
+                    Operands = ImmutableArray.Create<Expression>(
+                        new Identifier { Name = name },
+                        new NoneLiteral()),
+                    Operators = ImmutableArray.Create(ComparisonOperator.IsNot)
+                },
+                ThenBody = ImmutableArray.Create<Statement>(
+                    new ExpressionStatement
+                    {
+                        Expression = new FunctionCall
+                        {
+                            Function = new Identifier { Name = "print" },
+                            Arguments = ImmutableArray.Create<Expression>(
+                                new Identifier { Name = name })
+                        }
+                    }),
+                ElseBody = ImmutableArray<Statement>.Empty
+            });
+    }
+
+    public static Gen<Expression> ListSubscript(TypeEnv env, string elementType) =>
+        Gen.OneOfConst(env.VarsOfType($"list[{elementType}]").ToArray())
+            .Select(name => (Expression)new IndexAccess
+            {
+                Object = new Identifier { Name = name },
+                Index = new IntegerLiteral { Value = "0" }
+            });
+
     private static Gen<Expression> StringMethodCall(TypeEnv env, int fuel) =>
         Gen.Select(
             ExpressionOfType(env, "str", fuel),
@@ -338,6 +380,8 @@ internal static class GenTyped
     private static Gen<Expression> ListLiteralGen(string elementType, TypeEnv env, int fuel) =>
         ExpressionOfType(env, elementType, fuel).Array[0, 3].Select(elems =>
             (Expression)new ListLiteral { Elements = elems.ToImmutableArray() });
+
+    public static Expression DefaultValue(string type) => DefaultValueForType(type);
 
     private static Expression DefaultValueForType(string type) => type switch
     {

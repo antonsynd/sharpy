@@ -1,4 +1,6 @@
+using System.Collections.Immutable;
 using CsCheck;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
@@ -31,24 +33,70 @@ public class ErrorCompletenessPropertyTests
     [Fact]
     public void WrongArgumentType_IsRejected()
     {
-        RunInjectionTest(ErrorInjector.InjectWrongArgumentType, "wrong argument type");
+        RunInjectionTest(ErrorInjector.InjectWrongArgumentType, "wrong argument type",
+            ProgramWithLenCall());
     }
 
     [Fact]
     public void MissingArgument_IsRejected()
     {
-        RunInjectionTest(ErrorInjector.InjectMissingArgument, "missing argument");
+        RunInjectionTest(ErrorInjector.InjectMissingArgument, "missing argument",
+            ProgramWithLenCall());
     }
 
+    private static Gen<Module> ProgramWithLenCall() =>
+        GenTyped.ExpressionOfType(TypeEnv.Default, "int", fuel: 1).Select(inner =>
+        {
+            var lenCall = new FunctionCall
+            {
+                Function = new Identifier { Name = "len" },
+                Arguments = ImmutableArray.Create<Expression>(
+                    new ListLiteral
+                    {
+                        Elements = ImmutableArray.Create<Expression>(inner)
+                    })
+            };
+
+            var body = ImmutableArray.CreateBuilder<Statement>();
+            foreach (var binding in TypeEnv.Default.Bindings)
+            {
+                body.Add(new VariableDeclaration
+                {
+                    Name = binding.Key,
+                    Type = new TypeAnnotation { Name = binding.Value },
+                    InitialValue = GenTyped.DefaultValue(binding.Value)
+                });
+            }
+            body.Add(new ExpressionStatement
+            {
+                Expression = new FunctionCall
+                {
+                    Function = new Identifier { Name = "print" },
+                    Arguments = ImmutableArray.Create<Expression>(lenCall)
+                }
+            });
+
+            return new Module
+            {
+                Body = ImmutableArray.Create<Statement>(
+                    new FunctionDef
+                    {
+                        Name = "main",
+                        Body = body.ToImmutable()
+                    })
+            };
+        });
+
     private void RunInjectionTest(
-        Func<Sharpy.Compiler.Parser.Ast.Module, ErrorInjector.InjectionResult?> injector,
-        string label)
+        Func<Module, ErrorInjector.InjectionResult?> injector,
+        string label,
+        Gen<Module>? overrideGen = null)
     {
         int tested = 0;
         int caught = 0;
         var falseNegatives = new List<string>();
 
-        var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        var baseGen = overrideGen ?? Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
 
         var wellTyped = SemanticFilter.WellTypedProgram(baseGen);
