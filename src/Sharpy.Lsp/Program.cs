@@ -147,6 +147,7 @@ public class Program
                 .WithHandler<SharpyTypeDefinitionHandler>()
                 // Phase 5 handlers
                 .WithHandler<SharpyRangeFormattingHandler>()
+                .WithHandler<SharpyOnTypeFormattingHandler>()
                 .WithHandler<SharpySelectionRangeHandler>()
                 .WithHandler<SharpyLinkedEditingRangeHandler>()
         ).ConfigureAwait(false);

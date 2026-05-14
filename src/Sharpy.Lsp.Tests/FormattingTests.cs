@@ -44,7 +44,9 @@ public class FormattingTests : IDisposable
     [Fact]
     public async Task AlreadyFormatted_ReturnsNullAsync()
     {
-        var source = "def foo():\n    x: int = 1\n    return x";
+        // The pretty formatter always emits a trailing newline, so already-
+        // formatted source must include it to be a no-op.
+        var source = "def foo():\n    x: int = 1\n    return x\n";
         var formatted = await FormatAsync(source);
 
         formatted.Should().BeNull();
@@ -60,20 +62,23 @@ public class FormattingTests : IDisposable
     [Fact]
     public async Task SingleLine_NoChangeAsync()
     {
-        var source = "x: int = 42";
+        var source = "x: int = 42\n";
         var formatted = await FormatAsync(source);
 
         formatted.Should().BeNull();
     }
 
     [Fact]
-    public async Task BlankLines_PreservedAsEmptyAsync()
+    public async Task BlankLines_InsideFunctionAreNormalizedAsync()
     {
-        var source = "def foo():\n    x: int = 1\n\n    return x";
+        // The pretty formatter normalizes blank lines inside function bodies
+        // (using the BlankLinesBetweenStatements rule = 0 by default), so a
+        // stray blank line between statements is removed.
+        var source = "def foo():\n    x: int = 1\n\n    return x\n";
         var formatted = await FormatAsync(source);
 
-        // Already correctly formatted, blank line preserved
-        formatted.Should().BeNull();
+        formatted.Should().NotBeNull();
+        formatted.Should().Be("def foo():\n    x: int = 1\n    return x\n");
     }
 
     [Fact]
@@ -113,7 +118,7 @@ public class FormattingTests : IDisposable
     public async Task StringWithColon_DoesNotAffectIndentAsync()
     {
         // A colon inside a string should not be confused with a block-starting colon
-        var source = "def foo():\n    x: str = \"hello: world\"\n    return x";
+        var source = "def foo():\n    x: str = \"hello: world\"\n    return x\n";
         var formatted = await FormatAsync(source);
 
         // Already correctly formatted
@@ -152,11 +157,24 @@ public class FormattingTests : IDisposable
     [Fact]
     public async Task MultipleTopLevelDeclarations_StayAtLevel0Async()
     {
-        var source = "class A:\n    x: int = 1\nclass B:\n    y: int = 2";
+        // Pretty formatter inserts two blank lines around top-level declarations.
+        var source = "class A:\n    x: int = 1\n\n\nclass B:\n    y: int = 2\n";
         var formatted = await FormatAsync(source);
 
-        // Already correctly formatted
+        // Already correctly formatted with blank-line rule applied.
         formatted.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task MultipleTopLevelDeclarations_AddsBlankLinesAsync()
+    {
+        // When the blank-line rule is not satisfied, the formatter inserts them.
+        var source = "class A:\n    x: int = 1\nclass B:\n    y: int = 2\n";
+        var formatted = await FormatAsync(source);
+
+        formatted.Should().NotBeNull();
+        // Two blank lines between top-level class declarations.
+        formatted.Should().Contain("x: int = 1\n\n\nclass B");
     }
 
     [Fact]
@@ -169,6 +187,22 @@ public class FormattingTests : IDisposable
         // The lexer sees one INDENT (8 spaces = one indent level), formatter normalizes to 4 spaces
         formatted.Should().NotBeNull();
         formatted.Should().Contain("    x: int = 1");
+    }
+
+    [Fact]
+    public async Task ParseError_FallsBackToIndentOnlyAsync()
+    {
+        // Source has a syntax error (missing body) — FormatterService bails out
+        // and we fall back to the lexer-based indent-only formatter.
+        // The over-indented body is normalized to 4 spaces (one indent level).
+        var source = "def foo():\n        x: int = 1\nclass: # missing name";
+        var formatted = await FormatAsync(source);
+
+        formatted.Should().NotBeNull();
+        formatted.Should().Contain("    x: int = 1");
+        // Fallback preserves the trailing line verbatim — no pretty-printer
+        // restructuring, just indent normalization.
+        formatted.Should().Contain("class: # missing name");
     }
 
     [Fact]

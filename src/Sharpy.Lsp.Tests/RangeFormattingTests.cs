@@ -94,10 +94,24 @@ public class RangeFormattingTests : IDisposable
     [Fact]
     public async Task AlreadyFormatted_ReturnsEmptyAsync()
     {
-        var source = "def foo():\n    x: int = 1\n    return x";
+        // Pretty formatter emits a trailing newline; include it in the source
+        // to make this a true no-op.
+        var source = "def foo():\n    x: int = 1\n    return x\n";
         var edits = await FormatRangeAsync(source, 1, 0, 2, 12);
 
         edits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ParseError_FallsBackToIndentOnlyAsync()
+    {
+        // Document has a syntax error (missing body) — should fall back to
+        // the indent-only formatter for lines inside the requested range.
+        var source = "def foo():\n        x: int = 1\nclass: # missing name";
+        var edits = await FormatRangeAsync(source, 1, 0, 1, 30);
+
+        edits.Should().ContainSingle();
+        edits.First().NewText.Should().Be("    x: int = 1");
     }
 
     [Fact]

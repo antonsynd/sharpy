@@ -213,7 +213,8 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
         await _client.InitializeAsync();
 
         var uri = "file:///test_format_noop.spy";
-        var source = "def main():\n    x: int = 1\n    print(x)";
+        // Pretty formatter emits trailing newline; include it to match.
+        var source = "def main():\n    x: int = 1\n    print(x)\n";
         await _client.DidOpenAsync(uri, source);
 
         await _client.WaitForNotificationAsync(
@@ -357,7 +358,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
         await _client.InitializeAsync();
 
         var uri = "file:///test_range_format_noop.spy";
-        var source = "def main():\n    x: int = 1\n    print(x)";
+        var source = "def main():\n    x: int = 1\n    print(x)\n";
         await _client.DidOpenAsync(uri, source);
 
         await _client.WaitForNotificationAsync(

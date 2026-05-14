@@ -1,14 +1,19 @@
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Sharpy.Compiler.Formatting;
+using LspFormatOptions = Sharpy.Compiler.Formatting.FormatOptions;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Handlers;
 
 /// <summary>
 /// Handles textDocument/formatting requests.
-/// Uses the Lexer's Indent/Dedent tokens to determine correct indentation levels,
-/// then re-indents each line according to the user's tab size/spaces preference.
+/// Primary path: invoke <see cref="FormatterService"/> to fully reformat the
+/// document via the pretty printer (trivia-aware emission, blank-line rules).
+/// Fallback: when the document fails to parse, fall back to
+/// <see cref="IndentationService"/>-based indent-only formatting so users can
+/// still tidy up half-written code.
 /// </summary>
 internal sealed class SharpyFormattingHandler : DocumentFormattingHandlerBase
 {
@@ -32,44 +37,34 @@ internal sealed class SharpyFormattingHandler : DocumentFormattingHandlerBase
         var text = doc.Text;
         var tabSize = (int)request.Options.TabSize;
         var insertSpaces = request.Options.InsertSpaces;
-        var indentStr = insertSpaces ? new string(' ', tabSize) : "\t";
 
-        var (lineIndentLevels, tokens) = IndentationService.BuildIndentMap(text);
-        var multiLineStringLines = IndentationService.FindMultiLineStringLines(tokens);
-
-        var lines = text.Split('\n');
-        var formatted = new List<string>();
-
-        for (var i = 0; i < lines.Length; i++)
+        // Primary path: full FormatterService pass.
+        var options = new LspFormatOptions
         {
-            var line = lines[i].TrimEnd('\r');
-            var trimmed = line.TrimStart();
+            IndentSize = tabSize,
+            UseTabs = !insertSpaces,
+            LineEnding = "\n"
+        };
 
-            // Empty lines stay empty
-            if (trimmed.Length == 0)
-            {
-                formatted.Add("");
-                continue;
-            }
+        var formatResult = FormatterService.Format(text, options);
 
-            // Lines inside multi-line strings: preserve as-is
-            if (multiLineStringLines.Contains(i + 1)) // tokens use 1-based lines
-            {
-                formatted.Add(line);
-                continue;
-            }
+        string formattedText;
+        if (formatResult.Diagnostics.Count == 0)
+        {
+            if (!formatResult.HasChanges)
+                return Task.FromResult<TextEditContainer?>(null);
 
-            // Apply indent level from token stream
-            var level = lineIndentLevels.TryGetValue(i + 1, out var l) ? l : 0;
-            var formattedLine = string.Concat(Enumerable.Repeat(indentStr, level)) + trimmed;
-            formatted.Add(formattedLine);
+            formattedText = formatResult.FormattedText;
+        }
+        else
+        {
+            // Fall back to indent-only formatting for unparseable files.
+            formattedText = FormattingFallback.ReindentDocument(text, tabSize, insertSpaces);
+            if (formattedText == text)
+                return Task.FromResult<TextEditContainer?>(null);
         }
 
-        var formattedText = string.Join("\n", formatted);
-
-        if (formattedText == text)
-            return Task.FromResult<TextEditContainer?>(null);
-
+        var lines = text.Split('\n');
         var lastLine = lines.Length - 1;
         var lastCol = lines[lastLine].TrimEnd('\r').Length;
 
