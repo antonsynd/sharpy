@@ -491,7 +491,7 @@ internal partial class ImportResolver
                                 $"Only type declarations (class, struct, interface, enum) can be imported from circular modules.";
                             AddError(stubMsg,
                                 importAlias.LineStart, importAlias.ColumnStart,
-                                code: DiagnosticCodes.Semantic.CircularImport,
+                                code: DiagnosticCodes.Semantic.CircularImportStubError,
                                 span: importAlias.Span ?? fromImport.Span);
                         }
                         else

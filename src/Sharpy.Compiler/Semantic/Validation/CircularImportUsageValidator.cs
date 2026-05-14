@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// <summary>
 /// Validates that symbols imported from deferred circular imports (stubs) are
 /// used only in type annotation positions. Runtime usage (constructor calls,
-/// static method access, base class references, isinstance checks) emits SPY0302.
+/// static method access, isinstance checks) emits SPY0308. Base class references emit SPY0309.
 ///
 /// Type annotations use <see cref="TypeAnnotation"/> nodes (not <see cref="Identifier"/>),
 /// so any <see cref="Identifier"/> matching a deferred-cycle symbol is runtime usage.
@@ -49,7 +49,7 @@ internal class CircularImportUsageValidator : ValidatingAstWalker
                     $"but '{node.Name}' is used at runtime (line {node.LineStart}). " +
                     $"Move '{node.Name}' to a non-circular import or restructure to break the cycle.",
                     node.LineStart, node.ColumnStart,
-                    code: DiagnosticCodes.Semantic.CircularImport,
+                    code: DiagnosticCodes.Semantic.CircularImportRuntimeUsage,
                     span: node.Span);
             }
         }
@@ -88,7 +88,7 @@ internal class CircularImportUsageValidator : ValidatingAstWalker
                     $"Base types require full type information at compile time. " +
                     $"Move '{baseClass.Name}' to a non-circular import or restructure to break the cycle.",
                     line, column,
-                    code: DiagnosticCodes.Semantic.CircularImport,
+                    code: DiagnosticCodes.Semantic.CircularImportBaseClass,
                     span: span);
             }
         }

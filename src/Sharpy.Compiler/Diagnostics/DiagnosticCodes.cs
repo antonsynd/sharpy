@@ -308,7 +308,10 @@ public static class DiagnosticCodes
         public const string ModuleLoadError = "SPY0304";            // Active
         public const string AssemblyNotFound = "SPY0305";           // Active
         public const string AssemblyLoadError = "SPY0306";          // Active
-        // SPY0307-SPY0319: Reserved for future import diagnostics
+        public const string CircularImportStubError = "SPY0307";    // Active
+        public const string CircularImportRuntimeUsage = "SPY0308"; // Active
+        public const string CircularImportBaseClass = "SPY0309";    // Active
+        // SPY0310-SPY0319: Reserved for future import diagnostics
 
         #endregion
 

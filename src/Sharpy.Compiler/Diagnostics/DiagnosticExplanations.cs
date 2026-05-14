@@ -805,6 +805,21 @@ public static class DiagnosticExplanations
             "# a.spy\nfrom b import foo\n\n# b.spy\nfrom a import bar",
             "Break the cycle by:\n  1. Moving shared code to a third module\n  2. Restructuring the dependency graph\n  3. Using lazy imports where possible");
 
+        Add(dict, DiagnosticCodes.Semantic.CircularImportStubError, "Circular import stub error", "Semantic",
+            "Only type declarations (class, struct, interface, enum) can be imported from modules involved in a circular dependency. Non-type symbols like functions or variables require the full module to be loaded, which is impossible during a cycle.",
+            "# a.spy\nfrom b import some_function  # Error: some_function is not a type\n\n# b.spy\nfrom a import MyClass  # OK: MyClass is a type declaration",
+            "Move the non-type symbol to a third module that both can import, or restructure to break the cycle.");
+
+        Add(dict, DiagnosticCodes.Semantic.CircularImportRuntimeUsage, "Circular import runtime usage", "Semantic",
+            "A type imported from a circular dependency can only be used in type annotations, not at runtime. Constructor calls, static method access, and other runtime usage require the full type definition, which is not available during a cycle.",
+            "from other import MyType\n\nx: MyType  # OK: type annotation\ny = MyType()  # Error: runtime usage",
+            "Move the type to a non-circular import, or restructure your modules to break the dependency cycle.");
+
+        Add(dict, DiagnosticCodes.Semantic.CircularImportBaseClass, "Circular import base class", "Semantic",
+            "A type from a circular import cannot be used as a base class. Base types require full type information (fields, methods, layout) at compile time, which is not available for types from circular dependencies.",
+            "from other import Base\n\nclass Child(Base):  # Error: Base is from a circular import\n    pass",
+            "Move the base class to a module that does not participate in the cycle, or restructure the dependency graph.");
+
         Add(dict, DiagnosticCodes.Semantic.ModuleLoadError, "Module load error", "Semantic",
             "A module was found but could not be loaded, typically due to syntax errors in the module's source file.",
             null,

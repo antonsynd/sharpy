@@ -77,7 +77,7 @@ internal class ModuleLoader
             {
                 _logger.LogDebug($"[ModuleLoader] Failed to create stub: {ex.Message}");
                 var chainMessage = FormatCircularImportChain(modulePath);
-                AddError(chainMessage, lineStart, columnStart, code: DiagnosticCodes.Semantic.CircularImport);
+                AddError(chainMessage, lineStart, columnStart, code: DiagnosticCodes.Semantic.CircularImportStubError);
                 return null;
             }
         }
