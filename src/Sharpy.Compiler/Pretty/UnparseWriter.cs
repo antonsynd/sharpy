@@ -42,5 +42,19 @@ internal sealed class UnparseWriter
         WriteLine();
     }
 
+    public int Length => _sb.Length;
+
+    public void InsertAt(int position, string text)
+    {
+        _sb.Insert(position, text);
+    }
+
+    public int IndexOf(string value, int startIndex)
+    {
+        var str = _sb.ToString(startIndex, _sb.Length - startIndex);
+        var idx = str.IndexOf(value, StringComparison.Ordinal);
+        return idx >= 0 ? startIndex + idx : -1;
+    }
+
     public override string ToString() => _sb.ToString();
 }

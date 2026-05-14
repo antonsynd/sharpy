@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Pretty;
@@ -21,10 +22,72 @@ internal sealed partial class UnparseVisitor : AstVisitor
             _w.WriteLine($"\"\"\"{EscapeTripleQuoted(module.DocString)}\"\"\"");
         }
 
+        var fmt = _options.Formatting;
+        bool hasWrittenNonImport = false;
+        bool lastWasImport = false;
+
         for (int i = 0; i < module.Body.Length; i++)
         {
-            Visit(module.Body[i]);
+            var stmt = module.Body[i];
+            bool isImport = stmt is ImportStatement or FromImportStatement;
+            bool isDef = stmt is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or UnionDef or DelegateDef;
+
+            if (fmt != null && i > 0)
+            {
+                if (isDef || (hasWrittenNonImport && !isImport && module.Body[i - 1] is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or UnionDef or DelegateDef))
+                {
+                    for (int b = 0; b < fmt.BlankLinesAroundTopLevelDefs; b++)
+                        _w.WriteLine();
+                }
+                else if (lastWasImport && !isImport)
+                {
+                    _w.WriteLine();
+                }
+            }
+
+            VisitStatementWithTrivia(stmt);
+
+            if (!isImport)
+                hasWrittenNonImport = true;
+            lastWasImport = isImport;
         }
+
+        if (fmt is { TrailingNewline: true } && _w.Length > 0)
+        {
+            var text = _w.ToString();
+            if (!text.EndsWith(_options.LineEnding))
+                _w.WriteLine();
+        }
+    }
+
+    private void VisitStatementWithTrivia(Statement stmt)
+    {
+        if (_options.PreserveTrivia)
+            WriteLeadingTrivia(stmt);
+
+        var posBefore = _w.Length;
+        Visit(stmt);
+
+        if (_options.PreserveTrivia && stmt.TrailingTrivia != null)
+            InsertTrailingTriviaAtFirstNewline(stmt.TrailingTrivia, posBefore);
+    }
+
+    private void WriteLeadingTrivia(Node node)
+    {
+        if (node.LeadingTrivia == null) return;
+        foreach (var trivia in node.LeadingTrivia)
+        {
+            _w.WriteLine(trivia.Text);
+        }
+    }
+
+    private void InsertTrailingTriviaAtFirstNewline(IReadOnlyList<Trivia> trivia, int startPos)
+    {
+        var nlIdx = _w.IndexOf(_options.LineEnding, startPos);
+        if (nlIdx < 0) return;
+
+        var triviaText = string.Concat(trivia.Select(t => "  " + t.Text));
+        _w.InsertAt(nlIdx, triviaText);
     }
 
     #region Precedence
@@ -182,10 +245,29 @@ internal sealed partial class UnparseVisitor : AstVisitor
             return;
         }
 
+        var fmt = _options.Formatting;
         _w.Indent();
         for (int i = 0; i < body.Length; i++)
         {
-            Visit(body[i]);
+            if (fmt != null && i > 0)
+            {
+                bool isMemberDef = body[i] is FunctionDef or PropertyDef or EventDef;
+                bool prevWasMemberDef = body[i - 1] is FunctionDef or PropertyDef or EventDef;
+                if (isMemberDef || prevWasMemberDef)
+                {
+                    for (int b = 0; b < fmt.BlankLinesBetweenClassMembers; b++)
+                        _w.WriteLine();
+                }
+            }
+
+            if (_options.PreserveTrivia)
+            {
+                VisitStatementWithTrivia(body[i]);
+            }
+            else
+            {
+                Visit(body[i]);
+            }
         }
         _w.Dedent();
     }
