@@ -1,0 +1,6 @@
+# Module header
+import os
+def foo():  # my func
+    # body comment
+    x = 1  # inline
+    return x

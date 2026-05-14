@@ -1,0 +1,7 @@
+def foo():
+    pass
+
+
+@staticmethod
+def bar():
+    pass
