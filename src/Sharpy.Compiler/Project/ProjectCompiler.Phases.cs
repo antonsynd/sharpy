@@ -501,7 +501,7 @@ internal partial class ProjectCompiler
         foreach (var (_, unit) in _projectModel!.Units)
         {
             var normalizedPath = PathNormalizer.Normalize(unit.FilePath);
-            var moduleName = Path.GetFileNameWithoutExtension(unit.FilePath);
+            var moduleName = unit.ModulePath;
             moduleNameToPath[moduleName] = normalizedPath;
         }
 
