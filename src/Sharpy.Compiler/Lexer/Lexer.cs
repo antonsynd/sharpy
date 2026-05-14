@@ -250,8 +250,57 @@ public partial class Lexer
                 break;
         }
 
+        if (_preserveTrivia)
+            ReclassifyTrailingTrivia(tokens);
+
         _logger.LogInfo($"Lexing completed ({tokens.Count} tokens produced)");
         return tokens;
+    }
+
+    /// <summary>
+    /// Post-processes the token list to reclassify inline comments as trailing trivia.
+    /// An inline comment (on the same line as preceding code) is moved from
+    /// LeadingTrivia of the current token to TrailingTrivia of the last code token
+    /// on that line.
+    /// </summary>
+    private static void ReclassifyTrailingTrivia(List<Token> tokens)
+    {
+        int lastCodeTokenIndex = -1;
+
+        for (int i = 0; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+
+            if (token.LeadingTrivia != null && token.LeadingTrivia.Count > 0 && lastCodeTokenIndex >= 0)
+            {
+                var prevCodeToken = tokens[lastCodeTokenIndex];
+                List<Trivia>? trailing = null;
+                List<Trivia>? remaining = null;
+
+                foreach (var trivia in token.LeadingTrivia)
+                {
+                    if (trivia.Line == prevCodeToken.Line)
+                    {
+                        trailing ??= new List<Trivia>();
+                        trailing.Add(trivia);
+                    }
+                    else
+                    {
+                        remaining ??= new List<Trivia>();
+                        remaining.Add(trivia);
+                    }
+                }
+
+                if (trailing != null)
+                {
+                    tokens[lastCodeTokenIndex] = prevCodeToken with { TrailingTrivia = trailing };
+                    tokens[i] = token with { LeadingTrivia = remaining };
+                }
+            }
+
+            if (token.Type is not (TokenType.Newline or TokenType.Indent or TokenType.Dedent or TokenType.Eof))
+                lastCodeTokenIndex = i;
+        }
     }
 
     /// <summary>
