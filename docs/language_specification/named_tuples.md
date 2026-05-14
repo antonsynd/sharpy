@@ -18,9 +18,6 @@ type Bounds = tuple[min: int, max: int]
 pos: Point = (x=1.0, y=2.0)
 bounds: Bounds = (min=0, max=100)
 
-# Can mix named and positional (positional must come first)
-coord: Coordinate = (1.0, 2.0, z=3.0)
-
 # All positional (when type is known)
 p: Point = (1.0, 2.0)  # Fields are named based on type
 ```

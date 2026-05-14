@@ -65,12 +65,14 @@ def log(level: str, *messages: str, sep: str = " ") -> None:
 
 log("INFO", "hello", "world", sep=", ")
 
-# ❌ Invalid - positional parameters after *args
-def broken(suffix: str, *items: int, other: str) -> None:  # ERROR: positional after *args not allowed
+# ✅ Valid - parameters after *args become required keyword-only parameters
+def format_items(suffix: str, *items: int, other: str) -> None:
     pass
+
+format_items("!", 1, 2, 3, other="end")  # 'other' must be passed as keyword argument
 ```
 
-> **Note:** `*args` implicitly acts as the keyword-only separator `*`. See [Flexible Arguments](flexible_arguments.md) for details on positional-only and keyword-only parameter markers.
+> **Note:** `*args` implicitly acts as the keyword-only separator `*`. Parameters after `*args` are keyword-only (they must be passed by name). See [Flexible Arguments](flexible_arguments.md) for details on positional-only and keyword-only parameter markers.
 
 ### Only one `*args` per function
 

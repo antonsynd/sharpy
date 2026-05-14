@@ -39,13 +39,15 @@ type Transform[T, U] = (T) -> U
 
 ## Parameter Names
 
+> **Not yet implemented.** The parser currently only supports unnamed parameter types in function type annotations (e.g., `(int, str) -> bool`). The named parameter syntax shown below (e.g., `(count: int, message: str) -> bool`) is planned but not yet supported. Attempting to use named parameters in function type annotations will result in a parse error.
+
 Parameter names are **optional** in function type annotations. When provided, they serve as documentation only and are not part of the type signature:
 
 ```python
-# Without parameter names (preferred for brevity)
+# Without parameter names (currently the only supported form)
 handler: (int, str) -> bool
 
-# With parameter names (for documentation)
+# With parameter names (for documentation) — NOT YET IMPLEMENTED
 handler: (count: int, message: str) -> bool
 
 # Both forms are equivalent types
@@ -55,6 +57,7 @@ handler: (count: int, message: str) -> bool
 **Note:** Parameter names in function types do not create named parameter requirements at call sites. They are purely for readability and documentation.
 
 ```python
+# NOT YET IMPLEMENTED — named parameters in function type aliases
 type EventHandler = (sender: object, args: EventArgs) -> None
 
 # All of these work - names are not enforced

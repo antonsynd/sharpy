@@ -212,9 +212,8 @@ The lexer produces the following token categories:
 
 | Token | Description |
 |-------|-------------|
-| `IDENTIFIER` | Variable/function/class names |
-| `ESCAPED_IDENT` | Backtick-escaped identifier (`` `class` ``) |
-| `KEYWORD` | Reserved words (`def`, `class`, `if`, etc.) |
+| `IDENTIFIER` | Variable/function/class names. Backtick-escaped identifiers (`` `class` ``) also use this token type with `IsBacktickEscaped = true`. |
+| *Per-keyword tokens* | Each keyword has its own token type (`Def`, `Class`, `If`, etc.) rather than a generic `KEYWORD` type. |
 
 ### Operator Tokens
 
@@ -230,7 +229,7 @@ The lexer produces the following token categories:
 | `LT`, `LE`, `GT`, `GE` | `<`, `<=`, `>`, `>=` |
 | `EQ`, `NE` | `==`, `!=` |
 | `ASSIGN` | `=` |
-| `AUGMENTED_ASSIGN` | `+=`, `-=`, `*=`, etc. |
+| `PLUS_ASSIGN`, `MINUS_ASSIGN`, etc. | `+=`, `-=`, `*=`, etc. (each augmented assign has its own token type) |
 | `WALRUS` | `:=` |
 | `ARROW` | `->` |
 | `PIPE_ARROW` | `\|>` |
@@ -289,7 +288,7 @@ Some tokens require lookahead to disambiguate:
 | `\|` | 1 char | `\|` vs `\|>` |
 | `0` | 1 char | `0` (decimal) vs `0x`, `0b`, `0o` |
 | `"` | 2 chars | `"` vs `"""` |
-| String prefix | 1-2 chars | `r"`, `f"`, `rf"` |
+| String prefix | 1-2 chars | `r"`, `f"`, `rf"`, `b"`, `d"`, `dr"`, `df"`, `t"` |
 
 ## Error Recovery in Lexer
 
@@ -318,9 +317,9 @@ Token {
     type: TokenType
     value: string           # Raw text of token
     line: int               # 1-indexed line number
-    column: int             # 0-indexed column (in characters)
-    offset: int             # 0-indexed byte offset in source
-    length: int             # Length in bytes
+    column: int             # 1-indexed column (in characters)
+    position: int           # Character offset in source (0-indexed)
+    length: int             # Computed property: length in characters (not bytes)
 }
 ```
 

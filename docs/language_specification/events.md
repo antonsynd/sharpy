@@ -1,7 +1,5 @@
 # Events
 
-> **Implementation status:** Implemented in Phase 12.3. Function-style event accessor bodies have a known limitation with `self` parameter scope resolution (see [#260](https://github.com/antonsynd/sharpy/issues/260)).
-
 Events provide a publish-subscribe mechanism for objects to notify subscribers when something of interest occurs. Sharpy events map directly to .NET events, enabling seamless interop with UI frameworks, reactive patterns, and the broader .NET ecosystem.
 
 Event syntax mirrors the established [property](properties.md) pattern: auto-events for simple cases, and separate `event add`/`event remove` declarations for custom logic.
@@ -290,7 +288,7 @@ class Application:
     @static
     event on_shutdown: EventHandler
 
-    @staticmethod
+    @static
     def start():
         Application.on_startup?.invoke(None, EventArgs.empty)
 ```

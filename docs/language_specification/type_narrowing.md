@@ -29,7 +29,7 @@ if isinstance(x, int) or isinstance(x, str):
 ## Narrowing Rules
 
 - `is not None` narrows nullable type (`T?`) to non-nullable (`T`)
-- `is None` narrows to never-type in the `if` branch
+- `is None` narrows the variable to `T` (non-optional) in the **else** branch
 - `isinstance(x, Type)` narrows `x` to `Type` in the `if` branch
 - Narrowing only affects the scope of the conditional block
 

@@ -23,9 +23,16 @@ There are aliases present that help ease both Python and C# developers at the co
 | Sharpy Alias | Sharpy Type |
 |--------------|-------------|
 | `byte` | `uint8` |
-| `int` | `int32` |
+| `double` | `float64` |
 | `float` | `float64` |
+| `int` | `int32` |
+| `long` | `int64` |
 | `sbyte` | `int8` |
+| `short` | `int16` |
+| `string` | `str` |
+| `uint` | `uint32` |
+| `ulong` | `uint64` |
+| `ushort` | `uint16` |
 
 ## Array Type
 
@@ -34,7 +41,7 @@ Sharpy exposes raw .NET arrays as `array[T]`, distinct from `list[T]`:
 | Sharpy Type | .NET Type | Notes |
 |-------------|-----------|-------|
 | `array[T]` | `T[]` | Fixed-size, .NET native array |
-| `list[T]` | `Sharpy.Core.List<T>` | Dynamic, Pythonic wrapper |
+| `list[T]` | `Sharpy.List<T>` | Dynamic, Pythonic wrapper |
 
 ```python
 # Array creation

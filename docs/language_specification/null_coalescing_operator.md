@@ -15,14 +15,17 @@ display = raw ?? "Anonymous"
 result = first ?? second ?? default_value
 ```
 
-This contrasts with the `or` operator which tests for truthiness (via `__true__()` and `__false__()` dunders if defined, or `__bool__()` otherwise), rather than absence:
+This contrasts with the `or` operator which tests for truthiness (via `__bool__()`) rather than absence.
+
+> **Note:** Unlike Python, Sharpy's `or` operator always returns `bool`, not the operand value. `"" or "Anonymous"` returns `True` (bool), not `"Anonymous"` (str). This is because Sharpy's `or` maps to C#'s `||` operator, which produces a boolean result.
 
 ```python
-name = "" ?? "Anonymous"    # name = ""
-name = "" or "Anonymous"    # name = "Anonymous"
+name = "" ?? "Anonymous"    # name = "" (not None, so left side kept)
+name = None ?? "Anonymous"  # name = "Anonymous" (None, so right side used)
 
-name = None ?? "Anonymous"  # name = "Anonymous"
-name = None or "Anonymous"  # name = "Anonymous"
+# or returns bool, not the operand value (unlike Python)
+result = "" or "Anonymous"    # result = True (bool, not "Anonymous")
+result = None or "Anonymous"  # result = True (bool, not "Anonymous")
 ```
 
 *Implementation*

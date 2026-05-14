@@ -37,7 +37,7 @@ obj?.method()
 arr[0]              # First element
 arr[-1]             # Last element
 arr[i]              # Element at index i
-matrix[i, j]        # Multi-dimensional
+matrix[i, j]        # Tuple index (parsed as tuple expression)
 ```
 
 ## Function Calls

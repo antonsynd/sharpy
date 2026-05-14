@@ -30,14 +30,16 @@ Sharpy uses .NET's exception hierarchy directly:
 | `JSONDecodeError` | `ValueError` | Invalid JSON (in `json` module) |
 | `StatisticsError` | `Exception` | Statistics computation error (in `statistics` module) |
 
-## Pythonic Aliases
+## Sharpy Exception Classes
 
-Sharpy provides Pythonic aliases for common .NET exceptions. These are imported automatically:
+Sharpy provides its own exception classes that mirror Python's exception names. These are distinct .NET types defined in `Sharpy.Core` that inherit from `System.Exception` — they are **not** aliases for existing .NET exception types.
 
 ```python
-# These are equivalent:
-raise ValueError("invalid")                # Pythonic alias
-raise System.ArgumentException("invalid")  # Direct .NET type
+# ValueError is Sharpy.ValueError : System.Exception
+raise ValueError("invalid")
+
+# This is NOT the same as System.ArgumentException
+# Sharpy exceptions are their own types in the Sharpy namespace
 ```
 
 ## No `BaseException`

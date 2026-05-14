@@ -376,20 +376,20 @@ public class CSharpCollection : ICollection<int>
 
 1. **Compiler synthesis:**
    - `__bool__(self) -> bool` → `public static bool operator true(T x)` + `public static bool operator false(T x)`
-   - `__len__(self) -> int` → `public int Count { get; }` (and implement `IHasCount` interface)
+   - `__len__(self) -> int` → `public int Count { get; }` (and implement `ISized` interface)
 
 2. **`bool()` built-in dispatch order (in Sharpy.Core):**
    ```
    1. If T has implicit conversion to bool, use it
    2. If T has operator true, use it
-   3. If T implements IHasCount, return Count != 0
+   3. If T implements ISized, return Count != 0
    4. Return true (objects are truthy by default)
    ```
 
 3. **Interface for discoverability:**
    ```csharp
    // In Sharpy.Core
-   public interface IHasCount
+   public interface ISized
    {
        int Count { get; }
    }
@@ -1133,7 +1133,7 @@ public void Process(object obj)
    |--------|----------------------|-------|
    | `__iter__` | `IEnumerable<T>` | Return type determines `T` |
    | `__next__` | `IEnumerator<T>` | Usually combined with `__iter__` |
-   | `__len__` | `IHasCount` (custom) or none | .NET has no standard "has Count" interface |
+   | `__len__` | `ISized` (custom) or none | .NET has no standard "has Count" interface |
    | `__contains__` | None (just method) | Could map to `ICollection<T>.Contains` but risky |
    | `__eq__` | `IEquatable<T>` | For each overload type `T` |
    | `__hash__` | None | `GetHashCode()` is not interface-based |
@@ -1420,7 +1420,7 @@ tx.Execute("SELECT 1");
 5. **`@override` for Object methods** — Make implicit for `__str__`/`__eq__`/`__hash__`
 6. **Cross-dunder call rules** — Document formal rules, implement in semantic checker
 7. **Interface synthesis** — Decide explicit vs implicit, document behavior
-8. **`bool()` dispatch** — Implement `IHasCount` or equivalent
+8. **`bool()` dispatch** — Implement `ISized` or equivalent
 
 ### Can Defer Past 1.0
 

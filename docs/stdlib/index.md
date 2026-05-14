@@ -28,6 +28,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`fnmatch`](fnmatch.md) | Unix filename pattern matching, matching Python's fnmatch module. |
 | [`functools`](functools.md) | Higher-order functions and operations on callable objects, similar to Python's functools module. |
 | [`glob`](glob.md) | Unix-style pathname pattern expansion, similar to Python's glob module. Supports \`*\`, \`?\`, \`[seq]\`, and \`**\` patterns. |
+| [`grapheme`](grapheme.md) | Grapheme cluster (user-perceived character) operations. Splits, slices, and indexes strings by grapheme clusters using `System.Globalization.StringInfo`. |
 | [`hashlib`](hashlib.md) | Represents a hash object that accumulates data and computes cryptographic hashes. Mirrors Python's hashlib hash object API. |
 | [`heapq`](heapq.md) | Heap queue algorithm (priority queue), similar to Python's heapq module. Implements a min-heap using a list as the underlying storage. |
 | [`io`](io.md) | In-memory text stream using a string buffer, similar to Python's io.StringIO. Extends TextWriter so it can be used anywhere a TextWriter is expected (e.g., csv module). |

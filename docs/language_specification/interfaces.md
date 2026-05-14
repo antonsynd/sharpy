@@ -164,22 +164,26 @@ class ConsoleLogger(ILogger):
 
 Only interfaces defined in the Sharpy standard library can declare dunder methods. User-defined interfaces cannot declare dunders.
 
+The actual protocol interfaces in Sharpy.Core are:
+
+- `ISized` -- `int Count { get; }` -- synthesized when `__len__` is present
+- `IBoolConvertible` -- `bool IsTrue { get; }` -- synthesized when `__bool__` is present
+- `IReverseEnumerable<T>` -- `IEnumerator<T> GetReverseEnumerator()` -- synthesized when `__reversed__` is present
+
+These interfaces are implicitly added to a class's base list by the emitter when the corresponding dunder method is detected (emitting an SPY1001 info diagnostic). Users do not import or explicitly implement these interfaces.
+
 ```python
-# ✅ Standard library interface (Sharpy.Core)
-interface IContextManager:
-    def __enter__(self) -> object:
-        ...
+# ✅ Standard library protocol interface (implicit via dunder)
+class MyCollection:
+    _items: list[int]
 
-    def __exit__(self, exc_type: Type?, exc_val: Exception?, exc_tb: object?) -> bool:
-        ...
+    def __len__(self) -> int:
+        return len(self._items)
+    # Compiler implicitly adds ISized to the base list
 
-# ✅ Standard library interface
-interface IHashable:
-    def __hash__(self) -> int:
-        ...
-
-    def __eq__(self, other: object) -> bool:
-        ...
+    def __bool__(self) -> bool:
+        return len(self._items) > 0
+    # Compiler implicitly adds IBoolConvertible to the base list
 
 # ❌ ERROR: User-defined interface cannot declare dunders
 interface IMyProtocol:
@@ -198,14 +202,12 @@ interface IMyProtocol:
 
 3. **.NET interop**: Standard library interfaces map to well-known .NET interfaces (e.g., `IEnumerable`).
 
-**Implementing Standard Library Dunder Interfaces:**
+**Context managers via dunder protocol:**
 
-User code can implement standard library interfaces that contain dunders:
+User code can implement the context manager protocol by defining `__enter__` and `__exit__` dunder methods directly on a class (no interface import needed):
 
 ```python
-from sharpy.core import IContextManager
-
-class ManagedResource(IContextManager):
+class ManagedResource:
     _handle: int
 
     def __init__(self):
@@ -214,17 +216,19 @@ class ManagedResource(IContextManager):
     def __enter__(self) -> ManagedResource:
         return self
 
-    def __exit__(self, exc_type: Type?, exc_val: Exception?, exc_tb: object?) -> bool:
+    def __exit__(self):
         release_resource(self._handle)
-        return False  # Don't suppress exceptions
 
 # Usage
 with ManagedResource() as resource:
     use(resource)
 ```
 
+See [Context Managers](context_managers.md) for the full protocol, including the 3-arg exception-aware `__exit__` form.
+
 *Implementation*
 - *Compiler validates that dunder declarations only appear in whitelisted standard library interfaces.*
+- *Protocol interfaces (`ISized`, `IBoolConvertible`, `IReverseEnumerable<T>`) are implicitly synthesized by the emitter.*
 
 ## See Also
 

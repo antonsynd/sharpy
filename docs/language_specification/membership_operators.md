@@ -30,7 +30,7 @@ This single codegen strategy works uniformly because:
 
 The `ProtocolValidator` checks that the right-hand operand of `in`/`not in` supports membership testing. For user-defined types, the class must define `__contains__`. For .NET types, the validator checks for a `Contains` method via CLR interface discovery (`ICollection<T>`, `IDictionary<K,V>`, etc.).
 
-If the type does not support membership testing, the compiler reports `SPY0333` ("Type does not support membership testing (missing `__contains__` method)").
+If the type does not support membership testing, the compiler reports `SPY0320` ("Type does not support membership testing (missing `__contains__` method)").
 
 ### `__contains__` Protocol
 

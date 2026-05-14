@@ -202,8 +202,8 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | Dunder | Status | Rationale |
 |--------|--------|-----------|
 | `__abs__(self) -> T` | Not supported | `Math.Abs()` doesn't dispatch to this |
-| `__aenter__(self)` | Not supported yet | Complex feature |
-| `__aexit__(self, exc_type, exc_val, exc_tb)` | Not supported yet | Complex feature |
+| `__aenter__(self)` | Supported | Async context manager enter; maps to `AenterAsync()`. See [Context Managers](context_managers.md) |
+| `__aexit__(self, ...)` | Supported | Async context manager exit; 1-arg and 3-arg forms. See [Context Managers](context_managers.md) |
 | `__aiter__(self)` | Not supported yet | Complex feature |
 | `__anext__(self)` | Not supported yet | Complex feature |
 | `__await__(self)` | Not supported yet | Complex feature |
@@ -215,8 +215,8 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | `__del__(self) -> None` | Not supported | Use `IDisposable` instead. |
 | `__delitem__(self, key: K) -> None` | Not supported yet | Use `Remove(K key)` method directly |
 | `__divmod__(self, other: int) -> int` | Not supported | `Math.DivRem` doesn't dispatch to this |
-| `__enter__(self) -> T` | Not supported yet | Use `IDisposable` instead |
-| `__exit__(self, exc_type: System.Type, exc_val: Exception?, exc_tb: object)` | Not supported yet | Use `IDisposable` instead |
+| `__enter__(self) -> T` | Supported | Context manager enter; maps to `Enter()`. See [Context Managers](context_managers.md) |
+| `__exit__(self, ...)` | Supported | Context manager exit; 1-arg and 3-arg forms. See [Context Managers](context_managers.md) |
 | `__float__(self) -> float` | Not supported | Not yet designed |
 | `__floor__(self) -> float` | Not supported | `Math.Floor()` doesn't dispatch to this |
 | `__floordiv__` | Not supported | Use `__div__` for `/` operator; `//` handled specially |
@@ -227,7 +227,7 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | `__round__(self, ndigits: int?) -> T` | Not supported | `Math.Round()` doesn't dispatch to this |
 | `__trunc__(self) -> T` | Not supported | `Math.Truncate()` doesn't dispatch to this |
 | `__pow__(self, exponent: int) -> float` | Not supported | `Math.Pow()` doesn't dispatch to this |
-| `__repr__(self) -> str` | Not supported | No direct C# equivalent; use `__str__` for string representation |
+| `__repr__(self) -> str` | Supported | Maps to `ToString()` (same as `__str__`). Used by `@dataclass` synthesis for auto-generated string representation |
 
 ## Dunder Method Invocation Rules
 

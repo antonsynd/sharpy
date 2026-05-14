@@ -6,13 +6,13 @@ Sharpy is a modern, statically-typed Pythonic language targeting .NET. While Pyt
 
 * Provide a statically-typed and modern Pythonic language for the .NET CLI
 * Seamless bidirectional interop with other .NET libraries
-* Target C# 9.0 for maximum compatibility (Unity, .NET 5+)
+* Multi-target: C# 9.0 minimum (netstandard2.1 for Unity/.NET 5+ compatibility), C# 14 on net10.0
 
 ## Core Axioms
 
 Sharpy's design flows from three axioms and one resolution rule. All language decisions should be predictable by applying these:
 
-**Axiom 1 — .NET Runtime:** Sharpy compiles to C# 9.0 and executes on the .NET CLR. Memory model, type system, inheritance, and runtime semantics follow .NET.
+**Axiom 1 — .NET Runtime:** Sharpy compiles to C# and executes on the .NET CLR. Generated code targets C# 9.0 minimum (for netstandard2.1 compatibility) and C# 14 on net10.0. Memory model, type system, inheritance, and runtime semantics follow .NET.
 
 **Axiom 2 — Python Surface:** Sharpy uses Python 3 syntax and idioms. Indentation-based blocks, keywords (`True`/`False`/`None`), comprehensions, decorators, and dunders come from Python.
 

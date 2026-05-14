@@ -1,7 +1,5 @@
 # F-Strings (Formatted String Literals)
 
-> **Known gaps:** Brace escaping (`{{` → `{`) generates invalid C# (#287). Nested f-strings (`f"...{f'...'}"`) not supported (#288).
-
 ```python
 name = "Alice"
 age = 30

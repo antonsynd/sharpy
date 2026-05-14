@@ -111,4 +111,4 @@ x: auto = "hello"       # Shadowing with inferred type
 ```
 
 *Implementation:*
-- *🔄 Lowered - Generates variable names (`x`, `x_1_...`, `x_2_...`). The versioned variable names are appended with UUIDs to prevent the user from predicting the internal names and referencing them inadvertently.*
+- *🔄 Lowered - Generates variable names using simple integer versioning (`x`, `x_1`, `x_2`, etc.) via the `_variableVersions` dictionary in RoslynEmitter.*

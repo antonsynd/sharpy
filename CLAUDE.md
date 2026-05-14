@@ -127,6 +127,8 @@ SemanticType (abstract)
 ├── SelfType          — Self type for covariant return annotations
 ├── UnionType         — Tagged unions (v0.2.x placeholder)
 ├── TaskType          — Async Task types (v0.2.x placeholder)
+├── TemplateType      — Template/format string types
+├── LiteralStringType — Compile-time string literal types
 ├── VoidType          — None return type
 └── UnknownType       — Error recovery
 ```
@@ -136,6 +138,7 @@ SemanticType (abstract)
 Pluggable validators implement `ISemanticValidator` with an `Order` property (lower runs first):
 
 - **Order 50**: `ModuleLevelValidator` — Entry point validation
+- **Order 52**: `CircularImportUsageValidator` — Circular import usage detection
 - **Order 55**: `NamingConventionValidator` — Naming convention checks
 - **Order 56**: `TransitionWarningValidator` — Transition hint diagnostics for Python/C# behavioral differences
 - **Order 60**: `DecoratorValidator` — Decorator validation
@@ -152,6 +155,7 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 400**: `ControlFlowValidator` — CFG-based unreachable code, missing returns
 - **Order 405**: `ExhaustivenessValidator` — Match statement exhaustiveness checks
 - **Order 410**: `PropertyValidator` — Property validation
+- **Order 411**: `FinalFieldValidator` — Final field validation
 - **Order 412**: `EventValidator` — Event validation
 - **Order 415**: `VarianceValidator` — Variance validation
 - **Order 420**: `UnusedVariableValidator` — Unused variable warnings
@@ -185,7 +189,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 22 partial classes (~16,927 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Events.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
+The `RoslynEmitter` is split into 23 partial classes (~17,930 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Events.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.LruCache.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -284,7 +288,7 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 - **Wrap .NET internally, expose Python API** — `list.append()` not `Add()`
 - **Partial class pattern**: Types split across `Partial.{Type}/` directories (e.g., `Partial.List/List.Methods.cs`, `List.Slicing.cs`, `List.Interfaces.cs`)
 - **Builtins**: `partial class Builtins` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
-- **29 stdlib modules**: Argparse, Bisect, Builtins, Collections, Copy, Csv, Datetime, Fnmatch, Functools, Glob, Hashlib, Heapq, Io, Itertools, Json, Logging, Math, Operator, Os, Pathlib, Random, Re, Shutil, Statistics, String, Sys, Tempfile, Textwrap, Time
+- **30 stdlib modules**: Argparse, Bisect, Builtins, Collections, Copy, Csv, Datetime, Fnmatch, Functools, Glob, Grapheme, Hashlib, Heapq, Io, Itertools, Json, Logging, Math, Operator, Os, Pathlib, Random, Re, Shutil, Statistics, String, Sys, Tempfile, Textwrap, Time
 - **Python semantics**: Negative indexing, slicing, Python-matching exceptions
 
 ### Protocol Interfaces
@@ -370,7 +374,7 @@ Location: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
 
 **Warning tests**: `.warning` file — empty means expect no warnings, non-empty lines are expected substrings. Can combine with `.expected`.
 
-**C# snapshot tests**: `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Used selectively for ~62 representative fixtures to detect codegen changes that don't affect runtime output. To regenerate: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
+**C# snapshot tests**: `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Used selectively for ~80 representative fixtures to detect codegen changes that don't affect runtime output. To regenerate: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
 
 **Skip**: Add a `.skip` file next to the `.spy` file.
 

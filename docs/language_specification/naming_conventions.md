@@ -8,7 +8,7 @@
 | Interface | `IPascalCase` | (unchanged) |
 | Method/Function | `snake_case` | `PascalCase` |
 | Parameter | `snake_case` | `camelCase` |
-| Local variable | `snake_case` | (unchanged) |
+| Local variable | `snake_case` | `camelCase` |
 | Constant | `CAPS_SNAKE_CASE` | (unchanged) |
 | Enum type | `PascalCase` | (unchanged) |
 | Enum value | `CAPS_SNAKE_CASE` | `PascalCase` |

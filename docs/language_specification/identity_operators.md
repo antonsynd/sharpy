@@ -4,8 +4,8 @@
 |----------|-------------|------------|
 | `is` | Identity comparison | `object.ReferenceEquals()` |
 | `is not` | Negated identity | `!object.ReferenceEquals()` |
-| `is None` | None check | `== null` |
-| `is not None` | Non-None check | `!= null` |
+| `is None` | None check | `== null` (nullable/reference), `.IsNone` (Optional) |
+| `is not None` | Non-None check | `!= null` (nullable/reference), `!.IsNone` (Optional) |
 
 ## Value-Type Boxing Warning
 

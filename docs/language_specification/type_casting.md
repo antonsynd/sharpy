@@ -157,7 +157,11 @@ The `to` operator binds looser than member access, function calls, and arithmeti
 | | `+x`, `-x`, `~x` |
 | | `*`, `/`, `//`, `%` |
 | | `+`, `-` |
-| | `<<`, `>>`, `&`, `^`, `\|` |
+| | `<<`, `>>` |
+| | `&` |
+| | `^` |
+| | `\|` |
+| | `\|>` |
 | | `to` |
 | | `in`, `is`, `<`, `>`, `==`, etc. |
 | | `not`, `and`, `or`, `??` |
@@ -211,17 +215,17 @@ dog = x to Dog?                  # None
 
 *Implementation: Lowered*
 - *`value to T` → `(T)value` (C# cast expression)*
-- *`value to T?` → C# `value as T` for reference types, try-pattern for value types*
+- *`value to T?` → `value is T _temp ? Optional<T>.Some(_temp) : default` (wraps in `Optional<T>`)*
 
 ```csharp
 // value to Dog (throwing)
 (Dog)value
 
-// value to Dog? (safe, reference type)
-value as Dog
+// value to Dog? (safe, any type - uses Optional<T>)
+value is Dog _temp ? Optional<Dog>.Some(_temp) : default
 
-// value to int? (safe, value type - requires pattern)
-value is int _temp ? (int?)_temp : null
+// value to int? (safe, value type - also uses Optional<T>)
+value is int _temp ? Optional<int>.Some(_temp) : default
 ```
 
 ## Note on `as`

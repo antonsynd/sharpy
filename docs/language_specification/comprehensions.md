@@ -27,9 +27,9 @@ matrix = [[i * j for j in range(3)] for i in range(3)]
 > are supported — see [Multiple For Clauses](#multiple-for-clauses) below.
 
 *Implementation*
-- *🔄 Lowered - LINQ expressions:*
-  - `[expr for x in iter]` → `.Select(x => expr).ToList()`
-  - `[expr for x in iter if cond]` → `.Where(x => cond).Select(x => expr).ToList()`
+- *🔄 Lowered - LINQ expressions wrapped in Sharpy.Core types:*
+  - `[expr for x in iter]` → `new Sharpy.List<T>(iter.Select(x => expr))`
+  - `[expr for x in iter if cond]` → `new Sharpy.List<T>(iter.Where(x => cond).Select(x => expr))`
 
 **Filter and Transform Order:**
 
@@ -102,7 +102,7 @@ long_names = {name: len(name) for name in names if len(name) > 3}
 ```
 
 *Implementation*
-- *🔄 Lowered - `.ToDictionary(x => key, x => value)`*
+- *🔄 Lowered - `.ToDictionary(x => key, x => value)` wrapped in `new Sharpy.Dict<K,V>(...)`*
 
 ## Set Comprehensions
 
@@ -117,7 +117,7 @@ short_lengths = {len(word) for word in ["apple", "banana", "cherry"] if len(word
 ```
 
 *Implementation*
-- *🔄 Lowered - `.Select(...).ToHashSet()`*
+- *🔄 Lowered - `.Select(...)` wrapped in `new Sharpy.Set<T>(...)`*
 
 ## Comprehension Variable Scoping
 

@@ -51,6 +51,19 @@ The following are reserved keywords in Sharpy:
 | `async` | Async programming |
 | `await` | Async programming |
 | `del` | Delete statement |
+| `delegate` | Delegate type declaration |
+| `super` | Base class method access |
+| `union` | Union type declaration |
+| `Self` | Self-referential type annotation |
+
+## Reserved Rejected Keywords
+
+The following Python keywords are reserved by the lexer and produce a compile-time error if used. Sharpy uses C# scoping rules instead.
+
+| Keyword | Notes |
+|---------|-------|
+| `global` | C# scoping rules apply; `global` is not needed |
+| `nonlocal` | C# scoping rules apply; `nonlocal` is not needed |
 
 ## Soft Keywords (Context-Dependent)
 

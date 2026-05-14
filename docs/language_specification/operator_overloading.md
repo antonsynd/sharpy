@@ -16,9 +16,7 @@ Dunder methods have compiler-enforced return types. The compiler validates that 
 | `__sub__(self, other: T)` | Same type as `self` or compatible | Binary `-` |
 | `__mul__(self, other: T)` | Same type as `self` or compatible | Binary `*` |
 | `__div__(self, other: T)` | Same type as `self` or compatible | Binary `/` |
-| `__floordiv__(self, other: T)` | `int64` or float type | Binary `//` |
 | `__mod__(self, other: T)` | Same type as `self` or compatible | Binary `%` |
-| `__pow__(self, other: T)` | Same type as `self` or compatible | Binary `**` |
 | `__neg__(self)` | Same type as `self` | Unary `-` |
 | `__pos__(self)` | Same type as `self` | Unary `+` |
 
@@ -43,9 +41,7 @@ Dunder methods have compiler-enforced return types. The compiler validates that 
 | `__repr__(self)` | `str` | Debug representation |
 | `__hash__(self)` | `int` | Hash code |
 | `__len__(self)` | `int` | Length/count |
-| `__bool__(self)` | `bool` | Truthiness (for `if`, `while`, `and`, `or`, `not`) |
-| `__true__()` | N/A | C# `operator true` (advanced, rarely needed) |
-| `__false__()` | N/A | C# `operator false` (advanced, rarely needed) |
+| `__bool__(self)` | `bool` | Truthiness (for `if`, `while`, `and`, `or`, `not`). Auto-synthesizes C# `operator true`/`operator false`. |
 | `__contains__(self, item: T)` | `bool` | Membership test |
 | `__iter__(self)` | `Iterator[T]` | Iteration |
 | `__getitem__(self, key: K)` | `V` | Index access |
@@ -137,13 +133,11 @@ class Vector:
 | `-` | `__sub__` | `operator -` |
 | `*` | `__mul__` | `operator *` |
 | `/` | `__div__` | `operator /` |
-| `//` | `__floordiv__` | (method call) |
 | `%` | `__mod__` | `operator %` |
-| `**` | `__pow__` | (method call) |
 | `-x` | `__neg__` | `operator -` (unary) |
 | `+x` | `__pos__` | `operator +` (unary) |
 
-> **Note:** Sharpy uses `__div__` (not Python's `__truediv__`) because `//` floor division is not dispatched via a dunder method. See [Dunder Methods](dunder_methods.md) for details.
+> **Note:** Sharpy uses `__div__` (not Python's `__truediv__`) because `//` floor division is not dispatched via a dunder method. Floor division uses `math.floor_div()` and exponentiation uses `math.pow()` — neither `__floordiv__` nor `__pow__` are supported as user-definable dunders. See [Dunder Methods](dunder_methods.md) for details.
 
 *Implementation: ✅ Native - Generates both dunder method and C# operator overload.*
 
@@ -177,14 +171,14 @@ class Point:
 | Method | Purpose | C# Mapping | Invoked Via |
 |--------|---------|------------|-------------|
 | `__str__` | String representation | `ToString()` override | `str(x)` |
-| `__repr__` | Debug representation | Custom method | `repr(x)` |
+| `__repr__` | Debug representation | `ToString()` override | `repr(x)` |
 | `__hash__` | Hash value | `GetHashCode()` override | `hash(x)` |
 | `__len__` | Length | `Count` property | `len(x)` |
 | `__contains__` | Membership test | `Contains()` method | `x in collection` |
 | `__iter__` | Iteration | `GetEnumerator()` | `for x in obj` |
 | `__getitem__` | Index access | Indexer `this[...]` | `obj[key]` |
 | `__setitem__` | Index assignment | Indexer `this[...]` | `obj[key] = value` |
-| `__delitem__` | Index deletion | (method call) | `del obj[key]` |
+| ~~`__delitem__`~~ | ~~Index deletion~~ | N/A | Not supported (no `del` statement for items) |
 
 **`__contains__` Return Type:**
 

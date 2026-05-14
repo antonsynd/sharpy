@@ -10,7 +10,7 @@ Throughout this document, implementation notes use these indicators:
 
 | Status | Meaning |
 |--------|---------|
-| ✅ **Native** | Maps directly to C# 9.0 |
+| ✅ **Native** | Maps directly to C#. Minimum output target is C# 9.0 (for `netstandard2.1` compatibility); the compiler can emit newer C# features when targeting `net10.0` (C# 14). |
 | 🔄 **Lowered** | Requires compiler transformation |
 | ❌ **Future+** | Requires C# 11+ / .NET 7+; deferred |
 

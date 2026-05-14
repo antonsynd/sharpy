@@ -287,6 +287,7 @@ def outer() -> int:
 | SPY0267 | Error | `return` with a value in a generator function |
 | SPY0268 | Error | `yield` inside `__next__` |
 | SPY0269 | Error | Class has both generator `__iter__` and `__next__` |
+| SPY0270 | Error | `yield` inside `try`/`except` block |
 
 ## Implementation
 

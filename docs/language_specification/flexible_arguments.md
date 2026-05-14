@@ -203,6 +203,8 @@ variadic_params   = "*" IDENTIFIER [":" type_annotation] ;
 
 ## .NET Interop and Metadata
 
+> **Status: Not Yet Implemented** — The attribute-based metadata described in this section is planned but not yet implemented. Currently, flexible argument constraints (`/` and `*` markers) are enforced only within Sharpy source compilation and are not preserved in compiled assemblies. The design below describes the intended future behavior.
+
 Flexible argument constraints are preserved in compiled assemblies via .NET custom attributes. This enables Sharpy code to enforce positional-only and keyword-only rules when importing functions from compiled Sharpy libraries.
 
 ### Attribute Schema

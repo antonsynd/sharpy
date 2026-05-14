@@ -33,6 +33,12 @@ See [string_literals.md](string_literals.md) for string syntax, escape sequences
 
 See [fstrings.md](fstrings.md) for formatted string literals (f-strings).
 
+See [dstrings.md](dstrings.md) for dedented string literals (d-strings) with automatic indentation stripping.
+
+See [template_strings.md](template_strings.md) for template strings (t-strings) producing structured `Template` objects.
+
+See [literal_string.md](literal_string.md) for `LiteralString` type and compile-time string literal tracking.
+
 See [boolean_literals.md](boolean_literals.md) for `True` and `False`.
 
 See [none_literal.md](none_literal.md) for `None` literal and its semantics.
@@ -206,6 +212,10 @@ See [class_methods.md](class_methods.md) for class methods and the absence of `@
 
 See [constructors.md](constructors.md) for constructor overloading and constructor chaining.
 
+See [dataclass.md](dataclass.md) for `@dataclass` decorator, auto-generated methods, and field declarations.
+
+See [nested_types.md](nested_types.md) for nested class and struct declarations.
+
 ---
 
 ## Imports
@@ -249,6 +259,8 @@ See [decorators.md](decorators.md) for @static, @virtual, @override, @abstract, 
 See [generics.md](generics.md) for generic classes, generic methods, and type constraints.
 
 See [generic_variance.md](generic_variance.md) for covariance (`out`) and contravariance (`in`) on type parameters.
+
+See [type_parameter_defaults.md](type_parameter_defaults.md) for default type arguments on generic type parameters.
 
 ---
 

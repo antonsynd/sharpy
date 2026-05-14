@@ -112,7 +112,6 @@ cache["key"] ??= Data()
 | Operator | Condition | Effect |
 |----------|-----------|--------|
 | `??=` | If absent (`None` or `None()`) | Assign new value |
-| `\|\|=` | If falsy (`__bool__()` returns False) | Assign new value |
 | `=` | Always | Assign new value |
 | `??` | N/A | Return non-None value (doesn't assign) |
 
@@ -120,10 +119,6 @@ cache["key"] ??= Data()
 # ??= checks for absence (None or None())
 x: int | None = 0
 x ??= 5      # x is still 0 (not None)
-
-# ||= checks for falsiness
-x: int = 0
-x ||= 5      # x is now 5 (0 is falsy)
 
 # ?? doesn't assign
 x: int | None = None

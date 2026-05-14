@@ -24,4 +24,4 @@ Docstrings are string literals used for documentation.
 but are not comments
 
 *Implementation*
-- *✅ Native - Converted to `//` comments in C#.*
+- *✅ Native - Comments are discarded during compilation (not emitted in generated C#). Only docstrings (triple-quoted strings) are converted to `///` XML doc comments.*

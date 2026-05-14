@@ -199,8 +199,8 @@ next(it)                  # Raises StopIteration
 | `min(iter)` | Minimum value | `.Min()` or `Math.Min()` |
 | `max(iter)` | Maximum value | `.Max()` or `Math.Max()` |
 | `sum(iter)` | Sum values | `.Sum()` |
-| `sorted(iter)` | Sort collection | `.OrderBy()` |
-| `reversed(iter)` | Reverse | `.Reverse()` |
+| `sorted(iter)` | Sort collection | `Builtins.Sorted<T>()` → `List<T>` |
+| `reversed(iter)` | Reverse | `Builtins.Reversed<T>()` → `Iterator<T>` |
 | `enumerate(iter)` | Index + value | `.Select((x, i) => (i, x))` |
 
 **`min()` and `max()` Signatures:**
@@ -310,25 +310,23 @@ for i in range(10, 0, -1):
 | `abs(x)` | Absolute value | `Math.Abs()` |
 | `pow(x, y)` | Power | `Math.Pow()` |
 | `round(x, n)` | Round | `Math.Round()` |
-| `div_mod(a, b)` | Quotient + remainder | `(a / b, a % b)` |
+| `divmod(a, b)` | Quotient + remainder | `(a / b, a % b)` |
 
-**`div_mod()` Return Types:**
+**`divmod()` Return Types:**
 
-> **Note:** The Sharpy name is `div_mod()` (not Python's `divmod()`). The name mangler splits compound words, producing `DivMod` in C#. See [Name Mangling](name_mangling.md) for details.
-
-The `div_mod()` function returns a tuple containing the quotient and remainder. The return type depends on the operand types, following the same numeric promotion rules as `/` and `//`:
+The `divmod()` function returns a tuple containing the quotient and remainder. The return type depends on the operand types, following the same numeric promotion rules as `/` and `//`:
 
 | Operand Types | Return Type | Notes |
 |---------------|-------------|-------|
 | Both `int` (32-bit) | `tuple[int, int]` | Integer division and modulo |
 | Any `int64` | `tuple[int64, int64]` | Promoted to int64 |
 | Any `float32`/`float64` | `tuple[float64, float64]` | Float division |
-| Any `decimal` | `tuple[decimal, decimal]` | Decimal division |
+| Any `float` | `tuple[float, float]` | Single-precision float division |
 
 ```python
-div_mod(17, 5)       # (3, 2) - tuple[int, int]
-div_mod(17L, 5)      # (3L, 2L) - tuple[int64, int64]
-div_mod(17.0, 5.0)   # (3.0, 2.0) - tuple[float, float]
+divmod(17, 5)       # (3, 2) - tuple[int, int]
+divmod(17L, 5)      # (3L, 2L) - tuple[int64, int64]
+divmod(17.0, 5.0)   # (3.0, 2.0) - tuple[float, float]
 ```
 
 ## Object Functions
