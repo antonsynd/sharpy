@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -28,7 +29,7 @@ internal class CircularImportUsageValidator : ValidatingAstWalker
         // Only enforce annotation-only usage in files that are part of the cycle
         if (context.DeferredCycleFiles != null && context.CurrentFilePath != null)
         {
-            var normalizedPath = Sharpy.Compiler.Utilities.PathNormalizer.Normalize(context.CurrentFilePath);
+            var normalizedPath = PathNormalizer.Normalize(context.CurrentFilePath);
             if (!context.DeferredCycleFiles.Contains(normalizedPath))
                 return;
         }
@@ -38,7 +39,7 @@ internal class CircularImportUsageValidator : ValidatingAstWalker
 
     public override void VisitIdentifier(Identifier node)
     {
-        if (_deferredSymbols!.Contains(node.Name))
+        if (_deferredSymbols?.Contains(node.Name) == true)
         {
             var symbol = Context.SemanticInfo.GetIdentifierSymbol(node);
             if (symbol is TypeSymbol)
@@ -80,7 +81,7 @@ internal class CircularImportUsageValidator : ValidatingAstWalker
     {
         foreach (var baseClass in bases)
         {
-            if (_deferredSymbols!.Contains(baseClass.Name))
+            if (_deferredSymbols?.Contains(baseClass.Name) == true)
             {
                 AddError(
                     $"Cannot use '{baseClass.Name}' from a circular import as a base type for '{typeName}'. " +

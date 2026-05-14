@@ -70,7 +70,7 @@ internal class ModuleLoader
             {
                 var stub = CreateStubModuleInfo(modulePath);
                 _moduleCache[modulePath] = stub;
-                _deferredCycleModules.Add(modulePath);
+                _deferredCycleModules.TryAdd(modulePath, true);
                 return stub;
             }
             catch (Exception ex)
@@ -693,13 +693,15 @@ internal class ModuleLoader
 
     /// <summary>
     /// Modules that were loaded as stubs due to circular import deferral.
+    /// Uses ConcurrentDictionary for thread safety since LoadModule may be called concurrently.
     /// </summary>
-    private readonly HashSet<string> _deferredCycleModules = new();
+    private readonly ConcurrentDictionary<string, bool> _deferredCycleModules = new();
 
     /// <summary>
     /// Modules whose circular imports have been deferred (loaded as stubs).
     /// </summary>
-    public IReadOnlySet<string> DeferredCycleModules => _deferredCycleModules;
+    public IReadOnlySet<string> DeferredCycleModules =>
+        _deferredCycleModules.Keys.ToHashSet();
 
     /// <summary>
     /// Create a stub ModuleInfo containing only type declarations (class/struct/interface/enum).
@@ -781,17 +783,6 @@ internal class ModuleLoader
         _logger.LogDebug($"[ModuleLoader] Created stub for {Path.GetFileName(modulePath)} with {moduleInfo.ExportedSymbols.Count} type declarations");
 
         return moduleInfo;
-    }
-
-    /// <summary>
-    /// Replace a cached stub module with the fully-resolved module.
-    /// Called after all files complete their initial import resolution.
-    /// </summary>
-    public void ReplaceStubWithFullModule(string modulePath, ModuleInfo fullModule)
-    {
-        _moduleCache[modulePath] = fullModule;
-        _loadedModules.TryAdd(modulePath, true);
-        _logger.LogDebug($"[ModuleLoader] Replaced stub with full module for {Path.GetFileName(modulePath)}");
     }
 
     private bool IsModuleInChain(string modulePath)

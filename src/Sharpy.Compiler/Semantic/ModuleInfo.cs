@@ -57,5 +57,5 @@ internal class ModuleInfo
     /// The file path that triggered the circular import cycle that created this stub.
     /// Only set when <see cref="IsStub"/> is true.
     /// </summary>
-    public string? StubSourcePath { get; set; }
+    public string? StubSourcePath { get; init; }
 }
