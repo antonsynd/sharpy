@@ -94,6 +94,11 @@ internal partial class TypeChecker
     public IReadOnlySet<string>? DeferredCycleSymbols { get; set; }
 
     /// <summary>
+    /// File paths involved in deferred circular import cycles.
+    /// </summary>
+    public IReadOnlySet<string>? DeferredCycleFiles { get; set; }
+
+    /// <summary>
     /// Per-validator timing data from the last validation pipeline run.
     /// Each key is a validator name, and each value is the time spent in that validator.
     /// This is populated after <see cref="CheckModule"/> completes.
@@ -163,6 +168,7 @@ internal partial class TypeChecker
         // Thread SemanticBinding so validators can read from it
         context.SemanticBinding = SemanticBinding;
         context.DeferredCycleSymbols = DeferredCycleSymbols;
+        context.DeferredCycleFiles = DeferredCycleFiles;
         return context;
     }
 

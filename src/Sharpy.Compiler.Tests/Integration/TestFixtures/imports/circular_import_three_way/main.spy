@@ -1,0 +1,11 @@
+from a import A
+from b import B
+from c import C
+
+def main():
+    a = A("alpha")
+    b = B("beta")
+    c = C("gamma")
+    print(a.name)
+    print(b.name)
+    print(c.name)

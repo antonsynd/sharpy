@@ -65,6 +65,13 @@ internal class SemanticContext
     /// </summary>
     public IReadOnlySet<string>? DeferredCycleSymbols { get; set; }
 
+    /// <summary>
+    /// Normalized file paths involved in deferred circular import cycles.
+    /// The validator only enforces annotation-only usage for files in this set.
+    /// Null when no circular imports were deferred.
+    /// </summary>
+    public IReadOnlySet<string>? DeferredCycleFiles { get; set; }
+
     // Centralized AST traversal state (recommended for new validators)
     /// <summary>
     /// Centralized AST traversal state for validators.
@@ -138,6 +145,7 @@ internal class SemanticContext
             MaxErrors = MaxErrors,
             SemanticBinding = SemanticBinding,
             DeferredCycleSymbols = DeferredCycleSymbols,
+            DeferredCycleFiles = DeferredCycleFiles,
             // Share the ClrCache across files for efficiency
         };
     }

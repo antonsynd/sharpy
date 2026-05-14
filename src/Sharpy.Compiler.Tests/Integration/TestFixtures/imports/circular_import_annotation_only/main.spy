@@ -1,0 +1,8 @@
+from parent import Parent
+from child import Child
+
+def main():
+    p = Parent("Alice")
+    c = Child("Bob")
+    print(p.describe())
+    print(c.describe())

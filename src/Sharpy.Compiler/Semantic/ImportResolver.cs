@@ -46,6 +46,18 @@ internal partial class ImportResolver
     public IReadOnlySet<string> DeferredCycleSymbols => _deferredCycleSymbols;
 
     /// <summary>
+    /// Add a symbol name to the deferred cycle symbols set.
+    /// Called by ProjectCompiler to register cross-cycle symbols from both sides.
+    /// </summary>
+    public void AddDeferredCycleSymbol(string name) => _deferredCycleSymbols.Add(name);
+
+    /// <summary>
+    /// Mark a module path as a failed deferral (e.g., plain import of a stub).
+    /// Called by ProjectCompiler for plain import statements.
+    /// </summary>
+    public void MarkFailedDeferral(string modulePath) => _failedDeferredModules.Add(modulePath);
+
+    /// <summary>
     /// Stub modules where deferral failed (missing symbols or plain import).
     /// </summary>
     public IReadOnlySet<string> FailedDeferredModules => _failedDeferredModules;

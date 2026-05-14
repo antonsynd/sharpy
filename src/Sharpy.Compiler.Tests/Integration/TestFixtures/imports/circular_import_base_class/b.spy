@@ -1,0 +1,7 @@
+from a import A
+
+class B:
+    a_ref: A?
+
+    def __init__(self):
+        self.a_ref = None

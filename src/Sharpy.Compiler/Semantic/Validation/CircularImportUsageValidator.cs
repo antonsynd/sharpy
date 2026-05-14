@@ -25,6 +25,14 @@ internal class CircularImportUsageValidator : ValidatingAstWalker
         if (_deferredSymbols == null || _deferredSymbols.Count == 0)
             return;
 
+        // Only enforce annotation-only usage in files that are part of the cycle
+        if (context.DeferredCycleFiles != null && context.CurrentFilePath != null)
+        {
+            var normalizedPath = Sharpy.Compiler.Utilities.PathNormalizer.Normalize(context.CurrentFilePath);
+            if (!context.DeferredCycleFiles.Contains(normalizedPath))
+                return;
+        }
+
         base.Validate(module, context);
     }
 

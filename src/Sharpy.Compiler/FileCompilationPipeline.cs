@@ -80,7 +80,8 @@ internal class FileCompilationPipeline
         CancellationToken cancellationToken = default,
         SemanticInfo? fileSemanticInfo = null,
         SemanticBinding? fileSemanticBinding = null,
-        IReadOnlySet<string>? deferredCycleSymbols = null)
+        IReadOnlySet<string>? deferredCycleSymbols = null,
+        IReadOnlySet<string>? deferredCycleFiles = null)
     {
         var effectiveSemanticInfo = fileSemanticInfo ?? _semanticInfo;
         var effectiveBinding = fileSemanticBinding ?? _semanticBinding;
@@ -92,7 +93,8 @@ internal class FileCompilationPipeline
             CurrentFilePath = filePath,
             SemanticBinding = effectiveBinding,
             MaxErrors = semanticMaxErrors,
-            DeferredCycleSymbols = deferredCycleSymbols
+            DeferredCycleSymbols = deferredCycleSymbols,
+            DeferredCycleFiles = deferredCycleFiles
         };
 
         // Import root causes so TypeChecker can suppress cascading errors

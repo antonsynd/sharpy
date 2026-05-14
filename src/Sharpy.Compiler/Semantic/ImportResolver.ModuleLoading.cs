@@ -274,6 +274,10 @@ internal partial class ImportResolver
                 }
 
                 moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
+
+                // Plain imports of stub modules can't be deferred
+                if (moduleInfo is { IsStub: true })
+                    _failedDeferredModules.Add(moduleInfo.Path);
             }
 
             // Always add to maintain positional alignment with importStmt.Names
@@ -439,6 +443,10 @@ internal partial class ImportResolver
                     {
                         var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
                         reExportedSymbols[name] = reExportSymbol;
+
+                        if (moduleInfo.IsStub)
+                            _deferredCycleSymbols.Add(name);
+
                         _logger.LogDebug($"[ImportResolver]     Re-exporting (wildcard): {name} ({symbol.Kind})");
                     }
                 }
@@ -477,6 +485,7 @@ internal partial class ImportResolver
 
                         if (moduleInfo.IsStub)
                         {
+                            _failedDeferredModules.Add(moduleInfo.Path);
                             var stubMsg = $"Circular import detected: cannot import '{symbolName}' from '{fromImport.Module}' " +
                                 $"because it is involved in a circular dependency. " +
                                 $"Only type declarations (class, struct, interface, enum) can be imported from circular modules.";
@@ -511,6 +520,9 @@ internal partial class ImportResolver
                     {
                         var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
                         reExportedSymbols[targetName] = reExportSymbol;
+
+                        if (moduleInfo.IsStub)
+                            _deferredCycleSymbols.Add(targetName);
 
                         // Log detailed information about re-exported symbols for debugging transitive imports
                         if (symbol is TypeSymbol typeSymbol)

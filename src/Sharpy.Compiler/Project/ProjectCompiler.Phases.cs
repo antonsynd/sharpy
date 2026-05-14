@@ -171,6 +171,10 @@ internal partial class ProjectCompiler
                             if (moduleInfo == null)
                                 continue;
 
+                            // Plain imports of stub modules can't be deferred
+                            if (moduleInfo.IsStub)
+                                ImportResolver.MarkFailedDeferral(moduleInfo.Path);
+
                             // Handle aliased imports (import x as y)
                             if (importAlias.AsName != null)
                             {
@@ -317,21 +321,27 @@ internal partial class ProjectCompiler
         // Detect circular dependencies — filter out cycles that can be deferred
         // (all files loaded as stubs with no missing symbols)
         var cycles = _dependencyGraph.DetectCycles();
-        var deferredModules = ImportResolver.ModuleLoader.DeferredCycleModules;
-        var failedDeferrals = ImportResolver.FailedDeferredModules;
-        var nonDeferrableCycles = new List<System.Collections.Immutable.ImmutableArray<string>>();
+        // Normalize deferred module paths to match the dependency graph's normalized paths
+        var deferredModulesNormalized = new HashSet<string>(
+            ImportResolver.ModuleLoader.DeferredCycleModules.Select(PathNormalizer.Normalize));
+        var failedDeferralsNormalized = new HashSet<string>(
+            ImportResolver.FailedDeferredModules.Select(PathNormalizer.Normalize));
+        var nonDeferrableCycles = new List<ImmutableArray<string>>();
+        _deferredCycleFiles = new HashSet<string>();
 
         foreach (var cycle in cycles)
         {
-            // A cycle is deferrable only when ALL files in the cycle were loaded as stubs
-            // AND none of those files had failed deferrals (missing symbols or plain imports)
+            // A cycle is deferrable when at least one file was loaded as a stub
+            // (in a 2-file cycle A↔B, only one side gets deferred during recursive loading)
+            // AND none of the cycle files had failed deferrals (missing symbols or plain imports)
             var distinctFiles = cycle.Distinct().ToList();
-            bool allDeferred = distinctFiles.All(f => deferredModules.Contains(f));
-            bool anyFailed = distinctFiles.Any(f => failedDeferrals.Contains(f));
+            bool anyDeferred = distinctFiles.Any(f => deferredModulesNormalized.Contains(f));
+            bool anyFailed = distinctFiles.Any(f => failedDeferralsNormalized.Contains(f));
 
-            if (allDeferred && !anyFailed)
+            if (anyDeferred && !anyFailed)
             {
                 _logger.LogDebug($"[ProjectCompiler] Deferring cycle: {string.Join(" → ", distinctFiles.Select(Path.GetFileName))}");
+                _deferredCycleFiles.UnionWith(distinctFiles);
             }
             else
             {
@@ -350,6 +360,13 @@ internal partial class ProjectCompiler
                 _diagnostics.AddError(errorMsg, code: DiagnosticCodes.Semantic.CircularImport, phase: CompilerPhase.ImportResolution);
             }
             return false;
+        }
+
+        // Compute the full set of cross-cycle symbols for the usage validator.
+        // Both sides of a cycle need checking, not just the stub side.
+        if (_deferredCycleFiles.Count > 0)
+        {
+            ComputeCrossCycleDeferredSymbols(_deferredCycleFiles);
         }
 
         // Merge all import diagnostics (errors + warnings) so they appear in the
@@ -473,6 +490,67 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
+    /// After cycle filtering, compute all symbol names imported across cycle boundaries.
+    /// The ImportResolver only tracks symbols from stubs (one side of the cycle),
+    /// but we need to flag runtime usage on BOTH sides.
+    /// </summary>
+    private void ComputeCrossCycleDeferredSymbols(HashSet<string> deferredCycleFiles)
+    {
+        // Build a lookup from canonical module name to normalized file path
+        var moduleNameToPath = new Dictionary<string, string>();
+        foreach (var (_, unit) in _projectModel!.Units)
+        {
+            var normalizedPath = PathNormalizer.Normalize(unit.FilePath);
+            var moduleName = Path.GetFileNameWithoutExtension(unit.FilePath);
+            moduleNameToPath[moduleName] = normalizedPath;
+        }
+
+        // For each file in a deferred cycle, find its from-imports from other cycle files
+        foreach (var (_, unit) in _projectModel.Units)
+        {
+            if (unit.Ast == null)
+                continue;
+
+            var normalizedPath = PathNormalizer.Normalize(unit.FilePath);
+            if (!deferredCycleFiles.Contains(normalizedPath))
+                continue;
+
+            foreach (var statement in unit.Ast.Body)
+            {
+                if (statement is not FromImportStatement fromImport)
+                    continue;
+
+                // Check if this import targets another file in the cycle
+                if (!moduleNameToPath.TryGetValue(fromImport.Module, out var targetPath))
+                    continue;
+                if (!deferredCycleFiles.Contains(targetPath))
+                    continue;
+
+                // This from-import crosses a cycle boundary — add all imported symbols
+                if (fromImport.ImportAll)
+                {
+                    var reExported = _projectModel.SemanticBinding.GetReExportedSymbols(fromImport);
+                    if (reExported != null)
+                    {
+                        foreach (var (name, _) in reExported)
+                            ImportResolver.AddDeferredCycleSymbol(name);
+                    }
+                }
+                else
+                {
+                    foreach (var alias in fromImport.Names)
+                    {
+                        var registerName = alias.AsName ?? alias.Name;
+                        ImportResolver.AddDeferredCycleSymbol(registerName);
+                    }
+                }
+            }
+        }
+
+        _logger.LogDebug($"[ProjectCompiler] Cross-cycle deferred symbols: {string.Join(", ", ImportResolver.DeferredCycleSymbols)}");
+    }
+
+    /// <summary>
     /// Phase 5: Perform semantic analysis (type checking) on all modules
     /// </summary>
     private bool PerformSemanticAnalysis(FileCompilationPipeline compilationPipeline, ProjectConfig config, CancellationToken cancellationToken = default)
@@ -492,11 +570,29 @@ internal partial class ProjectCompiler
                 normalizedToOriginal[normalized] = path;
             }
 
-            // Get build order and map back to original paths
+            // Get build order and map back to original paths.
+            // Kahn's algorithm excludes files in cycles from the build order,
+            // so we append deferred cycle files at the end.
             var buildOrder = _dependencyGraph.GetBuildOrder();
-            modulesToProcess = buildOrder
+            var orderedFiles = buildOrder
                 .Select(normalized => normalizedToOriginal.TryGetValue(normalized, out var original) ? original : null)
-                .Where(path => path != null)!;
+                .Where(path => path != null)
+                .ToList();
+
+            // Add any files not in the build order (cycle files and their dependents)
+            var orderedSet = new HashSet<string>(
+                orderedFiles!.Select(f => PathNormalizer.Normalize(f!)));
+            foreach (var (path, _) in _projectModel.Units)
+            {
+                var normalized = PathNormalizer.Normalize(path);
+                if (!orderedSet.Contains(normalized))
+                {
+                    orderedFiles.Add(path);
+                    orderedSet.Add(normalized);
+                }
+            }
+
+            modulesToProcess = orderedFiles!;
         }
         else
         {
@@ -537,13 +633,17 @@ internal partial class ProjectCompiler
                 var deferredSymbols = ImportResolver.DeferredCycleSymbols.Count > 0
                     ? ImportResolver.DeferredCycleSymbols
                     : null;
+                var deferredFiles = _deferredCycleFiles is { Count: > 0 }
+                    ? (IReadOnlySet<string>)_deferredCycleFiles
+                    : null;
                 var typeCheckResult = compilationPipeline.TypeCheck(
                     unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
                     computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,
                     cancellationToken: cancellationToken,
                     fileSemanticInfo: localSemanticInfo,
                     fileSemanticBinding: localBinding,
-                    deferredCycleSymbols: deferredSymbols);
+                    deferredCycleSymbols: deferredSymbols,
+                    deferredCycleFiles: deferredFiles);
                 var typeChecker = typeCheckResult.TypeChecker;
 
                 if (typeCheckResult.Aborted)

@@ -56,6 +56,9 @@ internal partial class ProjectCompiler
     private DiagnosticBag _diagnostics = new();
     private DependencyGraph? _dependencyGraph;
 
+    // Files involved in deferred circular import cycles (normalized paths)
+    private HashSet<string>? _deferredCycleFiles;
+
     // Unified project model containing all CompilationUnits
     private ProjectModel? _projectModel;
 

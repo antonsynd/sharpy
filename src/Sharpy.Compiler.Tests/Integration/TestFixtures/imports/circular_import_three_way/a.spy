@@ -1,0 +1,7 @@
+from b import B
+
+class A:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name

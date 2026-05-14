@@ -1,0 +1,12 @@
+from parent import Parent
+
+class Child:
+    name: str
+    parent_name: str
+
+    def __init__(self, name: str):
+        self.name = name
+        self.parent_name = ""
+
+    def describe(self) -> str:
+        return self.name
