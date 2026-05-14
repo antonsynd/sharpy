@@ -1,0 +1,7 @@
+x = """hello
+  world
+    indented"""
+
+
+def foo():
+    pass

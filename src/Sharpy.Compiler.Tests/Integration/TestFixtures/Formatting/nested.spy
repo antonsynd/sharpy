@@ -1,0 +1,6 @@
+class Outer:
+    class Inner:
+        def method(self):
+            pass
+    def outer_method(self):
+        pass
