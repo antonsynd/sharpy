@@ -490,6 +490,11 @@ public partial class Parser
     {
         if (Current.Type != type)
             throw ReportError($"Expected {type}, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedToken, span: CurrentSpan);
+        if (type == TokenType.Colon && !_headerTriviaCaptured && Current.TrailingTrivia != null)
+        {
+            _headerTrailingTrivia = Current.TrailingTrivia;
+            _headerTriviaCaptured = true;
+        }
         Advance();
     }
 

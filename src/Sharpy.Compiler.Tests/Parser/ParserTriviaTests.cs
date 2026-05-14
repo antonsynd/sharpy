@@ -117,20 +117,60 @@ public class ParserTriviaTests
     }
 
     [Fact]
-    public void InlineComment_NotAttachedToStatements()
+    public void InlineComment_AttachedAsTrailingTrivia()
     {
-        // Inline comments (after code on the same line) are attached to the
-        // Newline token by the lexer. The parser skips newlines without
-        // preserving their trivia, so inline comments are not yet propagated
-        // to AST nodes. A future formatter will need to address this.
         var source = "x = 1  # inline comment\ny = 2\n";
         var module = ParseWithTrivia(source);
 
         module.Body.Should().HaveCount(2);
-        module.Body[0].TrailingTrivia.Should().BeNull();
+        module.Body[0].TrailingTrivia.Should().NotBeNull();
+        module.Body[0].TrailingTrivia.Should().ContainSingle();
+        module.Body[0].TrailingTrivia![0].Text.Should().Contain("inline comment");
         module.Body[0].LeadingTrivia.Should().BeNull();
         module.Body[1].TrailingTrivia.Should().BeNull();
         module.Body[1].LeadingTrivia.Should().BeNull();
+    }
+
+    [Fact]
+    public void CompoundStatement_ColonComment_AttachedAsTrailingTrivia()
+    {
+        var source = "def foo():  # definition comment\n    pass\n";
+        var module = ParseWithTrivia(source);
+
+        module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.TrailingTrivia.Should().NotBeNull();
+        funcDef.TrailingTrivia.Should().ContainSingle();
+        funcDef.TrailingTrivia![0].Text.Should().Contain("definition comment");
+    }
+
+    [Fact]
+    public void CompoundStatement_ClassColonComment()
+    {
+        var source = "class Foo:  # class comment\n    pass\n";
+        var module = ParseWithTrivia(source);
+
+        module.Body.Should().HaveCount(1);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        classDef.TrailingTrivia.Should().NotBeNull();
+        classDef.TrailingTrivia.Should().ContainSingle();
+        classDef.TrailingTrivia![0].Text.Should().Contain("class comment");
+    }
+
+    [Fact]
+    public void NestedCompoundStatements_EachGetsOwnTrailingTrivia()
+    {
+        var source = "if True:  # outer\n    if False:  # inner\n        pass\n";
+        var module = ParseWithTrivia(source);
+
+        module.Body.Should().HaveCount(1);
+        var outerIf = module.Body[0].Should().BeOfType<IfStatement>().Subject;
+        outerIf.TrailingTrivia.Should().NotBeNull();
+        outerIf.TrailingTrivia![0].Text.Should().Contain("outer");
+
+        var innerIf = outerIf.ThenBody[0].Should().BeOfType<IfStatement>().Subject;
+        innerIf.TrailingTrivia.Should().NotBeNull();
+        innerIf.TrailingTrivia![0].Text.Should().Contain("inner");
     }
 
     [Fact]

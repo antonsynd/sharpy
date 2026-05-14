@@ -77,6 +77,13 @@ public partial class Parser
     /// </summary>
     private ImmutableArray<Decorator> _pendingDecorators = ImmutableArray<Decorator>.Empty;
 
+    /// <summary>
+    /// Trailing trivia captured from the colon token of compound statements (def, class, if, etc.).
+    /// Saved/restored per ParseStatement() call to handle recursion correctly.
+    /// </summary>
+    private IReadOnlyList<Trivia>? _headerTrailingTrivia;
+    private bool _headerTriviaCaptured;
+
     public Parser(List<Token> tokens, ICompilerLogger? logger = null, int maxErrors = 25, CancellationToken cancellationToken = default)
     {
         _tokens = tokens;
@@ -436,8 +443,29 @@ public partial class Parser
     private Statement ParseStatement()
     {
         var leadingTrivia = Current.LeadingTrivia;
+
+        var savedHeaderTrivia = _headerTrailingTrivia;
+        var savedHeaderCaptured = _headerTriviaCaptured;
+        _headerTrailingTrivia = null;
+        _headerTriviaCaptured = false;
+
         var stmt = ParseStatementCore();
-        var trailingTrivia = Previous.TrailingTrivia;
+
+        var trailingTrivia = _headerTrailingTrivia;
+        _headerTrailingTrivia = savedHeaderTrivia;
+        _headerTriviaCaptured = savedHeaderCaptured;
+
+        if (trailingTrivia == null)
+        {
+            for (int i = _position - 1; i >= 0; i--)
+            {
+                var t = _tokens[i];
+                if (t.Type is TokenType.Newline or TokenType.Indent or TokenType.Dedent)
+                    continue;
+                trailingTrivia = t.TrailingTrivia;
+                break;
+            }
+        }
 
         if (leadingTrivia != null || trailingTrivia != null)
         {
