@@ -266,4 +266,91 @@ def main():
             Assert.Equal(0, result2.Metrics.SkippedFileCount);
         }
     }
+
+    [Fact]
+    public void IncrementalCompile_CircularImportCycle_BothFilesRecompiledWhenOneChanges()
+    {
+        using var helper = new ProjectCompilationHelper(_output);
+
+        helper
+            .WithRootNamespace("CircularIncrTest")
+            .WithIncremental()
+            .AddSourceFile("parent.spy", @"
+from child import Child
+
+class Parent:
+    name: str
+    child_name: str
+
+    def __init__(self, name: str):
+        self.name = name
+        self.child_name = ''
+
+    def describe(self) -> str:
+        return self.name
+")
+            .AddSourceFile("child.spy", @"
+from parent import Parent
+
+class Child:
+    name: str
+    parent_name: str
+
+    def __init__(self, name: str):
+        self.name = name
+        self.parent_name = ''
+
+    def describe(self) -> str:
+        return self.name
+")
+            .AddSourceFile("main.spy", @"
+from parent import Parent
+from child import Child
+
+def main():
+    p: Parent = Parent('Alice')
+    c: Child = Child('Bob')
+    print(p.describe())
+    print(c.describe())
+")
+            .CreateProjectFile();
+
+        // First build — populates cache
+        var result1 = helper.Compile();
+        Assert.True(result1.Success,
+            "First build failed: " + string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Second build — no changes, all files should be skipped
+        var result2 = helper.Compile();
+        Assert.True(result2.Success,
+            "Second build failed: " + string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+        Assert.NotNull(result2.Metrics);
+        Assert.Equal(3, result2.Metrics!.SkippedFileCount);
+
+        // Change only child.spy — parent.spy should also be recompiled due to circular dependency
+        helper.UpdateSourceFile("child.spy", @"
+from parent import Parent
+
+class Child:
+    name: str
+    parent_name: str
+
+    def __init__(self, name: str):
+        self.name = name
+        self.parent_name = ''
+
+    def describe(self) -> str:
+        return 'child:' + self.name
+");
+
+        // Third build — child.spy changed, parent.spy and main.spy depend on it
+        var result3 = helper.Compile();
+        Assert.True(result3.Success,
+            "Third build failed: " + string.Join("; ", result3.Diagnostics.GetErrors().Select(e => e.Message)));
+        Assert.NotNull(result3.Metrics);
+
+        // All 3 files should be recompiled: child.spy (changed), parent.spy (circular dep),
+        // main.spy (depends on both). No files should be skipped.
+        Assert.Equal(0, result3.Metrics!.SkippedFileCount);
+    }
 }
