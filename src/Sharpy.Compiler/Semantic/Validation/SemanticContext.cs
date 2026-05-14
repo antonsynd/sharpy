@@ -58,6 +58,13 @@ internal class SemanticContext
     /// </summary>
     public SemanticBinding SemanticBinding { get; set; } = new();
 
+    /// <summary>
+    /// Symbol names imported from deferred circular imports (stubs).
+    /// These symbols are only valid in type annotation positions.
+    /// Null when no circular imports were deferred.
+    /// </summary>
+    public IReadOnlySet<string>? DeferredCycleSymbols { get; set; }
+
     // Centralized AST traversal state (recommended for new validators)
     /// <summary>
     /// Centralized AST traversal state for validators.
@@ -130,6 +137,7 @@ internal class SemanticContext
             ContinueAfterErrors = ContinueAfterErrors,
             MaxErrors = MaxErrors,
             SemanticBinding = SemanticBinding,
+            DeferredCycleSymbols = DeferredCycleSymbols,
             // Share the ClrCache across files for efficiency
         };
     }

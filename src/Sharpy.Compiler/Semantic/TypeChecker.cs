@@ -88,6 +88,12 @@ internal partial class TypeChecker
     public SemanticBinding SemanticBinding { get; set; } = new();
 
     /// <summary>
+    /// Symbol names imported from deferred circular imports (stubs).
+    /// Passed through to <see cref="SemanticContext"/> for the validation pipeline.
+    /// </summary>
+    public IReadOnlySet<string>? DeferredCycleSymbols { get; set; }
+
+    /// <summary>
     /// Per-validator timing data from the last validation pipeline run.
     /// Each key is a validator name, and each value is the time spent in that validator.
     /// This is populated after <see cref="CheckModule"/> completes.
@@ -156,6 +162,7 @@ internal partial class TypeChecker
             context.CurrentFilePath = _currentFilePath;
         // Thread SemanticBinding so validators can read from it
         context.SemanticBinding = SemanticBinding;
+        context.DeferredCycleSymbols = DeferredCycleSymbols;
         return context;
     }
 

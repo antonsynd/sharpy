@@ -47,11 +47,13 @@ public class ModuleLoaderTests : IDisposable
     }
 
     [Fact]
-    public void LoadModule_CircularImport_ReportsError()
+    public void LoadModule_CircularImport_CreatesStub()
     {
         // Create two modules that import each other
-        var pathA = CreateModule("a.spy", "from b import foo");
+        var pathA = CreateModule("a.spy", "from b import foo\nclass MyClass:\n    pass");
         var pathB = CreateModule("b.spy", "from a import bar");
+
+        ModuleInfo? circularResult = null;
 
         // Load module A, which will try to load B via the callback
         var result = _loader.LoadModule(pathA, 1, 1, (module, moduleInfo, searchPath) =>
@@ -59,14 +61,16 @@ public class ModuleLoaderTests : IDisposable
             // Simulate resolving imports within module A: it tries to load B
             _loader.LoadModule(pathB, 1, 1, (innerModule, innerModuleInfo, innerSearchPath) =>
             {
-                // B tries to load A again - this should be detected as circular
-                _loader.LoadModule(pathA, 1, 1);
+                // B tries to load A again - this returns a stub (not an error)
+                circularResult = _loader.LoadModule(pathA, 1, 1);
             });
         });
 
-        Assert.True(_loader.Diagnostics.HasErrors);
-        Assert.Contains(_loader.Diagnostics.GetErrors(),
-            d => d.Message.Contains("Circular import"));
+        // Circular import creates a stub instead of reporting an error
+        Assert.NotNull(circularResult);
+        Assert.True(circularResult!.IsStub);
+        Assert.Contains(pathA, _loader.DeferredCycleModules);
+        Assert.False(_loader.Diagnostics.HasErrors);
     }
 
     [Fact]

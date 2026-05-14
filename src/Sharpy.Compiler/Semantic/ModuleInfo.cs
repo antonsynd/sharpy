@@ -45,4 +45,17 @@ internal class ModuleInfo
     /// Error recovery modules contain placeholder symbols that suppress cascading errors in TypeChecker.
     /// </summary>
     public bool IsErrorRecovery { get; init; } = false;
+
+    /// <summary>
+    /// Indicates this is a stub module created during circular import deferral.
+    /// Stub modules contain only type declarations (class/struct/interface/enum names)
+    /// — enough for type annotation resolution but not for runtime usage.
+    /// </summary>
+    public bool IsStub { get; init; } = false;
+
+    /// <summary>
+    /// The file path that triggered the circular import cycle that created this stub.
+    /// Only set when <see cref="IsStub"/> is true.
+    /// </summary>
+    public string? StubSourcePath { get; set; }
 }

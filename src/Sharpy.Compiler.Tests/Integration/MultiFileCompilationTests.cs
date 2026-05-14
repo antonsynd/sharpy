@@ -246,7 +246,7 @@ def greet(name: str) -> str:
     [Fact]
     public void Compile_WithCircularImport_ReturnsError()
     {
-        // Arrange: A imports B, B imports A
+        // Arrange: A imports B's function, B imports A's function — functions not in stubs
         var aPath = Path.Combine(_tempDir, "a.spy");
         var bPath = Path.Combine(_tempDir, "b.spy");
 
@@ -269,9 +269,10 @@ def func_b() -> str:
         // Act
         var result = compiler.Compile(File.ReadAllText(aPath), aPath);
 
-        // Assert
-        Assert.False(result.Success, "Compilation should fail for circular imports");
+        // Assert: Function imports from circular modules produce errors
+        // (functions are not available in stubs — only type declarations are)
+        Assert.False(result.Success, "Compilation should fail for circular imports of functions");
         Assert.True(result.Diagnostics.HasErrors);
-        Assert.Contains(result.Diagnostics.GetErrors(), d => d.Message.Contains("Circular import", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Diagnostics.GetErrors(), d => d.Message.Contains("circular", StringComparison.OrdinalIgnoreCase));
     }
 }

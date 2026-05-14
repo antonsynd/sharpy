@@ -26,6 +26,35 @@ internal partial class ImportResolver
     /// Key is the full file path, value is the ModuleInfo.
     /// </summary>
     public IReadOnlyDictionary<string, ModuleInfo> LoadedSpyModules => _moduleLoader.LoadedSpyModules;
+
+    /// <summary>
+    /// Symbol names imported from stub modules (deferred circular imports).
+    /// These symbols are only valid in type annotation positions.
+    /// </summary>
+    private readonly HashSet<string> _deferredCycleSymbols = new();
+
+    /// <summary>
+    /// Stub module paths where a from-import couldn't find all requested symbols,
+    /// or where a plain import was used (requiring full module access).
+    /// Cycles involving these modules cannot be deferred.
+    /// </summary>
+    private readonly HashSet<string> _failedDeferredModules = new();
+
+    /// <summary>
+    /// Symbol names imported from deferred circular imports.
+    /// </summary>
+    public IReadOnlySet<string> DeferredCycleSymbols => _deferredCycleSymbols;
+
+    /// <summary>
+    /// Stub modules where deferral failed (missing symbols or plain import).
+    /// </summary>
+    public IReadOnlySet<string> FailedDeferredModules => _failedDeferredModules;
+
+    /// <summary>
+    /// The underlying ModuleLoader, exposed for ProjectCompiler to access DeferredCycleModules.
+    /// </summary>
+    public ModuleLoader ModuleLoader => _moduleLoader;
+
     private IDependencyRecorder? _dependencyRecorder;
     private SemanticBinding _semanticBinding = new();
 

@@ -17,6 +17,7 @@ internal static class ValidationPipelineFactory
         return new ValidationPipeline(logger)
             // Order values determine execution sequence
             .AddValidator(new ModuleLevelValidator())       // Order: 50 (earliest, validates module structure)
+            .AddValidator(new CircularImportUsageValidator()) // Order: 52 (deferred circular import usage)
             .AddValidator(new NamingConventionValidator())  // Order: 55 (naming convention warnings)
             .AddValidator(new TransitionWarningValidator()) // Order: 56 (Python/C# transition hints — SPY0470+)
             .AddValidator(new DecoratorValidator())         // Order: 60 (validates decorator usage)

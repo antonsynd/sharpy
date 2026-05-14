@@ -62,13 +62,24 @@ internal class ModuleLoader
             return cached;
         }
 
-        // Check for circular imports with detailed chain
+        // Check for circular imports — defer rejection by creating a stub
         if (IsModuleInChain(modulePath))
         {
-            var chainMessage = FormatCircularImportChain(modulePath);
-            _logger.LogDebug($"[ModuleLoader] Circular import detected: {Path.GetFileName(modulePath)}");
-            AddError(chainMessage, lineStart, columnStart, code: DiagnosticCodes.Semantic.CircularImport);
-            return null;
+            _logger.LogDebug($"[ModuleLoader] Circular import detected, creating stub: {Path.GetFileName(modulePath)}");
+            try
+            {
+                var stub = CreateStubModuleInfo(modulePath);
+                _moduleCache[modulePath] = stub;
+                _deferredCycleModules.Add(modulePath);
+                return stub;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"[ModuleLoader] Failed to create stub: {ex.Message}");
+                var chainMessage = FormatCircularImportChain(modulePath);
+                AddError(chainMessage, lineStart, columnStart, code: DiagnosticCodes.Semantic.CircularImport);
+                return null;
+            }
         }
 
         // Check if already loaded
@@ -678,6 +689,109 @@ internal class ModuleLoader
         }
 
         return string.Join(".", packageParts);
+    }
+
+    /// <summary>
+    /// Modules that were loaded as stubs due to circular import deferral.
+    /// </summary>
+    private readonly HashSet<string> _deferredCycleModules = new();
+
+    /// <summary>
+    /// Modules whose circular imports have been deferred (loaded as stubs).
+    /// </summary>
+    public IReadOnlySet<string> DeferredCycleModules => _deferredCycleModules;
+
+    /// <summary>
+    /// Create a stub ModuleInfo containing only type declarations (class/struct/interface/enum).
+    /// Used when a circular import is detected — the stub provides enough information for
+    /// type annotation resolution while deferring full module loading.
+    /// </summary>
+    internal ModuleInfo CreateStubModuleInfo(string modulePath)
+    {
+        var source = File.ReadAllText(modulePath);
+        var sourceText = new Text.SourceText(source, modulePath);
+        var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: _cancellationToken);
+        var tokens = lexer.TokenizeAll();
+        var parser = new Parser.Parser(tokens, _logger, cancellationToken: _cancellationToken);
+        var module = parser.ParseModule();
+
+        var canonicalModuleName = ComputeCanonicalModuleName(modulePath);
+
+        var moduleInfo = new ModuleInfo
+        {
+            Path = modulePath,
+            Module = module,
+            ExportedSymbols = new Dictionary<string, Symbol>(),
+            CanonicalModuleName = canonicalModuleName,
+            IsStub = true,
+            StubSourcePath = CurrentModulePath
+        };
+
+        foreach (var statement in module.Body)
+        {
+            switch (statement)
+            {
+                case ClassDef classDef:
+                    var classSymbol = ExtractFullClassSymbol(classDef, canonicalModuleName);
+                    moduleInfo.ExportedSymbols[classDef.Name] = classSymbol;
+                    break;
+                case StructDef structDef:
+                    var structSymbol = ExtractFullStructSymbol(structDef, canonicalModuleName);
+                    moduleInfo.ExportedSymbols[structDef.Name] = structSymbol;
+                    break;
+                case InterfaceDef interfaceDef:
+                    var interfaceSymbol = ExtractFullInterfaceSymbol(interfaceDef, canonicalModuleName);
+                    moduleInfo.ExportedSymbols[interfaceDef.Name] = interfaceSymbol;
+                    break;
+                case EnumDef enumDef:
+                    var enumAccessLevel = GetAccessLevel(enumDef.Name);
+                    var enumSymbol = new TypeSymbol
+                    {
+                        Name = enumDef.Name,
+                        Kind = SymbolKind.Type,
+                        TypeKind = TypeKind.Enum,
+                        AccessLevel = enumAccessLevel,
+                        DeclarationLine = enumDef.LineStart,
+                        DeclarationColumn = enumDef.ColumnStart,
+                        NameDeclarationLine = enumDef.NameLineStart,
+                        NameDeclarationColumn = enumDef.NameColumnStart,
+                        DefiningModule = canonicalModuleName
+                    };
+                    foreach (var member in enumDef.Members)
+                    {
+                        enumSymbol.Fields.Add(new VariableSymbol
+                        {
+                            Name = member.Name,
+                            Kind = SymbolKind.Variable,
+                            IsStatic = true,
+                            IsConstant = true,
+                            AccessLevel = AccessLevel.Public,
+                            DeclarationLine = member.LineStart,
+                            DeclarationColumn = member.ColumnStart,
+                            NameDeclarationLine = member.LineStart,
+                            NameDeclarationColumn = member.ColumnStart,
+                            DeclarationSpan = member.Span
+                        });
+                    }
+                    moduleInfo.ExportedSymbols[enumDef.Name] = enumSymbol;
+                    break;
+            }
+        }
+
+        _logger.LogDebug($"[ModuleLoader] Created stub for {Path.GetFileName(modulePath)} with {moduleInfo.ExportedSymbols.Count} type declarations");
+
+        return moduleInfo;
+    }
+
+    /// <summary>
+    /// Replace a cached stub module with the fully-resolved module.
+    /// Called after all files complete their initial import resolution.
+    /// </summary>
+    public void ReplaceStubWithFullModule(string modulePath, ModuleInfo fullModule)
+    {
+        _moduleCache[modulePath] = fullModule;
+        _loadedModules.TryAdd(modulePath, true);
+        _logger.LogDebug($"[ModuleLoader] Replaced stub with full module for {Path.GetFileName(modulePath)}");
     }
 
     private bool IsModuleInChain(string modulePath)

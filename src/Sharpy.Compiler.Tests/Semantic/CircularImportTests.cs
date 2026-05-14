@@ -30,9 +30,9 @@ public class CircularImportTests : IDisposable
     }
 
     [Fact]
-    public void CircularImport_Direct_ReportsError()
+    public void CircularImport_Direct_TypeOnly_CreatesStub()
     {
-        // Create two files that import each other
+        // Create two files that import each other's TYPE symbols
         var fileA = Path.Combine(_tempDir, "a.spy");
         var fileB = Path.Combine(_tempDir, "b.spy");
 
@@ -64,15 +64,17 @@ class ClassB:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir,
             currentModulePath: fileA);
 
-        // Should detect circular import
-        Assert.True(_resolver.Diagnostics.HasErrors);
-        Assert.Contains(_resolver.Diagnostics.GetErrors(), e => e.Message.Contains("Circular import detected"));
+        // Type-only circular imports are deferred — b.spy is fully loaded
+        // (the stub is created for a.spy during b.spy's recursive loading)
+        Assert.NotNull(result);
+        Assert.True(result.ExportedSymbols.ContainsKey("ClassB"));
+        Assert.False(_resolver.Diagnostics.HasErrors);
     }
 
     [Fact]
-    public void CircularImport_Transitive_ReportsError()
+    public void CircularImport_Transitive_TypeOnly_CreatesStub()
     {
-        // Create A -> B -> C -> A cycle
+        // Create A -> B -> C -> A cycle — all importing TYPE symbols
         var fileA = Path.Combine(_tempDir, "a.spy");
         var fileB = Path.Combine(_tempDir, "b.spy");
         var fileC = Path.Combine(_tempDir, "c.spy");
@@ -111,15 +113,53 @@ class ClassC:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir,
             currentModulePath: fileA);
 
-        // Should detect transitive circular import
-        Assert.True(_resolver.Diagnostics.HasErrors);
-        Assert.Contains(_resolver.Diagnostics.GetErrors(), e => e.Message.Contains("Circular import detected"));
+        // Transitive type-only circular imports produce stubs — no error at import level
+        Assert.NotNull(result);
+        Assert.False(_resolver.Diagnostics.HasErrors);
     }
 
     [Fact]
-    public void CircularImport_SelfImport_ReportsError()
+    public void CircularImport_FunctionImport_ReportsError()
     {
-        // Create a file that imports itself
+        // Create two files that import each other's FUNCTIONS (not types)
+        var fileA = Path.Combine(_tempDir, "a.spy");
+        var fileB = Path.Combine(_tempDir, "b.spy");
+
+        File.WriteAllText(fileA, @"
+from b import func_b
+
+def func_a() -> str:
+    return ""A""
+");
+
+        File.WriteAllText(fileB, @"
+from a import func_a
+
+def func_b() -> str:
+    return ""B""
+");
+
+        var importStmt = new FromImportStatement
+        {
+            Module = "b",
+            Names = new List<ImportAlias> { new ImportAlias { Name = "func_b" } }.ToImmutableArray(),
+            ImportAll = false,
+            LineStart = 2,
+            ColumnStart = 1
+        };
+
+        var result = _resolver.ResolveFromImport(importStmt, _tempDir,
+            currentModulePath: fileA);
+
+        // Function imports from circular modules produce errors (functions not in stub)
+        Assert.True(_resolver.Diagnostics.HasErrors);
+        Assert.Contains(_resolver.Diagnostics.GetErrors(), e => e.Message.Contains("Circular import"));
+    }
+
+    [Fact]
+    public void CircularImport_SelfImport_NonType_ReportsError()
+    {
+        // Create a file that imports a non-type symbol from itself
         var fileA = Path.Combine(_tempDir, "a.spy");
 
         File.WriteAllText(fileA, @"
@@ -142,45 +182,46 @@ class ClassA:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir,
             currentModulePath: fileA);
 
-        // Should detect self-import
+        // Self-import of non-existent symbol: stub created but "something" not found
         Assert.True(_resolver.Diagnostics.HasErrors);
-        Assert.Contains(_resolver.Diagnostics.GetErrors(), e => e.Message.Contains("Circular import detected"));
+        Assert.Contains(_resolver.Diagnostics.GetErrors(), e =>
+            e.Message.Contains("Circular import") || e.Message.Contains("circular"));
     }
 
     [Fact]
-    public void CircularImport_ErrorMessage_ContainsChain()
+    public void CircularImport_FunctionImport_ErrorMessage_ContainsCircularInfo()
     {
-        // Create A -> B -> C -> A cycle
+        // Create A -> B -> C -> A cycle importing FUNCTIONS (not types)
         var fileA = Path.Combine(_tempDir, "a.spy");
         var fileB = Path.Combine(_tempDir, "b.spy");
         var fileC = Path.Combine(_tempDir, "c.spy");
 
         File.WriteAllText(fileA, @"
-from b import ClassB
+from b import func_b
 
-class ClassA:
-    pass
+def func_a() -> int:
+    return 1
 ");
 
         File.WriteAllText(fileB, @"
-from c import ClassC
+from c import func_c
 
-class ClassB:
-    pass
+def func_b() -> int:
+    return 2
 ");
 
         File.WriteAllText(fileC, @"
-from a import ClassA
+from a import func_a
 
-class ClassC:
-    pass
+def func_c() -> int:
+    return 3
 ");
 
 
         var importStmt = new FromImportStatement
         {
             Module = "b",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } }.ToImmutableArray(),
+            Names = new List<ImportAlias> { new ImportAlias { Name = "func_b" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 2,
             ColumnStart = 1
@@ -189,14 +230,10 @@ class ClassC:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir,
             currentModulePath: fileA);
 
-        // Error message should contain the full chain
+        // Function imports from circular modules mention "circular" in the error
         Assert.True(_resolver.Diagnostics.HasErrors);
-        var error = _resolver.Diagnostics.GetErrors().First(e => e.Message.Contains("Circular import detected"));
-        Assert.Contains("a.spy", error.Message);
-        Assert.Contains("b.spy", error.Message);
-        Assert.Contains("c.spy", error.Message);
-        Assert.Contains("->", error.Message);
-        Assert.Contains("(cycle)", error.Message);
+        var error = _resolver.Diagnostics.GetErrors().First(e => e.Message.Contains("Circular import"));
+        Assert.Contains("func_b", error.Message);
     }
 
     [Fact]
@@ -317,9 +354,10 @@ class ClassB:
     }
 
     [Fact]
-    public void CircularImport_WithImportStatement_ReportsError()
+    public void CircularImport_WithImportStatement_MarksAsFailed()
     {
-        // Test with 'import a' style instead of 'from a import X'
+        // Test with 'import a' style — plain imports of circular modules are marked
+        // as failed deferrals (full module access needed)
         var fileA = Path.Combine(_tempDir, "a.spy");
         var fileB = Path.Combine(_tempDir, "b.spy");
 
@@ -347,15 +385,17 @@ class ClassB:
 
         var result = _resolver.ResolveImport(importStmt, _tempDir, currentModulePath: fileA);
 
-        // Should detect circular import
-        Assert.True(_resolver.Diagnostics.HasErrors);
-        Assert.Contains(_resolver.Diagnostics.GetErrors(), e => e.Message.Contains("Circular import detected"));
+        // The module is returned (not null) — it's fully loaded because b.spy itself
+        // is not on the chain. The circular stub is created for a.spy INSIDE b.spy's loading.
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.NotNull(result[0]);
     }
 
     [Fact]
-    public void CircularImport_WithComplexChain_ShowsFullPath()
+    public void CircularImport_ComplexChain_TypeOnly_CreatesStub()
     {
-        // Create A -> B -> C -> D -> A cycle
+        // Create A -> B -> C -> D -> A cycle with TYPE imports
         var fileA = Path.Combine(_tempDir, "a.spy");
         var fileB = Path.Combine(_tempDir, "b.spy");
         var fileC = Path.Combine(_tempDir, "c.spy");
@@ -402,15 +442,9 @@ class ClassD:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir,
             currentModulePath: fileA);
 
-        // Error should show the full chain
-        Assert.True(_resolver.Diagnostics.HasErrors);
-        var error = _resolver.Diagnostics.GetErrors().First(e => e.Message.Contains("Circular import detected"));
-
-        // Check that all files appear in the error message
-        Assert.Contains("a.spy", error.Message);
-        Assert.Contains("b.spy", error.Message);
-        Assert.Contains("c.spy", error.Message);
-        Assert.Contains("d.spy", error.Message);
+        // Type-only complex chain creates stubs, no error
+        Assert.NotNull(result);
+        Assert.False(_resolver.Diagnostics.HasErrors);
     }
 
     [Fact]

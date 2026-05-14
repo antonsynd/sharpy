@@ -54,6 +54,10 @@ internal partial class ImportResolver
                     if (moduleInfo == null)
                         continue;
 
+                    // Plain imports of stub modules can't be deferred — user needs full module access
+                    if (moduleInfo.IsStub)
+                        _failedDeferredModules.Add(moduleInfo.Path);
+
                     // Handle aliased imports (import x as y)
                     if (importAlias.AsName != null)
                     {
@@ -142,6 +146,9 @@ internal partial class ImportResolver
                             TryDefineFromImport(symbolTable, symbol, name, sourceModule,
                                 importedSymbolSources, fromImport, importAlias: null);
 
+                            if (moduleInfo.IsStub)
+                                _deferredCycleSymbols.Add(name);
+
                             // Propagate function overloads for wildcard imports
                             if (moduleInfo.FunctionOverloads.TryGetValue(name, out var wildOverloads) && wildOverloads.Count > 1)
                             {
@@ -165,6 +172,9 @@ internal partial class ImportResolver
                                 TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
                                     importedSymbolSources, fromImport, importAlias);
 
+                                if (moduleInfo.IsStub)
+                                    _deferredCycleSymbols.Add(registerName);
+
                                 // Propagate function overloads for named imports
                                 if (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads) && overloads.Count > 1)
                                 {
@@ -178,6 +188,9 @@ internal partial class ImportResolver
                                 TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
                                     importedSymbolSources, fromImport, importAlias);
 
+                                if (moduleInfo.IsStub)
+                                    _deferredCycleSymbols.Add(registerName);
+
                                 // Propagate function overloads for alias fallback path
                                 if (moduleInfo.FunctionOverloads.TryGetValue(registerName, out var fallbackOverloads) && fallbackOverloads.Count > 1)
                                 {
@@ -188,6 +201,9 @@ internal partial class ImportResolver
                             {
                                 _logger.LogWarning($"Symbol '{lookupName}' not found in module exports",
                                     fromImport.LineStart, fromImport.ColumnStart);
+
+                                if (moduleInfo.IsStub)
+                                    _failedDeferredModules.Add(moduleInfo.Path);
                             }
                         }
                     }
@@ -458,13 +474,27 @@ internal partial class ImportResolver
                     if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName))
                     {
                         _logger.LogDebug($"[ImportResolver]     Symbol '{symbolName}' NOT FOUND in module exports");
-                        var importMessage = $"Module '{fromImport.Module}' has no exported symbol '{symbolName}'";
-                        var importSuggestion = EditDistance.FindClosestMatch(symbolName, moduleInfo.ExportedSymbols.Keys);
-                        if (importSuggestion != null)
-                            importMessage += $". Did you mean '{importSuggestion}'?";
-                        AddError(importMessage,
-                            importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ImportError,
-                            span: importAlias.Span ?? fromImport.Span);
+
+                        if (moduleInfo.IsStub)
+                        {
+                            var stubMsg = $"Circular import detected: cannot import '{symbolName}' from '{fromImport.Module}' " +
+                                $"because it is involved in a circular dependency. " +
+                                $"Only type declarations (class, struct, interface, enum) can be imported from circular modules.";
+                            AddError(stubMsg,
+                                importAlias.LineStart, importAlias.ColumnStart,
+                                code: DiagnosticCodes.Semantic.CircularImport,
+                                span: importAlias.Span ?? fromImport.Span);
+                        }
+                        else
+                        {
+                            var importMessage = $"Module '{fromImport.Module}' has no exported symbol '{symbolName}'";
+                            var importSuggestion = EditDistance.FindClosestMatch(symbolName, moduleInfo.ExportedSymbols.Keys);
+                            if (importSuggestion != null)
+                                importMessage += $". Did you mean '{importSuggestion}'?";
+                            AddError(importMessage,
+                                importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ImportError,
+                                span: importAlias.Span ?? fromImport.Span);
+                        }
                         continue;
                     }
 

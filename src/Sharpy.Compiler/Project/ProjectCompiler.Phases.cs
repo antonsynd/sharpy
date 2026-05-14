@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -313,11 +314,34 @@ internal partial class ProjectCompiler
         // Store in ProjectModel
         _projectModel!.DependencyGraph = _dependencyGraph;
 
-        // Detect circular dependencies first - this is more specific than generic import errors
+        // Detect circular dependencies — filter out cycles that can be deferred
+        // (all files loaded as stubs with no missing symbols)
         var cycles = _dependencyGraph.DetectCycles();
-        if (cycles.Count > 0)
+        var deferredModules = ImportResolver.ModuleLoader.DeferredCycleModules;
+        var failedDeferrals = ImportResolver.FailedDeferredModules;
+        var nonDeferrableCycles = new List<System.Collections.Immutable.ImmutableArray<string>>();
+
+        foreach (var cycle in cycles)
         {
-            foreach (var cycle in cycles)
+            // A cycle is deferrable only when ALL files in the cycle were loaded as stubs
+            // AND none of those files had failed deferrals (missing symbols or plain imports)
+            var distinctFiles = cycle.Distinct().ToList();
+            bool allDeferred = distinctFiles.All(f => deferredModules.Contains(f));
+            bool anyFailed = distinctFiles.Any(f => failedDeferrals.Contains(f));
+
+            if (allDeferred && !anyFailed)
+            {
+                _logger.LogDebug($"[ProjectCompiler] Deferring cycle: {string.Join(" → ", distinctFiles.Select(Path.GetFileName))}");
+            }
+            else
+            {
+                nonDeferrableCycles.Add(cycle);
+            }
+        }
+
+        if (nonDeferrableCycles.Count > 0)
+        {
+            foreach (var cycle in nonDeferrableCycles)
             {
                 var cycleFiles = cycle.Select(Path.GetFileName).ToList();
                 var cycleDescription = string.Join(" → ", cycleFiles);
@@ -325,9 +349,6 @@ internal partial class ProjectCompiler
                 _projectModel!.GlobalDiagnostics.AddError(errorMsg, code: DiagnosticCodes.Semantic.CircularImport);
                 _diagnostics.AddError(errorMsg, code: DiagnosticCodes.Semantic.CircularImport, phase: CompilerPhase.ImportResolution);
             }
-            // Don't add import resolver errors when we have circular dependencies
-            // as they would be redundant/confusing (e.g., "module not found" errors
-            // that are caused by the circular import)
             return false;
         }
 
@@ -513,12 +534,16 @@ internal partial class ProjectCompiler
                 // Type checking via shared pipeline with per-file state
                 fileMetrics.StartPhase("Type Checking");
                 var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
+                var deferredSymbols = ImportResolver.DeferredCycleSymbols.Count > 0
+                    ? ImportResolver.DeferredCycleSymbols
+                    : null;
                 var typeCheckResult = compilationPipeline.TypeCheck(
                     unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
                     computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,
                     cancellationToken: cancellationToken,
                     fileSemanticInfo: localSemanticInfo,
-                    fileSemanticBinding: localBinding);
+                    fileSemanticBinding: localBinding,
+                    deferredCycleSymbols: deferredSymbols);
                 var typeChecker = typeCheckResult.TypeChecker;
 
                 if (typeCheckResult.Aborted)
