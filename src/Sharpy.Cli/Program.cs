@@ -2,6 +2,7 @@ extern alias SharpyRT;
 using System.CommandLine;
 using System.Runtime.InteropServices;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Formatting;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
@@ -357,6 +358,37 @@ class Program
             await Sharpy.Lsp.Program.Main(Array.Empty<string>()).ConfigureAwait(false);
         });
 
+        // === Format Command ===
+        var formatCommand = new Command("format", "Format Sharpy source files");
+
+        var formatInputArg = new Argument<string>("input") { Description = "Sharpy source file or directory to format" };
+        var formatCheckOpt = new Option<bool>("--check") { Description = "Exit with code 1 if any file would change (CI mode); do not modify files" };
+        formatCheckOpt.Aliases.Add("-c");
+        var formatDiffOpt = new Option<bool>("--diff") { Description = "Print a unified diff for each file that would change; do not modify files" };
+        formatDiffOpt.Aliases.Add("-d");
+        var formatOutputOpt = new Option<FileInfo?>("--output") { Description = "Write formatted output to the specified file (single-file input only)" };
+        formatOutputOpt.Aliases.Add("-o");
+        var formatIndentOpt = new Option<int?>("--indent") { Description = "Indent size in spaces (default: 4)" };
+        var formatTabsOpt = new Option<bool>("--tabs") { Description = "Use tabs instead of spaces for indentation" };
+
+        formatCommand.Arguments.Add(formatInputArg);
+        formatCommand.Options.Add(formatCheckOpt);
+        formatCommand.Options.Add(formatDiffOpt);
+        formatCommand.Options.Add(formatOutputOpt);
+        formatCommand.Options.Add(formatIndentOpt);
+        formatCommand.Options.Add(formatTabsOpt);
+
+        formatCommand.SetAction((parseResult) =>
+        {
+            var input = parseResult.GetValue(formatInputArg)!;
+            var check = parseResult.GetValue(formatCheckOpt);
+            var diff = parseResult.GetValue(formatDiffOpt);
+            var output = parseResult.GetValue(formatOutputOpt);
+            var indent = parseResult.GetValue(formatIndentOpt);
+            var tabs = parseResult.GetValue(formatTabsOpt);
+            return HandleFormatCommand(input, check, diff, output, indent, tabs);
+        });
+
         // === REPL Command ===
         var replCommand = new Command("repl", "Start an interactive Sharpy REPL");
         replCommand.SetAction(async (parseResult, cancellationToken) =>
@@ -376,6 +408,7 @@ class Program
         rootCommand.Subcommands.Add(explainCommand);
         rootCommand.Subcommands.Add(lspCommand);
         rootCommand.Subcommands.Add(replCommand);
+        rootCommand.Subcommands.Add(formatCommand);
 
         return rootCommand.Parse(args).Invoke();
     }
@@ -1715,6 +1748,124 @@ class Program
 
         RenderDiagnostic(diagnostic, sourceText, writer);
         writer.WriteLine();
+    }
+
+    /// <summary>
+    /// Handle <c>sharpyc format</c>. Delegates the actual work to
+    /// <see cref="FormatRunner"/> and is responsible only for translating CLI
+    /// options, printing user-facing output, and returning the exit code.
+    /// </summary>
+    static int HandleFormatCommand(
+        string input,
+        bool check,
+        bool diff,
+        FileInfo? output,
+        int? indent,
+        bool tabs)
+    {
+        if (check && diff)
+        {
+            Console.Error.WriteLine("Error: --check and --diff cannot be combined.");
+            return 2;
+        }
+
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            Console.Error.WriteLine("Error: input path is required.");
+            return 2;
+        }
+
+        var isFile = File.Exists(input);
+        var isDirectory = !isFile && Directory.Exists(input);
+        if (!isFile && !isDirectory)
+        {
+            Console.Error.WriteLine($"Error: path '{input}' does not exist.");
+            return 2;
+        }
+
+        if (output != null && isDirectory)
+        {
+            Console.Error.WriteLine("Error: --output is only supported when formatting a single file.");
+            return 2;
+        }
+
+        var mode = check ? FormatMode.Check
+            : diff ? FormatMode.Diff
+            : FormatMode.Write;
+
+        var formatOptions = FormatOptions.Default with
+        {
+            IndentSize = indent ?? FormatOptions.Default.IndentSize,
+            UseTabs = tabs,
+        };
+
+        var runnerOptions = new FormatRunnerOptions
+        {
+            Mode = mode,
+            FormatOptions = formatOptions,
+            OutputPath = output?.FullName,
+        };
+
+        var result = FormatRunner.Run(input, runnerOptions);
+
+        foreach (var outcome in result.Outcomes)
+        {
+            if (outcome.HasError)
+            {
+                Console.Error.WriteLine($"Error: {outcome.FilePath}: {outcome.ErrorMessage}");
+                foreach (var diagnostic in outcome.Diagnostics.Where(d => d.IsError))
+                {
+                    Console.Error.WriteLine($"  {diagnostic.Code}: {diagnostic.Message}");
+                }
+                continue;
+            }
+
+            switch (mode)
+            {
+                case FormatMode.Check:
+                    if (outcome.Changed)
+                    {
+                        Console.WriteLine($"Would reformat {outcome.FilePath}");
+                    }
+                    break;
+                case FormatMode.Diff:
+                    if (outcome.Changed && outcome.Diff != null)
+                    {
+                        Console.Write(outcome.Diff);
+                    }
+                    break;
+                case FormatMode.Write:
+                    if (outcome.Changed)
+                    {
+                        var destination = (output != null && isFile) ? output.FullName : outcome.FilePath;
+                        Console.WriteLine($"Formatted {destination}");
+                    }
+                    break;
+            }
+        }
+
+        // Summary line.
+        switch (mode)
+        {
+            case FormatMode.Check:
+                if (result.ChangedCount == 0 && result.ErrorCount == 0)
+                {
+                    Console.WriteLine("All files are already formatted.");
+                }
+                else if (result.ChangedCount > 0)
+                {
+                    Console.WriteLine($"{result.ChangedCount} file(s) would be reformatted.");
+                }
+                break;
+            case FormatMode.Write:
+                if (result.ErrorCount == 0)
+                {
+                    Console.WriteLine($"{result.ChangedCount} file(s) formatted.");
+                }
+                break;
+        }
+
+        return result.ExitCode;
     }
 
     /// <summary>
