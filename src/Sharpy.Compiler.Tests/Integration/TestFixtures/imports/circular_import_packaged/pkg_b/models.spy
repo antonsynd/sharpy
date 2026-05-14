@@ -1,0 +1,10 @@
+from pkg_a.models import ModelA
+
+class ModelB:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def describe(self) -> str:
+        return f"ModelB({self.name})"

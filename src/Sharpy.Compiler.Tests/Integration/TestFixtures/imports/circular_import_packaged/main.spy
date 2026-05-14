@@ -1,0 +1,8 @@
+from pkg_a.models import ModelA
+from pkg_b.models import ModelB
+
+def main():
+    a = ModelA("alpha")
+    b = ModelB("beta")
+    print(a.describe())
+    print(b.describe())
