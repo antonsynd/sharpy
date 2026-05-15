@@ -206,6 +206,11 @@ public record TypeSymbol : Symbol
     public bool IsAbstract { get; init; }
 
     /// <summary>
+    /// Whether this type extends SourceGenerator (detected during inheritance resolution).
+    /// </summary>
+    public bool IsSourceGenerator { get; internal set; }
+
+    /// <summary>
     /// Whether this type is a @dataclass.
     /// </summary>
     public bool IsDataclass { get; internal set; }

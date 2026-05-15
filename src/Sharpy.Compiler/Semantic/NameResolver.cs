@@ -1,3 +1,4 @@
+extern alias SharpyRT;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -365,6 +366,12 @@ internal partial class NameResolver
                 }
                 _semanticBinding.SetBaseType(typeSymbol, baseSymbol);
                 hasSetBaseType = true;
+
+                if (IsSourceGeneratorType(baseSymbol))
+                {
+                    typeSymbol.IsSourceGenerator = true;
+                }
+
             }
             else // TypeKind.Interface
             {
@@ -523,5 +530,13 @@ internal partial class NameResolver
         if (deprecated != null && deprecated.Arguments.Length > 0 && deprecated.Arguments[0] is StringLiteral msg)
             return msg.Value;
         return null;
+    }
+
+    private static bool IsSourceGeneratorType(TypeSymbol symbol)
+    {
+        if (symbol.ClrType != null)
+            return typeof(SharpyRT::Sharpy.Generators.SourceGenerator).IsAssignableFrom(symbol.ClrType);
+
+        return symbol.Name == "SourceGenerator" && symbol.IsSourceGenerator;
     }
 }
