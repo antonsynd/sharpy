@@ -1,6 +1,6 @@
-using System.Collections.Generic;
 using Sharpy.Generators;
 using Xunit;
+using SCG = System.Collections.Generic;
 
 namespace Sharpy.Core.Tests.Generators;
 
@@ -12,7 +12,7 @@ public class GeneratorTypesTests
     {
         public override GeneratorOutput Generate(GeneratorContext context)
         {
-            return new GeneratorOutput("# generated", new List<GeneratorDiagnostic>());
+            return new GeneratorOutput("# generated", new SCG.List<GeneratorDiagnostic>());
         }
     }
 
@@ -23,8 +23,8 @@ public class GeneratorTypesTests
         var context = new GeneratorContext(
             targetClass: null,
             targetFunction: null,
-            arguments: new List<object>(),
-            keywordArguments: new Dictionary<string, object>(),
+            arguments: new SCG.List<object>(),
+            keywordArguments: new SCG.Dictionary<string, object>(),
             moduleName: "test");
 
         var output = generator.Generate(context);
@@ -40,13 +40,13 @@ public class GeneratorTypesTests
     {
         var classInfo = new ClassInfo(
             "MyClass",
-            new List<FieldInfo>(),
-            new List<MethodInfo>(),
-            new List<string>(),
-            new List<DecoratorInfo>(),
+            new SCG.List<FieldInfo>(),
+            new SCG.List<MethodInfo>(),
+            new SCG.List<string>(),
+            new SCG.List<DecoratorInfo>(),
             isDataclass: false);
-        var args = new List<object> { 1, "two" };
-        var kwargs = new Dictionary<string, object> { { "key", "value" } };
+        var args = new SCG.List<object> { 1, "two" };
+        var kwargs = new SCG.Dictionary<string, object> { { "key", "value" } };
 
         var context = new GeneratorContext(classInfo, null, args, kwargs, "my.module");
 
@@ -62,17 +62,17 @@ public class GeneratorTypesTests
     {
         var funcInfo = new FunctionInfo(
             "my_func",
-            new List<ParameterInfo>(),
+            new SCG.List<ParameterInfo>(),
             returnType: "int",
-            new List<DecoratorInfo>(),
+            new SCG.List<DecoratorInfo>(),
             isStatic: false,
             isAsync: false);
 
         var context = new GeneratorContext(
             null,
             funcInfo,
-            new List<object>(),
-            new Dictionary<string, object>(),
+            new SCG.List<object>(),
+            new SCG.Dictionary<string, object>(),
             "module");
 
         Assert.Null(context.TargetClass);
@@ -86,8 +86,8 @@ public class GeneratorTypesTests
         var context = new GeneratorContext(
             null,
             null,
-            new List<object>(),
-            new Dictionary<string, object>(),
+            new SCG.List<object>(),
+            new SCG.Dictionary<string, object>(),
             string.Empty);
 
         Assert.Empty(context.Arguments);
@@ -100,7 +100,7 @@ public class GeneratorTypesTests
     [Fact]
     public void GeneratorOutput_WithSourceAndDiagnostics_PropertiesAreSet()
     {
-        var diags = new List<GeneratorDiagnostic>
+        var diags = new SCG.List<GeneratorDiagnostic>
         {
             new GeneratorDiagnostic("hello", GeneratorDiagnosticSeverity.Info)
         };
@@ -145,20 +145,20 @@ public class GeneratorTypesTests
     [Fact]
     public void ClassInfo_AllProperties_AreSet()
     {
-        var fields = new List<FieldInfo>
+        var fields = new SCG.List<FieldInfo>
         {
             new FieldInfo("x", "int", hasDefault: false, defaultValue: null)
         };
-        var methods = new List<MethodInfo>
+        var methods = new SCG.List<MethodInfo>
         {
-            new MethodInfo("foo", new List<ParameterInfo>(), null,
+            new MethodInfo("foo", new SCG.List<ParameterInfo>(), null,
                 isStatic: false, isAbstract: false, isVirtual: false, isAsync: false)
         };
-        var bases = new List<string> { "Base", "IMixin" };
-        var decorators = new List<DecoratorInfo>
+        var bases = new SCG.List<string> { "Base", "IMixin" };
+        var decorators = new SCG.List<DecoratorInfo>
         {
-            new DecoratorInfo("dataclass", new List<object>(),
-                new Dictionary<string, object>(), isBracketAttribute: false)
+            new DecoratorInfo("dataclass", new SCG.List<object>(),
+                new SCG.Dictionary<string, object>(), isBracketAttribute: false)
         };
 
         var classInfo = new ClassInfo("Point", fields, methods, bases, decorators, isDataclass: true);
@@ -176,10 +176,10 @@ public class GeneratorTypesTests
     {
         var classInfo = new ClassInfo(
             "Empty",
-            new List<FieldInfo>(),
-            new List<MethodInfo>(),
-            new List<string>(),
-            new List<DecoratorInfo>(),
+            new SCG.List<FieldInfo>(),
+            new SCG.List<MethodInfo>(),
+            new SCG.List<string>(),
+            new SCG.List<DecoratorInfo>(),
             isDataclass: false);
 
         Assert.Equal("Empty", classInfo.Name);
@@ -195,15 +195,15 @@ public class GeneratorTypesTests
     [Fact]
     public void FunctionInfo_AllProperties_AreSet()
     {
-        var parameters = new List<ParameterInfo>
+        var parameters = new SCG.List<ParameterInfo>
         {
             new ParameterInfo("x", "int", hasDefault: false),
             new ParameterInfo("y", "str", hasDefault: true)
         };
-        var decorators = new List<DecoratorInfo>
+        var decorators = new SCG.List<DecoratorInfo>
         {
-            new DecoratorInfo("cache", new List<object>(),
-                new Dictionary<string, object>(), isBracketAttribute: false)
+            new DecoratorInfo("cache", new SCG.List<object>(),
+                new SCG.Dictionary<string, object>(), isBracketAttribute: false)
         };
 
         var funcInfo = new FunctionInfo(
@@ -227,9 +227,9 @@ public class GeneratorTypesTests
     {
         var funcInfo = new FunctionInfo(
             "void_func",
-            new List<ParameterInfo>(),
+            new SCG.List<ParameterInfo>(),
             returnType: null,
-            new List<DecoratorInfo>(),
+            new SCG.List<DecoratorInfo>(),
             isStatic: false,
             isAsync: false);
 
@@ -276,7 +276,7 @@ public class GeneratorTypesTests
     [Fact]
     public void MethodInfo_AllProperties_AreSet()
     {
-        var parameters = new List<ParameterInfo>
+        var parameters = new SCG.List<ParameterInfo>
         {
             new ParameterInfo("self", null, hasDefault: false)
         };
@@ -304,7 +304,7 @@ public class GeneratorTypesTests
     {
         var method = new MethodInfo(
             "factory",
-            new List<ParameterInfo>(),
+            new SCG.List<ParameterInfo>(),
             returnType: "Self",
             isStatic: true,
             isAbstract: false,
@@ -354,8 +354,8 @@ public class GeneratorTypesTests
     [Fact]
     public void DecoratorInfo_AllProperties_AreSet()
     {
-        var args = new List<object> { 1, "x" };
-        var kwargs = new Dictionary<string, object> { { "k", "v" } };
+        var args = new SCG.List<object> { 1, "x" };
+        var kwargs = new SCG.Dictionary<string, object> { { "k", "v" } };
 
         var decorator = new DecoratorInfo("my_decorator", args, kwargs, isBracketAttribute: false);
 
@@ -370,8 +370,8 @@ public class GeneratorTypesTests
     {
         var decorator = new DecoratorInfo(
             "MyAttr",
-            new List<object>(),
-            new Dictionary<string, object>(),
+            new SCG.List<object>(),
+            new SCG.Dictionary<string, object>(),
             isBracketAttribute: true);
 
         Assert.Equal("MyAttr", decorator.Name);
@@ -383,8 +383,8 @@ public class GeneratorTypesTests
     {
         var decorator = new DecoratorInfo(
             "noop",
-            new List<object>(),
-            new Dictionary<string, object>(),
+            new SCG.List<object>(),
+            new SCG.Dictionary<string, object>(),
             isBracketAttribute: false);
 
         Assert.Empty(decorator.Arguments);
