@@ -1253,7 +1253,7 @@ return stream.ReadAll();
 
 ### 29. `volatile` Fields
 
-**Recommendation: `@volatile` decorator on fields.**
+**Recommendation: `@volatile` modifier decorator on fields.**
 
 ```python
 class SharedState:
@@ -1263,8 +1263,8 @@ class SharedState:
 
 **C# emission:** `private volatile bool _flag = false;`
 
-This is a .NET interop concern — `@volatile` becomes a .NET attribute-style decorator
-(though it maps to a C# keyword, not an attribute).
+This is a .NET interop concern — `@volatile` would be a modifier keyword decorator
+(like `@static`), added to `DecoratorNames.KnownModifierDecorators`, not a bracket attribute.
 
 ---
 
@@ -1477,7 +1477,7 @@ void Outer()
 **Proposal:** `@implicit def convert(value: float) -> Celsius:`
 
 **Rejection reason:** Decorators in Sharpy are either modifier keywords (`@virtual`,
-`@static`, `@override`) or .NET attributes (`@obsolete("msg")`). Using decorators for
+`@static`, `@override`) or .NET attributes (`@[obsolete("msg")]`). Using decorators for
 operator-like behavior breaks this clean split. Dunders are the established pattern for
 operator customization. Additionally, `@implicit def convert(...)` requires an arbitrary
 method name that carries no semantic weight — the dunder `__implicit__` is self-documenting.
@@ -1542,9 +1542,9 @@ intent-signaling that the compiler cannot enforce. Keep `ref[T]` only; document 
 | `unmanaged` | Soft keyword (in constraints) | generic constraint (#18) |
 | `lock` | Builtin function | thread synchronization (#5) |
 | `nameof` | Builtin function | compile-time name (#12) |
-| `@partial` | Decorator | partial classes (#9) |
-| `@ref` | Decorator | ref structs (#25) |
-| `@volatile` | Decorator | volatile fields (#29) |
+| `@partial` | Decorator (modifier keyword) | partial classes (#9) |
+| `@ref` | Decorator (modifier keyword) | ref structs (#25) |
+| `@volatile` | Decorator (modifier keyword) | volatile fields (#29) |
 
 ## Summary of New Dunders
 

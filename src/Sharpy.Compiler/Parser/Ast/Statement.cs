@@ -753,13 +753,13 @@ public record Decorator
         : "";
 
     /// <summary>
-    /// Positional arguments to the decorator (e.g., @obsolete("msg") has one string arg).
+    /// Positional arguments to the decorator (e.g., @[obsolete("msg")] has one string arg).
     /// Empty when the decorator has no parenthesized argument list.
     /// </summary>
     public ImmutableArray<Expression> Arguments { get; init; } = ImmutableArray<Expression>.Empty;
 
     /// <summary>
-    /// Keyword arguments to the decorator (e.g., @dll_import("lib", entry_point="Func")).
+    /// Keyword arguments to the decorator (e.g., @[dll_import("lib", entry_point="Func")]).
     /// Empty when the decorator has no keyword arguments.
     /// </summary>
     public ImmutableArray<KeywordArgument> KeywordArguments { get; init; } = ImmutableArray<KeywordArgument>.Empty;

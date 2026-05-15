@@ -339,11 +339,11 @@ These features have workarounds in Sharpy but add friction when porting C# code.
 - **C# feature:** `[CallerMemberName]`, `[CallerFilePath]`, `[CallerLineNumber]` on
   default parameters — compiler fills in values automatically (C# 5.0)
 - **Sharpy status:** MISSING — no syntax for applying these attributes to parameters.
-  Arbitrary .NET attributes go on decorators (`@SomeAttribute`), but parameter-level
+  Arbitrary .NET attributes use bracket syntax (`@[SomeAttribute]`), but parameter-level
   attributes have no Sharpy syntax.
 - **Impact:** Common in WPF (`INotifyPropertyChanged`), logging frameworks, and diagnostics.
-- **Possible syntax:** `def log(msg: str, member: str = @CallerMemberName):` or parameter
-  attribute syntax `def log(msg: str, @CallerMemberName member: str = ""):`.
+- **Possible syntax:** `def log(msg: str, member: str = @[CallerMemberName]):` or parameter
+  attribute syntax `def log(msg: str, @[CallerMemberName] member: str = ""):`.
 - **Scope:** Parser (parameter-level attributes), CodeGen (emit attribute on parameter)
 - **Workaround:** Manually pass values, or use `nameof` (#12) once implemented.
 
@@ -394,7 +394,7 @@ These features are either niche, contraddict Sharpy's design axioms, or have cle
 | `dynamic` type | 4.0 | Contradicts Axiom 3 (type safety). |
 | Unsafe code (`unsafe`, `fixed`, `stackalloc`, pointers) | 1.0 | Safety by design. |
 | Function pointers (`delegate*`) | 9.0 | Unsafe / low-level interop only. |
-| Preprocessor directives (`#if`, `#define`, `#pragma`) | 1.0 | Could add `@conditional` decorator instead. |
+| Preprocessor directives (`#if`, `#define`, `#pragma`) | 1.0 | Could add `@[conditional]` bracket attribute instead. |
 | `nint` / `nuint` (native-sized integers) | 9.0 | Niche platform-dependent types. |
 | P/Invoke (`extern` + `[DllImport]`) | 1.0 | Niche native interop. |
 | Finalizers (`~ClassName()`) | 1.0 | Spec explicitly says "Use IDisposable instead." |
@@ -424,7 +424,7 @@ Verified against compiler source (lexer, parser AST, codegen, semantic analysis)
 | Classes, inheritance, abstract classes | `class`, `(Base)`, `@abstract` | Implemented |
 | Structs | `struct` | Implemented |
 | Interfaces + default methods | `interface` + default implementations | Implemented |
-| Enums (incl. flags) | `enum` + `@flags` | Implemented |
+| Enums (incl. flags) | `enum` + `@[flags]` | Implemented |
 | Generics + constraints (`class`, `struct`, `new()`, interfaces) | `class Foo[T: IBar]`, `T: class & new()` | Implemented |
 | Generic variance (`in`/`out`) | `class Foo[out T]` | Implemented |
 | Properties (auto, get/set/init) | `property` keyword | Implemented |
@@ -465,7 +465,7 @@ Verified against compiler source (lexer, parser AST, codegen, semantic analysis)
 | Collection literals + comprehensions | `[...]`, `{...}`, comprehensions | Implemented |
 | Extension methods | Via .NET interop | Implemented |
 | Variadic params (`params T[]`) | `*args` | Implemented |
-| Arbitrary .NET attributes | Unknown decorators → `[Attribute]` | Implemented |
+| Arbitrary .NET attributes | Bracket attributes `@[name]` → `[Attribute]` | Implemented |
 | Explicit interface implementation | `IInterface.member` syntax | Implemented |
 | Tagged unions | `union` keyword | Implemented |
 | Result/Optional types | `Result[T, E]` / `Optional[T]` | Implemented |

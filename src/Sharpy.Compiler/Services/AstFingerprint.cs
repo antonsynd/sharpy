@@ -199,7 +199,7 @@ public static class AstFingerprint
         {
             if (a[i].Name != b[i].Name)
                 return false;
-            // Decorator arguments affect semantics (e.g., @dll_import("old.dll") vs @dll_import("new.dll")).
+            // Decorator arguments affect semantics (e.g., @[dll_import("old.dll")] vs @[dll_import("new.dll")]).
             // Conservatively treat any decorator with arguments as structural if arguments differ.
             if (!ExpressionsEqual(a[i].Arguments, b[i].Arguments))
                 return false;
