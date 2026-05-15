@@ -5,6 +5,9 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Lsp;
@@ -25,7 +28,7 @@ internal sealed class DiagnosticPublisher
 
     public void PublishDiagnostics(string uri, SemanticResult result, SourceText? sourceText)
     {
-        var lspDiagnostics = ConvertDiagnostics(result.Diagnostics, sourceText, _configuration);
+        var lspDiagnostics = ConvertDiagnostics(result.Diagnostics, sourceText, _configuration, result.SemanticQuery, uri);
 
         _server.TextDocument.PublishDiagnostics(new PublishDiagnosticsParams
         {
@@ -46,7 +49,9 @@ internal sealed class DiagnosticPublisher
     internal static System.Collections.Generic.List<Diagnostic> ConvertDiagnostics(
         IReadOnlyList<CompilerDiagnostic> diagnostics,
         SourceText? sourceText,
-        LspConfiguration? configuration = null)
+        LspConfiguration? configuration = null,
+        ISemanticQuery? semanticQuery = null,
+        string? documentUri = null)
     {
         var result = new System.Collections.Generic.List<Diagnostic>(diagnostics.Count);
         var transitionHintsEnabled = configuration?.TransitionHintsEnabled ?? true;
@@ -62,15 +67,38 @@ internal sealed class DiagnosticPublisher
                 continue;
             }
 
-            result.Add(ConvertDiagnostic(diag, sourceText));
+            // Source generator diagnostics: if the diagnostic carries a synthetic file path
+            // like `<generated:GenName:TargetName>`, route it back to the original source
+            // file at the generator's trigger decorator location.
+            var rerouted = TryRerouteGeneratedDiagnostic(diag, semanticQuery, documentUri);
+            result.Add(ConvertDiagnostic(rerouted ?? diag, sourceText, rerouted != null ? diag : null));
         }
 
         return result;
     }
 
-    internal static Diagnostic ConvertDiagnostic(CompilerDiagnostic diag, SourceText? sourceText)
+    internal static Diagnostic ConvertDiagnostic(CompilerDiagnostic diag, SourceText? sourceText, CompilerDiagnostic? generatedOrigin = null)
     {
         var range = PositionConverter.DiagnosticToRange(diag, sourceText);
+
+        Container<DiagnosticRelatedInformation>? relatedInfo = null;
+        if (generatedOrigin != null)
+        {
+            // Attach the original (synthetic) location as related information so editors
+            // can show "Also see: <generated:Foo:Bar>" alongside the rerouted diagnostic.
+            var origRange = PositionConverter.DiagnosticToRange(generatedOrigin, sourceText: null);
+            var originPath = generatedOrigin.FilePath ?? "<generated>";
+            relatedInfo = new Container<DiagnosticRelatedInformation>(
+                new DiagnosticRelatedInformation
+                {
+                    Location = new Location
+                    {
+                        Uri = DocumentUri.From(new Uri($"sharpy-generated:{Uri.EscapeDataString(originPath)}", UriKind.Absolute)),
+                        Range = origRange,
+                    },
+                    Message = $"In generated source {originPath}",
+                });
+        }
 
         var lspDiag = new Diagnostic
         {
@@ -84,10 +112,90 @@ internal sealed class DiagnosticPublisher
             Tags = GetDiagnosticTags(diag),
             Data = diag.Data is { Count: > 0 }
                 ? JObject.FromObject(diag.Data)
-                : null
+                : null,
+            RelatedInformation = relatedInfo,
         };
 
         return lspDiag;
+    }
+
+    /// <summary>
+    /// Prefix used on file paths produced by the source-generator pipeline.
+    /// See <c>ProjectCompiler.IntegrateGeneratedSource</c>.
+    /// </summary>
+    internal const string GeneratedFilePathPrefix = "<generated:";
+
+    /// <summary>
+    /// Returns true if the file path is a synthetic generator path of the form
+    /// <c>&lt;generated:GeneratorName:TargetName&gt;</c>.
+    /// </summary>
+    internal static bool IsGeneratedFilePath(string? filePath)
+    {
+        return !string.IsNullOrEmpty(filePath)
+            && filePath!.StartsWith(GeneratedFilePathPrefix, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Parses a synthetic generator file path into its generator name and target name
+    /// components. Returns null if the path is not a valid generator path.
+    /// </summary>
+    internal static (string GeneratorName, string TargetName)? ParseGeneratedFilePath(string? filePath)
+    {
+        if (!IsGeneratedFilePath(filePath))
+            return null;
+
+        var inner = filePath!.Substring(GeneratedFilePathPrefix.Length);
+        if (inner.EndsWith(">", StringComparison.Ordinal))
+            inner = inner.Substring(0, inner.Length - 1);
+
+        var colonIdx = inner.IndexOf(':', StringComparison.Ordinal);
+        if (colonIdx < 0)
+            return (inner, string.Empty);
+
+        return (inner.Substring(0, colonIdx), inner.Substring(colonIdx + 1));
+    }
+
+    /// <summary>
+    /// If the diagnostic originates from a synthetic generated source path, returns a
+    /// remapped <see cref="CompilerDiagnostic"/> whose line/column point at the matching
+    /// generator's trigger decorator in the original source file. Returns null when no
+    /// remap applies.
+    /// </summary>
+    internal static CompilerDiagnostic? TryRerouteGeneratedDiagnostic(
+        CompilerDiagnostic diag,
+        ISemanticQuery? semanticQuery,
+        string? documentUri)
+    {
+        var parsed = ParseGeneratedFilePath(diag.FilePath);
+        if (parsed is null)
+            return null;
+        if (semanticQuery is null)
+            return null;
+
+        var (generatorName, _) = parsed.Value;
+
+        // Search recorded generator bindings for a trigger decorator whose name matches.
+        // The bracket attribute's Name carries the generator's class name (e.g., "GenerateEquals").
+        foreach (var (_, bindings) in semanticQuery.GetAllGeneratorBindings())
+        {
+            foreach (var binding in bindings)
+            {
+                if (binding.Trigger.Name == generatorName)
+                {
+                    var trigger = binding.Trigger;
+                    return diag with
+                    {
+                        FilePath = documentUri,
+                        Line = trigger.LineStart,
+                        Column = trigger.ColumnStart,
+                        // Clear the original span so PositionConverter falls back to Line/Column.
+                        Span = null,
+                    };
+                }
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
