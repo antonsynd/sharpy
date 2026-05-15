@@ -7,6 +7,7 @@ namespace Sharpy.Generators
     /// or <see cref="TargetFunction"/> is non-null depending on whether the decorator was
     /// applied to a class or a function.
     /// </summary>
+    [SharpyModuleType("sharpy.generators")]
     public sealed class GeneratorContext
     {
         public ClassInfo? TargetClass { get; }

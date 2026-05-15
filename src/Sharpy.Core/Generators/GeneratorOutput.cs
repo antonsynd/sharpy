@@ -3,6 +3,7 @@ using System.Collections.Generic;
 namespace Sharpy.Generators
 {
     /// <summary>The result of running a <see cref="SourceGenerator"/>.</summary>
+    [SharpyModuleType("sharpy.generators")]
     public sealed class GeneratorOutput
     {
         /// <summary>Generated Sharpy source code, or empty string if nothing was generated.</summary>

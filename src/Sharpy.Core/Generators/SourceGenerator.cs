@@ -4,6 +4,7 @@ namespace Sharpy.Generators
     /// Base class for Sharpy source generators. Subclasses produce Sharpy source code
     /// from a <see cref="GeneratorContext"/> describing the decorated declaration.
     /// </summary>
+    [SharpyModuleType("sharpy.generators")]
     public abstract class SourceGenerator
     {
         /// <summary>Generate Sharpy source for the target described by <paramref name="context"/>.</summary>
