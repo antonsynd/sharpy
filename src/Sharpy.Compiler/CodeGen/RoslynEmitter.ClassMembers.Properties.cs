@@ -105,8 +105,11 @@ internal partial class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.ReadOnlyKeyword));
         }
 
-        return FieldDeclaration(declaration)
-            .WithModifiers(modifiers);
+        var fieldDecl = FieldDeclaration(declaration).WithModifiers(modifiers);
+        var attributes = GenerateAttributeListsFromDecorators(varDecl.Decorators);
+        if (attributes.Count > 0)
+            fieldDecl = fieldDecl.WithAttributeLists(attributes);
+        return fieldDecl;
     }
 
     /// <summary>
