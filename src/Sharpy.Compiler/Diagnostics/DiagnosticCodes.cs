@@ -547,9 +547,9 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Code generation diagnostic codes (SPY0500-SPY0599).
-    /// Active: SPY0500-SPY0508, SPY0510, SPY0518-SPY0520, SPY0522-SPY0523, SPY0599 (16 codes)
+    /// Active: SPY0500-SPY0508, SPY0510, SPY0518-SPY0520, SPY0522-SPY0523, SPY0550-SPY0554, SPY0599 (21 codes)
     /// Reserved: SPY0521 (TypeReExportNotSupported — for future type re-export support)
-    /// Reserved: SPY0509, SPY0511-SPY0517, SPY0524-SPY0598 (82 codes)
+    /// Reserved: SPY0509, SPY0511-SPY0517, SPY0524-SPY0549, SPY0555-SPY0569 (source generators), SPY0570-SPY0598 (67 codes)
     /// </summary>
     public static class CodeGen
     {
@@ -578,7 +578,18 @@ public static class DiagnosticCodes
         public const string TypeReExportNotSupported = "SPY0521";   // Reserved — for future type re-export support
         public const string MemberNameCollision = "SPY0522";        // Active
         public const string FunctionModuleClassCollision = "SPY0523"; // Active
-        // SPY0524-SPY0598: Reserved for future codegen diagnostics
+        // SPY0524-SPY0549: Reserved for future codegen diagnostics
+
+        #endregion
+
+        #region Source generator errors (SPY0550-SPY0569)
+
+        public const string GeneratorExecutionError = "SPY0550";      // Active
+        public const string GeneratorTimeout = "SPY0551";             // Active
+        public const string GeneratorInvalidSource = "SPY0552";       // Active
+        public const string GeneratorCycleDetected = "SPY0553";       // Active
+        public const string GeneratorEmptyOutput = "SPY0554";         // Active
+        // SPY0555-SPY0569: Reserved for future source generator diagnostics
 
         #endregion
 
