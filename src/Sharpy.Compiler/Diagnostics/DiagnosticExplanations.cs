@@ -1826,6 +1826,38 @@ public static class DiagnosticExplanations
             null,
             "This is an internal compiler error. Please report it at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
+        // ── Source generator errors (SPY0550-SPY0569) ────────────────────
+
+        Add(dict, DiagnosticCodes.CodeGen.GeneratorExecutionError, "Source generator execution error", "CodeGen",
+            "A source generator threw an exception during execution. The generator class was instantiated " +
+            "and its Generate() method was called, but it failed with an unhandled exception.",
+            "@[MyGenerator]\nclass Foo:\n    x: int",
+            "Fix the exception in the source generator's Generate() method. Check the error message for details.");
+
+        Add(dict, DiagnosticCodes.CodeGen.GeneratorTimeout, "Source generator timed out", "CodeGen",
+            "A source generator did not complete within the allowed time limit (30 seconds). " +
+            "This usually indicates an infinite loop or very expensive computation in the generator.",
+            null,
+            "Optimize the source generator or break it into smaller generators.");
+
+        Add(dict, DiagnosticCodes.CodeGen.GeneratorInvalidSource, "Source generator produced invalid Sharpy source", "CodeGen",
+            "A source generator returned Sharpy source code that contains syntax errors. " +
+            "The generated source is re-parsed and must be valid Sharpy syntax.",
+            null,
+            "Fix the source generator to produce valid Sharpy syntax. Inspect the generated source for errors.");
+
+        Add(dict, DiagnosticCodes.CodeGen.GeneratorCycleDetected, "Source generator cycle detected", "CodeGen",
+            "A source generator attribute was applied to another source generator class, creating a cycle. " +
+            "Generators cannot decorate other generators.",
+            "@[GenerateRepr]\nclass MyGenerator(SourceGenerator):\n    def generate(self, context: GeneratorContext) -> GeneratorOutput: ...",
+            "Remove the generator attribute from the generator class.");
+
+        Add(dict, DiagnosticCodes.CodeGen.GeneratorEmptyOutput, "Source generator returned empty output", "CodeGen",
+            "A source generator returned null or an empty source string. This is a warning — " +
+            "the generator was invoked but produced no code.",
+            null,
+            "Check the generator's Generate() method to ensure it returns non-empty source code.");
+
         // ── Infrastructure errors (SPY0900-SPY0999) ────────────────────
 
         Add(dict, DiagnosticCodes.Infrastructure.CompilationFailed, "Compilation failed", "Infrastructure",
