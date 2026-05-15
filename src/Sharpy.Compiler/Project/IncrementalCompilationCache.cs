@@ -23,6 +23,8 @@ internal record CacheMetadata(string CompilerVersion, Dictionary<string, string>
 ///   v4 (2026-02): Added IsGenerator to CachedSymbol for generator function persistence
 ///   v7 (2026-03): Added Documentation to CachedSymbol and CachedParameter
 ///   v9 (2026-04): SharpyModuleType attribute supports python-name aliasing (DateTime→datetime, etc.)
+///   v12 (2026-05): Added NameDeclarationLine/Column to CachedSymbol
+///   v13 (2026-05): Added GeneratorOutputs to FileCacheEntry for source generator caching (#636)
 ///
 /// When making breaking changes:
 ///   1. Increment CurrentSchemaVersion
@@ -41,8 +43,8 @@ internal class IncrementalCompilationCache
     /// Current schema version for the symbol cache.
     /// Increment this when making breaking changes to FileCacheEntry or CachedSymbol structures.
     /// </summary>
-    // v12: Added NameDeclarationLine/Column to CachedSymbol
-    internal const int CurrentSchemaVersion = 12;
+    // v13: Added GeneratorOutputs to FileCacheEntry for source generator caching (#636)
+    internal const int CurrentSchemaVersion = 13;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

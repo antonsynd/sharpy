@@ -316,4 +316,45 @@ internal record FileCacheEntry
     /// Module path for this file (e.g., "mypackage.helpers")
     /// </summary>
     public string? ModulePath { get; init; }
+
+    /// <summary>
+    /// Source generator outputs that target a declaration in this file.
+    /// Key: generator identity (e.g., "GenerateEquals@MyClass"). Nullable
+    /// for backwards compat — pre-v13 cache files won't have this.
+    /// </summary>
+    public Dictionary<string, GeneratedCacheEntry>? GeneratorOutputs { get; init; }
+}
+
+/// <summary>
+/// Cache entry for a single source generator invocation against a target declaration.
+/// Captures everything needed to detect staleness without re-running the generator.
+/// </summary>
+internal record GeneratedCacheEntry
+{
+    /// <summary>
+    /// SHA-256 hash of the generator source file content. If the generator
+    /// source changes (e.g., the @[GenerateEquals] class is edited), the
+    /// cached output must be re-generated.
+    /// </summary>
+    public required string GeneratorHash { get; init; }
+
+    /// <summary>
+    /// SHA-256 hash of the decorated declaration's source (typically the
+    /// containing class/function body). Distinct from the file-level
+    /// ContentHash so a generator output only invalidates when its own
+    /// target changes, not when unrelated code in the same file does.
+    /// </summary>
+    public required string TargetHash { get; init; }
+
+    /// <summary>
+    /// SHA-256 hash of the decorator arguments. Null if the decorator
+    /// takes no arguments.
+    /// </summary>
+    public string? ArgumentsHash { get; init; }
+
+    /// <summary>
+    /// The Sharpy source string the generator produced. Re-fed into the
+    /// pipeline when the cache is valid, skipping generator execution.
+    /// </summary>
+    public required string GeneratedSource { get; init; }
 }
