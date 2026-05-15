@@ -1,22 +1,20 @@
-using System.Collections.Generic;
-
 namespace Sharpy.Generators
 {
     /// <summary>Read-only description of a function visible to a <see cref="SourceGenerator"/>.</summary>
     public sealed class FunctionInfo
     {
         public string Name { get; }
-        public List<ParameterInfo> Parameters { get; }
+        public System.Collections.Generic.List<ParameterInfo> Parameters { get; }
         public string? ReturnType { get; }
-        public List<DecoratorInfo> Decorators { get; }
+        public System.Collections.Generic.List<DecoratorInfo> Decorators { get; }
         public bool IsStatic { get; }
         public bool IsAsync { get; }
 
         public FunctionInfo(
             string name,
-            List<ParameterInfo> parameters,
+            System.Collections.Generic.List<ParameterInfo> parameters,
             string? returnType,
-            List<DecoratorInfo> decorators,
+            System.Collections.Generic.List<DecoratorInfo> decorators,
             bool isStatic,
             bool isAsync)
         {

@@ -1,12 +1,10 @@
-using System.Collections.Generic;
-
 namespace Sharpy.Generators
 {
     /// <summary>Read-only description of a method visible to a <see cref="SourceGenerator"/>.</summary>
     public sealed class MethodInfo
     {
         public string Name { get; }
-        public List<ParameterInfo> Parameters { get; }
+        public System.Collections.Generic.List<ParameterInfo> Parameters { get; }
         public string? ReturnType { get; }
         public bool IsStatic { get; }
         public bool IsAbstract { get; }
@@ -15,7 +13,7 @@ namespace Sharpy.Generators
 
         public MethodInfo(
             string name,
-            List<ParameterInfo> parameters,
+            System.Collections.Generic.List<ParameterInfo> parameters,
             string? returnType,
             bool isStatic,
             bool isAbstract,

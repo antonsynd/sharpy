@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Sharpy.Generators
 {
     /// <summary>
@@ -12,15 +10,15 @@ namespace Sharpy.Generators
     {
         public ClassInfo? TargetClass { get; }
         public FunctionInfo? TargetFunction { get; }
-        public List<object> Arguments { get; }
-        public Dictionary<string, object> KeywordArguments { get; }
+        public System.Collections.Generic.List<object> Arguments { get; }
+        public System.Collections.Generic.Dictionary<string, object> KeywordArguments { get; }
         public string ModuleName { get; }
 
         public GeneratorContext(
             ClassInfo? targetClass,
             FunctionInfo? targetFunction,
-            List<object> arguments,
-            Dictionary<string, object> keywordArguments,
+            System.Collections.Generic.List<object> arguments,
+            System.Collections.Generic.Dictionary<string, object> keywordArguments,
             string moduleName)
         {
             TargetClass = targetClass;
