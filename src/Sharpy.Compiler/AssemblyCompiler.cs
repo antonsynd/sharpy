@@ -156,6 +156,25 @@ internal class AssemblyCompiler
     /// <summary>
     /// Get metadata references for compilation
     /// </summary>
+    internal static List<MetadataReference> GetDefaultReferences()
+    {
+        var references = new List<MetadataReference>();
+        var coreLibPath = typeof(object).Assembly.Location;
+        var coreLibDir = Path.GetDirectoryName(coreLibPath);
+
+        if (!string.IsNullOrEmpty(coreLibDir))
+        {
+            references.Add(MetadataReference.CreateFromFile(coreLibPath));
+            references.Add(MetadataReference.CreateFromFile(Path.Combine(coreLibDir, "System.Runtime.dll")));
+            references.Add(MetadataReference.CreateFromFile(Path.Combine(coreLibDir, "System.Collections.dll")));
+            references.Add(MetadataReference.CreateFromFile(Path.Combine(coreLibDir, "System.Linq.dll")));
+        }
+
+        references.Add(MetadataReference.CreateFromFile(typeof(SharpyRT::Sharpy.Builtins).Assembly.Location));
+
+        return references;
+    }
+
     private List<MetadataReference> GetMetadataReferences(ProjectConfig projectConfig)
     {
         var references = new List<MetadataReference>();

@@ -184,6 +184,10 @@ internal partial class ProjectCompiler
             compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver);
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Phase 4d: Partition source generators (if any)
+            var generatorPartition = PartitionGenerators();
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Phase 5: Perform semantic analysis on all files
             if (!PerformSemanticAnalysis(compilationPipeline, config, cancellationToken))
             {
@@ -191,6 +195,16 @@ internal partial class ProjectCompiler
             }
             compilationPipeline.MaterializeTypeInfo();
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Phase 5b: Execute source generators (if any)
+            if (generatorPartition.HasGenerators)
+            {
+                if (!ExecuteGeneratorPipeline(generatorPartition, compilationPipeline, config, cancellationToken))
+                {
+                    return CreateFailureResult();
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             // Phase 6: Generate C# code for all files
             var generatedCSharp = GenerateCode(config);
