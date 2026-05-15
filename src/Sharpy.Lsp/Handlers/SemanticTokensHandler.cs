@@ -729,9 +729,9 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
             var name = dec.Name;
             if (name.Length > 0)
             {
-                // @[Name] bracket attributes: +3 for @, [, ]
+                // @[name regular: +2 for @ and [ (] is after args, not adjacent)
                 // @name regular decorators: +1 for @
-                var length = dec.IsBracketAttribute ? name.Length + 3 : name.Length + 1;
+                var length = dec.IsBracketAttribute ? name.Length + 2 : name.Length + 1;
                 PushNameToken(tokens, dec.LineStart, dec.ColumnStart, length, TDecorator, 0);
             }
         }
