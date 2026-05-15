@@ -2,6 +2,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Services;
 
 namespace Sharpy.Lsp.Handlers;
 
@@ -34,6 +35,8 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     ];
 
     // Token modifiers — order must match bit positions.
+    // "generated" is a custom modifier (the LSP spec allows servers to define them).
+    // Clients can style this in VS Code via editor.semanticTokenColorCustomizations.
     private static readonly string[] TokenModifiers =
     [
         SemanticTokenModifier.Declaration,  // bit 0
@@ -41,6 +44,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         SemanticTokenModifier.Static,       // bit 2
         SemanticTokenModifier.Async,        // bit 3
         SemanticTokenModifier.Readonly,     // bit 4
+        "generated",                        // bit 5 (custom — for source-generator output)
     ];
 
     // Token type indices — must match order of TokenTypes array above.
@@ -65,6 +69,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     internal const int ModStatic = 1 << 2;
     internal const int ModAsync = 1 << 3;
     internal const int ModReadonly = 1 << 4;
+    internal const int ModGenerated = 1 << 5;
 
     public SharpySemanticTokensHandler(LanguageService languageService)
     {
@@ -95,13 +100,29 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         CancellationToken ct)
     {
         var uri = identifier.TextDocument.Uri.ToString();
-        var parseResult = await _languageService.GetParseResultAsync(uri, ct).ConfigureAwait(false);
 
-        if (parseResult?.Ast == null)
-            return;
+        // Prefer the full semantic result so we can tag generated declarations with the
+        // custom "generated" modifier. Fall back to a parse-only result when semantic
+        // analysis hasn't completed.
+        ISemanticQuery? semanticQuery = null;
+        Module? ast = null;
+
+        var analysis = await _languageService.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+        if (analysis?.Ast != null)
+        {
+            ast = analysis.Ast;
+            semanticQuery = analysis.SemanticQuery;
+        }
+        else
+        {
+            var parseResult = await _languageService.GetParseResultAsync(uri, ct).ConfigureAwait(false);
+            if (parseResult?.Ast == null)
+                return;
+            ast = parseResult.Ast;
+        }
 
         var tokens = new System.Collections.Generic.List<RawToken>();
-        CollectTokens(parseResult.Ast.Body, tokens);
+        CollectTokens(ast.Body, tokens, semanticQuery);
 
         // Sort by position (line, then column)
         tokens.Sort(static (a, b) =>
@@ -128,9 +149,17 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         IEnumerable<Statement> statements,
         System.Collections.Generic.List<RawToken> tokens)
     {
+        CollectTokens(statements, tokens, semanticQuery: null);
+    }
+
+    internal static void CollectTokens(
+        IEnumerable<Statement> statements,
+        System.Collections.Generic.List<RawToken> tokens,
+        ISemanticQuery? semanticQuery)
+    {
         foreach (var stmt in statements)
         {
-            CollectStatementTokens(stmt, tokens);
+            CollectStatementTokens(stmt, tokens, parameterNames: null, semanticQuery);
         }
     }
 
@@ -138,7 +167,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         Statement stmt,
         System.Collections.Generic.List<RawToken> tokens)
     {
-        CollectStatementTokens(stmt, tokens, null);
+        CollectStatementTokens(stmt, tokens, parameterNames: null, semanticQuery: null);
     }
 
     private static void CollectStatementTokens(
@@ -146,40 +175,56 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         System.Collections.Generic.List<RawToken> tokens,
         HashSet<string>? parameterNames)
     {
+        CollectStatementTokens(stmt, tokens, parameterNames, semanticQuery: null);
+    }
+
+    private static void CollectStatementTokens(
+        Statement stmt,
+        System.Collections.Generic.List<RawToken> tokens,
+        HashSet<string>? parameterNames,
+        ISemanticQuery? semanticQuery)
+    {
+        // Apply the "generated" modifier to declarations that were produced by a source
+        // generator. The modifier propagates to nested members because generators emit
+        // whole statements (a method, a property, a field) — we don't descend into
+        // generated subtrees from non-generated ones, so this check at the statement
+        // level is sufficient.
+        var genMod = (semanticQuery != null && semanticQuery.IsGenerated(stmt)) ? ModGenerated : 0;
+
         switch (stmt)
         {
             case FunctionDef f:
-                CollectFunctionTokens(f, tokens);
+                CollectFunctionTokens(f, tokens, genMod, semanticQuery);
                 break;
 
             case ClassDef c:
-                PushNameToken(tokens, c.NameLineStart, c.NameColumnStart, c.Name.Length, TClass, ModDeclaration | ModDefinition);
+                PushNameToken(tokens, c.NameLineStart, c.NameColumnStart, c.Name.Length, TClass, ModDeclaration | ModDefinition | genMod);
                 CollectDecorators(c.Decorators, tokens);
-                CollectTokens(c.Body, tokens);
+                CollectTokens(c.Body, tokens, semanticQuery);
                 break;
 
             case StructDef s:
-                PushNameToken(tokens, s.NameLineStart, s.NameColumnStart, s.Name.Length, TStruct, ModDeclaration | ModDefinition);
+                PushNameToken(tokens, s.NameLineStart, s.NameColumnStart, s.Name.Length, TStruct, ModDeclaration | ModDefinition | genMod);
                 CollectDecorators(s.Decorators, tokens);
-                CollectTokens(s.Body, tokens);
+                CollectTokens(s.Body, tokens, semanticQuery);
                 break;
 
             case InterfaceDef i:
-                PushNameToken(tokens, i.NameLineStart, i.NameColumnStart, i.Name.Length, TInterface, ModDeclaration | ModDefinition);
+                PushNameToken(tokens, i.NameLineStart, i.NameColumnStart, i.Name.Length, TInterface, ModDeclaration | ModDefinition | genMod);
                 CollectDecorators(i.Decorators, tokens);
-                CollectTokens(i.Body, tokens);
+                CollectTokens(i.Body, tokens, semanticQuery);
                 break;
 
             case EnumDef e:
-                PushNameToken(tokens, e.NameLineStart, e.NameColumnStart, e.Name.Length, TEnum, ModDeclaration | ModDefinition);
+                PushNameToken(tokens, e.NameLineStart, e.NameColumnStart, e.Name.Length, TEnum, ModDeclaration | ModDefinition | genMod);
                 foreach (var member in e.Members)
                 {
-                    PushNameToken(tokens, member.LineStart, member.ColumnStart, member.Name.Length, TEnumMember, ModDeclaration);
+                    PushNameToken(tokens, member.LineStart, member.ColumnStart, member.Name.Length, TEnumMember, ModDeclaration | genMod);
                 }
                 break;
 
             case VariableDeclaration v:
-                var varMods = ModDeclaration;
+                var varMods = ModDeclaration | genMod;
                 if (v.IsConst)
                     varMods |= ModReadonly;
                 PushNameToken(tokens, v.NameLineStart, v.NameColumnStart, v.Name.Length, TVariable, varMods);
@@ -189,9 +234,9 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case PropertyDef p:
-                PushNameToken(tokens, p.NameLineStart, p.NameColumnStart, p.Name.Length, TProperty, ModDeclaration);
+                PushNameToken(tokens, p.NameLineStart, p.NameColumnStart, p.Name.Length, TProperty, ModDeclaration | genMod);
                 CollectDecorators(p.Decorators, tokens);
-                CollectTokens(p.Body, tokens);
+                CollectTokens(p.Body, tokens, semanticQuery);
                 break;
 
             case IfStatement ifStmt:
@@ -283,7 +328,16 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         FunctionDef f,
         System.Collections.Generic.List<RawToken> tokens)
     {
-        var mods = ModDeclaration | ModDefinition;
+        CollectFunctionTokens(f, tokens, extraMods: 0, semanticQuery: null);
+    }
+
+    private static void CollectFunctionTokens(
+        FunctionDef f,
+        System.Collections.Generic.List<RawToken> tokens,
+        int extraMods,
+        ISemanticQuery? semanticQuery)
+    {
+        var mods = ModDeclaration | ModDefinition | extraMods;
         if (f.IsAsync)
             mods |= ModAsync;
         if (HasDecorator(f.Decorators, "static"))
@@ -294,13 +348,16 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
 
         CollectDecorators(f.Decorators, tokens);
 
-        // Parameters — collect names for usage-site tracking
+        // Parameters — collect names for usage-site tracking. Inherit the "generated"
+        // modifier from the enclosing function so callers can theme parameter declarations
+        // of generated methods consistently.
+        var paramMods = ModDeclaration | extraMods;
         HashSet<string>? parameterNames = null;
         foreach (var param in f.Parameters)
         {
             if (param.Name == "self" || param.Name == "cls")
                 continue;
-            PushNameToken(tokens, param.LineStart, param.ColumnStart, param.Name.Length, TParameter, ModDeclaration);
+            PushNameToken(tokens, param.LineStart, param.ColumnStart, param.Name.Length, TParameter, paramMods);
             parameterNames ??= new HashSet<string>();
             parameterNames.Add(param.Name);
         }
@@ -308,7 +365,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         // Walk function body with parameter names for usage-site classification
         foreach (var stmt in f.Body)
         {
-            CollectStatementTokens(stmt, tokens, parameterNames);
+            CollectStatementTokens(stmt, tokens, parameterNames, semanticQuery);
         }
     }
 
