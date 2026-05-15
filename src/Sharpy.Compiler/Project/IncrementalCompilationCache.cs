@@ -52,6 +52,13 @@ internal class IncrementalCompilationCache
     private Dictionary<string, string> _fileHashes;
     private Dictionary<string, FileCacheEntry>? _fileCache;
 
+    /// <summary>
+    /// Generator outputs cached via <see cref="CacheGeneratorOutput"/> before the
+    /// owning <see cref="FileCacheEntry"/> exists. Merged into the entry by
+    /// <see cref="SaveFileCache"/>.
+    /// </summary>
+    private Dictionary<string, Dictionary<string, GeneratedCacheEntry>>? _pendingGeneratorOutputs;
+
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
         WriteIndented = true,
@@ -214,6 +221,7 @@ internal class IncrementalCompilationCache
     {
         _fileHashes.Clear();
         _fileCache?.Clear();
+        _pendingGeneratorOutputs?.Clear();
 
         DeleteFileIfExists(_cacheFilePath);
         DeleteFileIfExists(_symbolCachePath);
@@ -245,16 +253,43 @@ internal class IncrementalCompilationCache
             .Select(s => SymbolSerializer.Serialize(s, filePath))
             .ToList();
 
+        // Preserve any generator outputs cached earlier in this build (or carried
+        // over from the previous build's entry) so they survive the SaveFileCache
+        // overwrite.
+        Dictionary<string, GeneratedCacheEntry>? generatorOutputs = null;
+        if (_pendingGeneratorOutputs is not null
+            && _pendingGeneratorOutputs.TryGetValue(normalizedPath, out var pending))
+        {
+            generatorOutputs = pending;
+            _pendingGeneratorOutputs.Remove(normalizedPath);
+        }
+        if (_fileCache!.TryGetValue(normalizedPath, out var previous)
+            && previous.GeneratorOutputs is { Count: > 0 } previousOutputs)
+        {
+            if (generatorOutputs is null)
+            {
+                generatorOutputs = new Dictionary<string, GeneratedCacheEntry>(previousOutputs, StringComparer.Ordinal);
+            }
+            else
+            {
+                foreach (var kvp in previousOutputs)
+                {
+                    generatorOutputs.TryAdd(kvp.Key, kvp.Value);
+                }
+            }
+        }
+
         var entry = new FileCacheEntry
         {
             ContentHash = contentHash,
             Symbols = cachedSymbols,
             GeneratedCSharp = generatedCSharp,
             Dependencies = dependencies.Select(PathNormalizer.Normalize).ToList(),
-            ModulePath = modulePath
+            ModulePath = modulePath,
+            GeneratorOutputs = generatorOutputs
         };
 
-        _fileCache![normalizedPath] = entry;
+        _fileCache[normalizedPath] = entry;
     }
 
     /// <summary>
@@ -357,6 +392,120 @@ internal class IncrementalCompilationCache
         if (_fileCache != null && _fileCache.Count > 0)
         {
             SaveSymbolCache();
+        }
+    }
+
+    /// <summary>
+    /// Checks whether a cached source-generator output is still valid for a given
+    /// target. The output is valid when:
+    /// <list type="bullet">
+    ///   <item>A <see cref="GeneratedCacheEntry"/> exists for the target file
+    ///       under the given <paramref name="generatorIdentity"/>.</item>
+    ///   <item>The cached generator source hash matches the current generator
+    ///       file hash.</item>
+    ///   <item>The cached arguments hash matches.</item>
+    /// </list>
+    /// When all conditions hold, the cached <c>GeneratedSource</c> is returned
+    /// via <paramref name="generatedSource"/> and the caller can reuse it
+    /// instead of re-running the generator.
+    /// </summary>
+    /// <param name="targetFilePath">The path of the file containing the decorated declaration.</param>
+    /// <param name="generatorIdentity">A stable key identifying the generator binding for the target (e.g., "GenerateEquals@MyClass").</param>
+    /// <param name="generatorFilePath">The path of the file declaring the generator class.</param>
+    /// <param name="argumentsHash">SHA-256 of the decorator arguments, or <c>null</c> if the decorator takes no args.</param>
+    /// <param name="generatedSource">Receives the cached generated Sharpy source if the cache hit succeeds.</param>
+    /// <returns>True if the cache is valid and <paramref name="generatedSource"/> was populated; false otherwise.</returns>
+    public bool IsGeneratorCacheValid(
+        string targetFilePath,
+        string generatorIdentity,
+        string generatorFilePath,
+        string? argumentsHash,
+        out string? generatedSource)
+    {
+        generatedSource = null;
+
+        EnsureFileCacheLoaded();
+
+        var normalizedTarget = PathNormalizer.Normalize(targetFilePath);
+        if (!_fileCache!.TryGetValue(normalizedTarget, out var entry) || entry.GeneratorOutputs is null)
+        {
+            return false;
+        }
+
+        if (!entry.GeneratorOutputs.TryGetValue(generatorIdentity, out var cached))
+        {
+            return false;
+        }
+
+        if (!File.Exists(generatorFilePath))
+        {
+            return false;
+        }
+
+        var currentGeneratorHash = ComputeFileHash(generatorFilePath);
+        if (!string.Equals(cached.GeneratorHash, currentGeneratorHash, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!string.Equals(cached.ArgumentsHash, argumentsHash, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        generatedSource = cached.GeneratedSource;
+        return true;
+    }
+
+    /// <summary>
+    /// Stores the result of a source-generator invocation so a subsequent build
+    /// with unchanged inputs can skip re-executing the generator. The output is
+    /// keyed by <paramref name="generatorIdentity"/> under the target file's
+    /// cache entry. If no <see cref="FileCacheEntry"/> exists yet for the
+    /// target, the call is a no-op — the entry will be created by the normal
+    /// <see cref="SaveFileCache"/> path, which preserves any generator outputs
+    /// recorded here.
+    /// </summary>
+    public void CacheGeneratorOutput(
+        string targetFilePath,
+        string generatorIdentity,
+        string generatorHash,
+        string targetHash,
+        string? argumentsHash,
+        string generatedSource)
+    {
+        EnsureFileCacheLoaded();
+
+        var normalizedTarget = PathNormalizer.Normalize(targetFilePath);
+        var generated = new GeneratedCacheEntry
+        {
+            GeneratorHash = generatorHash,
+            TargetHash = targetHash,
+            ArgumentsHash = argumentsHash,
+            GeneratedSource = generatedSource
+        };
+
+        if (_fileCache!.TryGetValue(normalizedTarget, out var existing))
+        {
+            var outputs = existing.GeneratorOutputs is null
+                ? new Dictionary<string, GeneratedCacheEntry>(StringComparer.Ordinal)
+                : new Dictionary<string, GeneratedCacheEntry>(existing.GeneratorOutputs, StringComparer.Ordinal);
+            outputs[generatorIdentity] = generated;
+
+            _fileCache[normalizedTarget] = existing with { GeneratorOutputs = outputs };
+        }
+        else
+        {
+            // Stash the output in a pending dictionary so a subsequent SaveFileCache call
+            // for this target picks it up. We can't construct a full FileCacheEntry yet
+            // because Symbols/GeneratedCSharp/Dependencies aren't known at this point.
+            _pendingGeneratorOutputs ??= new Dictionary<string, Dictionary<string, GeneratedCacheEntry>>(StringComparer.OrdinalIgnoreCase);
+            if (!_pendingGeneratorOutputs.TryGetValue(normalizedTarget, out var pending))
+            {
+                pending = new Dictionary<string, GeneratedCacheEntry>(StringComparer.Ordinal);
+                _pendingGeneratorOutputs[normalizedTarget] = pending;
+            }
+            pending[generatorIdentity] = generated;
         }
     }
 

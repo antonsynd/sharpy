@@ -71,6 +71,12 @@ internal partial class ProjectCompiler
     // Registry of restored symbols from cache (for resolving cross-references)
     private Dictionary<string, Symbol> _restoredSymbols = new();
 
+    // Maps target file -> set of generator source files it depends on for code
+    // generation. Merged into the dependency graph + cache so that editing a
+    // generator file invalidates every target that uses it.
+    private readonly Dictionary<string, HashSet<string>> _generatorDependencies =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null,
         bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null, int maxErrors = 0,
         bool incremental = false)

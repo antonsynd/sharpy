@@ -35,6 +35,20 @@ internal partial class ProjectCompiler
                     ? _dependencyGraph.GetDirectDependencies(sourceFile).ToList()
                     : new List<string>();
 
+                // Merge in generator file dependencies so a generator edit
+                // invalidates every file it produced code for.
+                if (_generatorDependencies.TryGetValue(
+                    PathNormalizer.Normalize(sourceFile), out var generatorDeps))
+                {
+                    foreach (var dep in generatorDeps)
+                    {
+                        if (!dependencies.Contains(dep, StringComparer.OrdinalIgnoreCase))
+                        {
+                            dependencies.Add(dep);
+                        }
+                    }
+                }
+
                 // Save the file cache
                 _incrementalCache.SaveFileCache(
                     sourceFile,

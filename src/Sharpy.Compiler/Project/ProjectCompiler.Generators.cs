@@ -13,6 +13,7 @@ using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Project;
 
@@ -217,6 +218,43 @@ internal partial class ProjectCompiler
                     continue;
                 }
 
+                var targetFilePath = FindFileForDeclaration(declaration);
+                var generatorFilePath = binding.GeneratorType.DefiningFilePath;
+                var argumentsHash = ComputeDecoratorArgumentsHash(binding.Trigger);
+                var generatorIdentity = generatorTypeName + "@" + GetDeclarationName(declaration);
+
+                // Record target -> generator dependency so a generator file edit
+                // invalidates every target it generates code for.
+                if (targetFilePath is not null && generatorFilePath is not null)
+                {
+                    var key = PathNormalizer.Normalize(targetFilePath);
+                    if (!_generatorDependencies.TryGetValue(key, out var deps))
+                    {
+                        deps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        _generatorDependencies[key] = deps;
+                    }
+                    deps.Add(PathNormalizer.Normalize(generatorFilePath));
+                }
+
+                // Cache hit: reuse the previously-generated Sharpy source if nothing
+                // it depends on has changed.
+                if (_incrementalCache is not null
+                    && targetFilePath is not null
+                    && generatorFilePath is not null
+                    && _incrementalCache.IsGeneratorCacheValid(
+                        targetFilePath, generatorIdentity, generatorFilePath, argumentsHash, out var cachedSource)
+                    && cachedSource is not null)
+                {
+                    _logger.LogDebug($"Generator '{generatorTypeName}' cache hit for {generatorIdentity}");
+                    results.Add(new GeneratedSource(
+                        Source: cachedSource,
+                        GeneratorName: generatorTypeName,
+                        TargetName: GetDeclarationName(declaration),
+                        TriggerDecorator: binding.Trigger,
+                        TargetDeclaration: declaration));
+                    continue;
+                }
+
                 var genType = generatorAssembly.GetTypes()
                     .FirstOrDefault(t => t.Name == generatorTypeName
                         || t.Name == Shared.NameMangler.ToPascalCase(generatorTypeName));
@@ -297,13 +335,7 @@ internal partial class ProjectCompiler
                         continue;
                     }
 
-                    var targetName = declaration switch
-                    {
-                        ClassDef cd => cd.Name,
-                        FunctionDef fd => fd.Name,
-                        StructDef sd => sd.Name,
-                        _ => "Unknown"
-                    };
+                    var targetName = GetDeclarationName(declaration);
 
                     results.Add(new GeneratedSource(
                         Source: output.Source,
@@ -311,6 +343,26 @@ internal partial class ProjectCompiler
                         TargetName: targetName,
                         TriggerDecorator: binding.Trigger,
                         TargetDeclaration: declaration));
+
+                    // Cache the successful generation so an unchanged subsequent
+                    // build can skip the generator. We hash the generator source
+                    // (so editing the generator invalidates) and the decorator
+                    // arguments (so changing args invalidates).
+                    if (_incrementalCache is not null
+                        && targetFilePath is not null
+                        && generatorFilePath is not null
+                        && File.Exists(generatorFilePath))
+                    {
+                        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFilePath);
+                        var targetHash = ComputeDeclarationHash(declaration);
+                        _incrementalCache.CacheGeneratorOutput(
+                            targetFilePath,
+                            generatorIdentity,
+                            generatorHash,
+                            targetHash,
+                            argumentsHash,
+                            output.Source);
+                    }
                 }
                 catch (TargetInvocationException tie) when (tie.InnerException != null)
                 {
@@ -446,6 +498,56 @@ internal partial class ProjectCompiler
             }
         }
         return null;
+    }
+
+    private static string GetDeclarationName(Statement declaration) => declaration switch
+    {
+        ClassDef cd => cd.Name,
+        FunctionDef fd => fd.Name,
+        StructDef sd => sd.Name,
+        _ => "Unknown"
+    };
+
+    /// <summary>
+    /// Hashes a decorator's arguments (positional + keyword) to detect when a generator's
+    /// inputs change. Returns null when the decorator takes no arguments.
+    /// </summary>
+    private static string? ComputeDecoratorArgumentsHash(Decorator trigger)
+    {
+        if (trigger.Arguments.IsDefaultOrEmpty && trigger.KeywordArguments.IsDefaultOrEmpty)
+        {
+            return null;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        foreach (var arg in trigger.Arguments)
+        {
+            sb.Append(arg.ToString());
+            sb.Append('|');
+        }
+        sb.Append("::");
+        foreach (var kw in trigger.KeywordArguments)
+        {
+            sb.Append(kw.Name);
+            sb.Append('=');
+            sb.Append(kw.Value.ToString());
+            sb.Append('|');
+        }
+        var hashBytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(sb.ToString()));
+        return Convert.ToHexStringLower(hashBytes);
+    }
+
+    /// <summary>
+    /// Hashes a single declaration's AST string form to detect when a generator's
+    /// target changes independently of unrelated changes in the same file.
+    /// </summary>
+    private static string ComputeDeclarationHash(Statement declaration)
+    {
+        var text = declaration.ToString() ?? string.Empty;
+        var hashBytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(text));
+        return Convert.ToHexStringLower(hashBytes);
     }
 }
 
