@@ -152,6 +152,10 @@ internal partial class TypeChecker
             _symbolTable.Define(typeParamSymbol);
         }
 
+        // Detect bracket attributes that are source generators (module-level functions only)
+        if (_currentClass == null && _currentFunctionReturnType == null)
+            DetectGeneratorAttributes(functionDef);
+
         // Set static context for Self type validation before resolving types.
         // A method is static if it has @static decorator or doesn't have a self parameter.
         bool isStaticMethod = _currentClass != null &&
@@ -859,6 +863,9 @@ internal partial class TypeChecker
             }
         }
 
+        // Detect bracket attributes that are source generators
+        DetectGeneratorAttributes(classDef);
+
         // Process @dataclass decorator (after field types are resolved)
         ProcessDataclassDecorator(classSymbol, classDef);
 
@@ -937,6 +944,9 @@ internal partial class TypeChecker
         {
             _symbolTable.Define(nestedType);
         }
+
+        // Detect bracket attributes that are source generators
+        DetectGeneratorAttributes(structDef);
 
         // Resolve field types first (before checking methods that might reference them)
         for (int i = 0; i < structSymbol.Fields.Count; i++)
@@ -1685,6 +1695,29 @@ internal partial class TypeChecker
 
         // Synthesize methods that don't have explicit definitions
         SynthesizeDataclassMethods(classSymbol, classDef, dataclassFields);
+    }
+
+    private void DetectGeneratorAttributes(Statement declaration)
+    {
+        var decorators = declaration switch
+        {
+            ClassDef cd => cd.Decorators,
+            FunctionDef fd => fd.Decorators,
+            StructDef sd => sd.Decorators,
+            _ => System.Collections.Immutable.ImmutableArray<Decorator>.Empty
+        };
+
+        foreach (var decorator in decorators)
+        {
+            if (!decorator.IsBracketAttribute)
+                continue;
+
+            var symbol = _symbolTable.Lookup(decorator.Name) as TypeSymbol;
+            if (symbol is { IsSourceGenerator: true })
+            {
+                _semanticInfo.AddGeneratorBinding(declaration, symbol, decorator);
+            }
+        }
     }
 
     /// <summary>

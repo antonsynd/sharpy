@@ -95,6 +95,10 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, NarrowingDecision> _narrowingDecisions =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map declarations to their source generator bindings (bracket attributes that resolve to SourceGenerator subclasses)
+    private readonly ConcurrentDictionary<Statement, List<GeneratorBinding>> _generatorBindings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track all reference locations for each symbol (for find-references and rename).
     // Key is Symbol (reference-equality), value is a thread-safe bag of references.
     // The FilePath may be null for the main file in single-file compilation.
@@ -298,6 +302,28 @@ public class SemanticInfo : ISemanticQuery
     /// Returns true if the expression has been marked as an event access.
     /// </summary>
     public bool IsEventAccess(Expression expr) => _eventAccessNodes.ContainsKey(expr);
+
+    public void AddGeneratorBinding(Statement declaration, TypeSymbol generatorType, Decorator trigger)
+    {
+        var binding = new GeneratorBinding(generatorType, trigger);
+        _generatorBindings.AddOrUpdate(
+            declaration,
+            _ => new List<GeneratorBinding> { binding },
+            (_, list) => { list.Add(binding); return list; });
+    }
+
+    public IReadOnlyList<GeneratorBinding> GetGeneratorBindings(Statement declaration)
+    {
+        return _generatorBindings.TryGetValue(declaration, out var bindings)
+            ? bindings
+            : Array.Empty<GeneratorBinding>();
+    }
+
+    public IEnumerable<(Statement Declaration, IReadOnlyList<GeneratorBinding> Bindings)> GetAllGeneratorBindings()
+    {
+        foreach (var kvp in _generatorBindings)
+            yield return (kvp.Key, kvp.Value);
+    }
 
     /// <summary>
     /// Returns true if any expression type in the semantic info is UnknownType.
@@ -579,3 +605,5 @@ public sealed record IsInstanceNarrowing(
     string VariableName,
     SemanticType NarrowedType,
     bool NarrowInThenBranch);
+
+public sealed record GeneratorBinding(TypeSymbol GeneratorType, Decorator Trigger);
