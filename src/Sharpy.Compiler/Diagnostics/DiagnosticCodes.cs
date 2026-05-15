@@ -485,7 +485,11 @@ public static class DiagnosticCodes
         public const string LruCacheOnNonFunction = "SPY0443";             // Active
         // Unknown decorator rejection (SPY0444)
         public const string UnknownDecorator = "SPY0444";                    // Active
-        // SPY0445-SPY0449: Reserved for future validation errors
+        // Source generator validation (SPY0445-SPY0447)
+        public const string InvalidGeneratorSignature = "SPY0445";           // Active
+        public const string AbstractGenerator = "SPY0446";                   // Active
+        public const string GeneratorOnInvalidTarget = "SPY0447";            // Active
+        // SPY0448-SPY0449: Reserved for future validation errors
 
         #endregion
 

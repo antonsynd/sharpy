@@ -22,6 +22,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new TransitionWarningValidator()) // Order: 56 (Python/C# transition hints — SPY0470+)
             .AddValidator(new DecoratorValidator())         // Order: 60 (validates decorator usage)
             .AddValidator(new BodylessSyntaxValidator())    // Order: 62 (deprecation warnings for body-less methods)
+            .AddValidator(new SourceGeneratorValidator())   // Order: 65 (validates @[Generator] usage and signatures)
             .AddValidator(new ConstructorOverloadValidator()) // Order: 140 (constructor overload validation)
             .AddValidator(new StructRulesValidator())       // Order: 145 (struct-specific rules)
             .AddValidator(new EnumRulesValidator())         // Order: 147 (enum-specific rules)
