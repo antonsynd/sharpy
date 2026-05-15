@@ -58,6 +58,13 @@ public sealed class HoverService
         if (IsInsideComment(analysis.CommentSpans, line, col))
             return null;
 
+        // First, check if the cursor is on a source-generator bracket attribute.
+        // Decorators are not Nodes (so FindNodeAtPosition won't return them) — we walk
+        // the AST manually to look them up.
+        var generatorHover = TryResolveSourceGeneratorDecoratorHover(analysis, line, col);
+        if (generatorHover != null)
+            return generatorHover;
+
         var node = _api.FindNodeAtPosition(analysis.Ast, line, col);
         if (node == null)
             return null;
@@ -67,11 +74,13 @@ public sealed class HoverService
         // still produces hover text even though builtin UnaryOp hover is suppressed.
         var narrowed = TryNarrowToKeyword(node, analysis);
         if (narrowed != null)
-            return narrowed;
+            return AppendGeneratorAttribution(narrowed, analysis, line, col);
 
         var markdown = GetHoverMarkdownForNode(node, analysis, line, col);
         if (markdown == null)
             return null;
+
+        markdown = AppendGeneratorAttributionMarkdown(markdown, analysis, line, col);
 
         // Narrow highlight to the name span for definition-site hovers,
         // or to the keyword token for keyword statements like 'return'.
@@ -722,5 +731,229 @@ public sealed class HoverService
         if (line == endLine && col > endCol)
             return false;
         return true;
+    }
+
+    /// <summary>
+    /// If the cursor is on a bracket attribute (<c>@[Name]</c>) whose name resolves to a
+    /// <see cref="TypeSymbol"/> with <see cref="TypeSymbol.IsSourceGenerator"/> set, returns
+    /// a hover describing the source generator and (when known) how many members it generated.
+    /// Returns null otherwise.
+    /// </summary>
+    private HoverResult? TryResolveSourceGeneratorDecoratorHover(SemanticResult analysis, int line, int col)
+    {
+        if (analysis.Ast == null || analysis.SymbolTable == null)
+            return null;
+
+        var match = FindDecoratorAtPosition(analysis.Ast.Body, line, col);
+        if (match == null)
+            return null;
+
+        var decorator = match.Value.Decorator;
+        var decoratedStmt = match.Value.Decorated;
+
+        if (!decorator.IsBracketAttribute || decorator.Name.Length == 0)
+            return null;
+
+        var typeSymbol = analysis.SymbolTable.LookupType(decorator.Name);
+        if (typeSymbol is null || !typeSymbol.IsSourceGenerator)
+            return null;
+
+        var generatorName = decorator.Name;
+        int generatedCount = CountGeneratedMembers(analysis, decoratedStmt, generatorName);
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("```sharpy\n");
+        sb.Append("(source generator) @[");
+        sb.Append(generatorName);
+        sb.Append("]\n```\n\n");
+        if (generatedCount > 0)
+        {
+            sb.Append("Source generator: generates ");
+            sb.Append(generatedCount);
+            sb.Append(generatedCount == 1 ? " member." : " members.");
+        }
+        else
+        {
+            sb.Append("Generates code for the decorated declaration.");
+        }
+
+        // Bracket attribute span: from '@' to ']'. For decorators with arguments, ColumnEnd
+        // already includes the closing bracket; use the recorded span.
+        return new HoverResult(sb.ToString(), decoratedStmt)
+        {
+            HighlightLineStart = decorator.LineStart,
+            HighlightColumnStart = decorator.ColumnStart,
+            HighlightLineEnd = decorator.LineEnd,
+            HighlightColumnEnd = decorator.ColumnEnd,
+        };
+    }
+
+    /// <summary>
+    /// Walks top-level and class-body statements looking for a decorator that contains the
+    /// given (1-based) line/column. Returns the matching decorator and the statement it
+    /// decorates, or null if no decorator matches.
+    /// </summary>
+    private static (Decorator Decorator, Statement Decorated)? FindDecoratorAtPosition(
+        IEnumerable<Statement> statements, int line, int col)
+    {
+        foreach (var stmt in statements)
+        {
+            // Check the statement's own decorators.
+            var decorators = GetDecorators(stmt);
+            if (decorators != null)
+            {
+                foreach (var dec in decorators)
+                {
+                    if (IsPositionInRange(line, col, dec.LineStart, dec.ColumnStart, dec.LineEnd, dec.ColumnEnd))
+                        return (dec, stmt);
+                }
+            }
+
+            // Recurse into bodies that may contain decorated members.
+            var body = GetBody(stmt);
+            if (body != null)
+            {
+                var nested = FindDecoratorAtPosition(body, line, col);
+                if (nested != null)
+                    return nested;
+            }
+        }
+        return null;
+    }
+
+    private static System.Collections.Immutable.ImmutableArray<Decorator>? GetDecorators(Statement stmt) => stmt switch
+    {
+        FunctionDef f => f.Decorators,
+        ClassDef c => c.Decorators,
+        StructDef s => s.Decorators,
+        InterfaceDef i => i.Decorators,
+        EnumDef e => e.Decorators,
+        VariableDeclaration v => v.Decorators,
+        PropertyDef p => p.Decorators,
+        _ => null
+    };
+
+    private static System.Collections.Immutable.ImmutableArray<Statement>? GetBody(Statement stmt) => stmt switch
+    {
+        ClassDef c => c.Body,
+        StructDef s => s.Body,
+        InterfaceDef i => i.Body,
+        PropertyDef p => p.Body,
+        _ => null
+    };
+
+    /// <summary>
+    /// Counts statements within <paramref name="decoratedStmt"/>'s body that were tagged
+    /// as generated by the specified generator. Returns 0 when the statement has no body
+    /// or when no generated members are recorded.
+    /// </summary>
+    private static int CountGeneratedMembers(SemanticResult analysis, Statement decoratedStmt, string generatorName)
+    {
+        if (analysis.SemanticQuery == null)
+            return 0;
+
+        var body = GetBody(decoratedStmt);
+        if (body == null)
+            return 0;
+
+        int count = 0;
+        foreach (var stmt in body.Value)
+        {
+            if (analysis.SemanticQuery.IsGenerated(stmt) &&
+                analysis.SemanticQuery.GetGeneratorName(stmt) == generatorName)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// If the enclosing declaration at (line, col) was marked as generated, appends a
+    /// "Generated by @[X]" line to the markdown. Returns the original markdown unchanged
+    /// when no generator attribution applies.
+    /// </summary>
+    internal string AppendGeneratorAttributionMarkdown(string markdown, SemanticResult analysis, int line, int col)
+    {
+        if (analysis.SemanticQuery == null || analysis.Ast == null)
+            return markdown;
+
+        var enclosing = FindEnclosingTrackedStatement(analysis, line, col);
+        if (enclosing == null)
+            return markdown;
+
+        if (!analysis.SemanticQuery.IsGenerated(enclosing))
+            return markdown;
+
+        var generatorName = analysis.SemanticQuery.GetGeneratorName(enclosing);
+        if (string.IsNullOrEmpty(generatorName))
+            return markdown;
+
+        return markdown + $"\n\n_Generated by `@[{generatorName}]`_";
+    }
+
+    private HoverResult AppendGeneratorAttribution(HoverResult result, SemanticResult analysis, int line, int col)
+    {
+        var augmented = AppendGeneratorAttributionMarkdown(result.Markdown, analysis, line, col);
+        if (ReferenceEquals(augmented, result.Markdown))
+            return result;
+        return result with { Markdown = augmented };
+    }
+
+    /// <summary>
+    /// Finds the innermost declaration statement (FunctionDef, ClassDef, StructDef,
+    /// VariableDeclaration, PropertyDef, InterfaceDef, EnumDef) containing the position.
+    /// Used to attribute hover content to a containing generated declaration.
+    /// </summary>
+    private Statement? FindEnclosingTrackedStatement(SemanticResult analysis, int line, int col)
+    {
+        if (analysis.Ast == null)
+            return null;
+
+        // Prefer the deepest matching declaration. Check several types in order from
+        // "innermost typical" to "outermost".
+        Statement? best = null;
+        int bestDepth = -1;
+
+        SearchStatements(analysis.Ast.Body, line, col, ref best, ref bestDepth, depth: 0);
+        return best;
+    }
+
+    private static void SearchStatements(
+        IEnumerable<Statement> statements,
+        int line, int col,
+        ref Statement? best,
+        ref int bestDepth,
+        int depth)
+    {
+        foreach (var stmt in statements)
+        {
+            if (!StatementContainsPosition(stmt, line, col))
+                continue;
+
+            if (IsTrackedDeclaration(stmt) && depth > bestDepth)
+            {
+                best = stmt;
+                bestDepth = depth;
+            }
+
+            var body = GetBody(stmt);
+            if (body != null)
+            {
+                SearchStatements(body.Value, line, col, ref best, ref bestDepth, depth + 1);
+            }
+            else if (stmt is FunctionDef f)
+            {
+                SearchStatements(f.Body, line, col, ref best, ref bestDepth, depth + 1);
+            }
+        }
+    }
+
+    private static bool IsTrackedDeclaration(Statement stmt) => stmt is
+        FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or VariableDeclaration or PropertyDef;
+
+    private static bool StatementContainsPosition(Statement stmt, int line, int col)
+    {
+        return IsPositionInRange(line, col, stmt.LineStart, stmt.ColumnStart, stmt.LineEnd, stmt.ColumnEnd);
     }
 }

@@ -79,4 +79,30 @@ public interface ISemanticQuery
     /// (e.g., VariableDeclaration, FunctionDef) rather than an Identifier reference.
     /// </summary>
     Symbol? FindSymbolByDeclaration(string name, int line, int column);
+
+    /// <summary>
+    /// Returns true if the given statement was produced by a source generator
+    /// (i.e., it was emitted via <c>SemanticInfo.MarkAsGenerated</c>).
+    /// Used by LSP for hover attribution and semantic token modifiers.
+    /// </summary>
+    bool IsGenerated(Parser.Ast.Statement statement);
+
+    /// <summary>
+    /// Returns the name of the source generator that produced the given statement,
+    /// or null if the statement was not produced by a generator.
+    /// </summary>
+    string? GetGeneratorName(Parser.Ast.Statement statement);
+
+    /// <summary>
+    /// Returns the recorded source-generator bindings (bracket attributes resolving to
+    /// <c>SourceGenerator</c> subclasses) attached to the given declaration. Returns an
+    /// empty list when none are recorded.
+    /// </summary>
+    IReadOnlyList<GeneratorBinding> GetGeneratorBindings(Parser.Ast.Statement declaration);
+
+    /// <summary>
+    /// Enumerates every recorded (declaration, bindings) pair tracked by the semantic
+    /// model. Used by LSP for diagnostic routing and statistics.
+    /// </summary>
+    IEnumerable<(Parser.Ast.Statement Declaration, IReadOnlyList<GeneratorBinding> Bindings)> GetAllGeneratorBindings();
 }
