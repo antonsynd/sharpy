@@ -309,6 +309,103 @@ class RawName:
 
 *Implementation: ✅ Emitted as C# attributes via Roslyn SyntaxFactory.*
 
+### Custom Attribute Classes
+
+You can define your own .NET attributes by subclassing `System.Attribute`. Custom attributes are regular Sharpy classes — they follow the same syntax for fields, constructors, and inheritance.
+
+#### Defining a Custom Attribute
+
+```python
+from System import Attribute
+
+class AuthorAttribute(Attribute):
+    name: str
+    year: int
+
+    def __init__(self, name: str, year: int):
+        super().__init__()
+        self.name = name
+        self.year = year
+```
+
+This compiles to a standard C# attribute class:
+```csharp
+public class AuthorAttribute : System.Attribute
+{
+    public string Name;
+    public int Year;
+    public AuthorAttribute(string name, int year) : base()
+    {
+        this.Name = name;
+        this.Year = year;
+    }
+}
+```
+
+#### Applying Custom Attributes
+
+Apply your custom attribute using the same `@[...]` bracket syntax. Name mangling applies — write the snake_case version:
+
+```python
+@[author_attribute("Alice", 2026)]
+class Library:
+    pass
+
+# Keyword arguments work the same way
+@[author_attribute("Bob", year=2025)]
+class Archive:
+    pass
+```
+
+Custom attributes can be applied to any target that supports bracket attributes: classes, structs, methods, fields, interfaces, unions, events, and properties.
+
+#### Controlling Attribute Targets and Multiplicity
+
+Use `@[attribute_usage(...)]` on your custom attribute class to restrict where it can be applied and whether it can be applied multiple times:
+
+```python
+from System import Attribute
+
+@[attribute_usage(AttributeTargets.method, allow_multiple=True)]
+class LogAttribute(Attribute):
+    level: str
+
+    def __init__(self, level: str):
+        super().__init__()
+        self.level = level
+
+class Service:
+    @[log_attribute("info")]
+    @[log_attribute("debug")]
+    def process(self) -> str:
+        return "ok"
+```
+
+#### Reading Attributes at Runtime
+
+Custom attributes are baked into the .NET assembly as metadata and can be retrieved via reflection:
+
+```python
+from System import Attribute
+
+@[author_attribute("Alice", 2026)]
+class Library:
+    pass
+
+def main():
+    lib = Library()
+    obj: object = lib
+    t = obj.get_type()
+    attrs = Attribute.get_custom_attributes(t)
+    for a in attrs:
+        author = a to AuthorAttribute?
+        if author is not None:
+            print(author.name)   # Alice
+            print(author.year)   # 2026
+```
+
+**Note:** Attribute validation (e.g., verifying the attribute class exists, constructor signatures match) is deferred to the C# compiler, consistent with Axiom 1 (.NET compatibility first).
+
 ## `@deprecated` Decorator
 
 The `@deprecated` decorator is a Sharpy language keyword that maps to C#'s `[Obsolete]` attribute:
