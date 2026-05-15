@@ -1,4 +1,4 @@
-@custom(1 + 2)
+@[custom(1 + 2)]
 def greet() -> str:
     return "hello"
 

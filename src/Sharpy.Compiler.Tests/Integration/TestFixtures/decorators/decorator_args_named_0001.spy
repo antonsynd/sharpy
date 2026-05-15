@@ -1,4 +1,4 @@
-@system.obsolete("deprecated function", False)
+@[system.obsolete("deprecated function", False)]
 def old_greet() -> str:
     return "hi"
 

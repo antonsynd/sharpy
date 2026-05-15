@@ -290,6 +290,8 @@ internal partial class RoslynEmitter
         bool hasAccessModifier = false;
         foreach (var decorator in decorators)
         {
+            if (decorator.IsBracketAttribute)
+                continue;
             switch (decorator.Name)
             {
                 case DecoratorNames.Private:
@@ -320,6 +322,8 @@ internal partial class RoslynEmitter
         // Check for other modifiers (context-dependent)
         foreach (var decorator in decorators)
         {
+            if (decorator.IsBracketAttribute)
+                continue;
             switch (decorator.Name)
             {
                 case DecoratorNames.Static:
@@ -392,7 +396,7 @@ internal partial class RoslynEmitter
 
         // Check if this is an abstract class (for implicit abstract method detection)
         var wasInAbstractClass = _isInAbstractClass;
-        _isInAbstractClass = classDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        _isInAbstractClass = classDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
 
         // Transform class name
         var className = NameMangler.Transform(classDef.Name, NameContext.Type);
@@ -1101,9 +1105,9 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates C# attribute lists from decorators that are not known modifier decorators.
-    /// Unknown decorators are emitted as C# attributes with name mangling (snake_case → PascalCase).
-    /// Dotted names become qualified names. Arguments and keyword arguments are mapped to attribute arguments.
+    /// Generates C# attribute lists from decorators.
+    /// Bracket attributes (@[...]) are emitted verbatim without name mangling.
+    /// @deprecated is mapped to [Obsolete]. All other known decorators are handled elsewhere.
     /// </summary>
     private SyntaxList<AttributeListSyntax> GenerateAttributeListsFromDecorators(IReadOnlyList<Decorator> decorators)
     {
@@ -1111,48 +1115,52 @@ internal partial class RoslynEmitter
 
         foreach (var decorator in decorators)
         {
-            if (DecoratorNames.KnownModifierDecorators.Contains(decorator.Name))
-                continue;
+            if (!decorator.IsBracketAttribute)
+            {
+                if (DecoratorNames.KnownModifierDecorators.Contains(decorator.Name))
+                    continue;
 
-            // Skip @dataclass — it's handled by dataclass codegen, not emitted as an attribute
-            if (decorator.Name == DecoratorNames.Dataclass)
-                continue;
+                if (decorator.Name == DecoratorNames.Dataclass)
+                    continue;
 
-            // Build the attribute name
+                if (decorator.Name == DecoratorNames.LruCache
+                    || decorator.Name == DecoratorNames.Cache
+                    || decorator.Name == DecoratorNames.StaticMethod
+                    || decorator.Name == DecoratorNames.ClassMethod)
+                    continue;
+            }
+
             NameSyntax attributeName;
             if (decorator.Name == DecoratorNames.Deprecated)
             {
-                // @deprecated("msg") → [Obsolete("msg")] (PEP 702 → .NET mapping)
                 attributeName = IdentifierName("Obsolete");
             }
-            else if (decorator.QualifiedParts.Length > 0)
+            else if (decorator.IsBracketAttribute)
             {
-                // Dotted name: build QualifiedNameSyntax from parts, each PascalCase-mangled
-                attributeName = IdentifierName(NameMangler.ToPascalCase(decorator.QualifiedParts[0]));
+                // Bracket attributes: snake_case → PascalCase mangling (backtick-escaped parts are verbatim)
+                attributeName = IdentifierName(MangleBracketPart(decorator, 0));
                 for (int i = 1; i < decorator.QualifiedParts.Length; i++)
                 {
-                    attributeName = QualifiedName(attributeName, IdentifierName(NameMangler.ToPascalCase(decorator.QualifiedParts[i])));
+                    attributeName = QualifiedName(attributeName, IdentifierName(MangleBracketPart(decorator, i)));
                 }
             }
             else
             {
-                attributeName = IdentifierName(NameMangler.ToPascalCase(decorator.Name));
+                // Unknown non-bracket decorator — should have been rejected by DecoratorValidator
+                continue;
             }
 
             var attribute = Attribute(attributeName);
 
-            // Build attribute argument list if there are arguments
             if (decorator.Arguments.Length > 0 || decorator.KeywordArguments.Length > 0)
             {
                 var args = new List<AttributeArgumentSyntax>();
 
-                // Positional arguments
                 foreach (var arg in decorator.Arguments)
                 {
                     args.Add(AttributeArgument(GenerateAttributeArgumentExpression(arg)));
                 }
 
-                // Keyword arguments: name=value → NameEquals
                 foreach (var kwArg in decorator.KeywordArguments)
                 {
                     var nameEquals = NameEquals(IdentifierName(NameMangler.ToPascalCase(kwArg.Name)));
@@ -1167,6 +1175,14 @@ internal partial class RoslynEmitter
         }
 
         return List(attributeLists);
+    }
+
+    private static string MangleBracketPart(Decorator decorator, int index)
+    {
+        var part = decorator.QualifiedParts[index];
+        if (decorator.BacktickEscapedParts.Length > index && decorator.BacktickEscapedParts[index])
+            return part;
+        return NameMangler.ToPascalCase(part);
     }
 
     /// <summary>

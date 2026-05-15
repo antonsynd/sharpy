@@ -1,0 +1,10 @@
+# Test: Mix Sharpy @final decorator with @[Obsolete] bracket attribute
+@final
+@[obsolete("Use NewClass instead")]
+class OldClass:
+    def get_value(self) -> int:
+        return 99
+
+def main():
+    obj = OldClass()
+    print(obj.get_value())

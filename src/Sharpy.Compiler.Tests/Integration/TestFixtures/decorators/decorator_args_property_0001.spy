@@ -6,11 +6,11 @@ class Settings:
     def __init__(self):
         self._debug = False
 
-    @obsolete("Use debug_mode instead")
+    @[obsolete("Use debug_mode instead")]
     property get debug(self) -> bool:
         return self._debug
 
-    @obsolete("Use set_debug_mode instead")
+    @[obsolete("Use set_debug_mode instead")]
     property set debug(self, value: bool):
         self._debug = value
 

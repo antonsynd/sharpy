@@ -1,0 +1,18 @@
+# Test: Multiple bracket attributes stacked on a single class
+@[serializable]
+@[obsolete("Use NewConfig instead")]
+class OldConfig:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+class NewConfig:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+def main():
+    c = OldConfig(10)
+    print(c.value)

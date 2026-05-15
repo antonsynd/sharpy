@@ -770,6 +770,18 @@ public record Decorator
     /// </summary>
     public ImmutableArray<string> QualifiedParts { get; init; } = ImmutableArray<string>.Empty;
 
+    /// <summary>
+    /// Parallel to QualifiedParts. True for parts that were backtick-escaped (verbatim, no mangling).
+    /// Empty when no parts are backtick-escaped (common case for regular decorators).
+    /// </summary>
+    public ImmutableArray<bool> BacktickEscapedParts { get; init; } = ImmutableArray<bool>.Empty;
+
+    /// <summary>
+    /// True when the decorator was written with @[...] bracket syntax (a C# attribute).
+    /// False for standard @name decorators (Sharpy language keywords).
+    /// </summary>
+    public bool IsBracketAttribute { get; init; }
+
     // Source location
     public int LineStart { get; init; }
     public int ColumnStart { get; init; }

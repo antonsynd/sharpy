@@ -1,0 +1,6 @@
+@obsolete("msg")
+def foo() -> None:
+    pass
+
+def main():
+    pass

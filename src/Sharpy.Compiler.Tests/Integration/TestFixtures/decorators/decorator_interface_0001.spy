@@ -1,4 +1,4 @@
-@obsolete("Use INewGreeter instead")
+@[obsolete("Use INewGreeter instead")]
 interface IGreeter:
     def greet(self) -> str
 

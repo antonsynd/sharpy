@@ -3,7 +3,7 @@
 class Widget:
     name: str
 
-    @obsolete("Use Widget.create() factory instead")
+    @[obsolete("Use Widget.create() factory instead")]
     def __init__(self, name: str):
         self.name = name
 

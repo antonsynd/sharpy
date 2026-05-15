@@ -1587,6 +1587,16 @@ public static class DiagnosticExplanations
             "@lru_cache\nclass Foo: ...",
             "Apply @lru_cache to a function instead:\n@lru_cache\ndef compute(x: int) -> int: ...");
 
+        // ── Validation errors: Unknown decorator (SPY0444) ──
+
+        Add(dict, DiagnosticCodes.Validation.UnknownDecorator,
+            "Unknown decorator — use @[...] for C# attributes",
+            "Validation",
+            "The decorator name is not a recognized Sharpy keyword. To apply a .NET attribute, " +
+            "use the @[AttributeName] bracket syntax instead of @attribute_name.",
+            "@serializable\nclass Config: ...",
+            "Use bracket attribute syntax:\n@[Serializable]\nclass Config: ...");
+
         // ── Validation warnings: Deprecation (SPY0464) ─────────────────
 
         Add(dict, DiagnosticCodes.Validation.DeprecatedBodylessSyntax,

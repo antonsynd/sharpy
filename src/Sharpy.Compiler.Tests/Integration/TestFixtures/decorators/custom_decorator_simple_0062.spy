@@ -1,13 +1,13 @@
-# Test: Custom decorators on functions and structs
+# Test: Bracket attributes on functions and structs
 
-@system.serializable
+@[system.serializable]
 struct Config:
     setting: int
 
     def __init__(self, val: int):
         self.setting = val
 
-@system.obsolete("Use enhanced_compute instead")
+@[system.obsolete("Use enhanced_compute instead")]
 def compute(x: int) -> int:
     return x + 1
 

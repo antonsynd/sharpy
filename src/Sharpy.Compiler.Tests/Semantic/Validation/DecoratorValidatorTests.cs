@@ -183,7 +183,7 @@ class Foo:
     public void Custom_WithArithmeticExpression_ReportsNonConstError()
     {
         var code = @"
-@custom(1 + 2)
+@[custom(1 + 2)]
 def foo():
     pass
 ";
@@ -203,7 +203,7 @@ def foo():
     public void Custom_WithFunctionCall_ReportsNonConstError()
     {
         var code = @"
-@custom(some_func())
+@[custom(some_func())]
 def foo():
     pass
 ";
@@ -223,7 +223,7 @@ def foo():
     public void Custom_WithStringLiteral_NoError()
     {
         var code = @"
-@custom(""literal"")
+@[custom(""literal"")]
 def foo():
     pass
 ";
@@ -239,7 +239,7 @@ def foo():
     public void Custom_WithKeywordArgs_NoError()
     {
         var code = @"
-@attr(name=""value"")
+@[attr(name=""value"")]
 def foo():
     pass
 ";
@@ -255,7 +255,7 @@ def foo():
     public void Custom_WithTypeCall_NoError()
     {
         var code = @"
-@custom(type(int))
+@[custom(type(int))]
 def foo():
     pass
 ";
@@ -271,7 +271,7 @@ def foo():
     public void Custom_WithEnumMemberAccess_NoError()
     {
         var code = @"
-@custom(StringComparison.ordinal)
+@[custom(StringComparison.ordinal)]
 def foo():
     pass
 ";
@@ -287,7 +287,7 @@ def foo():
     public void Custom_WithNonConstKeywordArg_ReportsError()
     {
         var code = @"
-@attr(name=1 + 2)
+@[attr(name=1 + 2)]
 def foo():
     pass
 ";
@@ -307,7 +307,7 @@ def foo():
     public void Custom_WithBoolAndIntLiterals_NoError()
     {
         var code = @"
-@custom(True, 42)
+@[custom(True, 42)]
 def foo():
     pass
 ";
@@ -323,7 +323,7 @@ def foo():
     public void Custom_WithNone_NoError()
     {
         var code = @"
-@custom(None)
+@[custom(None)]
 def foo():
     pass
 ";
@@ -339,7 +339,7 @@ def foo():
     public void Custom_WithVariableReference_ReportsNonConstError()
     {
         var code = @"
-@custom(some_var)
+@[custom(some_var)]
 def foo():
     pass
 ";
@@ -359,7 +359,7 @@ def foo():
     public void Custom_WithNegativeInt_NoError()
     {
         var code = @"
-@custom(-42)
+@[custom(-42)]
 def foo():
     pass
 ";
@@ -375,7 +375,7 @@ def foo():
     public void Custom_WithNegativeFloat_NoError()
     {
         var code = @"
-@custom(-3.14)
+@[custom(-3.14)]
 def foo():
     pass
 ";

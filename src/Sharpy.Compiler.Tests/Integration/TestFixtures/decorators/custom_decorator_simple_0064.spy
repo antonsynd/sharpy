@@ -1,17 +1,17 @@
-# Test: Custom decorators on classes and methods with arithmetic processing
-# Tests @obsolete class/function attribute and @system.serializable
+# Test: Bracket attributes on classes and methods with arithmetic processing
+# Tests @[Obsolete] class attribute and @[System.Serializable]
 
-@obsolete("Use DataProcessor instead")
+@[obsolete("Use DataProcessor instead")]
 class Calculator:
     multiplier: int
-    
+
     def __init__(self, m: int):
         self.multiplier = m
-    
+
     def compute(self, x: int) -> int:
         return x * self.multiplier
 
-@system.serializable
+@[system.serializable]
 class Config:
     threshold: int
     active: bool

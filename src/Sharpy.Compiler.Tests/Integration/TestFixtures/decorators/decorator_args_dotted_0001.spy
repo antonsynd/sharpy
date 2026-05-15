@@ -1,4 +1,4 @@
-@system.serializable
+@[system.serializable]
 class Config:
     name: str
 

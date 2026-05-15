@@ -552,10 +552,64 @@ public partial class Parser
             var decoratorStartColumn = Current.Column;
             var decoratorStartToken = Current;
             Advance();  // Skip @
+
+            // Branch: @[attribute_name] bracket attribute syntax
+            if (Current.Type == TokenType.LeftBracket)
+            {
+                Advance();  // Skip [
+                if (Current.Type != TokenType.Identifier)
+                    throw ReportError("Expected attribute name after '@['", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
+
+                var qualifiedParts = new List<string> { Current.Value };
+                var backtickParts = new List<bool> { Current.IsBacktickEscaped };
+                Advance();
+
+                while (Current.Type == TokenType.Dot)
+                {
+                    Advance();  // Skip .
+                    if (Current.Type != TokenType.Identifier)
+                        throw ReportError("Expected identifier after '.' in attribute name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
+                    qualifiedParts.Add(Current.Value);
+                    backtickParts.Add(Current.IsBacktickEscaped);
+                    Advance();
+                }
+
+                var arguments = ImmutableArray<Expression>.Empty;
+                var keywordArguments = ImmutableArray<KeywordArgument>.Empty;
+                if (Current.Type == TokenType.LeftParen)
+                {
+                    Advance();  // Skip (
+                    var (args, kwargs) = ParseCallArguments();
+                    arguments = args.ToImmutableArray();
+                    keywordArguments = kwargs.ToImmutableArray();
+                }
+
+                if (Current.Type != TokenType.RightBracket)
+                    throw ReportError("Expected ']' to close bracket attribute", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedToken, span: CurrentSpan);
+                Advance();  // Skip ]
+
+                var decoratorEndToken = Previous;
+                decorators.Add(new Decorator
+                {
+                    Arguments = arguments,
+                    KeywordArguments = keywordArguments,
+                    QualifiedParts = qualifiedParts.ToImmutableArray(),
+                    BacktickEscapedParts = backtickParts.ToImmutableArray(),
+                    IsBracketAttribute = true,
+                    LineStart = decoratorStartLine,
+                    ColumnStart = decoratorStartColumn,
+                    LineEnd = decoratorEndToken.Line,
+                    ColumnEnd = decoratorEndToken.Column + decoratorEndToken.Value.Length,
+                    Span = GetSpanFromTokens(decoratorStartToken, decoratorEndToken)
+                });
+                ExpectNewline();
+                continue;
+            }
+
             if (Current.Type != TokenType.Identifier)
                 throw ReportError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
 
-            var qualifiedParts = new List<string> { Current.Value };
+            var regularParts = new List<string> { Current.Value };
             Advance();
 
             // Parse dotted names: @system.serializable, @system.runtime.interop_services.dll_import
@@ -564,39 +618,38 @@ public partial class Parser
                 Advance();  // Skip .
                 if (Current.Type != TokenType.Identifier)
                     throw ReportError("Expected identifier after '.' in decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
-                qualifiedParts.Add(Current.Value);
+                regularParts.Add(Current.Value);
                 Advance();
             }
 
-            // decoratorName computed for legacy usage; QualifiedParts is the source of truth
-            var decoratorName = string.Join(".", qualifiedParts);
-
-            // Parse optional argument list: @decorator(args)
-            var arguments = ImmutableArray<Expression>.Empty;
-            var keywordArguments = ImmutableArray<KeywordArgument>.Empty;
-            if (Current.Type == TokenType.LeftParen)
             {
-                Advance();  // Skip (
-                var (args, kwargs) = ParseCallArguments();
-                arguments = args.ToImmutableArray();
-                keywordArguments = kwargs.ToImmutableArray();
+                // Parse optional argument list: @decorator(args)
+                var arguments = ImmutableArray<Expression>.Empty;
+                var keywordArguments = ImmutableArray<KeywordArgument>.Empty;
+                if (Current.Type == TokenType.LeftParen)
+                {
+                    Advance();  // Skip (
+                    var (args, kwargs) = ParseCallArguments();
+                    arguments = args.ToImmutableArray();
+                    keywordArguments = kwargs.ToImmutableArray();
+                }
+
+                var decoratorEndToken = Previous;
+                var decoratorEndLine = decoratorEndToken.Line;
+                var decoratorEndColumn = decoratorEndToken.Column + decoratorEndToken.Value.Length;
+
+                decorators.Add(new Decorator
+                {
+                    Arguments = arguments,
+                    KeywordArguments = keywordArguments,
+                    QualifiedParts = regularParts.ToImmutableArray(),
+                    LineStart = decoratorStartLine,
+                    ColumnStart = decoratorStartColumn,
+                    LineEnd = decoratorEndLine,
+                    ColumnEnd = decoratorEndColumn,
+                    Span = GetSpanFromTokens(decoratorStartToken, decoratorEndToken)
+                });
             }
-
-            var decoratorEndToken = Previous;
-            var decoratorEndLine = decoratorEndToken.Line;
-            var decoratorEndColumn = decoratorEndToken.Column + decoratorEndToken.Value.Length;
-
-            decorators.Add(new Decorator
-            {
-                Arguments = arguments,
-                KeywordArguments = keywordArguments,
-                QualifiedParts = qualifiedParts.ToImmutableArray(),
-                LineStart = decoratorStartLine,
-                ColumnStart = decoratorStartColumn,
-                LineEnd = decoratorEndLine,
-                ColumnEnd = decoratorEndColumn,
-                Span = GetSpanFromTokens(decoratorStartToken, decoratorEndToken)
-            });
             ExpectNewline();
         }
 

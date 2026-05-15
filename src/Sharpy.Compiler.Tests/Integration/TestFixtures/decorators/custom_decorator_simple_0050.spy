@@ -1,14 +1,14 @@
-# Test: Simple custom decorator application
-# Demonstrates @system.serializable on class and @obsolete on method
+# Test: Bracket attribute application
+# Demonstrates @[System.Serializable] on class and @[Obsolete] on method
 
-@system.serializable
+@[system.serializable]
 class ThresholdConfig:
     limit: float
-    
+
     def __init__(self, limit: float):
         self.limit = limit
-    
-    @obsolete("Use check_bounds instead")
+
+    @[obsolete("Use check_bounds instead")]
     def old_check(self, val: float) -> bool:
         return val < self.limit
     

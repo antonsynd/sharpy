@@ -1,4 +1,4 @@
-@obsolete("Use new_greet instead")
+@[obsolete("Use new_greet instead")]
 def greet() -> str:
     return "hello"
 

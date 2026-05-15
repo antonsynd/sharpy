@@ -1,0 +1,18 @@
+# Test: Custom attribute class via System.Attribute subclass
+from System import Attribute
+
+class MyTagAttribute(Attribute):
+    label: str
+
+    def __init__(self, label: str):
+        super().__init__()
+        self.label = label
+
+@[my_tag_attribute("greeting")]
+class Greeter:
+    def greet(self) -> str:
+        return "hello"
+
+def main():
+    g = Greeter()
+    print(g.greet())

@@ -243,15 +243,36 @@ internal class DecoratorValidator : ValidatingAstWalker
         }
     }
 
+    /// <summary>
+    /// All known Sharpy decorator names (modifiers + attribute decorators + special built-ins).
+    /// Any @decorator not in this set is rejected with SPY0444.
+    /// </summary>
+    private static readonly HashSet<string> AllKnownDecorators = new(
+        DecoratorNames.KnownModifierDecorators
+            .Union(DecoratorNames.KnownAttributeDecorators)
+            .Append(DecoratorNames.Dataclass)
+            .Append(DecoratorNames.LruCache)
+            .Append(DecoratorNames.Cache)
+            .Append(DecoratorNames.StaticMethod)
+            .Append(DecoratorNames.ClassMethod));
+
     private void ValidateDecorators(IEnumerable<Decorator> decorators, string definitionName)
     {
         foreach (var decorator in decorators)
         {
+            // Bracket attributes (@[...]) are always treated as C# attributes
+            if (decorator.IsBracketAttribute)
+            {
+                ValidateDecoratorArgumentsAreConstants(decorator);
+                continue;
+            }
+
             if (UnsupportedDecorators.TryGetValue(decorator.Name, out var errorMessage))
             {
                 _logger.LogDebug($"Found unsupported decorator '@{decorator.Name}' on '{definitionName}'");
                 AddError(errorMessage, decorator.LineStart, decorator.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
                     span: decorator.Span);
+                continue;
             }
 
             // Known modifier decorators must not have arguments
@@ -273,18 +294,24 @@ internal class DecoratorValidator : ValidatingAstWalker
                 continue;
             }
 
-            // For unknown decorators (custom attributes), validate arguments are compile-time constants
-            // Skip @dataclass, @lru_cache, @cache — they're known built-ins with their own validation
-            if (!DecoratorNames.KnownModifierDecorators.Contains(decorator.Name)
-                && !UnsupportedDecorators.ContainsKey(decorator.Name)
-                && decorator.Name != DecoratorNames.Dataclass
-                && decorator.Name != DecoratorNames.LruCache
-                && decorator.Name != DecoratorNames.Cache
-                && !DecoratorNames.KnownAttributeDecorators.Contains(decorator.Name))
+            // Reject unknown decorators — C# attributes must use @[...] syntax
+            if (!AllKnownDecorators.Contains(decorator.Name))
             {
-                ValidateDecoratorArgumentsAreConstants(decorator);
+                var suggestedName = SuggestBracketSyntax(decorator);
+                AddError(
+                    $"Unknown decorator '@{decorator.Name}'. To apply a .NET attribute, use {suggestedName} syntax.",
+                    decorator.LineStart,
+                    decorator.ColumnStart,
+                    code: DiagnosticCodes.Validation.UnknownDecorator,
+                    span: decorator.Span);
+                continue;
             }
         }
+    }
+
+    private static string SuggestBracketSyntax(Decorator decorator)
+    {
+        return $"@[{decorator.Name}]";
     }
 
     /// <summary>
@@ -379,6 +406,10 @@ internal class DecoratorValidator : ValidatingAstWalker
     {
         foreach (var decorator in varDecl.Decorators)
         {
+            // Bracket attributes are always allowed on fields (they're C# attributes)
+            if (decorator.IsBracketAttribute)
+                continue;
+
             if (decorator.Name != DecoratorNames.Static
                 && decorator.Name != DecoratorNames.Final
                 && !AccessModifierDecorators.Contains(decorator.Name))

@@ -726,11 +726,13 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     {
         foreach (var dec in decorators)
         {
-            // The decorator name starts at the decorator position (after @)
             var name = dec.Name;
             if (name.Length > 0)
             {
-                PushNameToken(tokens, dec.LineStart, dec.ColumnStart, name.Length + 1, TDecorator, 0); // +1 for @
+                // @[Name] bracket attributes: +3 for @, [, ]
+                // @name regular decorators: +1 for @
+                var length = dec.IsBracketAttribute ? name.Length + 3 : name.Length + 1;
+                PushNameToken(tokens, dec.LineStart, dec.ColumnStart, length, TDecorator, 0);
             }
         }
     }

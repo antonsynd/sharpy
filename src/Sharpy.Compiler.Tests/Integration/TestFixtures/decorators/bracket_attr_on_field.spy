@@ -1,0 +1,11 @@
+# Test: Bracket attribute on a field declaration
+class Settings:
+    @[system.component_model.default_value(100)]
+    threshold: int
+
+    def __init__(self):
+        self.threshold = 100
+
+def main():
+    s = Settings()
+    print(s.threshold)

@@ -55,10 +55,10 @@ internal partial class RoslynEmitter
     /// </summary>
     private static int? GetLruCacheMaxSize(FunctionDef func)
     {
-        if (func.Decorators.Any(d => d.Name == DecoratorNames.Cache))
+        if (func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Cache))
             return null;
 
-        var lru = func.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.LruCache);
+        var lru = func.Decorators.FirstOrDefault(d => !d.IsBracketAttribute && d.Name == DecoratorNames.LruCache);
         if (lru == null)
             return 128;
 

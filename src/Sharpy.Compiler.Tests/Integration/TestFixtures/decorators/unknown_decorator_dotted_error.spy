@@ -1,0 +1,6 @@
+@system.serializable
+class Config:
+    pass
+
+def main():
+    pass

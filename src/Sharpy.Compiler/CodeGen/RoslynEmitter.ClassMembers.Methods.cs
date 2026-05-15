@@ -130,7 +130,7 @@ internal partial class RoslynEmitter
             && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
             && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword))
             && !modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword))
-            && !func.Decorators.Any(d => d.Name == DecoratorNames.Final)
+            && !func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Final)
             && ImplementsInterfaceMethod(func.Name))
         {
             modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
@@ -182,7 +182,7 @@ internal partial class RoslynEmitter
         // Check if this is an abstract method:
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
-        bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool hasAbstractDecorator = func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
         bool hasEllipsisBody = func.Body.Length == 1
             && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
 
@@ -287,7 +287,7 @@ internal partial class RoslynEmitter
             && !modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword))
             && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
             && !modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword))
-            && !func.Decorators.Any(d => d.Name == DecoratorNames.Final))
+            && !func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Final))
         {
             modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
         }
@@ -309,7 +309,7 @@ internal partial class RoslynEmitter
         // Check if this is an abstract property:
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
-        bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool hasAbstractDecorator = func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
         bool hasEllipsisBody = func.Body.Length == 1
             && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
@@ -368,7 +368,7 @@ internal partial class RoslynEmitter
         // Check if this is an abstract property:
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
-        bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool hasAbstractDecorator = func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
         bool hasEllipsisBody = func.Body.Length == 1
             && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
@@ -420,6 +420,8 @@ internal partial class RoslynEmitter
         bool hasAccessModifier = false;
         foreach (var decorator in decorators)
         {
+            if (decorator.IsBracketAttribute)
+                continue;
             switch (decorator.Name)
             {
                 case DecoratorNames.Private:
@@ -450,6 +452,8 @@ internal partial class RoslynEmitter
         // Check for other modifiers
         foreach (var decorator in decorators)
         {
+            if (decorator.IsBracketAttribute)
+                continue;
             switch (decorator.Name)
             {
                 case DecoratorNames.Static:

@@ -219,84 +219,107 @@ class TodoService:
 *Implementation: ✅ Native - Direct mapping to C# keywords.*
 
 
-## Custom Decorators / .NET Attributes
+## Bracket Attribute Syntax (`@[...]`)
 
-Unknown decorators (those not in the set of built-in modifier decorators) are emitted as C# attributes, enabling full .NET interop. Built-in modifier decorators (`@virtual`, `@static`, `@abstract`, `@override`, `@final`, `@public`, `@protected`, `@private`, `@internal`) continue to map to C# modifier keywords and **must not** have arguments.
+C# attributes are applied using bracket syntax: `@[AttributeName]`. This is the **only** way to emit C# `[Attribute]` annotations — regular `@decorator` syntax is reserved for Sharpy language keywords.
 
 ### Syntax
 
 ```
-decorator ::= '@' qualified_name [ '(' [ arguments ] ')' ] NEWLINE
+bracket_attribute ::= '@[' qualified_name [ '(' [ arguments ] ')' ] ']' NEWLINE
 ```
 
-Decorators support:
-- **Positional arguments**: `@obsolete("Use new_method instead")`
-- **Keyword (named) arguments**: `@dll_import("user32.dll", entry_point="MessageBox")`
-- **Empty parentheses**: `@my_attr()`
-- **Dotted names**: `@system.serializable`, `@system.obsolete("old")`
+### Key Rules
+
+- **Automatic name mangling**: Names inside `@[...]` follow the same snake_case → PascalCase mangling as the rest of Sharpy. Write `@[serializable]`, not `@[Serializable]`.
+- **Keyword arguments mangled**: `entry_point="Func"` becomes `EntryPoint = "Func"` in the emitted C#.
+- **Backtick escape**: Use backticks to bypass mangling for non-obvious names: `` @[`SerializableAttribute`] `` emits `[SerializableAttribute]` verbatim.
+- **Unknown `@decorators` are rejected**: `@serializable` is a compile-time error (SPY0444). The error message suggests the bracket equivalent.
 
 ### Argument Restrictions
 
-Decorator arguments must be **compile-time constants**, matching C# attribute argument restrictions:
+Bracket attribute arguments must be **compile-time constants**, matching C# attribute argument restrictions:
 - String, int, float, bool literals
 - `None` (maps to `null`)
 - Enum member access (e.g., `StringComparison.ordinal`)
 - `type(X)` (maps to `typeof(X)` in C#)
+- Negative numeric literals (e.g., `-42`, `-3.14`)
 
 Non-constant expressions (e.g., `1 + 2`, variable references, function calls other than `type()`) are rejected at compile time with SPY0425.
 
-### Name Mangling
+### Known Decorators vs. Bracket Attributes
 
-Decorator names follow the same snake_case → PascalCase mangling as other identifiers:
+| Category | Syntax | Behavior |
+|----------|--------|----------|
+| Built-in modifier (`@virtual`, `@static`, etc.) | `@name` | Maps to C# keyword modifier. No arguments allowed. |
+| Sharpy keyword (`@deprecated`, `@dataclass`, etc.) | `@name(...)` | Special Sharpy semantics |
+| C# attribute | `@[name(...)]` | Emitted as C# `[Attribute]` with PascalCase mangling |
 
-| Sharpy | C# Output |
-|--------|-----------|
-| `@obsolete("msg")` | `[Obsolete("msg")]` |
-| `@dll_import("lib")` | `[DllImport("lib")]` |
-| `@conditional("DEBUG")` | `[Conditional("DEBUG")]` |
-| `@default_value(42)` | `[DefaultValue(42)]` |
-| `@system.serializable` | `[System.Serializable]` |
-| `@system.obsolete("old")` | `[System.Obsolete("old")]` |
-
-Keyword argument names are also PascalCase-mangled: `entry_point="Func"` → `EntryPoint = "Func"`.
-
-### Known vs. Unknown Decorators
-
-| Category | Behavior | Arguments |
-|----------|----------|-----------|
-| Built-in modifier (`@virtual`, `@static`, etc.) | Maps to C# keyword modifier | **Not allowed** (SPY0322) |
-| Unknown | Emitted as C# `[Attribute]` | Allowed (compile-time constants only) |
+**Note:** `@[final]` emits the C# attribute `[Final]` — it is NOT the Sharpy `@final` keyword. Bracket attributes and language decorators are completely separate.
 
 ### Examples
 
 ```python
-# Simple attribute with argument
-@obsolete("Use bar() instead")
-def foo() -> None:
-    pass
-
-# Dotted attribute name
-@system.serializable
+# Simple attribute
+@[serializable]
 class Config:
     pass
 
+# Attribute with argument
+@[obsolete("Use bar() instead")]
+def foo() -> None:
+    pass
+
+# Dotted (qualified) attribute name
+@[system.serializable]
+class Data:
+    pass
+
 # Multiple arguments with keyword
-@dll_import("user32.dll", entry_point="MessageBox")
+@[dll_import("user32.dll", entry_point="MessageBox")]
 def message_box() -> None: ...
 
-# Combining modifier and attribute decorators
+# Combining Sharpy modifier with bracket attribute
 @virtual
-@obsolete("Will be removed in v2")
+@[obsolete("Will be removed in v2")]
 def legacy_method(self) -> None:
     pass
 
 # type() maps to typeof() in attribute arguments
-@custom_attr(type(int))
-def typed_method() -> None:
+@[system.diagnostics.debugger_type_proxy(type(str))]
+class MyList:
+    pass
+
+# Multiple bracket attributes on same declaration
+@[serializable]
+@[obsolete("Use NewConfig instead")]
+class OldConfig:
+    pass
+
+# Bracket attribute on a field
+class Widget:
+    @[system.component_model.default_value(42)]
+    value: int
+
+# Backtick escape for verbatim names
+@[`SerializableAttribute`]
+class RawName:
     pass
 ```
 
 *Implementation: ✅ Emitted as C# attributes via Roslyn SyntaxFactory.*
+
+## `@deprecated` Decorator
+
+The `@deprecated` decorator is a Sharpy language keyword that maps to C#'s `[Obsolete]` attribute:
+
+```python
+@deprecated("Use new_method instead")
+def old_method() -> None:
+    pass
+```
+
+This is equivalent to `@[obsolete("Use new_method instead")]` but uses the Pythonic `@deprecated` name (PEP 702). Requires exactly one string argument.
 
 ## Flexible Argument Decorators
 

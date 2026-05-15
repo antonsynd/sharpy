@@ -94,13 +94,13 @@ internal partial class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
             modifiers = modifiers.Add(Token(SyntaxKind.ReadOnlyKeyword));
         }
-        else if (varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static))
+        else if (varDecl.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Static))
         {
             modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
         }
 
         // @final fields emit as C# readonly (assignment restricted to constructors).
-        if (varDecl.Decorators.Any(d => d.Name == DecoratorNames.Final))
+        if (varDecl.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Final))
         {
             modifiers = modifiers.Add(Token(SyntaxKind.ReadOnlyKeyword));
         }
@@ -126,7 +126,7 @@ internal partial class RoslynEmitter
         var modifiers = GenerateMethodModifiers(primaryFunc.Name, primaryFunc.Decorators);
 
         // Check if abstract
-        bool hasAbstractDecorator = primaryFunc.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool hasAbstractDecorator = primaryFunc.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
         bool hasEllipsisBody = primaryFunc.Body.Length == 1
             && primaryFunc.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
@@ -537,7 +537,7 @@ internal partial class RoslynEmitter
 
             bool hasEllipsisBody = prop.Body.Length == 1
                 && prop.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
-            bool isAbstract = prop.Decorators.Any(d => d.Name == DecoratorNames.Abstract)
+            bool isAbstract = prop.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
                 || (_isInAbstractClass && hasEllipsisBody);
 
             if (isAbstract)
@@ -644,7 +644,7 @@ internal partial class RoslynEmitter
         }
 
         // Build accessor list based on accessor type
-        bool isReadonly = propDef.Decorators.Any(d => d.Name == DecoratorNames.Readonly);
+        bool isReadonly = propDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Readonly);
         var accessors = new List<AccessorDeclarationSyntax>();
         switch (propDef.Accessor)
         {
@@ -763,7 +763,7 @@ internal partial class RoslynEmitter
         }
 
         // Check if this is an abstract property (body is single ellipsis)
-        bool hasAbstractDecorator = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool hasAbstractDecorator = propDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
         bool hasEllipsisBody = propDef.Body.Length == 1
             && propDef.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);

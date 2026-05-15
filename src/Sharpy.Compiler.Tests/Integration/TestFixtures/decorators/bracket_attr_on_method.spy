@@ -1,0 +1,15 @@
+# Test: Bracket attribute applied to a method inside a class
+class Calculator:
+    def __init__(self):
+        pass
+
+    @[obsolete("Use add_v2 instead")]
+    def add(self, a: int, b: int) -> int:
+        return a + b
+
+    def add_v2(self, a: int, b: int) -> int:
+        return a + b
+
+def main():
+    calc = Calculator()
+    print(calc.add(3, 4))

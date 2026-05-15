@@ -1,4 +1,4 @@
-@serializable()
+@[serializable()]
 class Config:
     name: str
 

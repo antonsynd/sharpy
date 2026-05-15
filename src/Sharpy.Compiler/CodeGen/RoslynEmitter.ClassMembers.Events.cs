@@ -58,7 +58,7 @@ internal partial class RoslynEmitter
         var modifiers = GenerateMethodModifiers(eventDef.Name, eventDef.Decorators);
 
         // Check for abstract: abstract events don't need nullable type
-        bool isAbstract = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract)
+        bool isAbstract = eventDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
             || _isInAbstractClass;
 
         // For abstract events, the type is not nullable (abstract events have no backing field)
@@ -147,7 +147,7 @@ internal partial class RoslynEmitter
 
             bool hasEllipsisBody = eventDef.Body.Length == 1
                 && eventDef.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
-            bool isAbstract = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract)
+            bool isAbstract = eventDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
                 || (_isInAbstractClass && hasEllipsisBody);
 
             if (isAbstract)

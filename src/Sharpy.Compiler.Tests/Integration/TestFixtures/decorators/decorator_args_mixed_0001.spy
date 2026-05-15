@@ -1,5 +1,5 @@
 @final
-@obsolete("Use NewGreeter instead")
+@[obsolete("Use NewGreeter instead")]
 class Greeter:
     def greet(self) -> str:
         return "hello"

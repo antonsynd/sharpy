@@ -2,11 +2,11 @@
 # Uses System.ComponentModel.DefaultValueAttribute which accepts int/double
 
 class Settings:
-    @system.component_model.default_value(-42)
+    @[system.component_model.default_value(-42)]
     def get_min_threshold(self) -> int:
         return -42
 
-    @system.component_model.default_value(-3.14)
+    @[system.component_model.default_value(-3.14)]
     def get_scale_factor(self) -> float:
         return -3.14
 

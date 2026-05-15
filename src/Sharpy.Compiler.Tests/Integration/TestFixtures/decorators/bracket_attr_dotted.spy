@@ -1,0 +1,11 @@
+# Test: Bracket attribute with dotted/qualified name
+@[system.serializable]
+class Settings:
+    level: int
+
+    def __init__(self, level: int):
+        self.level = level
+
+def main():
+    s = Settings(5)
+    print(s.level)

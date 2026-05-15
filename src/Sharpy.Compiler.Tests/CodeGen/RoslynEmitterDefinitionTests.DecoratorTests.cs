@@ -731,6 +731,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = ImmutableArray.Create("obsolete"),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new StringLiteral { Value = "Use new_greet" }
@@ -758,6 +759,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = new List<string> { "system", "obsolete" }.ToImmutableArray(),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new StringLiteral { Value = "deprecated" }
@@ -786,6 +788,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = ImmutableArray.Create("custom_attr"),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new StringLiteral { Value = "value" }
@@ -818,7 +821,7 @@ public partial class RoslynEmitterDefinitionTests
             Name = "MyClass",
             Decorators = new List<Decorator>
             {
-                new Decorator { QualifiedParts = ImmutableArray.Create("serializable") }
+                new Decorator { QualifiedParts = ImmutableArray.Create("serializable"), IsBracketAttribute = true }
             }.ToImmutableArray(),
             Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
@@ -842,6 +845,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = ImmutableArray.Create("obsolete"),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new StringLiteral { Value = "use NewClass" }
@@ -870,6 +874,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = ImmutableArray.Create("custom_attr"),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new UnaryOp
@@ -901,6 +906,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = ImmutableArray.Create("custom_attr"),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new NoneLiteral()
@@ -928,6 +934,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = ImmutableArray.Create("custom_attr"),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new FloatLiteral { Value = "3.14" }
@@ -955,6 +962,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = ImmutableArray.Create("custom_attr"),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new BooleanLiteral { Value = true }
@@ -982,6 +990,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = ImmutableArray.Create("custom_attr"),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new MemberAccess
@@ -1013,6 +1022,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = ImmutableArray.Create("custom_attr"),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new FunctionCall
@@ -1047,6 +1057,7 @@ public partial class RoslynEmitterDefinitionTests
                 new Decorator
                 {
                     QualifiedParts = ImmutableArray.Create("custom_attr"),
+                    IsBracketAttribute = true,
                     Arguments = new List<Expression>
                     {
                         new UnaryOp
@@ -1077,7 +1088,8 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Decorator
                 {
-                    QualifiedParts = ImmutableArray.Create("serializable")
+                    QualifiedParts = ImmutableArray.Create("serializable"),
+                    IsBracketAttribute = true
                 }
             }.ToImmutableArray(),
             Body = new List<Statement> { new PassStatement() }.ToImmutableArray()

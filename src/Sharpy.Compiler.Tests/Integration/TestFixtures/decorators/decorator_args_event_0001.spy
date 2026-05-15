@@ -3,7 +3,7 @@
 delegate MsgHandler(msg: str) -> None
 
 class Publisher:
-    @obsolete("Use on_message instead")
+    @[obsolete("Use on_message instead")]
     event on_msg: MsgHandler
 
     def notify(self, msg: str):

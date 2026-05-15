@@ -232,7 +232,7 @@ internal partial class RoslynEmitter
 
         // Collect instance field declarations in body order
         var fieldDecls = body.OfType<VariableDeclaration>()
-            .Where(v => !v.Decorators.Any(d => d.Name == DecoratorNames.Static))
+            .Where(v => !v.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Static))
             .ToList();
 
         // Partition into required (no default) and optional (with default), preserving order within each group

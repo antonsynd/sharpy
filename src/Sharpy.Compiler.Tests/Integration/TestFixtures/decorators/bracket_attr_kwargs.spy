@@ -1,0 +1,9 @@
+# Test: Bracket attribute with keyword arguments (emitted verbatim)
+class Settings:
+    @[system.component_model.default_value(-42)]
+    def get_default_threshold(self) -> int:
+        return -42
+
+def main():
+    s = Settings()
+    print(s.get_default_threshold())

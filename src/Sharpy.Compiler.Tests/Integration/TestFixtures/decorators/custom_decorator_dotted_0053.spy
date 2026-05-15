@@ -1,6 +1,6 @@
-# Test: Dotted decorator on function with message argument
-# Tests: @system.obsolete applied to a function
-@system.obsolete("Use calculate_area() instead")
+# Test: Dotted bracket attribute on function with message argument
+# Tests: @[System.Obsolete] applied to a function
+@[system.obsolete("Use calculate_area() instead")]
 def get_area_legacy(width: int, height: int) -> int:
     return width * height
 

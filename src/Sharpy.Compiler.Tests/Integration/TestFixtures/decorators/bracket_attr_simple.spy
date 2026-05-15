@@ -1,0 +1,11 @@
+# Test: Simple bracket attribute on a class
+@[serializable]
+class Config:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+def main():
+    c = Config(42)
+    print(c.value)

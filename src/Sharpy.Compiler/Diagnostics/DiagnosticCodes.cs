@@ -483,7 +483,9 @@ public static class DiagnosticCodes
         // lru_cache / cache decorator validation (SPY0442-SPY0443)
         public const string LruCacheInvalidMaxSize = "SPY0442";            // Active
         public const string LruCacheOnNonFunction = "SPY0443";             // Active
-        // SPY0444-SPY0449: Reserved for future validation errors
+        // Unknown decorator rejection (SPY0444)
+        public const string UnknownDecorator = "SPY0444";                    // Active
+        // SPY0445-SPY0449: Reserved for future validation errors
 
         #endregion
 

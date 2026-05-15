@@ -1,0 +1,15 @@
+# Test: Bracket attribute with string argument on a method
+class Greeter:
+    def __init__(self):
+        pass
+
+    @[obsolete("Use greet_v2 instead")]
+    def greet(self) -> str:
+        return "hello"
+
+    def greet_v2(self) -> str:
+        return "hello v2"
+
+def main():
+    g = Greeter()
+    print(g.greet())

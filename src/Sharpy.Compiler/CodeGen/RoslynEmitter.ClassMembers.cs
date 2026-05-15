@@ -41,7 +41,7 @@ internal partial class RoslynEmitter
             var codeGenInfo = fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
             var fieldName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(varDecl.Name);
 
-            if (isDataclass && !varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static))
+            if (isDataclass && !varDecl.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Static))
             {
                 var propDecl = GenerateDataclassProperty(varDecl, fieldName, isFrozen);
                 fieldMembers.Add(propDecl);
@@ -507,11 +507,11 @@ internal partial class RoslynEmitter
 
     private static bool HasExplicitAccessDecorator(ImmutableArray<Decorator> decorators)
     {
-        return decorators.Any(d =>
+        return decorators.Any(d => !d.IsBracketAttribute && (
             d.Name == DecoratorNames.Public ||
             d.Name == DecoratorNames.Protected ||
             d.Name == DecoratorNames.Private ||
-            d.Name == DecoratorNames.Internal);
+            d.Name == DecoratorNames.Internal));
     }
 
     private static readonly SyntaxKind[] s_accessKinds =
