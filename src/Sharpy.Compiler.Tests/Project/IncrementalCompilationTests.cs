@@ -2072,4 +2072,539 @@ def some_function() -> int:
     }
 
     #endregion
+
+    #region Source Generator Cache Tests (schema v13, #636)
+
+    private const string TestGeneratorIdentity = "GenA@Target";
+
+    private string ComputeStringSha256(string content)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+        return Convert.ToHexStringLower(bytes);
+    }
+
+    [Fact]
+    public void GeneratedCacheEntry_RecordEquality_MatchesByValue()
+    {
+        // Records compare structurally — two entries with the same fields must
+        // be considered equal. This is relied upon by cache round-trip tests.
+        var a = new GeneratedCacheEntry
+        {
+            GeneratorHash = "hash-g",
+            TargetHash = "hash-t",
+            ArgumentsHash = "hash-a",
+            GeneratedSource = "def foo():\n    pass"
+        };
+        var b = new GeneratedCacheEntry
+        {
+            GeneratorHash = "hash-g",
+            TargetHash = "hash-t",
+            ArgumentsHash = "hash-a",
+            GeneratedSource = "def foo():\n    pass"
+        };
+
+        Assert.Equal(a, b);
+        Assert.NotSame(a, b);
+    }
+
+    [Fact]
+    public void GeneratorCache_RoundTrip_PersistsGeneratorOutputs()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+        var targetHash = ComputeStringSha256("class Target: pass");
+        var argumentsHash = ComputeStringSha256("()");
+        const string generated = "def __generated_method(self):\n    return 1";
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash,
+            argumentsHash,
+            generated);
+
+        // Write a file cache entry for the target so the pending generator
+        // output gets merged into a persisted FileCacheEntry.
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+        cache.SaveAllCaches();
+
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var entry = cache2.GetFileCache(targetFile);
+        Assert.NotNull(entry);
+        Assert.NotNull(entry!.GeneratorOutputs);
+        Assert.True(entry.GeneratorOutputs!.ContainsKey(TestGeneratorIdentity));
+
+        var stored = entry.GeneratorOutputs[TestGeneratorIdentity];
+        Assert.Equal(generatorHash, stored.GeneratorHash);
+        Assert.Equal(targetHash, stored.TargetHash);
+        Assert.Equal(argumentsHash, stored.ArgumentsHash);
+        Assert.Equal(generated, stored.GeneratedSource);
+    }
+
+    [Fact]
+    public void IsGeneratorCacheValid_FreshCache_ReturnsTrueWithSource()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+        var argumentsHash = ComputeStringSha256("()");
+        const string generated = "def helper(): return 42";
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "ignored",
+            argumentsHash: argumentsHash,
+            generatedSource: generated);
+
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+        cache.SaveAllCaches();
+
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var isValid = cache2.IsGeneratorCacheValid(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorFile,
+            argumentsHash,
+            out var cachedSource);
+
+        Assert.True(isValid);
+        Assert.Equal(generated, cachedSource);
+    }
+
+    [Fact]
+    public void IsGeneratorCacheValid_ChangedGeneratorHash_ReturnsFalse()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var argumentsHash = ComputeStringSha256("()");
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash: IncrementalCompilationCache.ComputeFileHash(generatorFile),
+            targetHash: "ignored",
+            argumentsHash: argumentsHash,
+            generatedSource: "def gen(): pass");
+
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+        cache.SaveAllCaches();
+
+        // Edit the generator file so its hash changes.
+        File.WriteAllText(generatorFile, "class GenA:\n    def generate(self, ctx): pass");
+
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var isValid = cache2.IsGeneratorCacheValid(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorFile,
+            argumentsHash,
+            out var cachedSource);
+
+        Assert.False(isValid);
+        Assert.Null(cachedSource);
+    }
+
+    [Fact]
+    public void IsGeneratorCacheValid_ChangedArgumentsHash_ReturnsFalse()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "ignored",
+            argumentsHash: ComputeStringSha256("(old)"),
+            generatedSource: "def gen(): pass");
+
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+        cache.SaveAllCaches();
+
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var isValid = cache2.IsGeneratorCacheValid(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorFile,
+            argumentsHash: ComputeStringSha256("(new)"),
+            out var cachedSource);
+
+        Assert.False(isValid);
+        Assert.Null(cachedSource);
+    }
+
+    [Fact]
+    public void IsGeneratorCacheValid_NullArgumentsHash_MatchesNull()
+    {
+        // Null argument hashes (decorators with no args) must round-trip correctly.
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "ignored",
+            argumentsHash: null,
+            generatedSource: "def gen(): pass");
+
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+        cache.SaveAllCaches();
+
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var isValid = cache2.IsGeneratorCacheValid(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorFile,
+            argumentsHash: null,
+            out var cachedSource);
+
+        Assert.True(isValid);
+        Assert.Equal("def gen(): pass", cachedSource);
+
+        // And switching from null to non-null invalidates.
+        var withArgs = cache2.IsGeneratorCacheValid(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorFile,
+            argumentsHash: ComputeStringSha256("(now-with-args)"),
+            out var noSource);
+        Assert.False(withArgs);
+        Assert.Null(noSource);
+    }
+
+    [Fact]
+    public void IsGeneratorCacheValid_NoCacheEntry_ReturnsFalse()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        var isValid = cache.IsGeneratorCacheValid(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorFile,
+            argumentsHash: null,
+            out var cachedSource);
+
+        Assert.False(isValid);
+        Assert.Null(cachedSource);
+    }
+
+    [Fact]
+    public void IsGeneratorCacheValid_MissingGeneratorFile_ReturnsFalse()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "ignored",
+            argumentsHash: null,
+            generatedSource: "def gen(): pass");
+
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+        cache.SaveAllCaches();
+
+        // Delete the generator file before re-loading the cache.
+        File.Delete(generatorFile);
+
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var isValid = cache2.IsGeneratorCacheValid(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorFile,
+            argumentsHash: null,
+            out var cachedSource);
+
+        Assert.False(isValid);
+        Assert.Null(cachedSource);
+    }
+
+    [Fact]
+    public void GeneratorOutputs_SurviveSaveFileCacheOverwrite()
+    {
+        // SaveFileCache is invoked after generator execution and overwrites
+        // the FileCacheEntry. Pending generator outputs cached *before* the
+        // SaveFileCache call must be carried into the new entry — otherwise
+        // the next build wouldn't see them.
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+
+        // Cache the generator output FIRST (no FileCacheEntry exists yet).
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "th",
+            argumentsHash: "ah",
+            generatedSource: "def gen(): pass");
+
+        // Now SaveFileCache creates the entry.
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+
+        var entry = cache.GetFileCache(targetFile);
+        Assert.NotNull(entry);
+        Assert.NotNull(entry!.GeneratorOutputs);
+        Assert.True(entry.GeneratorOutputs!.ContainsKey(TestGeneratorIdentity));
+    }
+
+    [Fact]
+    public void GeneratorOutputs_PreservedAcrossUnrelatedSaveFileCache()
+    {
+        // When a subsequent SaveFileCache happens for the same target without
+        // re-caching the generator output, the existing GeneratorOutputs must
+        // be carried over from the previous entry.
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "th",
+            argumentsHash: "ah",
+            generatedSource: "def gen(): pass");
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen v1", new List<string>());
+
+        // A second SaveFileCache (e.g., after a re-run that didn't re-execute the
+        // generator) must keep GeneratorOutputs populated.
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen v2", new List<string>());
+
+        var entry = cache.GetFileCache(targetFile);
+        Assert.NotNull(entry);
+        Assert.Equal("// gen v2", entry!.GeneratedCSharp);
+        Assert.NotNull(entry.GeneratorOutputs);
+        Assert.True(entry.GeneratorOutputs!.ContainsKey(TestGeneratorIdentity));
+    }
+
+    [Fact]
+    public void GeneratorOutputs_OverwriteSameIdentity()
+    {
+        // Caching twice under the same identity must overwrite the entry.
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "th",
+            argumentsHash: "ah",
+            generatedSource: "v1");
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "th",
+            argumentsHash: "ah",
+            generatedSource: "v2");
+
+        var entry = cache.GetFileCache(targetFile);
+        Assert.NotNull(entry);
+        Assert.Equal("v2", entry!.GeneratorOutputs![TestGeneratorIdentity].GeneratedSource);
+    }
+
+    [Fact]
+    public void GeneratorOutputs_MultipleIdentitiesCoexist()
+    {
+        // Two generators targeting the same file must each be stored under
+        // their own identity.
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+
+        cache.CacheGeneratorOutput(
+            targetFile, "GenA@T", generatorHash, "th", "ah1", "src-a");
+        cache.CacheGeneratorOutput(
+            targetFile, "GenB@T", generatorHash, "th", "ah2", "src-b");
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+
+        var entry = cache.GetFileCache(targetFile);
+        Assert.NotNull(entry);
+        Assert.Equal(2, entry!.GeneratorOutputs!.Count);
+        Assert.Equal("src-a", entry.GeneratorOutputs["GenA@T"].GeneratedSource);
+        Assert.Equal("src-b", entry.GeneratorOutputs["GenB@T"].GeneratedSource);
+    }
+
+    [Fact]
+    public void SchemaVersion_V13_IncludesGeneratorOutputsInJson()
+    {
+        // Sanity check: the persisted JSON for a v13 envelope should contain
+        // a 'GeneratorOutputs' field when the cache entry has generator output.
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "th",
+            argumentsHash: "ah",
+            generatedSource: "def gen(): pass");
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+        cache.SaveAllCaches();
+
+        var symbolCachePath = Path.Combine(config.ProjectDirectory, "obj", config.Configuration, ".sharpy-symbols");
+        var json = File.ReadAllText(symbolCachePath);
+
+        Assert.Contains($"\"SchemaVersion\": {IncrementalCompilationCache.CurrentSchemaVersion}", json);
+        Assert.Contains("GeneratorOutputs", json);
+        Assert.Contains(TestGeneratorIdentity, json);
+        Assert.Contains("GeneratorHash", json);
+        Assert.Contains("TargetHash", json);
+        Assert.Contains("ArgumentsHash", json);
+        Assert.Contains("GeneratedSource", json);
+    }
+
+    [Fact]
+    public void SchemaVersion_PreviousVersion_InvalidatesGeneratorCache()
+    {
+        // Simulates an older cache file (e.g., v12 written before generator
+        // support landed). Loading must drop the cache entirely so generator
+        // outputs are re-computed.
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "th",
+            argumentsHash: "ah",
+            generatedSource: "def gen(): pass");
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+        cache.SaveAllCaches();
+
+        // Downgrade the schema version on disk to v12.
+        var symbolCachePath = Path.Combine(config.ProjectDirectory, "obj", config.Configuration, ".sharpy-symbols");
+        var json = File.ReadAllText(symbolCachePath);
+        json = json.Replace(
+            $"\"SchemaVersion\": {IncrementalCompilationCache.CurrentSchemaVersion}",
+            "\"SchemaVersion\": 12");
+        File.WriteAllText(symbolCachePath, json);
+
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        Assert.False(cache2.HasValidFileCache(targetFile),
+            "Generator cache must be discarded when persisted schema version differs from current.");
+
+        var isValid = cache2.IsGeneratorCacheValid(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorFile,
+            argumentsHash: "ah",
+            out var cachedSource);
+
+        Assert.False(isValid);
+        Assert.Null(cachedSource);
+    }
+
+    [Fact]
+    public void Clear_RemovesGeneratorOutputs()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var targetFile = config.SourceFiles[0];
+        var generatorFile = CreateTempFile("gen.spy", "class GenA: pass");
+
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var generatorHash = IncrementalCompilationCache.ComputeFileHash(generatorFile);
+
+        cache.CacheGeneratorOutput(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorHash,
+            targetHash: "th",
+            argumentsHash: "ah",
+            generatedSource: "def gen(): pass");
+        cache.SaveFileCache(targetFile, new List<Symbol>(), "// gen", new List<string>());
+        cache.SaveAllCaches();
+
+        cache.Clear();
+
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var isValid = cache2.IsGeneratorCacheValid(
+            targetFile,
+            TestGeneratorIdentity,
+            generatorFile,
+            argumentsHash: "ah",
+            out var cachedSource);
+
+        Assert.False(isValid);
+        Assert.Null(cachedSource);
+    }
+
+    #endregion
 }
