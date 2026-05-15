@@ -1,0 +1,22 @@
+# Test: Custom attribute applied to a field declaration
+from System import Attribute
+
+class RangeAttribute(Attribute):
+    min_val: int
+    max_val: int
+
+    def __init__(self, min_val: int, max_val: int):
+        super().__init__()
+        self.min_val = min_val
+        self.max_val = max_val
+
+class Config:
+    @[range_attribute(0, 100)]
+    limit: int
+
+    def __init__(self):
+        self.limit = 50
+
+def main():
+    c = Config()
+    print(c.limit)

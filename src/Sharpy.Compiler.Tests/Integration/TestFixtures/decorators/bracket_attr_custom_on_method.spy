@@ -1,0 +1,15 @@
+# Test: Custom attribute applied to a method
+from System import Attribute
+
+class TraceAttribute(Attribute):
+    def __init__(self):
+        super().__init__()
+
+class Service:
+    @[trace_attribute]
+    def process(self) -> str:
+        return "done"
+
+def main():
+    s = Service()
+    print(s.process())

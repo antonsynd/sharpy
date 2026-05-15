@@ -1,0 +1,26 @@
+# Test: Custom attribute retrieved via runtime reflection
+from System import Attribute
+
+class AuthorAttribute(Attribute):
+    name: str
+    year: int
+
+    def __init__(self, name: str, year: int):
+        super().__init__()
+        self.name = name
+        self.year = year
+
+@[author_attribute("Alice", 2026)]
+class Library:
+    pass
+
+def main():
+    lib = Library()
+    obj: object = lib
+    t = obj.get_type()
+    attrs = Attribute.get_custom_attributes(t)
+    for a in attrs:
+        author = a to AuthorAttribute?
+        if author is not None:
+            print(author.name)
+            print(author.year)

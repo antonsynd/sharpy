@@ -1,0 +1,20 @@
+# Test: Custom attribute with multiple constructor parameters
+from System import Attribute
+
+class InfoAttribute(Attribute):
+    author: str
+    version: int
+
+    def __init__(self, author: str, version: int = 1):
+        super().__init__()
+        self.author = author
+        self.version = version
+
+@[info_attribute("Alice", version=2)]
+class Widget:
+    def describe(self) -> str:
+        return "widget"
+
+def main():
+    w = Widget()
+    print(w.describe())

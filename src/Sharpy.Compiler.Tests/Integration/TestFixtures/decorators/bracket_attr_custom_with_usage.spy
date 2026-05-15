@@ -1,0 +1,20 @@
+# Test: Custom attribute with @[attribute_usage] controlling multiplicity
+from System import Attribute
+
+@[attribute_usage(AttributeTargets.method, allow_multiple=True)]
+class LogAttribute(Attribute):
+    level: str
+
+    def __init__(self, level: str):
+        super().__init__()
+        self.level = level
+
+class Service:
+    @[log_attribute("info")]
+    @[log_attribute("debug")]
+    def process(self) -> str:
+        return "ok"
+
+def main():
+    s = Service()
+    print(s.process())
