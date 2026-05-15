@@ -260,10 +260,18 @@ internal class DecoratorValidator : ValidatingAstWalker
     {
         foreach (var decorator in decorators)
         {
-            // Bracket attributes (@[...]) are always treated as C# attributes
+            // Bracket attributes (@[...]) are usually C# attributes whose
+            // arguments must be compile-time constants. Source generator
+            // bracket attributes are different — their arguments are runtime
+            // values passed to the generator at compile time and may be any
+            // expression. Delegate validation of generator bracket attributes
+            // to SourceGeneratorValidator (Order 65).
             if (decorator.IsBracketAttribute)
             {
-                ValidateDecoratorArgumentsAreConstants(decorator);
+                if (!IsSourceGeneratorBracketAttribute(decorator))
+                {
+                    ValidateDecoratorArgumentsAreConstants(decorator);
+                }
                 continue;
             }
 
@@ -312,6 +320,20 @@ internal class DecoratorValidator : ValidatingAstWalker
     private static string SuggestBracketSyntax(Decorator decorator)
     {
         return $"@[{decorator.Name}]";
+    }
+
+    /// <summary>
+    /// Returns true if the bracket attribute's name resolves to a type symbol
+    /// whose <see cref="TypeSymbol.IsSourceGenerator"/> flag is set.
+    /// IsSourceGenerator is populated by <c>NameResolver.ResolveInheritance</c>
+    /// (Pass 1b), so the flag is reliably available by the time validators
+    /// run. Source generator attributes accept arbitrary runtime arguments
+    /// and are validated separately by <see cref="SourceGeneratorValidator"/>.
+    /// </summary>
+    private bool IsSourceGeneratorBracketAttribute(Decorator decorator)
+    {
+        var symbol = Context.SymbolTable.LookupType(decorator.Name);
+        return symbol is { IsSourceGenerator: true };
     }
 
     /// <summary>
