@@ -35,6 +35,7 @@ print(greeter.greet())  # Hello, World!
 - [Language Reference](language_specification/README.md) -- Complete language specification
 - [Standard Library](stdlib/index.md) -- Built-in functions, types, and modules
 - [Tooling](tooling/editor-integration.md) -- Editor support and LSP
+- [Source Generators Guide](guides/source_generators.md) -- Practical compile-time code generation examples
 - [Playground](https://antonsynd.github.io/sharpy/playground/) -- Try Sharpy in your browser
 
 ## Getting Started
