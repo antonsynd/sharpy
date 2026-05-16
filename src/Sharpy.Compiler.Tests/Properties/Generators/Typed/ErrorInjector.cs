@@ -136,6 +136,91 @@ internal static class ErrorInjector
         _ => null
     };
 
+    public static InjectionResult? InjectWrongFunctionArgCount(Module module)
+    {
+        var body = GetMainBody(module);
+        if (body == null)
+            return null;
+
+        for (int i = body.Value.Length - 1; i >= 0; i--)
+        {
+            if (body.Value[i] is ExpressionStatement { Expression: FunctionCall call }
+                && call.Function is Identifier { Name: var name }
+                && name != "print" && name != "len" && name != "range" && name != "abs"
+                && call.Arguments.Length > 0)
+            {
+                var mutated = ReplaceStatement(module, body.Value, i,
+                    new ExpressionStatement
+                    {
+                        Expression = call with { Arguments = call.Arguments.RemoveAt(0) }
+                    });
+                return new InjectionResult(mutated, "SPY02");
+            }
+        }
+
+        return null;
+    }
+
+    public static InjectionResult? InjectWrongFunctionArgType(Module module)
+    {
+        var body = GetMainBody(module);
+        if (body == null)
+            return null;
+
+        for (int i = body.Value.Length - 1; i >= 0; i--)
+        {
+            if (body.Value[i] is ExpressionStatement { Expression: FunctionCall call }
+                && call.Function is Identifier { Name: var name }
+                && name != "print" && name != "len" && name != "range" && name != "abs"
+                && call.Arguments.Length > 0)
+            {
+                var firstArg = call.Arguments[0];
+                Expression replacement = firstArg is StringLiteral
+                    ? new IntegerLiteral { Value = "999" }
+                    : new StringLiteral { Value = "wrong_type" };
+
+                var mutated = ReplaceStatement(module, body.Value, i,
+                    new ExpressionStatement
+                    {
+                        Expression = call with
+                        {
+                            Arguments = call.Arguments.SetItem(0, replacement)
+                        }
+                    });
+                return new InjectionResult(mutated, "SPY02");
+            }
+        }
+
+        return null;
+    }
+
+    public static InjectionResult? InjectUndefinedFunctionCall(Module module)
+    {
+        var body = GetMainBody(module);
+        if (body == null)
+            return null;
+
+        for (int i = body.Value.Length - 1; i >= 0; i--)
+        {
+            if (body.Value[i] is ExpressionStatement { Expression: FunctionCall call }
+                && call.Function is Identifier { Name: var name }
+                && name != "print" && name != "len" && name != "range" && name != "abs")
+            {
+                var mutated = ReplaceStatement(module, body.Value, i,
+                    new ExpressionStatement
+                    {
+                        Expression = call with
+                        {
+                            Function = new Identifier { Name = "nonexistent_func_xyz" }
+                        }
+                    });
+                return new InjectionResult(mutated, "SPY02");
+            }
+        }
+
+        return null;
+    }
+
     private static ImmutableArray<Statement>? GetMainBody(Module module)
     {
         foreach (var stmt in module.Body)

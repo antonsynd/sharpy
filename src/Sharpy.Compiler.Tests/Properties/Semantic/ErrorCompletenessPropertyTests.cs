@@ -44,6 +44,27 @@ public class ErrorCompletenessPropertyTests
             ProgramWithLenCall());
     }
 
+    [Fact]
+    public void WrongFunctionArgCount_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectWrongFunctionArgCount,
+            "wrong function arg count", ProgramWithFunctionCall());
+    }
+
+    [Fact]
+    public void WrongFunctionArgType_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectWrongFunctionArgType,
+            "wrong function arg type", ProgramWithFunctionCall());
+    }
+
+    [Fact]
+    public void UndefinedFunctionCall_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectUndefinedFunctionCall,
+            "undefined function call", ProgramWithFunctionCall());
+    }
+
     private static Gen<Module> ProgramWithLenCall() =>
         GenTyped.ExpressionOfType(TypeEnv.Default, "int", fuel: 1).Select(inner =>
         {
@@ -86,6 +107,9 @@ public class ErrorCompletenessPropertyTests
                     })
             };
         });
+
+    private static Gen<Module> ProgramWithFunctionCall() =>
+        GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 1);
 
     private void RunInjectionTest(
         Func<Module, ErrorInjector.InjectionResult?> injector,
