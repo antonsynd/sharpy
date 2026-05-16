@@ -73,6 +73,66 @@ public class ImportResolutionPropertyTests
     }
 
     [Fact]
+    public void ImportedClass_IsInstantiable()
+    {
+        int tested = 0;
+        int passed = 0;
+
+        Gen.OneOfConst("int", "str", "bool").Select(fieldType =>
+        {
+            var lib = $"class Widget:\n    value: {fieldType}\n\n    def __init__(self, value: {fieldType}):\n        self.value = value\n";
+            var main = $"from lib import Widget\n\ndef main():\n    w = Widget({GenImports_DefaultLiteral(fieldType)})\n    print(w.value)\n";
+            return (Main: main, Lib: lib);
+        }).Sample(pair =>
+        {
+            Interlocked.Increment(ref tested);
+
+            using var helper = new ProjectCompilationHelper(_output);
+            helper.WithRootNamespace("Test")
+                .AddSourceFile("main.spy", pair.Main)
+                .AddSourceFile("lib.spy", pair.Lib)
+                .CreateProjectFile();
+
+            var result = helper.Compile();
+            if (result.Success)
+                Interlocked.Increment(ref passed);
+        }, iter: 20);
+
+        _output.WriteLine($"Imported class instantiation: {passed}/{tested} passed");
+        Assert.True(passed > tested / 2,
+            $"Imported class instantiation rate too low: {passed}/{tested}");
+    }
+
+    [Fact]
+    public void NameCollision_IsDetected()
+    {
+        int tested = 0;
+        int detected = 0;
+
+        GenImports.NameCollisionPair(TypeEnv.Default, fuel: 1)
+            .Sample(quad =>
+            {
+                Interlocked.Increment(ref tested);
+
+                using var helper = new ProjectCompilationHelper(_output);
+                helper.WithRootNamespace("Test")
+                    .AddSourceFile("main.spy", quad.Main)
+                    .AddSourceFile("lib1.spy", quad.Lib1)
+                    .AddSourceFile("lib2.spy", quad.Lib2)
+                    .CreateProjectFile();
+
+                var result = helper.Compile();
+                if (!result.Success || result.Diagnostics.GetAll().Any(
+                    d => d.Code.StartsWith("SPY0")))
+                    Interlocked.Increment(ref detected);
+            }, iter: 20);
+
+        _output.WriteLine($"Name collision detection: {detected}/{tested} detected");
+        Assert.True(detected > tested / 2,
+            $"Name collision detection rate too low: {detected}/{tested}");
+    }
+
+    [Fact]
     public void CircularImport_IsRejected()
     {
         int tested = 0;
@@ -96,8 +156,7 @@ public class ImportResolutionPropertyTests
             }, iter: 20);
 
         _output.WriteLine($"Circular import rejection: {rejected}/{tested} rejected");
-        Assert.True(rejected > tested / 2,
-            $"Circular import rejection rate too low: {rejected}/{tested}");
+        Assert.Equal(tested, rejected);
     }
 
     [Fact]
@@ -129,4 +188,12 @@ public class ImportResolutionPropertyTests
         Assert.True(warned > tested / 2,
             $"Unused import warning rate too low: {warned}/{tested}");
     }
+
+    private static string GenImports_DefaultLiteral(string type) => type switch
+    {
+        "int" => "42",
+        "str" => "\"hello\"",
+        "bool" => "True",
+        _ => "0"
+    };
 }

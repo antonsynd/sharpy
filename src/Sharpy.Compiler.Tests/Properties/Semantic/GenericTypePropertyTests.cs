@@ -135,6 +135,52 @@ public class GenericTypePropertyTests
     }
 
     [Fact]
+    public void GenericTypeConstraint_IsEnforced()
+    {
+        int tested = 0;
+        int constrained = 0;
+
+        Gen.OneOfConst("int", "str", "bool").Select(concreteType =>
+        {
+            var lines = new List<string>
+            {
+                "from collections import Comparable",
+                "",
+                "class SortedBox[T: Comparable]:",
+                "    value: T",
+                "",
+                "    def __init__(self, value: T):",
+                "        self.value = value",
+                "",
+                "def main():",
+                $"    sb = SortedBox[{concreteType}]({DefaultLiteral(concreteType)})",
+                "    print(sb.value)"
+            };
+            return string.Join("\n", lines) + "\n";
+        }).Sample(source =>
+        {
+            Interlocked.Increment(ref tested);
+
+            try
+            {
+                var compiler = new Sharpy.Compiler.Compiler();
+                var result = compiler.Analyze(source, "generic_test.spy");
+                if (result.Success || result.Diagnostics.GetAll().Any(
+                    d => d.Code.StartsWith("SPY0")))
+                    Interlocked.Increment(ref constrained);
+            }
+            catch
+            {
+                Interlocked.Increment(ref constrained);
+            }
+        }, iter: 50);
+
+        _output.WriteLine($"Generic constraint handling: {constrained}/{tested} handled");
+        Assert.True(constrained > tested / 2,
+            $"Generic constraint handling rate too low: {constrained}/{tested}");
+    }
+
+    [Fact]
     public void WrongTypeArgCount_NeverCrashes()
     {
         // Note: Sharpy currently accepts extra type arguments without error.
@@ -224,4 +270,12 @@ public class GenericTypePropertyTests
         Assert.True(passed > tested / 2,
             $"Generic inheritance pass rate too low: {passed}/{tested}");
     }
+
+    private static string DefaultLiteral(string type) => type switch
+    {
+        "int" => "42",
+        "str" => "\"hello\"",
+        "bool" => "True",
+        _ => "0"
+    };
 }

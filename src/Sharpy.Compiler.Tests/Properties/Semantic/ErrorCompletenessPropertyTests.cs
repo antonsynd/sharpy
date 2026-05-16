@@ -9,6 +9,7 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
+[Trait("Speed", "Slow")]
 public class ErrorCompletenessPropertyTests
 {
     private readonly ITestOutputHelper _output;
@@ -77,6 +78,13 @@ public class ErrorCompletenessPropertyTests
     {
         RunInjectionTest(ErrorInjector.InjectWrongConstructorArgs,
             "wrong constructor args", ProgramWithClassHierarchy());
+    }
+
+    [Fact]
+    public void MissingAbstractImplementation_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectMissingAbstractImplementation,
+            "missing abstract implementation", ProgramWithClassHierarchy());
     }
 
     private static Gen<Module> ProgramWithClassHierarchy() =>

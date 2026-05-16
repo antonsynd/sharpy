@@ -39,7 +39,8 @@ internal static class GenClasses
                     ImmutableArray.Create(("get_info", methodSig)));
 
                 var baseDef = BuildClassDef(baseName, baseInfo, isVirtual: true);
-                var derivedDef = BuildClassDef(derivedName, derivedInfo, isOverride: true);
+                var derivedDef = BuildClassDef(derivedName, derivedInfo,
+                    isOverride: true, baseFieldCount: baseFields.Length);
 
                 return (baseDef, derivedDef);
             });
@@ -60,7 +61,7 @@ internal static class GenClasses
         });
 
     private static ClassDef BuildClassDef(string name, ClassInfo info,
-        bool isVirtual = false, bool isOverride = false)
+        bool isVirtual = false, bool isOverride = false, int baseFieldCount = 0)
     {
         var body = ImmutableArray.CreateBuilder<Statement>();
 
@@ -73,7 +74,7 @@ internal static class GenClasses
             });
         }
 
-        body.Add(BuildConstructor(info));
+        body.Add(BuildConstructor(info, baseFieldCount));
 
         foreach (var (methodName, sig) in info.Methods)
         {
@@ -92,7 +93,7 @@ internal static class GenClasses
         };
     }
 
-    private static FunctionDef BuildConstructor(ClassInfo info)
+    private static FunctionDef BuildConstructor(ClassInfo info, int baseFieldCount = 0)
     {
         var parameters = ImmutableArray.CreateBuilder<Parameter>();
         parameters.Add(new Parameter { Name = "self" });
@@ -107,10 +108,11 @@ internal static class GenClasses
 
         var bodyStmts = ImmutableArray.CreateBuilder<Statement>();
 
-        if (info.BaseClass != null)
+        if (info.BaseClass != null && baseFieldCount > 0)
         {
-            var baseFields = info.Fields.Take(
-                Math.Max(1, info.Fields.Length / 2)).ToList();
+            var baseArgs = info.Fields.Take(baseFieldCount)
+                .Select(f => (Expression)new Identifier { Name = f.Name })
+                .ToImmutableArray();
             bodyStmts.Add(new ExpressionStatement
             {
                 Expression = new FunctionCall
@@ -124,22 +126,13 @@ internal static class GenClasses
                         },
                         Member = "__init__"
                     },
-                    Arguments = baseFields.Select(f =>
-                        (Expression)new Identifier { Name = f.Name }).ToImmutableArray()
+                    Arguments = baseArgs
                 }
             });
         }
 
-        foreach (var (fieldName, _) in info.Fields)
+        foreach (var (fieldName, _) in info.Fields.Skip(baseFieldCount))
         {
-            if (info.BaseClass != null)
-            {
-                var baseFieldCount = Math.Max(1, info.Fields.Length / 2);
-                var idx = info.Fields.IndexOf((fieldName, info.Fields.First(f => f.Name == fieldName).Type));
-                if (idx < baseFieldCount)
-                    continue;
-            }
-
             bodyStmts.Add(new Assignment
             {
                 Target = new MemberAccess

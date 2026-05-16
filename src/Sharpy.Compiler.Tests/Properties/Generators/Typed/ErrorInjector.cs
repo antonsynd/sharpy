@@ -277,6 +277,69 @@ internal static class ErrorInjector
         return null;
     }
 
+    public static InjectionResult? InjectMissingAbstractImplementation(Module module)
+    {
+        for (int i = 0; i < module.Body.Length; i++)
+        {
+            if (module.Body[i] is ClassDef baseDef && baseDef.BaseClasses.Length == 0)
+            {
+                for (int j = 0; j < baseDef.Body.Length; j++)
+                {
+                    if (baseDef.Body[j] is FunctionDef method
+                        && method.Name != "__init__"
+                        && method.Decorators.Any(d => d.Name == "virtual"))
+                    {
+                        var abstractDecorators = method.Decorators
+                            .Select(d => d.Name == "virtual"
+                                ? new Decorator { QualifiedParts = ImmutableArray.Create("abstract") }
+                                : d)
+                            .ToImmutableArray();
+                        var abstractMethod = method with
+                        {
+                            Decorators = abstractDecorators,
+                            Body = ImmutableArray.Create<Statement>(
+                                new ExpressionStatement
+                                {
+                                    Expression = new EllipsisLiteral()
+                                })
+                        };
+                        var newBaseBody = baseDef.Body.SetItem(j, abstractMethod);
+                        var newBase = baseDef with { Body = newBaseBody };
+                        var newModuleBody = module.Body.SetItem(i, newBase);
+
+                        var derivedIdx = -1;
+                        for (int k = 0; k < newModuleBody.Length; k++)
+                        {
+                            if (newModuleBody[k] is ClassDef c
+                                && c.BaseClasses.Length > 0
+                                && c.BaseClasses[0].Name == baseDef.Name)
+                            {
+                                derivedIdx = k;
+                                break;
+                            }
+                        }
+                        if (derivedIdx >= 0 && newModuleBody[derivedIdx] is ClassDef derived)
+                        {
+                            var withoutOverride = derived.Body
+                                .Where(s => s is not FunctionDef fd || fd.Name != method.Name)
+                                .ToImmutableArray();
+                            if (withoutOverride.Length < derived.Body.Length)
+                            {
+                                newModuleBody = newModuleBody.SetItem(derivedIdx,
+                                    derived with { Body = withoutOverride });
+                            }
+                        }
+
+                        return new InjectionResult(
+                            module with { Body = newModuleBody }, "SPY02");
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     public static InjectionResult? InjectWrongConstructorArgs(Module module)
     {
         var body = GetMainBody(module);

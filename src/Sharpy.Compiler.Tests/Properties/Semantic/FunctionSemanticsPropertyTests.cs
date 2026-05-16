@@ -34,8 +34,18 @@ public class FunctionSemanticsPropertyTests
                     var compiler = new Sharpy.Compiler.Compiler();
                     var result = compiler.Analyze(source, "func_test.spy");
 
-                    if (result.Success && result.SemanticInfo != null)
-                        Interlocked.Increment(ref resolved);
+                    if (result.Success && result.SymbolTable != null)
+                    {
+                        var funcNames = module.Body
+                            .OfType<Sharpy.Compiler.Parser.Ast.FunctionDef>()
+                            .Where(f => f.Name != "main")
+                            .Select(f => f.Name)
+                            .ToList();
+                        var allResolved = funcNames.All(name =>
+                            result.SymbolTable.LookupFunction(name) != null);
+                        if (allResolved && funcNames.Count > 0)
+                            Interlocked.Increment(ref resolved);
+                    }
                 }
                 catch
                 {
@@ -44,7 +54,7 @@ public class FunctionSemanticsPropertyTests
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine($"Function resolution: {resolved}/{tested} resolved");
-        Assert.True(resolved > tested / 4,
+        Assert.True(resolved > tested / 2,
             $"Function resolution rate too low: {resolved}/{tested}");
     }
 
@@ -96,8 +106,20 @@ public class FunctionSemanticsPropertyTests
                     var compiler = new Sharpy.Compiler.Compiler();
                     var result = compiler.Analyze(source, "func_test.spy");
 
-                    if (result.Success && result.SemanticInfo != null)
-                        Interlocked.Increment(ref matched);
+                    if (result.Success && result.SymbolTable != null)
+                    {
+                        var funcDefs = module.Body
+                            .OfType<Sharpy.Compiler.Parser.Ast.FunctionDef>()
+                            .Where(f => f.Name != "main" && f.ReturnType != null)
+                            .ToList();
+                        var allMatch = funcDefs.All(fd =>
+                        {
+                            var sym = result.SymbolTable.LookupFunction(fd.Name);
+                            return sym?.ReturnType != null;
+                        });
+                        if (allMatch && funcDefs.Count > 0)
+                            Interlocked.Increment(ref matched);
+                    }
                 }
                 catch
                 {
@@ -106,8 +128,40 @@ public class FunctionSemanticsPropertyTests
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine($"Return type matching: {matched}/{tested} matched");
-        Assert.True(matched > tested / 4,
+        Assert.True(matched > tested / 2,
             $"Return type match rate too low: {matched}/{tested}");
+    }
+
+    [Fact]
+    public void FunctionOverload_DispatchesCorrectly()
+    {
+        int tested = 0;
+        int passed = 0;
+
+        Gen.OneOfConst("int", "str", "bool").Select(type =>
+        {
+            var source = $"class Processor:\n    def handle(self, x: int) -> str:\n        return \"int\"\n\n    def handle(self, x: str) -> str:\n        return \"str\"\n\n    def handle(self, x: int, y: int) -> str:\n        return \"two\"\n\ndef main():\n    p = Processor()\n    a = p.handle(42)\n    b = p.handle(\"hi\")\n    c = p.handle(1, 2)\n    print(a)\n    print(b)\n    print(c)\n";
+            return source;
+        }).Sample(source =>
+        {
+            Interlocked.Increment(ref tested);
+
+            try
+            {
+                var compiler = new Sharpy.Compiler.Compiler();
+                var result = compiler.Analyze(source, "func_test.spy");
+                if (result.Success)
+                    Interlocked.Increment(ref passed);
+            }
+            catch
+            {
+                // Swallow
+            }
+        }, iter: 50);
+
+        _output.WriteLine($"Function overload dispatch: {passed}/{tested} passed");
+        Assert.True(passed > tested / 2,
+            $"Function overload dispatch rate too low: {passed}/{tested}");
     }
 
     [Fact]
