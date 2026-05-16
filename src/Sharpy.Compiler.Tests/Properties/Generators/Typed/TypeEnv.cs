@@ -42,8 +42,11 @@ internal sealed record TypeEnv
 
     public TypeEnv WithGenericClass(string name, ImmutableArray<string> typeParams,
         ImmutableArray<(string Name, string Type)> fields) =>
-        this with { Classes = Classes.SetItem(name, new ClassInfo(null, fields,
-            ImmutableArray<(string Name, FunctionSignature Signature)>.Empty)) };
+        this with
+        {
+            Classes = Classes.SetItem(name, new ClassInfo(null, fields,
+            ImmutableArray<(string Name, FunctionSignature Signature)>.Empty))
+        };
 
     public static TypeEnv Default { get; } = new TypeEnv()
         .WithBinding("x", "int")

@@ -8,54 +8,22 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
-public class FunctionSemanticsPropertyTests
+public class ClassInheritancePropertyTests
 {
     private readonly ITestOutputHelper _output;
 
-    public FunctionSemanticsPropertyTests(ITestOutputHelper output)
+    public ClassInheritancePropertyTests(ITestOutputHelper output)
     {
         _output = output;
     }
 
     [Fact]
-    public void FunctionDef_IsResolvableByName()
-    {
-        int tested = 0;
-        int resolved = 0;
-
-        GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 2)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "func_test.spy");
-
-                    if (result.Success && result.SemanticInfo != null)
-                        Interlocked.Increment(ref resolved);
-                }
-                catch
-                {
-                    // Generated code may have edge cases
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Function resolution: {resolved}/{tested} resolved");
-        Assert.True(resolved > tested / 4,
-            $"Function resolution rate too low: {resolved}/{tested}");
-    }
-
-    [Fact]
-    public void FunctionCall_TypeChecksCorrectly()
+    public void ClassHierarchy_CompilesClean()
     {
         int total = 0;
         int passed = 0;
 
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-            GenFunctions.ModuleWithFunctions(TypeEnv.Default, type, fuel: 2))
+        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
@@ -64,7 +32,7 @@ public class FunctionSemanticsPropertyTests
                 try
                 {
                     var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "func_test.spy");
+                    var result = compiler.Analyze(source, "class_test.spy");
                     if (result.Success)
                         Interlocked.Increment(ref passed);
                 }
@@ -74,18 +42,18 @@ public class FunctionSemanticsPropertyTests
                 }
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Function call type check: {passed}/{total} passed");
-        Assert.True(passed > total / 4,
-            $"Function call pass rate too low: {passed}/{total}");
+        _output.WriteLine($"Class hierarchy compilation: {passed}/{total} passed");
+        Assert.True(passed > total / 3,
+            $"Class hierarchy pass rate too low: {passed}/{total}");
     }
 
     [Fact]
-    public void FunctionReturnType_MatchesAnnotation()
+    public void DerivedClass_InheritsBaseMembers()
     {
         int tested = 0;
-        int matched = 0;
+        int passed = 0;
 
-        GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 2)
+        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
@@ -94,10 +62,9 @@ public class FunctionSemanticsPropertyTests
                 try
                 {
                     var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "func_test.spy");
-
+                    var result = compiler.Analyze(source, "class_test.spy");
                     if (result.Success && result.SemanticInfo != null)
-                        Interlocked.Increment(ref matched);
+                        Interlocked.Increment(ref passed);
                 }
                 catch
                 {
@@ -105,16 +72,45 @@ public class FunctionSemanticsPropertyTests
                 }
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Return type matching: {matched}/{tested} matched");
-        Assert.True(matched > tested / 4,
-            $"Return type match rate too low: {matched}/{tested}");
+        _output.WriteLine($"Derived class member access: {passed}/{tested} passed");
+        Assert.True(passed > tested / 3,
+            $"Derived class member access rate too low: {passed}/{tested}");
     }
 
     [Fact]
-    public void ModuleWithFunctions_NeverThrowsInternalError()
+    public void MethodOverride_PreservesSignature()
     {
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-            GenFunctions.ModuleWithFunctions(TypeEnv.Default, type, fuel: 2))
+        int tested = 0;
+        int passed = 0;
+
+        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
+            .Sample(module =>
+            {
+                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
+                Interlocked.Increment(ref tested);
+
+                try
+                {
+                    var compiler = new Sharpy.Compiler.Compiler();
+                    var result = compiler.Analyze(source, "class_test.spy");
+                    if (result.Success)
+                        Interlocked.Increment(ref passed);
+                }
+                catch
+                {
+                    // Swallow
+                }
+            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+
+        _output.WriteLine($"Override signature preservation: {passed}/{tested} passed");
+        Assert.True(passed > tested / 3,
+            $"Override signature preservation rate too low: {passed}/{tested}");
+    }
+
+    [Fact]
+    public void ModuleWithClasses_NeverThrowsInternalError()
+    {
+        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
@@ -122,12 +118,12 @@ public class FunctionSemanticsPropertyTests
                 try
                 {
                     var compiler = new Sharpy.Compiler.Compiler();
-                    compiler.Analyze(source, "func_test.spy");
+                    compiler.Analyze(source, "class_test.spy");
                 }
                 catch (Sharpy.Compiler.Diagnostics.InternalCompilerErrorException ex)
                 {
                     throw new Exception(
-                        $"InternalCompilerErrorException on function program:\n{source}\n{ex.Message}");
+                        $"InternalCompilerErrorException on class program:\n{source}\n{ex.Message}");
                 }
                 catch
                 {

@@ -144,16 +144,14 @@ internal static class ErrorInjector
 
         for (int i = body.Value.Length - 1; i >= 0; i--)
         {
-            if (body.Value[i] is ExpressionStatement { Expression: FunctionCall call }
-                && call.Function is Identifier { Name: var name }
-                && name != "print" && name != "len" && name != "range" && name != "abs"
-                && call.Arguments.Length > 0)
+            if (body.Value[i] is ExpressionStatement { Expression: { } expr }
+                && FindUserFunctionCall(expr) is { } target
+                && target.Arguments.Length > 0)
             {
+                var broken = target with { Arguments = target.Arguments.RemoveAt(0) };
+                var newExpr = ReplaceNestedCall(expr, target, broken);
                 var mutated = ReplaceStatement(module, body.Value, i,
-                    new ExpressionStatement
-                    {
-                        Expression = call with { Arguments = call.Arguments.RemoveAt(0) }
-                    });
+                    new ExpressionStatement { Expression = newExpr });
                 return new InjectionResult(mutated, "SPY02");
             }
         }
@@ -169,24 +167,20 @@ internal static class ErrorInjector
 
         for (int i = body.Value.Length - 1; i >= 0; i--)
         {
-            if (body.Value[i] is ExpressionStatement { Expression: FunctionCall call }
-                && call.Function is Identifier { Name: var name }
-                && name != "print" && name != "len" && name != "range" && name != "abs"
-                && call.Arguments.Length > 0)
+            if (body.Value[i] is ExpressionStatement { Expression: { } expr }
+                && FindUserFunctionCall(expr) is { } target
+                && target.Arguments.Length > 0)
             {
-                var firstArg = call.Arguments[0];
-                Expression replacement = firstArg is StringLiteral
-                    ? new IntegerLiteral { Value = "999" }
-                    : new StringLiteral { Value = "wrong_type" };
+                // Replace with a list literal — incompatible with int, str, and bool params
+                Expression replacement = new ListLiteral
+                {
+                    Elements = ImmutableArray.Create<Expression>(new IntegerLiteral { Value = "1" })
+                };
 
+                var broken = target with { Arguments = target.Arguments.SetItem(0, replacement) };
+                var newExpr = ReplaceNestedCall(expr, target, broken);
                 var mutated = ReplaceStatement(module, body.Value, i,
-                    new ExpressionStatement
-                    {
-                        Expression = call with
-                        {
-                            Arguments = call.Arguments.SetItem(0, replacement)
-                        }
-                    });
+                    new ExpressionStatement { Expression = newExpr });
                 return new InjectionResult(mutated, "SPY02");
             }
         }
@@ -202,18 +196,103 @@ internal static class ErrorInjector
 
         for (int i = body.Value.Length - 1; i >= 0; i--)
         {
-            if (body.Value[i] is ExpressionStatement { Expression: FunctionCall call }
-                && call.Function is Identifier { Name: var name }
-                && name != "print" && name != "len" && name != "range" && name != "abs")
+            if (body.Value[i] is ExpressionStatement { Expression: { } expr }
+                && FindUserFunctionCall(expr) is { } target)
             {
+                var broken = target with { Function = new Identifier { Name = "nonexistent_func_xyz" } };
+                var newExpr = ReplaceNestedCall(expr, target, broken);
                 var mutated = ReplaceStatement(module, body.Value, i,
-                    new ExpressionStatement
+                    new ExpressionStatement { Expression = newExpr });
+                return new InjectionResult(mutated, "SPY02");
+            }
+        }
+
+        return null;
+    }
+
+    private static readonly HashSet<string> BuiltinFuncNames = new()
+    {
+        "print", "len", "range", "abs", "int", "str", "bool", "float", "list", "set", "dict", "type"
+    };
+
+    private static FunctionCall? FindUserFunctionCall(Expression expr) => expr switch
+    {
+        FunctionCall { Function: Identifier { Name: var name } } call
+            when !BuiltinFuncNames.Contains(name) && call.Arguments.Length > 0 => call,
+        FunctionCall call => call.Arguments
+            .Select(FindUserFunctionCall)
+            .FirstOrDefault(r => r != null),
+        BinaryOp bin => FindUserFunctionCall(bin.Left) ?? FindUserFunctionCall(bin.Right),
+        _ => null
+    };
+
+    private static Expression ReplaceNestedCall(Expression expr, FunctionCall target, FunctionCall replacement)
+    {
+        if (expr is FunctionCall fc && ReferenceEquals(fc, target))
+            return replacement;
+
+        return expr switch
+        {
+            FunctionCall call => call with
+            {
+                Arguments = call.Arguments.Select(a => ReplaceNestedCall(a, target, replacement)).ToImmutableArray()
+            },
+            BinaryOp bin => bin with
+            {
+                Left = ReplaceNestedCall(bin.Left, target, replacement),
+                Right = ReplaceNestedCall(bin.Right, target, replacement)
+            },
+            _ => expr
+        };
+    }
+
+    public static InjectionResult? InjectOverrideSignatureMismatch(Module module)
+    {
+        for (int i = 0; i < module.Body.Length; i++)
+        {
+            if (module.Body[i] is ClassDef classDef && classDef.BaseClasses.Length > 0)
+            {
+                for (int j = 0; j < classDef.Body.Length; j++)
+                {
+                    if (classDef.Body[j] is FunctionDef method
+                        && method.Name != "__init__"
+                        && method.Decorators.Any(d => d.Name == "override")
+                        && method.ReturnType != null)
                     {
-                        Expression = call with
-                        {
-                            Function = new Identifier { Name = "nonexistent_func_xyz" }
-                        }
-                    });
+                        var wrongReturnType = method.ReturnType.Name == "int"
+                            ? new TypeAnnotation { Name = "str" }
+                            : new TypeAnnotation { Name = "int" };
+
+                        var brokenMethod = method with { ReturnType = wrongReturnType };
+                        var newClassBody = classDef.Body.SetItem(j, brokenMethod);
+                        var newClass = classDef with { Body = newClassBody };
+                        var newModuleBody = module.Body.SetItem(i, newClass);
+                        return new InjectionResult(
+                            module with { Body = newModuleBody }, "SPY02");
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public static InjectionResult? InjectWrongConstructorArgs(Module module)
+    {
+        var body = GetMainBody(module);
+        if (body == null)
+            return null;
+
+        for (int i = body.Value.Length - 1; i >= 0; i--)
+        {
+            if (body.Value[i] is VariableDeclaration { InitialValue: FunctionCall ctorCall } decl
+                && ctorCall.Function is Identifier { Name: var name }
+                && char.IsUpper(name[0])
+                && ctorCall.Arguments.Length > 0)
+            {
+                var broken = ctorCall with { Arguments = ctorCall.Arguments.RemoveAt(0) };
+                var mutated = ReplaceStatement(module, body.Value, i,
+                    decl with { InitialValue = broken });
                 return new InjectionResult(mutated, "SPY02");
             }
         }

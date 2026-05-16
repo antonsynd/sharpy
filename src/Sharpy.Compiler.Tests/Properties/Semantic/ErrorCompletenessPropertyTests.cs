@@ -65,6 +65,23 @@ public class ErrorCompletenessPropertyTests
             "undefined function call", ProgramWithFunctionCall());
     }
 
+    [Fact]
+    public void OverrideSignatureMismatch_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectOverrideSignatureMismatch,
+            "override signature mismatch", ProgramWithClassHierarchy());
+    }
+
+    [Fact]
+    public void WrongConstructorArgs_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectWrongConstructorArgs,
+            "wrong constructor args", ProgramWithClassHierarchy());
+    }
+
+    private static Gen<Module> ProgramWithClassHierarchy() =>
+        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 1);
+
     private static Gen<Module> ProgramWithLenCall() =>
         GenTyped.ExpressionOfType(TypeEnv.Default, "int", fuel: 1).Select(inner =>
         {
