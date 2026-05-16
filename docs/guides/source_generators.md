@@ -436,7 +436,7 @@ def main() -> int:
 
 ### Always Handle the `None` Case
 
-A generator may be invoked on either a class or a function. Always check `target_class` / `target_function` before dereferencing:
+A generator may be invoked on a class, struct, or function. Structs populate `target_class` (as `ClassInfo`). Always check `target_class` / `target_function` before dereferencing:
 
 ```python
 def generate(self, context: GeneratorContext) -> GeneratorOutput:

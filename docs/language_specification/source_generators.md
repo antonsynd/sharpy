@@ -1,6 +1,6 @@
 # Source Generators
 
-Source generators let users write compile-time code generation in Sharpy itself. A class or function decorated with a generator bracket attribute (e.g., `@[GenerateEquals]`) triggers the compiler to invoke a user-defined generator, which produces additional Sharpy source code that is then merged into the compilation.
+Source generators let users write compile-time code generation in Sharpy itself. A class, struct, or function decorated with a generator bracket attribute (e.g., `@[GenerateEquals]`) triggers the compiler to invoke a user-defined generator, which produces additional Sharpy source code that is then merged into the compilation.
 
 Source generators provide a pragmatic metaprogramming escape hatch: they cover the same use cases as Python `@decorator` rewriters (serialization, builders, equality, instrumentation) without exposing raw AST manipulation. The generator runs once per decorated declaration, the produced source flows through the normal pipeline (parse → semantic → codegen), and there is no runtime reflection or attribute lookup involved.
 
@@ -17,7 +17,7 @@ Source generators sit between Sharpy's built-in `@dataclass` (compiler-recognize
 
 ## Trigger Syntax
 
-A source generator is invoked by applying its name as a bracket attribute (`@[...]`) on a class or function:
+A source generator is invoked by applying its name as a bracket attribute (`@[...]`) on a class, struct, or function:
 
 ```python
 @[generate_equals]
@@ -37,11 +37,14 @@ Generator triggers use the same `@[Name]` / `@[Name(args, key=value)]` syntax de
 
 ### Argument Restrictions
 
-Generator trigger arguments must be **compile-time constants**, the same restriction that applies to bracket attributes:
+Unlike plain bracket attributes (which require compile-time constant arguments), generator trigger arguments may be **any expression that evaluates to a literal value**. The compiler extracts the value at compile time and forwards it to the generator:
+
 - String, int, float, bool literals
 - `None` (passed as `null`)
 - Negative numeric literals (e.g., `-42`)
-- Enum member access
+- Expressions composed of literals (e.g., `1 + 2`)
+
+Non-literal arguments (variable references, function calls) are passed as their string representation via `ToString()`.
 
 Arguments are forwarded to the generator as a `list[object]` (positional) and `dict[str, object]` (keyword) on `GeneratorContext`.
 
@@ -91,8 +94,8 @@ The compiler builds a `GeneratorContext` for each trigger and passes it to `gene
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `target_class` | `ClassInfo?` | The decorated class, or `None` if the trigger was on a function |
-| `target_function` | `FunctionInfo?` | The decorated function, or `None` if the trigger was on a class |
+| `target_class` | `ClassInfo?` | The decorated class or struct (as `ClassInfo`), or `None` if the trigger was on a function |
+| `target_function` | `FunctionInfo?` | The decorated function, or `None` if the trigger was on a class or struct |
 | `arguments` | `list[object]` | Positional arguments from `@[Name(arg1, arg2)]` |
 | `keyword_arguments` | `dict[str, object]` | Keyword arguments from `@[Name(key=value)]` |
 | `module_name` | `str` | The fully-qualified module name (root namespace) of the target |
@@ -213,7 +216,7 @@ Severity values are `info`, `warning`, and `error`. Errors prevent compilation; 
 
 ## Compilation Model
 
-Source generation runs as a distinct phase **between** parsing and semantic analysis of the consuming files.
+Source generation runs as a distinct phase **after** semantic analysis of the original files and **before** code generation. This allows generators to receive fully type-resolved context (field types, method signatures) while ensuring the generated source is type-checked before codegen.
 
 ### Two-Stage Compilation
 
@@ -222,7 +225,7 @@ A project containing source generators is compiled in two stages:
 1. **Stage 1 — Generator Compilation.** All Sharpy files that *only* define source generators (subclasses of `SourceGenerator`) are compiled to .NET IL first.
 2. **Stage 2 — Target Compilation.** All other files are compiled. When the compiler encounters a generator trigger, it loads the Stage 1 assembly, instantiates the generator type, builds the `GeneratorContext`, and calls `generate`. The returned source string is parsed and merged into the target compilation unit.
 
-This staging is automatic — users do not configure it. The dependency graph is computed from `import` statements; any file that imports `sharpy.generators` or transitively depends on a `SourceGenerator` subclass is treated as a generator file.
+This staging is automatic — users do not configure it. During name resolution, any class that inherits from `SourceGenerator` is flagged, and files containing such classes are routed to Stage 1.
 
 ### File Separation Requirement
 
@@ -244,7 +247,7 @@ class Point:
     y: int
 ```
 
-Defining a generator and applying it within the same file is rejected because the generator would not yet be compiled to IL when its trigger is encountered.
+If a generator and its trigger appear in the same file, the file is treated as a generator file (Stage 1). The trigger is silently not processed because the generator pipeline only runs against application files (Stage 2). For clarity, always keep generators in dedicated files.
 
 ### One-Pass Rule (D6)
 
@@ -285,7 +288,7 @@ These are produced during semantic analysis, before the generator runs.
 | **SPY0550** | Error | Generator threw an exception, exceeded the size limit, or could not be instantiated |
 | **SPY0551** | Error | Generator exceeded the 30-second timeout |
 | **SPY0552** | Error | Generator returned source that failed to parse |
-| **SPY0553** | Error | Cycle detected: a generator emitted code that re-triggers itself transitively |
+| **SPY0553** | Error | Cycle detected: a generator bracket attribute applied to another source generator class |
 | **SPY0554** | Warning | Generator returned an empty (or whitespace-only) `source` |
 
 User-emitted diagnostics from `GeneratorDiagnostic` are wrapped with the generator name (e.g., `[GenerateEquals] Cannot generate ...`) and carry the position of the trigger.
