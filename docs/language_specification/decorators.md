@@ -257,6 +257,8 @@ Non-constant expressions (e.g., `1 + 2`, variable references, function calls oth
 
 **Note:** `@[final]` emits the C# attribute `[Final]` — it is NOT the Sharpy `@final` keyword. Bracket attributes and language decorators are completely separate.
 
+> **Source generators** also use `@[Name]` syntax. If a bracket attribute resolves to a class extending `SourceGenerator` (from `sharpy.generators`), the compiler invokes the generator at compile time and merges the produced Sharpy source into the compilation. See [source_generators.md](source_generators.md) for details.
+
 ### Examples
 
 ```python

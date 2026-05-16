@@ -252,6 +252,8 @@ See [inheritance.md](inheritance.md) for single class inheritance, multiple inte
 
 See [decorators.md](decorators.md) for @static, @virtual, @override, @abstract, @final, and access modifiers (@public, @private, @protected, @internal).
 
+See [source_generators.md](source_generators.md) for compile-time code generation via `@[GeneratorName]` bracket attributes, the `SourceGenerator` protocol, and the `GeneratorContext` API.
+
 ---
 
 ## Generics
