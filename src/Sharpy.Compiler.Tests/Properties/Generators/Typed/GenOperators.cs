@@ -4,12 +4,12 @@ namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 
 internal static class GenOperators
 {
-    private static readonly (string Dunder, string Op, bool IsBinary)[] BinaryOps =
+    private static readonly (string Dunder, string Op)[] BinaryOps =
     {
-        ("__add__", "+", true),
-        ("__sub__", "-", true),
-        ("__mul__", "*", true),
-        ("__mod__", "%", true),
+        ("__add__", "+"),
+        ("__sub__", "-"),
+        ("__mul__", "*"),
+        ("__mod__", "%"),
     };
 
     private static readonly (string Dunder, string Op)[] UnaryOps =
@@ -47,14 +47,14 @@ internal static class GenOperators
                     ""
                 };
 
-                var opsToUse = new List<(string Dunder, string Op, bool IsBinary)>();
+                var opsToUse = new List<(string Dunder, string Op)>();
                 for (int i = 0; i < opCount; i++)
                 {
                     var idx = (startIdx + i) % BinaryOps.Length;
                     opsToUse.Add(BinaryOps[idx]);
                 }
 
-                foreach (var (dunder, _, _) in opsToUse)
+                foreach (var (dunder, _) in opsToUse)
                 {
                     lines.Add($"    def {dunder}(self, other: Vec) -> Vec:");
                     lines.Add($"        return Vec(self.x + other.x, self.y + other.y)");
@@ -65,7 +65,7 @@ internal static class GenOperators
                 lines.Add("    a = Vec(1, 2)");
                 lines.Add("    b = Vec(3, 4)");
 
-                foreach (var (_, op, _) in opsToUse)
+                foreach (var (_, op) in opsToUse)
                 {
                     lines.Add($"    c = a {op} b");
                     lines.Add("    print(c.x)");
@@ -131,14 +131,26 @@ internal static class GenOperators
             return string.Join("\n", lines) + "\n";
         });
 
+    private static readonly (string Dunder, string Op)[] AdditiveOps =
+    {
+        ("__add__", "+"),
+        ("__sub__", "-"),
+    };
+
+    private static readonly (string Dunder, string Op)[] MultiplicativeOps =
+    {
+        ("__mul__", "*"),
+        ("__mod__", "%"),
+    };
+
     public static Gen<string> PrecedenceProgram() =>
         Gen.Select(
-            Gen.Int[0, 1],
-            Gen.Int[0, 1],
+            Gen.Int[0, AdditiveOps.Length - 1],
+            Gen.Int[0, MultiplicativeOps.Length - 1],
             (opIdx1, opIdx2) =>
             {
-                var op1 = BinaryOps[opIdx1]; // __add__ or __sub__
-                var op2 = BinaryOps[opIdx2 + 2]; // __mul__ or __mod__
+                var op1 = AdditiveOps[opIdx1];
+                var op2 = MultiplicativeOps[opIdx2];
 
                 var lines = new List<string>
                 {

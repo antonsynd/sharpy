@@ -108,8 +108,13 @@ internal static class GenVariance
                 "interface IBadProducer[out T]:",
                 "    def accept(self, item: T) -> None",
                 "",
+                $"class Producer(IBadProducer[{concreteType}]):",
+                $"    def accept(self, item: {concreteType}) -> None:",
+                "        pass",
+                "",
                 "def main():",
-                "    pass",
+                $"    p = Producer()",
+                $"    p.accept({DefaultLiteral(concreteType)})",
             };
 
             return string.Join("\n", lines) + "\n";
@@ -123,8 +128,13 @@ internal static class GenVariance
                 "interface IBadConsumer[in T]:",
                 "    def produce(self) -> T",
                 "",
+                $"class Consumer(IBadConsumer[{concreteType}]):",
+                $"    def produce(self) -> {concreteType}:",
+                $"        return {DefaultLiteral(concreteType)}",
+                "",
                 "def main():",
-                "    pass",
+                "    c = Consumer()",
+                "    print(c.produce())",
             };
 
             return string.Join("\n", lines) + "\n";
