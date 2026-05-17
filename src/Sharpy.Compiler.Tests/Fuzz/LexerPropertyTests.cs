@@ -10,6 +10,9 @@ namespace Sharpy.Compiler.Tests.Fuzz;
 /// specific outputs, catching off-by-one bugs, position tracking errors,
 /// and boundary violations across randomly generated inputs.
 /// </summary>
+[Trait("Category", "Property")]
+[Trait("Speed", "Slow")]
+[Collection("HeavyCompilation")]
 public class LexerPropertyTests
 {
     private readonly ITestOutputHelper _output;

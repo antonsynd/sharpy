@@ -8,6 +8,7 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
+[Collection("HeavyCompilation")]
 public class FunctionSemanticsPropertyTests
 {
     private readonly ITestOutputHelper _output;

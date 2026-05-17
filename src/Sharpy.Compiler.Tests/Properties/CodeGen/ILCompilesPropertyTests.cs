@@ -7,6 +7,8 @@ namespace Sharpy.Compiler.Tests.Properties.CodeGen;
 
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
+[Trait("Speed", "Slow")]
+[Collection("HeavyCompilation")]
 public class ILCompilesPropertyTests
 {
     private readonly ITestOutputHelper _output;

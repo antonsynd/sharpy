@@ -8,6 +8,8 @@ namespace Sharpy.Compiler.Tests.Properties.CodeGen;
 
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
+[Trait("Speed", "Slow")]
+[Collection("HeavyCompilation")]
 public class RoslynParseablePropertyTests
 {
     private readonly ITestOutputHelper _output;

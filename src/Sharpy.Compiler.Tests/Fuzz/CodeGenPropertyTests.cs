@@ -11,6 +11,9 @@ namespace Sharpy.Compiler.Tests.Fuzz;
 /// Verifies that programs that compile without Sharpy errors produce valid C#
 /// that parses and compiles without errors.
 /// </summary>
+[Trait("Category", "Property")]
+[Trait("Speed", "Slow")]
+[Collection("HeavyCompilation")]
 public class CodeGenPropertyTests
 {
     private readonly ITestOutputHelper _output;

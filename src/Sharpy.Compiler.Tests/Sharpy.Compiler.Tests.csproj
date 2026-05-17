@@ -36,6 +36,11 @@
     <Compile Remove="Integration\TestFixtures\**\*.cs" />
   </ItemGroup>
 
+  <!-- xUnit runner config (parallelism limits) -->
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- Copy test fixture files to output directory -->
   <ItemGroup>
     <None Include="Integration\TestFixtures\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Integration\TestFixtures" />

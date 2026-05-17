@@ -9,6 +9,8 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
+[Trait("Speed", "Slow")]
+[Collection("HeavyCompilation")]
 public class SemanticInfoConsistencyTests
 {
     private readonly ITestOutputHelper _output;

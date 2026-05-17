@@ -9,6 +9,7 @@ namespace Sharpy.Compiler.Tests.Properties.Metamorphic;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
+[Collection("HeavyCompilation")]
 public class MetamorphicPropertyTests : IntegrationTestBase
 {
     private static readonly IAstTransform[] Transforms =

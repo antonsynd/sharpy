@@ -9,6 +9,9 @@ namespace Sharpy.Compiler.Tests.Fuzz;
 /// These tests verify correctness invariants that should hold for any input:
 /// no internal compiler errors, deterministic diagnostics, and whitespace insensitivity.
 /// </summary>
+[Trait("Category", "Property")]
+[Trait("Speed", "Slow")]
+[Collection("HeavyCompilation")]
 public class SemanticPropertyTests
 {
     private readonly ITestOutputHelper _output;
