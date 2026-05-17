@@ -12,6 +12,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Integration tests for the 'try' expression, which wraps an expression in Result[T, E].
 /// try expr → Result[T, Exception], try[E] expr → Result[T, E].
 /// </summary>
+[Collection("HeavyCompilation")]
 public class TryExpressionTests : IntegrationTestBase
 {
     public TryExpressionTests(ITestOutputHelper output) : base(output)

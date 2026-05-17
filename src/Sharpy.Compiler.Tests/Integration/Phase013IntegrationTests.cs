@@ -7,6 +7,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Integration tests for Phase 0.1.3: Variable declarations, type inference, and const.
 /// These tests verify the full compilation pipeline for variable-related features.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class Phase013IntegrationTests : IntegrationTestBase
 {
     public Phase013IntegrationTests(ITestOutputHelper output) : base(output)

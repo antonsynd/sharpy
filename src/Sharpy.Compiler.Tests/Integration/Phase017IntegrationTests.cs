@@ -13,6 +13,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// - Dunder method override rules
 /// - Constructor chaining with super().__init__()
 /// </summary>
+[Collection("HeavyCompilation")]
 public class Phase017IntegrationTests : IntegrationTestBase
 {
     public Phase017IntegrationTests(ITestOutputHelper output) : base(output)

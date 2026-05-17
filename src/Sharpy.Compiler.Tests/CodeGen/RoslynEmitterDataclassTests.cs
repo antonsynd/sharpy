@@ -9,6 +9,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// Covers auto-property generation, constructor synthesis, Equals/GetHashCode synthesis,
 /// ToString synthesis, and dataclass inheritance.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class RoslynEmitterDataclassTests : IntegrationTestBase
 {
     public RoslynEmitterDataclassTests(ITestOutputHelper output) : base(output) { }

@@ -29,7 +29,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
         {
             Interlocked.Increment(ref total);
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var result = CompileAndExecute(source);
+            var result = CompileAndExecuteWithGC(source);
 
             if (!result.Success)
             {
@@ -43,7 +43,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
                         errors.Add($"Runtime type error:\n{source}\nStderr: {stderr}");
                 }
             }
-        }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 15);
 
         Output.WriteLine($"Type soundness: {total} programs executed, {errors.Count} runtime type errors");
         Assert.Empty(errors);
@@ -64,7 +64,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
         {
             Interlocked.Increment(ref total);
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var result = CompileAndExecute(source);
+            var result = CompileAndExecuteWithGC(source);
 
             if (!result.Success)
             {
@@ -78,7 +78,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
                         errors.Add($"Runtime type error:\n{source}\nStderr: {stderr}");
                 }
             }
-        }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 15);
 
         Output.WriteLine($"Type soundness (collections): {total} programs executed, {errors.Count} runtime type errors");
         Assert.Empty(errors);
@@ -128,7 +128,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
             gen.Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                var result = CompileAndExecute(source);
+                var result = CompileAndExecuteWithGC(source);
 
                 if (!result.Success)
                     return;

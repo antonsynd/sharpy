@@ -9,6 +9,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// Covers property getter/setter emission, read-only properties, auto-properties,
 /// static properties, and event declarations.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class RoslynEmitterPropertyTests : IntegrationTestBase
 {
     public RoslynEmitterPropertyTests(ITestOutputHelper output) : base(output) { }

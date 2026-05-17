@@ -13,6 +13,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// alongside warnings (see <see cref="IntegrationTestBase"/>) so these
 /// tests assert on hint content via the same channel.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class TransitionWarningValidatorIntegrationTests : IntegrationTestBase
 {
     public TransitionWarningValidatorIntegrationTests(ITestOutputHelper output) : base(output) { }

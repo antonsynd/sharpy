@@ -7,6 +7,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Integration tests for Phase 0.1.5: Function definitions and calls.
 /// These tests verify the full compilation pipeline for function-related features.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class Phase015IntegrationTests : IntegrationTestBase
 {
     public Phase015IntegrationTests(ITestOutputHelper output) : base(output)

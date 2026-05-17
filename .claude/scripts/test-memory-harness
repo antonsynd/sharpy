@@ -1,0 +1,110 @@
+#!/bin/bash
+# Memory harness: runs dotnet test with verbose output, samples RSS every second,
+# logs correlation of test names to memory usage, and auto-kills at threshold.
+#
+# Usage: .claude/scripts/test-memory-harness [--threshold MB] [--filter FILTER]
+# Default threshold: 36864 MB (36 GB)
+# Default filter: Category!=Benchmark
+
+set -uo pipefail
+
+THRESHOLD_MB=36864
+FILTER="Category!=Benchmark"
+PROJECT="src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --threshold) THRESHOLD_MB="$2"; shift 2 ;;
+        --filter) FILTER="$2"; shift 2 ;;
+        --project) PROJECT="$2"; shift 2 ;;
+        *) echo "Unknown arg: $1"; exit 1 ;;
+    esac
+done
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+LOG_DIR="$SCRIPT_DIR/../tmp"
+mkdir -p "$LOG_DIR"
+
+MEMORY_LOG="$LOG_DIR/memory-harness.log"
+TEST_LOG="$LOG_DIR/memory-harness-tests.log"
+
+echo "=== Memory Harness ===" | tee "$MEMORY_LOG"
+echo "Threshold: ${THRESHOLD_MB} MB" | tee -a "$MEMORY_LOG"
+echo "Filter: ${FILTER}" | tee -a "$MEMORY_LOG"
+echo "Project: ${PROJECT}" | tee -a "$MEMORY_LOG"
+echo "---" | tee -a "$MEMORY_LOG"
+
+cd "$REPO_ROOT"
+
+# Run dotnet test with detailed verbosity to see test names
+dotnet test "$PROJECT" --no-build --filter "$FILTER" \
+    --logger "console;verbosity=detailed" \
+    2>&1 > "$TEST_LOG" &
+TEST_PID=$!
+
+START_TIME=$(date +%s)
+PEAK_RSS=0
+KILLED=false
+
+# Monitor loop
+while kill -0 "$TEST_PID" 2>/dev/null; do
+    NOW=$(date +%s)
+    ELAPSED=$((NOW - START_TIME))
+
+    # Get RSS of the dotnet test process tree (macOS: KB, convert to MB)
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # Sum RSS of all child processes (dotnet test spawns workers)
+        TOTAL_RSS_KB=0
+        while IFS= read -r pid; do
+            RSS_KB=$(ps -o rss= -p "$pid" 2>/dev/null || echo "0")
+            RSS_KB="${RSS_KB// /}"
+            TOTAL_RSS_KB=$((TOTAL_RSS_KB + ${RSS_KB:-0}))
+        done < <(pgrep -P "$TEST_PID" 2>/dev/null; echo "$TEST_PID")
+        RSS_MB=$((TOTAL_RSS_KB / 1024))
+    else
+        RSS_KB=$(grep -s VmRSS /proc/$TEST_PID/status 2>/dev/null | awk '{print $2}' || echo "0")
+        RSS_MB=$((RSS_KB / 1024))
+    fi
+
+    if [[ $RSS_MB -gt $PEAK_RSS ]]; then
+        PEAK_RSS=$RSS_MB
+    fi
+
+    # Get last test that started (from log)
+    CURRENT_TEST=$(grep -E "^\s*(Starting|Passed|Failed)" "$TEST_LOG" 2>/dev/null | tail -1 | sed 's/^[[:space:]]*//' | cut -c1-100)
+
+    TIMESTAMP=$(printf "%dm%02ds" $((ELAPSED/60)) $((ELAPSED%60)))
+    echo "${TIMESTAMP} | RSS: ${RSS_MB} MB (peak: ${PEAK_RSS} MB) | ${CURRENT_TEST}" | tee -a "$MEMORY_LOG"
+
+    # Auto-kill check
+    if [[ $RSS_MB -gt $THRESHOLD_MB ]]; then
+        echo "" | tee -a "$MEMORY_LOG"
+        echo "!!! KILLED: RSS ${RSS_MB} MB exceeds threshold ${THRESHOLD_MB} MB !!!" | tee -a "$MEMORY_LOG"
+        echo "Last test: ${CURRENT_TEST}" | tee -a "$MEMORY_LOG"
+        kill "$TEST_PID" 2>/dev/null
+        sleep 1
+        kill -9 "$TEST_PID" 2>/dev/null
+        # Also kill child dotnet processes
+        pkill -P "$TEST_PID" 2>/dev/null
+        KILLED=true
+        break
+    fi
+
+    sleep 1
+done
+
+if [[ "$KILLED" != "true" ]]; then
+    wait "$TEST_PID" && TEST_EXIT=0 || TEST_EXIT=$?
+    END_TIME=$(date +%s)
+    DURATION=$((END_TIME - START_TIME))
+    echo "" | tee -a "$MEMORY_LOG"
+    echo "=== Completed ===" | tee -a "$MEMORY_LOG"
+    echo "Duration: ${DURATION}s" | tee -a "$MEMORY_LOG"
+    echo "Peak RSS: ${PEAK_RSS} MB" | tee -a "$MEMORY_LOG"
+    echo "Exit code: ${TEST_EXIT}" | tee -a "$MEMORY_LOG"
+fi
+
+echo ""
+echo "Logs: $MEMORY_LOG"
+echo "Test output: $TEST_LOG"

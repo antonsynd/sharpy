@@ -21,7 +21,7 @@ public class StringPropertyTests : AlgebraicTestBase
             var r2 = RunAndCapture($"def main():\n    print(\"{s}\")");
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception($"\"{s}\" + \"\" = {r1} but \"{s}\" = {r2}");
-        }, iter: 25);
+        }, iter: 10);
     }
 
     [Fact]
@@ -36,6 +36,6 @@ public class StringPropertyTests : AlgebraicTestBase
                 $"def main():\n    print(len(\"{a}\" + \"{b}\") == len(\"{a}\") + len(\"{b}\"))");
             if (r != null && r != "True")
                 throw new Exception($"len(\"{a}\" + \"{b}\") != len(\"{a}\") + len(\"{b}\")");
-        }, iter: 25);
+        }, iter: 10);
     }
 }

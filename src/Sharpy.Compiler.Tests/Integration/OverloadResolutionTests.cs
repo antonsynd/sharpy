@@ -6,6 +6,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <summary>
 /// Edge case tests for overload resolution in the Sharpy compiler.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class OverloadResolutionTests : IntegrationTestBase
 {
     public OverloadResolutionTests(ITestOutputHelper output) : base(output)

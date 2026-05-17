@@ -12,6 +12,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Integration tests for the validation pipeline.
 /// Verifies that the complete pipeline works correctly with real code.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class ValidationPipelineIntegrationTests
 {
     private (Module module, TypeChecker typeChecker) CompileAndCheck(string code)

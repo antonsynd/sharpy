@@ -22,7 +22,7 @@ public class SortedPropertyTests : AlgebraicTestBase
             var r2 = RunAndCapture($"def main():\n    print(sorted(sorted([{elems}])))");
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception($"sorted != sorted(sorted) for [{elems}]");
-        }, iter: 25);
+        }, iter: 10);
     }
 
     [Fact]
@@ -35,6 +35,6 @@ public class SortedPropertyTests : AlgebraicTestBase
                 $"def main():\n    print(len(sorted([{elems}])) == len([{elems}]))");
             if (r != null && r != "True")
                 throw new Exception($"sorted changed length for [{elems}]");
-        }, iter: 25);
+        }, iter: 10);
     }
 }

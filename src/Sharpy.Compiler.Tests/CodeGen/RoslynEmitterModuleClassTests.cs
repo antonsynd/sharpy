@@ -9,6 +9,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// Covers module-level variables as static fields, module-level functions as static methods,
 /// and entry point (main function) generation.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class RoslynEmitterModuleClassTests : IntegrationTestBase
 {
     public RoslynEmitterModuleClassTests(ITestOutputHelper output) : base(output) { }

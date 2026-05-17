@@ -6,6 +6,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <summary>
 /// Integration tests for control flow statements (if/elif/else, while, for).
 /// </summary>
+[Collection("HeavyCompilation")]
 public class ControlFlowTests : IntegrationTestBase
 {
     public ControlFlowTests(ITestOutputHelper output) : base(output)

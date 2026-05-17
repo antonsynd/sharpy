@@ -4,6 +4,7 @@ using Xunit.Abstractions;
 
 namespace Sharpy.Compiler.Tests.Analysis.ControlFlow;
 
+[Collection("HeavyCompilation")]
 public class DefiniteFieldAssignmentTests : IntegrationTestBase
 {
     public DefiniteFieldAssignmentTests(ITestOutputHelper output) : base(output) { }

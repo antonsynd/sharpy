@@ -27,6 +27,13 @@ public abstract class IntegrationTestBase
     private static readonly Lazy<(IReadOnlyList<MetadataReference> References, string? RuntimePath)> SharedReferences =
         new(BuildSharedReferences);
 
+    private static readonly Lazy<CSharpCompilation> SharedBaseCompilation =
+        new(() => CSharpCompilation.Create(
+            "SharpyTestAssembly",
+            Array.Empty<SyntaxTree>(),
+            SharedReferences.Value.References,
+            new CSharpCompilationOptions(OutputKind.ConsoleApplication)));
+
     private static (IReadOnlyList<MetadataReference> References, string? RuntimePath) BuildSharedReferences()
     {
         var references = new List<MetadataReference>
@@ -98,12 +105,38 @@ public abstract class IntegrationTestBase
     }
 
     /// <summary>
+    /// Compiles and executes, then forces a gen-2 GC to release Roslyn compilation state.
+    /// Use in tight loops (property tests) to prevent memory buildup.
+    /// </summary>
+    protected ExecutionResult CompileAndExecuteWithGC(string sharpySource, string fileName = "test.spy", int executionTimeoutMs = 0)
+    {
+        var result = CompileAndExecute(sharpySource, fileName, executionTimeoutMs);
+        GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+        GC.WaitForPendingFinalizers();
+        return result;
+    }
+
+    /// <summary>
     /// Compiles Sharpy source code to C# and executes it, returning the result.
+    /// Forces GC after each call to prevent memory buildup from Roslyn compilation state.
     /// </summary>
     /// <param name="sharpySource">The Sharpy source code to compile and execute.</param>
     /// <param name="fileName">The file name to use for the source (for error messages).</param>
     /// <param name="executionTimeoutMs">Optional timeout in milliseconds for execution. Default is no timeout (0). Use for tests that may have infinite loops.</param>
     protected ExecutionResult CompileAndExecute(string sharpySource, string fileName = "test.spy", int executionTimeoutMs = 0)
+    {
+        try
+        {
+            return CompileAndExecuteCore(sharpySource, fileName, executionTimeoutMs);
+        }
+        finally
+        {
+            GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+            GC.WaitForPendingFinalizers();
+        }
+    }
+
+    private ExecutionResult CompileAndExecuteCore(string sharpySource, string fileName, int executionTimeoutMs)
     {
         // Track path to Sharpy.Core for copying to temp execution directory
         string? runtimePath = null;
@@ -272,14 +305,9 @@ public abstract class IntegrationTestBase
             // Phase 5: Compile C# to assembly
             var syntaxTree = CSharpSyntaxTree.ParseText(generatedCSharp);
 
-            var (references, sharedRuntimePath) = SharedReferences.Value;
-            runtimePath = sharedRuntimePath;
+            runtimePath = SharedReferences.Value.RuntimePath;
 
-            var compilation = CSharpCompilation.Create(
-                "SharpyTestAssembly",
-                new[] { syntaxTree },
-                references,
-                new CSharpCompilationOptions(OutputKind.ConsoleApplication));
+            var compilation = SharedBaseCompilation.Value.AddSyntaxTrees(syntaxTree);
 
             using var ms = new MemoryStream();
             var emitResult = compilation.Emit(ms);
@@ -494,6 +522,19 @@ public abstract class IntegrationTestBase
     /// <param name="entryPointFile">The main entry point file (e.g., "main.spy").</param>
     /// <param name="executionTimeoutMs">Optional timeout in milliseconds for execution.</param>
     protected ExecutionResult CompileAndExecuteProject(string projectDir, string entryPointFile, int executionTimeoutMs = 0)
+    {
+        try
+        {
+            return CompileAndExecuteProjectCore(projectDir, entryPointFile, executionTimeoutMs);
+        }
+        finally
+        {
+            GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+            GC.WaitForPendingFinalizers();
+        }
+    }
+
+    private ExecutionResult CompileAndExecuteProjectCore(string projectDir, string entryPointFile, int executionTimeoutMs)
     {
         string? runtimePath = null;
 

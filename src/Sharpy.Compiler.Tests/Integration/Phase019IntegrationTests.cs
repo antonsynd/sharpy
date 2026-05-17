@@ -21,6 +21,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 ///
 /// See: #112 (semantic analysis for generic types)
 /// </summary>
+[Collection("HeavyCompilation")]
 public class Phase019IntegrationTests : IntegrationTestBase
 {
     public Phase019IntegrationTests(ITestOutputHelper output) : base(output)

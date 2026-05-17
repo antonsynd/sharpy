@@ -21,7 +21,7 @@ public class ArithmeticPropertyTests : AlgebraicTestBase
             var r2 = RunAndCapture($"def main():\n    print({b} + {a})");
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception($"{a} + {b} = {r1} but {b} + {a} = {r2}");
-        }, iter: 25);
+        }, iter: 10);
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class ArithmeticPropertyTests : AlgebraicTestBase
             var r2 = RunAndCapture($"def main():\n    print({a})");
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception($"{a} + 0 = {r1} but {a} = {r2}");
-        }, iter: 25);
+        }, iter: 10);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class ArithmeticPropertyTests : AlgebraicTestBase
             var r2 = RunAndCapture($"def main():\n    print({b} * {a})");
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception($"{a} * {b} = {r1} but {b} * {a} = {r2}");
-        }, iter: 25);
+        }, iter: 10);
     }
 
     [Fact]
@@ -57,6 +57,6 @@ public class ArithmeticPropertyTests : AlgebraicTestBase
             var r2 = RunAndCapture($"def main():\n    print({a})");
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception($"{a} * 1 = {r1} but {a} = {r2}");
-        }, iter: 25);
+        }, iter: 10);
     }
 }

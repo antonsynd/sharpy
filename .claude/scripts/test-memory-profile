@@ -1,0 +1,93 @@
+#!/bin/bash
+# Monitor peak RSS during dotnet test execution.
+# Usage: .claude/scripts/test-memory-profile [--threshold MB]
+#
+# Samples RSS of the dotnet test process every 2 seconds and reports:
+# - Peak RSS (MB)
+# - Average RSS (MB)
+# - Test duration
+# - PASS/FAIL against threshold (default: 6144 MB = 6 GB)
+
+set -euo pipefail
+
+THRESHOLD_MB=${1:-6144}
+if [[ "${1:-}" == "--threshold" ]]; then
+    THRESHOLD_MB=${2:-6144}
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+echo "=== Sharpy Test Suite Memory Profile ==="
+echo "Threshold: ${THRESHOLD_MB} MB"
+echo "Starting dotnet test..."
+
+cd "$REPO_ROOT"
+
+# Start dotnet test in background
+dotnet test --no-build --filter "Category!=Benchmark" 2>&1 > "$SCRIPT_DIR/../tmp/test-memory-profile.log" &
+TEST_PID=$!
+
+# Track RSS samples
+PEAK_RSS=0
+TOTAL_RSS=0
+SAMPLES=0
+START_TIME=$(date +%s)
+
+while kill -0 "$TEST_PID" 2>/dev/null; do
+    # Get RSS of dotnet process tree (in KB on macOS, convert to MB)
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # macOS: ps reports RSS in KB
+        RSS_KB=$(ps -o rss= -p "$TEST_PID" 2>/dev/null || echo "0")
+        RSS_MB=$((RSS_KB / 1024))
+    else
+        # Linux: read from /proc
+        RSS_KB=$(grep -s VmRSS /proc/$TEST_PID/status 2>/dev/null | awk '{print $2}' || echo "0")
+        RSS_MB=$((RSS_KB / 1024))
+    fi
+
+    if [[ $RSS_MB -gt 0 ]]; then
+        SAMPLES=$((SAMPLES + 1))
+        TOTAL_RSS=$((TOTAL_RSS + RSS_MB))
+        if [[ $RSS_MB -gt $PEAK_RSS ]]; then
+            PEAK_RSS=$RSS_MB
+        fi
+    fi
+
+    sleep 2
+done
+
+END_TIME=$(date +%s)
+DURATION=$((END_TIME - START_TIME))
+
+# Wait for test process and get exit code
+wait "$TEST_PID" && TEST_EXIT=0 || TEST_EXIT=$?
+
+echo ""
+echo "=== Memory Profile Results ==="
+echo "Duration: ${DURATION}s"
+echo "Samples: ${SAMPLES}"
+if [[ $SAMPLES -gt 0 ]]; then
+    AVG_RSS=$((TOTAL_RSS / SAMPLES))
+    echo "Peak RSS: ${PEAK_RSS} MB"
+    echo "Average RSS: ${AVG_RSS} MB"
+else
+    echo "Peak RSS: (no samples collected)"
+    AVG_RSS=0
+fi
+echo "Test exit code: ${TEST_EXIT}"
+echo ""
+
+if [[ $TEST_EXIT -ne 0 ]]; then
+    echo "FAIL: Tests failed (exit code ${TEST_EXIT})"
+    echo "See .claude/tmp/test-memory-profile.log for details"
+    exit 1
+fi
+
+if [[ $PEAK_RSS -gt $THRESHOLD_MB ]]; then
+    echo "FAIL: Peak RSS (${PEAK_RSS} MB) exceeds threshold (${THRESHOLD_MB} MB)"
+    exit 1
+else
+    echo "PASS: Peak RSS (${PEAK_RSS} MB) is within threshold (${THRESHOLD_MB} MB)"
+    exit 0
+fi

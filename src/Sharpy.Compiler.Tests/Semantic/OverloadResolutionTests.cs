@@ -10,6 +10,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// nullable unwrapping, variadic matching, default parameter expansion,
 /// ambiguity detection, and constructor overloading.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class OverloadResolutionTests : IntegrationTestBase
 {
     public OverloadResolutionTests(ITestOutputHelper output) : base(output) { }

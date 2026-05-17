@@ -7,6 +7,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Integration tests for Phase 0.1.4: Control flow statements (if/elif/else, while, for).
 /// These tests verify the full compilation pipeline for control flow features.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class Phase014IntegrationTests : IntegrationTestBase
 {
     public Phase014IntegrationTests(ITestOutputHelper output) : base(output)

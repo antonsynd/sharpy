@@ -13,6 +13,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// - Static methods
 /// - Class instantiation
 /// </summary>
+[Collection("HeavyCompilation")]
 public class Phase016IntegrationTests : IntegrationTestBase
 {
     public Phase016IntegrationTests(ITestOutputHelper output) : base(output)

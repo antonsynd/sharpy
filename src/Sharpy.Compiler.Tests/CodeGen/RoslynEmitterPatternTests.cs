@@ -9,6 +9,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// Covers match statements, match expressions, wildcards, guards, type patterns,
 /// binding patterns, and or-patterns.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class RoslynEmitterPatternTests : IntegrationTestBase
 {
     public RoslynEmitterPatternTests(ITestOutputHelper output) : base(output) { }

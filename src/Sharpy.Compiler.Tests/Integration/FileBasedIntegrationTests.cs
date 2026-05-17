@@ -56,6 +56,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 ///   - An empty .warning file (or one with only comments) asserts zero warnings
 ///   - Can be combined with .expected for output verification, or stand alone
 /// </summary>
+[Collection("HeavyCompilation")]
 public class FileBasedIntegrationTests : IntegrationTestBase
 {
     private static readonly string FixturesPath = FixtureDiscoveryHelper.FixturesPath;

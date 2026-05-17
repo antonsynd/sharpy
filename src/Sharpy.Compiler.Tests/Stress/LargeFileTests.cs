@@ -11,6 +11,7 @@ namespace Sharpy.Compiler.Tests.Stress;
 /// Stress tests for large-scale compiler inputs (Phase 6.1).
 /// These tests verify the compiler handles extreme inputs without crashing or timing out.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class LargeFileTests : IntegrationTestBase
 {
     public LargeFileTests(ITestOutputHelper output) : base(output) { }

@@ -6,6 +6,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <summary>
 /// Integration tests for basic Sharpy programs demonstrating core v0.1 features.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class BasicProgramTests : IntegrationTestBase
 {
     public BasicProgramTests(ITestOutputHelper output) : base(output)

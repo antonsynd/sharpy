@@ -8,6 +8,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// At the C# level, both NullableType and OptionalType map to T?, so 'maybe' is a semantic
 /// pass-through — the type checker enforces the distinction while generated code is unchanged.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class MaybeExpressionTests : IntegrationTestBase
 {
     public MaybeExpressionTests(ITestOutputHelper output) : base(output)

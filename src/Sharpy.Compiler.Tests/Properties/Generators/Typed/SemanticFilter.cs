@@ -19,6 +19,11 @@ internal static class SemanticFilter
             {
                 return false;
             }
+            finally
+            {
+                GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+                GC.WaitForPendingFinalizers();
+            }
         });
 
     public static Gen<Module> CompilableProgram(Gen<Module> source) =>
@@ -34,6 +39,11 @@ internal static class SemanticFilter
             catch
             {
                 return false;
+            }
+            finally
+            {
+                GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+                GC.WaitForPendingFinalizers();
             }
         });
 }

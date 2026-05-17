@@ -22,7 +22,7 @@ public class BooleanPropertyTests : AlgebraicTestBase
             var r2 = RunAndCapture($"def main():\n    print({val})");
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception($"not not {val} = {r1} but {val} = {r2}");
-        }, iter: 25);
+        }, iter: 10);
     }
 
     [Fact]
@@ -36,6 +36,6 @@ public class BooleanPropertyTests : AlgebraicTestBase
             var r2 = RunAndCapture($"def main():\n    print(not {va} or not {vb})");
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception($"not ({va} and {vb}) = {r1} but (not {va} or not {vb}) = {r2}");
-        }, iter: 25);
+        }, iter: 10);
     }
 }

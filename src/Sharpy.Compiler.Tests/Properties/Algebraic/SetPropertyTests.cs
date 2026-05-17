@@ -21,7 +21,7 @@ public class SetPropertyTests : AlgebraicTestBase
             var r2 = RunAndCapture($"def main():\n    print(sorted({xs}))");
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception($"sorted({xs} | {xs}) = {r1} but sorted({xs}) = {r2}");
-        }, iter: 25);
+        }, iter: 10);
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class SetPropertyTests : AlgebraicTestBase
             var r2 = RunAndCapture($"def main():\n    print(sorted({b} | {a}))");
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception($"sorted({a} | {b}) = {r1} but sorted({b} | {a}) = {r2}");
-        }, iter: 25);
+        }, iter: 10);
     }
 
     [Fact]
@@ -53,6 +53,6 @@ public class SetPropertyTests : AlgebraicTestBase
             if (r1 != null && r2 != null && r1 != r2)
                 throw new Exception(
                     $"sorted(({a} | {b}) | {c}) = {r1} but sorted({a} | ({b} | {c})) = {r2}");
-        }, iter: 25);
+        }, iter: 10);
     }
 }

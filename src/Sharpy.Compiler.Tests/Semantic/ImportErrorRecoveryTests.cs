@@ -13,6 +13,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// When a module import fails, error recovery symbols are injected to suppress
 /// "undefined identifier" errors that would otherwise cascade from the import failure.
 /// </summary>
+[Collection("HeavyCompilation")]
 public class ImportErrorRecoveryTests : IntegrationTestBase
 {
     public ImportErrorRecoveryTests(ITestOutputHelper output) : base(output)
