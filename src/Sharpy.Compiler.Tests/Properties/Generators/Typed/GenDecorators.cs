@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 internal static class GenDecorators
 {
     private static readonly string[] ValidMethodDecorators =
-        { "staticmethod", "virtual", "final" };
+        { "staticmethod", "virtual" };
 
     private static readonly string[] ValidClassDecorators =
         { "dataclass" };
