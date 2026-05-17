@@ -89,4 +89,14 @@ internal sealed record TypeEnv
             ImmutableArray.Create(("value", "T")))
         .WithGenericClass("Pair", ImmutableArray.Create("A", "B"),
             ImmutableArray.Create(("first", "A"), ("second", "B")));
+
+    public static TypeEnv WithInterfaces { get; } = Default
+        .WithClass("IAnimal", new ClassInfo(null,
+            ImmutableArray<(string, string)>.Empty,
+            ImmutableArray.Create(("speak", new FunctionSignature(
+                ImmutableArray<(string, string)>.Empty, "str")))))
+        .WithClass("IContainer", new ClassInfo(null,
+            ImmutableArray<(string, string)>.Empty,
+            ImmutableArray.Create(("size", new FunctionSignature(
+                ImmutableArray<(string, string)>.Empty, "int")))));
 }
