@@ -45,4 +45,37 @@ internal static class GenIdentifier
             : Gen.Frequency(
                 (3, Gen.OneOfConst(ctx.InScopeNames.ToArray())),
                 (1, Name));
+
+    private static readonly string[] BacktickContents =
+    {
+        "class", "for", "while", "if", "return", "import", "from",
+        "foo bar", "my variable", "hello world",
+        "αβγ", "δεζ", "кириллица", "日本語",
+        "item_1", "x y z", "123abc", "a+b",
+        "with spaces", "special!chars", "@property",
+        "yield", "async", "await", "match", "case",
+        "interface", "struct", "enum", "abstract"
+    };
+
+    public static Gen<string> BacktickContent { get; } =
+        Gen.OneOfConst(BacktickContents);
+
+    public static Gen<string> BacktickIdentifier { get; } =
+        BacktickContent.Select(content => $"`{content}`");
+
+    private static readonly string[] InvalidBacktickWithDot =
+    {
+        "sys.path", "os.path", "foo.bar", "a.b.c"
+    };
+
+    public static Gen<string> BacktickContentWithDot { get; } =
+        Gen.OneOfConst(InvalidBacktickWithDot);
+
+    private static readonly string[] InvalidBacktickWithNewline =
+    {
+        "foo\nbar", "hello\r\nworld", "line\nbreak"
+    };
+
+    public static Gen<string> BacktickContentWithNewline { get; } =
+        Gen.OneOfConst(InvalidBacktickWithNewline);
 }

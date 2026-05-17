@@ -29,4 +29,24 @@ internal sealed record GenContext
         Fuel = 5,
         InScopeNames = ImmutableArray.Create("x", "y", "z", "n", "s", "items", "result")
     };
+
+    public static GenContext HighFuel { get; } = new()
+    {
+        Fuel = 15,
+        InScopeNames = ImmutableArray.Create(
+            "x", "y", "z", "n", "s", "items", "result",
+            "a", "b", "c", "data", "value", "tmp", "acc"),
+        InFunction = true,
+        AllowAsync = true
+    };
+
+    public static GenContext DeepNesting { get; } = new()
+    {
+        Fuel = 20,
+        Depth = 0,
+        InScopeNames = ImmutableArray.Create(
+            "x", "y", "z", "n", "s", "items", "result"),
+        InFunction = true,
+        InLoop = true
+    };
 }
