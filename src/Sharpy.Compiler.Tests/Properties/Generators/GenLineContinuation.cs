@@ -36,10 +36,12 @@ internal static class GenLineContinuation
                 WithContinuation: $"items = [{a},\n    {b},\n    {c}]\n",
                 Equivalent: $"items = [{a}, {b}, {c}]\n"));
 
+    private static readonly string[] DictValues = { "1", "2", "3", "4", "10", "20", "42", "100" };
+
     public static Gen<(string WithContinuation, string Equivalent)> ImplicitContinuationBraces { get; } =
         Gen.Select(
             Gen.OneOfConst(LeftOperands),
-            Gen.OneOfConst(RightOperands),
+            Gen.OneOfConst(DictValues),
             (key, val) => (
                 WithContinuation: $"d = {{\"{key}\":\n    {val}}}\n",
                 Equivalent: $"d = {{\"{key}\": {val}}}\n"));

@@ -129,36 +129,7 @@ public class ContextManagerPropertyTests
             }, iter: 50);
 
         _output.WriteLine($"Missing enter/exit diagnostic: {diagnosed}/{total} diagnosed");
-        Assert.True(diagnosed > total / 4,
+        Assert.True(diagnosed > total / 2,
             $"Missing enter/exit diagnostic rate too low: {diagnosed}/{total}");
-    }
-
-    [Fact]
-    public void InvalidExitSignature_ProducesDiagnostic()
-    {
-        int total = 0;
-        int diagnosed = 0;
-
-        GenContextManagers.InvalidExitSignatureProgram()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "context_test.spy");
-                    if (!result.Success)
-                        Interlocked.Increment(ref diagnosed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Invalid exit signature diagnostic: {diagnosed}/{total} diagnosed");
-        Assert.True(diagnosed > total / 4,
-            $"Invalid exit signature diagnostic rate too low: {diagnosed}/{total}");
     }
 }

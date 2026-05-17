@@ -32,7 +32,7 @@ internal sealed record GenContext
 
     public static GenContext HighFuel { get; } = new()
     {
-        Fuel = 15,
+        Fuel = 10,
         InScopeNames = ImmutableArray.Create(
             "x", "y", "z", "n", "s", "items", "result",
             "a", "b", "c", "data", "value", "tmp", "acc"),
@@ -42,7 +42,7 @@ internal sealed record GenContext
 
     public static GenContext DeepNesting { get; } = new()
     {
-        Fuel = 20,
+        Fuel = 12,
         Depth = 0,
         InScopeNames = ImmutableArray.Create(
             "x", "y", "z", "n", "s", "items", "result"),

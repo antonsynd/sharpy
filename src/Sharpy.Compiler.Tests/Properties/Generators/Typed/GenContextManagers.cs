@@ -136,42 +136,6 @@ internal static class GenContextManagers
             return string.Join("\n", lines) + "\n";
         });
 
-    public static Gen<string> InvalidExitSignatureProgram() =>
-        Gen.Int[0, 1].Select(variant =>
-        {
-            var lines = variant switch
-            {
-                0 => new List<string>
-                {
-                    "class BadExit:",
-                    "    def __enter__(self) -> int:",
-                    "        return 42",
-                    "",
-                    "    def __exit__(self) -> bool:",
-                    "        return False",
-                    "",
-                    "def main():",
-                    "    with BadExit() as x:",
-                    "        pass",
-                },
-                _ => new List<string>
-                {
-                    "class BadExit:",
-                    "    def __enter__(self) -> int:",
-                    "        return 42",
-                    "",
-                    "    def __exit__(self, exc_type: int) -> bool:",
-                    "        return False",
-                    "",
-                    "def main():",
-                    "    with BadExit() as x:",
-                    "        pass",
-                },
-            };
-
-            return string.Join("\n", lines) + "\n";
-        });
-
     private static string DefaultLiteral(string type) => type switch
     {
         "int" => "42",

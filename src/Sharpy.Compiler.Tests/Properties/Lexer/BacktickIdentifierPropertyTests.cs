@@ -60,12 +60,11 @@ public class BacktickIdentifierPropertyTests
                     $"Expected DotInBacktickIdentifier error for: `{content}`");
 
             var hasDotError = lexer.Diagnostics.GetErrors()
-                .Any(e => e.Message.Contains("dot") || e.Message.Contains("Dot") ||
-                          e.Code == "SPY0025");
+                .Any(e => e.Code == "SPY0025");
 
             if (!hasDotError)
                 throw new Exception(
-                    $"Expected dot-related error for: `{content}`, got: {lexer.Diagnostics.GetErrors().First().Message}");
+                    $"Expected SPY0025 (DotInBacktickIdentifier) for: `{content}`, got: {lexer.Diagnostics.GetErrors().First().Code} {lexer.Diagnostics.GetErrors().First().Message}");
         }, print: s => s, iter: 50);
     }
 

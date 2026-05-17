@@ -10,6 +10,7 @@ namespace Sharpy.Compiler.Tests.Properties.Stress;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
+[Collection("StressTests")]
 public class LargeProgramPropertyTests
 {
     private readonly ITestOutputHelper _output;
@@ -19,7 +20,7 @@ public class LargeProgramPropertyTests
         _output = output;
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)]
     public void HighFuelPrograms_LexerParserDoNotCrash()
     {
         int completed = 0;
@@ -39,7 +40,7 @@ public class LargeProgramPropertyTests
         Assert.True(completed > 0, "No high-fuel programs completed");
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)]
     public void DeepNestingPrograms_LexerParserDoNotCrash()
     {
         int completed = 0;
@@ -59,7 +60,7 @@ public class LargeProgramPropertyTests
         Assert.True(completed > 0, "No deep-nesting programs completed");
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)]
     public void ManyDefinitions_SemanticAnalysisCompletes()
     {
         int total = 0;
@@ -94,7 +95,7 @@ public class LargeProgramPropertyTests
         Assert.True(total > 0, "No multi-definition programs generated");
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)]
     public void DeeplyNestedExpressions_ParserHandlesCorrectly()
     {
         Gen.Int[10, 30].SelectMany(depth =>
@@ -117,7 +118,7 @@ public class LargeProgramPropertyTests
         }, iter: 50);
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)]
     public void ManyParameters_NoStackOverflow()
     {
         Gen.Int[5, 25].SelectMany(paramCount =>
