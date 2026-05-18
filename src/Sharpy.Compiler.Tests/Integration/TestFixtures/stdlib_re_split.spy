@@ -1,0 +1,13 @@
+# Test re module: split
+import re
+
+def main():
+    # Basic split
+    parts = re.split("\\W+", "one two three")
+    for p in parts:
+        print(p)
+
+    # Split with maxsplit
+    parts2 = re.split("\\W+", "one two three four", maxsplit=2)
+    for p in parts2:
+        print(p)

@@ -1,0 +1,26 @@
+# Test re module: compiled patterns and pattern properties
+import re
+
+def main():
+    # Compile and use
+    p = re.compile("\\d+")
+    m = p.search("abc123")
+    if m is not None:
+        print(m.group())
+
+    # Pattern properties
+    p2 = re.compile("(?P<year>\\d{4})-(?P<month>\\d{2})")
+    print(p2.pattern)
+    print(p2.groups)
+    gi = p2.groupindex
+    print(gi["year"])
+    print(gi["month"])
+
+    # Compiled sub
+    p3 = re.compile("\\d+")
+    print(p3.sub("N", "a1b2"))
+
+    # Compiled split
+    parts = p3.split("a1b2c3")
+    for part in parts:
+        print(part)

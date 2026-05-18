@@ -1,0 +1,15 @@
+# Test re module: findall and finditer
+import re
+
+def main():
+    # Findall without groups
+    results = re.findall("\\d+", "a1b22c333")
+    print(len(results))
+    for r in results:
+        print(r)
+
+    # Finditer
+    matches = re.finditer("\\d+", "a1b22c333")
+    for m in matches:
+        print(m.group())
+        print(m.span())

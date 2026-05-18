@@ -1,0 +1,27 @@
+# Test re module: sub and subn with string and callable replacement
+import re
+
+def main():
+    # String replacement
+    print(re.sub("\\d+", "NUM", "a1b2c3"))
+
+    # String replacement with count
+    print(re.sub("\\d+", "NUM", "a1b2c3", count=1))
+
+    # Callable replacement
+    result: str = re.sub("\\w+", lambda m: m.group().upper(), "hello world")
+    print(result)
+
+    # subn returns replacement count
+    text: str
+    count: int
+    text, count = re.subn("\\d+", "NUM", "a1b2c3")
+    print(text)
+    print(count)
+
+    # subn with no match
+    text2: str
+    count2: int
+    text2, count2 = re.subn("\\d+", "NUM", "abc")
+    print(text2)
+    print(count2)

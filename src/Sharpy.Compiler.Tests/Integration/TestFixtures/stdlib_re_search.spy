@@ -1,0 +1,37 @@
+# Test re module: search, match, fullmatch with groups and flags
+import re
+
+def main():
+    # Basic search
+    m = re.search("\\d+", "abc123def")
+    if m is not None:
+        print(m.group())
+        print(m.start())
+        print(m.end())
+
+    # Search with named groups
+    m2 = re.search("(?P<first>\\w+)\\s(?P<last>\\w+)", "hello world")
+    if m2 is not None:
+        print(m2.group(1))
+        print(m2.group(2))
+        print(m2.group("first"))
+        print(m2.group("last"))
+
+    # Match (anchored at start)
+    m3 = re.match("\\d+", "123abc")
+    if m3 is not None:
+        print(m3.group())
+
+    # Match fails when not at start
+    m4 = re.match("\\d+", "abc123")
+    print(m4 is None)
+
+    # Fullmatch
+    m5 = re.fullmatch("\\d+", "12345")
+    if m5 is not None:
+        print(m5.group())
+
+    # Case-insensitive search
+    m6 = re.search("hello", "HELLO WORLD", re.IGNORECASE)
+    if m6 is not None:
+        print(m6.group())
