@@ -6,10 +6,11 @@ namespace Sharpy
     /// <summary>
     /// Wraps a .NET <see cref="System.Text.RegularExpressions.Match"/> with Python-compatible API.
     /// </summary>
+    [SharpyModuleType("re", "Match")]
     public sealed class ReMatch
     {
         private readonly System.Text.RegularExpressions.Match _match;
-        private readonly Regex? _compiledRegex;
+        private readonly RePattern? _pattern;
 
         /// <summary>The input string.</summary>
         public string String { get; }
@@ -23,14 +24,17 @@ namespace Sharpy
         /// <summary>The end position of the search.</summary>
         public int Endpos { get; }
 
-        internal ReMatch(System.Text.RegularExpressions.Match match, string input, string pattern, int pos, int endpos, Regex? compiledRegex = null)
+        /// <summary>The compiled pattern object that produced this match, or null.</summary>
+        public RePattern? Re => _pattern;
+
+        internal ReMatch(System.Text.RegularExpressions.Match match, string input, string pattern, int pos, int endpos, RePattern? compiledPattern = null)
         {
             _match = match;
             String = input;
             Pattern = pattern;
             Pos = pos;
             Endpos = endpos;
-            _compiledRegex = compiledRegex;
+            _pattern = compiledPattern;
         }
 
         /// <summary>
@@ -123,10 +127,108 @@ namespace Sharpy
             return (Start(group), End(group));
         }
 
+        /// <summary>
+        /// The integer index of the last matched capturing group, or null if no group matched.
+        /// </summary>
+        public int? Lastindex
+        {
+            get
+            {
+                for (int i = _match.Groups.Count - 1; i >= 1; i--)
+                {
+                    if (_match.Groups[i].Success)
+                        return i;
+                }
+
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// The name of the last matched capturing group, or null if unnamed or no group matched.
+        /// </summary>
+        public string? Lastgroup
+        {
+            get
+            {
+                var idx = Lastindex;
+                if (idx == null)
+                    return null;
+                var regex = _pattern?.InternalRegex;
+                if (regex == null)
+                    return null;
+                string name = regex.GroupNameFromNumber(idx.Value);
+                // If the name is just the numeric index, it's unnamed
+                if (name == idx.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                    return null;
+                return name;
+            }
+        }
+
+        /// <summary>
+        /// Return the string obtained by doing backslash substitution on the template.
+        /// Supports \1, \2, ... and \g&lt;name&gt; references.
+        /// </summary>
+        public string Expand(string template)
+        {
+            string translated = TranslateTemplate(template);
+            return _match.Result(translated);
+        }
+
+        /// <summary>Access group by index. Equivalent to Group(n).</summary>
+        public string? this[int n] => Group(n);
+
+        private static string TranslateTemplate(string template)
+        {
+            var sb = new System.Text.StringBuilder(template.Length);
+            int i = 0;
+            while (i < template.Length)
+            {
+                if (template[i] == '\\' && i + 1 < template.Length)
+                {
+                    if (template[i + 1] == 'g' && i + 2 < template.Length && template[i + 2] == '<')
+                    {
+                        // \g<name> → ${name}
+                        i += 3;
+                        int nameStart = i;
+                        while (i < template.Length && template[i] != '>')
+                            i++;
+                        string name = template.Substring(nameStart, i - nameStart);
+                        sb.Append("${");
+                        sb.Append(name);
+                        sb.Append('}');
+                        if (i < template.Length)
+                            i++;
+                        continue;
+                    }
+
+                    if (char.IsDigit(template[i + 1]))
+                    {
+                        // \N → $N
+                        sb.Append('$');
+                        sb.Append(template[i + 1]);
+                        i += 2;
+                        continue;
+                    }
+
+                    // Other escapes: pass through
+                    sb.Append(template[i]);
+                    sb.Append(template[i + 1]);
+                    i += 2;
+                    continue;
+                }
+
+                sb.Append(template[i]);
+                i++;
+            }
+
+            return sb.ToString();
+        }
+
         private string[] GetGroupNames()
         {
-            // Use cached regex if available, otherwise compile once
-            var regex = _compiledRegex ?? new Regex(RePatternTranslator.Translate(Pattern));
+            // Use compiled pattern's regex if available, otherwise compile once
+            var regex = _pattern?.InternalRegex ?? new Regex(RePatternTranslator.Translate(Pattern));
             var names = regex.GetGroupNames();
             // Filter out numeric-only names (those are unnamed groups)
             var named = new System.Collections.Generic.List<string>();

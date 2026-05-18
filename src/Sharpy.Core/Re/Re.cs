@@ -28,6 +28,24 @@ namespace Sharpy
         /// <summary>Shorthand for DOTALL.</summary>
         public const int S = 16;
 
+        /// <summary>Allow verbose regex with comments and whitespace.</summary>
+        public const int VERBOSE = 64;
+
+        /// <summary>Shorthand for VERBOSE.</summary>
+        public const int X = 64;
+
+        /// <summary>Make \w, \b, etc. match Unicode (default on .NET, accepted for compatibility).</summary>
+        public const int UNICODE = 32;
+
+        /// <summary>Shorthand for UNICODE.</summary>
+        public const int U = 32;
+
+        /// <summary>Make \w, \b, etc. match ASCII only (no-op on .NET, accepted for compatibility).</summary>
+        public const int ASCII = 256;
+
+        /// <summary>Shorthand for ASCII.</summary>
+        public const int A = 256;
+
         /// <summary>
         /// Compile a pattern into a RePattern object.
         /// </summary>
@@ -121,6 +139,38 @@ namespace Sharpy
         public static List<string> Split(string pattern, string s, int maxsplit = 0, int flags = 0)
         {
             return Compile(pattern, flags).Split(s, maxsplit);
+        }
+
+        /// <summary>
+        /// Like sub(), but returns a tuple (new_string, number_of_subs_made).
+        /// </summary>
+        public static (string, int) Subn(string pattern, string repl, string s, int count = 0, int flags = 0)
+        {
+            return Compile(pattern, flags).Subn(repl, s, count);
+        }
+
+        /// <summary>
+        /// Return the string obtained by replacing occurrences using a callable.
+        /// The callable receives the match object and returns the replacement string.
+        /// </summary>
+        public static string Sub(string pattern, Func<ReMatch, string> repl, string s, int count = 0, int flags = 0)
+        {
+            return Compile(pattern, flags).Sub(repl, s, count);
+        }
+
+        /// <summary>
+        /// Like sub() with callable, but returns a tuple (new_string, number_of_subs_made).
+        /// </summary>
+        public static (string, int) Subn(string pattern, Func<ReMatch, string> repl, string s, int count = 0, int flags = 0)
+        {
+            return Compile(pattern, flags).Subn(repl, s, count);
+        }
+
+        /// <summary>
+        /// Clear the regular expression cache. No-op on .NET (no internal cache).
+        /// </summary>
+        public static void Purge()
+        {
         }
 
         /// <summary>

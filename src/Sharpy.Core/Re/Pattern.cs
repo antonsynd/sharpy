@@ -7,6 +7,7 @@ namespace Sharpy
     /// <summary>
     /// Compiled regular expression pattern, wrapping .NET's Regex.
     /// </summary>
+    [SharpyModuleType("re", "Pattern")]
     public sealed class RePattern
     {
         private readonly Regex _regex;
@@ -17,12 +18,49 @@ namespace Sharpy
         /// <summary>The flags used to compile this pattern.</summary>
         public int Flags { get; }
 
+        /// <summary>The pattern string (Python-compatible alias for PatternStr).</summary>
+        public string Pattern => PatternStr;
+
+        /// <summary>The number of capturing groups in the pattern.</summary>
+        public int Groups => _regex.GetGroupNumbers().Length - 1;
+
+        /// <summary>
+        /// A dictionary mapping named group names to group numbers.
+        /// </summary>
+        public Dict<string, int> Groupindex
+        {
+            get
+            {
+                var result = new Dict<string, int>();
+                foreach (string name in _regex.GetGroupNames())
+                {
+                    if (!int.TryParse(name, System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture, out _))
+                    {
+                        result[name] = _regex.GroupNumberFromName(name);
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        /// <summary>The internal .NET Regex object.</summary>
+        internal Regex InternalRegex => _regex;
+
         internal RePattern(string pattern, int flags)
         {
             PatternStr = pattern;
             Flags = flags;
             string translated = RePatternTranslator.Translate(pattern);
-            _regex = new Regex(translated, FlagsToOptions(flags));
+            try
+            {
+                _regex = new Regex(translated, FlagsToOptions(flags));
+            }
+            catch (ArgumentException ex)
+            {
+                throw new ReError(ex.Message, pattern);
+            }
         }
 
         /// <summary>
@@ -34,7 +72,7 @@ namespace Sharpy
             var m = _regex.Match(target, pos);
             if (!m.Success)
                 return null;
-            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos, _regex);
+            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos, this);
         }
 
         /// <summary>
@@ -46,7 +84,7 @@ namespace Sharpy
             var m = _regex.Match(target, pos);
             if (!m.Success || m.Index != pos)
                 return null;
-            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos, _regex);
+            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos, this);
         }
 
         /// <summary>
@@ -58,7 +96,7 @@ namespace Sharpy
             var m = _regex.Match(target, pos);
             if (!m.Success || m.Index != pos || m.Length != target.Length - pos)
                 return null;
-            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos, _regex);
+            return new ReMatch(m, s, PatternStr, pos, endpos < 0 ? s.Length : endpos, this);
         }
 
         /// <summary>
@@ -116,7 +154,7 @@ namespace Sharpy
             {
                 if (m.Index < pos)
                     continue;
-                result.Append(new ReMatch(m, s, PatternStr, pos, actualEndpos, _regex));
+                result.Append(new ReMatch(m, s, PatternStr, pos, actualEndpos, this));
             }
 
             return result;
@@ -133,6 +171,67 @@ namespace Sharpy
             }
 
             return _regex.Replace(s, repl, count);
+        }
+
+        /// <summary>
+        /// Like Sub(), but returns a tuple (new_string, number_of_subs_made).
+        /// </summary>
+        public (string, int) Subn(string repl, string s, int count = 0)
+        {
+            int replacementCount = 0;
+            string result;
+            if (count == 0)
+            {
+                result = _regex.Replace(s, m =>
+                {
+                    replacementCount++;
+                    return m.Result(repl);
+                });
+            }
+            else
+            {
+                result = _regex.Replace(s, m =>
+                {
+                    replacementCount++;
+                    return m.Result(repl);
+                }, count);
+            }
+
+            return (result, replacementCount);
+        }
+
+        /// <summary>
+        /// Return the string obtained by replacing occurrences using a callable.
+        /// The callable receives the match object and returns the replacement string.
+        /// </summary>
+        public string Sub(Func<ReMatch, string> repl, string s, int count = 0)
+        {
+            int replaced = 0;
+            return _regex.Replace(s, m =>
+            {
+                if (count > 0 && replaced >= count)
+                    return m.Value;
+                replaced++;
+                var reMatch = new ReMatch(m, s, PatternStr, 0, s.Length, this);
+                return repl(reMatch);
+            });
+        }
+
+        /// <summary>
+        /// Like Sub() with callable, but returns a tuple (new_string, number_of_subs_made).
+        /// </summary>
+        public (string, int) Subn(Func<ReMatch, string> repl, string s, int count = 0)
+        {
+            int replacementCount = 0;
+            string result = _regex.Replace(s, m =>
+            {
+                if (count > 0 && replacementCount >= count)
+                    return m.Value;
+                replacementCount++;
+                var reMatch = new ReMatch(m, s, PatternStr, 0, s.Length, this);
+                return repl(reMatch);
+            });
+            return (result, replacementCount);
         }
 
         /// <summary>
@@ -190,6 +289,12 @@ namespace Sharpy
                 options |= RegexOptions.Singleline;
             }
 
+            if ((flags & Re.VERBOSE) != 0)
+            {
+                options |= RegexOptions.IgnorePatternWhitespace;
+            }
+
+            // ASCII and UNICODE are no-ops on .NET — accepted for compatibility
             return options;
         }
     }

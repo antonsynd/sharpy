@@ -393,5 +393,159 @@ namespace Sharpy.Tests
         }
 
         #endregion
+
+        #region VERBOSE Flag
+
+        [Fact]
+        public void Search_VerboseFlag_IgnoresWhitespaceAndComments()
+        {
+            // Pattern with comments and whitespace — VERBOSE mode
+            string pattern = @"
+                \d+   # one or more digits
+                \s*   # optional whitespace
+                \w+   # one or more word chars
+            ";
+            var m = Re.Search(pattern, "123 hello", flags: Re.VERBOSE);
+            Assert.NotNull(m);
+            Assert.Equal("123 hello", m!.Group());
+        }
+
+        [Fact]
+        public void Search_VerboseShorthand_Works()
+        {
+            var m = Re.Search(@"\d+  # digits", "abc 42", flags: Re.X);
+            Assert.NotNull(m);
+            Assert.Equal("42", m!.Group());
+        }
+
+        #endregion
+
+        #region ASCII/UNICODE Flags (no-op on .NET)
+
+        [Fact]
+        public void Search_AsciiFlag_AcceptedWithoutError()
+        {
+            var m = Re.Search(@"\w+", "hello", flags: Re.ASCII);
+            Assert.NotNull(m);
+            Assert.Equal("hello", m!.Group());
+        }
+
+        [Fact]
+        public void Search_UnicodeFlag_AcceptedWithoutError()
+        {
+            var m = Re.Search(@"\w+", "hello", flags: Re.UNICODE);
+            Assert.NotNull(m);
+            Assert.Equal("hello", m!.Group());
+        }
+
+        [Fact]
+        public void FlagConstants_HaveCorrectValues()
+        {
+            Assert.Equal(2, Re.IGNORECASE);
+            Assert.Equal(2, Re.I);
+            Assert.Equal(8, Re.MULTILINE);
+            Assert.Equal(8, Re.M);
+            Assert.Equal(16, Re.DOTALL);
+            Assert.Equal(16, Re.S);
+            Assert.Equal(32, Re.UNICODE);
+            Assert.Equal(32, Re.U);
+            Assert.Equal(64, Re.VERBOSE);
+            Assert.Equal(64, Re.X);
+            Assert.Equal(256, Re.ASCII);
+            Assert.Equal(256, Re.A);
+        }
+
+        #endregion
+
+        #region Subn
+
+        [Fact]
+        public void Subn_Basic_ReturnsStringAndCount()
+        {
+            var (result, count) = Re.Subn(@"\d+", "NUM", "abc 123 def 456");
+            Assert.Equal("abc NUM def NUM", result);
+            Assert.Equal(2, count);
+        }
+
+        [Fact]
+        public void Subn_WithCount_LimitsReplacements()
+        {
+            var (result, count) = Re.Subn(@"\d+", "NUM", "abc 123 def 456", count: 1);
+            Assert.Equal("abc NUM def 456", result);
+            Assert.Equal(1, count);
+        }
+
+        [Fact]
+        public void Subn_NoMatch_ReturnsOriginalAndZero()
+        {
+            var (result, count) = Re.Subn(@"\d+", "NUM", "no digits");
+            Assert.Equal("no digits", result);
+            Assert.Equal(0, count);
+        }
+
+        #endregion
+
+        #region Purge
+
+        [Fact]
+        public void Purge_DoesNotThrow()
+        {
+            // Purge is a no-op on .NET — just verify it doesn't throw
+            Re.Purge();
+        }
+
+        #endregion
+
+        #region Callable Sub
+
+        [Fact]
+        public void Sub_Callable_ReplacesWithLambdaResult()
+        {
+            string result = Re.Sub(@"\d+", m => m.Group()!.ToUpperInvariant() + "!", "abc 123 def 456");
+            Assert.Equal("abc 123! def 456!", result);
+        }
+
+        [Fact]
+        public void Sub_Callable_WithCount_LimitsReplacements()
+        {
+            string result = Re.Sub(@"\d+", m => "X", "a1b2c3", count: 2);
+            Assert.Equal("aXbXc3", result);
+        }
+
+        [Fact]
+        public void Sub_Callable_MatchObjectHasCorrectGroup()
+        {
+            var groups = new System.Collections.Generic.List<string>();
+            Re.Sub(@"(\w+)", m =>
+            {
+                groups.Add(m.Group()!);
+                return "X";
+            }, "hello world");
+            Assert.Equal(2, groups.Count);
+            Assert.Equal("hello", groups[0]);
+            Assert.Equal("world", groups[1]);
+        }
+
+        #endregion
+
+        #region Callable Subn
+
+        [Fact]
+        public void Subn_Callable_ReturnsStringAndCount()
+        {
+            var (result, count) = Re.Subn(@"\d+", m => "N", "a1b2c3");
+            Assert.Equal("aNbNcN", result);
+            Assert.Equal(3, count);
+        }
+
+        [Fact]
+        public void Subn_Callable_WithCount_LimitsReplacements()
+        {
+            var (result, count) = Re.Subn(@"\d+", m => "N", "a1b2c3", count: 1);
+            Assert.Equal("aNb2c3", result);
+            Assert.Equal(1, count);
+        }
+
+        #endregion
     }
 }

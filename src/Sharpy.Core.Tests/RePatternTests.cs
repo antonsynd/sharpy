@@ -358,5 +358,386 @@ namespace Sharpy.Tests
         }
 
         #endregion
+
+        #region ReMatch.Re Property
+
+        [Fact]
+        public void Match_Re_ReturnsCompiledPattern()
+        {
+            var pattern = Re.Compile(@"\d+");
+            var m = pattern.Search("abc 123");
+            Assert.NotNull(m);
+            Assert.Same(pattern, m!.Re);
+        }
+
+        [Fact]
+        public void Match_Re_FromStaticApi_IsNotNull()
+        {
+            var m = Re.Search(@"\d+", "abc 123");
+            Assert.NotNull(m);
+            Assert.NotNull(m!.Re);
+        }
+
+        #endregion
+
+        #region Lastindex / Lastgroup
+
+        [Fact]
+        public void Match_Lastindex_ReturnsLastMatchedGroupIndex()
+        {
+            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            Assert.NotNull(m);
+            Assert.Equal(2, m!.Lastindex);
+        }
+
+        [Fact]
+        public void Match_Lastindex_NoGroups_ReturnsNull()
+        {
+            var m = Re.Search(@"\w+", "hello");
+            Assert.NotNull(m);
+            Assert.Null(m!.Lastindex);
+        }
+
+        [Fact]
+        public void Match_Lastindex_FirstAlternative_ReturnsCorrectIndex()
+        {
+            // Only the first alternative matches → group 1 is the last matched
+            var m = Re.Search(@"(\w+)|(\d+)", "hello");
+            Assert.NotNull(m);
+            Assert.Equal(1, m!.Lastindex);
+        }
+
+        [Fact]
+        public void Match_Lastgroup_NamedGroup_ReturnsName()
+        {
+            var pattern = Re.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
+            var m = pattern.Search("hello world");
+            Assert.NotNull(m);
+            Assert.Equal("last", m!.Lastgroup);
+        }
+
+        [Fact]
+        public void Match_Lastgroup_UnnamedGroup_ReturnsNull()
+        {
+            var pattern = Re.Compile(@"(\w+)\s(\w+)");
+            var m = pattern.Search("hello world");
+            Assert.NotNull(m);
+            Assert.Null(m!.Lastgroup);
+        }
+
+        [Fact]
+        public void Match_Lastgroup_NoGroups_ReturnsNull()
+        {
+            var pattern = Re.Compile(@"\w+");
+            var m = pattern.Search("hello");
+            Assert.NotNull(m);
+            Assert.Null(m!.Lastgroup);
+        }
+
+        #endregion
+
+        #region Expand
+
+        [Fact]
+        public void Match_Expand_BackslashDigit_ExpandsGroup()
+        {
+            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            Assert.NotNull(m);
+            string result = m!.Expand(@"\2 \1");
+            Assert.Equal("world hello", result);
+        }
+
+        [Fact]
+        public void Match_Expand_BackslashG_ExpandsNamedGroup()
+        {
+            var pattern = Re.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
+            var m = pattern.Search("hello world");
+            Assert.NotNull(m);
+            string result = m!.Expand(@"\g<last> \g<first>");
+            Assert.Equal("world hello", result);
+        }
+
+        [Fact]
+        public void Match_Expand_BackslashG_NumericReference()
+        {
+            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            Assert.NotNull(m);
+            string result = m!.Expand(@"\g<2> \g<1>");
+            Assert.Equal("world hello", result);
+        }
+
+        [Fact]
+        public void Match_Expand_PlainText_PassedThrough()
+        {
+            var m = Re.Search(@"\w+", "hello");
+            Assert.NotNull(m);
+            string result = m!.Expand("result: \\0");
+            Assert.Equal("result: hello", result);
+        }
+
+        #endregion
+
+        #region Indexer
+
+        [Fact]
+        public void Match_Indexer_ZeroReturnsFullMatch()
+        {
+            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            Assert.NotNull(m);
+            Assert.Equal("hello world", m![0]);
+        }
+
+        [Fact]
+        public void Match_Indexer_GroupReturnsGroupValue()
+        {
+            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            Assert.NotNull(m);
+            Assert.Equal("hello", m![1]);
+            Assert.Equal("world", m![2]);
+        }
+
+        [Fact]
+        public void Match_Indexer_OutOfRange_ThrowsIndexError()
+        {
+            var m = Re.Search(@"\w+", "hello");
+            Assert.NotNull(m);
+            Assert.Throws<IndexError>(() => m![99]);
+        }
+
+        #endregion
+
+        #region RePattern.Pattern Property
+
+        [Fact]
+        public void Pattern_PatternProperty_EqualsPatternStr()
+        {
+            var pattern = Re.Compile(@"\d+");
+            Assert.Equal(@"\d+", pattern.Pattern);
+            Assert.Equal(pattern.PatternStr, pattern.Pattern);
+        }
+
+        #endregion
+
+        #region RePattern.Groups Count
+
+        [Fact]
+        public void Pattern_Groups_ReturnsGroupCount()
+        {
+            var pattern = Re.Compile(@"(\w+)\s(\w+)");
+            Assert.Equal(2, pattern.Groups);
+        }
+
+        [Fact]
+        public void Pattern_Groups_NoGroups_ReturnsZero()
+        {
+            var pattern = Re.Compile(@"\w+");
+            Assert.Equal(0, pattern.Groups);
+        }
+
+        [Fact]
+        public void Pattern_Groups_NamedGroups_CountedCorrectly()
+        {
+            var pattern = Re.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
+            Assert.Equal(2, pattern.Groups);
+        }
+
+        #endregion
+
+        #region RePattern.Groupindex
+
+        [Fact]
+        public void Pattern_Groupindex_ReturnsNameToNumberMapping()
+        {
+            var pattern = Re.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
+            var gi = pattern.Groupindex;
+            Assert.Equal(1, gi["first"]);
+            Assert.Equal(2, gi["last"]);
+        }
+
+        [Fact]
+        public void Pattern_Groupindex_NoNamedGroups_ReturnsEmptyDict()
+        {
+            var pattern = Re.Compile(@"(\w+)\s(\w+)");
+            var gi = pattern.Groupindex;
+            Assert.Empty(gi);
+        }
+
+        [Fact]
+        public void Pattern_Groupindex_MixedNamedUnnamed_OnlyNamed()
+        {
+            var pattern = Re.Compile(@"(?P<name>\w+)\s(\d+)");
+            var gi = pattern.Groupindex;
+            Assert.Single((ICollection<KeyValuePair<string, int>>)gi);
+            // .NET numbers unnamed groups first, then named groups
+            Assert.Equal(2, gi["name"]);
+        }
+
+        #endregion
+
+        #region RePattern.Subn
+
+        [Fact]
+        public void Pattern_Subn_ReturnsStringAndCount()
+        {
+            var pattern = Re.Compile(@"\d+");
+            var (result, count) = pattern.Subn("NUM", "a1b2c3");
+            Assert.Equal("aNUMbNUMcNUM", result);
+            Assert.Equal(3, count);
+        }
+
+        [Fact]
+        public void Pattern_Subn_WithCount_LimitsReplacements()
+        {
+            var pattern = Re.Compile(@"\d+");
+            var (result, count) = pattern.Subn("NUM", "a1b2c3", count: 2);
+            Assert.Equal("aNUMbNUMc3", result);
+            Assert.Equal(2, count);
+        }
+
+        [Fact]
+        public void Pattern_Subn_NoMatch_ReturnsOriginalAndZero()
+        {
+            var pattern = Re.Compile(@"\d+");
+            var (result, count) = pattern.Subn("NUM", "no numbers");
+            Assert.Equal("no numbers", result);
+            Assert.Equal(0, count);
+        }
+
+        #endregion
+
+        #region RePattern Callable Sub/Subn
+
+        [Fact]
+        public void Pattern_Sub_Callable_Works()
+        {
+            var pattern = Re.Compile(@"\d+");
+            string result = pattern.Sub(m => "[" + m.Group() + "]", "a1b2c3");
+            Assert.Equal("a[1]b[2]c[3]", result);
+        }
+
+        [Fact]
+        public void Pattern_Sub_Callable_WithCount_LimitsReplacements()
+        {
+            var pattern = Re.Compile(@"\d+");
+            string result = pattern.Sub(m => "X", "a1b2c3", count: 1);
+            Assert.Equal("aXb2c3", result);
+        }
+
+        [Fact]
+        public void Pattern_Subn_Callable_Works()
+        {
+            var pattern = Re.Compile(@"\d+");
+            var (result, count) = pattern.Subn(m => "X", "a1b2c3");
+            Assert.Equal("aXbXcX", result);
+            Assert.Equal(3, count);
+        }
+
+        [Fact]
+        public void Pattern_Subn_Callable_WithCount_LimitsReplacements()
+        {
+            var pattern = Re.Compile(@"\d+");
+            var (result, count) = pattern.Subn(m => "X", "a1b2c3", count: 2);
+            Assert.Equal("aXbXc3", result);
+            Assert.Equal(2, count);
+        }
+
+        #endregion
+
+        #region ReError
+
+        [Fact]
+        public void Compile_InvalidPattern_ThrowsReError()
+        {
+            Assert.Throws<ReError>(() => Re.Compile("[invalid"));
+        }
+
+        [Fact]
+        public void ReError_HasMessageProperty()
+        {
+            var ex = Assert.Throws<ReError>(() => Re.Compile("[invalid"));
+            Assert.NotEmpty(ex.Msg);
+            Assert.Equal("[invalid", ex.PatternStr);
+        }
+
+        [Fact]
+        public void ReError_Properties_SetCorrectly()
+        {
+            var err = new ReError("test error", "abc(", 3);
+            Assert.Equal("test error", err.Msg);
+            Assert.Equal("abc(", err.PatternStr);
+            Assert.Equal(3, err.Pos);
+            Assert.NotNull(err.Lineno);
+            Assert.NotNull(err.Colno);
+        }
+
+        [Fact]
+        public void ReError_NullPattern_NullPos()
+        {
+            var err = new ReError("test error");
+            Assert.Equal("test error", err.Msg);
+            Assert.Null(err.PatternStr);
+            Assert.Null(err.Pos);
+            Assert.Null(err.Lineno);
+            Assert.Null(err.Colno);
+        }
+
+        #endregion
+
+        #region Inline Flags
+
+        [Fact]
+        public void InlineFlag_CaseInsensitive_Works()
+        {
+            var m = Re.Search(@"(?i)hello", "HELLO world");
+            Assert.NotNull(m);
+            Assert.Equal("HELLO", m!.Group());
+        }
+
+        [Fact]
+        public void InlineFlag_AsciiStripped_Works()
+        {
+            // (?a) should be stripped (no-op on .NET), pattern should still match
+            var m = Re.Search(@"(?a)\w+", "hello");
+            Assert.NotNull(m);
+            Assert.Equal("hello", m!.Group());
+        }
+
+        [Fact]
+        public void InlineFlag_UnicodeStripped_Works()
+        {
+            // (?u) should be stripped (no-op on .NET)
+            var m = Re.Search(@"(?u)\w+", "hello");
+            Assert.NotNull(m);
+            Assert.Equal("hello", m!.Group());
+        }
+
+        [Fact]
+        public void InlineFlag_ScopedWithColon_Works()
+        {
+            // (?i:hello) should apply case-insensitive to the group
+            var m = Re.Search(@"(?i:hello) world", "HELLO world");
+            Assert.NotNull(m);
+            Assert.Equal("HELLO world", m!.Group());
+        }
+
+        [Fact]
+        public void InlineFlag_ScopedAsciiStripped_Works()
+        {
+            // (?a:hello) — strip 'a' flag, emit as (?:hello)
+            var m = Re.Search(@"(?a:hello) world", "hello world");
+            Assert.NotNull(m);
+            Assert.Equal("hello world", m!.Group());
+        }
+
+        [Fact]
+        public void InlineFlag_MixedFlags_StripsOnlyPythonOnly()
+        {
+            // (?ai) — strip 'a', keep 'i'
+            var m = Re.Search(@"(?ai)hello", "HELLO");
+            Assert.NotNull(m);
+            Assert.Equal("HELLO", m!.Group());
+        }
+
+        #endregion
     }
 }
