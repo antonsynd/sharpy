@@ -81,6 +81,31 @@ public class ImportRedirectTests : IntegrationTestBase
     }
 
     [Fact]
+    public void FromTypingImportAll_ProducesSPY0310()
+    {
+        var result = CompileAndExecute("from typing import *\n\ndef main() -> None:\n    pass\n");
+        Assert.False(result.Success);
+        Assert.Contains(result.RawDiagnostics, d => d.Code == DiagnosticCodes.Semantic.TypingModuleRedirect);
+    }
+
+    [Fact]
+    public void FromDataclassesImportAll_ProducesSPY0311()
+    {
+        var result = CompileAndExecute("from dataclasses import *\n\ndef main() -> None:\n    pass\n");
+        Assert.False(result.Success);
+        Assert.Contains(result.RawDiagnostics, d => d.Code == DiagnosticCodes.Semantic.DataclassesModuleRedirect);
+    }
+
+    [Fact]
+    public void FromDataclassesImportUnknown_ProducesSPY0311_WithFallback()
+    {
+        var result = CompileAndExecute("from dataclasses import FooBar\n\ndef main() -> None:\n    pass\n");
+        Assert.False(result.Success);
+        var redirect = Assert.Single(result.RawDiagnostics, d => d.Code == DiagnosticCodes.Semantic.DataclassesModuleRedirect);
+        Assert.Contains("dataclasses", redirect.Message);
+    }
+
+    [Fact]
     public void ExistingValidImports_Unaffected()
     {
         var result = CompileAndExecute("def main() -> None:\n    print(\"hello\")\n");
