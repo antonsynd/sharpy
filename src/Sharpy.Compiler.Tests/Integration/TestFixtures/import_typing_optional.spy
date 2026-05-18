@@ -1,0 +1,5 @@
+from typing import Optional
+
+def main() -> None:
+    x: int? = None
+    print(x)

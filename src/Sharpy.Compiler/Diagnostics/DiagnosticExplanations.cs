@@ -1960,6 +1960,20 @@ public static class DiagnosticExplanations
             "Replace 'functools.partial(f, fixed_args...)' with 'f(fixed_args..., _, ...)' using '_' for the " +
             "remaining (unfixed) arguments. The two forms are equivalent at runtime.");
 
+        // ── Import redirect diagnostics (SPY0310-SPY0311) ────────────────
+
+        Add(dict, DiagnosticCodes.Semantic.TypingModuleRedirect, "typing module not needed", "Semantic",
+            "The Python 'typing' module is not needed in Sharpy. All common typing constructs have native syntax equivalents: " +
+            "'X?' for Optional, 'list[X]' for List, 'dict[K,V]' for Dict, '(X) -> Y' for Callable, 'interface' for Protocol, etc.",
+            "from typing import Optional\n\nx: Optional[int] = None",
+            "Remove the import and use native type syntax:\n  x: int? = None");
+
+        Add(dict, DiagnosticCodes.Semantic.DataclassesModuleRedirect, "dataclasses module not needed", "Semantic",
+            "The Python 'dataclasses' module is not needed in Sharpy. The '@dataclass' decorator is a native language feature " +
+            "that requires no import.",
+            "from dataclasses import dataclass\n\n@dataclass\nclass Point:\n    x: float\n    y: float",
+            "Remove the import — '@dataclass' works directly:\n  @dataclass\n  class Point:\n      x: float\n      y: float");
+
         return dict;
     }
 

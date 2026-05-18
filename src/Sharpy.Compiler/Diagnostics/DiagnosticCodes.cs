@@ -311,7 +311,10 @@ public static class DiagnosticCodes
         public const string CircularImportStubError = "SPY0307";    // Active
         public const string CircularImportRuntimeUsage = "SPY0308"; // Active
         public const string CircularImportBaseClass = "SPY0309";    // Active
-        // SPY0310-SPY0319: Reserved for future import diagnostics
+        // Import redirect diagnostics (SPY0310-SPY0319)
+        public const string TypingModuleRedirect = "SPY0310";        // Active
+        public const string DataclassesModuleRedirect = "SPY0311";   // Active
+        // SPY0312-SPY0319: Reserved for future import redirect diagnostics
 
         #endregion
 

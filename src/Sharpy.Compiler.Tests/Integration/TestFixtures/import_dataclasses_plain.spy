@@ -1,0 +1,4 @@
+import dataclasses
+
+def main() -> None:
+    pass

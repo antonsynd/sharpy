@@ -229,6 +229,47 @@ internal partial class ImportResolver
 
         foreach (var importAlias in importStmt.Names)
         {
+            // Intercept 'import typing' / 'import dataclasses' — redirect to native Sharpy syntax
+            if (importAlias.Name == "typing")
+            {
+                AddError(
+                    Shared.TypingEquivalences.GenericModuleMessage,
+                    importAlias.LineStart, importAlias.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypingModuleRedirect,
+                    span: importAlias.Span ?? importStmt.Span);
+
+                var errorRecoveryModule = CreateErrorRecoveryModule(
+                    importAlias.Name, importAlias.LineStart, importAlias.ColumnStart);
+                result.Add(new ModuleInfo
+                {
+                    Path = $"<error-recovery:{importAlias.Name}>",
+                    Module = null!,
+                    ExportedSymbols = errorRecoveryModule.Exports,
+                    IsErrorRecovery = true
+                });
+                continue;
+            }
+
+            if (importAlias.Name == "dataclasses")
+            {
+                AddError(
+                    Shared.DataclassesEquivalences.GenericModuleMessage,
+                    importAlias.LineStart, importAlias.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DataclassesModuleRedirect,
+                    span: importAlias.Span ?? importStmt.Span);
+
+                var errorRecoveryModule = CreateErrorRecoveryModule(
+                    importAlias.Name, importAlias.LineStart, importAlias.ColumnStart);
+                result.Add(new ModuleInfo
+                {
+                    Path = $"<error-recovery:{importAlias.Name}>",
+                    Module = null!,
+                    ExportedSymbols = errorRecoveryModule.Exports,
+                    IsErrorRecovery = true
+                });
+                continue;
+            }
+
             // First, try to resolve as .NET assembly module through ModuleRegistry
             var moduleInfo = TryResolveNetModule(importAlias.Name, importAlias.LineStart, importAlias.ColumnStart);
 
@@ -338,6 +379,94 @@ internal partial class ImportResolver
                     };
                 }
             }
+        }
+
+        // Intercept 'from typing import X' — redirect to native Sharpy syntax
+        if (fromImport.Module == "typing")
+        {
+            if (fromImport.ImportAll)
+            {
+                AddError(
+                    Shared.TypingEquivalences.GenericModuleMessage,
+                    fromImport.LineStart, fromImport.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypingModuleRedirect,
+                    span: fromImport.Span);
+            }
+            else
+            {
+                foreach (var alias in fromImport.Names)
+                {
+                    AddError(
+                        Shared.TypingEquivalences.GetMessage(alias.Name),
+                        alias.LineStart, alias.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypingModuleRedirect,
+                        span: alias.Span ?? fromImport.Span);
+                }
+            }
+
+            var errorRecoveryModule = CreateErrorRecoveryModule(
+                fromImport.Module, fromImport.LineStart, fromImport.ColumnStart);
+            if (!fromImport.ImportAll)
+            {
+                foreach (var importAlias in fromImport.Names)
+                {
+                    var targetName = importAlias.AsName ?? importAlias.Name;
+                    errorRecoveryModule.Exports[targetName] = CreateErrorRecoverySymbol(
+                        targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart);
+                    _diagnostics.MarkAsRootCause(targetName);
+                }
+            }
+            return new ModuleInfo
+            {
+                Path = $"<error-recovery:{fromImport.Module}>",
+                Module = null!,
+                ExportedSymbols = errorRecoveryModule.Exports,
+                IsNetModule = false
+            };
+        }
+
+        // Intercept 'from dataclasses import X' — redirect to native Sharpy syntax
+        if (fromImport.Module == "dataclasses")
+        {
+            if (fromImport.ImportAll)
+            {
+                AddError(
+                    Shared.DataclassesEquivalences.GenericModuleMessage,
+                    fromImport.LineStart, fromImport.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DataclassesModuleRedirect,
+                    span: fromImport.Span);
+            }
+            else
+            {
+                foreach (var alias in fromImport.Names)
+                {
+                    AddError(
+                        Shared.DataclassesEquivalences.GetMessage(alias.Name),
+                        alias.LineStart, alias.ColumnStart,
+                        code: DiagnosticCodes.Semantic.DataclassesModuleRedirect,
+                        span: alias.Span ?? fromImport.Span);
+                }
+            }
+
+            var errorRecoveryModule = CreateErrorRecoveryModule(
+                fromImport.Module, fromImport.LineStart, fromImport.ColumnStart);
+            if (!fromImport.ImportAll)
+            {
+                foreach (var importAlias in fromImport.Names)
+                {
+                    var targetName = importAlias.AsName ?? importAlias.Name;
+                    errorRecoveryModule.Exports[targetName] = CreateErrorRecoverySymbol(
+                        targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart);
+                    _diagnostics.MarkAsRootCause(targetName);
+                }
+            }
+            return new ModuleInfo
+            {
+                Path = $"<error-recovery:{fromImport.Module}>",
+                Module = null!,
+                ExportedSymbols = errorRecoveryModule.Exports,
+                IsNetModule = false
+            };
         }
 
         // First, try to resolve as .NET assembly module
