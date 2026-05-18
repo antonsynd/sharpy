@@ -25,7 +25,7 @@ public class ClassInheritancePropertyTests
         int total = 0;
         int passed = 0;
 
-        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
+        GenClasses.ModuleWithClasses(TypeEnv.WithInheritance, fuel: 2)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
@@ -55,7 +55,7 @@ public class ClassInheritancePropertyTests
         int tested = 0;
         int passed = 0;
 
-        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
+        GenClasses.ModuleWithClasses(TypeEnv.WithInheritance, fuel: 2)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);

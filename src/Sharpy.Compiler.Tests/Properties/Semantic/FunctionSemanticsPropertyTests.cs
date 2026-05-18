@@ -169,7 +169,7 @@ public class FunctionSemanticsPropertyTests
     public void ModuleWithFunctions_NeverThrowsInternalError()
     {
         Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-            GenFunctions.ModuleWithFunctions(TypeEnv.Default, type, fuel: 2))
+            GenFunctions.ModuleWithFunctions(TypeEnv.WithFunctions, type, fuel: 2))
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);

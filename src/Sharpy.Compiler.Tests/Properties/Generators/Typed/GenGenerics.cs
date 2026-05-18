@@ -1,4 +1,6 @@
+using System.Collections.Immutable;
 using CsCheck;
+using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 
@@ -6,178 +8,636 @@ internal static class GenGenerics
 {
     private static readonly string[] ConcreteTypes = { "int", "str", "bool" };
 
-    public static Gen<string> GenericClassProgram(TypeEnv env, int fuel) =>
+    public static Gen<Module> GenericClassProgram(TypeEnv env, int fuel) =>
         Gen.Select(
             Gen.Int[1, 2],
             Gen.OneOfConst(ConcreteTypes),
             (fieldCount, instantiationType) =>
             {
-                var lines = new List<string>
+                var typeParams = ImmutableArray.Create(
+                    new TypeParameterDef { Name = "T" });
+
+                var fields = fieldCount > 1
+                    ? ImmutableArray.Create(("value", "T"), ("label", "str"))
+                    : ImmutableArray.Create(("value", "T"));
+
+                var classDef = BuildGenericClassDef("Box", typeParams, fields);
+
+                var ctorArgs = fieldCount > 1
+                    ? ImmutableArray.Create(BuildLiteral(instantiationType), (Expression)new StringLiteral { Value = "item" })
+                    : ImmutableArray.Create(BuildLiteral(instantiationType));
+
+                var mainBody = ImmutableArray.CreateBuilder<Statement>();
+                mainBody.Add(new VariableDeclaration
                 {
-                    "class Box[T]:",
-                    "    value: T",
-                    "",
-                    "    def __init__(self, value: T):",
-                    "        self.value = value",
-                    "",
-                    "    def get(self) -> T:",
-                    "        return self.value",
-                    ""
+                    Name = "b",
+                    InitialValue = BuildGenericInstantiation("Box",
+                        ImmutableArray.Create(instantiationType), ctorArgs)
+                });
+                mainBody.Add(new ExpressionStatement
+                {
+                    Expression = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "print" },
+                        Arguments = ImmutableArray.Create<Expression>(
+                            new FunctionCall
+                            {
+                                Function = new MemberAccess
+                                {
+                                    Object = new Identifier { Name = "b" },
+                                    Member = "get"
+                                },
+                                Arguments = ImmutableArray<Expression>.Empty
+                            })
+                    }
+                });
+
+                var main = new FunctionDef
+                {
+                    Name = "main",
+                    Body = mainBody.ToImmutable()
                 };
 
-                if (fieldCount > 1)
+                return new Module
                 {
-                    lines.InsertRange(1, new[]
-                    {
-                        "    label: str",
-                    });
-                    lines[4] = "    def __init__(self, value: T, label: str):";
-                    lines.Insert(5, "        self.label = label");
-                }
-
-                lines.Add("def main():");
-                var ctorArgs = fieldCount > 1
-                    ? $"{DefaultLiteral(instantiationType)}, \"item\""
-                    : DefaultLiteral(instantiationType);
-                lines.Add($"    b = Box[{instantiationType}]({ctorArgs})");
-                lines.Add("    print(b.get())");
-
-                return string.Join("\n", lines) + "\n";
+                    Body = ImmutableArray.Create<Statement>(classDef, main)
+                };
             });
 
-    public static Gen<string> GenericFunctionProgram(TypeEnv env, int fuel) =>
+    public static Gen<Module> GenericFunctionProgram(TypeEnv env, int fuel) =>
         Gen.Select(
             Gen.OneOfConst(ConcreteTypes),
             Gen.OneOfConst(ConcreteTypes),
             (type1, type2) =>
             {
-                var lines = new List<string>
+                var identityFn = new FunctionDef
                 {
-                    "def identity[T](x: T) -> T:",
-                    "    return x",
-                    "",
-                    "def main():",
-                    $"    a: {type1} = identity[{type1}]({DefaultLiteral(type1)})",
-                    "    print(a)",
-                    $"    b: {type2} = identity[{type2}]({DefaultLiteral(type2)})",
-                    "    print(b)"
+                    Name = "identity",
+                    TypeParameters = ImmutableArray.Create(
+                        new TypeParameterDef { Name = "T" }),
+                    Parameters = ImmutableArray.Create(
+                        new Parameter { Name = "x", Type = new TypeAnnotation { Name = "T" } }),
+                    ReturnType = new TypeAnnotation { Name = "T" },
+                    Body = ImmutableArray.Create<Statement>(
+                        new ReturnStatement
+                        {
+                            Value = new Identifier { Name = "x" }
+                        })
                 };
 
-                return string.Join("\n", lines) + "\n";
+                var mainBody = ImmutableArray.CreateBuilder<Statement>();
+                mainBody.Add(new VariableDeclaration
+                {
+                    Name = "a",
+                    Type = TypeAnnotationFor(type1),
+                    InitialValue = new FunctionCall
+                    {
+                        Function = new IndexAccess
+                        {
+                            Object = new Identifier { Name = "identity" },
+                            Index = new Identifier { Name = type1 }
+                        },
+                        Arguments = ImmutableArray.Create(BuildLiteral(type1))
+                    }
+                });
+                mainBody.Add(new ExpressionStatement
+                {
+                    Expression = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "print" },
+                        Arguments = ImmutableArray.Create<Expression>(
+                            new Identifier { Name = "a" })
+                    }
+                });
+                mainBody.Add(new VariableDeclaration
+                {
+                    Name = "b",
+                    Type = TypeAnnotationFor(type2),
+                    InitialValue = new FunctionCall
+                    {
+                        Function = new IndexAccess
+                        {
+                            Object = new Identifier { Name = "identity" },
+                            Index = new Identifier { Name = type2 }
+                        },
+                        Arguments = ImmutableArray.Create(BuildLiteral(type2))
+                    }
+                });
+                mainBody.Add(new ExpressionStatement
+                {
+                    Expression = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "print" },
+                        Arguments = ImmutableArray.Create<Expression>(
+                            new Identifier { Name = "b" })
+                    }
+                });
+
+                var main = new FunctionDef
+                {
+                    Name = "main",
+                    Body = mainBody.ToImmutable()
+                };
+
+                return new Module
+                {
+                    Body = ImmutableArray.Create<Statement>(identityFn, main)
+                };
             });
 
-    public static Gen<string> MultiTypeParamProgram(TypeEnv env, int fuel) =>
+    public static Gen<Module> MultiTypeParamProgram(TypeEnv env, int fuel) =>
         Gen.Select(
             Gen.OneOfConst(ConcreteTypes),
             Gen.OneOfConst(ConcreteTypes),
             (typeA, typeB) =>
             {
-                var lines = new List<string>
+                var typeParams = ImmutableArray.Create(
+                    new TypeParameterDef { Name = "A" },
+                    new TypeParameterDef { Name = "B" });
+
+                var fields = ImmutableArray.Create(("first", "A"), ("second", "B"));
+
+                var methods = ImmutableArray.Create(
+                    BuildMethod("get_first", ImmutableArray<(string, string)>.Empty, "A"),
+                    BuildMethod("get_second", ImmutableArray<(string, string)>.Empty, "B"));
+
+                var classDef = BuildGenericClassDef("Pair", typeParams, fields,
+                    extraMethods: methods);
+
+                var mainBody = ImmutableArray.CreateBuilder<Statement>();
+                mainBody.Add(new VariableDeclaration
                 {
-                    "class Pair[A, B]:",
-                    "    first: A",
-                    "    second: B",
-                    "",
-                    "    def __init__(self, first: A, second: B):",
-                    "        self.first = first",
-                    "        self.second = second",
-                    "",
-                    "    def get_first(self) -> A:",
-                    "        return self.first",
-                    "",
-                    "    def get_second(self) -> B:",
-                    "        return self.second",
-                    "",
-                    "def main():",
-                    $"    p = Pair[{typeA}, {typeB}]({DefaultLiteral(typeA)}, {DefaultLiteral(typeB)})",
-                    "    print(p.get_first())",
-                    "    print(p.get_second())"
+                    Name = "p",
+                    InitialValue = BuildGenericInstantiation("Pair",
+                        ImmutableArray.Create(typeA, typeB),
+                        ImmutableArray.Create(BuildLiteral(typeA), BuildLiteral(typeB)))
+                });
+                mainBody.Add(PrintCall(new FunctionCall
+                {
+                    Function = new MemberAccess
+                    {
+                        Object = new Identifier { Name = "p" },
+                        Member = "get_first"
+                    },
+                    Arguments = ImmutableArray<Expression>.Empty
+                }));
+                mainBody.Add(PrintCall(new FunctionCall
+                {
+                    Function = new MemberAccess
+                    {
+                        Object = new Identifier { Name = "p" },
+                        Member = "get_second"
+                    },
+                    Arguments = ImmutableArray<Expression>.Empty
+                }));
+
+                var main = new FunctionDef
+                {
+                    Name = "main",
+                    Body = mainBody.ToImmutable()
                 };
 
-                return string.Join("\n", lines) + "\n";
+                return new Module
+                {
+                    Body = ImmutableArray.Create<Statement>(classDef, main)
+                };
             });
 
-    public static Gen<string> GenericWithInheritanceProgram(TypeEnv env, int fuel) =>
+    public static Gen<Module> GenericWithInheritanceProgram(TypeEnv env, int fuel) =>
         Gen.OneOfConst(ConcreteTypes).Select(concreteType =>
         {
-            var lines = new List<string>
+            var containerTypeParams = ImmutableArray.Create(
+                new TypeParameterDef { Name = "T" });
+
+            var containerFields = ImmutableArray.Create(("value", "T"));
+
+            var describeMethod = new FunctionDef
             {
-                "class Container[T]:",
-                "    value: T",
-                "",
-                "    def __init__(self, value: T):",
-                "        self.value = value",
-                "",
-                "    @virtual",
-                "    def describe(self) -> str:",
-                "        return \"container\"",
-                "",
-                "class NamedContainer[T](Container[T]):",
-                "    name: str",
-                "",
-                "    def __init__(self, value: T, name: str):",
-                "        super().__init__(value)",
-                "        self.name = name",
-                "",
-                "    @override",
-                "    def describe(self) -> str:",
-                "        return self.name",
-                "",
-                "def main():",
-                $"    nc = NamedContainer[{concreteType}]({DefaultLiteral(concreteType)}, \"test\")",
-                "    print(nc.describe())",
-                "    print(nc.value)"
+                Name = "describe",
+                Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
+                ReturnType = new TypeAnnotation { Name = "str" },
+                Body = ImmutableArray.Create<Statement>(
+                    new ReturnStatement { Value = new StringLiteral { Value = "container" } }),
+                Decorators = ImmutableArray.Create(
+                    new Decorator { QualifiedParts = ImmutableArray.Create("virtual") })
             };
 
-            return string.Join("\n", lines) + "\n";
+            var containerDef = BuildGenericClassDef("Container", containerTypeParams,
+                containerFields, extraMethods: ImmutableArray.Create(describeMethod));
+
+            var namedContainerTypeParams = ImmutableArray.Create(
+                new TypeParameterDef { Name = "T" });
+
+            var namedContainerBody = ImmutableArray.CreateBuilder<Statement>();
+            namedContainerBody.Add(new VariableDeclaration
+            {
+                Name = "name",
+                Type = new TypeAnnotation { Name = "str" }
+            });
+
+            // __init__(self, value: T, name: str)
+            var initParams = ImmutableArray.Create(
+                new Parameter { Name = "self" },
+                new Parameter { Name = "value", Type = new TypeAnnotation { Name = "T" } },
+                new Parameter { Name = "name", Type = new TypeAnnotation { Name = "str" } });
+
+            var initBody = ImmutableArray.CreateBuilder<Statement>();
+            initBody.Add(new ExpressionStatement
+            {
+                Expression = new FunctionCall
+                {
+                    Function = new MemberAccess
+                    {
+                        Object = new FunctionCall
+                        {
+                            Function = new Identifier { Name = "super" },
+                            Arguments = ImmutableArray<Expression>.Empty
+                        },
+                        Member = "__init__"
+                    },
+                    Arguments = ImmutableArray.Create<Expression>(
+                        new Identifier { Name = "value" })
+                }
+            });
+            initBody.Add(new Assignment
+            {
+                Target = new MemberAccess
+                {
+                    Object = new Identifier { Name = "self" },
+                    Member = "name"
+                },
+                Value = new Identifier { Name = "name" }
+            });
+
+            namedContainerBody.Add(new FunctionDef
+            {
+                Name = "__init__",
+                Parameters = initParams,
+                Body = initBody.ToImmutable()
+            });
+
+            // @override describe(self) -> str
+            namedContainerBody.Add(new FunctionDef
+            {
+                Name = "describe",
+                Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
+                ReturnType = new TypeAnnotation { Name = "str" },
+                Body = ImmutableArray.Create<Statement>(
+                    new ReturnStatement
+                    {
+                        Value = new MemberAccess
+                        {
+                            Object = new Identifier { Name = "self" },
+                            Member = "name"
+                        }
+                    }),
+                Decorators = ImmutableArray.Create(
+                    new Decorator { QualifiedParts = ImmutableArray.Create("override") })
+            });
+
+            var namedContainerDef = new ClassDef
+            {
+                Name = "NamedContainer",
+                TypeParameters = namedContainerTypeParams,
+                BaseClasses = ImmutableArray.Create(new TypeAnnotation
+                {
+                    Name = "Container",
+                    TypeArguments = ImmutableArray.Create(
+                        new TypeAnnotation { Name = "T" })
+                }),
+                Body = namedContainerBody.ToImmutable()
+            };
+
+            var mainBody = ImmutableArray.CreateBuilder<Statement>();
+            mainBody.Add(new VariableDeclaration
+            {
+                Name = "nc",
+                InitialValue = new FunctionCall
+                {
+                    Function = new IndexAccess
+                    {
+                        Object = new Identifier { Name = "NamedContainer" },
+                        Index = new Identifier { Name = concreteType }
+                    },
+                    Arguments = ImmutableArray.Create(
+                        BuildLiteral(concreteType),
+                        (Expression)new StringLiteral { Value = "test" })
+                }
+            });
+            mainBody.Add(PrintCall(new FunctionCall
+            {
+                Function = new MemberAccess
+                {
+                    Object = new Identifier { Name = "nc" },
+                    Member = "describe"
+                },
+                Arguments = ImmutableArray<Expression>.Empty
+            }));
+            mainBody.Add(PrintCall(new MemberAccess
+            {
+                Object = new Identifier { Name = "nc" },
+                Member = "value"
+            }));
+
+            var main = new FunctionDef
+            {
+                Name = "main",
+                Body = mainBody.ToImmutable()
+            };
+
+            return new Module
+            {
+                Body = ImmutableArray.Create<Statement>(containerDef, namedContainerDef, main)
+            };
         });
 
-    public static Gen<string> WrongTypeArgCountProgram(TypeEnv env, int fuel) =>
+    public static Gen<Module> WrongTypeArgCountProgram(TypeEnv env, int fuel) =>
         Gen.OneOfConst(ConcreteTypes).Select(concreteType =>
         {
-            var lines = new List<string>
+            var typeParams = ImmutableArray.Create(
+                new TypeParameterDef { Name = "T" });
+            var fields = ImmutableArray.Create(("value", "T"));
+            var classDef = BuildGenericClassDef("Box", typeParams, fields);
+
+            var mainBody = ImmutableArray.Create<Statement>(
+                new VariableDeclaration
+                {
+                    Name = "b",
+                    InitialValue = new FunctionCall
+                    {
+                        Function = new IndexAccess
+                        {
+                            Object = new Identifier { Name = "Box" },
+                            Index = new TupleLiteral
+                            {
+                                Elements = ImmutableArray.Create<Expression>(
+                                    new Identifier { Name = concreteType },
+                                    new Identifier { Name = "str" })
+                            }
+                        },
+                        Arguments = ImmutableArray.Create(BuildLiteral(concreteType))
+                    }
+                });
+
+            var main = new FunctionDef
             {
-                "class Box[T]:",
-                "    value: T",
-                "",
-                "    def __init__(self, value: T):",
-                "        self.value = value",
-                "",
-                "def main():",
-                $"    b = Box[{concreteType}, str]({DefaultLiteral(concreteType)})"
+                Name = "main",
+                Body = mainBody
             };
 
-            return string.Join("\n", lines) + "\n";
+            return new Module
+            {
+                Body = ImmutableArray.Create<Statement>(classDef, main)
+            };
         });
 
-    public static Gen<string> TypeMismatchOnGenericFieldProgram(TypeEnv env, int fuel) =>
+    public static Gen<Module> TypeMismatchOnGenericFieldProgram(TypeEnv env, int fuel) =>
         Gen.Select(
             Gen.OneOfConst(ConcreteTypes),
             Gen.OneOfConst(ConcreteTypes).Where(t => t != "int"),
             (instantType, wrongType) =>
             {
-                var lines = new List<string>
+                var typeParams = ImmutableArray.Create(
+                    new TypeParameterDef { Name = "T" });
+                var fields = ImmutableArray.Create(("value", "T"));
+                var classDef = BuildGenericClassDef("Box", typeParams, fields);
+
+                var mainBody = ImmutableArray.CreateBuilder<Statement>();
+                mainBody.Add(new VariableDeclaration
                 {
-                    "class Box[T]:",
-                    "    value: T",
-                    "",
-                    "    def __init__(self, value: T):",
-                    "        self.value = value",
-                    "",
-                    "def main():",
-                    $"    b = Box[int](42)",
-                    $"    b.value = {DefaultLiteral(wrongType)}"
+                    Name = "b",
+                    InitialValue = BuildGenericInstantiation("Box",
+                        ImmutableArray.Create("int"),
+                        ImmutableArray.Create<Expression>(new IntegerLiteral { Value = "42" }))
+                });
+                mainBody.Add(new Assignment
+                {
+                    Target = new MemberAccess
+                    {
+                        Object = new Identifier { Name = "b" },
+                        Member = "value"
+                    },
+                    Value = BuildLiteral(wrongType)
+                });
+
+                var main = new FunctionDef
+                {
+                    Name = "main",
+                    Body = mainBody.ToImmutable()
                 };
 
-                return string.Join("\n", lines) + "\n";
+                return new Module
+                {
+                    Body = ImmutableArray.Create<Statement>(classDef, main)
+                };
             });
 
-    private static string DefaultLiteral(string type) => type switch
+    public static Gen<Module> GenericConstraintProgram(TypeEnv env, int fuel) =>
+        Gen.OneOfConst(ConcreteTypes).Select(concreteType =>
+        {
+            var importStmt = new FromImportStatement
+            {
+                Module = "collections",
+                Names = ImmutableArray.Create(
+                    new ImportAlias { Name = "Comparable" })
+            };
+
+            var typeParams = ImmutableArray.Create(
+                new TypeParameterDef
+                {
+                    Name = "T",
+                    Constraints = ImmutableArray.Create<ConstraintClause>(
+                        new TypeConstraint
+                        {
+                            Type = new TypeAnnotation { Name = "Comparable" }
+                        })
+                });
+
+            var fields = ImmutableArray.Create(("value", "T"));
+            var classDef = BuildGenericClassDef("SortedBox", typeParams, fields);
+
+            var mainBody = ImmutableArray.CreateBuilder<Statement>();
+            mainBody.Add(new VariableDeclaration
+            {
+                Name = "sb",
+                InitialValue = BuildGenericInstantiation("SortedBox",
+                    ImmutableArray.Create(concreteType),
+                    ImmutableArray.Create(BuildLiteral(concreteType)))
+            });
+            mainBody.Add(PrintCall(new MemberAccess
+            {
+                Object = new Identifier { Name = "sb" },
+                Member = "value"
+            }));
+
+            var main = new FunctionDef
+            {
+                Name = "main",
+                Body = mainBody.ToImmutable()
+            };
+
+            return new Module
+            {
+                Body = ImmutableArray.Create<Statement>(importStmt, classDef, main)
+            };
+        });
+
+    private static Expression BuildLiteral(string type) => type switch
     {
-        "int" => "42",
-        "str" => "\"hello\"",
-        "bool" => "True",
-        "float" => "3.14",
-        _ => "0"
+        "int" => new IntegerLiteral { Value = "42" },
+        "str" => new StringLiteral { Value = "hello" },
+        "bool" => new BooleanLiteral { Value = true },
+        "float" => new FloatLiteral { Value = "3.14" },
+        _ => new IntegerLiteral { Value = "0" }
     };
+
+    private static TypeAnnotation TypeAnnotationFor(string type) =>
+        new TypeAnnotation { Name = type };
+
+    private static ClassDef BuildGenericClassDef(
+        string name,
+        ImmutableArray<TypeParameterDef> typeParams,
+        ImmutableArray<(string Name, string Type)> fields,
+        ImmutableArray<TypeAnnotation>? baseClasses = null,
+        ImmutableArray<FunctionDef>? extraMethods = null)
+    {
+        var body = ImmutableArray.CreateBuilder<Statement>();
+
+        foreach (var (fieldName, fieldType) in fields)
+        {
+            body.Add(new VariableDeclaration
+            {
+                Name = fieldName,
+                Type = TypeAnnotationFor(fieldType)
+            });
+        }
+
+        body.Add(BuildConstructor(fields));
+
+        if (extraMethods != null)
+        {
+            foreach (var method in extraMethods.Value)
+                body.Add(method);
+        }
+        else
+        {
+            foreach (var (fieldName, fieldType) in fields)
+            {
+                body.Add(BuildMethod($"get", ImmutableArray<(string, string)>.Empty, fieldType));
+                break;
+            }
+        }
+
+        return new ClassDef
+        {
+            Name = name,
+            TypeParameters = typeParams,
+            BaseClasses = baseClasses ?? ImmutableArray<TypeAnnotation>.Empty,
+            Body = body.ToImmutable()
+        };
+    }
+
+    private static FunctionDef BuildConstructor(
+        ImmutableArray<(string Name, string Type)> fields)
+    {
+        var parameters = ImmutableArray.CreateBuilder<Parameter>();
+        parameters.Add(new Parameter { Name = "self" });
+        foreach (var (fieldName, fieldType) in fields)
+        {
+            parameters.Add(new Parameter
+            {
+                Name = fieldName,
+                Type = TypeAnnotationFor(fieldType)
+            });
+        }
+
+        var bodyStmts = ImmutableArray.CreateBuilder<Statement>();
+        foreach (var (fieldName, _) in fields)
+        {
+            bodyStmts.Add(new Assignment
+            {
+                Target = new MemberAccess
+                {
+                    Object = new Identifier { Name = "self" },
+                    Member = fieldName
+                },
+                Value = new Identifier { Name = fieldName }
+            });
+        }
+
+        return new FunctionDef
+        {
+            Name = "__init__",
+            Parameters = parameters.ToImmutable(),
+            Body = bodyStmts.ToImmutable()
+        };
+    }
+
+    private static FunctionDef BuildMethod(string name,
+        ImmutableArray<(string Name, string Type)> parameters, string returnType)
+    {
+        var paramList = ImmutableArray.CreateBuilder<Parameter>();
+        paramList.Add(new Parameter { Name = "self" });
+        foreach (var (paramName, paramType) in parameters)
+        {
+            paramList.Add(new Parameter
+            {
+                Name = paramName,
+                Type = TypeAnnotationFor(paramType)
+            });
+        }
+
+        Expression returnExpr = returnType switch
+        {
+            "int" => new IntegerLiteral { Value = "42" },
+            "str" => new StringLiteral { Value = "result" },
+            "bool" => new BooleanLiteral { Value = true },
+            _ => new MemberAccess
+            {
+                Object = new Identifier { Name = "self" },
+                Member = name.StartsWith("get_") ? name.Substring(4) : "value"
+            }
+        };
+
+        return new FunctionDef
+        {
+            Name = name,
+            Parameters = paramList.ToImmutable(),
+            ReturnType = TypeAnnotationFor(returnType),
+            Body = ImmutableArray.Create<Statement>(
+                new ReturnStatement { Value = returnExpr })
+        };
+    }
+
+    private static Expression BuildGenericInstantiation(string className,
+        ImmutableArray<string> typeArgs, ImmutableArray<Expression> ctorArgs)
+    {
+        Expression index = typeArgs.Length == 1
+            ? new Identifier { Name = typeArgs[0] }
+            : new TupleLiteral
+            {
+                Elements = typeArgs.Select(t => (Expression)new Identifier { Name = t })
+                    .ToImmutableArray()
+            };
+
+        return new FunctionCall
+        {
+            Function = new IndexAccess
+            {
+                Object = new Identifier { Name = className },
+                Index = index
+            },
+            Arguments = ctorArgs
+        };
+    }
+
+    private static ExpressionStatement PrintCall(Expression arg) =>
+        new ExpressionStatement
+        {
+            Expression = new FunctionCall
+            {
+                Function = new Identifier { Name = "print" },
+                Arguments = ImmutableArray.Create(arg)
+            }
+        };
 }

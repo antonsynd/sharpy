@@ -1,4 +1,5 @@
 using CsCheck;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
@@ -24,9 +25,10 @@ public class GenericTypePropertyTests
         int tested = 0;
         int passed = 0;
 
-        GenGenerics.GenericClassProgram(TypeEnv.Default, fuel: 2)
-            .Sample(source =>
+        GenGenerics.GenericClassProgram(TypeEnv.WithGenerics, fuel: 2)
+            .Sample(module =>
             {
+                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
                 Interlocked.Increment(ref tested);
 
                 try
@@ -40,7 +42,7 @@ public class GenericTypePropertyTests
                 {
                     // Swallow
                 }
-            }, iter: 50);
+            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine($"Generic class substitution: {passed}/{tested} passed");
         Assert.True(passed > tested / 2,
@@ -53,9 +55,10 @@ public class GenericTypePropertyTests
         int tested = 0;
         int passed = 0;
 
-        GenGenerics.GenericFunctionProgram(TypeEnv.Default, fuel: 2)
-            .Sample(source =>
+        GenGenerics.GenericFunctionProgram(TypeEnv.WithGenerics, fuel: 2)
+            .Sample(module =>
             {
+                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
                 Interlocked.Increment(ref tested);
 
                 try
@@ -69,7 +72,7 @@ public class GenericTypePropertyTests
                 {
                     // Swallow
                 }
-            }, iter: 50);
+            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine($"Generic function inference: {passed}/{tested} passed");
         Assert.True(passed > tested / 2,
@@ -82,9 +85,10 @@ public class GenericTypePropertyTests
         int tested = 0;
         int passed = 0;
 
-        GenGenerics.MultiTypeParamProgram(TypeEnv.Default, fuel: 2)
-            .Sample(source =>
+        GenGenerics.MultiTypeParamProgram(TypeEnv.WithGenerics, fuel: 2)
+            .Sample(module =>
             {
+                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
                 Interlocked.Increment(ref tested);
 
                 try
@@ -98,7 +102,7 @@ public class GenericTypePropertyTests
                 {
                     // Swallow
                 }
-            }, iter: 50);
+            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine($"Multi-type param substitution: {passed}/{tested} passed");
         Assert.True(passed > tested / 2,
@@ -111,9 +115,10 @@ public class GenericTypePropertyTests
         int tested = 0;
         int passed = 0;
 
-        GenGenerics.GenericClassProgram(TypeEnv.Default, fuel: 2)
-            .Sample(source =>
+        GenGenerics.GenericClassProgram(TypeEnv.WithGenerics, fuel: 2)
+            .Sample(module =>
             {
+                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
                 Interlocked.Increment(ref tested);
 
                 try
@@ -128,7 +133,7 @@ public class GenericTypePropertyTests
                 {
                     // Swallow
                 }
-            }, iter: 50);
+            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine($"Generic C# output: {passed}/{tested} produced correct generic syntax");
         Assert.True(passed > tested / 2,
@@ -141,40 +146,25 @@ public class GenericTypePropertyTests
         int tested = 0;
         int constrained = 0;
 
-        Gen.OneOfConst("int", "str", "bool").Select(concreteType =>
-        {
-            var lines = new List<string>
+        GenGenerics.GenericConstraintProgram(TypeEnv.WithGenerics, fuel: 1)
+            .Sample(module =>
             {
-                "from collections import Comparable",
-                "",
-                "class SortedBox[T: Comparable]:",
-                "    value: T",
-                "",
-                "    def __init__(self, value: T):",
-                "        self.value = value",
-                "",
-                "def main():",
-                $"    sb = SortedBox[{concreteType}]({DefaultLiteral(concreteType)})",
-                "    print(sb.value)"
-            };
-            return string.Join("\n", lines) + "\n";
-        }).Sample(source =>
-        {
-            Interlocked.Increment(ref tested);
+                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
+                Interlocked.Increment(ref tested);
 
-            try
-            {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var result = compiler.Analyze(source, "generic_test.spy");
-                if (result.Success || result.Diagnostics.GetAll().Any(
-                    d => d.Code.StartsWith("SPY0")))
+                try
+                {
+                    var compiler = new Sharpy.Compiler.Compiler();
+                    var result = compiler.Analyze(source, "generic_test.spy");
+                    if (result.Success || result.Diagnostics.GetAll().Any(
+                        d => d.Code.StartsWith("SPY0")))
+                        Interlocked.Increment(ref constrained);
+                }
+                catch
+                {
                     Interlocked.Increment(ref constrained);
-            }
-            catch
-            {
-                Interlocked.Increment(ref constrained);
-            }
-        }, iter: 50);
+                }
+            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine($"Generic constraint handling: {constrained}/{tested} handled");
         Assert.True(constrained > tested / 2,
@@ -184,13 +174,12 @@ public class GenericTypePropertyTests
     [Fact]
     public void WrongTypeArgCount_NeverCrashes()
     {
-        // Note: Sharpy currently accepts extra type arguments without error.
-        // This test documents that behavior and verifies no crashes occur.
         int tested = 0;
 
-        GenGenerics.WrongTypeArgCountProgram(TypeEnv.Default, fuel: 1)
-            .Sample(source =>
+        GenGenerics.WrongTypeArgCountProgram(TypeEnv.WithGenerics, fuel: 1)
+            .Sample(module =>
             {
+                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
                 Interlocked.Increment(ref tested);
 
                 try
@@ -207,7 +196,7 @@ public class GenericTypePropertyTests
                 {
                     // Non-ICE exceptions acceptable
                 }
-            }, iter: 50);
+            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine($"Wrong type arg count: {tested} programs processed without ICE");
     }
@@ -215,13 +204,12 @@ public class GenericTypePropertyTests
     [Fact]
     public void TypeMismatchOnGenericField_NeverCrashes()
     {
-        // Note: Sharpy currently accepts field reassignment with wrong generic type.
-        // This test documents that behavior and verifies no crashes occur.
         int tested = 0;
 
-        GenGenerics.TypeMismatchOnGenericFieldProgram(TypeEnv.Default, fuel: 1)
-            .Sample(source =>
+        GenGenerics.TypeMismatchOnGenericFieldProgram(TypeEnv.WithGenerics, fuel: 1)
+            .Sample(module =>
             {
+                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
                 Interlocked.Increment(ref tested);
 
                 try
@@ -238,7 +226,7 @@ public class GenericTypePropertyTests
                 {
                     // Non-ICE exceptions acceptable
                 }
-            }, iter: 50);
+            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine($"Generic field mismatch: {tested} programs processed without ICE");
     }
@@ -249,9 +237,10 @@ public class GenericTypePropertyTests
         int tested = 0;
         int passed = 0;
 
-        GenGenerics.GenericWithInheritanceProgram(TypeEnv.Default, fuel: 2)
-            .Sample(source =>
+        GenGenerics.GenericWithInheritanceProgram(TypeEnv.WithGenerics, fuel: 2)
+            .Sample(module =>
             {
+                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
                 Interlocked.Increment(ref tested);
 
                 try
@@ -265,18 +254,10 @@ public class GenericTypePropertyTests
                 {
                     // Swallow
                 }
-            }, iter: 50);
+            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine($"Generic inheritance compilation: {passed}/{tested} passed");
         Assert.True(passed > tested / 2,
             $"Generic inheritance pass rate too low: {passed}/{tested}");
     }
-
-    private static string DefaultLiteral(string type) => type switch
-    {
-        "int" => "42",
-        "str" => "\"hello\"",
-        "bool" => "True",
-        _ => "0"
-    };
 }
