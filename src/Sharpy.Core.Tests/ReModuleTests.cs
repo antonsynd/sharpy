@@ -526,6 +526,20 @@ namespace Sharpy.Tests
             Assert.Equal("world", groups[1]);
         }
 
+        [Fact]
+        public void Sub_StringRepl_PythonBackreference_TranslatedCorrectly()
+        {
+            string result = Re.Sub(@"(\w+)", @"\1_suffix", "hello world");
+            Assert.Equal("hello_suffix world_suffix", result);
+        }
+
+        [Fact]
+        public void Sub_StringRepl_NamedBackreference_TranslatedCorrectly()
+        {
+            string result = Re.Sub(@"(?P<w>\w+)", @"\g<w>!", "hello world");
+            Assert.Equal("hello! world!", result);
+        }
+
         #endregion
 
         #region Callable Subn
@@ -544,6 +558,14 @@ namespace Sharpy.Tests
             var (result, count) = Re.Subn(@"\d+", m => "N", "a1b2c3", count: 1);
             Assert.Equal("aNb2c3", result);
             Assert.Equal(1, count);
+        }
+
+        [Fact]
+        public void Subn_StringRepl_PythonBackreference_TranslatedCorrectly()
+        {
+            var (result, count) = Re.Subn(@"(\w+)", @"\1_x", "hello world");
+            Assert.Equal("hello_x world_x", result);
+            Assert.Equal(2, count);
         }
 
         #endregion

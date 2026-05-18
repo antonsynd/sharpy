@@ -58,12 +58,12 @@ namespace Sharpy
         /// </summary>
         public string? Group(string name)
         {
-            var g = _match.Groups[name];
-            if (g == null)
+            if (_pattern != null && _pattern.InternalRegex.GroupNumberFromName(name) == -1)
             {
                 throw new IndexError("no such group");
             }
 
+            var g = _match.Groups[name];
             return g.Success ? g.Value : null;
         }
 
@@ -171,64 +171,16 @@ namespace Sharpy
         /// </summary>
         public string Expand(string template)
         {
-            string translated = TranslateTemplate(template);
+            string translated = RePatternTranslator.TranslateReplacement(template);
             return _match.Result(translated);
         }
 
         /// <summary>Access group by index. Equivalent to Group(n).</summary>
         public string? this[int n] => Group(n);
 
-        private static string TranslateTemplate(string template)
-        {
-            var sb = new System.Text.StringBuilder(template.Length);
-            int i = 0;
-            while (i < template.Length)
-            {
-                if (template[i] == '\\' && i + 1 < template.Length)
-                {
-                    if (template[i + 1] == 'g' && i + 2 < template.Length && template[i + 2] == '<')
-                    {
-                        // \g<name> → ${name}
-                        i += 3;
-                        int nameStart = i;
-                        while (i < template.Length && template[i] != '>')
-                            i++;
-                        string name = template.Substring(nameStart, i - nameStart);
-                        sb.Append("${");
-                        sb.Append(name);
-                        sb.Append('}');
-                        if (i < template.Length)
-                            i++;
-                        continue;
-                    }
-
-                    if (char.IsDigit(template[i + 1]))
-                    {
-                        // \N → $N
-                        sb.Append('$');
-                        sb.Append(template[i + 1]);
-                        i += 2;
-                        continue;
-                    }
-
-                    // Other escapes: pass through
-                    sb.Append(template[i]);
-                    sb.Append(template[i + 1]);
-                    i += 2;
-                    continue;
-                }
-
-                sb.Append(template[i]);
-                i++;
-            }
-
-            return sb.ToString();
-        }
-
         private string[] GetGroupNames()
         {
-            // Use compiled pattern's regex if available, otherwise compile once
-            var regex = _pattern?.InternalRegex ?? new Regex(RePatternTranslator.Translate(Pattern));
+            var regex = _pattern!.InternalRegex;
             var names = regex.GetGroupNames();
             // Filter out numeric-only names (those are unnamed groups)
             var named = new System.Collections.Generic.List<string>();

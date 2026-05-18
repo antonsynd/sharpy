@@ -185,6 +185,57 @@ namespace Sharpy
             return InlineFlagChars.IndexOf(c) >= 0;
         }
 
+        /// <summary>
+        /// Translate Python replacement string syntax (\1, \g&lt;name&gt;) to .NET syntax ($1, ${name}).
+        /// Used by Sub/Subn string replacement and ReMatch.Expand.
+        /// </summary>
+        internal static string TranslateReplacement(string template)
+        {
+            var sb = new StringBuilder(template.Length);
+            int i = 0;
+            while (i < template.Length)
+            {
+                if (template[i] == '\\' && i + 1 < template.Length)
+                {
+                    if (template[i + 1] == 'g' && i + 2 < template.Length && template[i + 2] == '<')
+                    {
+                        // \g<name> → ${name}
+                        i += 3;
+                        int nameStart = i;
+                        while (i < template.Length && template[i] != '>')
+                            i++;
+                        string name = template.Substring(nameStart, i - nameStart);
+                        sb.Append("${");
+                        sb.Append(name);
+                        sb.Append('}');
+                        if (i < template.Length)
+                            i++;
+                        continue;
+                    }
+
+                    if (char.IsDigit(template[i + 1]))
+                    {
+                        // \N → $N
+                        sb.Append('$');
+                        sb.Append(template[i + 1]);
+                        i += 2;
+                        continue;
+                    }
+
+                    // Other escapes: pass through
+                    sb.Append(template[i]);
+                    sb.Append(template[i + 1]);
+                    i += 2;
+                    continue;
+                }
+
+                sb.Append(template[i]);
+                i++;
+            }
+
+            return sb.ToString();
+        }
+
         private static string FilterInlineFlags(string flags)
         {
             var sb = new StringBuilder(flags.Length);

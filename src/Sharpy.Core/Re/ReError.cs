@@ -13,7 +13,7 @@ namespace Sharpy
         public string Msg { get; }
 
         /// <summary>The regex pattern that caused the error, if available.</summary>
-        public string? PatternStr { get; }
+        public string? Pattern { get; }
 
         /// <summary>The position in the pattern where the error occurred, if available.</summary>
         public int? Pos { get; }
@@ -29,7 +29,7 @@ namespace Sharpy
             : base(msg)
         {
             Msg = msg;
-            PatternStr = pattern;
+            Pattern = pattern;
             Pos = pos;
             if (pos != null && pattern != null)
             {

@@ -11,6 +11,8 @@ namespace Sharpy
     public sealed class RePattern
     {
         private readonly Regex _regex;
+        private readonly Dict<string, int> _groupindex = new Dict<string, int>();
+        private bool _groupindexCached;
 
         /// <summary>The original pattern string.</summary>
         public string PatternStr { get; }
@@ -31,17 +33,20 @@ namespace Sharpy
         {
             get
             {
-                var result = new Dict<string, int>();
+                if (_groupindex.Count > 0 || _groupindexCached)
+                    return _groupindex;
+
                 foreach (string name in _regex.GetGroupNames())
                 {
                     if (!int.TryParse(name, System.Globalization.NumberStyles.Integer,
                             System.Globalization.CultureInfo.InvariantCulture, out _))
                     {
-                        result[name] = _regex.GroupNumberFromName(name);
+                        _groupindex[name] = _regex.GroupNumberFromName(name);
                     }
                 }
 
-                return result;
+                _groupindexCached = true;
+                return _groupindex;
             }
         }
 
@@ -165,12 +170,13 @@ namespace Sharpy
         /// </summary>
         public string Sub(string repl, string s, int count = 0)
         {
+            string translated = RePatternTranslator.TranslateReplacement(repl);
             if (count == 0)
             {
-                return _regex.Replace(s, repl);
+                return _regex.Replace(s, translated);
             }
 
-            return _regex.Replace(s, repl, count);
+            return _regex.Replace(s, translated, count);
         }
 
         /// <summary>
@@ -178,6 +184,7 @@ namespace Sharpy
         /// </summary>
         public (string, int) Subn(string repl, string s, int count = 0)
         {
+            string translated = RePatternTranslator.TranslateReplacement(repl);
             int replacementCount = 0;
             string result;
             if (count == 0)
@@ -185,7 +192,7 @@ namespace Sharpy
                 result = _regex.Replace(s, m =>
                 {
                     replacementCount++;
-                    return m.Result(repl);
+                    return m.Result(translated);
                 });
             }
             else
@@ -193,7 +200,7 @@ namespace Sharpy
                 result = _regex.Replace(s, m =>
                 {
                     replacementCount++;
-                    return m.Result(repl);
+                    return m.Result(translated);
                 }, count);
             }
 

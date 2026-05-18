@@ -504,6 +504,14 @@ namespace Sharpy.Tests
             Assert.Throws<IndexError>(() => m![99]);
         }
 
+        [Fact]
+        public void Match_GroupByName_NonexistentName_ThrowsIndexError()
+        {
+            var m = Re.Search(@"(?P<word>\w+)", "hello");
+            Assert.NotNull(m);
+            Assert.Throws<IndexError>(() => m!.Group("nonexistent"));
+        }
+
         #endregion
 
         #region RePattern.Pattern Property
@@ -656,7 +664,7 @@ namespace Sharpy.Tests
         {
             var ex = Assert.Throws<ReError>(() => Re.Compile("[invalid"));
             Assert.NotEmpty(ex.Msg);
-            Assert.Equal("[invalid", ex.PatternStr);
+            Assert.Equal("[invalid", ex.Pattern);
         }
 
         [Fact]
@@ -664,7 +672,7 @@ namespace Sharpy.Tests
         {
             var err = new ReError("test error", "abc(", 3);
             Assert.Equal("test error", err.Msg);
-            Assert.Equal("abc(", err.PatternStr);
+            Assert.Equal("abc(", err.Pattern);
             Assert.Equal(3, err.Pos);
             Assert.NotNull(err.Lineno);
             Assert.NotNull(err.Colno);
@@ -675,7 +683,7 @@ namespace Sharpy.Tests
         {
             var err = new ReError("test error");
             Assert.Equal("test error", err.Msg);
-            Assert.Null(err.PatternStr);
+            Assert.Null(err.Pattern);
             Assert.Null(err.Pos);
             Assert.Null(err.Lineno);
             Assert.Null(err.Colno);

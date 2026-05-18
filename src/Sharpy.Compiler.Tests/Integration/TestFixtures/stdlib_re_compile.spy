@@ -16,8 +16,17 @@ def main():
     print(gi["year"])
     print(gi["month"])
 
-    # Compiled sub
+    # Compiled match
+    m2 = p2.match("2024-05-rest")
+    if m2 is not None:
+        print(m2.group("year"))
+
+    # Compiled findall
     p3 = re.compile("\\d+")
+    found = p3.findall("x1y2z3")
+    print(len(found))
+
+    # Compiled sub
     print(p3.sub("N", "a1b2"))
 
     # Compiled split
