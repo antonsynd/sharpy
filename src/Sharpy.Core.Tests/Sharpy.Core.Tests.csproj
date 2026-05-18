@@ -23,6 +23,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
 
     <!-- Optional: Fluent assertions for better readability -->
-    <PackageReference Include="FluentAssertions" Version="8.9.0" />
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
   </ItemGroup>
 </Project>
