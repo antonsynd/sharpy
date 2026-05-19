@@ -553,4 +553,29 @@ public class Sqlite3CursorTests : IDisposable
     }
 
     #endregion
+
+    #region Multiple Cursors
+
+    [Fact]
+    public void MultipleCursors_OnSameConnection_WorkIndependently()
+    {
+        CreateAndPopulateTable();
+
+        var cur1 = _conn.Execute("SELECT id FROM t ORDER BY id");
+        var cur2 = _conn.Execute("SELECT name FROM t ORDER BY name");
+
+        var row1 = cur1.Fetchone() as object?[];
+        row1![0].Should().Be(1L);
+
+        var row2 = cur2.Fetchone() as object?[];
+        row2![0].Should().Be("Alice");
+
+        var remaining1 = cur1.Fetchall();
+        remaining1.Should().HaveCount(2);
+
+        var remaining2 = cur2.Fetchall();
+        remaining2.Should().HaveCount(2);
+    }
+
+    #endregion
 }

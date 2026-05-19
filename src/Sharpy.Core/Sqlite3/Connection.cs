@@ -45,14 +45,14 @@ namespace Sharpy
             return new Sqlite3Cursor(this);
         }
 
-        public Sqlite3Cursor Execute(string sql, object?[]? parameters = null)
+        public Sqlite3Cursor Execute(string sql, System.Collections.IEnumerable? parameters = null)
         {
             var cursor = Cursor();
             cursor.Execute(sql, parameters);
             return cursor;
         }
 
-        public Sqlite3Cursor Executemany(string sql, IEnumerable<object?[]> seqOfParameters)
+        public Sqlite3Cursor Executemany(string sql, System.Collections.IEnumerable seqOfParameters)
         {
             var cursor = Cursor();
             cursor.Executemany(sql, seqOfParameters);

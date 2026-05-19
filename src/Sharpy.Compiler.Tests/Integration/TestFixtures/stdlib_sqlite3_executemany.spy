@@ -1,0 +1,16 @@
+# Test sqlite3 module: executemany for bulk inserts
+import sqlite3
+
+def main():
+    conn = sqlite3.connect(":memory:")
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE scores (name TEXT, score INTEGER)")
+    data = [["Alice", 95], ["Bob", 87], ["Charlie", 92]]
+    cur.executemany("INSERT INTO scores VALUES (?, ?)", data)
+    conn.commit()
+    print(cur.rowcount)
+    cur.execute("SELECT name FROM scores ORDER BY name")
+    rows = cur.fetchall()
+    print(len(rows))
+    conn.close()
+    print("done")

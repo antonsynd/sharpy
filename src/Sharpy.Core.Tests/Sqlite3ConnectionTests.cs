@@ -318,4 +318,16 @@ public class Sqlite3ConnectionTests : IDisposable
     }
 
     #endregion
+
+    #region Error Handling
+
+    [Fact]
+    public void Execute_InvalidSql_ThrowsOperationalError()
+    {
+        var conn = CreateConnection();
+        var act = () => conn.Execute("NOT VALID SQL");
+        act.Should().Throw<Sqlite3OperationalError>();
+    }
+
+    #endregion
 }

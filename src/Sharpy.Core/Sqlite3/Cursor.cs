@@ -26,7 +26,7 @@ namespace Sharpy
             Rowcount = -1;
         }
 
-        public Sqlite3Cursor Execute(string sql, object?[]? parameters = null)
+        public Sqlite3Cursor Execute(string sql, System.Collections.IEnumerable? parameters = null)
         {
             EnsureOpen();
             CloseReader();
@@ -42,14 +42,15 @@ namespace Sharpy
 
             SqliteConnection rawConn = _connection.GetRawConnection();
             SqliteCommand command = rawConn.CreateCommand();
-            command.CommandText = RewritePositionalParams(sql, parameters);
+            object?[]? paramArray = ToArray(parameters);
+            command.CommandText = RewritePositionalParams(sql, paramArray);
             SqliteTransaction? txn = _connection.GetTransaction();
             if (txn != null)
             {
                 command.Transaction = txn;
             }
 
-            BindParameters(command, parameters);
+            BindParameters(command, paramArray);
 
             try
             {
@@ -75,13 +76,13 @@ namespace Sharpy
             return this;
         }
 
-        public Sqlite3Cursor Executemany(string sql, IEnumerable<object?[]> seqOfParameters)
+        public Sqlite3Cursor Executemany(string sql, System.Collections.IEnumerable seqOfParameters)
         {
             EnsureOpen();
             int totalRows = 0;
-            foreach (object?[] parameters in seqOfParameters)
+            foreach (object parameters in seqOfParameters)
             {
-                Execute(sql, parameters);
+                Execute(sql, parameters as System.Collections.IEnumerable);
                 if (Rowcount >= 0)
                 {
                     totalRows += Rowcount;
@@ -402,6 +403,27 @@ namespace Sharpy
                 _reader.Dispose();
                 _reader = null;
             }
+        }
+
+        private static object?[]? ToArray(System.Collections.IEnumerable? seq)
+        {
+            if (seq == null)
+            {
+                return null;
+            }
+
+            if (seq is object?[] arr)
+            {
+                return arr;
+            }
+
+            var result = new System.Collections.Generic.List<object?>();
+            foreach (object? item in seq)
+            {
+                result.Add(item);
+            }
+
+            return result.ToArray();
         }
 
         private void EnsureOpen()
