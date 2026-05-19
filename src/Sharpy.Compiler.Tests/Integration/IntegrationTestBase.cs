@@ -873,6 +873,8 @@ public abstract class IntegrationTestBase
             "SQLitePCLRaw.batteries_v2.dll",
             "SQLitePCLRaw.core.dll",
             "SQLitePCLRaw.provider.e_sqlite3.dll",
+            // Math.NET Numerics — required by numpy.linalg / numpy.fft submodules.
+            "MathNet.Numerics.dll",
         };
 
         foreach (var dllName in transitiveDeps)
