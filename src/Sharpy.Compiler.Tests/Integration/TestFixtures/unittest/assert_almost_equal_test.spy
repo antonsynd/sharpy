@@ -1,0 +1,12 @@
+from unittest import assert_almost_equal
+
+@test
+def test_almost_equal_default():
+    assert_almost_equal(3.14159, 3.14159265)
+
+@test
+def test_almost_equal_places():
+    assert_almost_equal(0.1 + 0.2, 0.3, places=3)
+
+def main():
+    print("ok")

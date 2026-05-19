@@ -1,0 +1,30 @@
+@test
+def test_equality():
+    x: int = 1
+    y: int = 2
+    assert x == y
+    assert x != y
+
+@test
+def test_comparisons():
+    x: int = 1
+    y: int = 2
+    assert x > y
+    assert x < y
+    assert x >= y
+    assert x <= y
+
+@test
+def test_nullability():
+    s: str? = None()
+    assert s is None
+    assert s is not None
+
+@test
+def test_membership():
+    items: list[int] = [1, 2, 3]
+    assert 1 in items
+    assert 4 not in items
+
+def main():
+    print("ok")

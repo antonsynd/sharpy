@@ -1,0 +1,9 @@
+@abstract
+class Base:
+    @test
+    @abstract
+    def test_something(self):
+        ...
+
+def main():
+    pass

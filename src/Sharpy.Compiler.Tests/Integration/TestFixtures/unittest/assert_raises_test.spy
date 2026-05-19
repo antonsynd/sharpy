@@ -1,0 +1,14 @@
+from unittest import assert_raises
+
+@test
+def test_raises_value_error():
+    with assert_raises(ValueError):
+        raise ValueError("oops")
+
+@test
+def test_raises_runtime_error():
+    with assert_raises(RuntimeError):
+        raise RuntimeError("boom")
+
+def main():
+    print("ok")

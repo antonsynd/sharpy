@@ -1,0 +1,17 @@
+from unittest import TestCase
+
+class TestCalc(TestCase):
+    x: int
+
+    def setup(self):
+        self.x = 42
+
+    def teardown(self):
+        pass
+
+    @test
+    def test_value(self):
+        assert self.x == 42
+
+def main():
+    print("ok")

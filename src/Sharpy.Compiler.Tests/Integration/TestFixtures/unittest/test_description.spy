@@ -1,0 +1,6 @@
+@test("my test description")
+def test_with_desc():
+    assert 1 == 1
+
+def main():
+    print("ok")

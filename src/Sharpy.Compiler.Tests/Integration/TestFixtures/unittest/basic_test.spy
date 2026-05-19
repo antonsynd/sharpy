@@ -1,0 +1,7 @@
+@test
+def test_addition():
+    x: int = 1 + 1
+    assert x == 2
+
+def main():
+    print(2)

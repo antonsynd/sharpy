@@ -1,0 +1,7 @@
+class Foo:
+    @test
+    def __init__(self):
+        pass
+
+def main():
+    pass

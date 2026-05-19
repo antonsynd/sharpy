@@ -842,7 +842,13 @@ internal partial class RoslynEmitter
         };
 
         var bodyStatements = body.SelectMany(GenerateBodyStatements).ToList();
-        var lambda = ParenthesizedLambdaExpression(Block(bodyStatements));
+        // Cast the lambda to System.Action to avoid overload ambiguity with the
+        // obsolete Xunit.Assert.Throws<T>(Func<Task>) overload (which would otherwise
+        // be selected when the body is throw-only and the compiler cannot infer
+        // a return type for the lambda).
+        var lambda = CastExpression(
+            ParseTypeName("System.Action"),
+            ParenthesizedExpression(ParenthesizedLambdaExpression(Block(bodyStatements))));
 
         var throwsCall = InvocationExpression(
                 MemberAccessExpression(

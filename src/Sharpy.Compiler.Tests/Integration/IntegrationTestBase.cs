@@ -43,6 +43,15 @@ public abstract class IntegrationTestBase
             MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
             MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
             MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
+            // Xunit references — needed for fixtures that use the @test decorator,
+            // which emits [Xunit.FactAttribute] and Xunit.Assert.* calls.
+            MetadataReference.CreateFromFile(typeof(Xunit.FactAttribute).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Xunit.Assert).Assembly.Location),
+            // Additional collection assemblies referenced by Xunit.Assert overloads
+            // (e.g. Contains/DoesNotContain accept IDictionary, IReadOnlyDictionary, ImmutableHashSet, etc.).
+            MetadataReference.CreateFromFile(Assembly.Load("System.Collections.Concurrent").Location),
+            MetadataReference.CreateFromFile(Assembly.Load("System.ObjectModel").Location),
+            MetadataReference.CreateFromFile(Assembly.Load("System.Collections.Immutable").Location),
         };
 
         string? runtimePath = null;

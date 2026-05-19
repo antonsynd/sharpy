@@ -1627,6 +1627,34 @@ public static class DiagnosticExplanations
             "@[GenerateEquals]\nx: int = 0   # SPY0447 — generator on a variable declaration",
             "Apply the generator attribute to a class, function, or struct declaration instead.");
 
+        // ── @test decorator validation (SPY0448-SPY0449) ──────────────
+
+        Add(dict, DiagnosticCodes.Validation.TestDecoratorInvalidTarget,
+            "@test decorator applied to invalid target",
+            "Validation",
+            "The @test decorator is only valid on function and method declarations. " +
+            "It cannot be applied to classes, structs, interfaces, enums, properties, events, or dunder methods.",
+            "@test\nclass MyClass:\n    pass  # SPY0448 — @test on a class",
+            "Move @test to a function or method declaration.");
+
+        Add(dict, DiagnosticCodes.Validation.TestDecoratorInvalidCombination,
+            "@test combined with incompatible decorator",
+            "Validation",
+            "The @test decorator cannot be combined with @abstract, @virtual, or @static. " +
+            "Test methods must be concrete instance methods so xUnit can discover and run them.",
+            "@test\n@static\ndef test_something():\n    pass  # SPY0449",
+            "Remove the incompatible decorator. Test functions should be regular (non-static, non-abstract) methods.");
+
+        // ── @test decorator argument validation (SPY0469) ──────────────
+
+        Add(dict, DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+            "@test decorator has invalid argument",
+            "Validation",
+            "The @test decorator accepts at most one positional string argument (the test description). " +
+            "Non-string arguments and keyword arguments are not supported.",
+            "@test(42)\ndef test_something():\n    pass  # SPY0469 — argument must be a string",
+            "Use a string literal: @test(\"my test description\") or omit the argument: @test");
+
         // ── Validation warnings: Deprecation (SPY0464) ─────────────────
 
         Add(dict, DiagnosticCodes.Validation.DeprecatedBodylessSyntax,

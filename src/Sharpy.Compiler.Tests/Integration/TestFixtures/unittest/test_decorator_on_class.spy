@@ -1,0 +1,6 @@
+@test
+class MyClass:
+    pass
+
+def main():
+    pass

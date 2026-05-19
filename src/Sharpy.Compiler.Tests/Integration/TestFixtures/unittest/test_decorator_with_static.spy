@@ -1,0 +1,8 @@
+class MyClass:
+    @test
+    @static
+    def test_something(self):
+        pass
+
+def main():
+    pass
