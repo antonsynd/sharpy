@@ -901,5 +901,225 @@ namespace Sharpy.Tests
         }
 
         #endregion
+
+        #region Dumps - Separators
+
+        [Fact]
+        public void Dumps_DictWithCompactSeparators_OmitsWhitespace()
+        {
+            var d = new Dict<string, object?>();
+            d["a"] = 1;
+            d["b"] = 2;
+            string result = Json.Dumps(d, separators: (",", ":"));
+            Assert.Equal("{\"a\":1,\"b\":2}", result);
+        }
+
+        [Fact]
+        public void Dumps_DictWithCustomSeparators_UsesGivenStrings()
+        {
+            var d = new Dict<string, object?>();
+            d["a"] = 1;
+            d["b"] = 2;
+            string result = Json.Dumps(d, separators: (" ; ", " = "));
+            Assert.Equal("{\"a\" = 1 ; \"b\" = 2}", result);
+        }
+
+        [Fact]
+        public void Dumps_ListWithCompactSeparators_OmitsWhitespace()
+        {
+            var l = new List<int>();
+            l.Append(1);
+            l.Append(2);
+            l.Append(3);
+            string result = Json.Dumps(l, separators: (",", ":"));
+            Assert.Equal("[1,2,3]", result);
+        }
+
+        [Fact]
+        public void Dumps_NullSeparators_ProducesDefaultOutput()
+        {
+            var d = new Dict<string, object?>();
+            d["a"] = 1;
+            d["b"] = 2;
+            string explicitNull = Json.Dumps(d, separators: null);
+            string defaultCall = Json.Dumps(d);
+            Assert.Equal(defaultCall, explicitNull);
+            Assert.Equal("{\"a\": 1, \"b\": 2}", explicitNull);
+        }
+
+        [Fact]
+        public void Dumps_SeparatorsWithIndent_UsesNewlineForStructureAndKeySeparator()
+        {
+            // In pretty mode, item separator is driven by newline+indent (Python behavior),
+            // but the key separator IS honored.
+            var d = new Dict<string, object?>();
+            d["a"] = 1;
+            d["b"] = 2;
+            string result = Json.Dumps(d, indent: 2, separators: (",", ": "));
+            string expected = "{\n  \"a\": 1,\n  \"b\": 2\n}";
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Dumps_NestedDictWithCompactSeparators_AppliesRecursively()
+        {
+            var inner = new Dict<string, object?>();
+            inner["x"] = 1;
+            inner["y"] = 2;
+
+            var outer = new Dict<string, object?>();
+            outer["point"] = inner;
+            outer["count"] = 3;
+
+            string result = Json.Dumps(outer, separators: (",", ":"));
+            Assert.Equal("{\"point\":{\"x\":1,\"y\":2},\"count\":3}", result);
+        }
+
+        [Fact]
+        public void Dumps_NestedListWithCompactSeparators_AppliesRecursively()
+        {
+            var inner1 = new List<int>();
+            inner1.Append(1);
+            inner1.Append(2);
+            var inner2 = new List<int>();
+            inner2.Append(3);
+            inner2.Append(4);
+
+            var outer = new List<object?>();
+            outer.Append(inner1);
+            outer.Append(inner2);
+
+            string result = Json.Dumps(outer, separators: (",", ":"));
+            // Separators apply recursively to nested collections.
+            Assert.Equal("[[1,2],[3,4]]", result);
+        }
+
+        [Fact]
+        public void Dumps_StrKeyDictWithCompactSeparators_OmitsWhitespace()
+        {
+            var d = new Dict<string, int>();
+            d["a"] = 1;
+            d["b"] = 2;
+            string result = Json.Dumps(d, separators: (",", ":"));
+            Assert.Equal("{\"a\":1,\"b\":2}", result);
+        }
+
+        #endregion
+
+        #region Dumps - Default Callback
+
+        [Fact]
+        public void Dumps_DefaultCallback_ConvertsCustomTypeToString()
+        {
+            var dt = new System.DateTime(2026, 1, 15);
+            Func<object, object?> toStr = obj => obj is System.DateTime d ? d.ToString("yyyy-MM-dd") : obj;
+            string result = Json.Dumps(dt, @default: toStr);
+            Assert.Equal("\"2026-01-15\"", result);
+        }
+
+        [Fact]
+        public void Dumps_DefaultCallback_ConvertsCustomTypeToDict()
+        {
+            var dt = new System.DateTime(2026, 1, 15);
+            Func<object, object?> toDict = obj =>
+            {
+                if (obj is System.DateTime d)
+                {
+                    var result = new Dict<string, object?>();
+                    result["year"] = d.Year;
+                    result["month"] = d.Month;
+                    result["day"] = d.Day;
+                    return result;
+                }
+                return obj;
+            };
+            string result = Json.Dumps(dt, @default: toDict);
+            Assert.Equal("{\"year\": 2026, \"month\": 1, \"day\": 15}", result);
+        }
+
+        [Fact]
+        public void Dumps_DefaultCallback_NotInvokedForNull()
+        {
+            int callCount = 0;
+            Func<object, object?> tracker = obj =>
+            {
+                callCount++;
+                return "fallback";
+            };
+            string result = Json.Dumps(null, @default: tracker);
+            Assert.Equal("null", result);
+            Assert.Equal(0, callCount);
+        }
+
+        [Fact]
+        public void Dumps_DefaultCallback_NotInvokedForNativelySerializableTypes()
+        {
+            int callCount = 0;
+            Func<object, object?> tracker = obj =>
+            {
+                callCount++;
+                return "fallback";
+            };
+            string result = Json.Dumps(42, @default: tracker);
+            Assert.Equal("42", result);
+            Assert.Equal(0, callCount);
+        }
+
+        [Fact]
+        public void Dumps_DefaultCallback_ReturningSameObject_RaisesTypeError()
+        {
+            var dt = new System.DateTime(2026, 1, 15);
+            // Identity-returning callback should trigger TypeError to prevent infinite recursion.
+            Func<object, object?> identity = obj => obj;
+            Assert.Throws<TypeError>(() => Json.Dumps(dt, @default: identity));
+        }
+
+        [Fact]
+        public void Dumps_NoDefaultCallback_NonSerializableType_RaisesTypeError()
+        {
+            var dt = new System.DateTime(2026, 1, 15);
+            Assert.Throws<TypeError>(() => Json.Dumps(dt));
+        }
+
+        [Fact]
+        public void Dumps_DefaultCallback_NestedInDict_IsInvokedForValue()
+        {
+            var dt = new System.DateTime(2026, 1, 15);
+            var d = new Dict<string, object?>();
+            d["when"] = dt;
+            d["count"] = 5;
+
+            Func<object, object?> toStr = obj => obj is System.DateTime x ? x.ToString("yyyy-MM-dd") : obj;
+            string result = Json.Dumps(d, @default: toStr);
+            Assert.Equal("{\"when\": \"2026-01-15\", \"count\": 5}", result);
+        }
+
+        [Fact]
+        public void Dumps_DefaultCallback_NestedInList_IsInvokedForElement()
+        {
+            var dt = new System.DateTime(2026, 1, 15);
+            var l = new List<object?>();
+            l.Append(dt);
+            l.Append(1);
+
+            Func<object, object?> toStr = obj => obj is System.DateTime x ? x.ToString("yyyy-MM-dd") : obj;
+            string result = Json.Dumps(l, @default: toStr);
+            Assert.Equal("[\"2026-01-15\", 1]", result);
+        }
+
+        [Fact]
+        public void Dumps_DefaultAndSeparators_CombinedCorrectly()
+        {
+            var dt = new System.DateTime(2026, 1, 15);
+            var d = new Dict<string, object?>();
+            d["when"] = dt;
+            d["count"] = 5;
+
+            Func<object, object?> toStr = obj => obj is System.DateTime x ? x.ToString("yyyy-MM-dd") : obj;
+            string result = Json.Dumps(d, separators: (",", ":"), @default: toStr);
+            Assert.Equal("{\"when\":\"2026-01-15\",\"count\":5}", result);
+        }
+
+        #endregion
     }
 }

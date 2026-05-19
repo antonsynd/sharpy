@@ -12,10 +12,17 @@ namespace Sharpy
     /// </summary>
     internal static class JsonSerializer
     {
-        public static string Serialize(object? obj, int indent = -1, bool sortKeys = false, bool ensureAscii = true)
+        public static string Serialize(
+            object? obj,
+            int indent = -1,
+            bool sortKeys = false,
+            bool ensureAscii = true,
+            string? itemSeparator = null,
+            string? keySeparator = null,
+            Func<object, object?>? defaultFunc = null)
         {
             var sb = new StringBuilder();
-            SerializeValue(sb, obj, indent, sortKeys, ensureAscii, 0);
+            SerializeValue(sb, obj, indent, sortKeys, ensureAscii, 0, itemSeparator, keySeparator, defaultFunc);
             return sb.ToString();
         }
 
@@ -25,7 +32,10 @@ namespace Sharpy
             int indent,
             bool sortKeys,
             bool ensureAscii,
-            int currentIndent)
+            int currentIndent,
+            string? itemSeparator,
+            string? keySeparator,
+            Func<object, object?>? defaultFunc)
         {
             if (value == null)
             {
@@ -72,13 +82,13 @@ namespace Sharpy
             // Handle Dict<string, object?> and Dict<string, object>
             if (value is IDictionary<string, object?> dictNullable)
             {
-                SerializeDict(sb, dictNullable, indent, sortKeys, ensureAscii, currentIndent);
+                SerializeDict(sb, dictNullable, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc);
                 return;
             }
 
             if (value is IDictionary<string, object> dictNonNull)
             {
-                SerializeDictNonNull(sb, dictNonNull, indent, sortKeys, ensureAscii, currentIndent);
+                SerializeDictNonNull(sb, dictNonNull, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc);
                 return;
             }
 
@@ -86,14 +96,14 @@ namespace Sharpy
             // interface (compile-time dispatch; no reflection).
             if (value is IStrKeyDictionary strKeyDict)
             {
-                SerializeStrKeyDict(sb, strKeyDict, indent, sortKeys, ensureAscii, currentIndent);
+                SerializeStrKeyDict(sb, strKeyDict, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc);
                 return;
             }
 
             // Handle List<object?> and other IEnumerable<object?>
             if (value is IEnumerable<object?> enumerable && !(value is string))
             {
-                SerializeEnumerable(sb, enumerable, indent, sortKeys, ensureAscii, currentIndent);
+                SerializeEnumerable(sb, enumerable, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc);
                 return;
             }
 
@@ -102,11 +112,31 @@ namespace Sharpy
             // Must come after IDictionary checks to avoid serializing dicts as arrays.
             if (value is IEnumerable nonGenericEnumerable && !(value is string))
             {
-                SerializeNonGenericEnumerable(sb, nonGenericEnumerable, indent, sortKeys, ensureAscii, currentIndent);
+                SerializeNonGenericEnumerable(sb, nonGenericEnumerable, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc);
                 return;
             }
 
-            // Fallback: try to convert to string
+            // If a default callback was provided, give it a chance to convert the value
+            // into a JSON-serializable representation before failing.
+            if (defaultFunc != null)
+            {
+                object? replacement = defaultFunc(value);
+
+                // Guard against infinite recursion: if the callback returns the same
+                // object, raise the same TypeError Python raises in this situation.
+                if (ReferenceEquals(replacement, value))
+                {
+                    throw new TypeError(
+                        "Object of type " + value.GetType().Name + " is not JSON serializable");
+                }
+
+                // Pass null as defaultFunc to prevent unbounded recursion on
+                // values the callback returns that are themselves non-serializable.
+                SerializeValue(sb, replacement, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, null);
+                return;
+            }
+
+            // Fallback: not serializable and no callback provided.
             throw new TypeError(
                 "Object of type " + value.GetType().Name + " is not JSON serializable");
         }
@@ -190,7 +220,10 @@ namespace Sharpy
             int indent,
             bool sortKeys,
             bool ensureAscii,
-            int currentIndent)
+            int currentIndent,
+            string? itemSeparator,
+            string? keySeparator,
+            Func<object, object?>? defaultFunc)
         {
             var keys = new System.Collections.Generic.List<string>(dict.Keys);
 
@@ -215,10 +248,13 @@ namespace Sharpy
             {
                 if (!first)
                 {
-                    sb.Append(',');
-                    if (!pretty)
+                    if (pretty)
                     {
-                        sb.Append(' ');
+                        sb.Append(',');
+                    }
+                    else
+                    {
+                        sb.Append(itemSeparator ?? ", ");
                     }
                 }
 
@@ -231,10 +267,9 @@ namespace Sharpy
                 }
 
                 SerializeString(sb, key, ensureAscii);
-                sb.Append(':');
-                sb.Append(' ');
+                sb.Append(keySeparator ?? ": ");
 
-                SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent);
+                SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc);
             }
 
             if (pretty)
@@ -252,7 +287,10 @@ namespace Sharpy
             int indent,
             bool sortKeys,
             bool ensureAscii,
-            int currentIndent)
+            int currentIndent,
+            string? itemSeparator,
+            string? keySeparator,
+            Func<object, object?>? defaultFunc)
         {
             var keys = new System.Collections.Generic.List<string>(dict.Keys);
 
@@ -277,10 +315,13 @@ namespace Sharpy
             {
                 if (!first)
                 {
-                    sb.Append(',');
-                    if (!pretty)
+                    if (pretty)
                     {
-                        sb.Append(' ');
+                        sb.Append(',');
+                    }
+                    else
+                    {
+                        sb.Append(itemSeparator ?? ", ");
                     }
                 }
 
@@ -293,10 +334,9 @@ namespace Sharpy
                 }
 
                 SerializeString(sb, key, ensureAscii);
-                sb.Append(':');
-                sb.Append(' ');
+                sb.Append(keySeparator ?? ": ");
 
-                SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent);
+                SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc);
             }
 
             if (pretty)
@@ -314,7 +354,10 @@ namespace Sharpy
             int indent,
             bool sortKeys,
             bool ensureAscii,
-            int currentIndent)
+            int currentIndent,
+            string? itemSeparator,
+            string? keySeparator,
+            Func<object, object?>? defaultFunc)
         {
             bool pretty = indent >= 0;
             int nextIndent = currentIndent + (pretty ? indent : 0);
@@ -326,10 +369,13 @@ namespace Sharpy
             {
                 if (!first)
                 {
-                    sb.Append(',');
-                    if (!pretty)
+                    if (pretty)
                     {
-                        sb.Append(' ');
+                        sb.Append(',');
+                    }
+                    else
+                    {
+                        sb.Append(itemSeparator ?? ", ");
                     }
                 }
 
@@ -341,7 +387,7 @@ namespace Sharpy
                     sb.Append(' ', nextIndent);
                 }
 
-                SerializeValue(sb, item, indent, sortKeys, ensureAscii, nextIndent);
+                SerializeValue(sb, item, indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc);
             }
 
             if (first)
@@ -366,7 +412,10 @@ namespace Sharpy
             int indent,
             bool sortKeys,
             bool ensureAscii,
-            int currentIndent)
+            int currentIndent,
+            string? itemSeparator,
+            string? keySeparator,
+            Func<object, object?>? defaultFunc)
         {
             bool pretty = indent >= 0;
             int nextIndent = currentIndent + (pretty ? indent : 0);
@@ -378,10 +427,13 @@ namespace Sharpy
             {
                 if (!first)
                 {
-                    sb.Append(',');
-                    if (!pretty)
+                    if (pretty)
                     {
-                        sb.Append(' ');
+                        sb.Append(',');
+                    }
+                    else
+                    {
+                        sb.Append(itemSeparator ?? ", ");
                     }
                 }
 
@@ -393,7 +445,7 @@ namespace Sharpy
                     sb.Append(' ', nextIndent);
                 }
 
-                SerializeValue(sb, item, indent, sortKeys, ensureAscii, nextIndent);
+                SerializeValue(sb, item, indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc);
             }
 
             if (first)
@@ -418,7 +470,10 @@ namespace Sharpy
             int indent,
             bool sortKeys,
             bool ensureAscii,
-            int currentIndent)
+            int currentIndent,
+            string? itemSeparator,
+            string? keySeparator,
+            Func<object, object?>? defaultFunc)
         {
             var entries = new System.Collections.Generic.List<KeyValuePair<string, object?>>(
                 strKeyDict.GetStringKeyEntries());
@@ -444,10 +499,13 @@ namespace Sharpy
             {
                 if (!first)
                 {
-                    sb.Append(',');
-                    if (!pretty)
+                    if (pretty)
                     {
-                        sb.Append(' ');
+                        sb.Append(',');
+                    }
+                    else
+                    {
+                        sb.Append(itemSeparator ?? ", ");
                     }
                 }
 
@@ -460,10 +518,9 @@ namespace Sharpy
                 }
 
                 SerializeString(sb, entry.Key, ensureAscii);
-                sb.Append(':');
-                sb.Append(' ');
+                sb.Append(keySeparator ?? ": ");
 
-                SerializeValue(sb, entry.Value, indent, sortKeys, ensureAscii, nextIndent);
+                SerializeValue(sb, entry.Value, indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc);
             }
 
             if (pretty)

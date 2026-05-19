@@ -1,0 +1,7 @@
+# Test json.dumps with separators argument
+import json
+
+def main():
+    d: dict[str, int] = {"a": 1, "b": 2}
+    print(json.dumps(d, separators=(",", ":")))
+    print(json.dumps([1, 2, 3], separators=(",", ":")))
