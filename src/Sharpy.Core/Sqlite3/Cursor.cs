@@ -42,7 +42,7 @@ namespace Sharpy
 
             SqliteConnection rawConn = _connection.GetRawConnection();
             SqliteCommand command = rawConn.CreateCommand();
-            command.CommandText = sql;
+            command.CommandText = RewritePositionalParams(sql, parameters);
             SqliteTransaction? txn = _connection.GetTransaction();
             if (txn != null)
             {
@@ -285,6 +285,7 @@ namespace Sharpy
             {
                 object? value = parameters[i];
                 SqliteParameter param = command.CreateParameter();
+                param.ParameterName = "$p" + i.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 param.Value = value ?? DBNull.Value;
                 if (value is Bytes b)
                 {
@@ -347,6 +348,50 @@ namespace Sharpy
             }
 
             return sql.Length == keyword.Length || sql[keyword.Length] == ' ' || sql[keyword.Length] == '\t' || sql[keyword.Length] == '\n' || sql[keyword.Length] == '\r';
+        }
+
+        private static string RewritePositionalParams(string sql, object?[]? parameters)
+        {
+            if (parameters == null || parameters.Length == 0)
+            {
+                return sql;
+            }
+
+            var sb = new System.Text.StringBuilder(sql.Length + parameters.Length * 4);
+            int paramIndex = 0;
+            bool inString = false;
+            char stringChar = '\0';
+
+            for (int i = 0; i < sql.Length; i++)
+            {
+                char c = sql[i];
+                if (inString)
+                {
+                    sb.Append(c);
+                    if (c == stringChar)
+                    {
+                        inString = false;
+                    }
+                }
+                else if (c == '\'' || c == '"')
+                {
+                    sb.Append(c);
+                    inString = true;
+                    stringChar = c;
+                }
+                else if (c == '?')
+                {
+                    sb.Append("$p");
+                    sb.Append(paramIndex.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    paramIndex++;
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+            }
+
+            return sb.ToString();
         }
 
         private void CloseReader()
