@@ -1,0 +1,43 @@
+namespace Sharpy
+{
+    /// <summary>
+    /// The unittest module provides a Pythonic testing API that the Sharpy compiler
+    /// transforms into xUnit test infrastructure during code generation.
+    /// </summary>
+    /// <remarks>
+    /// Functions like assert_raises and assert_almost_equal are marker methods —
+    /// the compiler recognizes their calls and rewrites them to xUnit assertions.
+    /// They should not be called at runtime directly.
+    /// </remarks>
+    [SharpyModule("unittest")]
+    public static class Unittest
+    {
+        /// <summary>
+        /// Marker for assert_raises context manager. The compiler transforms
+        /// <c>with assert_raises(ExceptionType): body</c> into
+        /// <c>Xunit.Assert.Throws&lt;ExceptionType&gt;(() =&gt; { body })</c>.
+        /// </summary>
+        /// <remarks>
+        /// This method exists for type resolution only. It should never be called at runtime.
+        /// If called outside a compiler-transformed context, it throws NotSupportedException.
+        /// </remarks>
+        public static AssertRaisesMarker AssertRaises(System.Type exceptionType)
+        {
+            throw new System.NotSupportedException(
+                "assert_raises must be used as a context manager: 'with assert_raises(ExceptionType): ...'");
+        }
+
+        /// <summary>
+        /// Marker for assert_almost_equal. The compiler transforms calls to this method
+        /// into <c>Xunit.Assert.Equal(expected, actual, precision)</c>.
+        /// </summary>
+        /// <remarks>
+        /// This method exists for type resolution only.
+        /// </remarks>
+        public static void AssertAlmostEqual(double actual, double expected, int places = 7)
+        {
+            throw new System.NotSupportedException(
+                "assert_almost_equal is a compiler-transformed function and should not be called directly.");
+        }
+    }
+}
