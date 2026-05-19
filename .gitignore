@@ -1,3 +1,5 @@
+.sbx/
+
 editors/vscode/out/
 
 mcp.json
