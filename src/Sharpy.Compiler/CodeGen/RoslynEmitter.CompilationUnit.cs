@@ -43,14 +43,27 @@ internal partial class RoslynEmitter
                 .ToList();
         }
 
-        // Generate module class with all members nested inside
+        // Generate module class with all members nested inside.
+        // Module-level @test functions are collected into _pendingTestFunctions during
+        // this call (instead of being emitted as static methods on the module class).
         var moduleClass = GenerateModuleMembers(nonImportStatements, fromImports);
+
+        // If any module-level @test functions were collected, build a sibling test class.
+        ClassDeclarationSyntax? testClass = null;
+        if (_pendingTestFunctions.Count > 0)
+        {
+            testClass = GenerateModuleTestClass(_pendingTestFunctions);
+            _pendingTestFunctions.Clear();
+        }
 
         // Compute directory wrapper classes and wrap the module class
         var wrapperNames = ComputeWrapperClasses();
         MemberDeclarationSyntax current = moduleClass;
+        MemberDeclarationSyntax? wrappedTestClass = testClass;
 
-        // Build wrapper classes from inside out
+        // Build wrapper classes from inside out — wrap both the module class and the
+        // test class (if present) in the same directory wrapper hierarchy so they
+        // appear as siblings within those wrapper classes.
         for (int i = wrapperNames.Count - 1; i >= 0; i--)
         {
             current = ClassDeclaration(wrapperNames[i])
@@ -59,6 +72,23 @@ internal partial class RoslynEmitter
                     Token(SyntaxKind.StaticKeyword),
                     Token(SyntaxKind.PartialKeyword)))
                 .WithMembers(SingletonList(current));
+
+            if (wrappedTestClass != null)
+            {
+                wrappedTestClass = ClassDeclaration(wrapperNames[i])
+                    .WithModifiers(TokenList(
+                        Token(SyntaxKind.PublicKeyword),
+                        Token(SyntaxKind.StaticKeyword),
+                        Token(SyntaxKind.PartialKeyword)))
+                    .WithMembers(SingletonList(wrappedTestClass));
+            }
+        }
+
+        // Collect top-level namespace members (module class + optional test class).
+        var topLevelMembers = new List<MemberDeclarationSyntax> { current };
+        if (wrappedTestClass != null)
+        {
+            topLevelMembers.Add(wrappedTestClass);
         }
 
         // Build compilation unit: use namespace wrapper for multi-file projects,
@@ -69,7 +99,7 @@ internal partial class RoslynEmitter
             // Multi-file project: wrap in namespace
             var namespaceName = GenerateNamespaceName();
             var namespaceDecl = NamespaceDeclaration(namespaceName)
-                .WithMembers(SingletonList(current));
+                .WithMembers(List(topLevelMembers));
 
             compilationUnit = CompilationUnit()
                 .WithUsings(List(usingDirectives))
@@ -81,7 +111,7 @@ internal partial class RoslynEmitter
             // Single-file: emit class directly (global namespace)
             compilationUnit = CompilationUnit()
                 .WithUsings(List(usingDirectives))
-                .WithMembers(SingletonList(current))
+                .WithMembers(List(topLevelMembers))
                 .NormalizeWhitespace();
         }
 

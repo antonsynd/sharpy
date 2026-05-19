@@ -1140,6 +1140,25 @@ internal partial class RoslynEmitter
                     || decorator.Name == DecoratorNames.StaticMethod
                     || decorator.Name == DecoratorNames.ClassMethod)
                     continue;
+
+                // @test → [Xunit.FactAttribute]
+                // @test("description") → [Xunit.FactAttribute(DisplayName = "description")]
+                if (decorator.Name == DecoratorNames.Test)
+                {
+                    var factAttribute = Attribute(ParseName("Xunit.FactAttribute"));
+                    if (decorator.Arguments.Length == 1
+                        && decorator.Arguments[0] is StringLiteral descLit)
+                    {
+                        factAttribute = factAttribute.WithArgumentList(
+                            AttributeArgumentList(SingletonSeparatedList(
+                                AttributeArgument(LiteralExpression(
+                                    SyntaxKind.StringLiteralExpression,
+                                    Literal(descLit.Value)))
+                                    .WithNameEquals(NameEquals("DisplayName")))));
+                    }
+                    attributeLists.Add(AttributeList(SingletonSeparatedList(factAttribute)));
+                    continue;
+                }
             }
 
             NameSyntax attributeName;

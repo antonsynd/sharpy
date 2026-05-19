@@ -116,6 +116,20 @@ internal partial class RoslynEmitter
 
         foreach (var stmt in statements)
         {
+            // Module-level @test functions are collected for a separate sibling test class
+            // (so they don't end up as static methods on the module class — xUnit needs them
+            // as instance methods on a public class).
+            if (stmt is FunctionDef testFunc
+                && testFunc.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Test))
+            {
+                _pendingTestFunctions.Add(testFunc);
+                _declaredVariables.Clear();
+                _variableVersions.Clear();
+                _constVariables.Clear();
+                _narrowing.Reset();
+                continue;
+            }
+
             // Module-level functions decorated with @lru_cache/@cache expand into a cache
             // field plus a private/public method pair, so they need to bypass the single-
             // member GenerateStatement dispatcher and emit several members at once.
@@ -496,6 +510,123 @@ internal partial class RoslynEmitter
                 Token(SyntaxKind.StaticKeyword)))
             .WithExpressionBody(ArrowExpressionClause(delegateAccess))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+    }
+
+    /// <summary>
+    /// Generates a sibling test class containing all module-level @test functions.
+    /// xUnit requires test methods to be public instance methods of a public class.
+    /// </summary>
+    private ClassDeclarationSyntax GenerateModuleTestClass(IReadOnlyList<FunctionDef> testFunctions)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        var savedIsInTestFunction = _isInTestFunction;
+
+        foreach (var func in testFunctions)
+        {
+            _isInTestFunction = true;
+
+            ResetMethodScope(func);
+            CollectSourceVariableNames(func.Body);
+
+            using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
+            using var _async = SetAsyncScope(func.IsAsync);
+
+            var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
+
+            TypeSyntax returnType = func.ReturnType != null
+                ? _typeMapper.MapType(func.ReturnType)
+                : PredefinedType(Token(SyntaxKind.VoidKeyword));
+
+            // Wrap return types for async / generator test methods, matching the
+            // logic used for regular function declarations.
+            bool isAsync = func.IsAsync;
+            if (_isCurrentMethodGenerator)
+            {
+                returnType = isAsync ? WrapInIAsyncEnumerable(returnType) : WrapInIEnumerable(returnType);
+            }
+            else if (isAsync)
+            {
+                returnType = func.ReturnType != null ? WrapInTask(returnType) : TaskType();
+            }
+
+            var orderedParams = ReorderParametersForCSharp(func.Parameters);
+            var parameters = orderedParams.Select(GenerateParameter).ToArray();
+
+            foreach (var param in func.Parameters)
+            {
+                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                if (param.IsLateBound)
+                {
+                    _declaredVariables.Add(paramName + LateBoundSuffix);
+                    _declaredVariables.Add(paramName);
+                }
+                else
+                {
+                    _declaredVariables.Add(paramName);
+                }
+                var baseName = NameMangler.ToCamelCase(param.Name);
+                _variableVersions[baseName] = 0;
+            }
+
+            var preamble = GenerateLateBoundPreamble(func.Parameters);
+            var body = Block(preamble.Concat(func.Body.SelectMany(GenerateBodyStatements)));
+
+            // Build modifiers: always public, never static (xUnit requires instance methods).
+            var modifierTokens = new List<SyntaxToken> { Token(SyntaxKind.PublicKeyword) };
+            if (isAsync)
+            {
+                modifierTokens.Add(Token(SyntaxKind.AsyncKeyword));
+            }
+
+            var method = MethodDeclaration(returnType, mangledName)
+                .WithModifiers(TokenList(modifierTokens))
+                .WithParameterList(ParameterList(SeparatedList(parameters)))
+                .WithBody(body);
+
+            // Add type parameters if generic
+            if (func.TypeParameters.Length > 0)
+            {
+                var typeParams = func.TypeParameters
+                    .Select(GenerateTypeParameterSyntax)
+                    .ToArray();
+                method = method
+                    .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                    .WithConstraintClauses(GenerateConstraintClauses(func.TypeParameters));
+            }
+
+            // Add [Fact] attribute (and any other decorator-derived attributes).
+            var attributes = GenerateAttributeListsFromDecorators(func.Decorators);
+            if (attributes.Count > 0)
+            {
+                method = method.WithAttributeLists(attributes);
+            }
+
+            if (!string.IsNullOrEmpty(func.DocString))
+            {
+                method = method.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+            }
+
+            members.Add(method);
+
+            _declaredVariables.Clear();
+            _variableVersions.Clear();
+            _constVariables.Clear();
+            _narrowing.Reset();
+        }
+
+        _isInTestFunction = savedIsInTestFunction;
+
+        // Test class name: <ModuleClass>Tests. Always public; not static (xUnit
+        // instantiates the class per test method).
+        var moduleClassName = GetModuleClassName(willGenerateMainMethod: false, functionNames: new HashSet<string>());
+        var testClassName = moduleClassName + "Tests";
+
+        return ClassDeclaration(testClassName)
+            .WithModifiers(TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.PartialKeyword)))
+            .WithMembers(List(members));
     }
 
     private SyntaxNode? GenerateStatement(Statement stmt)
