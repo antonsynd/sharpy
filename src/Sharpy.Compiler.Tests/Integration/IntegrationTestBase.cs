@@ -48,7 +48,7 @@ public abstract class IntegrationTestBase
         string? runtimePath = null;
         var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
         var testDir = Path.GetDirectoryName(testAssemblyPath);
-        var possibleFrameworks = new[] { "netstandard2.1", "netstandard2.0" };
+        var possibleFrameworks = new[] { "net10.0", "netstandard2.1", "netstandard2.0" };
 
         foreach (var targetFramework in possibleFrameworks)
         {

@@ -610,6 +610,38 @@ internal partial class TypeChecker
             }
         }
 
+        // Handle generic function reference on module members (e.g., json.loads[int])
+        if (indexAccess.Object is MemberAccess memberAccessObj)
+        {
+            var ownerType = CheckExpression(memberAccessObj.Object);
+            if (ownerType is ModuleType modType)
+            {
+                var memName = memberAccessObj.Member;
+                if (!modType.Symbol.Exports.ContainsKey(memName) && modType.Symbol.IsNetModule)
+                {
+                    var pascalName = NameMangler.ToPascalCase(memName);
+                    if (modType.Symbol.Exports.ContainsKey(pascalName))
+                        memName = pascalName;
+                }
+
+                if (modType.Symbol.Exports.TryGetValue(memName, out var exportedSym)
+                    && exportedSym is FunctionSymbol modFuncSymbol
+                    && modFuncSymbol.IsGeneric)
+                {
+                    var typeArgs = TryResolveTypeArguments(indexAccess.Index);
+                    if (typeArgs != null)
+                    {
+                        _semanticInfo.SetExpressionType(indexAccess, new GenericFunctionType
+                        {
+                            FunctionSymbol = modFuncSymbol,
+                            TypeArguments = typeArgs
+                        });
+                        return _semanticInfo.GetExpressionType(indexAccess)!;
+                    }
+                }
+            }
+        }
+
         var objectType = CheckExpression(indexAccess.Object);
         var indexType = CheckExpression(indexAccess.Index);
 

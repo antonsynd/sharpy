@@ -149,5 +149,57 @@ namespace Sharpy
             string content = fp.Read();
             return Loads(content);
         }
+
+#if NET10_0_OR_GREATER
+        private static readonly JsonSerializerOptions _typedOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        };
+
+        /// <summary>
+        /// Deserialize a JSON string to a strongly-typed object using <c>System.Text.Json</c>.
+        /// </summary>
+        /// <typeparam name="T">The target type to deserialize into.</typeparam>
+        /// <param name="s">The JSON string to deserialize.</param>
+        /// <returns>A <see cref="Result{T,E}"/> containing the deserialized value on success,
+        /// or a <see cref="JSONDecodeError"/> on failure.</returns>
+        public static Result<T, JSONDecodeError> Loads<T>(string s)
+        {
+            if (s == null)
+            {
+                throw new TypeError("the JSON object must be str, not NoneType");
+            }
+
+            try
+            {
+                T? result = System.Text.Json.JsonSerializer.Deserialize<T>(s, _typedOptions);
+                return Result<T, JSONDecodeError>.Ok(result!);
+            }
+            catch (JsonException ex)
+            {
+                int pos = (int)(ex.BytePositionInLine ?? 0);
+                return Result<T, JSONDecodeError>.Err(new JSONDecodeError(ex.Message, s, pos));
+            }
+        }
+
+        /// <summary>
+        /// Deserialize a JSON document read from a file to a strongly-typed object.
+        /// </summary>
+        /// <typeparam name="T">The target type to deserialize into.</typeparam>
+        /// <param name="fp">The file to read from.</param>
+        /// <returns>A <see cref="Result{T,E}"/> containing the deserialized value on success,
+        /// or a <see cref="JSONDecodeError"/> on failure.</returns>
+        public static Result<T, JSONDecodeError> Load<T>(TextFile fp)
+        {
+            if (fp == null)
+            {
+                throw new TypeError("expected TextFile, got NoneType");
+            }
+
+            string content = fp.Read();
+            return Loads<T>(content);
+        }
+#endif
     }
 }

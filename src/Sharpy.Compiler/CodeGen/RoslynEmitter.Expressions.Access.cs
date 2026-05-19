@@ -33,10 +33,15 @@ internal partial class RoslynEmitter
         }
 
         // Handle generic nested type instantiation: Outer.Inner[int](42)
+        // and generic module function calls: json.loads[int](text)
         if (call.Function is IndexAccess nestedIndexAccess &&
             nestedIndexAccess.Object is MemberAccess nestedMemberAccess)
         {
             var result = GenerateNestedGenericInstantiation(nestedIndexAccess, nestedMemberAccess, call);
+            if (result != null)
+                return result;
+
+            result = GenerateModuleGenericFunctionCall(nestedIndexAccess, nestedMemberAccess, call);
             if (result != null)
                 return result;
         }
@@ -552,6 +557,44 @@ internal partial class RoslynEmitter
         }
         parts.Reverse();
         return string.Join(".", parts);
+    }
+
+    private ExpressionSyntax? GenerateModuleGenericFunctionCall(
+        IndexAccess indexAccess, MemberAccess memberAccess, FunctionCall call)
+    {
+        if (memberAccess.Object is not Identifier moduleId)
+            return null;
+
+        var moduleSymbol = _context.LookupSymbol(moduleId.Name) as ModuleSymbol;
+        if (moduleSymbol == null)
+            return null;
+
+        var memberName = memberAccess.Member;
+        if (!moduleSymbol.Exports.ContainsKey(memberName) && moduleSymbol.IsNetModule)
+        {
+            var pascalName = NameMangler.ToPascalCase(memberName);
+            if (moduleSymbol.Exports.ContainsKey(pascalName))
+                memberName = pascalName;
+        }
+
+        if (!moduleSymbol.Exports.TryGetValue(memberName, out var exportedSymbol)
+            || exportedSymbol is not FunctionSymbol funcSymbol
+            || !funcSymbol.IsGeneric)
+        {
+            return null;
+        }
+
+        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var genericMethodName = GenericName(NameMangler.ToPascalCase(memberName))
+            .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+
+        var moduleExpr = GenerateExpression(memberAccess.Object);
+        var qualifiedCall = MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression, moduleExpr, genericMethodName);
+
+        var allArgs = GenerateReorderedCallArguments(call, funcSymbol);
+        return InvocationExpression(qualifiedCall)
+            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
     }
 
     /// <summary>

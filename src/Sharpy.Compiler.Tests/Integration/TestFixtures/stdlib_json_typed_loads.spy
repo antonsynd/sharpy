@@ -1,0 +1,12 @@
+# Test json.loads[T] typed deserialization with built-in types
+import json
+
+def main():
+    text: str = '{"a": 1, "b": 2}'
+    result = json.loads[dict[str, int]](text)
+    if result.is_ok:
+        d = result.unwrap()
+        print(d["a"])
+        print(d["b"])
+    else:
+        print("ERROR")
