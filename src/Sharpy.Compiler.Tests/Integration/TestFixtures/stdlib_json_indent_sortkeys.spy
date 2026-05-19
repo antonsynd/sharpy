@@ -1,0 +1,6 @@
+# Test json.dumps with indent and sort_keys arguments
+import json
+
+def main():
+    d: dict[str, int] = {"z": 26, "a": 1, "m": 13}
+    print(json.dumps(d, indent=2, sort_keys=True))
