@@ -94,6 +94,7 @@ class Example:
 | `@final` (method) | `sealed override` | Prevents further overriding |
 | `@final` (class) | `sealed class` | Prevents inheritance |
 | `@abstract` (class) | `abstract class` | Cannot be instantiated, may contain abstract members |
+| `@test` | `[Fact]` | Marks a test method for xUnit discovery. See [unittest.md](unittest.md) |
 
 ```python
 class Calculator:
@@ -252,7 +253,7 @@ Non-constant expressions (e.g., `1 + 2`, variable references, function calls oth
 | Category | Syntax | Behavior |
 |----------|--------|----------|
 | Built-in modifier (`@virtual`, `@static`, etc.) | `@name` | Maps to C# keyword modifier. No arguments allowed. |
-| Sharpy keyword (`@deprecated`, `@dataclass`, etc.) | `@name(...)` | Special Sharpy semantics |
+| Sharpy keyword (`@deprecated`, `@dataclass`, `@test`, etc.) | `@name(...)` | Special Sharpy semantics |
 | C# attribute | `@[name(...)]` | Emitted as C# `[Attribute]` with PascalCase mangling |
 
 **Note:** `@[final]` emits the C# attribute `[Final]` — it is NOT the Sharpy `@final` keyword. Bracket attributes and language decorators are completely separate.
