@@ -26,6 +26,16 @@ internal partial class RoslynEmitter
         using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
         using var _async = SetAsyncScope(func.IsAsync);
 
+        // Track @test context so assert statements in the body emit xUnit assertions
+        // (instead of System.Diagnostics.Debug.Assert).
+        bool hasTestDecorator = func.Decorators.Any(d =>
+            !d.IsBracketAttribute && d.Name == DecoratorNames.Test);
+        bool savedIsInTestFunction = _isInTestFunction;
+        if (hasTestDecorator)
+        {
+            _isInTestFunction = true;
+        }
+
         // Pre-scan the method body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
         // with user-declared variables.
@@ -89,6 +99,20 @@ internal partial class RoslynEmitter
 
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
+
+        // @test methods must be public (xUnit requirement). Strip any private/protected/internal
+        // modifiers and add public if not present.
+        if (hasTestDecorator)
+        {
+            modifiers = TokenList(modifiers.Where(m =>
+                !m.IsKind(SyntaxKind.PrivateKeyword)
+                && !m.IsKind(SyntaxKind.ProtectedKeyword)
+                && !m.IsKind(SyntaxKind.InternalKeyword)));
+            if (!modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword)))
+            {
+                modifiers = TokenList(new[] { Token(SyntaxKind.PublicKeyword) }.Concat(modifiers));
+            }
+        }
 
         // Add override keyword for methods that override Object methods
         // Uses the protocol variable already fetched above, plus special handling for operator dunders
@@ -268,6 +292,8 @@ internal partial class RoslynEmitter
         {
             method = method.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
         }
+
+        _isInTestFunction = savedIsInTestFunction;
 
         return method;
     }

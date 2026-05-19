@@ -33,6 +33,11 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateAssert(AssertStatement assert)
     {
+        if (_isInTestFunction)
+        {
+            return GenerateTestAssert(assert);
+        }
+
         // assert condition, message → Debug.Assert(condition, message)
         var condition = WrapTruthinessIfNeeded(GenerateExpression(assert.Test), assert.Test);
 
@@ -60,6 +65,149 @@ internal partial class RoslynEmitter
         }
 
         return ExpressionStatement(invocation);
+    }
+
+    /// <summary>
+    /// Decompose an assert statement inside a @test-decorated function into the most
+    /// appropriate xUnit assertion. Uses fully qualified Xunit.Assert to avoid ambiguity
+    /// with System.Diagnostics.Debug.Assert.
+    /// </summary>
+    private StatementSyntax GenerateTestAssert(AssertStatement assert)
+    {
+        var xunitAssert = ParseName("Xunit.Assert");
+        var test = assert.Test;
+
+        // assert a == b → Xunit.Assert.Equal(b, a)  (expected, actual order)
+        if (test is BinaryOp { Operator: BinaryOperator.Equal } eq)
+        {
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Equal")))
+                .AddArgumentListArguments(
+                    Argument(GenerateExpression(eq.Right)),
+                    Argument(GenerateExpression(eq.Left))));
+        }
+
+        // assert a != b → Xunit.Assert.NotEqual(b, a)
+        if (test is BinaryOp { Operator: BinaryOperator.NotEqual } neq)
+        {
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("NotEqual")))
+                .AddArgumentListArguments(
+                    Argument(GenerateExpression(neq.Right)),
+                    Argument(GenerateExpression(neq.Left))));
+        }
+
+        // assert a is None → Xunit.Assert.Null(a)
+        if (test is BinaryOp { Operator: BinaryOperator.Is, Right: NoneLiteral } isNone)
+        {
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Null")))
+                .AddArgumentListArguments(Argument(GenerateExpression(isNone.Left))));
+        }
+
+        // assert a is not None → Xunit.Assert.NotNull(a)
+        if (test is BinaryOp { Operator: BinaryOperator.IsNot, Right: NoneLiteral } isNotNone)
+        {
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("NotNull")))
+                .AddArgumentListArguments(Argument(GenerateExpression(isNotNone.Left))));
+        }
+
+        // assert a is b → Xunit.Assert.Same(b, a)
+        if (test is BinaryOp { Operator: BinaryOperator.Is } isSame)
+        {
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Same")))
+                .AddArgumentListArguments(
+                    Argument(GenerateExpression(isSame.Right)),
+                    Argument(GenerateExpression(isSame.Left))));
+        }
+
+        // assert a is not b → Xunit.Assert.NotSame(b, a)
+        if (test is BinaryOp { Operator: BinaryOperator.IsNot } isNotSame)
+        {
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("NotSame")))
+                .AddArgumentListArguments(
+                    Argument(GenerateExpression(isNotSame.Right)),
+                    Argument(GenerateExpression(isNotSame.Left))));
+        }
+
+        // assert a in b → Xunit.Assert.Contains(a, b)
+        if (test is BinaryOp { Operator: BinaryOperator.In } inOp)
+        {
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Contains")))
+                .AddArgumentListArguments(
+                    Argument(GenerateExpression(inOp.Left)),
+                    Argument(GenerateExpression(inOp.Right))));
+        }
+
+        // assert a not in b → Xunit.Assert.DoesNotContain(a, b)
+        if (test is BinaryOp { Operator: BinaryOperator.NotIn } notInOp)
+        {
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("DoesNotContain")))
+                .AddArgumentListArguments(
+                    Argument(GenerateExpression(notInOp.Left)),
+                    Argument(GenerateExpression(notInOp.Right))));
+        }
+
+        // assert isinstance(a, T) → Xunit.Assert.IsType<T>(a)
+        if (test is FunctionCall { Function: Identifier { Name: "isinstance" } } isinstCall
+            && isinstCall.Arguments.Length == 2
+            && isinstCall.Arguments[1] is Identifier)
+        {
+            var typeSyntax = _typeMapper.MapTypeFromExpression(isinstCall.Arguments[1]);
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert,
+                    GenericName(Identifier("IsType"))
+                        .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(typeSyntax)))))
+                .AddArgumentListArguments(Argument(GenerateExpression(isinstCall.Arguments[0]))));
+        }
+
+        // assert not expr → Xunit.Assert.False(expr)
+        if (test is UnaryOp { Operator: UnaryOperator.Not } notOp)
+        {
+            var innerExpr = WrapTruthinessIfNeeded(GenerateExpression(notOp.Operand), notOp.Operand);
+            var falseArgs = new List<ArgumentSyntax> { Argument(innerExpr) };
+            if (assert.Message != null)
+            {
+                falseArgs.Add(Argument(GenerateExpression(assert.Message)));
+            }
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("False")))
+                .WithArgumentList(ArgumentList(SeparatedList(falseArgs))));
+        }
+
+        // assert a > b, a < b, a >= b, a <= b → Xunit.Assert.True(expr, message?)
+        if (test is BinaryOp
+            {
+                Operator: BinaryOperator.GreaterThan or BinaryOperator.LessThan
+                    or BinaryOperator.GreaterThanOrEqual or BinaryOperator.LessThanOrEqual
+            } cmpOp)
+        {
+            var cmpExpr = GenerateExpression(cmpOp);
+            var cmpArgs = new List<ArgumentSyntax> { Argument(cmpExpr) };
+            if (assert.Message != null)
+            {
+                cmpArgs.Add(Argument(GenerateExpression(assert.Message)));
+            }
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("True")))
+                .WithArgumentList(ArgumentList(SeparatedList(cmpArgs))));
+        }
+
+        // Fallback: assert expr → Xunit.Assert.True(expr, message?)
+        var truthyExpr = WrapTruthinessIfNeeded(GenerateExpression(test), test);
+        var trueArgs = new List<ArgumentSyntax> { Argument(truthyExpr) };
+        if (assert.Message != null)
+        {
+            trueArgs.Add(Argument(GenerateExpression(assert.Message)));
+        }
+        return ExpressionStatement(InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("True")))
+            .WithArgumentList(ArgumentList(SeparatedList(trueArgs))));
     }
 
     private StatementSyntax GenerateRaise(RaiseStatement raise)

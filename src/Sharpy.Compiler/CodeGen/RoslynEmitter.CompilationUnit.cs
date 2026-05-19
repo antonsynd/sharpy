@@ -186,6 +186,12 @@ internal partial class RoslynEmitter
             }
         }
 
+        // Add `using Xunit;` for files containing any @test-decorated functions or methods.
+        if (HasTestDecoratedMembers(module))
+        {
+            usings.Add(UsingDirective(ParseName("Xunit")));
+        }
+
         // Deduplicate using directives by their normalized string representation
         var seen = new HashSet<string>();
         var dedupedUsings = new List<UsingDirectiveSyntax>();
@@ -483,4 +489,28 @@ internal partial class RoslynEmitter
         return Shared.CSharpKeywords.EscapeIfNeeded(name);
     }
 
+    /// <summary>
+    /// Returns true if the module contains any function or class method decorated with @test.
+    /// Used to determine whether `using Xunit;` should be added.
+    /// </summary>
+    private static bool HasTestDecoratedMembers(Module module)
+    {
+        static bool IsTest(Decorator d) => !d.IsBracketAttribute && d.Name == DecoratorNames.Test;
+
+        foreach (var stmt in module.Body)
+        {
+            if (stmt is FunctionDef fn && fn.Decorators.Any(IsTest))
+                return true;
+
+            if (stmt is ClassDef cls)
+            {
+                foreach (var member in cls.Body)
+                {
+                    if (member is FunctionDef m && m.Decorators.Any(IsTest))
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
 }

@@ -131,6 +131,14 @@ internal partial class RoslynEmitter
     // When true, GenerateYield emits 'await foreach' for async iterables in yield from.
     private bool _isCurrentMethodAsync;
 
+    // Track if the current function/method being generated is decorated with @test.
+    // When true, assert statements are rewritten to xUnit assertions instead of Debug.Assert.
+    private bool _isInTestFunction;
+
+    // Collects module-level @test functions during module member generation so they can
+    // be emitted into a sibling test class instead of the regular module class.
+    private readonly List<FunctionDef> _pendingTestFunctions = new();
+
     // Track the current TypeSymbol being generated (for IEquatable virtual detection, etc.)
     private TypeSymbol? _currentTypeSymbol;
 

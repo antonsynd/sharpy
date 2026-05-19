@@ -49,6 +49,16 @@ internal partial class RoslynEmitter
         using var _ = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
         using var _async = SetAsyncScope(func.IsAsync);
 
+        // Track @test context so assert statements in the body emit xUnit assertions
+        // (instead of System.Diagnostics.Debug.Assert).
+        bool isTestFunction = func.Decorators.Any(d =>
+            !d.IsBracketAttribute && d.Name == DecoratorNames.Test);
+        bool savedIsInTestFunction = _isInTestFunction;
+        if (isTestFunction)
+        {
+            _isInTestFunction = true;
+        }
+
         // Determine return type from annotation or infer void
         TypeSyntax returnType = func.ReturnType != null
             ? _typeMapper.MapType(func.ReturnType)
@@ -140,6 +150,8 @@ internal partial class RoslynEmitter
         {
             method = method.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
         }
+
+        _isInTestFunction = savedIsInTestFunction;
 
         return method;
     }
