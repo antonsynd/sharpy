@@ -14,13 +14,18 @@ namespace Sharpy
     {
         public static object? Parse(string json)
         {
+            return Parse(json, null);
+        }
+
+        public static object? Parse(string json, Func<Dict<string, object?>, object?>? objectHook)
+        {
             if (json == null)
             {
                 throw new TypeError("the JSON object must be str, not NoneType");
             }
 
             int index = 0;
-            object? result = ParseValue(json, ref index);
+            object? result = ParseValue(json, ref index, objectHook);
             SkipWhitespace(json, ref index);
             if (index < json.Length)
             {
@@ -33,7 +38,7 @@ namespace Sharpy
             return result;
         }
 
-        private static object? ParseValue(string json, ref int index)
+        private static object? ParseValue(string json, ref int index, Func<Dict<string, object?>, object?>? objectHook = null)
         {
             SkipWhitespace(json, ref index);
 
@@ -54,12 +59,12 @@ namespace Sharpy
 
             if (c == '{')
             {
-                return ParseObject(json, ref index);
+                return ParseObject(json, ref index, objectHook);
             }
 
             if (c == '[')
             {
-                return ParseArray(json, ref index);
+                return ParseArray(json, ref index, objectHook);
             }
 
             if (c == 't')
@@ -303,7 +308,7 @@ namespace Sharpy
             throw new JSONDecodeError("Invalid number: " + numStr, json, start);
         }
 
-        private static Dict<string, object?> ParseObject(string json, ref int index)
+        private static object? ParseObject(string json, ref int index, Func<Dict<string, object?>, object?>? objectHook = null)
         {
             // Skip opening brace
             index++;
@@ -314,7 +319,7 @@ namespace Sharpy
             if (index < json.Length && json[index] == '}')
             {
                 index++;
-                return dict;
+                return objectHook != null ? objectHook(dict) : dict;
             }
 
             while (true)
@@ -343,7 +348,7 @@ namespace Sharpy
                 index++; // skip colon
                 SkipWhitespace(json, ref index);
 
-                object? value = ParseValue(json, ref index);
+                object? value = ParseValue(json, ref index, objectHook);
                 dict[key] = value;
 
                 SkipWhitespace(json, ref index);
@@ -359,7 +364,7 @@ namespace Sharpy
                 if (json[index] == '}')
                 {
                     index++;
-                    return dict;
+                    return objectHook != null ? objectHook(dict) : dict;
                 }
 
                 if (json[index] != ',')
@@ -374,7 +379,7 @@ namespace Sharpy
             }
         }
 
-        private static List<object?> ParseArray(string json, ref int index)
+        private static List<object?> ParseArray(string json, ref int index, Func<Dict<string, object?>, object?>? objectHook = null)
         {
             // Skip opening bracket
             index++;
@@ -391,7 +396,7 @@ namespace Sharpy
             while (true)
             {
                 SkipWhitespace(json, ref index);
-                object? value = ParseValue(json, ref index);
+                object? value = ParseValue(json, ref index, objectHook);
                 list.Append(value);
 
                 SkipWhitespace(json, ref index);

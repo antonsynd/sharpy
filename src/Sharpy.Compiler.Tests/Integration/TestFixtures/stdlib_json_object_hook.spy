@@ -1,0 +1,11 @@
+# Test json.loads with object_hook parameter
+import json
+
+def add_type(d: dict[str, object]) -> dict[str, object]:
+    d["_type"] = "tagged"
+    return d
+
+def main():
+    text: str = '{"name": "Alice"}'
+    result = json.loads(text, object_hook=add_type)
+    print(json.dumps(result, sort_keys=True))

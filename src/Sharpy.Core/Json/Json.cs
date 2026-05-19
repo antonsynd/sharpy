@@ -42,6 +42,8 @@ namespace Sharpy
         /// raise a <c>TypeError</c> for unsupported types. Returning the original object will
         /// raise a <c>TypeError</c> to avoid infinite recursion. Named <c>default</c> for Python
         /// compatibility (kwarg <c>default=</c>).</param>
+        /// <param name="cls">Optional <see cref="JSONEncoder"/> instance. When provided,
+        /// delegates serialization to <c>cls.Encode(obj)</c>.</param>
         /// <returns>A JSON string representation of <paramref name="obj"/>.</returns>
         public static string Dumps(
             object? obj,
@@ -49,8 +51,14 @@ namespace Sharpy
             bool sortKeys = false,
             bool ensureAscii = true,
             (string, string)? separators = null,
-            Func<object, object?>? @default = null)
+            Func<object, object?>? @default = null,
+            JSONEncoder? cls = null)
         {
+            if (cls != null)
+            {
+                return cls.Encode(obj);
+            }
+
             string? itemSep = null;
             string? keySep = null;
 
@@ -69,6 +77,8 @@ namespace Sharpy
         /// string, int/long/double, bool, or null.
         /// </summary>
         /// <param name="s">The JSON string to deserialize.</param>
+        /// <param name="cls">Optional <see cref="JSONDecoder"/> instance for custom decoding.</param>
+        /// <param name="objectHook">Optional callback invoked for every decoded JSON object (dict).</param>
         /// <returns>The deserialized object.</returns>
         /// <example>
         /// <code>
@@ -76,9 +86,17 @@ namespace Sharpy
         /// json.loads('[1, 2]')      # [1, 2]
         /// </code>
         /// </example>
-        public static object? Loads(string s)
+        public static object? Loads(
+            string s,
+            JSONDecoder? cls = null,
+            Func<Dict<string, object?>, object?>? objectHook = null)
         {
-            return JsonParser.Parse(s);
+            if (cls != null)
+            {
+                return cls.Decode(s);
+            }
+
+            return JsonParser.Parse(s, objectHook);
         }
 
         /// <summary>
@@ -116,6 +134,7 @@ namespace Sharpy
         /// defaults. See <see cref="Dumps(object?, int, bool, bool, ValueTuple{string, string}?, Func{object, object?}?)"/>.</param>
         /// <param name="default">Optional callback invoked for any value that is not natively
         /// JSON-serializable. See <see cref="Dumps(object?, int, bool, bool, ValueTuple{string, string}?, Func{object, object?}?)"/>.</param>
+        /// <param name="cls">Optional <see cref="JSONEncoder"/> instance for custom encoding.</param>
         public static void Dump(
             object? obj,
             TextFile fp,
@@ -123,14 +142,15 @@ namespace Sharpy
             bool sortKeys = false,
             bool ensureAscii = true,
             (string, string)? separators = null,
-            Func<object, object?>? @default = null)
+            Func<object, object?>? @default = null,
+            JSONEncoder? cls = null)
         {
             if (fp == null)
             {
                 throw new TypeError("expected TextFile, got NoneType");
             }
 
-            string json = Dumps(obj, indent, sortKeys, ensureAscii, separators, @default);
+            string json = Dumps(obj, indent, sortKeys, ensureAscii, separators, @default, cls);
             fp.Write(json);
         }
 
@@ -138,8 +158,13 @@ namespace Sharpy
         /// Deserialize a JSON document read from a file.
         /// </summary>
         /// <param name="fp">The file to read from.</param>
+        /// <param name="cls">Optional <see cref="JSONDecoder"/> instance for custom decoding.</param>
+        /// <param name="objectHook">Optional callback invoked for every decoded JSON object (dict).</param>
         /// <returns>The deserialized object.</returns>
-        public static object? Load(TextFile fp)
+        public static object? Load(
+            TextFile fp,
+            JSONDecoder? cls = null,
+            Func<Dict<string, object?>, object?>? objectHook = null)
         {
             if (fp == null)
             {
@@ -147,7 +172,7 @@ namespace Sharpy
             }
 
             string content = fp.Read();
-            return Loads(content);
+            return Loads(content, cls, objectHook);
         }
 
 #if NET10_0_OR_GREATER
