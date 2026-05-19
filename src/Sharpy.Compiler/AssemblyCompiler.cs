@@ -122,6 +122,9 @@ internal class AssemblyCompiler
             // Generate dependencies file
             GenerateDepsFile(outputPath, projectConfig);
 
+            // Generate test project scaffold for dotnet test integration
+            Project.TestProjectScaffold.GenerateIfNeeded(projectConfig, outputPath, _logger);
+
             return new AssemblyCompilationResult
             {
                 Success = true,
@@ -229,7 +232,98 @@ internal class AssemblyCompiler
             }
         }
 
+        // Resolve NuGet package references to assembly paths
+        foreach (var packageRef in projectConfig.PackageReferences)
+        {
+            var packageAssemblies = ResolveNuGetPackage(packageRef, projectConfig.TargetFramework);
+            foreach (var assemblyPath in packageAssemblies)
+            {
+                references.Add(MetadataReference.CreateFromFile(assemblyPath));
+                _logger.LogDebug($"Added package reference: {assemblyPath}");
+            }
+        }
+
         return references;
+    }
+
+    /// <summary>
+    /// Resolves a NuGet package to its assembly DLL paths from the global packages cache.
+    /// Searches ~/.nuget/packages/{name}/{version}/lib/{tfm}/ for DLLs.
+    /// </summary>
+    private List<string> ResolveNuGetPackage(PackageRef packageRef, string targetFramework)
+    {
+        var result = new List<string>();
+        var nugetPackagesDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".nuget", "packages");
+
+        var packageDir = Path.Combine(nugetPackagesDir, packageRef.Name.ToLowerInvariant(), packageRef.Version);
+        if (!Directory.Exists(packageDir))
+        {
+            _logger.LogWarning($"NuGet package not found in global cache: {packageRef.Name} {packageRef.Version}. Run 'dotnet restore' to download it.", 0, 0);
+            return result;
+        }
+
+        var libDir = Path.Combine(packageDir, "lib");
+        if (!Directory.Exists(libDir))
+        {
+            // Some packages (like xunit) are meta-packages with no lib/ folder
+            // Check for ref/ folder instead
+            var refDir = Path.Combine(packageDir, "ref");
+            if (Directory.Exists(refDir))
+                libDir = refDir;
+            else
+                return result;
+        }
+
+        // Find the best matching TFM directory
+        // Priority: exact match > nearest compatible TFM
+        var tfmDir = FindBestTfmDirectory(libDir, targetFramework);
+        if (tfmDir == null)
+        {
+            _logger.LogDebug($"No compatible TFM found for {packageRef.Name} in {libDir}");
+            return result;
+        }
+
+        // Collect all DLLs in the TFM directory
+        foreach (var dll in Directory.GetFiles(tfmDir, "*.dll"))
+        {
+            result.Add(dll);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Finds the best matching target framework directory.
+    /// Tries exact match first, then falls back to compatible frameworks.
+    /// </summary>
+    private static string? FindBestTfmDirectory(string libDir, string targetFramework)
+    {
+        // Exact match first
+        var exactPath = Path.Combine(libDir, targetFramework);
+        if (Directory.Exists(exactPath))
+            return exactPath;
+
+        // Try common compatible TFMs in priority order
+        var compatibleTfms = new[]
+        {
+            targetFramework,        // e.g., "net10.0"
+            "net9.0", "net8.0", "net7.0", "net6.0",
+            "netstandard2.1", "netstandard2.0",
+            "netcoreapp3.1", "netcoreapp3.0",
+        };
+
+        foreach (var tfm in compatibleTfms)
+        {
+            var path = Path.Combine(libDir, tfm);
+            if (Directory.Exists(path))
+                return path;
+        }
+
+        // Last resort: pick any directory with DLLs
+        var directories = Directory.GetDirectories(libDir);
+        return directories.FirstOrDefault(d => Directory.GetFiles(d, "*.dll").Length > 0);
     }
 
     /// <summary>

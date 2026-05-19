@@ -5,6 +5,11 @@ using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 namespace Sharpy.Compiler;
 
 /// <summary>
+/// A NuGet package reference declared in a .spyproj file
+/// </summary>
+public record PackageRef(string Name, string Version);
+
+/// <summary>
 /// Configuration for a Sharpy project loaded from a .spyproj file
 /// </summary>
 public class ProjectConfig
@@ -59,6 +64,11 @@ public class ProjectConfig
     /// Module search paths for assembly resolution
     /// </summary>
     public List<string> ModulePaths { get; init; } = new();
+
+    /// <summary>
+    /// NuGet package references for the project
+    /// </summary>
+    public List<PackageRef> PackageReferences { get; init; } = new();
 
     /// <summary>
     /// Build configuration (Debug or Release)
@@ -166,6 +176,7 @@ internal class ProjectFileParser
         var sourceFiles = new List<string>();
         var references = new List<string>();
         var modulePaths = new List<string>();
+        var packageReferences = new List<PackageRef>();
 
         foreach (var itemGroup in root.Elements("ItemGroup"))
         {
@@ -221,6 +232,17 @@ internal class ProjectFileParser
                     modulePaths.Add(modulePathResolved);
                 }
             }
+
+            // Parse PackageReference includes
+            foreach (var packageRef in itemGroup.Elements("PackageReference"))
+            {
+                var include = packageRef.Attribute("Include")?.Value;
+                var version = packageRef.Attribute("Version")?.Value;
+                if (!string.IsNullOrWhiteSpace(include) && !string.IsNullOrWhiteSpace(version))
+                {
+                    packageReferences.Add(new PackageRef(include, version));
+                }
+            }
         }
 
         // Remove duplicates from source files
@@ -244,6 +266,7 @@ internal class ProjectFileParser
             SourceFiles = sourceFiles,
             References = references,
             ModulePaths = modulePaths,
+            PackageReferences = packageReferences,
             Configuration = configuration ?? "Debug",
             WarningsAsErrors = warningsAsErrors,
             SuppressedWarnings = suppressedWarnings

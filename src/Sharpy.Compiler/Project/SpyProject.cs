@@ -61,6 +61,11 @@ public class SpyProject
     public List<string> ModulePaths { get; init; } = new();
 
     /// <summary>
+    /// NuGet package references for the project
+    /// </summary>
+    public List<PackageRef> PackageReferences { get; init; } = new();
+
+    /// <summary>
     /// Build configuration (Debug or Release)
     /// </summary>
     public string Configuration { get; init; } = "Debug";
@@ -128,6 +133,7 @@ public class SpyProject
             SourceFiles = SourceFiles,
             References = References,
             ModulePaths = ModulePaths,
+            PackageReferences = PackageReferences,
             Configuration = Configuration
         };
     }
@@ -179,6 +185,7 @@ public static class SpyProjectLoader
         var sourceFiles = new List<string>();
         var references = new List<string>();
         var modulePaths = new List<string>();
+        var packageReferences = new List<PackageRef>();
 
         foreach (var itemGroup in root.Elements("ItemGroup"))
         {
@@ -234,6 +241,17 @@ public static class SpyProjectLoader
                     modulePaths.Add(modulePathResolved);
                 }
             }
+
+            // Parse PackageReference includes
+            foreach (var packageRef in itemGroup.Elements("PackageReference"))
+            {
+                var include = packageRef.Attribute("Include")?.Value;
+                var version = packageRef.Attribute("Version")?.Value;
+                if (!string.IsNullOrWhiteSpace(include) && !string.IsNullOrWhiteSpace(version))
+                {
+                    packageReferences.Add(new PackageRef(include, version));
+                }
+            }
         }
 
         // Remove duplicates from source files
@@ -257,6 +275,7 @@ public static class SpyProjectLoader
             SourceFiles = sourceFiles,
             References = references,
             ModulePaths = modulePaths,
+            PackageReferences = packageReferences,
             Configuration = configuration ?? "Debug"
         };
     }
