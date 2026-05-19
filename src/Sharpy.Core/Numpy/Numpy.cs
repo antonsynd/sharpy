@@ -182,6 +182,20 @@ namespace Sharpy
             return new NdArray<double>(data, shape);
         }
 
+        /// <summary>
+        /// Dot product of two arrays — top-level alias for <see cref="NumpyLinalg.Dot"/>.
+        /// </summary>
+        /// <param name="a">Left operand.</param>
+        /// <param name="b">Right operand.</param>
+        public static NdArray<double> Dot(NdArray<double> a, NdArray<double> b) => NumpyLinalg.Dot(a, b);
+
+        /// <summary>
+        /// Matrix product — top-level alias for <see cref="NumpyLinalg.Matmul"/>.
+        /// </summary>
+        /// <param name="a">Left operand.</param>
+        /// <param name="b">Right operand.</param>
+        public static NdArray<double> Matmul(NdArray<double> a, NdArray<double> b) => NumpyLinalg.Matmul(a, b);
+
         private static int ProductOfShape(int[] shape)
         {
             if (shape == null)
