@@ -65,17 +65,23 @@ internal static class OverloadExpander
         // Generate overloads from required-only up to all params
         for (var paramCount = firstDefaultIndex; paramCount <= totalParams; paramCount++)
         {
-            // Strip HasDefault/DefaultValue from expanded parameters since each
-            // overload is now a distinct signature with exactly the right param count.
+            // Strip HasDefault/DefaultValue from reduced-arity expanded parameters since
+            // each overload is now a distinct signature with exactly the right param count.
             // Keeping HasDefault would cause the TypeChecker to treat them as optional,
             // leading to ambiguous overload resolution.
+            //
+            // EXCEPTION: For the full-arity variant (paramCount == totalParams), preserve
+            // the original HasDefault and DefaultValue so that keyword arguments can skip
+            // intermediate defaults (e.g., `json.dumps(obj, cls=encoder)` where `cls`
+            // follows several optional parameters). Without this, callers cannot reach
+            // trailing defaulted parameters by name.
             var expandedParams = signature.Parameters.Take(paramCount)
                 .Select(p => new ParameterSignature
                 {
                     Name = p.Name,
                     Type = p.Type,
-                    HasDefault = false,
-                    DefaultValue = null,
+                    HasDefault = paramCount == totalParams && p.HasDefault,
+                    DefaultValue = paramCount == totalParams ? p.DefaultValue : null,
                     IsVariadic = p.IsVariadic,
                 })
                 .ToList();

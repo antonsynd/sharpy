@@ -86,6 +86,8 @@ internal class FunctionSignature
     /// </summary>
     public string MethodToken { get; set; } = string.Empty;
     public string? Documentation { get; set; }
+    public bool IsVirtual { get; set; }
+    public bool IsAbstract { get; set; }
 }
 
 /// <summary>
