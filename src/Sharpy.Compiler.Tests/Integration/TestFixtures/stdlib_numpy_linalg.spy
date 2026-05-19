@@ -1,0 +1,20 @@
+# Test numpy.linalg module: det, inv, dot, norm on identity matrices.
+import numpy
+import numpy.linalg
+
+def main():
+    # Identity matrix has determinant 1.
+    eye2 = numpy.eye(2)
+    print(numpy.linalg.det(eye2))
+
+    # Inverse of identity is itself, so its determinant is also 1.
+    inv_eye = numpy.linalg.inv(eye2)
+    print(numpy.linalg.det(inv_eye))
+
+    # Dot product of identity with itself is identity.
+    prod = numpy.linalg.dot(eye2, eye2)
+    print(prod)
+
+    # Frobenius norm of an n-by-n identity is sqrt(n).
+    eye4 = numpy.eye(4)
+    print(numpy.linalg.norm(eye4))
