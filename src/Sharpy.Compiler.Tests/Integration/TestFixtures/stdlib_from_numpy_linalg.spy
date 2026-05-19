@@ -1,0 +1,16 @@
+# Test from numpy.linalg import: det, inv, dot, norm
+import numpy
+from numpy.linalg import det, inv, dot, norm
+
+def main():
+    eye2 = numpy.eye(2)
+    print(det(eye2))
+
+    inv_eye = inv(eye2)
+    print(det(inv_eye))
+
+    prod = dot(eye2, eye2)
+    print(prod)
+
+    eye4 = numpy.eye(4)
+    print(norm(eye4))
