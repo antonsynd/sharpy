@@ -58,6 +58,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
         ValidateReadonlyNotOnNonProperty(node.Decorators, definitionName, "function");
         ValidateLruCacheArguments(node.Decorators, definitionName);
+        ValidateTestDecorator(node.Decorators, node.Name, isDunder: DunderDetector.IsDunderMethod(node.Name));
 
         if (_containingType != null)
         {
@@ -82,6 +83,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateDataclassArguments(node.Decorators, node.Name);
         ValidateReadonlyNotOnNonProperty(node.Decorators, node.Name, "class");
         ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "class");
+        ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "class");
 
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Class);
@@ -94,6 +96,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateDecorators(node.Decorators, node.Name);
         ValidateDataclassOnNonClass(node.Decorators, node.Name, "struct");
         ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "struct");
+        ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "struct");
 
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Struct);
@@ -106,6 +109,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateDecorators(node.Decorators, node.Name);
         ValidateDataclassOnNonClass(node.Decorators, node.Name, "interface");
         ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "interface");
+        ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "interface");
         ValidateInterfaceDecorators(node);
 
         var previousType = _containingType;
@@ -119,6 +123,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateDecorators(node.Decorators, node.Name);
         ValidateDataclassOnNonClass(node.Decorators, node.Name, "enum");
         ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "enum");
+        ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "enum");
         base.VisitEnumDef(node);
     }
 
@@ -130,6 +135,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateDecorators(node.Decorators, definitionName);
         ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
         ValidateReadonlyOnProperty(node, definitionName);
+        ValidateTestDecoratorNotOnType(node.Decorators, definitionName, "property");
         base.VisitPropertyDef(node);
     }
 
@@ -140,6 +146,7 @@ internal class DecoratorValidator : ValidatingAstWalker
             : node.Name;
         ValidateDecorators(node.Decorators, definitionName);
         ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
+        ValidateTestDecoratorNotOnType(node.Decorators, definitionName, "event");
 
         if (_containingType != null)
         {
@@ -254,7 +261,8 @@ internal class DecoratorValidator : ValidatingAstWalker
             .Append(DecoratorNames.LruCache)
             .Append(DecoratorNames.Cache)
             .Append(DecoratorNames.StaticMethod)
-            .Append(DecoratorNames.ClassMethod));
+            .Append(DecoratorNames.ClassMethod)
+            .Append(DecoratorNames.Test));
 
     private void ValidateDecorators(IEnumerable<Decorator> decorators, string definitionName)
     {
@@ -818,6 +826,100 @@ internal class DecoratorValidator : ValidatingAstWalker
                     code: DiagnosticCodes.Validation.LruCacheOnNonFunction,
                     span: decorator.Span);
             }
+        }
+    }
+
+    /// <summary>
+    /// Validates @test decorator on function/method declarations.
+    /// Rules:
+    /// - Cannot combine with @abstract, @virtual, or @static
+    /// - Cannot be applied to dunder methods
+    /// - Accepts zero or one positional string argument (description)
+    /// </summary>
+    private void ValidateTestDecorator(IReadOnlyList<Decorator> decorators, string functionName, bool isDunder)
+    {
+        var testDecorator = decorators.FirstOrDefault(d => d.Name == DecoratorNames.Test);
+        if (testDecorator == null)
+            return;
+
+        // @test on dunder methods
+        if (isDunder)
+        {
+            AddError(
+                $"'@test' cannot be applied to dunder method '{functionName}'. " +
+                "Test decorators are only valid on regular methods.",
+                testDecorator.LineStart,
+                testDecorator.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidTarget,
+                span: testDecorator.Span);
+            return;
+        }
+
+        // @test + @abstract/@virtual/@static
+        foreach (var decorator in decorators)
+        {
+            if (decorator.Name == DecoratorNames.Abstract
+                || decorator.Name == DecoratorNames.Virtual
+                || decorator.Name == DecoratorNames.Static)
+            {
+                AddError(
+                    $"'@test' cannot be combined with '@{decorator.Name}' on '{functionName}'. " +
+                    "Test methods must be concrete instance methods.",
+                    testDecorator.LineStart,
+                    testDecorator.ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidCombination,
+                    span: testDecorator.Span);
+                return;
+            }
+        }
+
+        // Argument validation: 0 or 1 positional string arg
+        if (testDecorator.Arguments.Length > 1)
+        {
+            AddWarning(
+                $"'@test' on '{functionName}' accepts at most one string argument (description).",
+                testDecorator.LineStart,
+                testDecorator.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: testDecorator.Span);
+        }
+        else if (testDecorator.Arguments.Length == 1 && testDecorator.Arguments[0] is not StringLiteral)
+        {
+            AddWarning(
+                $"'@test' argument on '{functionName}' must be a string literal (description).",
+                testDecorator.Arguments[0].LineStart,
+                testDecorator.Arguments[0].ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: testDecorator.Arguments[0].Span);
+        }
+
+        if (testDecorator.KeywordArguments.Length > 0)
+        {
+            AddWarning(
+                $"'@test' on '{functionName}' does not accept keyword arguments.",
+                testDecorator.KeywordArguments[0].Value.LineStart,
+                testDecorator.KeywordArguments[0].Value.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: testDecorator.KeywordArguments[0].Value.Span);
+        }
+    }
+
+    /// <summary>
+    /// Validates that @test is not applied to type definitions (classes, structs, interfaces, enums)
+    /// or to properties/events.
+    /// </summary>
+    private void ValidateTestDecoratorNotOnType(IEnumerable<Decorator> decorators, string typeName, string typeKind)
+    {
+        var testDecorator = decorators.FirstOrDefault(d => d.Name == DecoratorNames.Test);
+        if (testDecorator != null)
+        {
+            AddError(
+                $"'@test' cannot be applied to {typeKind} '{typeName}'. " +
+                "The @test decorator is only valid on function and method declarations.",
+                testDecorator.LineStart,
+                testDecorator.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidTarget,
+                span: testDecorator.Span);
         }
     }
 

@@ -492,7 +492,9 @@ public static class DiagnosticCodes
         public const string InvalidGeneratorSignature = "SPY0445";           // Active
         public const string AbstractGenerator = "SPY0446";                   // Active
         public const string GeneratorOnInvalidTarget = "SPY0447";            // Active
-        // SPY0448-SPY0449: Reserved for future validation errors
+        // @test decorator validation (SPY0448-SPY0449)
+        public const string TestDecoratorInvalidTarget = "SPY0448";      // Active
+        public const string TestDecoratorInvalidCombination = "SPY0449"; // Active
 
         #endregion
 
@@ -528,7 +530,8 @@ public static class DiagnosticCodes
         public const string ReadonlyPropertyAssignment = "SPY0467"; // Active
         // Constant pattern shadow warning (SPY0468)
         public const string ConstantPatternShadow = "SPY0468";    // Active
-        // SPY0469: Reserved for future validation warnings
+        // @test decorator argument validation (SPY0469)
+        public const string TestDecoratorInvalidArgument = "SPY0469";    // Active
 
         #endregion
 

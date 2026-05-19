@@ -19,6 +19,7 @@ internal static class DecoratorNames
     public const string Readonly = "readonly";
     public const string LruCache = "lru_cache";
     public const string Cache = "cache";
+    public const string Test = "test";
 
     // Access modifiers
     public const string Public = "public";
@@ -51,5 +52,14 @@ internal static class DecoratorNames
     public static readonly ImmutableHashSet<string> KnownAttributeDecorators = new[]
     {
         Deprecated,
+    }.ToImmutableHashSet();
+
+    /// <summary>
+    /// Built-in decorators for test framework features.
+    /// These require special codegen handling (e.g., @test → [Fact]).
+    /// </summary>
+    public static readonly ImmutableHashSet<string> KnownTestDecorators = new[]
+    {
+        Test,
     }.ToImmutableHashSet();
 }
